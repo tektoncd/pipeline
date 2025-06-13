@@ -35,6 +35,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -669,6 +670,16 @@ func ApplyCredentialsPath(spec *v1.TaskSpec, path string) *v1.TaskSpec {
 	return ApplyReplacements(spec, stringReplacements, map[string][]string{}, map[string]map[string]string{})
 }
 
+// ApplyMap applies variable expansion to string maps, for both the key and value. This returns a new map
+// containing only replaced values.
+func ApplyMap(m map[string]string, stringReplacements map[string]string) map[string]string {
+	replaceMap := map[string]string{}
+	for key, value := range m {
+		replaceMap[substitution.ApplyReplacements(key, stringReplacements)] = substitution.ApplyReplacements(value, stringReplacements)
+	}
+	return replaceMap
+}
+
 // ApplyReplacements replaces placeholders for declared parameters with the specified replacements.
 func ApplyReplacements(spec *v1.TaskSpec, stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) *v1.TaskSpec {
 	spec = spec.DeepCopy()
@@ -685,6 +696,312 @@ func ApplyReplacements(spec *v1.TaskSpec, stringReplacements map[string]string, 
 	// Apply variable expansion to stepTemplate fields.
 	if spec.StepTemplate != nil {
 		container.ApplyStepTemplateReplacements(spec.StepTemplate, stringReplacements, arrayReplacements)
+	}
+
+	// Apply variable expansion to podTemplate fields.
+	if spec.PodTemplate != nil {
+		if len(spec.PodTemplate.NodeSelector) > 0 {
+			spec.PodTemplate.NodeSelector = ApplyMap(spec.PodTemplate.NodeSelector, stringReplacements)
+		}
+
+		for i, t := range spec.PodTemplate.Tolerations {
+			spec.PodTemplate.Tolerations[i].Key = substitution.ApplyReplacements(t.Key, stringReplacements)
+			spec.PodTemplate.Tolerations[i].Value = substitution.ApplyReplacements(t.Value, stringReplacements)
+			spec.PodTemplate.Tolerations[i].Effect = corev1.TaintEffect(substitution.ApplyReplacements(string(t.Effect), stringReplacements))
+			spec.PodTemplate.Tolerations[i].Operator = corev1.TolerationOperator(substitution.ApplyReplacements(string(t.Operator), stringReplacements))
+		}
+
+		if spec.PodTemplate.SchedulerName != "" {
+			spec.PodTemplate.SchedulerName = substitution.ApplyReplacements(spec.PodTemplate.SchedulerName, stringReplacements)
+		}
+
+		if len(spec.PodTemplate.Env) > 0 {
+			for i, e := range spec.PodTemplate.Env {
+				spec.PodTemplate.Env[i].Name = substitution.ApplyReplacements(e.Name, stringReplacements)
+				spec.PodTemplate.Env[i].Value = substitution.ApplyReplacements(e.Value, stringReplacements)
+				if e.ValueFrom != nil {
+					if e.ValueFrom.ConfigMapKeyRef != nil {
+						spec.PodTemplate.Env[i].ValueFrom.ConfigMapKeyRef.Key = substitution.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.Key, stringReplacements)
+						spec.PodTemplate.Env[i].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = substitution.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name, stringReplacements)
+					}
+					if e.ValueFrom.FieldRef != nil {
+						spec.PodTemplate.Env[i].ValueFrom.FieldRef.APIVersion = substitution.ApplyReplacements(e.ValueFrom.FieldRef.APIVersion, stringReplacements)
+						spec.PodTemplate.Env[i].ValueFrom.FieldRef.FieldPath = substitution.ApplyReplacements(e.ValueFrom.FieldRef.FieldPath, stringReplacements)
+					}
+					if e.ValueFrom.ResourceFieldRef != nil {
+						spec.PodTemplate.Env[i].ValueFrom.ResourceFieldRef.ContainerName = substitution.ApplyReplacements(e.ValueFrom.ResourceFieldRef.ContainerName, stringReplacements)
+						spec.PodTemplate.Env[i].ValueFrom.ResourceFieldRef.Resource = substitution.ApplyReplacements(e.ValueFrom.ResourceFieldRef.Resource, stringReplacements)
+					}
+					if e.ValueFrom.SecretKeyRef != nil {
+						spec.PodTemplate.Env[i].ValueFrom.SecretKeyRef.Key = substitution.ApplyReplacements(e.ValueFrom.SecretKeyRef.Key, stringReplacements)
+						spec.PodTemplate.Env[i].ValueFrom.SecretKeyRef.LocalObjectReference.Name = substitution.ApplyReplacements(e.ValueFrom.SecretKeyRef.LocalObjectReference.Name, stringReplacements)
+					}
+				}
+			}
+		}
+
+		if spec.PodTemplate.Affinity != nil {
+			if spec.PodTemplate.Affinity.NodeAffinity != nil {
+				if len(spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution) > 0 {
+					for i, pst := range spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
+						for j, nsr := range pst.Preference.MatchExpressions {
+							spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].Preference.MatchExpressions[j].Key = substitution.ApplyReplacements(nsr.Key, stringReplacements)
+							spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].Preference.MatchExpressions[j].Operator = corev1.NodeSelectorOperator(substitution.ApplyReplacements(string(nsr.Operator), stringReplacements))
+							for k, v := range nsr.Values {
+								spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].Preference.MatchExpressions[j].Values[k] = substitution.ApplyReplacements(v, stringReplacements)
+							}
+						}
+						for j, nsr := range pst.Preference.MatchFields {
+							spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].Preference.MatchFields[j].Key = substitution.ApplyReplacements(nsr.Key, stringReplacements)
+							spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].Preference.MatchFields[j].Operator = corev1.NodeSelectorOperator(substitution.ApplyReplacements(string(nsr.Operator), stringReplacements))
+							for k, v := range nsr.Values {
+								spec.PodTemplate.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].Preference.MatchFields[j].Values[k] = substitution.ApplyReplacements(v, stringReplacements)
+							}
+						}
+					}
+				}
+				if spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
+					for i, nst := range spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms {
+						for j, nsr := range nst.MatchExpressions {
+							spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[i].MatchExpressions[j].Key = substitution.ApplyReplacements(nsr.Key, stringReplacements)
+							spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[i].MatchExpressions[j].Operator = corev1.NodeSelectorOperator(substitution.ApplyReplacements(string(nsr.Operator), stringReplacements))
+							for k, v := range nsr.Values {
+								spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[i].MatchExpressions[j].Values[k] = substitution.ApplyReplacements(v, stringReplacements)
+							}
+						}
+						for j, nsr := range nst.MatchFields {
+							spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[i].MatchFields[j].Key = substitution.ApplyReplacements(nsr.Key, stringReplacements)
+							spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[i].MatchFields[j].Operator = corev1.NodeSelectorOperator(substitution.ApplyReplacements(string(nsr.Operator), stringReplacements))
+							for k, v := range nsr.Values {
+								spec.PodTemplate.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[i].MatchFields[j].Values[k] = substitution.ApplyReplacements(v, stringReplacements)
+							}
+						}
+					}
+				}
+			}
+
+			if spec.PodTemplate.Affinity.PodAffinity != nil {
+				for i, wpat := range spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
+					if wpat.PodAffinityTerm.LabelSelector != nil {
+						for j, lsr := range wpat.PodAffinityTerm.LabelSelector.MatchExpressions {
+							spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.LabelSelector.MatchExpressions[j].Key = substitution.ApplyReplacements(lsr.Key, stringReplacements)
+							spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.LabelSelector.MatchExpressions[j].Operator = metav1.LabelSelectorOperator(substitution.ApplyReplacements(string(lsr.Operator), stringReplacements))
+							for k, v := range lsr.Values {
+								spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.LabelSelector.MatchExpressions[j].Values[k] = substitution.ApplyReplacements(v, stringReplacements)
+							}
+						}
+						spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.LabelSelector.MatchLabels = ApplyMap(wpat.PodAffinityTerm.LabelSelector.MatchLabels, stringReplacements)
+					}
+					for j, key := range wpat.PodAffinityTerm.MatchLabelKeys {
+						spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.MatchLabelKeys[j] = substitution.ApplyReplacements(key, stringReplacements)
+					}
+					for j, key := range wpat.PodAffinityTerm.MismatchLabelKeys {
+						spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.MismatchLabelKeys[j] = substitution.ApplyReplacements(key, stringReplacements)
+					}
+					if wpat.PodAffinityTerm.NamespaceSelector != nil {
+						for j, lsr := range wpat.PodAffinityTerm.NamespaceSelector.MatchExpressions {
+							spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.NamespaceSelector.MatchExpressions[j].Key = substitution.ApplyReplacements(lsr.Key, stringReplacements)
+							spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.NamespaceSelector.MatchExpressions[j].Operator = metav1.LabelSelectorOperator(substitution.ApplyReplacements(string(lsr.Operator), stringReplacements))
+							for k, v := range lsr.Values {
+								spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.NamespaceSelector.MatchExpressions[j].Values[k] = substitution.ApplyReplacements(v, stringReplacements)
+							}
+						}
+						spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.NamespaceSelector.MatchLabels = ApplyMap(wpat.PodAffinityTerm.NamespaceSelector.MatchLabels, stringReplacements)
+					}
+					for j, ns := range wpat.PodAffinityTerm.Namespaces {
+						spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.Namespaces[j] = substitution.ApplyReplacements(ns, stringReplacements)
+					}
+					spec.PodTemplate.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.TopologyKey = substitution.ApplyReplacements(wpat.PodAffinityTerm.TopologyKey, stringReplacements)
+				}
+				for i, pat := range spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution {
+					if pat.LabelSelector != nil {
+						for j, lsr := range pat.LabelSelector.MatchExpressions {
+							spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].LabelSelector.MatchExpressions[j].Key = substitution.ApplyReplacements(lsr.Key, stringReplacements)
+							spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].LabelSelector.MatchExpressions[j].Operator = metav1.LabelSelectorOperator(substitution.ApplyReplacements(string(lsr.Operator), stringReplacements))
+							for k, v := range lsr.Values {
+								spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].LabelSelector.MatchExpressions[j].Values[k] = substitution.ApplyReplacements(v, stringReplacements)
+							}
+						}
+						spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].LabelSelector.MatchLabels = ApplyMap(pat.LabelSelector.MatchLabels, stringReplacements)
+					}
+					for j, key := range pat.MatchLabelKeys {
+						spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].MatchLabelKeys[j] = substitution.ApplyReplacements(key, stringReplacements)
+					}
+					for j, key := range pat.MismatchLabelKeys {
+						spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].MismatchLabelKeys[j] = substitution.ApplyReplacements(key, stringReplacements)
+					}
+					if pat.NamespaceSelector != nil {
+						for j, lsr := range pat.NamespaceSelector.MatchExpressions {
+							spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].NamespaceSelector.MatchExpressions[j].Key = substitution.ApplyReplacements(lsr.Key, stringReplacements)
+							spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].NamespaceSelector.MatchExpressions[j].Operator = metav1.LabelSelectorOperator(substitution.ApplyReplacements(string(lsr.Operator), stringReplacements))
+							for k, v := range lsr.Values {
+								spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].NamespaceSelector.MatchExpressions[j].Values[k] = substitution.ApplyReplacements(v, stringReplacements)
+							}
+						}
+						spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].NamespaceSelector.MatchLabels = ApplyMap(pat.NamespaceSelector.MatchLabels, stringReplacements)
+					}
+					for j, ns := range pat.Namespaces {
+						spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].Namespaces[j] = substitution.ApplyReplacements(ns, stringReplacements)
+					}
+					spec.PodTemplate.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].TopologyKey = substitution.ApplyReplacements(pat.TopologyKey, stringReplacements)
+				}
+			}
+
+			if spec.PodTemplate.Affinity.PodAntiAffinity != nil {
+				for i, wpat := range spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
+					if wpat.PodAffinityTerm.LabelSelector != nil {
+						for j, lsr := range wpat.PodAffinityTerm.LabelSelector.MatchExpressions {
+							spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.LabelSelector.MatchExpressions[j].Key = substitution.ApplyReplacements(lsr.Key, stringReplacements)
+							spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.LabelSelector.MatchExpressions[j].Operator = metav1.LabelSelectorOperator(substitution.ApplyReplacements(string(lsr.Operator), stringReplacements))
+							for k, v := range lsr.Values {
+								spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.LabelSelector.MatchExpressions[j].Values[k] = substitution.ApplyReplacements(v, stringReplacements)
+							}
+						}
+						spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.LabelSelector.MatchLabels = ApplyMap(wpat.PodAffinityTerm.LabelSelector.MatchLabels, stringReplacements)
+					}
+					for j, key := range wpat.PodAffinityTerm.MatchLabelKeys {
+						spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.MatchLabelKeys[j] = substitution.ApplyReplacements(key, stringReplacements)
+					}
+					for j, key := range wpat.PodAffinityTerm.MismatchLabelKeys {
+						spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.MismatchLabelKeys[j] = substitution.ApplyReplacements(key, stringReplacements)
+					}
+					if wpat.PodAffinityTerm.NamespaceSelector != nil {
+						for j, lsr := range wpat.PodAffinityTerm.NamespaceSelector.MatchExpressions {
+							spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.NamespaceSelector.MatchExpressions[j].Key = substitution.ApplyReplacements(lsr.Key, stringReplacements)
+							spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.NamespaceSelector.MatchExpressions[j].Operator = metav1.LabelSelectorOperator(substitution.ApplyReplacements(string(lsr.Operator), stringReplacements))
+							for k, v := range lsr.Values {
+								spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.NamespaceSelector.MatchExpressions[j].Values[k] = substitution.ApplyReplacements(v, stringReplacements)
+							}
+						}
+						spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.NamespaceSelector.MatchLabels = ApplyMap(wpat.PodAffinityTerm.NamespaceSelector.MatchLabels, stringReplacements)
+					}
+					for j, ns := range wpat.PodAffinityTerm.Namespaces {
+						spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.Namespaces[j] = substitution.ApplyReplacements(ns, stringReplacements)
+					}
+					spec.PodTemplate.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm.TopologyKey = substitution.ApplyReplacements(wpat.PodAffinityTerm.TopologyKey, stringReplacements)
+				}
+				for i, pat := range spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution {
+					if pat.LabelSelector != nil {
+						for j, lsr := range pat.LabelSelector.MatchExpressions {
+							spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].LabelSelector.MatchExpressions[j].Key = substitution.ApplyReplacements(lsr.Key, stringReplacements)
+							spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].LabelSelector.MatchExpressions[j].Operator = metav1.LabelSelectorOperator(substitution.ApplyReplacements(string(lsr.Operator), stringReplacements))
+							for k, v := range lsr.Values {
+								spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].LabelSelector.MatchExpressions[j].Values[k] = substitution.ApplyReplacements(v, stringReplacements)
+							}
+						}
+						spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].LabelSelector.MatchLabels = ApplyMap(pat.LabelSelector.MatchLabels, stringReplacements)
+					}
+					for j, key := range pat.MatchLabelKeys {
+						spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].MatchLabelKeys[j] = substitution.ApplyReplacements(key, stringReplacements)
+					}
+					for j, key := range pat.MismatchLabelKeys {
+						spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].MismatchLabelKeys[j] = substitution.ApplyReplacements(key, stringReplacements)
+					}
+					if pat.NamespaceSelector != nil {
+						for j, lsr := range pat.NamespaceSelector.MatchExpressions {
+							spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].NamespaceSelector.MatchExpressions[j].Key = substitution.ApplyReplacements(lsr.Key, stringReplacements)
+							spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].NamespaceSelector.MatchExpressions[j].Operator = metav1.LabelSelectorOperator(substitution.ApplyReplacements(string(lsr.Operator), stringReplacements))
+							for k, v := range lsr.Values {
+								spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].NamespaceSelector.MatchExpressions[j].Values[k] = substitution.ApplyReplacements(v, stringReplacements)
+							}
+						}
+						spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].NamespaceSelector.MatchLabels = ApplyMap(pat.NamespaceSelector.MatchLabels, stringReplacements)
+					}
+					for j, ns := range pat.Namespaces {
+						spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].Namespaces[j] = substitution.ApplyReplacements(ns, stringReplacements)
+					}
+					spec.PodTemplate.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i].TopologyKey = substitution.ApplyReplacements(pat.TopologyKey, stringReplacements)
+				}
+			}
+		}
+
+		if spec.PodTemplate.SecurityContext != nil {
+			if spec.PodTemplate.SecurityContext.SELinuxOptions != nil {
+				spec.PodTemplate.SecurityContext.SELinuxOptions.User = substitution.ApplyReplacements(spec.PodTemplate.SecurityContext.SELinuxOptions.User, stringReplacements)
+				spec.PodTemplate.SecurityContext.SELinuxOptions.Role = substitution.ApplyReplacements(spec.PodTemplate.SecurityContext.SELinuxOptions.Role, stringReplacements)
+				spec.PodTemplate.SecurityContext.SELinuxOptions.Type = substitution.ApplyReplacements(spec.PodTemplate.SecurityContext.SELinuxOptions.Type, stringReplacements)
+				spec.PodTemplate.SecurityContext.SELinuxOptions.Level = substitution.ApplyReplacements(spec.PodTemplate.SecurityContext.SELinuxOptions.Level, stringReplacements)
+			}
+			if spec.PodTemplate.SecurityContext.WindowsOptions != nil {
+				*spec.PodTemplate.SecurityContext.WindowsOptions.RunAsUserName = substitution.ApplyReplacements(*spec.PodTemplate.SecurityContext.WindowsOptions.RunAsUserName, stringReplacements)
+				*spec.PodTemplate.SecurityContext.WindowsOptions.GMSACredentialSpec = substitution.ApplyReplacements(*spec.PodTemplate.SecurityContext.WindowsOptions.GMSACredentialSpec, stringReplacements)
+				*spec.PodTemplate.SecurityContext.WindowsOptions.GMSACredentialSpecName = substitution.ApplyReplacements(*spec.PodTemplate.SecurityContext.WindowsOptions.GMSACredentialSpecName, stringReplacements)
+			}
+			if spec.PodTemplate.SecurityContext.SupplementalGroupsPolicy != nil {
+				*spec.PodTemplate.SecurityContext.SupplementalGroupsPolicy = corev1.SupplementalGroupsPolicy(substitution.ApplyReplacements(string(*spec.PodTemplate.SecurityContext.SupplementalGroupsPolicy), stringReplacements))
+			}
+			for i, sysctl := range spec.PodTemplate.SecurityContext.Sysctls {
+				spec.PodTemplate.SecurityContext.Sysctls[i].Name = substitution.ApplyReplacements(sysctl.Name, stringReplacements)
+				spec.PodTemplate.SecurityContext.Sysctls[i].Value = substitution.ApplyReplacements(sysctl.Value, stringReplacements)
+			}
+			if spec.PodTemplate.SecurityContext.FSGroupChangePolicy != nil {
+				*spec.PodTemplate.SecurityContext.FSGroupChangePolicy = corev1.PodFSGroupChangePolicy(substitution.ApplyReplacements(string(*spec.PodTemplate.SecurityContext.FSGroupChangePolicy), stringReplacements))
+			}
+			if spec.PodTemplate.SecurityContext.SeccompProfile != nil {
+				*spec.PodTemplate.SecurityContext.SeccompProfile.LocalhostProfile = substitution.ApplyReplacements(*spec.PodTemplate.SecurityContext.SeccompProfile.LocalhostProfile, stringReplacements)
+				spec.PodTemplate.SecurityContext.SeccompProfile.Type = corev1.SeccompProfileType(substitution.ApplyReplacements(string(spec.PodTemplate.SecurityContext.SeccompProfile.Type), stringReplacements))
+			}
+			if spec.PodTemplate.SecurityContext.AppArmorProfile != nil {
+				*spec.PodTemplate.SecurityContext.AppArmorProfile.LocalhostProfile = substitution.ApplyReplacements(*spec.PodTemplate.SecurityContext.AppArmorProfile.LocalhostProfile, stringReplacements)
+				spec.PodTemplate.SecurityContext.AppArmorProfile.Type = corev1.AppArmorProfileType(substitution.ApplyReplacements(string(spec.PodTemplate.SecurityContext.AppArmorProfile.Type), stringReplacements))
+			}
+		}
+
+		if spec.PodTemplate.RuntimeClassName != nil {
+			*spec.PodTemplate.RuntimeClassName = substitution.ApplyReplacements(*spec.PodTemplate.RuntimeClassName, stringReplacements)
+		}
+
+		if spec.PodTemplate.DNSPolicy != nil {
+			*spec.PodTemplate.DNSPolicy = corev1.DNSPolicy(substitution.ApplyReplacements(string(*spec.PodTemplate.DNSPolicy), stringReplacements))
+		}
+
+		if spec.PodTemplate.DNSConfig != nil {
+			for i, ns := range spec.PodTemplate.DNSConfig.Nameservers {
+				spec.PodTemplate.DNSConfig.Nameservers[i] = substitution.ApplyReplacements(ns, stringReplacements)
+			}
+			for i, s := range spec.PodTemplate.DNSConfig.Searches {
+				spec.PodTemplate.DNSConfig.Searches[i] = substitution.ApplyReplacements(s, stringReplacements)
+			}
+			for i, o := range spec.PodTemplate.DNSConfig.Options {
+				spec.PodTemplate.DNSConfig.Options[i].Name = substitution.ApplyReplacements(o.Name, stringReplacements)
+				*spec.PodTemplate.DNSConfig.Options[i].Value = substitution.ApplyReplacements(*o.Value, stringReplacements)
+			}
+		}
+
+		if spec.PodTemplate.PriorityClassName != nil {
+			*spec.PodTemplate.PriorityClassName = substitution.ApplyReplacements(*spec.PodTemplate.PriorityClassName, stringReplacements)
+		}
+
+		for i, lor := range spec.PodTemplate.ImagePullSecrets {
+			spec.PodTemplate.ImagePullSecrets[i].Name = substitution.ApplyReplacements(lor.Name, stringReplacements)
+		}
+
+		for i, ha := range spec.PodTemplate.HostAliases {
+			spec.PodTemplate.HostAliases[i].IP = substitution.ApplyReplacements(ha.IP, stringReplacements)
+			for j, hn := range ha.Hostnames {
+				spec.PodTemplate.HostAliases[i].Hostnames[j] = substitution.ApplyReplacements(hn, stringReplacements)
+			}
+		}
+
+		for i, tsc := range spec.PodTemplate.TopologySpreadConstraints {
+			spec.PodTemplate.TopologySpreadConstraints[i].TopologyKey = substitution.ApplyReplacements(tsc.TopologyKey, stringReplacements)
+			spec.PodTemplate.TopologySpreadConstraints[i].WhenUnsatisfiable = corev1.UnsatisfiableConstraintAction(substitution.ApplyReplacements(string(tsc.WhenUnsatisfiable), stringReplacements))
+			if tsc.LabelSelector != nil {
+				for j, lsr := range tsc.LabelSelector.MatchExpressions {
+					spec.PodTemplate.TopologySpreadConstraints[i].LabelSelector.MatchExpressions[j].Key = substitution.ApplyReplacements(lsr.Key, stringReplacements)
+					spec.PodTemplate.TopologySpreadConstraints[i].LabelSelector.MatchExpressions[j].Operator = metav1.LabelSelectorOperator(substitution.ApplyReplacements(string(lsr.Operator), stringReplacements))
+					for k, val := range lsr.Values {
+						spec.PodTemplate.TopologySpreadConstraints[i].LabelSelector.MatchExpressions[j].Values[k] = substitution.ApplyReplacements(val, stringReplacements)
+					}
+				}
+				spec.PodTemplate.TopologySpreadConstraints[i].LabelSelector.MatchLabels = ApplyMap(tsc.LabelSelector.MatchLabels, stringReplacements)
+			}
+			*spec.PodTemplate.TopologySpreadConstraints[i].NodeAffinityPolicy = corev1.NodeInclusionPolicy(substitution.ApplyReplacements(string(*tsc.NodeAffinityPolicy), stringReplacements))
+			*spec.PodTemplate.TopologySpreadConstraints[i].NodeTaintsPolicy = corev1.NodeInclusionPolicy(substitution.ApplyReplacements(string(*tsc.NodeTaintsPolicy), stringReplacements))
+			for j, key := range tsc.MatchLabelKeys {
+				spec.PodTemplate.TopologySpreadConstraints[i].MatchLabelKeys[j] = substitution.ApplyReplacements(key, stringReplacements)
+			}
+		}
 	}
 
 	// Apply variable expansion to the build's volumes
@@ -725,9 +1042,7 @@ func ApplyReplacements(spec *v1.TaskSpec, stringReplacements map[string]string, 
 				spec.Volumes[i].CSI.NodePublishSecretRef.Name = substitution.ApplyReplacements(v.CSI.NodePublishSecretRef.Name, stringReplacements)
 			}
 			if v.CSI.VolumeAttributes != nil {
-				for key, value := range v.CSI.VolumeAttributes {
-					spec.Volumes[i].CSI.VolumeAttributes[key] = substitution.ApplyReplacements(value, stringReplacements)
-				}
+				v.CSI.VolumeAttributes = ApplyMap(v.CSI.VolumeAttributes, stringReplacements)
 			}
 		}
 	}

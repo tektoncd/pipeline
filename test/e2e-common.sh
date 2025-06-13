@@ -26,7 +26,7 @@ function install_pipeline_crd() {
   cat "${ko_target}" | sed -e 's%"level": "info"%"level": "debug"%' \
       | sed -e 's%loglevel.controller: "info"%loglevel.controller: "debug"%' \
       | sed -e 's%loglevel.webhook: "info"%loglevel.webhook: "debug"%' \
-      | kubectl apply -R -f - || fail_test "Build pipeline installation failed"
+      | kubectl apply --server-side -R -f - || fail_test "Build pipeline installation failed"
 
   verify_pipeline_installation
   verify_resolvers_installation

@@ -371,6 +371,172 @@ func TestPodBuild(t *testing.T) {
 			},
 		},
 		{
+			desc: "with-pod-template-on-task",
+			ts: v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"cmd"}, // avoid entrypoint lookup.
+				}},
+				PodTemplate: &pod.Template{
+					SecurityContext: &corev1.PodSecurityContext{
+						Sysctls: []corev1.Sysctl{
+							{Name: "net.ipv4.tcp_syncookies", Value: "1"},
+						},
+					},
+					RuntimeClassName:             &runtimeClassName,
+					AutomountServiceAccountToken: &automountServiceAccountToken,
+					DNSPolicy:                    &dnsPolicy,
+					DNSConfig: &corev1.PodDNSConfig{
+						Nameservers: []string{"8.8.8.8"},
+						Searches:    []string{"tekton.local"},
+					},
+					EnableServiceLinks: &enableServiceLinks,
+					PriorityClassName:  &priorityClassName,
+				},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1.Step{{Name: "name"}}, SecurityContextConfig{SetSecurityContext: false, SetReadOnlyRootFilesystem: false}, false /* windows */)},
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/run/0/status",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{
+						binROMount, runMount(0, false),
+						downwardMount,
+						{Name: "tekton-creds-init-home-0", MountPath: "/tekton/creds"},
+					}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+				}},
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				SecurityContext: &corev1.PodSecurityContext{
+					Sysctls: []corev1.Sysctl{
+						{Name: "net.ipv4.tcp_syncookies", Value: "1"},
+					},
+				},
+				RuntimeClassName:             &runtimeClassName,
+				AutomountServiceAccountToken: &automountServiceAccountToken,
+				DNSPolicy:                    dnsPolicy,
+				DNSConfig: &corev1.PodDNSConfig{
+					Nameservers: []string{"8.8.8.8"},
+					Searches:    []string{"tekton.local"},
+				},
+				EnableServiceLinks:    &enableServiceLinks,
+				PriorityClassName:     priorityClassName,
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
+		},
+		{
+			desc: "with-pod-template-on-task-and-taskrun",
+			ts: v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"cmd"}, // avoid entrypoint lookup.
+				}},
+				PodTemplate: &pod.Template{
+					SecurityContext: &corev1.PodSecurityContext{
+						Sysctls: []corev1.Sysctl{
+							{Name: "net.ipv4.tcp_syncookies", Value: "1"},
+						},
+					},
+					RuntimeClassName:             &runtimeClassName,
+					AutomountServiceAccountToken: &automountServiceAccountToken,
+					DNSPolicy:                    &dnsPolicy,
+					DNSConfig: &corev1.PodDNSConfig{
+						Nameservers: []string{"8.8.8.8"},
+						Searches:    []string{"tekton.local"},
+					},
+					EnableServiceLinks: &enableServiceLinks,
+					PriorityClassName:  &priorityClassName,
+				},
+			},
+			trs: v1.TaskRunSpec{
+				PodTemplate: &pod.Template{
+					SecurityContext: &corev1.PodSecurityContext{
+						Sysctls: []corev1.Sysctl{
+							{Name: "net.ipv4.tcp_syncookies", Value: "1"},
+						},
+					},
+					RuntimeClassName:             &runtimeClassName,
+					AutomountServiceAccountToken: &automountServiceAccountToken,
+					DNSPolicy:                    &dnsPolicy,
+					DNSConfig: &corev1.PodDNSConfig{
+						Nameservers: []string{"1.1.1.1"},
+						Searches:    []string{"tekton.local"},
+					},
+					EnableServiceLinks: &enableServiceLinks,
+					PriorityClassName:  &priorityClassName,
+				},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1.Step{{Name: "name"}}, SecurityContextConfig{SetSecurityContext: false, SetReadOnlyRootFilesystem: false}, false /* windows */)},
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/run/0/status",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{
+						binROMount, runMount(0, false),
+						downwardMount,
+						{Name: "tekton-creds-init-home-0", MountPath: "/tekton/creds"},
+					}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+				}},
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				SecurityContext: &corev1.PodSecurityContext{
+					Sysctls: []corev1.Sysctl{
+						{Name: "net.ipv4.tcp_syncookies", Value: "1"},
+					},
+				},
+				RuntimeClassName:             &runtimeClassName,
+				AutomountServiceAccountToken: &automountServiceAccountToken,
+				DNSPolicy:                    dnsPolicy,
+				DNSConfig: &corev1.PodDNSConfig{
+					Nameservers: []string{"1.1.1.1"}, // TaskRun value should override Task value
+					Searches:    []string{"tekton.local"},
+				},
+				EnableServiceLinks:    &enableServiceLinks,
+				PriorityClassName:     priorityClassName,
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
+		},
+		{
 			desc: "very long step name",
 			ts: v1.TaskSpec{
 				Steps: []v1.Step{{
