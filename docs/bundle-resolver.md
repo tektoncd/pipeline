@@ -19,6 +19,7 @@ This Resolver responds to type `bundles`.
 | `bundle`         | The bundle url pointing at the image to fetch                                 | `gcr.io/tekton-releases/catalog/upstream/golang-build:0.1` |
 | `name`           | The name of the resource to pull out of the bundle                            | `golang-build`                                             |
 | `kind`           | The resource kind to pull out of the bundle                                   | `task`                                                     |
+| `cache`          | Controls caching behavior for the resolved resource                           | `always`, `never`, `auto`                                  |
 
 ## Requirements
 
@@ -44,6 +45,16 @@ for the name, namespace and defaults that the resolver ships with.
 | `backoff-steps`      | The number of backoffs to attempt.                                | `3`, `7`              |
 | `backoff-cap`        | The maxumum backoff duration. If reached, remaining steps are zeroed.| `10s`, `20s`       |
 | `default-kind`       | The default layer kind in the bundle image.                       | `task`, `pipeline`    |
+
+### Caching Options
+
+The bundle resolver supports caching of resolved resources to improve performance. The caching behavior can be configured using the `cache` option:
+
+| Cache Value | Description |
+|-------------|-------------|
+| `always` | Always cache resolved resources. This is the most aggressive caching strategy and will cache all resolved resources regardless of their source. |
+| `never` | Never cache resolved resources. This disables caching completely. |
+| `auto` | Caching will only occur for bundles pulled by digest. (default) |
 
 ## Usage
 

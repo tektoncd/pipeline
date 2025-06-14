@@ -24,12 +24,13 @@ import (
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/factory"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
 	"go.uber.org/zap"
-	"k8s.io/apimachinery/pkg/util/cache"
+	k8scache "k8s.io/apimachinery/pkg/util/cache"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/logging"
@@ -51,9 +52,31 @@ const (
 
 	// cacheSize is the size of the LRU secrets cache
 	cacheSize = 1024
+
 	// ttl is the time to live for a cache entry
 	ttl = 5 * time.Minute
+
+	// CacheModeAlways means always use cache regardless of git revision
+	CacheModeAlways = "always"
+	// CacheModeNever means never use cache regardless of git revision
+	CacheModeNever = "never"
+	// CacheModeAuto means use cache only when git revision is a commit hash
+	CacheModeAuto = "auto"
 )
+
+// IsCommitHash checks if the given string is a valid git commit hash.
+// A valid git commit hash is a 40-character hexadecimal string.
+func IsCommitHash(s string) bool {
+	if len(s) != 40 {
+		return false
+	}
+	for _, c := range s {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
+}
 
 var _ framework.Resolver = &Resolver{}
 
@@ -61,7 +84,7 @@ var _ framework.Resolver = &Resolver{}
 type Resolver struct {
 	kubeClient kubernetes.Interface
 	logger     *zap.SugaredLogger
-	cache      *cache.LRUExpireCache
+	cache      *k8scache.LRUExpireCache
 	ttl        time.Duration
 
 	// Used in testing
@@ -72,7 +95,7 @@ type Resolver struct {
 func (r *Resolver) Initialize(ctx context.Context) error {
 	r.kubeClient = kubeclient.Get(ctx)
 	r.logger = logging.FromContext(ctx)
-	r.cache = cache.NewLRUExpireCache(cacheSize)
+	r.cache = k8scache.NewLRUExpireCache(cacheSize)
 	r.ttl = ttl
 	if r.clientFunc == nil {
 		r.clientFunc = factory.NewClient
@@ -104,19 +127,55 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 	return errors.New("cannot validate request. the Validate method has not been implemented.")
 }
 
+// ShouldUseCache determines if caching should be used based on the cache mode and bundle reference.
+func ShouldUseCache(params map[string]string) bool {
+	cacheMode := params[git.CacheParam]
+	gitRevision := params[git.RevisionParam]
+	switch cacheMode {
+	case CacheModeAlways:
+		return true
+	case CacheModeNever:
+		return false
+	case CacheModeAuto, "": // default to auto if not specified
+		return IsCommitHash(gitRevision)
+	default: // invalid cache mode defaults to auto
+		return IsCommitHash(gitRevision)
+	}
+}
+
 // Resolve performs the work of fetching a file from git given a map of
 // parameters.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
-	if len(req.Params) > 0 {
-		origParams := req.Params
 
+	if len(req.Params) > 0 {
 		if git.IsDisabled(ctx) {
 			return nil, errors.New(disabledError)
 		}
 
-		params, err := git.PopulateDefaultParams(ctx, origParams)
+		params, err := git.PopulateDefaultParams(ctx, req.Params)
 		if err != nil {
 			return nil, err
+		}
+
+		// Check if caching should be enabled
+		useCache := ShouldUseCache(params)
+
+		if useCache {
+			// Initialize cache logger
+			cache.GetGlobalCache().InitializeLogger(ctx)
+
+			// Generate cache key
+			cacheKey, err := cache.GenerateCacheKey(labelValueGitResolverType, req.Params)
+			if err != nil {
+				return nil, err
+			}
+
+			// Check cache first
+			if cached, ok := cache.GetGlobalCache().Get(cacheKey); ok {
+				if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
+					return resource, nil
+				}
+			}
 		}
 
 		g := &git.GitResolver{
@@ -127,13 +186,24 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 			Params:     params,
 		}
 
+		var resource resolutionframework.ResolvedResource
 		if params[git.UrlParam] != "" {
-			return g.ResolveGitClone(ctx)
+			resource, err = g.ResolveGitClone(ctx)
+		} else {
+			resource, err = g.ResolveAPIGit(ctx, r.clientFunc)
+		}
+		if err != nil {
+			return nil, err
 		}
 
-		return g.ResolveAPIGit(ctx, r.clientFunc)
+		// Cache the result if caching is enabled
+		if useCache {
+			cacheKey, _ := cache.GenerateCacheKey(labelValueGitResolverType, req.Params)
+			cache.GetGlobalCache().Add(cacheKey, resource)
+		}
+
+		return resource, nil
 	}
-	// Remove this error once resolution of url has been implemented.
 	return nil, errors.New("the Resolve method has not been implemented.")
 }
 
