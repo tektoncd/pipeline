@@ -85,6 +85,9 @@ func NewTag(name string, opts ...Option) (Tag, error) {
 	if len(parts) > 1 && !strings.Contains(parts[len(parts)-1], regRepoDelimiter) {
 		base = strings.Join(parts[:len(parts)-1], tagDelim)
 		tag = parts[len(parts)-1]
+		if tag == "" {
+			return Tag{}, newErrBadName("%s must specify a tag name after the colon", name)
+		}
 	}
 
 	// We don't require a tag, but if we get one check it's valid,
