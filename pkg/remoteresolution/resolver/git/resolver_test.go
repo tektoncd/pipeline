@@ -42,6 +42,7 @@ import (
 	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frameworktesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
+	"github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
 	gitresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -978,4 +979,84 @@ func toParams(m map[string]string) []pipelinev1.Param {
 	}
 
 	return params
+}
+
+func TestShouldUseCache(t *testing.T) {
+	testCases := []struct {
+		name           string
+		params         map[string]string
+		expectedResult bool
+	}{
+		{
+			name: "cache mode always",
+			params: map[string]string{
+				git.CacheParam:    CacheModeAlways,
+				git.RevisionParam: "abc123",
+			},
+			expectedResult: true,
+		},
+		{
+			name: "cache mode never",
+			params: map[string]string{
+				git.CacheParam:    CacheModeNever,
+				git.RevisionParam: "abc123",
+			},
+			expectedResult: false,
+		},
+		{
+			name: "cache mode auto with commit hash",
+			params: map[string]string{
+				git.CacheParam:    CacheModeAuto,
+				git.RevisionParam: "6bffb6ca708ac9013115baa574801e8127f4c5c2",
+			},
+			expectedResult: true,
+		},
+		{
+			name: "cache mode auto with non-commit hash",
+			params: map[string]string{
+				git.CacheParam:    CacheModeAuto,
+				git.RevisionParam: "main",
+			},
+			expectedResult: false,
+		},
+		{
+			name: "default cache mode (auto) with commit hash",
+			params: map[string]string{
+				git.RevisionParam: "6bffb6ca708ac9013115baa574801e8127f4c5c2",
+			},
+			expectedResult: true,
+		},
+		{
+			name: "default cache mode (auto) with non-commit hash",
+			params: map[string]string{
+				git.RevisionParam: "main",
+			},
+			expectedResult: false,
+		},
+		{
+			name: "invalid cache mode defaults to auto with commit hash",
+			params: map[string]string{
+				git.CacheParam:    "invalid",
+				git.RevisionParam: "6bffb6ca708ac9013115baa574801e8127f4c5c2",
+			},
+			expectedResult: true,
+		},
+		{
+			name: "invalid cache mode defaults to auto with non-commit hash",
+			params: map[string]string{
+				git.CacheParam:    "invalid",
+				git.RevisionParam: "main",
+			},
+			expectedResult: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ShouldUseCache(tc.params)
+			if result != tc.expectedResult {
+				t.Errorf("expected %v, got %v", tc.expectedResult, result)
+			}
+		})
+	}
 }
