@@ -33,6 +33,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/tasklevel"
 	"github.com/tektoncd/pipeline/pkg/names"
+	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,6 +42,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/strings/slices"
 	"knative.dev/pkg/changeset"
+	"knative.dev/pkg/kmap"
 	"knative.dev/pkg/kmeta"
 )
 
@@ -159,6 +161,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	enableKeepPodOnCancel := featureFlags.EnableKeepPodOnCancel
 	setSecurityContext := config.FromContextOrDefaults(ctx).FeatureFlags.SetSecurityContext
 	setSecurityContextReadOnlyRootFilesystem := config.FromContextOrDefaults(ctx).FeatureFlags.SetSecurityContextReadOnlyRootFilesystem
+	defaultManagedByLabelValue := config.FromContextOrDefaults(ctx).Defaults.DefaultManagedByLabelValue
 
 	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
 	volumes = append(volumes, implicitVolumes...)
@@ -459,7 +462,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		priorityClassName = *podTemplate.PriorityClassName
 	}
 
-	podAnnotations := kmeta.CopyMap(taskRun.Annotations)
+	podAnnotations := kmap.ExcludeKeys(kmeta.CopyMap(taskRun.Annotations), tknreconciler.KubernetesManagedByAnnotationKey)
 	podAnnotations[ReleaseAnnotation] = changeset.Get()
 
 	if readyImmediately {
@@ -491,7 +494,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 				*metav1.NewControllerRef(taskRun, groupVersionKind),
 			},
 			Annotations: podAnnotations,
-			Labels:      makeLabels(taskRun),
+			Labels:      makeLabels(taskRun, defaultManagedByLabelValue),
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy:                corev1.RestartPolicyNever,
@@ -529,7 +532,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 }
 
 // makeLabels constructs the labels we will propagate from TaskRuns to Pods.
-func makeLabels(s *v1.TaskRun) map[string]string {
+func makeLabels(s *v1.TaskRun, defaultManagedByLabelValue string) map[string]string {
 	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
 	// NB: Set this *before* passing through TaskRun labels. If the TaskRun
 	// has a managed-by label, it should override this default.
@@ -543,6 +546,8 @@ func makeLabels(s *v1.TaskRun) map[string]string {
 	// specifies this label, it should be overridden by this value.
 	labels[pipeline.TaskRunLabelKey] = s.Name
 	labels[pipeline.TaskRunUIDLabelKey] = string(s.UID)
+	// Enforce app.kubernetes.io/managed-by to be the value configured
+	labels[tknreconciler.KubernetesManagedByAnnotationKey] = defaultManagedByLabelValue
 	return labels
 }
 
