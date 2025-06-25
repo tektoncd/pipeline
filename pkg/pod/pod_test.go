@@ -30,6 +30,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -2621,6 +2622,7 @@ _EOF_
 			} else {
 				trAnnotations = c.trAnnotation
 				trAnnotations[ReleaseAnnotation] = fakeVersion
+
 			}
 			testTaskRunName := taskRunName
 			if c.trName != "" {
@@ -3256,6 +3258,7 @@ func TestMakeLabels(t *testing.T) {
 		"foo":                       "bar",
 		"hello":                     "world",
 		pipeline.TaskRunUIDLabelKey: string(taskRunUID),
+		tknreconciler.KubernetesManagedByAnnotationKey: "foo",
 	}
 	got := makeLabels(&v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -3266,7 +3269,7 @@ func TestMakeLabels(t *testing.T) {
 				"hello": "world",
 			},
 		},
-	})
+	}, "foo")
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("Diff labels %s", diff.PrintWantGot(d))
 	}
