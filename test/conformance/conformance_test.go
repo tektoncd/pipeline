@@ -892,7 +892,7 @@ spec:
 	for _, param := range resolvedTR.Spec.Params {
 		if param.Name == "array-param" {
 			paramArr := param.Value.ArrayVal
-			for i, _ := range paramArr {
+			for i := range paramArr {
 				if paramArr[i] != arrayParam[i] {
 					t.Errorf("Expect Params to match %s: %v", arrayParam[i], paramArr[i])
 				}
