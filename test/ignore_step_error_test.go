@@ -23,7 +23,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
-
+	"strings"
 	"github.com/google/go-cmp/cmp"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -33,6 +33,39 @@ import (
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
+
+var (
+	onErrorContinue = "continue"
+	onErrorContinueAndFail = "continueAndFail"
+)
+
+func successfulStep(name string, onError *string) string {
+	step := fmt.Sprintf(`
+      - name: %s
+        image: mirror.gcr.io/busybox
+        script: 'echo hello'`, name)
+
+	if onError != nil {
+		step += "\n" + fmt.Sprintf(`
+        onError: %s`, *onError)
+	}
+
+	return step
+}
+
+func failingStep(name string, onError *string) string {
+	step := fmt.Sprintf(`
+      - name: %s
+        image: mirror.gcr.io/busybox
+        script: 'echo -n 123 | tee $(results.result1.path); exit 1; echo -n 456 | tee $(results.result2.path)'`, name)
+
+	if onError != nil {
+		step += "\n" + fmt.Sprintf(`
+        onError: %s`, *onError)
+	}
+
+	return step
+}
 
 func TestFailingStepOnContinue(t *testing.T) {
 	ctx := t.Context()
@@ -44,22 +77,97 @@ func TestFailingStepOnContinue(t *testing.T) {
 
 	tests := []struct {
 		description   string
-		onError       string
+		steps 	      []string
 		shouldSucceed bool
+		expectedStatusMsg string
 		state         string
 		conditionFn   func(name string) ConditionAccessorFn
 	}{
 		{
-			description:   "continue and succeed",
-			onError:       "continue",
+			description:   "failing step with onError continue and successful follow-up step",
+			steps: []string{
+				failingStep("failing-step", &onErrorContinue),
+				successfulStep("successful-step", nil),
+			},
 			shouldSucceed: true,
+			expectedStatusMsg: "All Steps have completed executing",
 			state:         "TaskRunSucceeded",
 			conditionFn:   TaskRunSucceed,
 		},
 		{
-			description:   "continue and fail",
-			onError:       "continueAndFail",
+			description:   "failing step with onError continueAndFail and successful follow-up step",
+			steps: []string{
+				failingStep("failing-step", &onErrorContinueAndFail),
+				successfulStep("successful-step", nil),
+			},
 			shouldSucceed: false,
+			expectedStatusMsg: `"step-failing-step" exited with code 1`,
+			state:         "TaskRunFailed",
+			conditionFn:   TaskRunFailed,
+		},
+		{
+			description:   "failing step with onError continue and failing follow-up step",
+			steps: []string{
+				failingStep("failing-step-1", &onErrorContinue),
+				failingStep("failing-step-2", nil),
+			},
+			shouldSucceed: false,
+			expectedStatusMsg: `"step-failing-step-2" exited with code 1`,
+			state:         "TaskRunFailed",
+			conditionFn:   TaskRunFailed,
+		},
+		{
+			description:   "failing step with onError continueAndFail and failing follow-up step",
+			steps: []string{
+				failingStep("failing-step-1", &onErrorContinueAndFail),
+				failingStep("failing-step-2", nil),
+			},
+			shouldSucceed: false,
+			expectedStatusMsg: `"step-failing-step-1" exited with code 1`,
+			state:         "TaskRunFailed",
+			conditionFn:   TaskRunFailed,
+		},
+		{
+			description:   "failing step with onError continue and failing follow-up step with onError continueAndFail",
+			steps: []string{
+				failingStep("failing-step-1", &onErrorContinue),
+				failingStep("failing-step-2", &onErrorContinueAndFail),
+			},
+			shouldSucceed: false,
+			expectedStatusMsg: `"step-failing-step-2" exited with code 1`,
+			state:         "TaskRunFailed",
+			conditionFn:   TaskRunFailed,
+		},
+		{
+			description:   "failing step with onError continueAndFail and failing follow-up step with onError continueAndFail",
+			steps: []string{
+				failingStep("failing-step-1", &onErrorContinueAndFail),
+				failingStep("failing-step-2", &onErrorContinueAndFail),
+			},
+			shouldSucceed: false,
+			expectedStatusMsg: `"step-failing-step-1" exited with code 1`,
+			state:         "TaskRunFailed",
+			conditionFn:   TaskRunFailed,
+		},
+		{
+			description:   "failing step with onError continue and failing follow-up step with onError continue",
+			steps: []string{
+				failingStep("failing-step-1", &onErrorContinue),
+				failingStep("failing-step-2", &onErrorContinue),
+			},
+			shouldSucceed: true,
+			expectedStatusMsg: "All Steps have completed executing",
+			state:         "TaskRunSucceeded",
+			conditionFn:   TaskRunSucceed,
+		},
+		{
+			description:   "failing step with onError continueAndFail and failing follow-up step with onError continue",
+			steps: []string{
+				failingStep("failing-step-1", &onErrorContinueAndFail),
+				failingStep("failing-step-2", &onErrorContinue),
+			},
+			shouldSucceed: false,
+			expectedStatusMsg: `"step-failing-step-1" exited with code 1`,
 			state:         "TaskRunFailed",
 			conditionFn:   TaskRunFailed,
 		},
@@ -69,6 +177,7 @@ func TestFailingStepOnContinue(t *testing.T) {
 		t.Run(test.description, func(t *testing.T) {
 			taskRunName := helpers.ObjectNameForTest(t)
 
+			stepYaml := strings.Join(test.steps, "\n")
 			tr := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -79,14 +188,8 @@ spec:
       - name: result1
       - name: result2
     steps:
-      - name: failing-step
-        onError: %s
-        image: mirror.gcr.io/busybox
-        script: 'echo -n 123 | tee $(results.result1.path); exit 1; echo -n 456 | tee $(results.result2.path)'
-      - name: successful-step
-        image: mirror.gcr.io/busybox
-        script: 'echo hello'
-`, taskRunName, namespace, test.onError))
+%s
+`, taskRunName, namespace, stepYaml))
 
 			if _, err := c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create TaskRun: %s", err)
@@ -104,6 +207,10 @@ spec:
 
 			if taskRun.Status.GetCondition(apis.ConditionSucceeded).IsTrue() != test.shouldSucceed {
 				t.Fatalf("Expected TaskRun %s ConditionSucceeded to be %t, but Status is %v", taskRunName, test.shouldSucceed, taskRun.Status)
+			}
+
+			if taskRun.Status.GetCondition(apis.ConditionSucceeded).Message != test.expectedStatusMsg {
+				t.Fatalf("Expected TaskRun Status Message %s, but got %s", test.expectedStatusMsg, taskRun.Status.GetCondition(apis.ConditionSucceeded).Message)
 			}
 
 			expectedResults := []v1.TaskRunResult{{
