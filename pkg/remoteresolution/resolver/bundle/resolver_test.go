@@ -663,3 +663,129 @@ func pushToRegistry(t *testing.T, registry, imageName string, data []runtime.Obj
 		hex:  hex,
 	}
 }
+
+func TestIsOCIPullSpecByDigest(t *testing.T) {
+	tests := []struct {
+		name     string
+		pullSpec string
+		want     bool
+	}{
+		{
+			name:     "simple digest",
+			pullSpec: "gcr.io/tekton-releases/catalog/upstream/golang-build@sha256:23293df97dc11957ec36a88c80101bb554039a76e8992a435112eea8283b30d4",
+			want:     true,
+		},
+		{
+			name:     "tagged digest",
+			pullSpec: "gcr.io/tekton-releases/catalog/upstream/golang-build:latest@sha256:23293df97dc11957ec36a88c80101bb554039a76e8992a435112eea8283b30d4",
+			want:     true,
+		},
+		{
+			name:     "no digest",
+			pullSpec: "gcr.io/tekton-releases/catalog/upstream/golang-build:latest",
+			want:     false,
+		},
+		{
+			name:     "empty string",
+			pullSpec: "",
+			want:     false,
+		},
+		{
+			name:     "invalid format",
+			pullSpec: "gcr.io/tekton-releases/catalog/upstream/golang-build@invalid",
+			want:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := bundle.IsOCIPullSpecByDigest(tt.pullSpec)
+			if got != tt.want {
+				t.Errorf("IsOCIPullSpecByDigest() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestShouldUseCache(t *testing.T) {
+	tests := []struct {
+		name      string
+		cacheMode string
+		bundleRef string
+		wantCache bool
+	}{
+		{
+			name:      "always mode with digest",
+			cacheMode: bundle.CacheModeAlways,
+			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build@sha256:23293df97dc11957ec36a88c80101bb554039a76e8992a435112eea8283b30d4",
+			wantCache: true,
+		},
+		{
+			name:      "always mode without digest",
+			cacheMode: bundle.CacheModeAlways,
+			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build:latest",
+			wantCache: true,
+		},
+		{
+			name:      "never mode with digest",
+			cacheMode: bundle.CacheModeNever,
+			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build@sha256:23293df97dc11957ec36a88c80101bb554039a76e8992a435112eea8283b30d4",
+			wantCache: false,
+		},
+		{
+			name:      "never mode without digest",
+			cacheMode: bundle.CacheModeNever,
+			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build:latest",
+			wantCache: false,
+		},
+		{
+			name:      "auto mode with digest",
+			cacheMode: bundle.CacheModeAuto,
+			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build@sha256:23293df97dc11957ec36a88c80101bb554039a76e8992a435112eea8283b30d4",
+			wantCache: true,
+		},
+		{
+			name:      "auto mode without digest",
+			cacheMode: bundle.CacheModeAuto,
+			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build:latest",
+			wantCache: false,
+		},
+		{
+			name:      "empty mode with digest",
+			cacheMode: "",
+			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build@sha256:23293df97dc11957ec36a88c80101bb554039a76e8992a435112eea8283b30d4",
+			wantCache: true,
+		},
+		{
+			name:      "empty mode without digest",
+			cacheMode: "",
+			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build:latest",
+			wantCache: false,
+		},
+		{
+			name:      "invalid mode with digest",
+			cacheMode: "invalid",
+			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build@sha256:23293df97dc11957ec36a88c80101bb554039a76e8992a435112eea8283b30d4",
+			wantCache: true,
+		},
+		{
+			name:      "invalid mode without digest",
+			cacheMode: "invalid",
+			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build:latest",
+			wantCache: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := bundleresolution.RequestOptions{
+				Cache:  tt.cacheMode,
+				Bundle: tt.bundleRef,
+			}
+			got := bundle.ShouldUseCache(opts)
+			if got != tt.wantCache {
+				t.Errorf("ShouldUseCache() = %v, want %v", got, tt.wantCache)
+			}
+		})
+	}
+}
