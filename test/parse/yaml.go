@@ -20,6 +20,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -192,4 +193,20 @@ func mustParseYAML(t *testing.T, yaml string, i runtime.Object) {
 	if _, _, err := scheme.Codecs.UniversalDeserializer().Decode([]byte(yaml), nil, i); err != nil {
 		t.Fatalf("mustParseYAML (%s): %v", yaml, err)
 	}
+}
+
+// MustParseTaskRunWithObjectMeta parses YAML to *v1.TaskRun and adds objectMeta to it
+func MustParseTaskRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYAML string) *v1.TaskRun {
+	t.Helper()
+	tr := MustParseV1TaskRun(t, asYAML)
+	tr.ObjectMeta = objectMeta
+	return tr
+}
+
+// MustParseCustomRunWithObjectMeta parses YAML to *v1beta1.CustomRun and adds objectMeta to it
+func MustParseCustomRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYAML string) *v1beta1.CustomRun {
+	t.Helper()
+	r := MustParseCustomRun(t, asYAML)
+	r.ObjectMeta = objectMeta
+	return r
 }
