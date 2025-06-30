@@ -282,6 +282,10 @@
             "$ref": "#/definitions/v1.ParamSpec"
           }
         },
+        "podTemplate": {
+          "description": "PodTemplate holds pod specific configuration",
+          "$ref": "#/definitions/pod.Template"
+        },
         "results": {
           "description": "Results are values that this Task can output",
           "type": "array",
@@ -2330,6 +2334,10 @@
             "default": {},
             "$ref": "#/definitions/v1.ParamSpec"
           }
+        },
+        "podTemplate": {
+          "description": "PodTemplate holds pod specific configuration",
+          "$ref": "#/definitions/pod.Template"
         },
         "results": {
           "description": "Results are values that this Task can output",
