@@ -369,6 +369,10 @@ export KO_DOCKER_REPO="localhost:5000"
    --user=$(gcloud config get-value core/account)
    ```
 
+#### Using [devcontainer](https://code.visualstudio.com/docs/devcontainers/containers)
+
+- Follow the instruction for [getting up and running](https://code.visualstudio.com/docs/devcontainers/tutorial)
+
 ---
 
 ## Developing and testing
