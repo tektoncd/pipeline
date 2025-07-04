@@ -18,8 +18,11 @@ jobs:
       fail-fast: false # Keep running if one leg fails.
       matrix:
         k8s-name:
-        - k8s-oldest
-        - k8s-plus-one
+        - k8s-oldest             # 1.28
+        - k8s-latest-minus-three # 1.29
+        - k8s-latest-minus-two   # 1.30
+        - k8s-latest-minus-one   # 1.31
+        - k8s-latest             # 1.32
 
         feature-flags:
         - stable
@@ -30,8 +33,14 @@ jobs:
         include:
         - k8s-name: k8s-oldest
           k8s-version: v1.28.x
-        - k8s-name: k8s-plus-one
+        - k8s-name: k8s-latest-minus-three
           k8s-version: v1.29.x
+        - k8s-name: k8s-latest-minus-two
+          k8s-version: v1.30.x
+        - k8s-name: k8s-latest-minus-one
+          k8s-version: v1.31.x
+        - k8s-name: k8s-latest
+          k8s-version: v1.32.x
         - feature-flags: stable
           env-file: prow
         - feature-flags: alpha
