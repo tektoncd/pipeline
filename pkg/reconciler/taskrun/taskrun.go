@@ -889,6 +889,20 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 	// Apply path substitutions for the legacy credentials helper (aka "creds-init")
 	ts = resources.ApplyCredentialsPath(ts, pipeline.CredsDir)
 
+	// Apply parameter substitution to PodTemplate if it exists
+	if tr.Spec.PodTemplate != nil {
+		var defaults []v1.ParamSpec
+		if len(ts.Params) > 0 {
+			defaults = append(defaults, ts.Params...)
+		}
+		updatedPodTemplate := resources.ApplyPodTemplateReplacements(tr.Spec.PodTemplate, tr, defaults...)
+		if updatedPodTemplate != nil {
+			trCopy := tr.DeepCopy()
+			trCopy.Spec.PodTemplate = updatedPodTemplate
+			tr = trCopy
+		}
+	}
+
 	podbuilder := podconvert.Builder{
 		Images:          c.Images,
 		KubeClient:      c.KubeClientSet,
