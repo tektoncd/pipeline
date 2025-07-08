@@ -215,8 +215,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	if err = c.reconcile(ctx, tr, rtr); err != nil {
 		logger.Errorf("Reconcile: %v", err.Error())
 		if errors.Is(err, sidecarlogresults.ErrSizeExceeded) {
-			cfg := config.FromContextOrDefaults(ctx)
-			message := fmt.Sprintf("%s TaskRun \"%q\" failed: results exceeded size limit %d bytes", pipelineErrors.UserErrorLabel, tr.Name, cfg.FeatureFlags.MaxResultSize)
+			message := fmt.Sprintf("%s TaskRun \"%q\" failed: %s", pipelineErrors.UserErrorLabel, tr.Name, err.Error())
 			err := c.failTaskRun(ctx, tr, v1.TaskRunReasonResultLargerThanAllowedLimit, message)
 			return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 		}
