@@ -1102,6 +1102,10 @@
             "$ref": "#/definitions/v1.TaskRunStepSpec"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "timeout": {
+          "description": "Time after which the TaskRun times out. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
         }
       }
     },

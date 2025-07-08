@@ -805,6 +805,28 @@ func TestPipelineRun_Validate(t *testing.T) {
 			},
 		},
 		wc: cfgtesting.EnableAlphaAPIFields,
+	}, {
+		name: "valid task-specific timeouts",
+		pr: v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 1 * time.Hour},
+				},
+				TaskRunSpecs: []v1.PipelineTaskRunSpec{{
+					PipelineTaskName: "task1",
+					Timeout:          &metav1.Duration{Duration: 30 * time.Minute},
+				}, {
+					PipelineTaskName: "task2",
+					Timeout:          &metav1.Duration{Duration: 45 * time.Minute},
+				}},
+			},
+		},
 	}}
 
 	for _, ts := range tests {
@@ -849,7 +871,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		withContext: EnableForbiddenEnv,
-		wantErr:     apis.ErrInvalidValue("PodTemplate cannot update a forbidden env: TEST_ENV", "taskRunSpecs[0].PodTemplate.Env"),
+		wantErr:     apis.ErrInvalidValue("PodTemplate cannot update a forbidden env: TEST_ENV", "taskRunSpecs[task-1].PodTemplate.Env"),
 	}, {
 		name: "TaskRunTemplate.PodTemplate contains forbidden env",
 		spec: v1.PipelineRunSpec{
@@ -969,7 +991,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 				},
 			},
 		},
-		wantErr:     apis.ErrMultipleOneOf("taskRunSpecs[0].stepSpecs[1].name"),
+		wantErr:     apis.ErrMultipleOneOf("taskRunSpecs[bar].stepSpecs[1].name"),
 		withContext: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "stepSpecs disallowed without beta feature gate",
@@ -1022,7 +1044,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 				},
 			},
 		},
-		wantErr:     apis.ErrMissingField("taskRunSpecs[0].stepSpecs[0].name"),
+		wantErr:     apis.ErrMissingField("taskRunSpecs[bar].stepSpecs[0].name"),
 		withContext: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "duplicate sidecarSpec names",
@@ -1037,7 +1059,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 				},
 			},
 		},
-		wantErr:     apis.ErrMultipleOneOf("taskRunSpecs[0].sidecarSpecs[1].name"),
+		wantErr:     apis.ErrMultipleOneOf("taskRunSpecs[bar].sidecarSpecs[1].name"),
 		withContext: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "missing sidecarSpec name",
@@ -1054,7 +1076,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 				},
 			},
 		},
-		wantErr:     apis.ErrMissingField("taskRunSpecs[0].sidecarSpecs[0].name"),
+		wantErr:     apis.ErrMissingField("taskRunSpecs[bar].sidecarSpecs[0].name"),
 		withContext: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "invalid both step-level (stepSpecs.resources) and task-level (taskRunSpecs.resources) resource requirements configured",
@@ -1076,8 +1098,8 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf(
-			"taskRunSpecs[0].stepSpecs.resources",
-			"taskRunSpecs[0].computeResources",
+			"taskRunSpecs[pipelineTask].stepSpecs.resources",
+			"taskRunSpecs[pipelineTask].computeResources",
 		),
 		withContext: cfgtesting.EnableBetaAPIFields,
 	}, {
@@ -1202,6 +1224,23 @@ func TestPipelineRun_InvalidTimeouts(t *testing.T) {
 			},
 		},
 		want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeouts.pipeline"),
+	}, {
+		name: "negative task-specific timeout",
+		pr: v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{
+					Name: "prname",
+				},
+				TaskRunSpecs: []v1.PipelineTaskRunSpec{{
+					PipelineTaskName: "task1",
+					Timeout:          &metav1.Duration{Duration: -1 * time.Hour},
+				}},
+			},
+		},
+		want: apis.ErrInvalidValue("-1h0m0s should be >= 0", "spec.taskRunSpecs[task1].timeout"),
 	}, {
 		name: "negative pipeline tasks Timeout",
 		pr: v1.PipelineRun{
@@ -1352,13 +1391,57 @@ func TestPipelineRun_InvalidTimeouts(t *testing.T) {
 			},
 		},
 		want: apis.ErrInvalidValue(`0s (no timeout) should be <= pipeline duration`, "spec.timeouts.finally"),
+	}, {
+		name: "task-specific timeout exceeds pipeline timeout",
+		pr: v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 1 * time.Hour},
+				},
+				TaskRunSpecs: []v1.PipelineTaskRunSpec{{
+					PipelineTaskName: "task1",
+					Timeout:          &metav1.Duration{Duration: 2 * time.Hour},
+				}},
+			},
+		},
+		want: apis.ErrInvalidValue("2h0m0s should be <= pipeline duration", "spec.taskRunSpecs[task1].timeout"),
+	}, {
+		name: "when pipeline timeout is no timeout (0s), task timeouts can exceed it without error",
+		pr: v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: config.NoTimeoutDuration},
+				},
+				TaskRunSpecs: []v1.PipelineTaskRunSpec{{
+					PipelineTaskName: "task1",
+					Timeout:          &metav1.Duration{Duration: 10 * time.Hour},
+				}},
+			},
+		},
+		want: nil, // no error expected when pipeline has no timeout
 	}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := t.Context()
 			err := tc.pr.Validate(ctx)
-			if d := cmp.Diff(tc.want.Error(), err.Error()); d != "" {
+			if tc.want == nil {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+				}
+			} else if d := cmp.Diff(tc.want.Error(), err.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})
