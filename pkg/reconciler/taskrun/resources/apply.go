@@ -28,6 +28,7 @@ import (
 
 	"github.com/tektoncd/pipeline/internal/artifactref"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	podtpl "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/container"
 	"github.com/tektoncd/pipeline/pkg/internal/resultref"
@@ -35,6 +36,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -743,4 +745,342 @@ func ApplyReplacements(spec *v1.TaskSpec, stringReplacements map[string]string, 
 	}
 
 	return spec
+}
+
+// ApplyPodTemplateParameters applies parameter substitution to a PodTemplate
+func ApplyPodTemplateReplacements(podTemplate *podtpl.Template, tr *v1.TaskRun, defaults ...v1.ParamSpec) *podtpl.Template {
+	if podTemplate == nil {
+		return nil
+	}
+
+	result := podTemplate.DeepCopy()
+
+	stringReplacements, _, _ := getTaskParameters(nil, tr, defaults...)
+
+	// Apply substitution to NodeSelector
+	if result.NodeSelector != nil {
+		newNodeSelector := make(map[string]string)
+		for k, v := range result.NodeSelector {
+			newKey := substitution.ApplyReplacements(k, stringReplacements)
+			newValue := substitution.ApplyReplacements(v, stringReplacements)
+			newNodeSelector[newKey] = newValue
+		}
+		result.NodeSelector = newNodeSelector
+	}
+
+	// Apply substitution to Tolerations
+	for i := range result.Tolerations {
+		result.Tolerations[i].Key = substitution.ApplyReplacements(result.Tolerations[i].Key, stringReplacements)
+		result.Tolerations[i].Value = substitution.ApplyReplacements(result.Tolerations[i].Value, stringReplacements)
+		result.Tolerations[i].Operator = corev1.TolerationOperator(substitution.ApplyReplacements(string(result.Tolerations[i].Operator), stringReplacements))
+		result.Tolerations[i].Effect = corev1.TaintEffect(substitution.ApplyReplacements(string(result.Tolerations[i].Effect), stringReplacements))
+	}
+
+	// Apply substitution to Affinity
+	if result.Affinity != nil {
+		applyAffinityReplacements(result.Affinity, stringReplacements)
+	}
+
+	// Apply substitution to SecurityContext labels and annotations
+	if result.SecurityContext != nil {
+		applySecurityContextReplacements(result.SecurityContext, stringReplacements)
+	}
+
+	// Apply substitution to RuntimeClassName
+	if result.RuntimeClassName != nil {
+		runtimeClassName := substitution.ApplyReplacements(*result.RuntimeClassName, stringReplacements)
+		result.RuntimeClassName = &runtimeClassName
+	}
+
+	// Apply substitution to SchedulerName
+	if result.SchedulerName != "" {
+		result.SchedulerName = substitution.ApplyReplacements(result.SchedulerName, stringReplacements)
+	}
+
+	// Apply substitution to PriorityClassName
+	if result.PriorityClassName != nil {
+		priorityClassName := substitution.ApplyReplacements(*result.PriorityClassName, stringReplacements)
+		result.PriorityClassName = &priorityClassName
+	}
+
+	// Apply substitution to ImagePullSecrets
+	for i := range result.ImagePullSecrets {
+		result.ImagePullSecrets[i].Name = substitution.ApplyReplacements(result.ImagePullSecrets[i].Name, stringReplacements)
+	}
+
+	// Apply substitution to HostAliases
+	for i := range result.HostAliases {
+		result.HostAliases[i].IP = substitution.ApplyReplacements(result.HostAliases[i].IP, stringReplacements)
+		for j := range result.HostAliases[i].Hostnames {
+			result.HostAliases[i].Hostnames[j] = substitution.ApplyReplacements(result.HostAliases[i].Hostnames[j], stringReplacements)
+		}
+	}
+
+	// Apply substitution to TopologySpreadConstraints
+	for i := range result.TopologySpreadConstraints {
+		result.TopologySpreadConstraints[i].TopologyKey = substitution.ApplyReplacements(result.TopologySpreadConstraints[i].TopologyKey, stringReplacements)
+		if result.TopologySpreadConstraints[i].LabelSelector != nil {
+			applyLabelSelectorReplacements(result.TopologySpreadConstraints[i].LabelSelector, stringReplacements)
+		}
+	}
+
+	// Apply substitution to DNSPolicy
+	if result.DNSPolicy != nil {
+		dnsPolicy := corev1.DNSPolicy(substitution.ApplyReplacements(string(*result.DNSPolicy), stringReplacements))
+		result.DNSPolicy = &dnsPolicy
+	}
+
+	// Apply substitution to DNSConfig
+	if result.DNSConfig != nil {
+		applyDNSConfigReplacements(result.DNSConfig, stringReplacements)
+	}
+
+	// Apply substitution to Volumes
+	for i := range result.Volumes {
+		applyVolumeReplacements(&result.Volumes[i], stringReplacements)
+	}
+
+	// Apply substitution to Env
+	for i := range result.Env {
+		result.Env[i].Name = substitution.ApplyReplacements(result.Env[i].Name, stringReplacements)
+		result.Env[i].Value = substitution.ApplyReplacements(result.Env[i].Value, stringReplacements)
+		if result.Env[i].ValueFrom != nil {
+			applyEnvVarSourceReplacements(result.Env[i].ValueFrom, stringReplacements)
+		}
+	}
+
+	return result
+}
+
+func applyAffinityReplacements(affinity *corev1.Affinity, stringReplacements map[string]string) {
+	if affinity.NodeAffinity != nil {
+		applyNodeAffinityReplacements(affinity.NodeAffinity, stringReplacements)
+	}
+	if affinity.PodAffinity != nil {
+		applyPodAffinityReplacements(affinity.PodAffinity, stringReplacements)
+	}
+	if affinity.PodAntiAffinity != nil {
+		applyPodAntiAffinityReplacements(affinity.PodAntiAffinity, stringReplacements)
+	}
+}
+
+func applyNodeAffinityReplacements(nodeAffinity *corev1.NodeAffinity, stringReplacements map[string]string) {
+	if nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
+		for i := range nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms {
+			applyNodeSelectorTermReplacements(&nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[i], stringReplacements)
+		}
+	}
+	for i := range nodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
+		applyNodeSelectorTermReplacements(&nodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].Preference, stringReplacements)
+	}
+}
+
+func applyNodeSelectorTermReplacements(term *corev1.NodeSelectorTerm, stringReplacements map[string]string) {
+	for i := range term.MatchExpressions {
+		term.MatchExpressions[i].Key = substitution.ApplyReplacements(term.MatchExpressions[i].Key, stringReplacements)
+		for j := range term.MatchExpressions[i].Values {
+			term.MatchExpressions[i].Values[j] = substitution.ApplyReplacements(term.MatchExpressions[i].Values[j], stringReplacements)
+		}
+	}
+	for i := range term.MatchFields {
+		term.MatchFields[i].Key = substitution.ApplyReplacements(term.MatchFields[i].Key, stringReplacements)
+		for j := range term.MatchFields[i].Values {
+			term.MatchFields[i].Values[j] = substitution.ApplyReplacements(term.MatchFields[i].Values[j], stringReplacements)
+		}
+	}
+}
+
+func applyPodAffinityReplacements(podAffinity *corev1.PodAffinity, stringReplacements map[string]string) {
+	for i := range podAffinity.RequiredDuringSchedulingIgnoredDuringExecution {
+		applyPodAffinityTermReplacements(&podAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i], stringReplacements)
+	}
+	for i := range podAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
+		applyPodAffinityTermReplacements(&podAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm, stringReplacements)
+	}
+}
+
+func applyPodAntiAffinityReplacements(podAntiAffinity *corev1.PodAntiAffinity, stringReplacements map[string]string) {
+	for i := range podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution {
+		applyPodAffinityTermReplacements(&podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[i], stringReplacements)
+	}
+	for i := range podAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
+		applyPodAffinityTermReplacements(&podAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[i].PodAffinityTerm, stringReplacements)
+	}
+}
+
+func applyPodAffinityTermReplacements(term *corev1.PodAffinityTerm, stringReplacements map[string]string) {
+	if term.LabelSelector != nil {
+		applyLabelSelectorReplacements(term.LabelSelector, stringReplacements)
+	}
+	term.TopologyKey = substitution.ApplyReplacements(term.TopologyKey, stringReplacements)
+	if term.NamespaceSelector != nil {
+		applyLabelSelectorReplacements(term.NamespaceSelector, stringReplacements)
+	}
+	for i := range term.Namespaces {
+		term.Namespaces[i] = substitution.ApplyReplacements(term.Namespaces[i], stringReplacements)
+	}
+}
+
+func applyLabelSelectorReplacements(selector *metav1.LabelSelector, stringReplacements map[string]string) {
+	if selector.MatchLabels != nil {
+		newMatchLabels := make(map[string]string)
+		for k, v := range selector.MatchLabels {
+			newKey := substitution.ApplyReplacements(k, stringReplacements)
+			newValue := substitution.ApplyReplacements(v, stringReplacements)
+			newMatchLabels[newKey] = newValue
+		}
+		selector.MatchLabels = newMatchLabels
+	}
+	for i := range selector.MatchExpressions {
+		selector.MatchExpressions[i].Key = substitution.ApplyReplacements(selector.MatchExpressions[i].Key, stringReplacements)
+		for j := range selector.MatchExpressions[i].Values {
+			selector.MatchExpressions[i].Values[j] = substitution.ApplyReplacements(selector.MatchExpressions[i].Values[j], stringReplacements)
+		}
+	}
+}
+
+func applySecurityContextReplacements(securityContext *corev1.PodSecurityContext, stringReplacements map[string]string) {
+	// Apply substitution to SELinuxOptions
+	if securityContext.SELinuxOptions != nil {
+		securityContext.SELinuxOptions.User = substitution.ApplyReplacements(securityContext.SELinuxOptions.User, stringReplacements)
+		securityContext.SELinuxOptions.Role = substitution.ApplyReplacements(securityContext.SELinuxOptions.Role, stringReplacements)
+		securityContext.SELinuxOptions.Type = substitution.ApplyReplacements(securityContext.SELinuxOptions.Type, stringReplacements)
+		securityContext.SELinuxOptions.Level = substitution.ApplyReplacements(securityContext.SELinuxOptions.Level, stringReplacements)
+	}
+
+	// Apply substitution to WindowsOptions
+	if securityContext.WindowsOptions != nil {
+		if securityContext.WindowsOptions.GMSACredentialSpecName != nil {
+			gmsaCredentialSpecName := substitution.ApplyReplacements(*securityContext.WindowsOptions.GMSACredentialSpecName, stringReplacements)
+			securityContext.WindowsOptions.GMSACredentialSpecName = &gmsaCredentialSpecName
+		}
+		if securityContext.WindowsOptions.GMSACredentialSpec != nil {
+			gmsaCredentialSpec := substitution.ApplyReplacements(*securityContext.WindowsOptions.GMSACredentialSpec, stringReplacements)
+			securityContext.WindowsOptions.GMSACredentialSpec = &gmsaCredentialSpec
+		}
+		if securityContext.WindowsOptions.RunAsUserName != nil {
+			runAsUserName := substitution.ApplyReplacements(*securityContext.WindowsOptions.RunAsUserName, stringReplacements)
+			securityContext.WindowsOptions.RunAsUserName = &runAsUserName
+		}
+	}
+
+	// Apply substitution to SupplementalGroupsPolicy
+	if securityContext.SupplementalGroupsPolicy != nil {
+		supplementalGroupsPolicy := corev1.SupplementalGroupsPolicy(substitution.ApplyReplacements(string(*securityContext.SupplementalGroupsPolicy), stringReplacements))
+		securityContext.SupplementalGroupsPolicy = &supplementalGroupsPolicy
+	}
+
+	// Apply substitution to Sysctls
+	for i := range securityContext.Sysctls {
+		securityContext.Sysctls[i].Name = substitution.ApplyReplacements(securityContext.Sysctls[i].Name, stringReplacements)
+		securityContext.Sysctls[i].Value = substitution.ApplyReplacements(securityContext.Sysctls[i].Value, stringReplacements)
+	}
+
+	// Apply substitution to FSGroupChangePolicy
+	if securityContext.FSGroupChangePolicy != nil {
+		fsGroupChangePolicy := corev1.PodFSGroupChangePolicy(substitution.ApplyReplacements(string(*securityContext.FSGroupChangePolicy), stringReplacements))
+		securityContext.FSGroupChangePolicy = &fsGroupChangePolicy
+	}
+
+	// Apply substitution to SeccompProfile
+	if securityContext.SeccompProfile != nil {
+		securityContext.SeccompProfile.Type = corev1.SeccompProfileType(substitution.ApplyReplacements(string(securityContext.SeccompProfile.Type), stringReplacements))
+		if securityContext.SeccompProfile.LocalhostProfile != nil {
+			localhostProfile := substitution.ApplyReplacements(*securityContext.SeccompProfile.LocalhostProfile, stringReplacements)
+			securityContext.SeccompProfile.LocalhostProfile = &localhostProfile
+		}
+	}
+
+	// Apply substitution to AppArmorProfile
+	if securityContext.AppArmorProfile != nil {
+		securityContext.AppArmorProfile.Type = corev1.AppArmorProfileType(substitution.ApplyReplacements(string(securityContext.AppArmorProfile.Type), stringReplacements))
+		if securityContext.AppArmorProfile.LocalhostProfile != nil {
+			localhostProfile := substitution.ApplyReplacements(*securityContext.AppArmorProfile.LocalhostProfile, stringReplacements)
+			securityContext.AppArmorProfile.LocalhostProfile = &localhostProfile
+		}
+	}
+
+	// Apply substitution to SELinuxChangePolicy
+	if securityContext.SELinuxChangePolicy != nil {
+		seLinuxChangePolicy := corev1.PodSELinuxChangePolicy(substitution.ApplyReplacements(string(*securityContext.SELinuxChangePolicy), stringReplacements))
+		securityContext.SELinuxChangePolicy = &seLinuxChangePolicy
+	}
+}
+
+func applyDNSConfigReplacements(dnsConfig *corev1.PodDNSConfig, stringReplacements map[string]string) {
+	for i := range dnsConfig.Nameservers {
+		dnsConfig.Nameservers[i] = substitution.ApplyReplacements(dnsConfig.Nameservers[i], stringReplacements)
+	}
+	for i := range dnsConfig.Searches {
+		dnsConfig.Searches[i] = substitution.ApplyReplacements(dnsConfig.Searches[i], stringReplacements)
+	}
+	for i := range dnsConfig.Options {
+		dnsConfig.Options[i].Name = substitution.ApplyReplacements(dnsConfig.Options[i].Name, stringReplacements)
+		if dnsConfig.Options[i].Value != nil {
+			value := substitution.ApplyReplacements(*dnsConfig.Options[i].Value, stringReplacements)
+			dnsConfig.Options[i].Value = &value
+		}
+	}
+}
+
+func applyVolumeReplacements(volume *corev1.Volume, stringReplacements map[string]string) {
+	volume.Name = substitution.ApplyReplacements(volume.Name, stringReplacements)
+	if volume.ConfigMap != nil {
+		volume.ConfigMap.Name = substitution.ApplyReplacements(volume.ConfigMap.Name, stringReplacements)
+		for i := range volume.ConfigMap.Items {
+			volume.ConfigMap.Items[i].Key = substitution.ApplyReplacements(volume.ConfigMap.Items[i].Key, stringReplacements)
+			volume.ConfigMap.Items[i].Path = substitution.ApplyReplacements(volume.ConfigMap.Items[i].Path, stringReplacements)
+		}
+	}
+	if volume.Secret != nil {
+		volume.Secret.SecretName = substitution.ApplyReplacements(volume.Secret.SecretName, stringReplacements)
+		for i := range volume.Secret.Items {
+			volume.Secret.Items[i].Key = substitution.ApplyReplacements(volume.Secret.Items[i].Key, stringReplacements)
+			volume.Secret.Items[i].Path = substitution.ApplyReplacements(volume.Secret.Items[i].Path, stringReplacements)
+		}
+	}
+	if volume.PersistentVolumeClaim != nil {
+		volume.PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(volume.PersistentVolumeClaim.ClaimName, stringReplacements)
+	}
+	if volume.Projected != nil {
+		for _, s := range volume.Projected.Sources {
+			if s.ConfigMap != nil {
+				s.ConfigMap.Name = substitution.ApplyReplacements(s.ConfigMap.Name, stringReplacements)
+			}
+			if s.Secret != nil {
+				s.Secret.Name = substitution.ApplyReplacements(s.Secret.Name, stringReplacements)
+			}
+			if s.ServiceAccountToken != nil {
+				s.ServiceAccountToken.Audience = substitution.ApplyReplacements(s.ServiceAccountToken.Audience, stringReplacements)
+			}
+		}
+	}
+	if volume.CSI != nil {
+		if volume.CSI.NodePublishSecretRef != nil {
+			volume.CSI.NodePublishSecretRef.Name = substitution.ApplyReplacements(volume.CSI.NodePublishSecretRef.Name, stringReplacements)
+		}
+		if volume.CSI.VolumeAttributes != nil {
+			for key, value := range volume.CSI.VolumeAttributes {
+				volume.CSI.VolumeAttributes[key] = substitution.ApplyReplacements(value, stringReplacements)
+			}
+		}
+	}
+}
+
+func applyEnvVarSourceReplacements(valueFrom *corev1.EnvVarSource, stringReplacements map[string]string) {
+	if valueFrom.ConfigMapKeyRef != nil {
+		valueFrom.ConfigMapKeyRef.Name = substitution.ApplyReplacements(valueFrom.ConfigMapKeyRef.Name, stringReplacements)
+		valueFrom.ConfigMapKeyRef.Key = substitution.ApplyReplacements(valueFrom.ConfigMapKeyRef.Key, stringReplacements)
+	}
+	if valueFrom.SecretKeyRef != nil {
+		valueFrom.SecretKeyRef.Name = substitution.ApplyReplacements(valueFrom.SecretKeyRef.Name, stringReplacements)
+		valueFrom.SecretKeyRef.Key = substitution.ApplyReplacements(valueFrom.SecretKeyRef.Key, stringReplacements)
+	}
+	if valueFrom.FieldRef != nil {
+		valueFrom.FieldRef.FieldPath = substitution.ApplyReplacements(valueFrom.FieldRef.FieldPath, stringReplacements)
+	}
+	if valueFrom.ResourceFieldRef != nil {
+		valueFrom.ResourceFieldRef.Resource = substitution.ApplyReplacements(valueFrom.ResourceFieldRef.Resource, stringReplacements)
+		valueFrom.ResourceFieldRef.ContainerName = substitution.ApplyReplacements(valueFrom.ResourceFieldRef.ContainerName, stringReplacements)
+	}
 }
