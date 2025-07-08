@@ -253,7 +253,7 @@ func extractResultsFromLogs(logs io.Reader, sidecarLogResults []result.RunResult
 	for {
 		line, isPrefix, err := reader.ReadLine()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, err
@@ -263,7 +263,7 @@ func extractResultsFromLogs(logs io.Reader, sidecarLogResults []result.RunResult
 		for isPrefix {
 			more, nextPrefix, err := reader.ReadLine()
 			if err != nil {
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					break
 				}
 				return nil, err
