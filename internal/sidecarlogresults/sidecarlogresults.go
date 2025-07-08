@@ -261,23 +261,44 @@ func GetResultsFromSidecarLogs(ctx context.Context, clientset kubernetes.Interfa
 }
 
 func extractResultsFromLogs(logs io.Reader, sidecarLogResults []result.RunResult, maxResultLimit int) ([]result.RunResult, error) {
-	scanner := bufio.NewScanner(logs)
-	buf := make([]byte, maxResultLimit)
-	scanner.Buffer(buf, maxResultLimit)
-	for scanner.Scan() {
-		result, err := parseResults(scanner.Bytes(), maxResultLimit)
+	reader := bufio.NewReader(logs)
+	for {
+		line, isPrefix, err := reader.ReadLine()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return nil, err
+		}
+
+		lineLength := len(line)
+		for isPrefix {
+			more, nextPrefix, err := reader.ReadLine()
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return nil, err
+			}
+			lineLength += len(more)
+
+			if lineLength <= maxResultLimit {
+				line = append(line, more...)
+			}
+			isPrefix = nextPrefix
+		}
+
+		if lineLength > maxResultLimit {
+			return sidecarLogResults, fmt.Errorf("%d bytes %w of %d bytes", lineLength, ErrSizeExceeded, maxResultLimit)
+		}
+
+		result, err := parseResults(line, maxResultLimit)
 		if err != nil {
 			return nil, err
 		}
 		sidecarLogResults = append(sidecarLogResults, result)
 	}
 
-	if scanner.Err() != nil {
-		if errors.Is(scanner.Err(), bufio.ErrTooLong) {
-			return sidecarLogResults, ErrSizeExceeded
-		}
-		return nil, scanner.Err()
-	}
 	return sidecarLogResults, nil
 }
 
