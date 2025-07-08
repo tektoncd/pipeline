@@ -154,9 +154,9 @@ func orderContainers(ctx context.Context, commonExtraEntrypointArgs []string, st
 		if taskSpec != nil {
 			if taskSpec.Steps != nil && len(taskSpec.Steps) >= i+1 {
 				if taskSpec.Steps[i].OnError != "" {
-					if taskSpec.Steps[i].OnError != v1.Continue && taskSpec.Steps[i].OnError != v1.StopAndFail {
-						return nil, fmt.Errorf("task step onError must be either \"%s\" or \"%s\" but it is set to an invalid value \"%s\"",
-							v1.Continue, v1.StopAndFail, taskSpec.Steps[i].OnError)
+					if taskSpec.Steps[i].OnError != v1.Continue && taskSpec.Steps[i].OnError != v1.StopAndFail && taskSpec.Steps[i].OnError != v1.ContinueAndFail {
+						return nil, fmt.Errorf("task step onError must have one of the following values: \"%s\", \"%s\" or \"%s\". But it is set to an invalid value \"%s\"",
+							v1.Continue, v1.StopAndFail, v1.ContinueAndFail, taskSpec.Steps[i].OnError)
 					}
 					argsForEntrypoint = append(argsForEntrypoint, "-on_error", string(taskSpec.Steps[i].OnError))
 				}
