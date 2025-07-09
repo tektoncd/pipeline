@@ -79,6 +79,7 @@ import (
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	clock "k8s.io/utils/clock/testing"
+	"k8s.io/utils/ptr"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	cminformer "knative.dev/pkg/configmap/informer"
@@ -777,8 +778,7 @@ spec:
 
 	taskruns := []*v1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess, taskRunSubstitution,
-		taskRunWithTaskSpec,
-		taskRunWithLabels, taskRunWithAnnotations, taskRunWithPod,
+		taskRunWithTaskSpec, taskRunWithLabels, taskRunWithAnnotations, taskRunWithPod,
 		taskRunWithCredentialsVariable, taskRunBundle,
 	}
 
@@ -7170,5 +7170,423 @@ status:
 				t.Errorf("TaskRun annotations doesn't match %s", diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+// TestReconcile_PodTemplateParameterSubstitution tests that PodTemplate parameters
+// are properly substituted when a TaskRun is reconciled
+func TestReconcile_PodTemplateParameterSubstitution(t *testing.T) {
+	task := parse.MustParseV1Task(t, `
+metadata:
+  name: test-task
+  namespace: foo
+spec:
+  params:
+  - name: arch
+    type: string
+    default: amd64
+  - name: region
+    type: string
+    default: us-west-1
+  - name: selinuxuser
+    type: string
+    default: myuser
+  - name: selinuxrole
+    type: string
+    default: myrole
+  - name: gmsacredential
+    type: string  
+    default: mycredential
+  - name: apparmor
+    type: string
+    default: localhost/myprofile
+  - name: hostname
+    type: string
+    default: example.com
+  - name: volumename
+    type: string
+    default: my-volume
+  - name: disktype
+    type: string
+    default: hdd
+  steps:
+  - name: echo
+    image: busybox
+    script: echo hello
+`)
+
+	tr := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun
+  namespace: foo
+spec:
+  params:
+  - name: arch
+    value: arm64
+  - name: region
+    value: us-east-1
+  - name: selinuxuser
+    value: customuser
+  - name: selinuxrole
+    value: customrole
+  - name: gmsacredential
+    value: customcredential
+  - name: apparmor
+    value: localhost/customprofile
+  - name: hostname
+    value: custom.example.com
+  - name: volumename
+    value: custom-volume
+  - name: disktype
+    value: nvme
+  taskRef:
+    name: test-task
+  podTemplate:
+    nodeSelector:
+      kubernetes.io/arch: $(params.arch)
+      region: $(params.region)
+    tolerations:
+    - key: arch
+      operator: Equal
+      value: $(params.arch)
+      effect: NoSchedule
+    runtimeClassName: "gvisor-$(params.arch)"
+    schedulerName: "custom-scheduler-$(params.region)"
+    priorityClassName: "priority-$(params.arch)"
+    imagePullSecrets:
+    - name: "secret-$(params.region)"
+    env:
+    - name: ARCH
+      value: $(params.arch)
+    - name: REGION
+      value: $(params.region)
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: disktype
+              operator: In
+              values:
+              - $(params.disktype)
+    dnsPolicy: ClusterFirst
+    securityContext:
+      seLinuxOptions:
+        user: $(params.selinuxuser)
+        role: $(params.selinuxrole)
+        type: container_t
+        level: s0:c123,c456
+      windowsOptions:
+        gmsaCredentialSpecName: $(params.gmsacredential)
+        runAsUserName: $(params.arch)-user
+      appArmorProfile:
+        type: Localhost
+        localhostProfile: $(params.apparmor)
+      sysctls:
+      - name: kernel.$(params.arch)
+        value: $(params.region)
+    hostAliases:
+    - ip: "192.168.1.1"
+      hostnames:
+      - "$(params.hostname)"
+      - "alias.$(params.hostname)"
+    topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: zone-$(params.region)
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app: myapp-$(params.arch)
+    dnsConfig:
+      nameservers:
+      - "8.8.8.8"
+      - "$(params.arch).dns.example.com"
+      searches:
+      - "$(params.region).local"
+      options:
+      - name: ndots
+        value: "2"
+    volumes:
+    - name: $(params.volumename)
+      configMap:
+        name: config-$(params.region)
+    - name: secret-volume
+      secret:
+        secretName: secret-$(params.arch)
+        items:
+        - key: $(params.region)
+          path: secret/$(params.arch)
+    - name: projected-volume
+      projected:
+        sources:
+        - configMap:
+            name: projected-config-$(params.region)
+        - secret:
+            name: projected-secret-$(params.arch)
+        - serviceAccountToken:
+            audience: audience-$(params.region)
+    - name: csi-volume
+      csi:
+        driver: csi.example.com
+        nodePublishSecretRef:
+          name: csi-secret-$(params.arch)
+        volumeAttributes:
+          foo: $(params.region)
+`)
+
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{tr},
+		Tasks:    []*v1.Task{task},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, "default", tr.Namespace)
+
+	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+	if err == nil {
+		t.Errorf("Expected reconcile to return a requeue indicating the pod was created, but got nil")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
+		t.Errorf("Expected a requeue error, got: %v", err)
+	}
+
+	// Get the created pod and verify parameter substitution
+	pods, err := testAssets.Clients.Kube.CoreV1().Pods(tr.Namespace).List(testAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Error listing pods: %v", err)
+	}
+
+	if len(pods.Items) != 1 {
+		t.Fatalf("Expected 1 pod to be created, got %d", len(pods.Items))
+	}
+
+	pod := pods.Items[0]
+
+	// Verify nodeSelector substitution
+	expectedNodeSelector := map[string]string{
+		"kubernetes.io/arch": "arm64",
+		"region":             "us-east-1",
+	}
+	if d := cmp.Diff(expectedNodeSelector, pod.Spec.NodeSelector); d != "" {
+		t.Errorf("NodeSelector mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify tolerations substitution
+	expectedTolerations := []corev1.Toleration{{
+		Key:      "arch",
+		Operator: corev1.TolerationOpEqual,
+		Value:    "arm64",
+		Effect:   corev1.TaintEffectNoSchedule,
+	}}
+	if d := cmp.Diff(expectedTolerations, pod.Spec.Tolerations); d != "" {
+		t.Errorf("Tolerations mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify runtime class substitution
+	expectedRuntimeClassName := "gvisor-arm64"
+	if d := cmp.Diff(&expectedRuntimeClassName, pod.Spec.RuntimeClassName); d != "" {
+		t.Errorf("RuntimeClassName mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify scheduler name substitution
+	expectedSchedulerName := "custom-scheduler-us-east-1"
+	if d := cmp.Diff(expectedSchedulerName, pod.Spec.SchedulerName); d != "" {
+		t.Errorf("SchedulerName mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify priority class name substitution
+	expectedPriorityClassName := "priority-arm64"
+	if d := cmp.Diff(expectedPriorityClassName, pod.Spec.PriorityClassName); d != "" {
+		t.Errorf("PriorityClassName mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify image pull secrets substitution
+	expectedImagePullSecrets := []corev1.LocalObjectReference{{
+		Name: "secret-us-east-1",
+	}}
+	if d := cmp.Diff(expectedImagePullSecrets, pod.Spec.ImagePullSecrets); d != "" {
+		t.Errorf("ImagePullSecrets mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify environment variables substitution in all containers
+	expectedEnvVars := []corev1.EnvVar{
+		{Name: "ARCH", Value: "arm64"},
+		{Name: "REGION", Value: "us-east-1"},
+	}
+
+	for _, container := range pod.Spec.Containers {
+		// Find our added env vars
+		var actualEnvVars []corev1.EnvVar
+		for _, env := range container.Env {
+			if env.Name == "ARCH" || env.Name == "REGION" {
+				actualEnvVars = append(actualEnvVars, env)
+			}
+		}
+
+		if d := cmp.Diff(expectedEnvVars, actualEnvVars); d != "" {
+			t.Errorf("Environment variables mismatch in container %s: %s", container.Name, diff.PrintWantGot(d))
+		}
+	}
+
+	// Verify affinity substitution
+	expectedAffinity := &corev1.Affinity{
+		NodeAffinity: &corev1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+				NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+					MatchExpressions: []corev1.NodeSelectorRequirement{{
+						Key:      "disktype",
+						Operator: corev1.NodeSelectorOpIn,
+						Values:   []string{"nvme"},
+					}},
+				}},
+			},
+		},
+	}
+	if d := cmp.Diff(expectedAffinity, pod.Spec.Affinity); d != "" {
+		t.Errorf("Affinity mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify dnsPolicy substitution
+	expectedDNSPolicy := corev1.DNSClusterFirst
+	if d := cmp.Diff(expectedDNSPolicy, pod.Spec.DNSPolicy); d != "" {
+		t.Errorf("DNSPolicy mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify securityContext substitution (string fields only, excluding int/bool fields)
+	expectedSecurityContext := &corev1.PodSecurityContext{
+		SELinuxOptions: &corev1.SELinuxOptions{
+			User:  "customuser",
+			Role:  "customrole",
+			Type:  "container_t",
+			Level: "s0:c123,c456",
+		},
+		WindowsOptions: &corev1.WindowsSecurityContextOptions{
+			GMSACredentialSpecName: ptr.To("customcredential"),
+			RunAsUserName:          ptr.To("arm64-user"),
+		},
+		AppArmorProfile: &corev1.AppArmorProfile{
+			Type:             corev1.AppArmorProfileTypeLocalhost,
+			LocalhostProfile: ptr.To("localhost/customprofile"),
+		},
+		Sysctls: []corev1.Sysctl{{
+			Name:  "kernel.arm64",
+			Value: "us-east-1",
+		}},
+	}
+	if d := cmp.Diff(expectedSecurityContext, pod.Spec.SecurityContext); d != "" {
+		t.Errorf("SecurityContext mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify hostAliases substitution
+	expectedHostAliases := []corev1.HostAlias{{
+		IP:        "192.168.1.1",
+		Hostnames: []string{"custom.example.com", "alias.custom.example.com"},
+	}}
+	if d := cmp.Diff(expectedHostAliases, pod.Spec.HostAliases); d != "" {
+		t.Errorf("HostAliases mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify topologySpreadConstraints substitution
+	expectedTopologySpreadConstraints := []corev1.TopologySpreadConstraint{{
+		MaxSkew:           1,
+		TopologyKey:       "zone-us-east-1",
+		WhenUnsatisfiable: corev1.DoNotSchedule,
+		LabelSelector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app": "myapp-arm64",
+			},
+		},
+	}}
+	if d := cmp.Diff(expectedTopologySpreadConstraints, pod.Spec.TopologySpreadConstraints); d != "" {
+		t.Errorf("TopologySpreadConstraints mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify dnsConfig substitution
+	expectedDNSConfig := &corev1.PodDNSConfig{
+		Nameservers: []string{"8.8.8.8", "arm64.dns.example.com"},
+		Searches:    []string{"us-east-1.local"},
+		Options: []corev1.PodDNSConfigOption{{
+			Name:  "ndots",
+			Value: ptr.To("2"),
+		}},
+	}
+	if d := cmp.Diff(expectedDNSConfig, pod.Spec.DNSConfig); d != "" {
+		t.Errorf("DNSConfig mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify volumes substitution
+	expectedVolumes := []corev1.Volume{{
+		Name: "custom-volume",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "config-us-east-1",
+				},
+			},
+		},
+	}, {
+		Name: "secret-volume",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: "secret-arm64",
+				Items: []corev1.KeyToPath{{
+					Key:  "us-east-1",
+					Path: "secret/arm64",
+				}},
+			},
+		},
+	}, {
+		Name: "projected-volume",
+		VolumeSource: corev1.VolumeSource{
+			Projected: &corev1.ProjectedVolumeSource{
+				Sources: []corev1.VolumeProjection{{
+					ConfigMap: &corev1.ConfigMapProjection{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "projected-config-us-east-1",
+						},
+					},
+				}, {
+					Secret: &corev1.SecretProjection{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "projected-secret-arm64",
+						},
+					},
+				}, {
+					ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+						Audience: "audience-us-east-1",
+					},
+				}},
+			},
+		},
+	}, {
+		Name: "csi-volume",
+		VolumeSource: corev1.VolumeSource{
+			CSI: &corev1.CSIVolumeSource{
+				Driver: "csi.example.com",
+				NodePublishSecretRef: &corev1.LocalObjectReference{
+					Name: "csi-secret-arm64",
+				},
+				VolumeAttributes: map[string]string{
+					"foo": "us-east-1",
+				},
+			},
+		},
+	}}
+
+	// Filter out system volumes (like tekton volumes) to focus on our custom volumes
+	var actualCustomVolumes []corev1.Volume
+	customVolumeNames := map[string]bool{
+		"custom-volume":    true,
+		"secret-volume":    true,
+		"projected-volume": true,
+		"csi-volume":       true,
+	}
+	for _, vol := range pod.Spec.Volumes {
+		if customVolumeNames[vol.Name] {
+			actualCustomVolumes = append(actualCustomVolumes, vol)
+		}
+	}
+
+	if d := cmp.Diff(expectedVolumes, actualCustomVolumes); d != "" {
+		t.Errorf("Custom volumes mismatch: %s", diff.PrintWantGot(d))
 	}
 }
