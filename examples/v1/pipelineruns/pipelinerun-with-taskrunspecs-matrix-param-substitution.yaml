@@ -1,0 +1,43 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: matrix-podtemplate-taskrunspecs-test-
+spec:
+  taskRunSpecs:
+  - pipelineTaskName: build-and-push-manifest
+    podTemplate:
+      nodeSelector:
+        kubernetes.io/arch: $(params.arch)
+  - pipelineTaskName: create-manifest-list
+    podTemplate:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+  pipelineSpec:
+    tasks:
+      - name: build-and-push-manifest
+        matrix:
+          params:
+          - name: arch
+            value: ["amd64", "arm64"]
+        taskSpec:
+          results:
+            - name: manifest
+              type: string
+          params:
+            - name: arch
+          steps:
+            - name: build-and-push
+              image: ubuntu
+              script: |
+                echo "building on $(params.arch)"
+                echo "testmanifest-$(params.arch)" | tee $(results.manifest.path)
+      - name: create-manifest-list
+        params:
+          - name: manifest
+            value: $(tasks.build-and-push-manifest.results.manifest[*])
+        taskSpec:
+          steps:
+            - name: echo-manifests
+              image: ubuntu
+              args: ["$(params.manifest[*])"]
+              script: echo "$@"
