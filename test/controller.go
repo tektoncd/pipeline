@@ -342,7 +342,7 @@ func PrependResourceVersionReactor(f *ktesting.Fake) {
 
 // EnsureConfigurationConfigMapsExist makes sure all the configmaps exists.
 func EnsureConfigurationConfigMapsExist(d *Data) {
-	var defaultsExists, featureFlagsExists, metricsExists, spireconfigExists, eventsExists, tracingExists bool
+	var defaultsExists, featureFlagsExists, metricsExists, spireconfigExists, eventsExists, tracingExists, backoffExists bool
 	for _, cm := range d.ConfigMaps {
 		if cm.Name == config.GetDefaultsConfigName() {
 			defaultsExists = true
@@ -361,6 +361,9 @@ func EnsureConfigurationConfigMapsExist(d *Data) {
 		}
 		if cm.Name == config.GetTracingConfigName() {
 			tracingExists = true
+		}
+		if cm.Name == config.GetWaitExponentialBackoffConfigName() {
+			backoffExists = true
 		}
 	}
 	if !defaultsExists {
@@ -396,6 +399,12 @@ func EnsureConfigurationConfigMapsExist(d *Data) {
 	if !tracingExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetTracingConfigName(), Namespace: system.Namespace()},
+			Data:       map[string]string{},
+		})
+	}
+	if !backoffExists {
+		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetWaitExponentialBackoffConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		})
 	}
