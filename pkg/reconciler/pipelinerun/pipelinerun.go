@@ -21,11 +21,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -1088,7 +1091,44 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 	}
 
 	logger.Infof("Creating a new TaskRun object %s for pipeline task %s", taskRunName, rpt.PipelineTask.Name)
-	return c.PipelineClientSet.TektonV1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
+
+	cfg := config.FromContextOrDefaults(ctx)
+	if !cfg.FeatureFlags.EnableWaitExponentialBackoff {
+		return c.PipelineClientSet.TektonV1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
+	}
+
+	backoff := wait.Backoff{
+		Duration: cfg.WaitExponentialBackoff.Duration, // Initial delay before retry
+		Factor:   cfg.WaitExponentialBackoff.Factor,   // Multiplier for exponential growth
+		Steps:    cfg.WaitExponentialBackoff.Steps,    // Maximum number of retry attempts
+		Cap:      cfg.WaitExponentialBackoff.Cap,      // Maximum time spent before giving up
+	}
+	var result *v1.TaskRun
+	err = wait.ExponentialBackoff(backoff, func() (bool, error) {
+		result = nil
+		result, err = c.PipelineClientSet.TektonV1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
+		if err != nil {
+			if isWebhookTimeout(err) {
+				return false, nil // retry
+			}
+			return false, err // do not retry
+		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// isWebhookTimeout checks if the error is due to a mutating admission webhook timeout
+func isWebhookTimeout(err error) bool {
+	var statusErr *apierrors.StatusError
+	if errors.As(err, &statusErr) {
+		return statusErr.ErrStatus.Code == http.StatusInternalServerError &&
+			strings.Contains(statusErr.ErrStatus.Message, "timeout")
+	}
+	return false
 }
 
 // handleRunCreationError marks the PipelineRun as failed and returns a permanent error if the run creation error is not retryable
@@ -1216,7 +1256,34 @@ func (c *Reconciler) createCustomRun(ctx context.Context, runName string, params
 	}
 
 	logger.Infof("Creating a new CustomRun object %s", runName)
-	return c.PipelineClientSet.TektonV1beta1().CustomRuns(pr.Namespace).Create(ctx, r, metav1.CreateOptions{})
+
+	cfg := config.FromContextOrDefaults(ctx)
+	if !cfg.FeatureFlags.EnableWaitExponentialBackoff {
+		return c.PipelineClientSet.TektonV1beta1().CustomRuns(pr.Namespace).Create(ctx, r, metav1.CreateOptions{})
+	}
+
+	backoff := wait.Backoff{
+		Duration: cfg.WaitExponentialBackoff.Duration, // Initial delay before retry
+		Factor:   cfg.WaitExponentialBackoff.Factor,   // Multiplier for exponential growth
+		Steps:    cfg.WaitExponentialBackoff.Steps,    // Maximum number of retry attempts
+		Cap:      cfg.WaitExponentialBackoff.Cap,      // Maximum time spent before giving up
+	}
+	var result *v1beta1.CustomRun
+	err = wait.ExponentialBackoff(backoff, func() (bool, error) {
+		result = nil
+		result, err = c.PipelineClientSet.TektonV1beta1().CustomRuns(pr.Namespace).Create(ctx, r, metav1.CreateOptions{})
+		if err != nil {
+			if isWebhookTimeout(err) {
+				return false, nil // retry
+			}
+			return false, err // do not retry
+		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 // propagateWorkspaces identifies the workspaces that the pipeline task usess
