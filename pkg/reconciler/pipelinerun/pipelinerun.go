@@ -362,6 +362,10 @@ func (c *Reconciler) resolvePipelineState(
 			return nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", pr.Namespace, err)
 		}
 
+		getChildPipelineRunFunc := func(name string) (*v1.PipelineRun, error) {
+			return c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(name)
+		}
+
 		getTaskFunc := tresources.GetTaskFunc(
 			ctx,
 			c.KubeClientSet,
@@ -389,6 +393,7 @@ func (c *Reconciler) resolvePipelineState(
 
 		resolvedTask, err := resources.ResolvePipelineTask(ctx,
 			*pr,
+			getChildPipelineRunFunc,
 			getTaskFunc,
 			getTaskRunFunc,
 			getCustomRunFunc,

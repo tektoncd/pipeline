@@ -84,6 +84,16 @@ func (pr *PipelineRun) HasStarted() bool {
 	return pr.Status.StartTime != nil && !pr.Status.StartTime.IsZero()
 }
 
+// IsSuccessful returns true if the PipelineRun's status indicates that it has succeeded.
+func (pr *PipelineRun) IsSuccessful() bool {
+	return pr != nil && pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+}
+
+// IsFailure returns true if the PipelineRun's status indicates that it has failed.
+func (pr *PipelineRun) IsFailure() bool {
+	return pr != nil && pr.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
+}
+
 // IsCancelled returns true if the PipelineRun's spec status is set to Cancelled state
 func (pr *PipelineRun) IsCancelled() bool {
 	return pr.Spec.Status == PipelineRunSpecStatusCancelled
