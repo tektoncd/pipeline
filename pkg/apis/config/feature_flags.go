@@ -107,6 +107,11 @@ const (
 	EnableKubernetesSidecar = "enable-kubernetes-sidecar"
 	// DefaultEnableKubernetesSidecar is the default value for EnableKubernetesSidecar
 	DefaultEnableKubernetesSidecar = false
+	// EnableWaitExponentialBackoff is the flag to enable exponential backoff strategy
+	EnableWaitExponentialBackoff = "enable-wait-exponential-backoff"
+	// DefaultEnableWaitExponentialBackoff is the default value for EnableWaitExponentialBackoff
+	DefaultEnableWaitExponentialBackoff = false
+
 	// EnableStepActions is the flag to enable step actions (no-op since it's stable)
 	EnableStepActions = "enable-step-actions"
 
@@ -198,12 +203,13 @@ type FeatureFlags struct {
 	Coschedule                               string `json:"coschedule,omitempty"`
 	EnableCELInWhenExpression                bool   `json:"enableCELInWhenExpression,omitempty"`
 	// EnableStepActions is a no-op flag since StepActions are stable
-	EnableStepActions           bool   `json:"enableStepActions,omitempty"`
-	EnableParamEnum             bool   `json:"enableParamEnum,omitempty"`
-	EnableArtifacts             bool   `json:"enableArtifacts,omitempty"`
-	DisableInlineSpec           string `json:"disableInlineSpec,omitempty"`
-	EnableConciseResolverSyntax bool   `json:"enableConciseResolverSyntax,omitempty"`
-	EnableKubernetesSidecar     bool   `json:"enableKubernetesSidecar,omitempty"`
+	EnableStepActions            bool   `json:"enableStepActions,omitempty"`
+	EnableParamEnum              bool   `json:"enableParamEnum,omitempty"`
+	EnableArtifacts              bool   `json:"enableArtifacts,omitempty"`
+	DisableInlineSpec            string `json:"disableInlineSpec,omitempty"`
+	EnableConciseResolverSyntax  bool   `json:"enableConciseResolverSyntax,omitempty"`
+	EnableKubernetesSidecar      bool   `json:"enableKubernetesSidecar,omitempty"`
+	EnableWaitExponentialBackoff bool   `json:"enableWaitExponentialBackoff,omitempty"`
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -306,6 +312,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setFeature(EnableKubernetesSidecar, DefaultEnableKubernetesSidecar, &tc.EnableKubernetesSidecar); err != nil {
+		return nil, err
+	}
+	if err := setFeature(EnableWaitExponentialBackoff, DefaultEnableWaitExponentialBackoff, &tc.EnableWaitExponentialBackoff); err != nil {
 		return nil, err
 	}
 

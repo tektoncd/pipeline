@@ -30,12 +30,13 @@ type cfgKey struct{}
 // Config holds the collection of configurations that we attach to contexts.
 // +k8s:deepcopy-gen=false
 type Config struct {
-	Defaults     *Defaults
-	FeatureFlags *FeatureFlags
-	Metrics      *Metrics
-	SpireConfig  *sc.SpireConfig
-	Events       *Events
-	Tracing      *Tracing
+	Defaults               *Defaults
+	FeatureFlags           *FeatureFlags
+	Metrics                *Metrics
+	SpireConfig            *sc.SpireConfig
+	Events                 *Events
+	Tracing                *Tracing
+	WaitExponentialBackoff *WaitExponentialBackoff
 }
 
 // FromContext extracts a Config from the provided context.
@@ -55,12 +56,13 @@ func FromContextOrDefaults(ctx context.Context) *Config {
 	}
 
 	return &Config{
-		Defaults:     DefaultConfig.DeepCopy(),
-		FeatureFlags: DefaultFeatureFlags.DeepCopy(),
-		Metrics:      DefaultMetrics.DeepCopy(),
-		SpireConfig:  DefaultSpire.DeepCopy(),
-		Events:       DefaultEvents.DeepCopy(),
-		Tracing:      DefaultTracing.DeepCopy(),
+		Defaults:               DefaultConfig.DeepCopy(),
+		FeatureFlags:           DefaultFeatureFlags.DeepCopy(),
+		Metrics:                DefaultMetrics.DeepCopy(),
+		SpireConfig:            DefaultSpire.DeepCopy(),
+		Events:                 DefaultEvents.DeepCopy(),
+		Tracing:                DefaultTracing.DeepCopy(),
+		WaitExponentialBackoff: DefaultWaitExponentialBackoff.DeepCopy(),
 	}
 }
 
@@ -83,12 +85,13 @@ func NewStore(logger configmap.Logger, onAfterStore ...func(name string, value i
 			"defaults/features/artifacts",
 			logger,
 			configmap.Constructors{
-				GetDefaultsConfigName():     NewDefaultsFromConfigMap,
-				GetFeatureFlagsConfigName(): NewFeatureFlagsFromConfigMap,
-				GetMetricsConfigName():      NewMetricsFromConfigMap,
-				GetSpireConfigName():        NewSpireConfigFromConfigMap,
-				GetEventsConfigName():       NewEventsFromConfigMap,
-				GetTracingConfigName():      NewTracingFromConfigMap,
+				GetDefaultsConfigName():               NewDefaultsFromConfigMap,
+				GetFeatureFlagsConfigName():           NewFeatureFlagsFromConfigMap,
+				GetMetricsConfigName():                NewMetricsFromConfigMap,
+				GetSpireConfigName():                  NewSpireConfigFromConfigMap,
+				GetEventsConfigName():                 NewEventsFromConfigMap,
+				GetTracingConfigName():                NewTracingFromConfigMap,
+				GetWaitExponentialBackoffConfigName(): NewWaitExponentialBackoffFromConfigMap,
 			},
 			onAfterStore...,
 		),
@@ -129,13 +132,18 @@ func (s *Store) Load() *Config {
 	if events == nil {
 		events = DefaultEvents.DeepCopy()
 	}
+	waitExponentialBackoff := s.UntypedLoad(GetWaitExponentialBackoffConfigName())
+	if waitExponentialBackoff == nil {
+		waitExponentialBackoff = DefaultWaitExponentialBackoff.DeepCopy()
+	}
 
 	return &Config{
-		Defaults:     defaults.(*Defaults).DeepCopy(),
-		FeatureFlags: featureFlags.(*FeatureFlags).DeepCopy(),
-		Metrics:      metrics.(*Metrics).DeepCopy(),
-		Tracing:      tracing.(*Tracing).DeepCopy(),
-		SpireConfig:  spireconfig.(*sc.SpireConfig).DeepCopy(),
-		Events:       events.(*Events).DeepCopy(),
+		Defaults:               defaults.(*Defaults).DeepCopy(),
+		FeatureFlags:           featureFlags.(*FeatureFlags).DeepCopy(),
+		Metrics:                metrics.(*Metrics).DeepCopy(),
+		Tracing:                tracing.(*Tracing).DeepCopy(),
+		SpireConfig:            spireconfig.(*sc.SpireConfig).DeepCopy(),
+		Events:                 events.(*Events).DeepCopy(),
+		WaitExponentialBackoff: waitExponentialBackoff.(*WaitExponentialBackoff).DeepCopy(),
 	}
 }

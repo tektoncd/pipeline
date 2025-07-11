@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-wait-exponential-backoff
+data:
+  duration: "1s"
+  factor: "2.0"
+  jitter: "0.0"
+  steps: "10"
+  cap: "30s"

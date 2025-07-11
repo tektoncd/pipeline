@@ -17979,3 +17979,338 @@ func signInterface(signer signature.Signer, i interface{}) ([]byte, error) {
 
 	return sig, nil
 }
+
+// TestCreateTaskRun_Backoff_WebhookTimeout` validates the exponential backoff and retry logic in the `createTaskRun` function.
+// It simulates scenarios where the creation of a `TaskRun` initially fails due to webhook timeouts (which should be retried)
+// and where it fails due to a non-retryable error (which should not be retried). The test ensures that the number of
+// creation attempts and the final outcome match expectations, confirming that the backoff strategy for `TaskRun` resources works as intended.
+func TestCreateTaskRun_Backoff_WebhookTimeout(t *testing.T) {
+	prName := "test-pr"
+	namespace := "default"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: hello-world-1
+      taskRef:
+        name: hello-world
+`, prName, namespace))
+
+	// Create a Task that matches the TaskRef in the PipelineRun
+	ts := []*v1.Task{parse.MustParseV1Task(t, `
+metadata:
+  name: hello-world
+  namespace: default
+spec:
+  steps:
+  - name: echo
+    image: busybox
+    script: echo hello
+`)}
+
+	// Don't pre-create TaskRuns - let the reconciler create them
+	trs := []*v1.TaskRun{}
+
+	// Create feature flags config with exponential backoff enabled
+	featureFlagsConfig := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+		Data: map[string]string{
+			"enable-wait-exponential-backoff": "true",
+		},
+	}
+
+	// Create wait exponential backoff config
+	waitExponentialBackoffConfig := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetWaitExponentialBackoffConfigName()},
+		Data: map[string]string{
+			"duration": "1s",
+			"factor":   "2.0",
+			"jitter":   "0.0",
+			"steps":    "10",
+			"cap":      "30s",
+		},
+	}
+
+	type testCase struct {
+		name         string
+		errorSeq     []error
+		expectTrName string
+		expectErr    bool
+		expectCalls  int
+	}
+
+	testCases := []testCase{
+		{
+			name: "retries on webhook timeout and succeeds",
+			errorSeq: []error{ // 2 timeouts, then success
+				&apierrors.StatusError{ErrStatus: metav1.Status{Code: 500, Message: "admission webhook timeout"}},
+				&apierrors.StatusError{ErrStatus: metav1.Status{Code: 500, Message: "admission webhook timeout"}},
+				nil,
+			},
+			expectTrName: "test-pr-hello-world-1",
+			expectErr:    false,
+			expectCalls:  3,
+		},
+		{
+			name:         "fails immediately on non-webhook error",
+			errorSeq:     []error{&apierrors.StatusError{ErrStatus: metav1.Status{Code: 400, Message: "bad request"}}},
+			expectTrName: "",
+			expectErr:    true,
+			expectCalls:  1,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				PipelineRuns: []*v1.PipelineRun{pr},
+				ConfigMaps:   []*corev1.ConfigMap{featureFlagsConfig, waitExponentialBackoffConfig},
+				Tasks:        ts,
+				TaskRuns:     trs,
+			}
+			testAssets, cancel := getPipelineRunController(t, d)
+			defer cancel()
+			r := &Reconciler{
+				KubeClientSet:     testAssets.Clients.Kube,
+				PipelineClientSet: testAssets.Clients.Pipeline,
+				Clock:             clock.NewFakePassiveClock(time.Now()),
+				tracerProvider:    tracing.New("pipelinerun", logtesting.TestLogger(t)),
+			}
+
+			callCount := 0
+			errSeq := tc.errorSeq
+			testAssets.Clients.Pipeline.PrependReactor("create", "taskruns", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+				callCount++
+				idx := callCount - 1
+				if idx < len(errSeq) && errSeq[idx] != nil {
+					return true, nil, errSeq[idx]
+				}
+				createAction := action.(ktesting.CreateAction)
+				tr := createAction.GetObject().(*v1.TaskRun)
+				return true, tr, nil
+			})
+
+			// Create a ResolvedPipelineTask for testing
+			rpt := &resources.ResolvedPipelineTask{
+				PipelineTask: &v1.PipelineTask{
+					Name: "hello-world-1",
+					TaskRef: &v1.TaskRef{
+						Name: "hello-world",
+					},
+				},
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskName: "hello-world",
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{{Name: "echo", Image: "busybox", Script: "echo hello"}},
+					},
+				},
+			}
+
+			facts := &resources.PipelineRunFacts{}
+			trName := "test-pr-hello-world-1"
+
+			// Ensure the context has the proper configuration
+			ctx := testAssets.Ctx
+			ctx = config.ToContext(ctx, &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableWaitExponentialBackoff: true,
+					Coschedule:                   "workspaces",
+				},
+				WaitExponentialBackoff: &config.WaitExponentialBackoff{
+					Duration: 1 * time.Second,
+					Factor:   2.0,
+					Jitter:   0.0,
+					Steps:    10,
+					Cap:      30 * time.Second,
+				},
+			})
+
+			result, err := r.createTaskRun(ctx, trName, nil, rpt, pr, facts)
+			if tc.expectErr {
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				if result != nil {
+					t.Errorf("expected no TaskRun to be created, got: %v", result)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("expected no error, got: %v", err)
+				}
+				if result == nil {
+					t.Fatalf("expected TaskRun to be created, got nil")
+				}
+				if result.Name != tc.expectTrName {
+					t.Errorf("expected TaskRun name '%s', got: %s", tc.expectTrName, result.Name)
+				}
+			}
+			if callCount != tc.expectCalls {
+				t.Errorf("expected %d attempts, got %d", tc.expectCalls, callCount)
+			}
+		})
+	}
+}
+
+// TestCreateCustomRun_Backoff_WebhookTimeout validates the exponential backoff and retry logic in the createCustomRun function.
+// It simulates scenarios where the creation of a CustomRun initially fails due to webhook timeouts (which should be retried)
+// and where it fails due to a non-retryable error (which should not be retried). The test ensures that the number of
+// creation attempts and the final outcome match expectations, confirming that the backoff strategy for CustomRun resources works as intended.
+func TestCreateCustomRun_Backoff_WebhookTimeout(t *testing.T) {
+	prName := "test-pr"
+	namespace := "default"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: custom-task
+      taskRef:
+        apiVersion: example.dev/v0
+        kind: Example
+`, prName, namespace))
+
+	// Don't pre-create CustomRuns - let the reconciler create them
+	crs := []*v1beta1.CustomRun{}
+
+	// Create feature flags config with exponential backoff enabled
+	featureFlagsConfig := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+		Data: map[string]string{
+			"enable-wait-exponential-backoff": "true",
+		},
+	}
+
+	// Create wait exponential backoff config
+	waitExponentialBackoffConfig := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetWaitExponentialBackoffConfigName()},
+		Data: map[string]string{
+			"duration": "1s",
+			"factor":   "2.0",
+			"jitter":   "0.0",
+			"steps":    "10",
+			"cap":      "30s",
+		},
+	}
+
+	type testCase struct {
+		name         string
+		errorSeq     []error
+		expectCrName string
+		expectErr    bool
+		expectCalls  int
+	}
+
+	testCases := []testCase{
+		{
+			name: "retries on webhook timeout and succeeds",
+			errorSeq: []error{
+				&apierrors.StatusError{ErrStatus: metav1.Status{Code: 500, Message: "admission webhook timeout"}},
+				&apierrors.StatusError{ErrStatus: metav1.Status{Code: 500, Message: "admission webhook timeout"}},
+				nil,
+			},
+			expectCrName: "test-pr-custom-task",
+			expectErr:    false,
+			expectCalls:  3,
+		},
+		{
+			name:         "fails immediately on non-webhook error",
+			errorSeq:     []error{&apierrors.StatusError{ErrStatus: metav1.Status{Code: 400, Message: "bad request"}}},
+			expectCrName: "",
+			expectErr:    true,
+			expectCalls:  1,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				PipelineRuns: []*v1.PipelineRun{pr},
+				ConfigMaps:   []*corev1.ConfigMap{featureFlagsConfig, waitExponentialBackoffConfig},
+				CustomRuns:   crs,
+			}
+			testAssets, cancel := getPipelineRunController(t, d)
+			defer cancel()
+			r := &Reconciler{
+				KubeClientSet:     testAssets.Clients.Kube,
+				PipelineClientSet: testAssets.Clients.Pipeline,
+				Clock:             clock.NewFakePassiveClock(time.Now()),
+				tracerProvider:    tracing.New("pipelinerun", logtesting.TestLogger(t)),
+			}
+
+			callCount := 0
+			errSeq := tc.errorSeq
+			testAssets.Clients.Pipeline.PrependReactor("create", "customruns", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+				callCount++
+				idx := callCount - 1
+				if idx < len(errSeq) && errSeq[idx] != nil {
+					return true, nil, errSeq[idx]
+				}
+				createAction := action.(ktesting.CreateAction)
+				cr := createAction.GetObject().(*v1beta1.CustomRun)
+				return true, cr, nil
+			})
+
+			// Create a ResolvedPipelineTask for testing
+			rpt := &resources.ResolvedPipelineTask{
+				PipelineTask: &v1.PipelineTask{
+					Name: "custom-task",
+					TaskRef: &v1.TaskRef{
+						APIVersion: "example.dev/v0",
+						Kind:       "Example",
+					},
+				},
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskName: "custom-task",
+					TaskSpec: &v1.TaskSpec{},
+				},
+			}
+
+			facts := &resources.PipelineRunFacts{}
+			crName := "test-pr-custom-task"
+
+			// Ensure the context has the proper configuration
+			ctx := testAssets.Ctx
+			ctx = config.ToContext(ctx, &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableWaitExponentialBackoff: true,
+					Coschedule:                   "workspaces",
+				},
+				WaitExponentialBackoff: &config.WaitExponentialBackoff{
+					Duration: 1 * time.Second,
+					Factor:   2.0,
+					Jitter:   0.0,
+					Steps:    10,
+					Cap:      30 * time.Second,
+				},
+			})
+
+			result, err := r.createCustomRun(ctx, crName, nil, rpt, pr, facts)
+			if tc.expectErr {
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				if result != nil {
+					t.Errorf("expected no CustomRun to be created, got: %v", result)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("expected no error, got: %v", err)
+				}
+				if result == nil {
+					t.Fatalf("expected CustomRun to be created, got nil")
+				}
+				if result.Name != tc.expectCrName {
+					t.Errorf("expected CustomRun name '%s', got: %s", tc.expectCrName, result.Name)
+				}
+			}
+			if callCount != tc.expectCalls {
+				t.Errorf("expected %d attempts, got %d", tc.expectCalls, callCount)
+			}
+		})
+	}
+}
