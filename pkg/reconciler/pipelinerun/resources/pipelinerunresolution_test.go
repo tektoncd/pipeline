@@ -333,6 +333,12 @@ func makeScheduled(tr v1.TaskRun) *v1.TaskRun {
 	return newTr
 }
 
+func makePipelineRunScheduled(pr v1.PipelineRun) *v1.PipelineRun {
+	newPr := newPipelineRun(pr)
+	newPr.Status = v1.PipelineRunStatus{ /* explicitly empty */ }
+	return newPr
+}
+
 func makeStarted(tr v1.TaskRun) *v1.TaskRun {
 	newTr := newTaskRun(tr)
 	newTr.Status.Conditions[0].Status = corev1.ConditionUnknown
@@ -809,6 +815,102 @@ var taskCancelledMatrix = PipelineRunState{{
 	TaskRuns:     []*v1.TaskRun{withCancelled(makeRetried(trs[0]))},
 	ResolvedTask: &resources.ResolvedTask{
 		TaskSpec: &task.Spec,
+	},
+}}
+
+var noneStartedChildPipelineRunState = PipelineRunState{{
+	PipelineTask:          &pts[21],
+	ChildPipelineRunNames: []string{"pipelinerun-mytask22"},
+	ChildPipelineRuns:     nil,
+	ResolvedPipeline: ResolvedPipeline{
+		PipelineSpec: pts[21].PipelineSpec,
+	},
+}, {
+	PipelineTask:          &pts[22],
+	ChildPipelineRunNames: []string{"pipelinerun-mytask23"},
+	ChildPipelineRuns:     nil,
+	ResolvedPipeline: ResolvedPipeline{
+		PipelineSpec: pts[22].PipelineSpec,
+	},
+}}
+
+var oneChildPipelineRunStartedState = PipelineRunState{{
+	PipelineTask:          &pts[21],
+	ChildPipelineRunNames: []string{"pipelinerun-mytask22"},
+	ChildPipelineRuns:     []*v1.PipelineRun{makePipelineRunStarted(prs[0])},
+	ResolvedPipeline: ResolvedPipeline{
+		PipelineSpec: pts[21].PipelineSpec,
+	},
+}, {
+	PipelineTask:          &pts[22],
+	ChildPipelineRunNames: []string{"pipelinerun-mytask23"},
+	ChildPipelineRuns:     nil,
+	ResolvedPipeline: ResolvedPipeline{
+		PipelineSpec: pts[22].PipelineSpec,
+	},
+}}
+
+var oneChildPipelineRunFinishedState = PipelineRunState{{
+	PipelineTask:          &pts[21],
+	ChildPipelineRunNames: []string{"pipelinerun-mytask22"},
+	ChildPipelineRuns:     []*v1.PipelineRun{makePipelineRunSucceeded(prs[0])},
+	ResolvedPipeline: ResolvedPipeline{
+		PipelineSpec: pts[21].PipelineSpec,
+	},
+}, {
+	PipelineTask:          &pts[22],
+	ChildPipelineRunNames: []string{"pipelinerun-mytask23"},
+	ChildPipelineRuns:     nil,
+	ResolvedPipeline: ResolvedPipeline{
+		PipelineSpec: pts[22].PipelineSpec,
+	},
+}}
+
+var oneChildPipelineRunFailedState = PipelineRunState{{
+	PipelineTask:          &pts[21],
+	ChildPipelineRunNames: []string{"pipelinerun-mytask22"},
+	ChildPipelineRuns:     []*v1.PipelineRun{makePipelineRunFailed(prs[0])},
+	ResolvedPipeline: ResolvedPipeline{
+		PipelineSpec: pts[21].PipelineSpec,
+	},
+}, {
+	PipelineTask:          &pts[22],
+	ChildPipelineRunNames: []string{"pipelinerun-mytask23"},
+	ChildPipelineRuns:     nil,
+	ResolvedPipeline: ResolvedPipeline{
+		PipelineSpec: pts[22].PipelineSpec,
+	},
+}}
+
+var allChildPipelineRunsFinishedState = PipelineRunState{{
+	PipelineTask:          &pts[21],
+	ChildPipelineRunNames: []string{"pipelinerun-mytask22"},
+	ChildPipelineRuns:     []*v1.PipelineRun{makePipelineRunSucceeded(prs[0])},
+	ResolvedPipeline: ResolvedPipeline{
+		PipelineSpec: pts[21].PipelineSpec,
+	},
+}, {
+	PipelineTask:          &pts[22],
+	ChildPipelineRunNames: []string{"pipelinerun-mytask23"},
+	ChildPipelineRuns:     []*v1.PipelineRun{makePipelineRunSucceeded(prs[1])},
+	ResolvedPipeline: ResolvedPipeline{
+		PipelineSpec: pts[22].PipelineSpec,
+	},
+}}
+
+var finalChildPipelineRunsScheduledState = PipelineRunState{{
+	PipelineTask:          &pts[21],
+	ChildPipelineRunNames: []string{"pipelinerun-mytask22"},
+	ChildPipelineRuns:     []*v1.PipelineRun{makePipelineRunSucceeded(prs[0])},
+	ResolvedPipeline: ResolvedPipeline{
+		PipelineSpec: pts[21].PipelineSpec,
+	},
+}, {
+	PipelineTask:          &pts[22],
+	ChildPipelineRunNames: []string{"pipelinerun-mytask23"},
+	ChildPipelineRuns:     []*v1.PipelineRun{makePipelineRunScheduled(prs[1])},
+	ResolvedPipeline: ResolvedPipeline{
+		PipelineSpec: pts[22].PipelineSpec,
 	},
 }}
 
