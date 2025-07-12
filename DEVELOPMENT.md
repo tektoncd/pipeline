@@ -19,6 +19,10 @@ First, you may want to [Ramp up](#ramp-up) on Kubernetes and Custom Resource Def
     1. [Managing Tekton Objects using `ko`](#managing-tekton-objects-using-ko) in Kubernetes
     1. [Accessing logs](#accessing-logs)
     1. [Adding new CRD types](#adding-new-crd-types)
+1. [Debugging](#debugging)
+    1. [Change Controller](#change-controller)
+    1. [Forward Debugging Port](#forward-debugging-port)
+    1. [Add VSCode Configuration](#add-vscode-configuration)
 
 ---
 
@@ -114,6 +118,10 @@ You must install these tools:
    [`woke`](https://docs.getwoke.tech/installation/) is executed for every pull 
    request. To ensure your work does not contain offensive language, you may 
    want to install and run this tool locally.
+
+1. (Optional)
+   [`delve`](https://github.com/go-delve/delve/tree/master/Documentation/installation) is needed if you want to setup
+   a debugging of the Tekton controller in VSCode or your IDE of choice.
 
 ### Configure environment
 
@@ -464,7 +472,6 @@ This script will cause `ko` to:
 
 It will also update the default system namespace used for K8s `deployments` to the new value for all subsequent `kubectl` commands.
 
-
 ---
 
 ### Accessing logs
@@ -505,3 +512,94 @@ If you need to add a new CRD type, you will need to add:
     [list of known types](./pkg/apis/pipeline/v1alpha1/register.go)
 
 _See [the API compatibility policy](api_compatibility_policy.md)._
+
+## Debugging
+
+`ko` has build in support for the `delve` debugger. To use it you need to build your controller image with the `--debug` and `--disable-optimizations` flag.
+
+### Change Controller
+
+If you want to debug your controller you first need to update its deployment configuration and comment the probes. If you don't do that the short probe timeouts will crash the pod:
+
+```yaml
+# config/controller.yaml
+
+# livenessProbe:
+#   httpGet:
+#     path: /health
+#     port: probes
+#     scheme: HTTP
+#   initialDelaySeconds: 5
+#   periodSeconds: 10
+#   timeoutSeconds: 5
+# readinessProbe:
+#   httpGet:
+#     path: /readiness
+#     port: probes
+#     scheme: HTTP
+#   initialDelaySeconds: 5
+#   periodSeconds: 10
+#   timeoutSeconds: 5
+```
+
+Then you need to rebuild the the controller in debug mode:
+
+```sh
+ko apply -f config/controller.yaml --debug --disable-optimizations
+```
+
+### Forward Debugging Port
+
+Now the controller will be re-started with `delve` in headless mode and you can attach a client to it on port `40000` but first you need to forward the port from the controller pod:
+
+```sh
+kubectl port-forward -n tekton-pipelines deployments/tekton-pipelines-controller 40000:40000
+```
+
+### Add VSCode Configuration
+
+In VSCode add the following `launch.json` configuration for go remote debugging:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to Delve (Tekton Controller)",
+      "type": "go",
+      "request": "attach",
+      "mode": "remote",
+      "port": 40000,
+      "host": "127.0.0.1",
+      "apiVersion": 2,
+      "substitutePath": [
+        {
+          "from": "${workspaceFolder}",
+          "to": "github.com/tektoncd/pipeline"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Now you ar able to attach to `delve` in VSCode. Set breakpoints e.g. in `pipelinerun.go` in the `reconcile` method and execute a `PipelineRun` and VSCode should stop at the breakpoint. You can use this sample `PipelineRun` for testing:
+
+```sh
+kubectl create -f - <<EOF
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: hello-world-run-
+spec:
+  pipelineSpec:
+    tasks:
+      - name: hello-task
+        taskSpec:
+          steps:
+            - name: hello-step
+              image: alpine
+              script: |
+                echo "Hello world!"
+EOF
+```
