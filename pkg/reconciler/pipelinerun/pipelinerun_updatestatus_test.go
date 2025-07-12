@@ -440,7 +440,7 @@ pipelineTaskName: task
 				Status:     tc.prStatus,
 			}
 
-			updatePipelineRunStatusFromChildRefs(logger, pr, tc.trs, tc.customRuns)
+			updatePipelineRunStatusFromChildRefs(logger, pr, []*v1.PipelineRun{}, tc.trs, tc.customRuns)
 
 			actualPrStatus := pr.Status
 
@@ -573,7 +573,7 @@ metadata:
 				Status:     tc.prStatus(),
 			}
 
-			if err := updatePipelineRunStatusFromChildObjects(ctx, logger, pr, tc.trs, tc.runs); err != nil {
+			if err := updatePipelineRunStatusFromChildObjects(ctx, logger, pr, []*v1.PipelineRun{}, tc.trs, tc.runs); err != nil {
 				t.Fatalf("received an unexpected error: %v", err)
 			}
 
