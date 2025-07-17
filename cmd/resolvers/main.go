@@ -18,7 +18,9 @@ package main
 
 import (
 	"flag"
+	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
@@ -38,6 +40,13 @@ import (
 )
 
 func main() {
+	if val, ok := os.LookupEnv("THREADS_PER_CONTROLLER"); ok {
+		threadsPerController, err := strconv.Atoi(val)
+		if err != nil {
+			log.Fatalf("failed to parse value %q of THREADS_PER_CONTROLLER: %v\n", val, err)
+		}
+		controller.DefaultThreadsPerController = threadsPerController
+	}
 	flag.IntVar(&controller.DefaultThreadsPerController, "threads-per-controller", controller.DefaultThreadsPerController, "Threads (goroutines) to create per controller")
 
 	ctx := filteredinformerfactory.WithSelectors(signals.NewContext(), v1alpha1.ManagedByLabelKey)
