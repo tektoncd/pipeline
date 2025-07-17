@@ -11,11 +11,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/jenkins-x/go-scm/scm"
 	githubql "github.com/shurcooL/githubv4"
@@ -163,6 +166,18 @@ func (c *wrapper) doRequest(ctx context.Context, req *scm.Request, in, out inter
 	if res.Status > 300 {
 		if res.Status == 404 {
 			return res, scm.ErrNotFound
+		}
+		if logrus.IsLevelEnabled(logrus.DebugLevel) && res.Body != nil {
+			if b, err := io.ReadAll(res.Body); err == nil {
+				logrus.WithFields(logrus.Fields{
+					"requestMethod":  req.Method,
+					"requestPath":    req.Path,
+					"responseStatus": res.Status,
+					"responseBody":   string(b),
+					"rate":           res.Rate,
+					"requestID":      res.ID,
+				}).Debug("GitHub responded with error")
+			}
 		}
 		return res, errors.New(
 			http.StatusText(res.Status),
