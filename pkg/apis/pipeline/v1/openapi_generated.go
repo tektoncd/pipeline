@@ -2400,7 +2400,7 @@ func schema_pkg_apis_pipeline_v1_RefSource(ref common.ReferenceCallback) common.
 					},
 					"entryPoint": {
 						SchemaProps: spec.SchemaProps{
-							Description: "EntryPoint identifies the entry point into the build. This is often a path to a build definition file and/or a target label within that file. Example: \"task/git-clone/0.8/git-clone.yaml\"",
+							Description: "EntryPoint identifies the entry point into the build. This is often a path to a build definition file and/or a target label within that file. Example: \"task/git-clone/0.10/git-clone.yaml\"",
 							Type:        []string{"string"},
 							Format:      "",
 						},

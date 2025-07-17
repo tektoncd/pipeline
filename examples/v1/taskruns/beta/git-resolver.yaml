@@ -22,4 +22,4 @@ spec:
       - name: revision
         value: main
       - name: pathInRepo
-        value: task/git-clone/0.8/git-clone.yaml
+        value: task/git-clone/0.10/git-clone.yaml
