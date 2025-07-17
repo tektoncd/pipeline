@@ -24,7 +24,7 @@ spec:
       - name: name
         value: git-clone
       - name: version
-        value: "0.6"
+        value: "0.10"
 ---
 apiVersion: tekton.dev/v1
 kind: TaskRun
@@ -48,4 +48,4 @@ spec:
       - name: name
         value: git-clone
       - name: version
-        value: "0.6.0"
+        value: "0.10"
