@@ -118,7 +118,7 @@ spec:
           - name: name
             value: git-clone
           - name: version
-            value: "0.7"
+            value: "0.10"
         params:
           - name: url
             value: https://github.com/tektoncd/pipeline
@@ -238,7 +238,7 @@ spec:
           - name: url
             value: https://github.com/tektoncd/catalog.git
           - name: pathInRepo
-            value: /task/git-clone/0.7/git-clone.yaml
+            value: /task/git-clone/0.10/git-clone.yaml
           - name: revision
             value: main
         params:
@@ -261,7 +261,7 @@ spec:
 
 func TestGitResolver_Clone_Failure(t *testing.T) {
 	defaultURL := "https://github.com/tektoncd/catalog.git"
-	defaultPathInRepo := "/task/git-clone/0.7/git-clone.yaml"
+	defaultPathInRepo := "/task/git-clone/0.10/git-clone.yaml"
 	defaultCommit := "783b4fe7d21148f3b1a93bfa49b0024d8c6c2955"
 
 	testCases := []struct {
