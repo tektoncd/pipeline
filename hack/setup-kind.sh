@@ -125,6 +125,8 @@ kind: Cluster
 nodes:
 - role: control-plane
   image: "${KIND_IMAGE}"
+  labels:
+    node-type: "control-plane"
 EOF
 
 for i in $(seq 1 1 "${NODE_COUNT}");
@@ -132,6 +134,8 @@ do
   cat >> kind.yaml <<EOF
 - role: worker
   image: "${KIND_IMAGE}"
+  labels:
+    node-type: "worker-${i}"
 EOF
 done
 
