@@ -58,6 +58,17 @@ spec:
                   operator: NotIn
                   values:
                   - windows
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: controller
+                  app.kubernetes.io/component: controller
+                  app.kubernetes.io/instance: default
+                  app.kubernetes.io/part-of: tekton-pipelines
+              topologyKey: kubernetes.io/hostname
+            weight: 100
       serviceAccountName: tekton-pipelines-controller
       containers:
       - name: tekton-pipelines-controller
