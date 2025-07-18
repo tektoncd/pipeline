@@ -21,6 +21,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -43,6 +44,13 @@ const (
 )
 
 func main() {
+	if val, ok := os.LookupEnv("THREADS_PER_CONTROLLER"); ok {
+		threadsPerController, err := strconv.Atoi(val)
+		if err != nil {
+			log.Fatalf("failed to parse value %q of THREADS_PER_CONTROLLER: %v\n", val, err)
+		}
+		controller.DefaultThreadsPerController = threadsPerController
+	}
 	flag.IntVar(&controller.DefaultThreadsPerController, "threads-per-controller", controller.DefaultThreadsPerController, "Threads (goroutines) to create per controller")
 	namespace := flag.String("namespace", corev1.NamespaceAll, "Namespace to restrict informer to. Optional, defaults to all namespaces.")
 	disableHighAvailability := flag.Bool("disable-ha", false, "Whether to disable high-availability functionality for this component.  This flag will be deprecated "+
