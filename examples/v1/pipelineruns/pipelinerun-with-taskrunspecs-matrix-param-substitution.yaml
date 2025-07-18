@@ -7,7 +7,7 @@ spec:
   - pipelineTaskName: build-and-push-manifest
     podTemplate:
       nodeSelector:
-        kubernetes.io/arch: $(params.arch)
+        node-type: $(params.node-type)
   - pipelineTaskName: create-manifest-list
     podTemplate:
       nodeSelector:
@@ -17,20 +17,20 @@ spec:
       - name: build-and-push-manifest
         matrix:
           params:
-          - name: arch
-            value: ["amd64", "arm64"]
+          - name: node-type
+            value: ["worker-1", "worker-2"]
         taskSpec:
           results:
             - name: manifest
               type: string
           params:
-            - name: arch
+            - name: node-type
           steps:
             - name: build-and-push
               image: ubuntu
               script: |
-                echo "building on $(params.arch)"
-                echo "testmanifest-$(params.arch)" | tee $(results.manifest.path)
+                echo "building on $(params.node-type)"
+                echo "testmanifest-$(params.node-type)" | tee $(results.manifest.path)
       - name: create-manifest-list
         params:
           - name: manifest
