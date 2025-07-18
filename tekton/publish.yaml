@@ -130,7 +130,7 @@ spec:
         $(params.package)/cmd/entrypoint: ${COMBINED_BASE_IMAGE}
         $(params.package)/cmd/nop: ${COMBINED_BASE_IMAGE}
         $(params.package)/cmd/workingdirinit: ${COMBINED_BASE_IMAGE}
-        $(params.package)/cmd/resolvers: cgr.dev/chainguard/git@sha256:566235a8ef752f37d285042ee05fc37dbb04293e50f116a231984080fb835693
+        $(params.package)/cmd/resolvers: ghcr.io/tektoncd/plumbing/tini-git@sha256:3d56865f83236872b0986c6c0716f5de56a1ca8eb3a86f37a46ce6202a6d4a66
       EOF
 
       cat /workspace/.ko.yaml
