@@ -73,7 +73,7 @@ spec:
   steps:
 
   - name: container-registry-auth
-    image: cgr.dev/chainguard/crane:latest-dev@sha256:68d9b984ee9cb5ff9cf7a779e8bdf3c2022f9042abfa1f0f5727a082a9429535
+    image: cgr.dev/chainguard/crane:latest-dev@sha256:430c7813147443b59185d79ce7f5d682698a9fc3072f100850dc3a04100c1d91
     script: |
       #!/bin/sh
       set -ex
@@ -92,7 +92,7 @@ spec:
       cp ${DOCKER_CONFIG} /workspace/docker-config.json
 
   - name: create-ko-yaml
-    image: cgr.dev/chainguard/go:latest-dev@sha256:8590e18f17e78ac98dd0b38cd98cd3c8cefc5348dc8ed10b6e6ccfecee08d4a6
+    image: cgr.dev/chainguard/go:latest-dev@sha256:8e2632f8725d1a48d6f97a13c71e1594fe17dc9c0e7d00543091a04ac82e429b
     script: |
       #!/bin/sh
       set -ex
@@ -136,7 +136,7 @@ spec:
       cat /workspace/.ko.yaml
 
   - name: run-ko
-    image: ghcr.io/tektoncd/plumbing/ko@sha256:3c05fef6e7c38295b781c632c07437a55d57e1b1d42eb482fbb36e3ad9e73cea
+    image: ghcr.io/tektoncd/plumbing/ko@sha256:d21b05e426096c01ea026678a94d019f860e5ba04929b5fd2dd8bb0aaccf31d2
     env:
     - name: KO_DOCKER_REPO
       value: $(params.imageRegistry)/$(params.imageRegistryPath)
@@ -233,7 +233,7 @@ spec:
         ${PRESERVE_IMPORT_PATH} > /workspace/built_images
 
   - name: tag-images
-    image: cgr.dev/chainguard/crane:latest-dev@sha256:68d9b984ee9cb5ff9cf7a779e8bdf3c2022f9042abfa1f0f5727a082a9429535
+    image: cgr.dev/chainguard/crane:latest-dev@sha256:430c7813147443b59185d79ce7f5d682698a9fc3072f100850dc3a04100c1d91
     script: |
       #!/bin/sh
       set -ex
