@@ -1,0 +1,180 @@
+name: Tekton Nightly Build
+
+on:
+  schedule:
+    # Run at 03:00 UTC daily
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      kubernetes_version:
+        description: 'Kubernetes version to test with'
+        required: false
+        default: 'v1.33.0'
+      nightly_bucket:
+        description: 'Nightly bucket for builds'
+        required: false
+        default: 'gs://tekton-releases-nightly/pipeline'
+        type: string
+
+env:
+  KUBERNETES_VERSION: ${{ inputs.kubernetes_version || 'v1.33.0' }}
+  REGISTRY: ghcr.io
+  PACKAGE: github.com/${{ github.repository }}
+  BUCKET: ${{ inputs.nightly_bucket || 'gs://tekton-releases-nightly/pipeline' }}
+  IMAGE_REGISTRY_PATH: ${{ github.repository }}
+  IMAGE_REGISTRY_USER: tekton-robot
+
+jobs:
+  build:
+    name: Nightly Build (K8s ${{ inputs.kubernetes_version || 'v1.33.0' }})
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate version info
+        id: version
+        run: |
+          latest_sha=${{ github.sha }}
+          date_tag=$(date +v%Y%m%d-${latest_sha:0:7})
+          echo "version_tag=${date_tag}" >> "$GITHUB_OUTPUT"
+          echo "latest_sha=${latest_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Kind cluster
+        uses: helm/kind-action@v1.8.0
+        with:
+          node_image: kindest/node:${{ env.KUBERNETES_VERSION }}
+          cluster_name: tekton-nightly
+
+      - name: Set up Tekton
+        uses: tektoncd/actions/setup-tektoncd@main
+        with:
+          pipeline_version: latest
+          setup_registry: "true"
+          patch_etc_hosts: "true"
+
+      - name: Configure Tekton Git Resolver
+        env:
+          GITHUB_TOKEN: ${{ secrets.GHCR_TOKEN || github.token }}
+        run: |
+          # Create Git authentication secret with proper Tekton annotations
+          kubectl create secret generic git-resolver-secret \
+            --from-literal=token="${GITHUB_TOKEN}" \
+            -n tekton-pipelines-resolvers || true
+
+          kubectl annotate secret git-resolver-secret \
+            tekton.dev/git-0=github.com \
+            -n tekton-pipelines-resolvers || true
+
+          kubectl create secret generic git-resolver-secret \
+            --from-literal=token="${GITHUB_TOKEN}" \
+            -n default || true
+
+          kubectl annotate secret git-resolver-secret \
+            tekton.dev/git-0=github.com \
+            -n default || true
+
+          kubectl patch configmap git-resolver-config -n tekton-pipelines-resolvers --patch='
+          data:
+            api-token-secret-name: "git-resolver-secret"
+            api-token-secret-key: "token"
+          ' || true
+
+          kubectl patch configmap feature-flags -n tekton-pipelines --patch='
+          data:
+            enable-cel-in-whenexpression: "true"
+          ' || true
+
+      - name: Install tkn CLI
+        uses: tektoncd/actions/setup-tektoncd-cli@main
+        with:
+          version: latest
+
+      - name: Apply Build Pipeline Definition
+        run: |
+          kustomize build tekton | kubectl apply -f -
+
+      - name: Create secrets, service account and PVC template
+        env:
+          GCS_SERVICE_ACCOUNT_KEY: ${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN || github.token }}
+          IMAGE_REGISTRY_USER: ${{ env.IMAGE_REGISTRY_USER }}
+        run: |
+          # Create GCS service account secret for release bucket access
+          echo "${GCS_SERVICE_ACCOUNT_KEY}" > /tmp/gcs-key.json
+          kubectl create secret generic release-secret \
+            --from-file=release.json=/tmp/gcs-key.json
+          rm -f /tmp/gcs-key.json
+
+          # Create a Kubernetes secret for GHCR authentication.
+          # This version creates the secret with a custom key name `docker-config.json`
+          # (instead of the default `.dockerconfigjson`) to match what the publish task expects.
+          echo "${GHCR_TOKEN}" > /tmp/docker-config.json
+          kubectl create secret generic release-images-secret \
+            --from-file=docker-config.json=/tmp/docker-config.json
+          rm -f /tmp/docker-config.json
+
+          # Apply service account configuration with proper RBAC
+          kubectl apply -f tekton/account.yaml
+
+          cat > workspace-template.yaml << EOF
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+          EOF
+
+      - name: Start Tekton Build Pipeline
+        run: |
+          set -euo pipefail  # Exit on any error, undefined variables, or pipe failures
+
+          echo "Starting Tekton pipeline..."
+
+          PIPELINE_RUN=$(tkn pipeline start pipeline-release \
+            --serviceaccount=release-right-meow \
+            --param package="${{ env.PACKAGE }}" \
+            --param gitRevision="${{ steps.version.outputs.latest_sha }}" \
+            --param versionTag="${{ steps.version.outputs.version_tag }}" \
+            --param releaseBucket="${{ env.BUCKET }}" \
+            --param imageRegistry=${{ env.REGISTRY }} \
+            --param imageRegistryPath="${{ env.IMAGE_REGISTRY_PATH }}" \
+            --param imageRegistryUser="${{ env.IMAGE_REGISTRY_USER }}" \
+            --param imageRegistryRegions="" \
+            --param buildPlatforms="linux/amd64,linux/arm64,linux/s390x,linux/ppc64le" \
+            --param publishPlatforms="linux/amd64,linux/arm64,linux/s390x,linux/ppc64le,windows/amd64" \
+            --param koExtraArgs="" \
+            --param serviceAccountPath=release.json \
+            --param serviceAccountImagesPath=docker-config.json \
+            --param releaseAsLatest="true" \
+            --param runTests="false" \
+            --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
+            --workspace name=release-secret,secret=release-secret \
+            --workspace name=release-images-secret,secret=release-images-secret \
+            --tasks-timeout 2h \
+            --pipeline-timeout 3h \
+            --output name) || {
+            echo "Failed to start Tekton pipeline!"
+            exit 1
+          }
+
+          echo "Pipeline started: ${PIPELINE_RUN}"
+          tkn pipelinerun logs "${PIPELINE_RUN}" -f
+
+          # Check if pipeline succeeded
+          tkn pipelinerun describe "${PIPELINE_RUN}" --output jsonpath='{.status.conditions[?(@.type=="Succeeded")].status}' | grep -q "True" || {
+            echo "Pipeline failed!"
+            tkn pipelinerun describe "${PIPELINE_RUN}"
+            exit 1
+          }
+
+          echo "✅ Pipeline Run completed successfully!"
