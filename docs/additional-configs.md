@@ -243,6 +243,7 @@ The example below customizes the following:
 - the default maximum combinations of `Parameters` in a `Matrix` that can be used to fan out a `PipelineTask`. For
 more information, see [`Matrix`](matrix.md).
 - the default resolver type to `git`.
+- the default polling interval for the sidecar log results container via `default-sidecar-log-polling-interval`.
 
 ```yaml
 apiVersion: v1
@@ -260,7 +261,25 @@ data:
     emptyDir: {}
   default-max-matrix-combinations-count: "1024"
   default-resolver-type: "git"
+  default-sidecar-log-polling-interval: "100ms"
 ```
+
+### `default-sidecar-log-polling-interval`
+
+The `default-sidecar-log-polling-interval` key in the `config-defaults` ConfigMap specifies how frequently the Tekton
+sidecar log results container polls for step completion files written by steps in a TaskRun. Lower values (e.g., `10ms`)
+make the sidecar more responsive but may increase CPU usage; higher values (e.g., `1s`) reduce resource usage but may
+delay result collection. This value is used by the `sidecar-tekton-log-results` container and can be tuned for performance
+or test scenarios.
+
+**Example values:**
+- `100ms` (default)
+- `500ms`
+- `1s`
+- `10ms` (for fast polling in tests)
+
+**Note:** The `default-sidecar-log-polling-interval` setting is only applicable when results are created using the
+[sidecar approach](#enabling-larger-results-using-sidecar-logs).
 
 **Note:** The `_example` key in the provided [config-defaults.yaml](./../config/config-defaults.yaml)
 file lists the keys you can customize along with their default values.
