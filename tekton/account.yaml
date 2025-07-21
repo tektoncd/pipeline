@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: release-right-meow
+secrets:
+- name: release-secret
+- name: git-resolver-secret
+- name: release-images-secret
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kube-api-secret
+  annotations:
+    kubernetes.io/service-account.name: release-right-meow
+type: kubernetes.io/service-account-token
+
+---
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pipeline-role
+rules:
+- apiGroups: [""]
+  resources: ["services", "configmaps", "secrets"]
+  verbs: ["get", "create", "update", "patch", "list"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "create", "update", "patch", "list"]
+- apiGroups: ["tekton.dev"]
+  resources: ["pipelines", "pipelineruns", "tasks", "taskruns"]
+  verbs: ["get", "create", "update", "patch", "list"]
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pipeline-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pipeline-role
+subjects:
+- kind: ServiceAccount
+  name: release-right-meow

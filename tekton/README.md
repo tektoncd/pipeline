@@ -46,6 +46,8 @@ consumers of a project. In that case we'll make a patch release. To make one:
 
 ## Nightly releases
 
+### Existing approach:
+
 [The nightly release pipeline](release-pipeline.yaml) is
 [triggered nightly by Tekton](https://github.com/tektoncd/plumbing/tree/main/tekton).
 
@@ -207,3 +209,57 @@ The image which we use for this is built from
 
 _[go-containerregistry#383](https://github.com/google/go-containerregistry/issues/383)
 is about publishing a `ko` image, which hopefully we'll be able to move it._
+
+### GitHub Action based approach:
+
+The GitHub Actions workflow provides an alternative approach for automated nightly releases with enhanced CI/CD capabilities and better integration with GitHub infrastructure.
+
+[The nightly release workflow](../.github/workflows/nightly-release.yaml) is triggered daily and uses:
+
+- [release-nightly-pipeline.yaml](release-nightly-pipeline.yaml) - Tekton Pipeline for nightly releases
+- [publish-nightly.yaml](publish-nightly.yaml) - Tekton Task for building and publishing nightly images
+
+#### Key Features:
+
+**Automated Scheduling:**
+- Runs daily at 03:00 UTC via cron schedule
+- Supports manual triggering with customizable parameters
+- Intelligent change detection - only releases when there are recent commits (configurable)
+
+**Multi-mode Operation:**
+- **Production mode**: For `tektoncd/pipeline` repository with full release capabilities
+- **Fork mode**: For testing in forks with isolated buckets and registries
+
+#### Usage:
+
+**Scheduled Release:**
+The workflow runs automatically every night and will create a release if:
+- There have been commits in the last 25 hours, OR
+- Force release is enabled, OR
+- It's manually triggered
+
+**Manual Release:**
+```bash
+# Trigger via GitHub UI or CLI
+gh workflow run nightly-release.yaml \
+  --field kubernetes_version=v1.33.0 \
+  --field force_release=true \
+  --field dry_run=false
+```
+
+**Fork Testing:**
+For testing in forks, the workflow automatically:
+- Uses a test bucket pattern: `gs://tekton-releases-nightly-{repo-owner}`
+- Publishes to `ghcr.io/{owner}/pipeline/*` instead of production registry
+- Skips certain production-only validations
+
+#### Output:
+
+The workflow generates:
+- Container images tagged with `vYYYYMMDD-{sha7}` format
+- Release YAML manifests uploaded to GCS bucket
+- Multi-architecture image support
+- Comprehensive build logs and artifacts
+
+This approach provides better observability, easier debugging, and more flexible configuration compared to the traditional Tekton-only pipeline approach.
+
