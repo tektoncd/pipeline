@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -74,7 +75,7 @@ func encode(w io.Writer, v any) error {
 	return json.NewEncoder(w).Encode(v)
 }
 
-func waitForStepsToFinish(runDir string) error {
+func waitForStepsToFinish(runDir string, sleepInterval time.Duration) error {
 	steps := make(map[string]bool)
 	files, err := os.ReadDir(runDir)
 	if err != nil {
@@ -102,6 +103,9 @@ func waitForStepsToFinish(runDir string) error {
 			if exists, err = fileExists(stepFile + ".err"); exists || err != nil {
 				return err
 			}
+		}
+		if sleepInterval > 0 {
+			time.Sleep(sleepInterval)
 		}
 	}
 	return nil
@@ -143,7 +147,15 @@ func readResults(resultsDir, resultFile, stepName string, resultType SidecarLogR
 // in their results path and prints them in a structured way to its
 // stdout so that the reconciler can parse those logs.
 func LookForResults(w io.Writer, runDir string, resultsDir string, resultNames []string, stepResultsDir string, stepResults map[string][]string) error {
-	if err := waitForStepsToFinish(runDir); err != nil {
+	intervalStr := os.Getenv("SIDECAR_LOG_POLLING_INTERVAL")
+	if intervalStr == "" {
+		intervalStr = "100ms"
+	}
+	interval, err := time.ParseDuration(intervalStr)
+	if err != nil {
+		interval = 100 * time.Millisecond
+	}
+	if err := waitForStepsToFinish(runDir, interval); err != nil {
 		return fmt.Errorf("error while waiting for the steps to finish  %w", err)
 	}
 	results := make(chan SidecarLogResult)
@@ -205,7 +217,15 @@ func LookForResults(w io.Writer, runDir string, resultsDir string, resultNames [
 // If the provenance file exists, the function extracts artifact information, formats it into a
 // JSON string, and encodes it for output alongside relevant metadata (step name, artifact type).
 func LookForArtifacts(w io.Writer, names []string, runDir string) error {
-	if err := waitForStepsToFinish(runDir); err != nil {
+	intervalStr := os.Getenv("SIDECAR_LOG_POLLING_INTERVAL")
+	if intervalStr == "" {
+		intervalStr = "100ms"
+	}
+	interval, err := time.ParseDuration(intervalStr)
+	if err != nil {
+		interval = 100 * time.Millisecond
+	}
+	if err := waitForStepsToFinish(runDir, interval); err != nil {
 		return err
 	}
 
