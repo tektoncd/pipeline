@@ -23,9 +23,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/pprof"
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -605,6 +607,66 @@ func TestExtractStepAndResultFromSidecarResultName_Error(t *testing.T) {
 	wantErr := errors.New("invalid string step-foo-resultName : expected somtthing that looks like <stepName>.<resultName>")
 	if d := cmp.Diff(wantErr.Error(), err.Error()); d != "" {
 		t.Fatal(diff.PrintWantGot(d))
+	}
+}
+
+// TestWaitForStepsToFinish_Profile ensures that waitForStepsToFinish correctly waits for all step output files to appear before returning
+// The test creates a file called cpu.prof and starts Go's CPU profiler
+// A temporary directory is created to simulate the Tekton step run directory.
+// The test creates a large number of subdirectories e.g. step0, step1, ..., each representing a step in a TaskRun
+// A goroutine is started that, one by one, writes an out file in each step directory, with a small delay between each
+// The test calls the function and waits for it to complete and the profile is saved for later analysis
+// This is helpful to compare the impact of code changes, provides a reproducible way to profile and optimize the function waitForStepsToFinish
+func TestWaitForStepsToFinish_Profile(t *testing.T) {
+	f, err := os.Create("cpu.prof")
+	if err != nil {
+		t.Fatalf("could not create CPU profile: %v", err)
+	}
+	defer func(f *os.File) {
+		err := f.Close()
+		if err != nil {
+			return
+		}
+	}(f)
+	err = pprof.StartCPUProfile(f)
+	if err != nil {
+		return
+	}
+	defer pprof.StopCPUProfile()
+
+	// Setup: create a temp runDir with many fake step files
+	runDir := t.TempDir()
+	stepCount := 100
+	for i := range stepCount {
+		dir := filepath.Join(runDir, fmt.Sprintf("step%d", i))
+		err := os.MkdirAll(dir, 0755)
+		if err != nil {
+			return
+		}
+	}
+
+	// Simulate steps finishing one by one with a delay
+	go func() {
+		for i := range stepCount {
+			file := filepath.Join(runDir, fmt.Sprintf("step%d", i), "out")
+			err := os.WriteFile(file, []byte("done"), 0644)
+			if err != nil {
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}()
+
+	intervalStr := os.Getenv("SIDECAR_LOG_POLLING_INTERVAL")
+	if intervalStr == "" {
+		intervalStr = "100ms"
+	}
+	interval, err := time.ParseDuration(intervalStr)
+	if err != nil {
+		interval = 100 * time.Millisecond
+	}
+	if err := waitForStepsToFinish(runDir, interval); err != nil {
+		t.Fatalf("waitForStepsToFinish failed: %v", err)
 	}
 }
 
