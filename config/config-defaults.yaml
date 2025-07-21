@@ -149,3 +149,11 @@ data:
     #     limits:
     #       memory: "256Mi"
     #       cpu: "500m"
+
+    # default-sidecar-log-polling-interval specifies the polling interval for the Tekton sidecar log results container.
+    # This controls how frequently the sidecar checks for step completion files written by steps in a TaskRun.
+    # Lower values (e.g., "10ms") make the sidecar more responsive but may increase CPU usage; higher values (e.g., "1s")
+    # reduce resource usage but may delay result collection.
+    # This value is used by the sidecar-tekton-log-results container and can be tuned for performance or test scenarios.
+    # Example values: "100ms", "500ms", "1s"
+    default-sidecar-log-polling-interval: "100ms"

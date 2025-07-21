@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/tektoncd/pipeline/internal/artifactref"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -214,10 +215,11 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		tasklevel.ApplyTaskLevelComputeResources(steps, taskRun.Spec.ComputeResources)
 	}
 	windows := usesWindows(taskRun)
+	pollingInterval := config.FromContextOrDefaults(ctx).Defaults.DefaultSidecarLogPollingInterval
 	if sidecarLogsResultsEnabled {
 		if taskSpec.Results != nil || artifactsPathReferenced(steps) {
 			// create a results sidecar
-			resultsSidecar, err := createResultsSidecar(taskSpec, b.Images.SidecarLogResultsImage, setSecurityContext, windows)
+			resultsSidecar, err := createResultsSidecar(taskSpec, b.Images.SidecarLogResultsImage, setSecurityContext, windows, pollingInterval)
 			if err != nil {
 				return nil, err
 			}
@@ -631,7 +633,7 @@ func entrypointInitContainer(image string, steps []v1.Step, setSecurityContext, 
 // whether it will run on a windows node, and whether the sidecar should include a security context
 // that will allow it to run in namespaces with "restricted" pod security admission.
 // It will also provide arguments to the binary that allow it to surface the step results.
-func createResultsSidecar(taskSpec v1.TaskSpec, image string, setSecurityContext, windows bool) (v1.Sidecar, error) {
+func createResultsSidecar(taskSpec v1.TaskSpec, image string, setSecurityContext, windows bool, pollingInterval time.Duration) (v1.Sidecar, error) {
 	names := make([]string, 0, len(taskSpec.Results))
 	for _, r := range taskSpec.Results {
 		names = append(names, r.Name)
@@ -673,6 +675,12 @@ func createResultsSidecar(taskSpec v1.TaskSpec, image string, setSecurityContext
 		Name:    pipeline.ReservedResultsSidecarName,
 		Image:   image,
 		Command: command,
+		Env: []corev1.EnvVar{
+			{
+				Name:  "SIDECAR_LOG_POLLING_INTERVAL",
+				Value: pollingInterval.String(),
+			},
+		},
 	}
 	securityContext := LinuxSecurityContext
 	if windows {
