@@ -30,6 +30,8 @@ const (
 	CacheTimestampKey = "resolution.tekton.dev/cache-timestamp"
 	// CacheResolverTypeKey is the annotation key for the resolver type that cached it
 	CacheResolverTypeKey = "resolution.tekton.dev/cache-resolver-type"
+	// CacheValueTrue is the value used for cache annotations
+	CacheValueTrue = "true"
 )
 
 // AnnotatedResource wraps a ResolvedResource with cache annotations
@@ -45,7 +47,7 @@ func NewAnnotatedResource(resource resolutionframework.ResolvedResource, resolve
 		annotations = make(map[string]string)
 	}
 
-	annotations[CacheAnnotationKey] = "true"
+	annotations[CacheAnnotationKey] = CacheValueTrue
 	annotations[CacheTimestampKey] = time.Now().Format(time.RFC3339)
 	annotations[CacheResolverTypeKey] = resolverType
 

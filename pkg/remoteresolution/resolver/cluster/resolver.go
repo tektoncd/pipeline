@@ -86,7 +86,7 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 		return cluster.ValidateParams(ctx, req.Params)
 	}
 	// Remove this error once validate url has been implemented.
-	return errors.New("cannot validate request. the Validate method has not been implemented.")
+	return errors.New("cannot validate request. the Validate method has not been implemented")
 }
 
 // Resolve performs the work of fetching a resource from a namespace with the given
@@ -95,7 +95,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	// Guard pattern: early return if no params
 	if len(req.Params) == 0 {
 		// Remove this error once resolution of url has been implemented.
-		return nil, errors.New("the Resolve method has not been implemented.")
+		return nil, errors.New("the Resolve method has not been implemented")
 	}
 
 	// Guard pattern: early return if disabled
