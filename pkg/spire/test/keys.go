@@ -31,8 +31,8 @@ import (
 func NewEC256Key(tb testing.TB) *ecdsa.PrivateKey {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-				tb.Fatalf("failed to marshal private key: %v", err)
-			}
+		tb.Fatalf("failed to marshal private key: %v", err)
+	}
 	return key
 }
 
@@ -41,8 +41,8 @@ func NewKeyID(tb testing.TB) string {
 	choices := make([]byte, 32)
 	_, err := rand.Read(choices)
 	if err != nil {
-				tb.Fatalf("failed to marshal private key: %v", err)
-			}
+		tb.Fatalf("failed to marshal private key: %v", err)
+	}
 	return keyIDFromBytes(choices)
 }
 

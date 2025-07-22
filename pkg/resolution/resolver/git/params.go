@@ -45,4 +45,6 @@ const (
 	ServerURLParam string = "serverURL"
 	// ConfigKeyParam is an optional string to provid which scm configuration to use from git resolver configmap
 	ConfigKeyParam string = "configKey"
+	// CacheParam is an optional string to enable caching of resolved resources
+	CacheParam string = "cache"
 )

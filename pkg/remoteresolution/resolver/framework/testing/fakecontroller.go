@@ -48,6 +48,9 @@ var (
 	now                      = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
 	testClock                = testclock.NewFakePassiveClock(now)
 	ignoreLastTransitionTime = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")
+	ignoreCacheTimestamp     = cmpopts.IgnoreMapEntries(func(k, v string) bool {
+		return strings.HasPrefix(k, "resolution.tekton.dev/cache")
+	})
 )
 
 // ResolverReconcileTestModifier is a function thaat will be invoked after the test assets and controller have been created
@@ -88,7 +91,7 @@ func RunResolverReconcileTest(ctx context.Context, t *testing.T, d test.Data, re
 		t.Fatalf("getting updated ResolutionRequest: %v", err)
 	}
 	if expectedStatus != nil {
-		if d := cmp.Diff(*expectedStatus, reconciledRR.Status, ignoreLastTransitionTime); d != "" {
+		if d := cmp.Diff(*expectedStatus, reconciledRR.Status, ignoreLastTransitionTime, ignoreCacheTimestamp); d != "" {
 			t.Errorf("ResolutionRequest status doesn't match %s", diff.PrintWantGot(d))
 			if expectedStatus.Data != "" && expectedStatus.Data != reconciledRR.Status.Data {
 				decodedExpectedData, err := base64.StdEncoding.Strict().DecodeString(expectedStatus.Data)

@@ -42,6 +42,7 @@ type RequestOptions struct {
 	Bundle          string
 	EntryName       string
 	Kind            string
+	Cache           string
 }
 
 // ResolvedResource wraps the content of a matched entry in a bundle.
@@ -226,4 +227,9 @@ func readRawLayer(layer v1.Layer) ([]byte, error) {
 	}
 
 	return contents, nil
+}
+
+// IsOCIPullSpecByDigest returns true if the given pullspec is specified by digest (contains '@sha256:').
+func IsOCIPullSpecByDigest(pullspec string) bool {
+	return strings.Contains(pullspec, "@sha256:")
 }

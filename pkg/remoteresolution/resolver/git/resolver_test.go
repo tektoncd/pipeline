@@ -42,6 +42,7 @@ import (
 	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frameworktesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
+	"github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
 	gitresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -56,7 +57,7 @@ func TestGetSelector(t *testing.T) {
 	sel := resolver.GetSelector(t.Context())
 	if typ, has := sel[common.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
-	} else if typ != labelValueGitResolverType {
+	} else if typ != LabelValueGitResolverType {
 		t.Fatalf("unexpected type: %q", typ)
 	}
 }
@@ -665,7 +666,7 @@ func TestResolve(t *testing.T) {
 			d := test.Data{
 				ConfigMaps: []*corev1.ConfigMap{{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      ConfigMapName,
+						Name:      git.ConfigMapName,
 						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
 					},
 					Data: cfg,
@@ -888,7 +889,7 @@ func createRequest(args *params) *v1beta1.ResolutionRequest {
 			Namespace:         "foo",
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels: map[string]string{
-				common.LabelKeyResolverType: labelValueGitResolverType,
+				common.LabelKeyResolverType: LabelValueGitResolverType,
 			},
 		},
 		Spec: v1beta1.ResolutionRequestSpec{
@@ -961,7 +962,7 @@ func resolverDisabledContext() context.Context {
 
 func createError(msg string) error {
 	return &common.GetResourceError{
-		ResolverName: gitResolverName,
+		ResolverName: ResolverName,
 		Key:          "foo/rr",
 		Original:     errors.New(msg),
 	}
