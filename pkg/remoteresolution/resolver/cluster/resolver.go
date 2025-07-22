@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
@@ -39,6 +40,16 @@ const (
 	ClusterResolverName string = "Cluster"
 
 	configMapName = "cluster-resolver-config"
+
+	// CacheModeAlways means always use cache regardless of resource checksum
+	CacheModeAlways = "always"
+	// CacheModeNever means never use cache regardless of resource checksum
+	CacheModeNever = "never"
+	// CacheModeAuto means use cache only when resource has a checksum
+	CacheModeAuto = "auto"
+
+	// CacheParam is the key for the cache mode in the params map
+	CacheParam = "cache"
 )
 
 var _ framework.Resolver = &Resolver{}
@@ -81,11 +92,104 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 // Resolve performs the work of fetching a resource from a namespace with the given
 // resolution spec.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
-	if len(req.Params) > 0 {
-		return cluster.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
+	// Guard pattern: early return if no params
+	if len(req.Params) == 0 {
+		// Remove this error once resolution of url has been implemented.
+		return nil, errors.New("the Resolve method has not been implemented.")
 	}
-	// Remove this error once resolution of url has been implemented.
-	return nil, errors.New("the Resolve method has not been implemented.")
+
+	// Guard pattern: early return if disabled
+	if cluster.IsDisabled(ctx) {
+		return nil, errors.New(cluster.DisabledError)
+	}
+
+	// Check if caching should be enabled
+	useCache := false
+	if len(req.Params) > 0 {
+		// Convert params to map for cache decision
+		paramsMap := make(map[string]string)
+		for _, p := range req.Params {
+			paramsMap[p.Name] = p.Value.StringVal
+		}
+
+		// For auto mode, we need to resolve first to get the checksum
+		// Then decide if we should cache based on the checksum
+		if paramsMap[CacheParam] == CacheModeAuto || paramsMap[CacheParam] == "" {
+			// Resolve first to get checksum
+			resource, err := cluster.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
+			if err != nil {
+				return nil, err
+			}
+
+			// Get checksum from the resolved resource
+			if clusterResource, ok := resource.(*cluster.ResolvedClusterResource); ok {
+				useCache = ShouldUseCache(paramsMap, clusterResource.Checksum)
+			}
+
+			// If we should cache, check cache first
+			if useCache {
+				// Initialize cache logger
+				cache.GetGlobalCache().InitializeLogger(ctx)
+
+				// Generate cache key
+				cacheKey, err := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
+				if err != nil {
+					return nil, err
+				}
+
+				// Check cache first
+				if cached, ok := cache.GetGlobalCache().Get(cacheKey); ok {
+					if cachedResource, ok := cached.(resolutionframework.ResolvedResource); ok {
+						// Return annotated resource to indicate it came from cache
+						return cache.NewAnnotatedResource(cachedResource, LabelValueClusterResolverType), nil
+					}
+				}
+
+				// Cache the result
+				cacheKey, _ = cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
+				cache.GetGlobalCache().Add(cacheKey, resource)
+			}
+
+			return resource, nil
+		} else {
+			// For always/never modes, decide upfront
+			useCache = ShouldUseCache(paramsMap, nil) // checksum not needed for always/never
+		}
+	}
+
+	// If caching is enabled, check cache first
+	if useCache {
+		// Initialize cache logger
+		cache.GetGlobalCache().InitializeLogger(ctx)
+
+		// Generate cache key
+		cacheKey, err := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
+		if err != nil {
+			return nil, err
+		}
+
+		// Check cache first
+		if cached, ok := cache.GetGlobalCache().Get(cacheKey); ok {
+			if cachedResource, ok := cached.(resolutionframework.ResolvedResource); ok {
+				// Return annotated resource to indicate it came from cache
+				return cache.NewAnnotatedResource(cachedResource, LabelValueClusterResolverType), nil
+			}
+		}
+	}
+
+	// Resolve the resource
+	resource, err := cluster.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
+	if err != nil {
+		return nil, err
+	}
+
+	// Cache the result if caching is enabled
+	if useCache {
+		cacheKey, _ := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
+		cache.GetGlobalCache().Add(cacheKey, resource)
+	}
+
+	return resource, nil
 }
 
 var _ resolutionframework.ConfigWatcher = &Resolver{}
@@ -93,4 +197,25 @@ var _ resolutionframework.ConfigWatcher = &Resolver{}
 // GetConfigName returns the name of the cluster resolver's configmap.
 func (r *Resolver) GetConfigName(context.Context) string {
 	return configMapName
+}
+
+// HasResourceChecksum checks if the given resource has a valid checksum.
+// This is used to determine if caching should be enabled in auto mode.
+func HasResourceChecksum(checksum []byte) bool {
+	return len(checksum) > 0
+}
+
+// ShouldUseCache determines if caching should be used based on the cache mode and resource checksum.
+func ShouldUseCache(params map[string]string, checksum []byte) bool {
+	cacheMode := params[CacheParam]
+	switch cacheMode {
+	case CacheModeAlways:
+		return true
+	case CacheModeNever:
+		return false
+	case CacheModeAuto, "": // default to auto if not specified
+		return HasResourceChecksum(checksum)
+	default: // invalid cache mode defaults to auto
+		return HasResourceChecksum(checksum)
+	}
 }
