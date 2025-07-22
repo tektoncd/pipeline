@@ -37,6 +37,7 @@ const (
 	CacheAnnotationKey   = "resolution.tekton.dev/cached"
 	CacheTimestampKey    = "resolution.tekton.dev/cache-timestamp"
 	CacheResolverTypeKey = "resolution.tekton.dev/cache-resolver-type"
+	CacheValueTrue       = "true"
 )
 
 var cacheResolverFeatureFlags = requireAllGates(map[string]string{
@@ -362,6 +363,7 @@ spec:
 
 // Helper functions
 func createBundleTaskRun(t *testing.T, namespace, name, cacheMode string) *v1.TaskRun {
+	t.Helper()
 	return parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -382,6 +384,7 @@ spec:
 }
 
 func createGitTaskRun(t *testing.T, namespace, name, revision string) *v1.TaskRun {
+	t.Helper()
 	return parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -400,6 +403,7 @@ spec:
 }
 
 func createClusterTaskRun(t *testing.T, namespace, name, taskName, cacheMode string) *v1.TaskRun {
+	t.Helper()
 	return parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -420,6 +424,7 @@ spec:
 }
 
 func getResolutionRequest(ctx context.Context, t *testing.T, c *clients, namespace, taskRunName string) *v1alpha1.ResolutionRequest {
+	t.Helper()
 	// Get the TaskRun to find its labels
 	_, err := c.V1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
 	if err != nil {
@@ -452,5 +457,5 @@ func hasCacheAnnotation(annotations map[string]string) bool {
 		return false
 	}
 	cached, exists := annotations[CacheAnnotationKey]
-	return exists && cached == "true"
+	return exists && cached == CacheValueTrue
 }

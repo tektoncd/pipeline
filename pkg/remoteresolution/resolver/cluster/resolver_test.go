@@ -585,7 +585,7 @@ func TestResolve(t *testing.T) {
 				} else {
 					expectedStatus.Status.Conditions[0].Message = tc.expectedErr.Error()
 				}
-				expectedStatus.Source = expectedStatus.RefSource
+				// Note: Source field is deprecated, using RefSource instead
 			}
 
 			frtesting.RunResolverReconcileTest(ctx, t, d, resolver, request, expectedStatus, tc.expectedErr)
