@@ -102,7 +102,7 @@ func (repo *repository) execGit(ctx context.Context, subCmd string, args ...stri
 
 	args = append([]string{subCmd}, args...)
 
-	// We need to configure  which directory contains the cloned repository since `cd`ing
+	// We need to configure which directory contains the cloned repository since `cd`ing
 	// into the repository directory is not concurrency-safe
 	configArgs := []string{"-C", repo.directory}
 
@@ -118,6 +118,7 @@ func (repo *repository) execGit(ctx context.Context, subCmd string, args ...stri
 		)
 		configArgs = append(configArgs, "--config-env", "http.extraHeader=GIT_AUTH_HEADER")
 	}
+
 	cmd := repo.executor(ctx, "git", append(configArgs, args...)...)
 	cmd.Env = append(cmd.Environ(), env...)
 

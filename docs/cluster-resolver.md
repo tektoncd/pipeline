@@ -18,6 +18,20 @@ This Resolver responds to type `cluster`.
 | `kind`      | The kind of resource to fetch.                        | `task`, `pipeline`, `stepaction` |
 | `name`      | The name of the resource to fetch.                    | `some-pipeline`, `some-task`     |
 | `namespace` | The namespace in the cluster containing the resource. | `default`, `other-namespace`     |
+| `cache`     | Optional cache mode for the resolver.                 | `always`, `never`, `auto`        |
+
+### Cache Parameter
+
+The `cache` parameter controls whether the cluster resolver caches resolved resources:
+
+| Cache Mode | Description |
+|------------|-------------|
+| `always`   | Always cache the resolved resource, regardless of whether it has an immutable reference. |
+| `never`    | Never cache the resolved resource. |
+| `auto`     | **Cluster resolver behavior**: Never cache (cluster resources lack immutable references). |
+| (not specified) | **Default behavior**: Never cache (same as `auto` for cluster resolver). |
+
+**Note**: The cluster resolver only caches when `cache: always` is explicitly specified. This is because cluster resources (Tasks, Pipelines, etc.) do not have immutable references like Git commit hashes or bundle digests, making automatic caching unreliable.
 
 ## Requirements
 
@@ -61,6 +75,48 @@ spec:
       value: some-task
     - name: namespace
       value: namespace-containing-task
+```
+
+### Task Resolution with Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: remote-task-reference-cached
+spec:
+  taskRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: task
+    - name: name
+      value: some-task
+    - name: namespace
+      value: namespace-containing-task
+    - name: cache
+      value: always
+```
+
+### Task Resolution without Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: remote-task-reference-no-cache
+spec:
+  taskRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: task
+    - name: name
+      value: some-task
+    - name: namespace
+      value: namespace-containing-task
+    - name: cache
+      value: never
 ```
 
 ### StepAction Resolution

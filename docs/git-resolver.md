@@ -26,6 +26,7 @@ This Resolver responds to type `git`.
 | `pathInRepo`  | Where to find the file in the repo.                                                                                                                                        | `task/golang-build/0.3/golang-build.yaml`                   |
 | `serverURL`   | An optional server URL (that includes the https:// prefix) to connect for API operations                                                                                   | `https:/github.mycompany.com`                               |
 | `scmType`     | An optional SCM type to use for API operations                                                                                                                             | `github`, `gitlab`, `gitea`                                 |
+| `cache`       | Controls caching behavior for the resolved resource                                                                                                                         | `always`, `never`, `auto`                                   |
 
 ## Requirements
 
@@ -54,6 +55,16 @@ for the name, namespace and defaults that the resolver ships with.
 | `api-token-secret-key`       | The key within the token secret containing the actual secret. Required if using the authenticated API with `org` and `repo`.                                  | `oauth`, `token`                                                 |
 | `api-token-secret-namespace` | The namespace containing the token secret, if not `default`.                                                                                                  | `other-namespace`                                                |
 | `default-org`                | The default organization to look for repositories under when using the authenticated API, if not specified in the resolver parameters. Optional.              | `tektoncd`, `kubernetes`                                         |
+
+### Caching Options
+
+The git resolver supports caching of resolved resources to improve performance. The caching behavior can be configured using the `cache` option:
+
+| Cache Value | Description |
+|-------------|-------------|
+| `always` | Always cache resolved resources. This is the most aggressive caching strategy and will cache all resolved resources regardless of their source. |
+| `never` | Never cache resolved resources. This disables caching completely. |
+| `auto` | Caching will only occur when revision is a commit hash. (default) |
 
 ## Usage
 

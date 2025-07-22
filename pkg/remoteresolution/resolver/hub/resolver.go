@@ -15,7 +15,6 @@ package hub
 
 import (
 	"context"
-	"errors"
 
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
@@ -70,18 +69,10 @@ func (r *Resolver) GetSelector(context.Context) map[string]string {
 
 // Validate ensures parameters from a request are as expected.
 func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestSpec) error {
-	if len(req.Params) > 0 {
-		return hub.ValidateParams(ctx, req.Params, r.TektonHubURL)
-	}
-	// Remove this error once validate url has been implemented.
-	return errors.New("cannot validate request. the Validate method has not been implemented.")
+	return hub.ValidateParams(ctx, req.Params, r.TektonHubURL)
 }
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
-	if len(req.Params) > 0 {
-		return hub.Resolve(ctx, req.Params, r.TektonHubURL, r.ArtifactHubURL)
-	}
-	// Remove this error once resolution of url has been implemented.
-	return nil, errors.New("the Resolve method has not been implemented.")
+	return hub.Resolve(ctx, req.Params, r.TektonHubURL, r.ArtifactHubURL)
 }

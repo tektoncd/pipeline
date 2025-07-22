@@ -102,10 +102,10 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 rules:
-    # All system:authenticated users needs to have access
-    # of the pipelines-info ConfigMap even if they don't
-    # have access to the other resources present in the
-    # installed namespace.
+  # All system:authenticated users needs to have access
+  # of the pipelines-info ConfigMap even if they don't
+  # have access to the other resources present in the
+  # installed namespace.
   - apiGroups: [""]
     resources: ["configmaps"]
     resourceNames: ["pipelines-info"]

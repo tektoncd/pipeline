@@ -39,6 +39,9 @@ import (
 const (
 	disabledError = "cannot handle resolution request, enable-cluster-resolver feature flag not true"
 
+	// DisabledError is the error message returned when the cluster resolver is disabled
+	DisabledError = disabledError
+
 	// LabelValueClusterResolverType is the value to use for the
 	// resolution.tekton.dev/type label on resource requests
 	LabelValueClusterResolverType string = "cluster"
@@ -287,6 +290,11 @@ func isInCommaSeparatedList(checkVal string, commaList string) bool {
 func isDisabled(ctx context.Context) bool {
 	cfg := resolverconfig.FromContextOrDefaults(ctx)
 	return !cfg.FeatureFlags.EnableClusterResolver
+}
+
+// IsDisabled returns true if the cluster resolver is disabled.
+func IsDisabled(ctx context.Context) bool {
+	return isDisabled(ctx)
 }
 
 func ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
