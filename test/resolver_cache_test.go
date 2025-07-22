@@ -30,6 +30,7 @@ import (
 	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 const (
@@ -270,6 +271,95 @@ func TestCacheConfiguration(t *testing.T) {
 	}
 }
 
+// TestClusterResolverCache validates that cluster resolver caching works correctly
+func TestClusterResolverCache(t *testing.T) {
+	ctx := t.Context()
+	c, namespace := setup(ctx, t, clusterFeatureFlags)
+
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	// Create a Task in the namespace for testing
+	taskName := helpers.ObjectNameForTest(t)
+	exampleTask := parse.MustParseV1Task(t, fmt.Sprintf(`
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - name: echo
+    image: mirror.gcr.io/ubuntu
+    script: |
+      #!/usr/bin/env bash
+      echo "Hello from cluster resolver cache test"
+`, taskName, namespace))
+
+	_, err := c.V1TaskClient.Create(ctx, exampleTask, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", taskName, err)
+	}
+
+	// Test 1: First request should not be cached
+	tr1 := createClusterTaskRun(t, namespace, "test-cluster-1", taskName, "always")
+	_, err = c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create first TaskRun: %s", err)
+	}
+
+	// Wait for completion and verify no cache annotation
+	if err := WaitForTaskRunState(ctx, c, tr1.Name, TaskRunSucceed(tr1.Name), "TaskRunSuccess", v1Version); err != nil {
+		t.Fatalf("Error waiting for first TaskRun to finish: %s", err)
+	}
+
+	// Get the resolved resource and verify it's NOT cached
+	resolutionRequest1 := getResolutionRequest(ctx, t, c, namespace, tr1.Name)
+	if hasCacheAnnotation(resolutionRequest1.Status.Annotations) {
+		t.Error("First request should not be cached")
+	}
+
+	// Test 2: Second request with same parameters should be cached
+	tr2 := createClusterTaskRun(t, namespace, "test-cluster-2", taskName, "always")
+	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create second TaskRun: %s", err)
+	}
+
+	if err := WaitForTaskRunState(ctx, c, tr2.Name, TaskRunSucceed(tr2.Name), "TaskRunSuccess", v1Version); err != nil {
+		t.Fatalf("Error waiting for second TaskRun to finish: %s", err)
+	}
+
+	// Verify it IS cached
+	resolutionRequest2 := getResolutionRequest(ctx, t, c, namespace, tr2.Name)
+	if !hasCacheAnnotation(resolutionRequest2.Status.Annotations) {
+		t.Error("Second request should be cached")
+	}
+
+	// Verify cache annotations have correct values
+	if resolutionRequest2.Status.Annotations[CacheResolverTypeKey] != "cluster" {
+		t.Errorf("Expected resolver type 'cluster', got '%s'", resolutionRequest2.Status.Annotations[CacheResolverTypeKey])
+	}
+
+	// Test 3: Request with different parameters should not be cached
+	tr3 := createClusterTaskRun(t, namespace, "test-cluster-3", taskName, "never")
+	_, err = c.V1TaskRunClient.Create(ctx, tr3, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create third TaskRun: %s", err)
+	}
+
+	if err := WaitForTaskRunState(ctx, c, tr3.Name, TaskRunSucceed(tr3.Name), "TaskRunSuccess", v1Version); err != nil {
+		t.Fatalf("Error waiting for third TaskRun to finish: %s", err)
+	}
+
+	resolutionRequest3 := getResolutionRequest(ctx, t, c, namespace, tr3.Name)
+	if hasCacheAnnotation(resolutionRequest3.Status.Annotations) {
+		t.Error("Request with cache=never should not be cached")
+	}
+}
+
 // Helper functions
 func createBundleTaskRun(t *testing.T, namespace, name, cacheMode string) *v1.TaskRun {
 	return parse.MustParseV1TaskRun(t, fmt.Sprintf(`
@@ -307,6 +397,26 @@ spec:
     - name: revision
       value: %s
 `, name, namespace, revision))
+}
+
+func createClusterTaskRun(t *testing.T, namespace, name, taskName, cacheMode string) *v1.TaskRun {
+	return parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: task
+    - name: name
+      value: %s
+    - name: namespace
+      value: %s
+    - name: cache
+      value: %s
+`, name, namespace, taskName, namespace, cacheMode))
 }
 
 func getResolutionRequest(ctx context.Context, t *testing.T, c *clients, namespace, taskRunName string) *v1alpha1.ResolutionRequest {

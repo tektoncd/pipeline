@@ -112,6 +112,134 @@ func TestValidateNotEnabled(t *testing.T) {
 	}
 }
 
+func TestHasResourceChecksum(t *testing.T) {
+	tests := []struct {
+		name     string
+		checksum []byte
+		expected bool
+	}{
+		{
+			name:     "valid checksum",
+			checksum: []byte{1, 2, 3, 4},
+			expected: true,
+		},
+		{
+			name:     "empty checksum",
+			checksum: []byte{},
+			expected: false,
+		},
+		{
+			name:     "nil checksum",
+			checksum: nil,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := cluster.HasResourceChecksum(tt.checksum)
+			if result != tt.expected {
+				t.Errorf("HasResourceChecksum(%v) = %v, want %v", tt.checksum, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestShouldUseCache(t *testing.T) {
+	tests := []struct {
+		name     string
+		params   map[string]string
+		checksum []byte
+		expected bool
+	}{
+		{
+			name: "always mode with checksum",
+			params: map[string]string{
+				cluster.CacheParam: cluster.CacheModeAlways,
+			},
+			checksum: []byte{1, 2, 3, 4},
+			expected: true,
+		},
+		{
+			name: "always mode without checksum",
+			params: map[string]string{
+				cluster.CacheParam: cluster.CacheModeAlways,
+			},
+			checksum: []byte{},
+			expected: true,
+		},
+		{
+			name: "never mode with checksum",
+			params: map[string]string{
+				cluster.CacheParam: cluster.CacheModeNever,
+			},
+			checksum: []byte{1, 2, 3, 4},
+			expected: false,
+		},
+		{
+			name: "never mode without checksum",
+			params: map[string]string{
+				cluster.CacheParam: cluster.CacheModeNever,
+			},
+			checksum: []byte{},
+			expected: false,
+		},
+		{
+			name: "auto mode with checksum",
+			params: map[string]string{
+				cluster.CacheParam: cluster.CacheModeAuto,
+			},
+			checksum: []byte{1, 2, 3, 4},
+			expected: true,
+		},
+		{
+			name: "auto mode without checksum",
+			params: map[string]string{
+				cluster.CacheParam: cluster.CacheModeAuto,
+			},
+			checksum: []byte{},
+			expected: false,
+		},
+		{
+			name:     "default mode (auto) with checksum",
+			params:   map[string]string{},
+			checksum: []byte{1, 2, 3, 4},
+			expected: true,
+		},
+		{
+			name:     "default mode (auto) without checksum",
+			params:   map[string]string{},
+			checksum: []byte{},
+			expected: false,
+		},
+		{
+			name: "invalid mode defaults to auto with checksum",
+			params: map[string]string{
+				cluster.CacheParam: "invalid",
+			},
+			checksum: []byte{1, 2, 3, 4},
+			expected: true,
+		},
+		{
+			name: "invalid mode defaults to auto without checksum",
+			params: map[string]string{
+				cluster.CacheParam: "invalid",
+			},
+			checksum: []byte{},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := cluster.ShouldUseCache(tt.params, tt.checksum)
+			if result != tt.expected {
+				t.Errorf("ShouldUseCache(%v, %v) = %v, want %v", tt.params, tt.checksum, result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestValidateFailure(t *testing.T) {
 	testCases := []struct {
 		name        string
