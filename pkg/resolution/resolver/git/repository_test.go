@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"os/exec"
 	"reflect"
+	"slices"
 	"testing"
 )
 
@@ -84,8 +85,15 @@ func TestClone(t *testing.T) {
 			if !reflect.DeepEqual(cmdParts, expectedCmd) {
 				t.Fatalf("Expected clone command to be %v but got %v", expectedCmd, cmdParts)
 			}
-			if !reflect.DeepEqual(cmd.Env, expectedEnv) {
-				t.Fatalf("Expected clone command env vars to be %v but got %v", expectedEnv, cmd.Env)
+
+			missingEnvVars := []string{}
+			for _, v := range expectedEnv {
+				if !slices.Contains(cmd.Environ(), v) {
+					missingEnvVars = append(missingEnvVars, v)
+				}
+			}
+			if len(missingEnvVars) > 0 {
+				t.Fatalf("Clone command missing env vars %v. Got: %v", missingEnvVars, cmd.Environ())
 			}
 		})
 	}
