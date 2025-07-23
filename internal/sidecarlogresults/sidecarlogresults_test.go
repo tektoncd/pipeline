@@ -871,3 +871,32 @@ func mustJSON(data any) string {
 	}
 	return string(marshal)
 }
+
+func TestGetSidecarLogPollingInterval(t *testing.T) {
+	tests := []struct {
+		name      string
+		setEnv    string
+		expect    time.Duration
+		wantError bool
+	}{
+		{"empty env", "", 100 * time.Millisecond, false},
+		{"valid duration", "250ms", 250 * time.Millisecond, false},
+		{"invalid duration", "notaduration", 100 * time.Millisecond, true},
+		{"custom value", "1s", 1 * time.Second, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("SIDECAR_LOG_POLLING_INTERVAL", tc.setEnv)
+			got, err := getSidecarLogPollingInterval()
+			if tc.wantError && err == nil {
+				t.Errorf("expected error, got nil")
+			}
+			if !tc.wantError && err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if got != tc.expect {
+				t.Errorf("got %v, want %v", got, tc.expect)
+			}
+		})
+	}
+}
