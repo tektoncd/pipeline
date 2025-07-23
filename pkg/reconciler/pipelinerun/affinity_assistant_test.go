@@ -577,54 +577,56 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCs_Failure(t *testing.T) {
 		name:        "pvc creation failed - per workspace",
 		failureType: "pvc",
 		aaBehavior:  aa.AffinityAssistantPerWorkspace,
-		expectedErr: fmt.Errorf("%w: failed to create PVC pvc-b9eea16dce: error creating persistentvolumeclaims", ErrPvcCreationFailed),
+		expectedErr: fmt.Errorf("%w for pvc-b9eea16dce: error creating persistentvolumeclaims", ErrPvcCreationFailed),
 	}, {
 		name:        "pvc creation failed - disabled",
 		failureType: "pvc",
 		aaBehavior:  aa.AffinityAssistantDisabled,
-		expectedErr: fmt.Errorf("%w: failed to create PVC pvc-b9eea16dce: error creating persistentvolumeclaims", ErrPvcCreationFailed),
+		expectedErr: fmt.Errorf("%w for pvc-b9eea16dce: error creating persistentvolumeclaims", ErrPvcCreationFailed),
 	}}
 
 	for _, tc := range testCases {
-		ctx := t.Context()
-		kubeClientSet := fakek8s.NewSimpleClientset()
-		c := Reconciler{
-			KubeClientSet: kubeClientSet,
-			pvcHandler:    volumeclaim.NewPVCHandler(kubeClientSet, zap.NewExample().Sugar()),
-		}
-
-		switch tc.failureType {
-		case "pvc":
-			c.KubeClientSet.CoreV1().(*fake.FakeCoreV1).PrependReactor("create", "persistentvolumeclaims",
-				func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
-					return true, &corev1.PersistentVolumeClaim{}, errors.New("error creating persistentvolumeclaims")
-				})
-		case "statefulset":
-			c.KubeClientSet.CoreV1().(*fake.FakeCoreV1).PrependReactor("create", "statefulsets",
-				func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
-					return true, &appsv1.StatefulSet{}, errors.New("error creating statefulsets")
-				})
-		}
-
-		err := c.createOrUpdateAffinityAssistantsAndPVCs(ctx, testPRWithVolumeClaimTemplate, tc.aaBehavior)
-
-		if err == nil {
-			t.Errorf("expect error from createOrUpdateAffinityAssistantsAndPVCs but got nil")
-		}
-
-		switch tc.failureType {
-		case "pvc":
-			if !errors.Is(err, ErrPvcCreationFailed) {
-				t.Errorf("expected err type mismatching, expecting %v but got: %v", ErrPvcCreationFailed, err)
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+			kubeClientSet := fakek8s.NewSimpleClientset()
+			c := Reconciler{
+				KubeClientSet: kubeClientSet,
+				pvcHandler:    volumeclaim.NewPVCHandler(kubeClientSet, zap.NewExample().Sugar()),
 			}
-		case "statefulset":
-			if !errors.Is(err, ErrAffinityAssistantCreationFailed) {
-				t.Errorf("expected err type mismatching, expecting %v but got: %v", ErrAffinityAssistantCreationFailed, err)
+
+			switch tc.failureType {
+			case "pvc":
+				c.KubeClientSet.CoreV1().(*fake.FakeCoreV1).PrependReactor("create", "persistentvolumeclaims",
+					func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+						return true, &corev1.PersistentVolumeClaim{}, errors.New("error creating persistentvolumeclaims")
+					})
+			case "statefulset":
+				c.KubeClientSet.CoreV1().(*fake.FakeCoreV1).PrependReactor("create", "statefulsets",
+					func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+						return true, &appsv1.StatefulSet{}, errors.New("error creating statefulsets")
+					})
 			}
-		}
-		if d := cmp.Diff(tc.expectedErr.Error(), err.Error()); d != "" {
-			t.Errorf("expected err mismatching: %v", diff.PrintWantGot(d))
-		}
+
+			err := c.createOrUpdateAffinityAssistantsAndPVCs(ctx, testPRWithVolumeClaimTemplate, tc.aaBehavior)
+
+			if err == nil {
+				t.Errorf("expect error from createOrUpdateAffinityAssistantsAndPVCs but got nil")
+			}
+
+			switch tc.failureType {
+			case "pvc":
+				if !errors.Is(err, ErrPvcCreationFailed) {
+					t.Errorf("expected err type mismatching, expecting %v but got: %v", ErrPvcCreationFailed, err)
+				}
+			case "statefulset":
+				if !errors.Is(err, ErrAffinityAssistantCreationFailed) {
+					t.Errorf("expected err type mismatching, expecting %v but got: %v", ErrAffinityAssistantCreationFailed, err)
+				}
+			}
+			if d := cmp.Diff(tc.expectedErr.Error(), err.Error()); d != "" {
+				t.Errorf("expected err mismatching: %v", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
