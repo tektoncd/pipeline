@@ -60,7 +60,6 @@ var _ framework.Resolver = &Resolver{}
 // Resolver implements a framework.Resolver that can fetch files from OCI bundles.
 type Resolver struct {
 	kubeClientSet kubernetes.Interface
-	cache         *cache.ResolverCache
 
 	// Function properties for testing
 	resolveRequestFunc func(ctx context.Context, kubeClient kubernetes.Interface, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error)
@@ -137,9 +136,9 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	}
 
 	// Check cache first if caching is enabled
-	if ShouldUseCache(opts) && r.cache != nil {
+	if ShouldUseCache(opts) {
 		// Initialize cache logger
-		r.cache.InitializeLogger(ctx)
+		cache.GetGlobalCache().InitializeLogger(ctx)
 
 		// Generate cache key
 		cacheKey, err := cache.GenerateCacheKey(LabelValueBundleResolverType, req.Params)
@@ -148,7 +147,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		}
 
 		// Check cache first
-		if cached, ok := r.cache.Get(cacheKey); ok {
+		if cached, ok := cache.GetGlobalCache().Get(cacheKey); ok {
 			if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
 				// Return annotated resource to indicate it came from cache
 				return cache.NewAnnotatedResource(resource, LabelValueBundleResolverType), nil
@@ -162,9 +161,9 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	}
 
 	// Cache the result if caching is enabled
-	if ShouldUseCache(opts) && r.cache != nil {
+	if ShouldUseCache(opts) {
 		cacheKey, _ := cache.GenerateCacheKey(LabelValueBundleResolverType, req.Params)
-		r.cache.Add(cacheKey, resource)
+		cache.GetGlobalCache().Add(cacheKey, resource)
 	}
 
 	return resource, nil

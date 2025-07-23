@@ -251,7 +251,7 @@ func TestCacheConfiguration(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tr := createBundleTaskRun(t, namespace, fmt.Sprintf("config-test-%s", tc.name), tc.cacheMode)
+			tr := createBundleTaskRun(t, namespace, "config-test-"+tc.name, tc.cacheMode)
 			_, err := c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatalf("Failed to create TaskRun: %s", err)
