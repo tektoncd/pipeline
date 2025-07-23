@@ -56,6 +56,9 @@ const (
 
 	DefaultSidecarLogPollingInterval = 100 * time.Millisecond
 
+	// DefaultStepRefConcurrencyLimit is the default concurrency limit for resolving step references.
+	DefaultStepRefConcurrencyLimit = 5
+
 	defaultTimeoutMinutesKey                = "default-timeout-minutes"
 	defaultServiceAccountKey                = "default-service-account"
 	defaultManagedByLabelValueKey           = "default-managed-by-label-value"
@@ -70,6 +73,7 @@ const (
 	defaultImagePullBackOffTimeout          = "default-imagepullbackoff-timeout"
 	defaultMaximumResolutionTimeout         = "default-maximum-resolution-timeout"
 	defaultSidecarLogPollingIntervalKey     = "default-sidecar-log-polling-interval"
+	DefaultStepRefConcurrencyLimitKey       = "default-step-ref-concurrency-limit"
 )
 
 // DefaultConfig holds all the default configurations for the config.
@@ -95,6 +99,7 @@ type Defaults struct {
 	// This value is loaded from the 'sidecar-log-polling-interval' key in the config-defaults ConfigMap.
 	// It is used to control the responsiveness and resource usage of the sidecar in both production and test environments.
 	DefaultSidecarLogPollingInterval time.Duration
+	DefaultStepRefConcurrencyLimit   int
 }
 
 // GetDefaultsConfigName returns the name of the configmap containing all
@@ -128,6 +133,7 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 		other.DefaultImagePullBackOffTimeout == cfg.DefaultImagePullBackOffTimeout &&
 		other.DefaultMaximumResolutionTimeout == cfg.DefaultMaximumResolutionTimeout &&
 		other.DefaultSidecarLogPollingInterval == cfg.DefaultSidecarLogPollingInterval &&
+		other.DefaultStepRefConcurrencyLimit == cfg.DefaultStepRefConcurrencyLimit &&
 		reflect.DeepEqual(other.DefaultForbiddenEnv, cfg.DefaultForbiddenEnv)
 }
 
@@ -143,6 +149,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		DefaultImagePullBackOffTimeout:    DefaultImagePullBackOffTimeout,
 		DefaultMaximumResolutionTimeout:   DefaultMaximumResolutionTimeout,
 		DefaultSidecarLogPollingInterval:  DefaultSidecarLogPollingInterval,
+		DefaultStepRefConcurrencyLimit:    DefaultStepRefConcurrencyLimit,
 	}
 
 	if defaultTimeoutMin, ok := cfgMap[defaultTimeoutMinutesKey]; ok {
@@ -235,6 +242,14 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 			return nil, fmt.Errorf("failed parsing default config %q", defaultSidecarPollingInterval)
 		}
 		tc.DefaultSidecarLogPollingInterval = interval
+	}
+
+	if DefaultStepRefConcurrencyLimit, ok := cfgMap[DefaultStepRefConcurrencyLimitKey]; ok {
+		stepRefConcurrencyLimit, err := strconv.ParseInt(DefaultStepRefConcurrencyLimit, 10, 0)
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing default config %q", DefaultStepRefConcurrencyLimitKey)
+		}
+		tc.DefaultStepRefConcurrencyLimit = int(stepRefConcurrencyLimit)
 	}
 
 	return &tc, nil
