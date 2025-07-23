@@ -3615,7 +3615,7 @@ spec:
 		Type:    "Succeeded",
 		Status:  "False",
 		Reason:  "TaskRunResolutionFailed",
-		Message: `stepactions.tekton.dev "noStepAction" not found`,
+		Message: `failed to resolve step ref for step "missing-step-action" (index 0): stepactions.tekton.dev "noStepAction" not found`,
 	}}
 	ignore := cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime")
 	if c := cmp.Diff(want, got, ignore); c != "" {

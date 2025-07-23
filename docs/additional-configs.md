@@ -34,6 +34,7 @@ installation.
   - [TaskRuns with `imagePullBackOff` Timeout](#taskruns-with-imagepullbackoff-timeout)
   - [Disabling Inline Spec in TaskRun and PipelineRun](#disabling-inline-spec-in-taskrun-and-pipelinerun)
   - [Exponential Backoff for TaskRun and CustomRun Creation](#exponential-backoff-for-taskrun-and-customrun-creation)
+  - [Limiting Step reference concurrency resolution](#limiting-step-reference-concurrency-resolution)
   - [Next steps](#next-steps)
 
 
@@ -781,6 +782,33 @@ If `enable-wait-exponential-backoff` is not set or is set to `"false"`, the cont
 ---
 
 **Note:** This feature is especially useful in clusters where webhook services (such as Kyverno, OPA, or custom admission controllers) may be temporarily unavailable or slow to respond.
+
+## Limiting Step reference concurrency resolution
+
+You can control the maximum number of concurrent goroutines that the Tekton controller uses to resolve steps referencing a `StepAction` via the `step.ref` field.
+
+When a `TaskRun` is processed, any step that uses a `ref` to a remote `StepAction` (e.g., one stored in a git repository or an OCI registry) triggers a fetch request. If a `Task` contains many such steps, the controller will attempt to resolve them all in parallel. This can lead to a "thundering herd" problem, potentially overwhelming remote servers, hitting API rate limits, saturating network resources, or placing excessive load on the Kubernetes API server and the Tekton controller itself.
+
+To mitigate this, Tekton Pipelines includes a configurable concurrency limit. By default, a sensible limit is already in place to ensure stability.
+
+#### Default Behavior
+
+If the `default-step-ref-concurrency-limit` key is not set in the `config-defaults` ConfigMap, Tekton Pipelines defaults to a concurrency limit of **5**. This provides a safe, built-in throttle without requiring any initial configuration.
+
+#### Overriding the Default
+
+You can override this default to better suit your environment's capacity (e.g., a high-capacity, self-hosted git server might allow for a higher limit). To change the limit, set the `default-step-ref-concurrency-limit` key in your `config-defaults` `ConfigMap`.
+
+**Example**: To increase the concurrency limit to 20:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-step-ref-concurrency-limit: "20"
+```
 
 ---
 
