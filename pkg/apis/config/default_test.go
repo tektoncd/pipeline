@@ -47,6 +47,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultImagePullBackOffTimeout:    time.Duration(5) * time.Second,
 				DefaultMaximumResolutionTimeout:   1 * time.Minute,
 				DefaultSidecarLogPollingInterval:  100 * time.Millisecond,
+				DefaultStepActionParallelismLimit: 5,
 			},
 			fileName: config.GetDefaultsConfigName(),
 		},
@@ -69,6 +70,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultImagePullBackOffTimeout:    0,
 				DefaultMaximumResolutionTimeout:   1 * time.Minute,
 				DefaultSidecarLogPollingInterval:  100 * time.Millisecond,
+				DefaultStepActionParallelismLimit: 5,
 			},
 			fileName: "config-defaults-with-pod-template",
 		},
@@ -94,6 +96,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultImagePullBackOffTimeout:    0,
 				DefaultMaximumResolutionTimeout:   1 * time.Minute,
 				DefaultSidecarLogPollingInterval:  100 * time.Millisecond,
+				DefaultStepActionParallelismLimit: 5,
 			},
 		},
 		{
@@ -108,6 +111,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultImagePullBackOffTimeout:    0,
 				DefaultMaximumResolutionTimeout:   1 * time.Minute,
 				DefaultSidecarLogPollingInterval:  100 * time.Millisecond,
+				DefaultStepActionParallelismLimit: 5,
 			},
 		},
 		{
@@ -125,6 +129,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultImagePullBackOffTimeout:    0,
 				DefaultMaximumResolutionTimeout:   1 * time.Minute,
 				DefaultSidecarLogPollingInterval:  100 * time.Millisecond,
+				DefaultStepActionParallelismLimit: 5,
 			},
 		},
 		{
@@ -139,6 +144,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultImagePullBackOffTimeout:    time.Duration(15) * time.Second,
 				DefaultMaximumResolutionTimeout:   1 * time.Minute,
 				DefaultSidecarLogPollingInterval:  100 * time.Millisecond,
+				DefaultStepActionParallelismLimit: 5,
 			},
 		},
 		{
@@ -153,6 +159,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultImagePullBackOffTimeout:       0,
 				DefaultMaximumResolutionTimeout:      1 * time.Minute,
 				DefaultSidecarLogPollingInterval:     100 * time.Millisecond,
+				DefaultStepActionParallelismLimit:    5,
 			},
 		},
 		{
@@ -203,6 +210,25 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 					},
 					"test": {},
 				},
+				DefaultStepActionParallelismLimit: 5,
+			},
+		},
+		{
+			expectedError: true,
+			fileName:      "config-defaults-step-action-parallelism-limit-err",
+		},
+		{
+			expectedError: false,
+			fileName:      "config-defaults-step-action-parallelism-limit",
+			expectedConfig: &config.Defaults{
+				DefaultStepActionParallelismLimit: 10,
+				DefaultTimeoutMinutes:             60,
+				DefaultServiceAccount:             "default",
+				DefaultManagedByLabelValue:        config.DefaultManagedByLabelValue,
+				DefaultMaxMatrixCombinationsCount: 256,
+				DefaultImagePullBackOffTimeout:    0,
+				DefaultMaximumResolutionTimeout:   1 * time.Minute,
+				DefaultSidecarLogPollingInterval:  100 * time.Millisecond,
 			},
 		},
 	}
@@ -228,6 +254,7 @@ func TestNewDefaultsFromEmptyConfigMap(t *testing.T) {
 		DefaultImagePullBackOffTimeout:    0,
 		DefaultMaximumResolutionTimeout:   1 * time.Minute,
 		DefaultSidecarLogPollingInterval:  100 * time.Millisecond,
+		DefaultStepActionParallelismLimit: 5,
 	}
 	verifyConfigFileWithExpectedConfig(t, DefaultsConfigEmptyName, expectedConfig)
 }
@@ -411,6 +438,25 @@ func TestEquals(t *testing.T) {
 			},
 			right: &config.Defaults{
 				DefaultMaximumResolutionTimeout: 10 * time.Minute,
+			},
+			expected: true,
+		},
+		{
+			name: "different default step action parallelism limit",
+			left: &config.Defaults{
+				DefaultStepActionParallelismLimit: 5,
+			},
+			right: &config.Defaults{
+				DefaultStepActionParallelismLimit: 10,
+			},
+			expected: false,
+		}, {
+			name: "same default step action parallelism limit",
+			left: &config.Defaults{
+				DefaultStepActionParallelismLimit: 5,
+			},
+			right: &config.Defaults{
+				DefaultStepActionParallelismLimit: 5,
 			},
 			expected: true,
 		},
