@@ -147,3 +147,23 @@ var _ resolutionframework.ConfigWatcher = &Resolver{}
 func (r *Resolver) GetConfigName(context.Context) string {
 	return configMapName
 }
+
+// ShouldUseCache determines whether caching should be used based on the cache mode parameter.
+// For cluster resolver, caching is only enabled when cache mode is "always".
+func ShouldUseCache(params map[string]string, checksum []byte) bool {
+	cacheMode, exists := params[CacheParam]
+	if !exists {
+		return false // No cache parameter means no caching
+	}
+
+	switch cacheMode {
+	case CacheModeAlways:
+		return true
+	case CacheModeNever:
+		return false
+	case CacheModeAuto:
+		return false // Cluster resolver doesn't cache in auto mode
+	default:
+		return false // Invalid cache mode means no caching
+	}
+}
