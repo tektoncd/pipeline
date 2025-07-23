@@ -147,13 +147,9 @@ func readResults(resultsDir, resultFile, stepName string, resultType SidecarLogR
 // in their results path and prints them in a structured way to its
 // stdout so that the reconciler can parse those logs.
 func LookForResults(w io.Writer, runDir string, resultsDir string, resultNames []string, stepResultsDir string, stepResults map[string][]string) error {
-	intervalStr := os.Getenv("SIDECAR_LOG_POLLING_INTERVAL")
-	if intervalStr == "" {
-		intervalStr = "100ms"
-	}
-	interval, err := time.ParseDuration(intervalStr)
+	interval, err := getSidecarLogPollingInterval()
 	if err != nil {
-		interval = 100 * time.Millisecond
+		return fmt.Errorf("error getting polling interval: %w", err)
 	}
 	if err := waitForStepsToFinish(runDir, interval); err != nil {
 		return fmt.Errorf("error while waiting for the steps to finish  %w", err)
@@ -217,13 +213,9 @@ func LookForResults(w io.Writer, runDir string, resultsDir string, resultNames [
 // If the provenance file exists, the function extracts artifact information, formats it into a
 // JSON string, and encodes it for output alongside relevant metadata (step name, artifact type).
 func LookForArtifacts(w io.Writer, names []string, runDir string) error {
-	intervalStr := os.Getenv("SIDECAR_LOG_POLLING_INTERVAL")
-	if intervalStr == "" {
-		intervalStr = "100ms"
-	}
-	interval, err := time.ParseDuration(intervalStr)
+	interval, err := getSidecarLogPollingInterval()
 	if err != nil {
-		interval = 100 * time.Millisecond
+		return fmt.Errorf("error getting polling interval: %w", err)
 	}
 	if err := waitForStepsToFinish(runDir, interval); err != nil {
 		return err
@@ -333,4 +325,19 @@ func extractArtifactsFromFile(filename string) (v1.Artifacts, error) {
 		return v1.Artifacts{}, fmt.Errorf("error reading the results file %w", err)
 	}
 	return parseArtifacts(b)
+}
+
+// getSidecarLogPollingInterval reads the SIDECAR_LOG_POLLING_INTERVAL environment variable,
+// parses it as a time.Duration, and returns the result. If the variable is not set or is invalid,
+// it defaults to 100ms.
+func getSidecarLogPollingInterval() (time.Duration, error) {
+	intervalStr := os.Getenv("SIDECAR_LOG_POLLING_INTERVAL")
+	if intervalStr == "" {
+		intervalStr = "100ms"
+	}
+	interval, err := time.ParseDuration(intervalStr)
+	if err != nil {
+		return 100 * time.Millisecond, err
+	}
+	return interval, nil
 }
