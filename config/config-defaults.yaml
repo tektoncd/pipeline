@@ -157,3 +157,6 @@ data:
     # This value is used by the sidecar-tekton-log-results container and can be tuned for performance or test scenarios.
     # Example values: "100ms", "500ms", "1s"
     default-sidecar-log-polling-interval: "100ms"
+
+    # default-step-action-parallelism-limit specifies the default limit for parallel StepAction resolution.
+    default-step-action-parallelism-limit: "5"
