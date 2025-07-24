@@ -64,6 +64,11 @@ spec:
       containers:
       - name: controller
         image: ko://github.com/tektoncd/pipeline/cmd/resolvers
+        command:
+        - /sbin/tini
+        - --
+        args:
+        - /ko-app/resolvers
         resources:
           requests:
             cpu: 100m
@@ -112,6 +117,7 @@ spec:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           runAsNonRoot: true
+          runAsUser: 65532
           capabilities:
             drop:
             - "ALL"
