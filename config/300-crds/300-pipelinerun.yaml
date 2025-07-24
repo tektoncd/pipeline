@@ -3895,6 +3895,11 @@ spec:
                               description: The name of the Step to override.
                               type: string
                         x-kubernetes-list-type: atomic
+                      timeout:
+                        description: |-
+                          Time after which the TaskRun times out.
+                          Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+                        type: string
                   x-kubernetes-list-type: atomic
                 taskRunTemplate:
                   description: TaskRunTemplate represent template of taskrun

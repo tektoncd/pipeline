@@ -949,6 +949,7 @@ spec:
       podTemplate:
         nodeSelector:
           disktype: ssd
+      timeout: "1h30m"
 ```
 {{% /tab %}}
 
@@ -966,12 +967,14 @@ spec:
       taskPodTemplate:
         nodeSelector:
           disktype: ssd
+      timeout: "1h30m"
 ```
 {{% /tab %}}
 {{< /tabs >}}
 
 If used with this `Pipeline`,  `build-task` will use the task specific `PodTemplate` (where `nodeSelector` has `disktype` equal to `ssd`)
-along with `securityContext` from the `pipelineRun.spec.podTemplate`.
+along with `securityContext` from the `pipelineRun.spec.podTemplate`. The task will also have a specific timeout of 1 hour and 30 minutes. This overrides any existing timeout already defined by the pipelineTask as well.
+
 `PipelineTaskRunSpec` may also contain `StepSpecs` and `SidecarSpecs`; see
 [Overriding `Task` `Steps` and `Sidecars`](./taskruns.md#overriding-task-steps-and-sidecars) for more information.
 
