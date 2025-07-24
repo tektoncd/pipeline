@@ -1,0 +1,33 @@
+# Copyright 2025 The Tekton Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+# This ConfigMap allows cluster operators to configure the exponential backoff
+# parameters used by Tekton Pipelines when retrying Kubernetes API operations,
+# such as creating TaskRuns or CustomRuns. Adjusting these values can help
+# tune retry behavior in response to webhook timeouts or transient errors.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-wait-exponential-backoff
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+data:
+  duration: "10s"         # The initial duration before the first retry (Go duration string, e.g. "1s").
+  factor: "2.0"          # The factor by which the duration increases after each retry (should not be negative).
+  jitter: "0.0"          # Jitter factor (0.0 = no jitter, 0.2 = up to 20% random additional wait).
+  steps: "5"            # The number of times the duration may change (number of backoff steps).
+  cap: "60s"             # The maximum duration between retries (Go duration string, e.g. "30s").

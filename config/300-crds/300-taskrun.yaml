@@ -1776,6 +1776,8 @@ spec:
                         enableStepActions:
                           description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
+                        enableWaitExponentialBackoff:
+                          type: boolean
                         enforceNonfalsifiability:
                           type: string
                         maxResultSize:
@@ -2062,6 +2064,8 @@ spec:
                                 type: boolean
                               enableStepActions:
                                 description: EnableStepActions is a no-op flag since StepActions are stable
+                                type: boolean
+                              enableWaitExponentialBackoff:
                                 type: boolean
                               enforceNonfalsifiability:
                                 type: string
@@ -3767,6 +3771,8 @@ spec:
                         enableStepActions:
                           description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
+                        enableWaitExponentialBackoff:
+                          type: boolean
                         enforceNonfalsifiability:
                           type: string
                         maxResultSize:
@@ -4019,6 +4025,8 @@ spec:
                                 type: boolean
                               enableStepActions:
                                 description: EnableStepActions is a no-op flag since StepActions are stable
+                                type: boolean
+                              enableWaitExponentialBackoff:
                                 type: boolean
                               enforceNonfalsifiability:
                                 type: string

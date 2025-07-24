@@ -33,6 +33,7 @@ installation.
   - [Pipelinerun with Affinity Assistant](#pipelineruns-with-affinity-assistant)
   - [TaskRuns with `imagePullBackOff` Timeout](#taskruns-with-imagepullbackoff-timeout)
   - [Disabling Inline Spec in TaskRun and PipelineRun](#disabling-inline-spec-in-taskrun-and-pipelinerun)
+  - [Exponential Backoff for TaskRun and CustomRun Creation](#exponential-backoff-for-taskrun-and-customrun-creation)
   - [Next steps](#next-steps)
 
 
@@ -729,6 +730,59 @@ data:
 Inline specifications can be disabled for specific resources only. To achieve that, set the disable-inline-spec flag to a comma-separated list of the desired resources. Valid values are pipeline, pipelinerun and taskrun.
 
 The default value of disable-inline-spec is "", which means inline specification is enabled in all cases.
+
+## Exponential Backoff for TaskRun and CustomRun Creation
+
+By default, when Tekton Pipelines attempts to create a TaskRun or CustomRun resource and encounters an error, the controller will requeue the PipelineRun for another reconciliation attempt after a short delay. However, this may not be sufficient in a heavily loaded or busy cluster, where transient errors such as webhook timeouts or network issues are more likely to occur.
+
+To improve robustness in environments where webhook timeouts or network errors are possible, you can enable an **exponential backoff retry strategy** for TaskRun and CustomRun creation by setting the `enable-wait-exponential-backoff` feature flag to `"true"` in the `feature-flags` ConfigMap:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags
+  namespace: tekton-pipelines
+data:
+  enable-wait-exponential-backoff: "true"
+```
+
+When this flag is enabled, the controller will retry TaskRun and CustomRun creation using an exponential backoff strategy if it encounters admission webhook timeouts (e.g., `"timeout"`).
+
+This helps mitigate failures due to temporary unavailability of webhooks or network disruptions.
+
+### Backoff Configuration
+
+You can further customize the backoff parameters (such as initial duration, factor, steps, and cap) using the `wait-exponential-backoff` ConfigMap:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wait-exponential-backoff
+  namespace: tekton-pipelines
+data:
+  duration: "1s"
+  factor: "2.0"
+  jitter: "0.0"
+  steps: "10"
+  cap: "30s"
+```
+
+- **duration**: Initial wait time before the first retry.
+- **factor**: Multiplier for each subsequent retry interval.
+- **steps**: Maximum number of retry attempts.
+- **cap**: Maximum wait time between retries.
+
+### Default Behavior
+
+If `enable-wait-exponential-backoff` is not set or is set to `"false"`, the controller will rely on its standard reconcilation loop to retry TaskRun or CustomRun creation after a short delay when failures occur due to webhook or network errors.
+
+---
+
+**Note:** This feature is especially useful in clusters where webhook services (such as Kyverno, OPA, or custom admission controllers) may be temporarily unavailable or slow to respond.
+
+---
 
 ## Next steps
 
