@@ -24,6 +24,8 @@ weight: 204
     - [Mapping <code>ServiceAccount</code> credentials to <code>Tasks</code>](#mapping-serviceaccount-credentials-to-tasks)
     - [Specifying a <code>Pod</code> template](#specifying-a-pod-template)
     - [Specifying taskRunSpecs](#specifying-taskrunspecs)
+      - [Parameter Substitution in taskRunSpecs](#parameter-substitution-in-taskrunspecs)
+      - [Matrix Support with taskRunSpecs](#matrix-support-with-taskrunspecs)
     - [Specifying <code>Workspaces</code>](#specifying-workspaces)
       - [Propagated Workspaces](#propagated-workspaces)
         - [Referenced TaskRuns within Embedded PipelineRuns](#referenced-taskruns-within-embedded-pipelineruns)
@@ -1007,6 +1009,60 @@ spec:
 ```
 
 If a metadata key is present in different levels, the value that will be used in the `PipelineRun` is determined using this precedence order: `PipelineRun.spec.taskRunSpec.metadata` > `PipelineRun.metadata` > `Pipeline.spec.tasks.taskSpec.metadata`.
+
+#### Parameter Substitution in taskRunSpecs
+
+The `taskRunSpecs` supports parameter substitution in the `podTemplate` fields. This allows you to dynamically configure pod templates based on pipeline parameters, including those from Matrix tasks.
+
+For example, you can use parameter substitution to configure node selectors based on architecture parameters:
+
+```yaml
+spec:
+  taskRunSpecs:
+    - pipelineTaskName: build-task
+      podTemplate:
+        nodeSelector:
+          kubernetes.io/arch: $(params.arch)
+        tolerations:
+          - key: "environment"
+            operator: "Equal"
+            value: "$(params.env)"
+            effect: "NoSchedule"
+```
+
+#### Matrix Support with taskRunSpecs
+
+When using [`Matrix`](matrix.md) to fan out `PipelineTasks`, the `taskRunSpecs` can reference matrix parameters for dynamic pod template configuration. Each matrix combination will create a separate `TaskRun` with the appropriate parameter values substituted in the pod template.
+
+Here's an example showing how to use `taskRunSpecs` with matrix parameters:
+
+```yaml
+spec:
+  taskRunSpecs:
+    - pipelineTaskName: build-and-push-manifest
+      podTemplate:
+        nodeSelector:
+          kubernetes.io/arch: $(params.arch)
+  pipelineSpec:
+    tasks:
+      - name: build-and-push-manifest
+        matrix:
+          params:
+            - name: arch
+              value: ["amd64", "arm64"]
+        taskSpec:
+          params:
+            - name: arch
+          steps:
+            - name: build-and-push
+              image: ubuntu
+              script: |
+                echo "building on $(params.arch)"
+```
+
+In this example, the matrix will create two `TaskRuns` - one for `amd64` and one for `arm64`. Each will have its pod scheduled on the appropriate node architecture using the nodeSelector with the substituted parameter value.
+
+For a complete example, see [`pipelinerun-with-taskrunspecs-matrix-param-substitution.yaml`](../examples/v1/pipelineruns/pipelinerun-with-taskrunspecs-matrix-param-substitution.yaml).
 
 ### Specifying `Workspaces`
 
