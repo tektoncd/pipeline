@@ -120,7 +120,7 @@ func (repo *repository) execGit(ctx context.Context, subCmd string, args ...stri
 		}
 	}
 	cmd := repo.executor(ctx, "git", append(configArgs, args...)...)
-	cmd.Env = append(cmd.Env, env...)
+	cmd.Env = append(cmd.Environ(), env...)
 
 	out, err := cmd.Output()
 	if err != nil {
