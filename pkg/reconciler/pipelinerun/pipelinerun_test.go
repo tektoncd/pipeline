@@ -119,12 +119,6 @@ var (
 	testClock = clock.NewFakePassiveClock(now)
 )
 
-const (
-	apiFieldsFeatureFlag           = "enable-api-fields"
-	ociBundlesFeatureFlag          = "enable-tekton-oci-bundles"
-	maxMatrixCombinationsCountFlag = "default-max-matrix-combinations-count"
-)
-
 type PipelineRunTest struct {
 	test.Data  `json:"inline"`
 	Test       *testing.T
@@ -353,7 +347,7 @@ spec:
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
-		ConfigMaps:   []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -635,7 +629,7 @@ spec:
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
-		ConfigMaps:   []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -1042,13 +1036,11 @@ spec:
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
-
 			d := test.Data{
 				PipelineRuns: []*v1.PipelineRun{tc.pipelineRun},
 				Pipelines:    ps,
 				Tasks:        ts,
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewAlphaFeatureFlagsConfigMapInSlice(),
 			}
 			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
@@ -1133,12 +1125,11 @@ status:
   - status: "True"
     type: Succeeded
 `)}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 
 	d := test.Data{
 		PipelineRuns: prs,
 		TaskRuns:     trs,
-		ConfigMaps:   cms,
+		ConfigMaps:   th.NewAlphaFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -1464,32 +1455,6 @@ status:
 	checkTaskRunStatusFromChildRefs(prt.TestAssets.Ctx, t, "foo", clients, reconciledRun.Status.ChildReferences, expectedTaskRunsStatus)
 }
 
-func newFeatureFlagsConfigMap() *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
-		Data:       make(map[string]string),
-	}
-}
-
-func newDefaultsConfigMap() *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-		Data:       make(map[string]string),
-	}
-}
-
-func withEnabledAlphaAPIFields(cm *corev1.ConfigMap) *corev1.ConfigMap {
-	newCM := cm.DeepCopy()
-	newCM.Data[apiFieldsFeatureFlag] = config.AlphaAPIFields
-	return newCM
-}
-
-func withMaxMatrixCombinationsCount(cm *corev1.ConfigMap, count int) *corev1.ConfigMap {
-	newCM := cm.DeepCopy()
-	newCM.Data[maxMatrixCombinationsCountFlag] = strconv.Itoa(count)
-	return newCM
-}
-
 // TestReconcileOnCancelledPipelineRun runs "Reconcile" on a PipelineRun that
 // has been cancelled.  It verifies that reconcile is successful, the pipeline
 // status updated and events generated.
@@ -1513,14 +1478,13 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 			ts := []*v1.Task{simpleHelloWorldTask}
 			trs := []*v1.TaskRun{createHelloWorldTaskRun(t, "test-pipeline-run-cancelled-hello-world", "foo",
 				"test-pipeline-run-cancelled", "test-pipeline")}
-			cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 
 			d := test.Data{
 				PipelineRuns: prs,
 				Pipelines:    ps,
 				Tasks:        ts,
 				TaskRuns:     trs,
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 			}
 			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
@@ -1591,11 +1555,10 @@ status:
     type: Succeeded
   startTime: "2021-12-31T23:58:59Z"
 `)}
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
-		ConfigMaps:   cms,
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 		CustomRuns:   runs,
 	}
 	prt := newPipelineRunTest(t, d)
@@ -1701,11 +1664,10 @@ status:
   creationTime: "2021-12-31T11:58:58Z"
 `)}
 
-			cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 			d := test.Data{
 				PipelineRuns: prs,
 				Pipelines:    ps,
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 				CustomRuns:   customRuns,
 			}
 			prt := newPipelineRunTest(t, d)
@@ -1765,15 +1727,11 @@ status:
 func TestReconcileOnCancelledRunFinallyPipelineRun(t *testing.T) {
 	// TestReconcileOnCancelledRunFinallyPipelineRun runs "Reconcile" on a PipelineRun that has been gracefully cancelled.
 	// It verifies that reconcile is successful, the pipeline status updated and events generated.
-	prs := []*v1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled-run-finally", v1.PipelineRunSpecStatusCancelledRunFinally)}
-	ps := []*v1.Pipeline{helloWorldPipelineWithRunAfter(t)}
-	ts := []*v1.Task{simpleHelloWorldTask}
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-		ConfigMaps:   cms,
+		PipelineRuns: []*v1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled-run-finally", v1.PipelineRunSpecStatusCancelledRunFinally)},
+		Pipelines:    []*v1.Pipeline{helloWorldPipelineWithRunAfter(t)},
+		Tasks:        []*v1.Task{simpleHelloWorldTask},
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -1839,13 +1797,12 @@ spec:
 		simpleHelloWorldTask,
 		simpleSomeTask,
 	}
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
-		ConfigMaps:   cms,
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -2024,15 +1981,12 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *tes
 			Reason: v1.TaskRunSpecStatusCancelled,
 		})}
 
-	ts := []*v1.Task{simpleHelloWorldTask}
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
-
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		TaskRuns:     trs,
-		Tasks:        ts,
-		ConfigMaps:   cms,
+		Tasks:        []*v1.Task{simpleHelloWorldTask},
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -3498,7 +3452,6 @@ spec:
     taskRef:
       name: hello-world
 `)}
-			tasks := []*v1.Task{simpleHelloWorldTask}
 			taskRuns := []*v1.TaskRun{
 				getTaskRun(
 					t,
@@ -3510,14 +3463,12 @@ spec:
 				),
 			}
 
-			cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
-
 			d := test.Data{
 				PipelineRuns: prs,
 				Pipelines:    ps,
-				Tasks:        tasks,
+				Tasks:        []*v1.Task{simpleHelloWorldTask},
 				TaskRuns:     taskRuns,
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewAlphaFeatureFlagsConfigMapInSlice(),
 			}
 
 			testAssets, cancel := getPipelineRunController(t, d)
@@ -3616,7 +3567,6 @@ spec:
     taskRef:
       name: hello-world
 `)}
-	tasks := []*v1.Task{simpleHelloWorldTask}
 	taskRuns := []*v1.TaskRun{
 		getTaskRun(
 			t,
@@ -3628,14 +3578,12 @@ spec:
 		),
 	}
 
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
-
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
-		Tasks:        tasks,
+		Tasks:        []*v1.Task{simpleHelloWorldTask},
 		TaskRuns:     taskRuns,
-		ConfigMaps:   cms,
+		ConfigMaps:   th.NewAlphaFeatureFlagsConfigMapInSlice(),
 	}
 
 	testAssets, cancel := getPipelineRunController(t, d)
@@ -3923,11 +3871,10 @@ spec:
     pipelineTaskName: hello-world-1
 `)}
 
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
-		ConfigMaps:   cms,
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -4053,11 +4000,10 @@ spec:
     serviceAccountName: custom-sa
 `)}
 
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
-		ConfigMaps:   cms,
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -4165,7 +4111,7 @@ status:
 		Pipelines:    ps,
 		Tasks:        ts,
 		TaskRuns:     trs,
-		ConfigMaps:   []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -5330,14 +5276,12 @@ spec:
         creationTimestamp: null
         name: myclaim
 `)}
-	ts := []*v1.Task{simpleHelloWorldTask}
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
-		Tasks:        ts,
-		ConfigMaps:   cms,
+		Tasks:        []*v1.Task{simpleHelloWorldTask},
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -6464,7 +6408,7 @@ spec:
 		Tasks:        ts,
 		TaskRuns:     trs,
 		CustomRuns:   crs,
-		ConfigMaps:   []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -6621,7 +6565,7 @@ spec:
 		Tasks:        ts,
 		TaskRuns:     trs,
 		CustomRuns:   rs,
-		ConfigMaps:   []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 
 	prt := newPipelineRunTest(t, d)
@@ -6799,7 +6743,7 @@ status:
 		Pipelines:    ps,
 		Tasks:        ts,
 		TaskRuns:     trs,
-		ConfigMaps:   []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -7030,21 +6974,13 @@ status:
 		},
 	}
 
-	prs := []*v1.PipelineRun{prOutOfSync}
-	ps := []*v1.Pipeline{testPipeline}
-	ts := []*v1.Task{helloWorldTask}
-	trs := []*v1.TaskRun{taskRunDone, taskRunOrphaned}
-	customRuns := []*v1beta1.CustomRun{orphanedCustomRun}
-
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
-
 	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-		TaskRuns:     trs,
-		CustomRuns:   customRuns,
-		ConfigMaps:   cms,
+		PipelineRuns: []*v1.PipelineRun{prOutOfSync},
+		Pipelines:    []*v1.Pipeline{testPipeline},
+		Tasks:        []*v1.Task{helloWorldTask},
+		TaskRuns:     []*v1.TaskRun{taskRunDone, taskRunOrphaned},
+		CustomRuns:   []*v1beta1.CustomRun{orphanedCustomRun},
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -7163,11 +7099,9 @@ spec:
         name: some-custom-task
 `)
 
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
-
 	d := test.Data{
 		PipelineRuns: []*v1.PipelineRun{pr},
-		ConfigMaps:   cms,
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -7939,7 +7873,7 @@ spec:
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
-		ConfigMaps:   []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -8798,7 +8732,7 @@ spec:
 		ServiceAccounts: []*corev1.ServiceAccount{{
 			ObjectMeta: metav1.ObjectMeta{Name: prs[0].Spec.TaskRunTemplate.ServiceAccountName, Namespace: namespace},
 		}},
-		ConfigMaps: []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
+		ConfigMaps: th.NewFeatureFlagsConfigMapInSlice(),
 	}
 
 	prt := newPipelineRunTest(t, d)
@@ -8955,9 +8889,8 @@ spec:
 `),
 	}
 
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	d := test.Data{
-		ConfigMaps:   cms,
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 		PipelineRuns: prs,
 		Tasks:        ts,
 		ServiceAccounts: []*corev1.ServiceAccount{{
@@ -9161,7 +9094,7 @@ spec:
 		ServiceAccounts: []*corev1.ServiceAccount{{
 			ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.TaskRunTemplate.ServiceAccountName, Namespace: "foo"},
 		}},
-		ConfigMaps: []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())},
+		ConfigMaps: th.NewAlphaFeatureFlagsConfigMapInSlice(),
 	}
 
 	prt := newPipelineRunTest(t, d)
@@ -9225,7 +9158,7 @@ spec:
 		ServiceAccounts: []*corev1.ServiceAccount{{
 			ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.TaskRunTemplate.ServiceAccountName, Namespace: "foo"},
 		}},
-		ConfigMaps: []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())},
+		ConfigMaps: th.NewAlphaFeatureFlagsConfigMapInSlice(),
 	}
 
 	prt := newPipelineRunTest(t, d)
@@ -10040,8 +9973,6 @@ spec:
     kind: Task
  `),
 	}
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
-	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {
 		name                string
@@ -10357,7 +10288,7 @@ spec:
 				PipelineRuns: []*v1.PipelineRun{pr},
 				Pipelines:    []*v1.Pipeline{tt.p},
 				Tasks:        []*v1.Task{task},
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewFeatureFlagsConfigMapWithMatrixInSlice(10),
 			}
 			if tt.tr != nil {
 				d.TaskRuns = []*v1.TaskRun{tt.tr}
@@ -10416,8 +10347,6 @@ spec:
       script: |
         echo "$(params.platform) and $(params.browser)"
 `)
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
-	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {
 		name                string
@@ -10567,7 +10496,7 @@ spec:
 				PipelineRuns: []*v1.PipelineRun{pr},
 				Pipelines:    []*v1.Pipeline{tt.p},
 				Tasks:        []*v1.Task{task},
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewFeatureFlagsConfigMapWithMatrixInSlice(10),
 			}
 			if tt.tr != nil {
 				d.TaskRuns = []*v1.TaskRun{tt.tr}
@@ -10801,8 +10730,6 @@ spec:
     kind: Task
 `),
 	}
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
-	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {
 		name                string
@@ -11165,7 +11092,7 @@ spec:
 				PipelineRuns: []*v1.PipelineRun{pr},
 				Pipelines:    []*v1.Pipeline{tt.p},
 				Tasks:        []*v1.Task{task},
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewFeatureFlagsConfigMapWithMatrixInSlice(10),
 			}
 			if tt.tr != nil {
 				d.TaskRuns = []*v1.TaskRun{tt.tr}
@@ -11273,8 +11200,6 @@ spec:
     kind: Task
 `),
 	}
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
-	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {
 		name                string
@@ -11395,7 +11320,7 @@ spec:
 				PipelineRuns: []*v1.PipelineRun{pr},
 				Pipelines:    []*v1.Pipeline{tt.p},
 				Tasks:        []*v1.Task{task},
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewFeatureFlagsConfigMapWithMatrixInSlice(10),
 			}
 			if tt.tr != nil {
 				d.TaskRuns = []*v1.TaskRun{tt.tr}
@@ -11638,8 +11563,6 @@ spec:
     kind: Task
 `),
 	}
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
-	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {
 		name                string
@@ -11993,7 +11916,7 @@ spec:
 				PipelineRuns: []*v1.PipelineRun{pr},
 				Pipelines:    []*v1.Pipeline{tt.p},
 				Tasks:        []*v1.Task{task, taskwithresults},
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewFeatureFlagsConfigMapWithMatrixInSlice(10),
 			}
 			if tt.tr != nil {
 				d.TaskRuns = []*v1.TaskRun{tt.tr}
@@ -12068,8 +11991,6 @@ spec:
         echo -n "[\"linux\",\"mac\",\"windows\"]" | tee $(results.platforms.path)
 `)
 
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
-	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 	tests := []struct {
 		name                string
 		pName               string
@@ -12508,7 +12429,7 @@ spec:
 				PipelineRuns: []*v1.PipelineRun{pr},
 				Pipelines:    []*v1.Pipeline{tt.p},
 				Tasks:        []*v1.Task{task, taskwithresults},
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewFeatureFlagsConfigMapWithMatrixInSlice(10),
 			}
 			if tt.tr != nil {
 				d.TaskRuns = []*v1.TaskRun{tt.tr}
@@ -12612,8 +12533,6 @@ spec:
 `),
 	}
 
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
-	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 	tests := []struct {
 		name                string
 		pName               string
@@ -12736,7 +12655,7 @@ spec:
 				PipelineRuns: []*v1.PipelineRun{pr},
 				Pipelines:    []*v1.Pipeline{tt.p},
 				Tasks:        []*v1.Task{taskwithresults},
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewFeatureFlagsConfigMapWithMatrixInSlice(10),
 			}
 			if tt.tr != nil {
 				d.TaskRuns = []*v1.TaskRun{tt.tr}
@@ -12788,9 +12707,6 @@ spec:
         echo "$(params.platform) and $(params.browser)"
         exit 1
 `)
-
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
-	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {
 		name                string
@@ -13178,7 +13094,7 @@ status:
 				Tasks:        []*v1.Task{task},
 				TaskRuns:     tt.trs,
 				PipelineRuns: tt.prs,
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewFeatureFlagsConfigMapWithMatrixInSlice(10),
 			}
 			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
@@ -13411,7 +13327,7 @@ spec:
     name: mytask
 `),
 	}
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
+	cms := th.NewFeatureFlagsConfigMapInSlice()
 
 	tests := []struct {
 		name                string
@@ -13773,8 +13689,6 @@ spec:
         echo -n "[\"linux\",\"mac\",\"windows\"]" | tee $(results.platforms.path)
 `)
 
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
-	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 	tests := []struct {
 		name  string
 		pName string
@@ -13842,7 +13756,7 @@ spec:
 				PipelineRuns: []*v1.PipelineRun{pr},
 				Pipelines:    []*v1.Pipeline{tt.p},
 				Tasks:        []*v1.Task{task, taskwithresults},
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewFeatureFlagsConfigMapWithMatrixInSlice(10),
 			}
 			if tt.tr != nil {
 				d.TaskRuns = []*v1.TaskRun{tt.tr}
@@ -13935,9 +13849,6 @@ spec:
     kind: Task
 `),
 	}
-
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
-	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {
 		name                string
@@ -14142,7 +14053,7 @@ spec:
 				PipelineRuns: []*v1.PipelineRun{pr},
 				Pipelines:    []*v1.Pipeline{tt.p},
 				Tasks:        []*v1.Task{task},
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewFeatureFlagsConfigMapWithMatrixInSlice(10),
 			}
 			if tt.tr != nil {
 				d.TaskRuns = []*v1.TaskRun{tt.tr}
@@ -14343,8 +14254,7 @@ status:
     value: image-3
 `),
 	}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
-	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
+
 	tests := []struct {
 		name                string
 		memberOf            string
@@ -14897,7 +14807,7 @@ spec:
 				Pipelines:    []*v1.Pipeline{tt.p},
 				Tasks:        []*v1.Task{task1, task2, task3, task4, taskwithresults},
 				TaskRuns:     taskRuns,
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewAlphaFeatureFlagsConfigMapWithMatrixInSlice(10),
 			}
 			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
@@ -15072,8 +14982,7 @@ status:
     value: https://api.example/get-report/mac-safari
 `),
 	}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
-	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
+
 	tests := []struct {
 		name                string
 		memberOf            string
@@ -15374,7 +15283,7 @@ spec:
 				Pipelines:    []*v1.Pipeline{tt.p},
 				Tasks:        []*v1.Task{task1, task2, taskwithresults},
 				TaskRuns:     trs,
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewAlphaFeatureFlagsConfigMapWithMatrixInSlice(10),
 			}
 			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
@@ -15468,8 +15377,7 @@ spec:
     kind: Task
 `),
 	}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
-	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
+
 	tests := []struct {
 		name                string
 		memberOf            string
@@ -15678,7 +15586,7 @@ spec:
 				Pipelines:    []*v1.Pipeline{tt.p},
 				Tasks:        []*v1.Task{task1, taskwithresults},
 				TaskRuns:     tt.trs,
-				ConfigMaps:   cms,
+				ConfigMaps:   th.NewAlphaFeatureFlagsConfigMapWithMatrixInSlice(10),
 			}
 			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
@@ -15781,7 +15689,7 @@ spec:
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
-		ConfigMaps:   []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -16001,7 +15909,7 @@ spec:
 `)}
 
 	ts := []*v1.Task{}
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
+	cms := th.NewFeatureFlagsConfigMapInSlice()
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -16061,7 +15969,7 @@ spec:
 
 	ts := []*v1.Task{simpleHelloWorldTask}
 
-	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
+	cms := th.NewFeatureFlagsConfigMapInSlice()
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -17915,7 +17823,7 @@ spec:
 
 	d := test.Data{
 		PipelineRuns: prs,
-		ConfigMaps:   []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
