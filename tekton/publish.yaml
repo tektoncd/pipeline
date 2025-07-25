@@ -1,4 +1,4 @@
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: publish-release
@@ -16,15 +16,15 @@ spec:
       description: Extra args to be passed to ko
       default: "--preserve-import-paths"
     - name: versionTag
-      description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
+      description: The version, vX.Y.Z for stable, vYYYYMMDD-abc1234 for nightly that the artifacts should be tagged with (including `v`).
     - name: imageRegistry
       description: The target image registry
-      default: gcr.io
+      default: ghcr.io
     - name: imageRegistryPath
       description: The path (project) in the image registry
     - name: imageRegistryRegions
       description: The target image registry regions
-      default: "us eu asia"
+      default: ""
     - name: imageRegistryUser
       description: Username to be used to login to the container registry
       default: "_json_key"
@@ -146,6 +146,9 @@ spec:
       #!/usr/bin/env sh
       set -ex
 
+      # Fix Git ownership issue for the repository directory
+      git config --global --add safe.directory ${PROJECT_ROOT}
+
       # Use the generated `.ko.yaml`
       export KO_CONFIG_PATH=/workspace
       cat ${KO_CONFIG_PATH}/.ko.yaml
@@ -198,6 +201,7 @@ spec:
       # Rewrite "devel" to params.versionTag
       sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/release.yaml
       sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/release.notags.yaml
+
   - name: koparse
     image: ghcr.io/tektoncd/plumbing/koparse@sha256:1898ef549aaff602d06c049136aaf1c1eacc573846c42bbf42d8dc9258235204
     script: |
