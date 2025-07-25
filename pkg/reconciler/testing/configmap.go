@@ -17,14 +17,21 @@ limitations under the License.
 package testing
 
 import (
-	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/system"
 	"sigs.k8s.io/yaml"
+)
+
+const (
+	apiFieldsFeatureFlag           = "enable-api-fields"
+	maxMatrixCombinationsCountFlag = "default-max-matrix-combinations-count"
 )
 
 // ConfigMapFromTestFile creates a v1.ConfigMap from a YAML file
@@ -48,19 +55,60 @@ func ConfigMapFromTestFile(t *testing.T, name string) *corev1.ConfigMap {
 	return &cm
 }
 
-// EnableFeatureFlagField enables a boolean feature flag in an existing context (for use in testing).
-func EnableFeatureFlagField(ctx context.Context, t *testing.T, flagName string) context.Context {
-	t.Helper()
-	featureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
-		flagName: "true",
-	})
+func NewFeatureFlagsConfigMapInSlice() []*corev1.ConfigMap {
+	return []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
+}
 
-	if err != nil {
-		t.Fatalf("Fail to create a feature config: %v", err)
+func newFeatureFlagsConfigMap() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.GetFeatureFlagsConfigName(),
+			Namespace: system.Namespace(),
+		},
+		Data: make(map[string]string),
 	}
+}
 
-	cfg := &config.Config{
-		FeatureFlags: featureFlags,
+func NewAlphaFeatureFlagsConfigMapInSlice() []*corev1.ConfigMap {
+	return []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+}
+
+func withEnabledAlphaAPIFields(cm *corev1.ConfigMap) *corev1.ConfigMap {
+	newCM := cm.DeepCopy()
+	newCM.Data[apiFieldsFeatureFlag] = config.AlphaAPIFields
+	return newCM
+}
+
+func NewFeatureFlagsConfigMapWithMatrixInSlice(count int) []*corev1.ConfigMap {
+	return append(
+		NewFeatureFlagsConfigMapInSlice(),
+		withMaxMatrixCombinationsCount(newDefaultsConfigMap(), count),
+	)
+}
+
+func withMaxMatrixCombinationsCount(cm *corev1.ConfigMap, count int) *corev1.ConfigMap {
+	newCM := cm.DeepCopy()
+	newCM.Data[maxMatrixCombinationsCountFlag] = strconv.Itoa(count)
+	return newCM
+}
+
+func newDefaultsConfigMap() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.GetDefaultsConfigName(),
+			Namespace: system.Namespace(),
+		},
+		Data: make(map[string]string),
 	}
-	return config.ToContext(ctx, cfg)
+}
+
+func NewAlphaFeatureFlagsConfigMapWithMatrixInSlice(count int) []*corev1.ConfigMap {
+	return append(
+		NewAlphaFeatureFlagsConfigMapInSlice(),
+		withMaxMatrixCombinationsCount(newDefaultsConfigMap(), count),
+	)
+}
+
+func NewDefaultsCofigMapInSlice() []*corev1.ConfigMap {
+	return []*corev1.ConfigMap{newDefaultsConfigMap()}
 }

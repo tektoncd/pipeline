@@ -2628,7 +2628,6 @@ _EOF_
 			} else {
 				trAnnotations = c.trAnnotation
 				trAnnotations[ReleaseAnnotation] = fakeVersion
-
 			}
 			testTaskRunName := taskRunName
 			if c.trName != "" {
