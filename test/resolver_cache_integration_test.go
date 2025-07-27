@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -74,13 +74,13 @@ spec:
 	}
 
 	// Get the resolution request to check for cache annotations
-	resolutionRequests, err := c.V1alpha1ResolutionRequestclient.List(ctx, metav1.ListOptions{})
+	resolutionRequests, err := c.V1beta1ResolutionRequestclient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("Failed to list ResolutionRequests: %s", err)
 	}
 
 	// Find the resolution request for our TaskRun
-	var foundRequest *v1alpha1.ResolutionRequest
+	var foundRequest *v1beta1.ResolutionRequest
 	for _, req := range resolutionRequests.Items {
 		if req.Namespace == namespace && req.Status.Data != "" {
 			foundRequest = &req
@@ -183,13 +183,13 @@ spec:
 	}
 
 	// Get the resolution request to check for cache annotations
-	resolutionRequests, err := c.V1alpha1ResolutionRequestclient.List(ctx, metav1.ListOptions{})
+	resolutionRequests, err := c.V1beta1ResolutionRequestclient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("Failed to list ResolutionRequests: %s", err)
 	}
 
 	// Find the resolution request for our TaskRun
-	var foundRequest *v1alpha1.ResolutionRequest
+	var foundRequest *v1beta1.ResolutionRequest
 	for _, req := range resolutionRequests.Items {
 		if req.Namespace == namespace && req.Status.Data != "" {
 			foundRequest = &req

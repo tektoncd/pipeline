@@ -132,6 +132,17 @@ func (c *ResolverCache) AddWithExpiration(key string, value interface{}, expirat
 	c.cache.Add(key, value, expiration)
 }
 
+// Clear removes all entries from the cache.
+func (c *ResolverCache) Clear() {
+	if c.logger != nil {
+		c.logger.Infow("Clearing all cache entries")
+	}
+	// Use RemoveAll with a predicate that always returns true to clear all entries
+	c.cache.RemoveAll(func(key any) bool {
+		return true
+	})
+}
+
 // globalCache is the global instance of ResolverCache
 var globalCache = NewResolverCache(DefaultMaxSize)
 

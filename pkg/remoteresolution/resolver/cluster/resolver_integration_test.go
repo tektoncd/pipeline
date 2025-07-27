@@ -672,7 +672,7 @@ func TestAnnotatedResourceCreation(t *testing.T) {
 	}
 
 	// Create annotated resource
-	annotatedResource := cache.NewAnnotatedResource(mockResource, "cluster")
+	annotatedResource := cache.NewAnnotatedResource(mockResource, "cluster", cache.CacheOperationStore)
 
 	// Verify annotations are present
 	annotations := annotatedResource.Annotations()

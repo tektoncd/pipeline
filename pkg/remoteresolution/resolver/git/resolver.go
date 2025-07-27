@@ -173,7 +173,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 			if cached, ok := cache.GetGlobalCache().Get(cacheKey); ok {
 				if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
 					// Return annotated resource to indicate it came from cache
-					return cache.NewAnnotatedResource(resource, labelValueGitResolverType), nil
+					return cache.NewAnnotatedResource(resource, labelValueGitResolverType, cache.CacheOperationRetrieve), nil
 				}
 			}
 		}
@@ -199,7 +199,11 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		// Cache the result if caching is enabled
 		if useCache {
 			cacheKey, _ := cache.GenerateCacheKey(labelValueGitResolverType, req.Params)
-			cache.GetGlobalCache().Add(cacheKey, resource)
+			// Store annotated resource with store operation
+			annotatedResource := cache.NewAnnotatedResource(resource, labelValueGitResolverType, cache.CacheOperationStore)
+			cache.GetGlobalCache().Add(cacheKey, annotatedResource)
+			// Return annotated resource to indicate it was stored in cache
+			return annotatedResource, nil
 		}
 
 		return resource, nil

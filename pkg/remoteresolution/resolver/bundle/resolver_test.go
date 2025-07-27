@@ -50,6 +50,8 @@ import (
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 	"sigs.k8s.io/yaml"
+
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 )
 
 const (
@@ -549,6 +551,14 @@ func TestResolve(t *testing.T) {
 
 					expectedStatus.Annotations[bundleresolution.ResolverAnnotationName] = tc.args.name
 					expectedStatus.Annotations[bundleresolution.ResolverAnnotationAPIVersion] = "v1beta1"
+
+					// Add cache annotations for digest-based bundle references (which use caching)
+					if strings.Contains(tc.args.bundle, "@sha256:") {
+						expectedStatus.Annotations[cache.CacheAnnotationKey] = cache.CacheValueTrue
+						expectedStatus.Annotations[cache.CacheOperationKey] = cache.CacheOperationStore
+						expectedStatus.Annotations[cache.CacheResolverTypeKey] = bundle.LabelValueBundleResolverType
+						// Don't set timestamp as it's generated at runtime and will be different each time
+					}
 
 					expectedStatus.RefSource = &pipelinev1.RefSource{
 						URI: testImages[tc.imageName].uri,

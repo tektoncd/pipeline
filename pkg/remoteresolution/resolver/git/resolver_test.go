@@ -37,6 +37,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/internal/resolution"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
 	frtesting "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/testing"
 	common "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -694,6 +695,14 @@ func TestResolve(t *testing.T) {
 					expectedStatus.Annotations[common.AnnotationKeyContentType] = "application/x-yaml"
 					expectedStatus.Annotations[gitresolution.AnnotationKeyRevision] = tc.expectedCommitSHA
 					expectedStatus.Annotations[gitresolution.AnnotationKeyPath] = tc.args.pathInRepo
+
+					// Add cache annotations for specific commit SHA references (which use caching)
+					if tc.args.revision != "" && len(tc.args.revision) == 40 && !strings.HasPrefix(tc.args.revision, "refs/") {
+						expectedStatus.Annotations[cache.CacheAnnotationKey] = cache.CacheValueTrue
+						expectedStatus.Annotations[cache.CacheOperationKey] = cache.CacheOperationStore
+						expectedStatus.Annotations[cache.CacheResolverTypeKey] = labelValueGitResolverType
+						// Don't set timestamp as it's generated at runtime and will be different each time
+					}
 
 					if tc.args.url != "" {
 						expectedStatus.Annotations[gitresolution.AnnotationKeyURL] = anonFakeRepoURL
