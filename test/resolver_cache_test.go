@@ -177,9 +177,6 @@ spec:
 		t.Fatalf("Error waiting for third TaskRun to finish: %s", err)
 	}
 
-	// Add a small delay to ensure ResolutionRequest status is fully updated
-	time.Sleep(2 * time.Second)
-
 	resolutionRequest3 := getResolutionRequest(ctx, t, c, namespace, tr3.Name)
 	if hasCacheAnnotation(resolutionRequest3.Status.Annotations) {
 		t.Error("Request with cache=never should not be cached")
@@ -255,9 +252,31 @@ func TestCachePerformance(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
+	// Clear the cache to ensure we start with a clean state
+	clearCache(ctx)
+
+	// Set up local bundle registry
+	taskName := helpers.ObjectNameForTest(t)
+	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/cachetest-" + helpers.ObjectNameForTest(t)
+
+	// Create a task for the test
+	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - name: hello
+    image: mirror.gcr.io/alpine
+    script: 'echo Hello from performance test'
+`, taskName, namespace))
+
+	// Set up the bundle in the local registry
+	setupBundle(ctx, t, c, namespace, repo, task, nil)
+
 	// Measure time for first request (cache miss)
 	start := time.Now()
-	tr1 := createBundleTaskRun(t, namespace, "perf-test-1", "always")
+	tr1 := createBundleTaskRunLocal(t, namespace, "perf-test-1", "always", repo, taskName)
 	_, err := c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create first TaskRun: %s", err)
@@ -270,7 +289,7 @@ func TestCachePerformance(t *testing.T) {
 
 	// Measure time for second request (cache hit)
 	start = time.Now()
-	tr2 := createBundleTaskRun(t, namespace, "perf-test-2", "always")
+	tr2 := createBundleTaskRunLocal(t, namespace, "perf-test-2", "always", repo, taskName)
 	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create second TaskRun: %s", err)
@@ -307,6 +326,28 @@ func TestCacheConfiguration(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
+	// Clear the cache to ensure we start with a clean state
+	clearCache(ctx)
+
+	// Set up local bundle registry
+	taskName := helpers.ObjectNameForTest(t)
+	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/cachetest-" + helpers.ObjectNameForTest(t)
+
+	// Create a task for the test
+	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - name: hello
+    image: mirror.gcr.io/alpine
+    script: 'echo Hello from config test'
+`, taskName, namespace))
+
+	// Set up the bundle in the local registry
+	setupBundle(ctx, t, c, namespace, repo, task, nil)
+
 	testCases := []struct {
 		name        string
 		cacheMode   string
@@ -320,7 +361,7 @@ func TestCacheConfiguration(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tr := createBundleTaskRun(t, namespace, "config-test-"+tc.name, tc.cacheMode)
+			tr := createBundleTaskRunLocal(t, namespace, "config-test-"+tc.name, tc.cacheMode, repo, taskName)
 			_, err := c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatalf("Failed to create TaskRun: %s", err)
@@ -946,6 +987,28 @@ func TestCacheIsolationBetweenResolvers(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
+	// Clear the cache to ensure we start with a clean state
+	clearCache(ctx)
+
+	// Set up local bundle registry for bundle resolver test
+	bundleTaskName := helpers.ObjectNameForTest(t) + "-bundle"
+	bundleRepo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/cachetest-" + helpers.ObjectNameForTest(t) + "-bundle"
+
+	// Create a task for bundle resolver test
+	bundleTask := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - name: hello
+    image: mirror.gcr.io/alpine
+    script: 'echo Hello from bundle isolation test'
+`, bundleTaskName, namespace))
+
+	// Set up the bundle in the local registry
+	setupBundle(ctx, t, c, namespace, bundleRepo, bundleTask, nil)
+
 	// Create a Task in the namespace for testing cluster resolver
 	taskName := helpers.ObjectNameForTest(t)
 	exampleTask := parse.MustParseV1Task(t, fmt.Sprintf(`
@@ -969,7 +1032,7 @@ spec:
 	}
 
 	// Test bundle resolver cache
-	tr1 := createBundleTaskRun(t, namespace, "isolation-bundle-1", "always")
+	tr1 := createBundleTaskRunLocal(t, namespace, "isolation-bundle-1", "always", bundleRepo, bundleTaskName)
 	_, err = c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create bundle TaskRun: %s", err)
@@ -1047,6 +1110,28 @@ func TestCacheConfigurationComprehensive(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
+	// Clear the cache to ensure we start with a clean state
+	clearCache(ctx)
+
+	// Set up local bundle registry for bundle resolver tests
+	bundleTaskName := helpers.ObjectNameForTest(t) + "-bundle"
+	bundleRepo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/cachetest-" + helpers.ObjectNameForTest(t) + "-bundle"
+
+	// Create a task for bundle resolver tests
+	bundleTask := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - name: hello
+    image: mirror.gcr.io/alpine
+    script: 'echo Hello from comprehensive bundle test'
+`, bundleTaskName, namespace))
+
+	// Set up the bundle in the local registry
+	setupBundle(ctx, t, c, namespace, bundleRepo, bundleTask, nil)
+
 	// Create a Task in the namespace for testing cluster resolver
 	taskName := helpers.ObjectNameForTest(t)
 	exampleTask := parse.MustParseV1Task(t, fmt.Sprintf(`
@@ -1101,7 +1186,7 @@ spec:
 
 			switch tc.resolver {
 			case "bundle":
-				tr = createBundleTaskRun(t, namespace, "config-test-"+tc.name, tc.cacheMode)
+				tr = createBundleTaskRunLocal(t, namespace, "config-test-"+tc.name, tc.cacheMode, bundleRepo, bundleTaskName)
 			case "git":
 				// Use commit hash for auto mode, branch for others
 				revision := "6bffb6ca708ac9013115baa574801e8127f4c5c2"
@@ -1274,6 +1359,28 @@ func TestCacheStressTest(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
+	// Clear the cache to ensure we start with a clean state
+	clearCache(ctx)
+
+	// Set up local bundle registry
+	taskName := helpers.ObjectNameForTest(t)
+	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/cachetest-" + helpers.ObjectNameForTest(t)
+
+	// Create a task for the test
+	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - name: hello
+    image: mirror.gcr.io/alpine
+    script: 'echo Hello from stress test'
+`, taskName, namespace))
+
+	// Set up the bundle in the local registry
+	setupBundle(ctx, t, c, namespace, repo, task, nil)
+
 	// Create multiple concurrent requests to test cache behavior under load
 	const numRequests = 5
 	var wg sync.WaitGroup
@@ -1284,7 +1391,7 @@ func TestCacheStressTest(t *testing.T) {
 		go func(index int) {
 			defer wg.Done()
 
-			tr := createBundleTaskRun(t, namespace, fmt.Sprintf("stress-test-%d", index), "always")
+			tr := createBundleTaskRunLocal(t, namespace, fmt.Sprintf("stress-test-%d", index), "always", repo, taskName)
 			_, err := c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
 			if err != nil {
 				errors <- fmt.Errorf("Failed to create TaskRun %d: %w", index, err)
@@ -1325,8 +1432,30 @@ func TestCacheInvalidParameters(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
+	// Clear the cache to ensure we start with a clean state
+	clearCache(ctx)
+
+	// Set up local bundle registry
+	taskName := helpers.ObjectNameForTest(t)
+	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/cachetest-" + helpers.ObjectNameForTest(t)
+
+	// Create a task for the test
+	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - name: hello
+    image: mirror.gcr.io/alpine
+    script: 'echo Hello from invalid params test'
+`, taskName, namespace))
+
+	// Set up the bundle in the local registry
+	setupBundle(ctx, t, c, namespace, repo, task, nil)
+
 	// Test with malformed cache parameter (should handle gracefully)
-	tr := createBundleTaskRun(t, namespace, "invalid-params-test", "malformed_cache_value")
+	tr := createBundleTaskRunLocal(t, namespace, "invalid-params-test", "malformed_cache_value", repo, taskName)
 	_, err := c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create TaskRun with malformed cache parameter: %s", err)
