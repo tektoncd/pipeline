@@ -12,7 +12,7 @@ kind: TaskRun
 metadata:
   name: step-action-run
 spec:
-  TaskSpec:
+  taskSpec:
     steps:
       - name: action-runner
         ref:

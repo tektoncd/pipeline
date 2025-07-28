@@ -73,7 +73,7 @@ spec:
     - name: objectparam
       value:
         key2: "taskrun key2"
-  TaskSpec:
+  taskSpec:
     params:
       - name: objectparam
         properties:
