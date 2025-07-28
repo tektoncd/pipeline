@@ -4210,6 +4210,187 @@ status:
 	}
 }
 
+// TestCreatePod_Backoff_WebhookTimeout validates the exponential backoff and retry logic in the createPod function.
+// It simulates scenarios where the creation of a Pod initially fails due to webhook timeouts (which should be retried)
+// and where it fails due to a non-retryable error (which should not be retried). The test ensures that the number of
+// creation attempts and the final outcome match expectations, confirming that the backoff strategy for Pod resources works as intended.
+func TestCreatePod_Backoff_WebhookTimeout(t *testing.T) {
+	trName := "test-tr"
+	namespace := "default"
+	tr := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    name: test-task
+`, trName, namespace))
+
+	simpleTask := parse.MustParseV1Task(t, `
+metadata:
+  name: test-task
+  namespace: default
+spec:
+  steps:
+  - command:
+    - /mycmd
+    env:
+    - name: foo
+      value: bar
+    image: foo
+    name: simple-step
+`)
+
+	// Create feature flags config with exponential backoff enabled
+	featureFlagsConfig := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+		Data: map[string]string{
+			"enable-wait-exponential-backoff": "true",
+		},
+	}
+
+	// Create wait exponential backoff config
+	waitExponentialBackoffConfig := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetWaitExponentialBackoffConfigName()},
+		Data: map[string]string{
+			"duration": "1s",
+			"factor":   "2.0",
+			"jitter":   "0.0",
+			"steps":    "10",
+			"cap":      "30s",
+		},
+	}
+
+	defaultsConfig := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetDefaultsConfigName()},
+		Data: map[string]string{
+			"default-timeout-minutes":        "60",
+			"default-managed-by-label-value": "tekton-pipeline",
+			"default-forbidden-env":          "TEKTON_POWER_MODE",
+		},
+	}
+
+	type testCase struct {
+		name        string
+		errorSeq    []error
+		expectErr   bool
+		expectCalls int
+	}
+
+	testCases := []testCase{
+		{
+			name: "retries on webhook timeout and succeeds",
+			errorSeq: []error{
+				&apierrors.StatusError{ErrStatus: metav1.Status{Code: 500, Message: "admission webhook timeout"}},
+				&apierrors.StatusError{ErrStatus: metav1.Status{Code: 500, Message: "admission webhook timeout"}},
+				nil,
+			},
+			expectErr:   false,
+			expectCalls: 3,
+		},
+		{
+			name:        "fails immediately on non-webhook error",
+			errorSeq:    []error{&apierrors.StatusError{ErrStatus: metav1.Status{Code: 400, Message: "bad request"}}},
+			expectErr:   true,
+			expectCalls: 1,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				TaskRuns:   []*v1.TaskRun{tr},
+				Tasks:      []*v1.Task{simpleTask},
+				ConfigMaps: []*corev1.ConfigMap{defaultsConfig, featureFlagsConfig, waitExponentialBackoffConfig},
+			}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, "default", tr.Namespace)
+
+			r := &Reconciler{
+				KubeClientSet:     testAssets.Clients.Kube,
+				PipelineClientSet: testAssets.Clients.Pipeline,
+				Images:            images,
+				Clock:             testClock,
+				taskRunLister:     testAssets.Informers.TaskRun.Lister(),
+				limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
+				cloudEventClient:  testAssets.Clients.CloudEvents,
+				metrics:           nil,
+				entrypointCache:   nil,
+				pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+				tracerProvider:    trace.NewNoopTracerProvider(),
+			}
+
+			callCount := 0
+			errSeq := tc.errorSeq
+			testAssets.Clients.Kube.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+				callCount++
+				idx := callCount - 1
+				if idx < len(errSeq) && errSeq[idx] != nil {
+					return true, nil, errSeq[idx]
+				}
+				createAction := action.(ktesting.CreateAction)
+				pod := createAction.GetObject().(*corev1.Pod)
+				return true, pod, nil
+			})
+
+			rtr := &resources.ResolvedTask{
+				TaskName: "test-task",
+				Kind:     "Task",
+				TaskSpec: &v1.TaskSpec{Steps: simpleTask.Spec.Steps},
+			}
+
+			workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
+			taskSpec, err := applyParamsContextsResultsAndWorkspaces(testAssets.Ctx, tr, rtr, workspaceVolumes)
+			if err != nil {
+				t.Fatalf("update task spec threw error %v", err)
+			}
+
+			// Ensure the context has the proper configuration
+			ctx := testAssets.Ctx
+			ctx = config.ToContext(ctx, &config.Config{
+				Defaults: &config.Defaults{
+					DefaultTimeoutMinutes:      60,
+					DefaultManagedByLabelValue: "tekton-pipeline",
+					DefaultForbiddenEnv:        []string{"TEKTON_POWER_MODE"},
+				},
+				FeatureFlags: &config.FeatureFlags{
+					EnableWaitExponentialBackoff: true,
+					Coschedule:                   "workspaces",
+				},
+				WaitExponentialBackoff: &config.WaitExponentialBackoff{
+					Duration: 1 * time.Second,
+					Factor:   2.0,
+					Jitter:   0.0,
+					Steps:    10,
+					Cap:      30 * time.Second,
+				},
+			})
+
+			result, err := r.createPod(ctx, taskSpec, tr, rtr, workspaceVolumes)
+			if tc.expectErr {
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				// When an error occurs, result should be nil
+				if result != nil {
+					t.Errorf("expected no Pod to be created when error occurs, got: %v", result)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("expected no error, got: %v", err)
+				}
+				if result == nil {
+					t.Fatalf("expected Pod to be created, got nil")
+				}
+			}
+			if callCount != tc.expectCalls {
+				t.Errorf("expected %d attempts, got %d", tc.expectCalls, callCount)
+			}
+		})
+	}
+}
+
 func TestReconcile_Single_SidecarState(t *testing.T) {
 	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: now}}
 	taskRun := parse.MustParseV1TaskRun(t, `

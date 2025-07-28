@@ -35,6 +35,7 @@ import (
 	taskrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1/taskrun"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
 	alphalisters "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	ctrl "github.com/tektoncd/pipeline/pkg/controller"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources"
 	"github.com/tektoncd/pipeline/pkg/internal/defaultresourcerequirements"
@@ -61,6 +62,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	corev1Listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/utils/clock"
@@ -906,7 +908,31 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 	// Stash the podname in case there's create conflict so that we can try
 	// to fetch it.
 	podName := pod.Name
-	pod, err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+
+	cfg := config.FromContextOrDefaults(ctx)
+	if !cfg.FeatureFlags.EnableWaitExponentialBackoff {
+		pod, err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+	} else {
+		backoff := wait.Backoff{
+			Duration: cfg.WaitExponentialBackoff.Duration, // Initial delay before retry
+			Factor:   cfg.WaitExponentialBackoff.Factor,   // Multiplier for exponential growth
+			Steps:    cfg.WaitExponentialBackoff.Steps,    // Maximum number of retry attempts
+			Cap:      cfg.WaitExponentialBackoff.Cap,      // Maximum time spent before giving up
+		}
+		var result *corev1.Pod
+		err = wait.ExponentialBackoff(backoff, func() (bool, error) {
+			result = nil
+			result, err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+			if err != nil {
+				if ctrl.IsWebhookTimeout(err) {
+					return false, nil // retry
+				}
+				return false, err // do not retry
+			}
+			pod = result
+			return true, nil
+		})
+	}
 
 	if err == nil && willOverwritePodSetAffinity(tr) {
 		if recorder := controller.GetEventRecorder(ctx); recorder != nil {
@@ -921,7 +947,10 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 			return p, nil
 		}
 	}
-	return pod, err
+	if err != nil {
+		return nil, err
+	}
+	return pod, nil
 }
 
 // applyParamsContextsResultsAndWorkspaces applies paramater, context, results and workspace substitutions to the TaskSpec.
