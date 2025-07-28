@@ -77,7 +77,31 @@ func (c *defaultPVCHandler) CreatePVCFromVolumeClaimTemplate(ctx context.Context
 	case apierrors.IsNotFound(err):
 		_, err := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Create(ctx, claim, metav1.CreateOptions{})
 		if err != nil {
-			if apierrors.IsAlreadyExists(err) {
+	_, getErr := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Get(ctx, claim.Name, metav1.GetOptions{})
+	switch {
+	case apierrors.IsNotFound(getErr):
+		_, createErr := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Create(ctx, claim, metav1.CreateOptions{})
+		if createErr == nil {
+			c.logger.Infof("Created PersistentVolumeClaim %s in namespace %s", claim.Name, claim.Namespace)
+			return nil
+		}
+
+		if apierrors.IsAlreadyExists(createErr) {
+			c.logger.Infof("Tried to create PersistentVolumeClaim %s in namespace %s, but it already exists",
+				claim.Name, claim.Namespace)
+			return nil
+		}
+
+		// This is a retry-able error
+		if apierrors.IsForbidden(createErr) && strings.Contains(createErr.Error(), "exceeded quota") {
+			return fmt.Errorf("%w: %v", ErrPvcCreationFailedRetryable, createErr.Error())
+		}
+
+		return fmt.Errorf("%w for %s: %w", ErrPvcCreationFailed, claim.Name, createErr)
+	case getErr != nil:
+		return fmt.Errorf("%w: failed to retrieve PVC %s: %w", ErrPvcCreationFailed, claim.Name, getErr)
+	}
+}
 				c.logger.Infof("Tried to create PersistentVolumeClaim %s in namespace %s, but it already exists",
 					claim.Name, claim.Namespace)
 			} else if apierrors.IsForbidden(err) {
@@ -85,7 +109,12 @@ func (c *defaultPVCHandler) CreatePVCFromVolumeClaimTemplate(ctx context.Context
 					// This is a retry-able error
 					return fmt.Errorf("%w: %v", ErrPvcCreationFailedRetryable, err.Error())
 				}
-				return fmt.Errorf("%w for %s: %w", ErrPvcCreationFailed, claim.Name, err)
+			} else if apierrors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota") {
+       			// This is a retry-able error
+				return fmt.Errorf("%w: %v", ErrPvcCreationFailedRetryable, err.Error())
+			}
+			return fmt.Errorf("%w for %s: %w", ErrPvcCreationFailed, claim.Name, err)
+
 			} else {
 				return fmt.Errorf("%w for %s: %w", ErrPvcCreationFailed, claim.Name, err)
 			}
