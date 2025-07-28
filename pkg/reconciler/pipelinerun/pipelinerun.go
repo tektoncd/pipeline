@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -40,6 +39,7 @@ import (
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
 	alpha1listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	beta1listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
+	ctrl "github.com/tektoncd/pipeline/pkg/controller"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
@@ -1108,7 +1108,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 		result = nil
 		result, err = c.PipelineClientSet.TektonV1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
 		if err != nil {
-			if isWebhookTimeout(err) {
+			if ctrl.IsWebhookTimeout(err) {
 				return false, nil // retry
 			}
 			return false, err // do not retry
@@ -1119,16 +1119,6 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 		return nil, err
 	}
 	return result, nil
-}
-
-// isWebhookTimeout checks if the error is due to a mutating admission webhook timeout
-func isWebhookTimeout(err error) bool {
-	var statusErr *apierrors.StatusError
-	if errors.As(err, &statusErr) {
-		return statusErr.ErrStatus.Code == http.StatusInternalServerError &&
-			strings.Contains(statusErr.ErrStatus.Message, "timeout")
-	}
-	return false
 }
 
 // handleRunCreationError marks the PipelineRun as failed and returns a permanent error if the run creation error is not retryable
@@ -1273,7 +1263,7 @@ func (c *Reconciler) createCustomRun(ctx context.Context, runName string, params
 		result = nil
 		result, err = c.PipelineClientSet.TektonV1beta1().CustomRuns(pr.Namespace).Create(ctx, r, metav1.CreateOptions{})
 		if err != nil {
-			if isWebhookTimeout(err) {
+			if ctrl.IsWebhookTimeout(err) {
 				return false, nil // retry
 			}
 			return false, err // do not retry
