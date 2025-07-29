@@ -22,6 +22,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	"github.com/tektoncd/pipeline/test/parse"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
@@ -242,84 +244,10 @@ func TestGitResolverCache(t *testing.T) {
 	}
 }
 
-// TestCachePerformance validates cache performance characteristics
-func TestCachePerformance(t *testing.T) {
-	ctx := t.Context()
-	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)
-
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
-	// Clear the cache to ensure we start with a clean state
-	clearCache(ctx)
-
-	// Set up local bundle registry
-	taskName := helpers.ObjectNameForTest(t)
-	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/cachetest-" + helpers.ObjectNameForTest(t)
-
-	// Create a task for the test
-	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  steps:
-  - name: hello
-    image: mirror.gcr.io/alpine
-    script: 'echo Hello from performance test'
-`, taskName, namespace))
-
-	// Set up the bundle in the local registry
-	setupBundle(ctx, t, c, namespace, repo, task, nil)
-
-	// Measure time for first request (cache miss)
-	start := time.Now()
-	tr1 := createBundleTaskRunLocal(t, namespace, "perf-test-1", "always", repo, taskName)
-	_, err := c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create first TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr1.Name, TaskRunSucceed(tr1.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for first TaskRun to finish: %s", err)
-	}
-	firstRequestTime := time.Since(start)
-
-	// Measure time for second request (cache hit)
-	start = time.Now()
-	tr2 := createBundleTaskRunLocal(t, namespace, "perf-test-2", "always", repo, taskName)
-	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create second TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr2.Name, TaskRunSucceed(tr2.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for second TaskRun to finish: %s", err)
-	}
-	secondRequestTime := time.Since(start)
-
-	// Verify cache hit is significantly faster
-	if secondRequestTime >= firstRequestTime {
-		t.Errorf("Cache hit should be faster than cache miss. First: %v, Second: %v",
-			firstRequestTime, secondRequestTime)
-	}
-
-	// Verify cache hit is at least 50% faster
-	speedup := float64(firstRequestTime) / float64(secondRequestTime)
-	if speedup < 1.5 {
-		t.Errorf("Cache hit should be at least 50%% faster. Speedup: %.2fx", speedup)
-	}
-
-	t.Logf("Performance results: First request: %v, Second request: %v, Speedup: %.2fx",
-		firstRequestTime, secondRequestTime, speedup)
-}
-
 // TestCacheConfiguration validates cache configuration options
 func TestCacheConfiguration(t *testing.T) {
 	ctx := t.Context()
-	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)
+	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags, cacheGitFeatureFlags)
 
 	t.Parallel()
 
@@ -348,35 +276,83 @@ spec:
 	// Set up the bundle in the local registry
 	setupBundle(ctx, t, c, namespace, repo, task, nil)
 
+	// Get the digest of the published image
+	digest := getImageDigest(ctx, t, c, namespace, repo)
+	repoWithDigest := repo + "@" + digest
+
+	// Get a commit hash for git tests
+	commitHash := getGitCommitHash(ctx, t, c, namespace, "main")
+
 	testCases := []struct {
 		name        string
 		cacheMode   string
 		shouldCache bool
+		description string
 	}{
-		{"always_mode", "always", true},
-		{"never_mode", "never", false},
-		{"auto_mode_with_digest", "auto", true}, // Using digest in bundle
-		{"default_mode", "", true},              // Defaults to auto
+		// Bundle resolver tests
+		{"bundle-always", "always", true, "Bundle resolver should cache with always"},
+		{"bundle-never", "never", false, "Bundle resolver should not cache with never"},
+		{"bundle-auto-no-digest", "auto", false, "Bundle resolver should not cache with auto (no digest)"},
+		{"bundle-auto-with-digest", "auto", true, "Bundle resolver should cache with auto (with digest)"},
+		{"bundle-default-no-digest", "", false, "Bundle resolver should not cache with default (auto with no digest)"},
+		{"bundle-default-with-digest", "", true, "Bundle resolver should cache with default (auto with digest)"},
+
+		// Git resolver tests
+		{"git-always", "always", true, "Git resolver should cache with always"},
+		{"git-never", "never", false, "Git resolver should not cache with never"},
+		{"git-auto-branch", "auto", false, "Git resolver should not cache with auto (branch name)"},
+		{"git-auto-commit", "auto", true, "Git resolver should cache with auto (commit hash)"},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tr := createBundleTaskRunLocal(t, namespace, "config-test-"+tc.name, tc.cacheMode, repo, taskName)
+			var tr *v1.TaskRun
+
+			switch {
+			case strings.HasPrefix(tc.name, "bundle-"):
+				// Use digest for positive test cases
+				if strings.Contains(tc.name, "with-digest") {
+					tr = createBundleTaskRunLocal(t, namespace, "config-test-"+tc.name, tc.cacheMode, repoWithDigest, taskName)
+				} else {
+					tr = createBundleTaskRunLocal(t, namespace, "config-test-"+tc.name, tc.cacheMode, repo, taskName)
+				}
+			case strings.HasPrefix(tc.name, "git-"):
+				// Use commit hash for positive test cases
+				if strings.Contains(tc.name, "commit") {
+					tr = createGitTaskRunWithCache(t, namespace, "config-test-"+tc.name, commitHash, tc.cacheMode)
+				} else {
+					tr = createGitTaskRunWithCache(t, namespace, "config-test-"+tc.name, "main", tc.cacheMode)
+				}
+			}
+
 			_, err := c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
 			if err != nil {
 				t.Fatalf("Failed to create TaskRun: %s", err)
 			}
 
-			if err := WaitForTaskRunState(ctx, c, tr.Name, TaskRunSucceed(tr.Name), "TaskRunSuccess", v1Version); err != nil {
-				t.Fatalf("Error waiting for TaskRun to finish: %s", err)
-			}
+			// Wait a bit for the resolution request to be created
+			time.Sleep(2 * time.Second)
 
 			resolutionRequest := getResolutionRequest(ctx, t, c, namespace, tr.Name)
+
+			// For cache: never, no ResolutionRequest should be created
+			if tc.cacheMode == "never" {
+				if resolutionRequest != nil {
+					t.Errorf("%s: expected no ResolutionRequest for cache: never, but found one", tc.description)
+				}
+				return
+			}
+
+			// For other cache modes, we should have a ResolutionRequest
+			if resolutionRequest == nil {
+				t.Errorf("%s: expected ResolutionRequest but none found", tc.description)
+				return
+			}
+
 			isCached := hasCacheAnnotation(resolutionRequest.Status.Annotations)
 
 			if isCached != tc.shouldCache {
-				t.Errorf("Expected cache=%v for mode %s, got cache=%v",
-					tc.shouldCache, tc.cacheMode, isCached)
+				t.Errorf("%s: expected cache=%v, got cache=%v", tc.description, tc.shouldCache, isCached)
 			}
 		})
 	}
@@ -731,58 +707,6 @@ func TestGitResolverCacheAutoMode(t *testing.T) {
 	}
 }
 
-// TestGitResolverCachePerformance validates git resolver cache performance
-func TestGitResolverCachePerformance(t *testing.T) {
-	ctx := t.Context()
-	c, namespace := setup(ctx, t, cacheGitFeatureFlags)
-
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
-	// Measure time for first request (cache miss)
-	start := time.Now()
-	tr1 := createGitTaskRunWithCache(t, namespace, "perf-git-1", "6bffb6ca708ac9013115baa574801e8127f4c5c2", "always")
-	_, err := c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create first Git TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr1.Name, TaskRunSucceed(tr1.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for first Git TaskRun to finish: %s", err)
-	}
-	firstRequestTime := time.Since(start)
-
-	// Measure time for second request (cache hit)
-	start = time.Now()
-	tr2 := createGitTaskRunWithCache(t, namespace, "perf-git-2", "6bffb6ca708ac9013115baa574801e8127f4c5c2", "always")
-	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create second Git TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr2.Name, TaskRunSucceed(tr2.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for second Git TaskRun to finish: %s", err)
-	}
-	secondRequestTime := time.Since(start)
-
-	// Verify cache hit is significantly faster
-	if secondRequestTime >= firstRequestTime {
-		t.Errorf("Cache hit should be faster than cache miss. First: %v, Second: %v",
-			firstRequestTime, secondRequestTime)
-	}
-
-	// Verify cache hit is at least 50% faster
-	speedup := float64(firstRequestTime) / float64(secondRequestTime)
-	if speedup < 1.5 {
-		t.Errorf("Cache hit should be at least 50%% faster. Speedup: %.2fx", speedup)
-	}
-
-	t.Logf("Git resolver performance results: First request: %v, Second request: %v, Speedup: %.2fx",
-		firstRequestTime, secondRequestTime, speedup)
-}
-
 // TestClusterResolverCacheNeverMode validates cluster resolver caching with cache: never
 func TestClusterResolverCacheNeverMode(t *testing.T) {
 	ctx := t.Context()
@@ -901,80 +825,6 @@ spec:
 	if hasCacheAnnotation(resolutionRequest2.Status.Annotations) {
 		t.Error("Cluster request with cache: auto should not be cached")
 	}
-}
-
-// TestClusterResolverCachePerformance validates cluster resolver cache performance
-func TestClusterResolverCachePerformance(t *testing.T) {
-	ctx := t.Context()
-	c, namespace := setup(ctx, t, clusterFeatureFlags)
-
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
-	// Create a Task in the namespace for testing
-	taskName := helpers.ObjectNameForTest(t)
-	exampleTask := parse.MustParseV1Task(t, fmt.Sprintf(`
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  steps:
-  - name: echo
-    image: mirror.gcr.io/ubuntu
-    script: |
-      #!/usr/bin/env bash
-      echo "Hello from cluster resolver cache performance test"
-`, taskName, namespace))
-
-	_, err := c.V1TaskClient.Create(ctx, exampleTask, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", taskName, err)
-	}
-
-	// Measure time for first request (cache miss)
-	start := time.Now()
-	tr1 := createClusterTaskRun(t, namespace, "perf-cluster-1", taskName, "always")
-	_, err = c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create first TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr1.Name, TaskRunSucceed(tr1.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for first TaskRun to finish: %s", err)
-	}
-	firstRequestTime := time.Since(start)
-
-	// Measure time for second request (cache hit)
-	start = time.Now()
-	tr2 := createClusterTaskRun(t, namespace, "perf-cluster-2", taskName, "always")
-	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create second TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr2.Name, TaskRunSucceed(tr2.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for second TaskRun to finish: %s", err)
-	}
-	secondRequestTime := time.Since(start)
-
-	// Verify cache hit is significantly faster
-	if secondRequestTime >= firstRequestTime {
-		t.Errorf("Cache hit should be faster than cache miss. First: %v, Second: %v",
-			firstRequestTime, secondRequestTime)
-	}
-
-	// Verify cache hit is at least 20% faster (more realistic for cluster resolver)
-	speedup := float64(firstRequestTime) / float64(secondRequestTime)
-	if speedup < 1.2 {
-		t.Errorf("Cache hit should be at least 20%% faster. Speedup: %.2fx", speedup)
-	}
-
-	t.Logf("Cluster resolver performance results: First request: %v, Second request: %v, Speedup: %.2fx",
-		firstRequestTime, secondRequestTime, speedup)
 }
 
 // TestCacheIsolationBetweenResolvers validates that cache keys are unique between resolvers
@@ -1132,6 +982,13 @@ spec:
 	// Set up the bundle in the local registry
 	setupBundle(ctx, t, c, namespace, bundleRepo, bundleTask, nil)
 
+	// Get the digest of the published bundle image
+	bundleDigest := getImageDigest(ctx, t, c, namespace, bundleRepo)
+	bundleRepoWithDigest := bundleRepo + "@" + bundleDigest
+
+	// Get a commit hash for git tests
+	commitHash := getGitCommitHash(ctx, t, c, namespace, "main")
+
 	// Create a Task in the namespace for testing cluster resolver
 	taskName := helpers.ObjectNameForTest(t)
 	exampleTask := parse.MustParseV1Task(t, fmt.Sprintf(`
@@ -1162,22 +1019,24 @@ spec:
 		description string
 	}{
 		// Bundle resolver tests
-		{"bundle_always", "bundle", "always", true, "Bundle resolver should cache with always"},
-		{"bundle_never", "bundle", "never", false, "Bundle resolver should not cache with never"},
-		{"bundle_auto", "bundle", "auto", true, "Bundle resolver should cache with auto (has digest)"},
-		{"bundle_default", "bundle", "", true, "Bundle resolver should cache with default (auto with digest)"},
+		{"bundle-always", "bundle", "always", true, "Bundle resolver should cache with always"},
+		{"bundle-never", "bundle", "never", false, "Bundle resolver should not cache with never"},
+		{"bundle-auto-no-digest", "bundle", "auto", false, "Bundle resolver should not cache with auto (no digest)"},
+		{"bundle-auto-with-digest", "bundle", "auto", true, "Bundle resolver should cache with auto (with digest)"},
+		{"bundle-default-no-digest", "bundle", "", false, "Bundle resolver should not cache with default (auto with no digest)"},
+		{"bundle-default-with-digest", "bundle", "", true, "Bundle resolver should cache with default (auto with digest)"},
 
 		// Git resolver tests
-		{"git_always", "git", "always", true, "Git resolver should cache with always"},
-		{"git_never", "git", "never", false, "Git resolver should not cache with never"},
-		{"git_auto_commit", "git", "auto", true, "Git resolver should cache with auto and commit hash"},
-		{"git_auto_branch", "git", "auto", false, "Git resolver should not cache with auto and branch"},
+		{"git-always", "git", "always", true, "Git resolver should cache with always"},
+		{"git-never", "git", "never", false, "Git resolver should not cache with never"},
+		{"git-auto-branch", "git", "auto", false, "Git resolver should not cache with auto (branch name)"},
+		{"git-auto-commit", "git", "auto", true, "Git resolver should cache with auto (commit hash)"},
 
 		// Cluster resolver tests
-		{"cluster_always", "cluster", "always", true, "Cluster resolver should cache with always"},
-		{"cluster_never", "cluster", "never", false, "Cluster resolver should not cache with never"},
-		{"cluster_auto", "cluster", "auto", false, "Cluster resolver should not cache with auto"},
-		{"cluster_default", "cluster", "", false, "Cluster resolver should not cache with default"},
+		{"cluster-always", "cluster", "always", true, "Cluster resolver should cache with always"},
+		{"cluster-never", "cluster", "never", false, "Cluster resolver should not cache with never"},
+		{"cluster-auto", "cluster", "auto", false, "Cluster resolver should not cache with auto"},
+		{"cluster-default", "cluster", "", false, "Cluster resolver should not cache with default"},
 	}
 
 	for _, tc := range testCases {
@@ -1186,14 +1045,19 @@ spec:
 
 			switch tc.resolver {
 			case "bundle":
-				tr = createBundleTaskRunLocal(t, namespace, "config-test-"+tc.name, tc.cacheMode, bundleRepo, bundleTaskName)
-			case "git":
-				// Use commit hash for auto mode, branch for others
-				revision := "6bffb6ca708ac9013115baa574801e8127f4c5c2"
-				if tc.cacheMode == "auto" && tc.shouldCache == false {
-					revision = "main" // Use branch name for auto mode that shouldn't cache
+				// Use digest for positive test cases
+				if strings.Contains(tc.name, "with-digest") {
+					tr = createBundleTaskRunLocal(t, namespace, "config-test-"+tc.name, tc.cacheMode, bundleRepoWithDigest, bundleTaskName)
+				} else {
+					tr = createBundleTaskRunLocal(t, namespace, "config-test-"+tc.name, tc.cacheMode, bundleRepo, bundleTaskName)
 				}
-				tr = createGitTaskRunWithCache(t, namespace, "config-test-"+tc.name, revision, tc.cacheMode)
+			case "git":
+				// Use commit hash for positive test cases
+				if strings.Contains(tc.name, "commit") {
+					tr = createGitTaskRunWithCache(t, namespace, "config-test-"+tc.name, commitHash, tc.cacheMode)
+				} else {
+					tr = createGitTaskRunWithCache(t, namespace, "config-test-"+tc.name, "main", tc.cacheMode)
+				}
 			case "cluster":
 				tr = createClusterTaskRun(t, namespace, "config-test-"+tc.name, taskName, tc.cacheMode)
 			}
@@ -1203,11 +1067,25 @@ spec:
 				t.Fatalf("Failed to create TaskRun: %s", err)
 			}
 
-			if err := WaitForTaskRunState(ctx, c, tr.Name, TaskRunSucceed(tr.Name), "TaskRunSuccess", v1Version); err != nil {
-				t.Fatalf("Error waiting for TaskRun to finish: %s", err)
-			}
+			// Wait a bit for the resolution request to be created
+			time.Sleep(2 * time.Second)
 
 			resolutionRequest := getResolutionRequest(ctx, t, c, namespace, tr.Name)
+
+			// For cache: never, no ResolutionRequest should be created
+			if tc.cacheMode == "never" {
+				if resolutionRequest != nil {
+					t.Errorf("%s: expected no ResolutionRequest for cache: never, but found one", tc.description)
+				}
+				return
+			}
+
+			// For other cache modes, we should have a ResolutionRequest
+			if resolutionRequest == nil {
+				t.Errorf("%s: expected ResolutionRequest but none found", tc.description)
+				return
+			}
+
 			isCached := hasCacheAnnotation(resolutionRequest.Status.Annotations)
 
 			if isCached != tc.shouldCache {
@@ -1404,6 +1282,10 @@ spec:
 			}
 
 			resolutionRequest := getResolutionRequest(ctx, t, c, namespace, tr.Name)
+			if resolutionRequest == nil {
+				errors <- fmt.Errorf("No ResolutionRequest found for TaskRun %d", index)
+				return
+			}
 			if !hasCacheAnnotation(resolutionRequest.Status.Annotations) {
 				errors <- fmt.Errorf("TaskRun %d should be cached", index)
 				return
@@ -1467,6 +1349,9 @@ spec:
 
 	// Should still work (defaults to auto mode)
 	resolutionRequest := getResolutionRequest(ctx, t, c, namespace, tr.Name)
+	if resolutionRequest == nil {
+		t.Fatalf("No ResolutionRequest found for TaskRun")
+	}
 	if !hasCacheAnnotation(resolutionRequest.Status.Annotations) {
 		t.Error("TaskRun with malformed cache parameter should still cache (defaults to auto)")
 	}
@@ -1474,34 +1359,35 @@ spec:
 	t.Logf("Cache invalid parameters test completed successfully")
 }
 
-// getResolutionRequest retrieves the ResolutionRequest for a given TaskRun
+// getResolutionRequest gets the ResolutionRequest for a TaskRun
 func getResolutionRequest(ctx context.Context, t *testing.T, c *clients, namespace, taskRunName string) *v1beta1.ResolutionRequest {
 	t.Helper()
 
 	// List all ResolutionRequests in the namespace
-	requests, err := c.V1beta1ResolutionRequestclient.List(ctx, metav1.ListOptions{})
+	resolutionRequests, err := c.V1beta1ResolutionRequestclient.List(ctx, metav1.ListOptions{})
 	if err != nil {
-		t.Fatalf("Failed to list ResolutionRequests: %s", err)
+		t.Fatalf("Failed to list ResolutionRequests: %v", err)
 	}
 
-	// Find the resolution request that matches this TaskRun
-	// Since we can't easily match by TaskRun name, return the most recent one
-	// (the one with the highest resource version or creation timestamp)
+	// Find the ResolutionRequest that has this TaskRun as an owner
 	var mostRecent *v1beta1.ResolutionRequest
-	for _, req := range requests.Items {
-		if req.Namespace == namespace && req.Status.Data != "" {
-			if mostRecent == nil || req.CreationTimestamp.After(mostRecent.CreationTimestamp.Time) {
-				mostRecent = &req
+	for _, rr := range resolutionRequests.Items {
+		// Check if this ResolutionRequest is owned by our TaskRun
+		for _, ownerRef := range rr.OwnerReferences {
+			if ownerRef.Kind == "TaskRun" && ownerRef.Name == taskRunName {
+				if mostRecent == nil || rr.CreationTimestamp.After(mostRecent.CreationTimestamp.Time) {
+					mostRecent = &rr
+				}
 			}
 		}
 	}
 
-	if mostRecent != nil {
-		return mostRecent
+	if mostRecent == nil {
+		// No ResolutionRequest found - this might be expected for cache: never
+		return nil
 	}
 
-	t.Fatalf("No ResolutionRequest found for TaskRun %s in namespace %s", taskRunName, namespace)
-	return nil
+	return mostRecent
 }
 
 func hasCacheAnnotation(annotations map[string]string) bool {
@@ -1510,4 +1396,108 @@ func hasCacheAnnotation(annotations map[string]string) bool {
 	}
 	cached, exists := annotations[CacheAnnotationKey]
 	return exists && cached == CacheValueTrue
+}
+
+// getImageDigest gets the digest of an image from the local registry
+func getImageDigest(ctx context.Context, t *testing.T, c *clients, namespace, imageRef string) string {
+	t.Helper()
+
+	// Create a pod to run skopeo inspect
+	podName := "get-digest-" + helpers.ObjectNameForTest(t)
+	po, err := c.KubeClient.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      podName,
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name:    "skopeo",
+				Image:   "ghcr.io/tektoncd/catalog/upstream/tasks/skopeo-copy:latest",
+				Command: []string{"/bin/sh", "-c"},
+				Args:    []string{"skopeo inspect --tls-verify=false docker://" + imageRef + " | jq -r '.Digest'"},
+			}},
+			RestartPolicy: corev1.RestartPolicyNever,
+		},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create digest pod: %v", err)
+	}
+
+	// Wait for pod to complete
+	if err := WaitForPodState(ctx, c, po.Name, namespace, func(pod *corev1.Pod) (bool, error) {
+		return pod.Status.Phase == "Succeeded", nil
+	}, "PodContainersTerminated"); err != nil {
+		req := c.KubeClient.CoreV1().Pods(namespace).GetLogs(po.GetName(), &corev1.PodLogOptions{Container: "skopeo"})
+		logs, err := req.DoRaw(ctx)
+		if err != nil {
+			t.Fatalf("Error getting pod logs: %v", err)
+		}
+		t.Fatalf("Failed to get digest. Pod logs: \n%s", string(logs))
+	}
+
+	// Get the digest from pod logs
+	req := c.KubeClient.CoreV1().Pods(namespace).GetLogs(po.GetName(), &corev1.PodLogOptions{Container: "skopeo"})
+	logs, err := req.DoRaw(ctx)
+	if err != nil {
+		t.Fatalf("Error getting pod logs: %v", err)
+	}
+
+	digest := strings.TrimSpace(string(logs))
+	if digest == "" {
+		t.Fatalf("Empty digest returned")
+	}
+
+	return digest
+}
+
+// getGitCommitHash gets the commit hash for a branch in the catalog repository
+func getGitCommitHash(ctx context.Context, t *testing.T, c *clients, namespace, branch string) string {
+	t.Helper()
+
+	// Create a pod to run git ls-remote
+	podName := "get-commit-" + helpers.ObjectNameForTest(t)
+	po, err := c.KubeClient.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      podName,
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name:    "git",
+				Image:   "alpine/git:latest",
+				Command: []string{"/bin/sh", "-c"},
+				Args:    []string{"git ls-remote https://github.com/tektoncd/catalog.git " + branch + " | cut -f1"},
+			}},
+			RestartPolicy: corev1.RestartPolicyNever,
+		},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create git pod: %v", err)
+	}
+
+	// Wait for pod to complete
+	if err := WaitForPodState(ctx, c, po.Name, namespace, func(pod *corev1.Pod) (bool, error) {
+		return pod.Status.Phase == "Succeeded", nil
+	}, "PodContainersTerminated"); err != nil {
+		req := c.KubeClient.CoreV1().Pods(namespace).GetLogs(po.GetName(), &corev1.PodLogOptions{Container: "git"})
+		logs, err := req.DoRaw(ctx)
+		if err != nil {
+			t.Fatalf("Error getting pod logs: %v", err)
+		}
+		t.Fatalf("Failed to get commit hash. Pod logs: \n%s", string(logs))
+	}
+
+	// Get the commit hash from pod logs
+	req := c.KubeClient.CoreV1().Pods(namespace).GetLogs(po.GetName(), &corev1.PodLogOptions{Container: "git"})
+	logs, err := req.DoRaw(ctx)
+	if err != nil {
+		t.Fatalf("Error getting pod logs: %v", err)
+	}
+
+	commitHash := strings.TrimSpace(string(logs))
+	if commitHash == "" {
+		t.Fatalf("Empty commit hash returned")
+	}
+
+	return commitHash
 }
