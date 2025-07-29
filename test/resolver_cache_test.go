@@ -335,10 +335,14 @@ spec:
 
 			resolutionRequest := getResolutionRequest(ctx, t, c, namespace, tr.Name)
 
-			// For cache: never, no ResolutionRequest should be created
+			// For cache: never, ResolutionRequest should be created but without cache annotations
 			if tc.cacheMode == "never" {
-				if resolutionRequest != nil {
-					t.Errorf("%s: expected no ResolutionRequest for cache: never, but found one", tc.description)
+				if resolutionRequest == nil {
+					t.Errorf("%s: expected ResolutionRequest but none found", tc.description)
+					return
+				}
+				if hasCacheAnnotation(resolutionRequest.Status.Annotations) {
+					t.Errorf("%s: expected no cache annotations for cache: never", tc.description)
 				}
 				return
 			}
@@ -1072,10 +1076,14 @@ spec:
 
 			resolutionRequest := getResolutionRequest(ctx, t, c, namespace, tr.Name)
 
-			// For cache: never, no ResolutionRequest should be created
+			// For cache: never, ResolutionRequest should be created but without cache annotations
 			if tc.cacheMode == "never" {
-				if resolutionRequest != nil {
-					t.Errorf("%s: expected no ResolutionRequest for cache: never, but found one", tc.description)
+				if resolutionRequest == nil {
+					t.Errorf("%s: expected ResolutionRequest but none found", tc.description)
+					return
+				}
+				if hasCacheAnnotation(resolutionRequest.Status.Annotations) {
+					t.Errorf("%s: expected no cache annotations for cache: never", tc.description)
 				}
 				return
 			}
