@@ -559,7 +559,7 @@ func TestResolveWithCacheIntegration(t *testing.T) {
 */
 
 func TestResolveWithDisabledResolver(t *testing.T) {
-	ctx := frameworktesting.ContextWithClusterResolverDisabled(context.Background())
+	ctx := frameworktesting.ContextWithClusterResolverDisabled(t.Context())
 	resolver := &cluster.Resolver{}
 
 	req := &v1beta1.ResolutionRequestSpec{
@@ -587,7 +587,7 @@ func TestResolveWithNoParams(t *testing.T) {
 		Params: []pipelinev1.Param{},
 	}
 
-	_, err := resolver.Resolve(context.Background(), req)
+	_, err := resolver.Resolve(t.Context(), req)
 	if err == nil {
 		t.Error("Expected error when no params provided")
 	}
@@ -605,7 +605,7 @@ func TestResolveWithInvalidParams(t *testing.T) {
 		},
 	}
 
-	_, err := resolver.Resolve(context.Background(), req)
+	_, err := resolver.Resolve(t.Context(), req)
 	if err == nil {
 		t.Error("Expected error with invalid params")
 	}
@@ -711,7 +711,7 @@ func TestAnnotatedResourceCreation(t *testing.T) {
 
 func TestResolveWithCacheHit(t *testing.T) {
 	// Test that cache hits work correctly
-	ctx := context.Background()
+	ctx := t.Context()
 	resolver := &cluster.Resolver{}
 
 	// Create a mock cached resource
@@ -1194,7 +1194,7 @@ func TestClusterResolverCacheBehaviorSummary(t *testing.T) {
 
 func TestResolveWithCacheMiss(t *testing.T) {
 	// Test that cache miss scenarios work correctly
-	ctx := context.Background()
+	ctx := t.Context()
 	resolver := &cluster.Resolver{}
 
 	// Create a request with cache: always but no cached resource
@@ -1223,7 +1223,7 @@ func TestResolveWithCacheMiss(t *testing.T) {
 
 func TestResolveWithCacheStorage(t *testing.T) {
 	// Test that cache storage operations work correctly
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create a request with cache: always
 	req := &v1beta1.ResolutionRequestSpec{
@@ -1359,7 +1359,7 @@ func TestResolveWithCacheNeverEndToEnd(t *testing.T) {
 	cache.GetGlobalCache().Add(cacheKey, mockResource)
 
 	// Test cache initialization
-	cache.GetGlobalCache().InitializeLogger(context.Background())
+	cache.GetGlobalCache().InitializeLogger(t.Context())
 	if cache.GetGlobalCache() == nil {
 		t.Error("Global cache should be initialized")
 	}
@@ -1374,7 +1374,7 @@ func TestResolveWithCacheNeverEndToEnd(t *testing.T) {
 
 func TestResolveWithCacheAutoEndToEnd(t *testing.T) {
 	// Test end-to-end cache behavior with cache: auto
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create request with cache: auto
 	req := &v1beta1.ResolutionRequestSpec{
@@ -1435,7 +1435,7 @@ func TestResolveWithCacheInitialization(t *testing.T) {
 
 	// Test that cache logger initialization works
 	// This should not panic or cause errors
-	cache.GetGlobalCache().InitializeLogger(context.Background())
+	cache.GetGlobalCache().InitializeLogger(t.Context())
 
 	// Test cache initialization
 	if cache.GetGlobalCache() == nil {
@@ -1514,7 +1514,7 @@ func TestResolveWithCacheKeyUniqueness(t *testing.T) {
 
 func TestIntegrationNoCacheParameter(t *testing.T) {
 	// Integration test: Verify no caching is performed when no cache parameter is included
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create a request WITHOUT cache parameter
 	req := &v1beta1.ResolutionRequestSpec{
@@ -1583,7 +1583,7 @@ func TestIntegrationNoCacheParameter(t *testing.T) {
 
 func TestIntegrationCacheNever(t *testing.T) {
 	// Integration test: Verify no caching when cache: never
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create a request with cache: never
 	req := &v1beta1.ResolutionRequestSpec{
@@ -1652,7 +1652,7 @@ func TestIntegrationCacheNever(t *testing.T) {
 
 func TestIntegrationCacheAuto(t *testing.T) {
 	// Integration test: Verify no caching when cache: auto (cluster resolver behavior)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create a request with cache: auto
 	req := &v1beta1.ResolutionRequestSpec{
@@ -1721,7 +1721,7 @@ func TestIntegrationCacheAuto(t *testing.T) {
 
 func TestIntegrationCacheAlways(t *testing.T) {
 	// Integration test: Verify caching when cache: always
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create a request with cache: always
 	req := &v1beta1.ResolutionRequestSpec{

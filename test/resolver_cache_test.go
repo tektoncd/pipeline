@@ -458,27 +458,6 @@ spec:
 }
 
 // Helper functions
-func createBundleTaskRun(t *testing.T, namespace, name, cacheMode string) *v1.TaskRun {
-	t.Helper()
-	return parse.MustParseV1TaskRun(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  taskRef:
-    resolver: bundles
-    params:
-    - name: bundle
-      value: gcr.io/tekton-releases/catalog/upstream/git-clone@sha256:65e61544c5870c8828233406689d812391735fd4100cb444bbd81531cb958bb3
-    - name: name
-      value: git-clone
-    - name: kind
-      value: task
-    - name: cache
-      value: %s
-`, name, namespace, cacheMode))
-}
-
 func createBundleTaskRunLocal(t *testing.T, namespace, name, cacheMode, repo, taskName string) *v1.TaskRun {
 	t.Helper()
 	return parse.MustParseV1TaskRun(t, fmt.Sprintf(`
