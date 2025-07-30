@@ -46,7 +46,7 @@ func (s *webhookService) Parse(req *http.Request, fn scm.SecretFunc) (scm.Webhoo
 	switch event {
 	case "repo:refs_changed":
 		hook, err = s.parsePushHook(data, guid)
-	case "pr:opened", "pr:declined", "pr:merged", "pr:from_ref_updated", "pr:modified":
+	case "pr:opened", "pr:declined", "pr:deleted", "pr:merged", "pr:from_ref_updated", "pr:modified":
 		hook, err = s.parsePullRequest(data)
 	case "pr:comment:added", "pr:comment:edited":
 		hook, err = s.parsePullRequestComment(data, guid)
@@ -114,6 +114,8 @@ func (s *webhookService) parsePullRequest(data []byte) (scm.Webhook, error) {
 		dst.Action = scm.ActionOpen
 	case "pr:declined":
 		dst.Action = scm.ActionClose
+	case "pr:deleted":
+		dst.Action = scm.ActionDelete
 	case "pr:merged":
 		dst.Action = scm.ActionMerge
 	case "pr:from_ref_updated":

@@ -167,7 +167,7 @@ func (c *wrapper) doRequest(ctx context.Context, req *scm.Request, in, out inter
 		if res.Status == 404 {
 			return res, scm.ErrNotFound
 		}
-		if logrus.IsLevelEnabled(logrus.DebugLevel) && res.Body != nil {
+		if res.Body != nil {
 			if b, err := io.ReadAll(res.Body); err == nil {
 				logrus.WithFields(logrus.Fields{
 					"requestMethod":  req.Method,
@@ -176,7 +176,7 @@ func (c *wrapper) doRequest(ctx context.Context, req *scm.Request, in, out inter
 					"responseBody":   string(b),
 					"rate":           res.Rate,
 					"requestID":      res.ID,
-				}).Debug("GitHub responded with error")
+				}).Warn("GitHub responded with error")
 			}
 		}
 		return res, errors.New(
