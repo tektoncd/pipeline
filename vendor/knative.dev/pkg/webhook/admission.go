@@ -26,12 +26,17 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
 	admissionv1 "k8s.io/api/admission/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/logging/logkey"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -69,7 +74,7 @@ type StatelessAdmissionController interface {
 }
 
 // MakeErrorStatus creates an 'BadRequest' error AdmissionResponse
-func MakeErrorStatus(reason string, args ...interface{}) *admissionv1.AdmissionResponse {
+func MakeErrorStatus(reason string, args ...any) *admissionv1.AdmissionResponse {
 	result := apierrors.NewBadRequest(fmt.Sprintf(reason, args...)).Status()
 	return &admissionv1.AdmissionResponse{
 		Result:  &result,
@@ -77,7 +82,7 @@ func MakeErrorStatus(reason string, args ...interface{}) *admissionv1.AdmissionR
 	}
 }
 
-func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c AdmissionController, synced <-chan struct{}) http.HandlerFunc {
+func admissionHandler(wh *Webhook, c AdmissionController, synced <-chan struct{}) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := c.(StatelessAdmissionController); ok {
 			// Stateless admission controllers do not require Informers to have
@@ -88,17 +93,37 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 			<-synced
 		}
 
-		ttStart := time.Now()
-		logger := rootLogger
+		logger := wh.Logger
 		logger.Infof("Webhook ServeHTTP request=%#v", r)
+
+		span := trace.SpanFromContext(r.Context())
+		// otelhttp middleware creates the labeler
+		labeler, _ := otelhttp.LabelerFromContext(r.Context())
+
+		defer func() {
+			// otelhttp doesn't add labeler attributes to spans
+			// so we have to do it manually
+			span.SetAttributes(labeler.Get()...)
+		}()
 
 		var review admissionv1.AdmissionReview
 		bodyBuffer := bytes.Buffer{}
 		if err := json.NewDecoder(io.TeeReader(r.Body, &bodyBuffer)).Decode(&review); err != nil {
-			http.Error(w, fmt.Sprint("could not decode body:", err), http.StatusBadRequest)
+			msg := fmt.Sprint("could not decode body:", err)
+			span.SetStatus(codes.Error, msg)
+			http.Error(w, msg, http.StatusBadRequest)
 			return
 		}
 		r.Body = io.NopCloser(&bodyBuffer)
+
+		labeler.Add(
+			KindAttr.With(review.Request.Kind.Kind),
+			GroupAttr.With(review.Request.Kind.Group),
+			VersionAttr.With(review.Request.Kind.Version),
+			OperationAttr.With(string(review.Request.Operation)),
+			SubresourceAttr.With(review.Request.SubResource),
+			WebhookTypeAttr.With(WebhookTypeAdmission),
+		)
 
 		logger = logger.With(
 			logkey.Kind, review.Request.Kind.String(),
@@ -120,11 +145,27 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 			TypeMeta: review.TypeMeta,
 		}
 
+		ttStart := time.Now()
 		reviewResponse := c.Admit(ctx, review.Request)
+
 		var patchType string
 		if reviewResponse.PatchType != nil {
 			patchType = string(*reviewResponse.PatchType)
 		}
+
+		status := metav1.StatusFailure
+		if reviewResponse.Allowed {
+			status = metav1.StatusSuccess
+		} else {
+			span.SetStatus(codes.Error, reviewResponse.Result.Message)
+		}
+
+		labeler.Add(StatusAttr.With(strings.ToLower(status)))
+
+		wh.metrics.recordHandlerDuration(ctx,
+			time.Since(ttStart),
+			metric.WithAttributes(labeler.Get()...),
+		)
 
 		if !reviewResponse.Allowed || reviewResponse.PatchType != nil || response.Response == nil {
 			response.Response = reviewResponse
@@ -155,11 +196,7 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 			http.Error(w, fmt.Sprint("could not encode response:", err), http.StatusInternalServerError)
 			return
 		}
-
-		if stats != nil {
-			// Only report valid requests
-			stats.ReportAdmissionRequest(review.Request, response.Response, time.Since(ttStart))
-		}
+		span.SetStatus(codes.Ok, "")
 	}
 }
 

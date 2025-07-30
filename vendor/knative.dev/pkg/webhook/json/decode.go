@@ -105,9 +105,10 @@ func findMetadataOffsets(bites []byte) (start, end int64, err error) {
 
 		switch v := t.(type) {
 		case json.Delim:
-			if v == '{' {
+			switch v {
+			case '{':
 				level++
-			} else if v == '}' {
+			case '}':
 				level--
 			}
 		case string:
