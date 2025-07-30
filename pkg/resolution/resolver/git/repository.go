@@ -21,10 +21,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type cmdExecutor = func(context.Context, string, ...string) *exec.Cmd
@@ -87,7 +89,7 @@ func (repo *repository) checkout(ctx context.Context, revision string) error {
 		return err
 	}
 
-	_, err = repo.execGit(ctx, "checkout", "FETCH_HEAD")
+	_, err = repo.execGit(ctx, "checkout", revision)
 	if err != nil {
 		return err
 	}
@@ -96,6 +98,8 @@ func (repo *repository) checkout(ctx context.Context, revision string) error {
 }
 
 func (repo *repository) execGit(ctx context.Context, subCmd string, args ...string) ([]byte, error) {
+	log.Printf("[DEBUG] [%s] Starting execGit: %s %v", time.Now().Format("15:04:05.000"), subCmd, args)
+
 	if repo.executor == nil {
 		repo.executor = exec.CommandContext
 	}
@@ -119,17 +123,29 @@ func (repo *repository) execGit(ctx context.Context, subCmd string, args ...stri
 			configArgs = append(configArgs, "--config-env", "http.extraHeader=GIT_AUTH_HEADER")
 		}
 	}
+
+	log.Printf("[DEBUG] [%s] Creating git command with configArgs: %v", time.Now().Format("15:04:05.000"), configArgs)
 	cmd := repo.executor(ctx, "git", append(configArgs, args...)...)
 	cmd.Env = append(cmd.Environ(), env...)
 
+	log.Printf("[DEBUG] [%s] About to execute git command: %s", time.Now().Format("15:04:05.000"), cmd.String())
+
+	startTime := time.Now()
 	out, err := cmd.Output()
+	executionTime := time.Since(startTime)
+
+	log.Printf("[DEBUG] [%s] Git command completed in %v", time.Now().Format("15:04:05.000"), executionTime)
+
 	if err != nil {
+		log.Printf("[DEBUG] [%s] Git command failed: %v", time.Now().Format("15:04:05.000"), err)
 		msg := string(out)
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			msg = string(exitErr.Stderr)
 		}
 		err = fmt.Errorf("git %s error: %s: %w", subCmd, strings.TrimSpace(msg), err)
+	} else {
+		log.Printf("[DEBUG] [%s] Git command succeeded", time.Now().Format("15:04:05.000"))
 	}
 	return out, err
 }

@@ -196,21 +196,22 @@ func TestGitResolverCache(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	// Test with commit hash (should cache)
-	tr1 := createGitTaskRun(t, namespace, "test-git-1", "6bffb6ca708ac9013115baa574801e8127f4c5c2")
+	tr1 := createGitTaskRun(t, namespace, "test-git-1", "d76b231a02268ef5d6398f134452b51febd7f084")
 	_, err := c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
 	if err != nil {
-		t.Fatalf("Failed to create first Git TaskRun: %s", err)
+		t.Fatalf("Failed to create TaskRun `%s`: %s", tr1.Name, err)
 	}
 
+	// Wait for the first TaskRun to complete
 	if err := WaitForTaskRunState(ctx, c, tr1.Name, TaskRunSucceed(tr1.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for first Git TaskRun to finish: %s", err)
+		t.Fatalf("Error waiting for TaskRun to finish: %s", err)
 	}
 
 	// Second request with same commit should be cached
-	tr2 := createGitTaskRun(t, namespace, "test-git-2", "6bffb6ca708ac9013115baa574801e8127f4c5c2")
+	tr2 := createGitTaskRun(t, namespace, "test-git-2", "d76b231a02268ef5d6398f134452b51febd7f084")
 	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
 	if err != nil {
-		t.Fatalf("Failed to create second Git TaskRun: %s", err)
+		t.Fatalf("Failed to create TaskRun `%s`: %s", tr2.Name, err)
 	}
 
 	if err := WaitForTaskRunState(ctx, c, tr2.Name, TaskRunSucceed(tr2.Name), "TaskRunSuccess", v1Version); err != nil {
@@ -506,6 +507,9 @@ metadata:
   name: %s
   namespace: %s
 spec:
+  workspaces:
+    - name: output
+      emptyDir: {}
   taskRef:
     resolver: git
     params:
@@ -515,6 +519,11 @@ spec:
       value: task/git-clone/0.10/git-clone.yaml
     - name: revision
       value: %s
+  params:
+    - name: url
+      value: https://github.com/tektoncd/pipeline
+    - name: deleteExisting
+      value: "true"
 `, name, namespace, revision))
 }
 
@@ -525,6 +534,9 @@ metadata:
   name: %s
   namespace: %s
 spec:
+  workspaces:
+    - name: output
+      emptyDir: {}
   taskRef:
     resolver: git
     params:
@@ -536,6 +548,11 @@ spec:
       value: %s
     - name: cache
       value: %s
+  params:
+    - name: url
+      value: https://github.com/tektoncd/pipeline
+    - name: deleteExisting
+      value: "true"
 `, name, namespace, revision, cacheMode))
 }
 
@@ -571,7 +588,7 @@ func TestGitResolverCacheAlwaysMode(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	// Test with cache: always and commit hash
-	tr1 := createGitTaskRunWithCache(t, namespace, "test-git-always-1", "6bffb6ca708ac9013115baa574801e8127f4c5c2", "always")
+	tr1 := createGitTaskRunWithCache(t, namespace, "test-git-always-1", "d76b231a02268ef5d6398f134452b51febd7f084", "always")
 	_, err := c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create first Git TaskRun: %s", err)
@@ -582,7 +599,7 @@ func TestGitResolverCacheAlwaysMode(t *testing.T) {
 	}
 
 	// Second request with same parameters should be cached
-	tr2 := createGitTaskRunWithCache(t, namespace, "test-git-always-2", "6bffb6ca708ac9013115baa574801e8127f4c5c2", "always")
+	tr2 := createGitTaskRunWithCache(t, namespace, "test-git-always-2", "d76b231a02268ef5d6398f134452b51febd7f084", "always")
 	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create second Git TaskRun: %s", err)
@@ -630,7 +647,7 @@ func TestGitResolverCacheNeverMode(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	// Test with cache: never and commit hash (should not cache)
-	tr1 := createGitTaskRunWithCache(t, namespace, "test-git-never-1", "6bffb6ca708ac9013115baa574801e8127f4c5c2", "never")
+	tr1 := createGitTaskRunWithCache(t, namespace, "test-git-never-1", "d76b231a02268ef5d6398f134452b51febd7f084", "never")
 	_, err := c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create first Git TaskRun: %s", err)
@@ -641,7 +658,7 @@ func TestGitResolverCacheNeverMode(t *testing.T) {
 	}
 
 	// Second request with same parameters should NOT be cached
-	tr2 := createGitTaskRunWithCache(t, namespace, "test-git-never-2", "6bffb6ca708ac9013115baa574801e8127f4c5c2", "never")
+	tr2 := createGitTaskRunWithCache(t, namespace, "test-git-never-2", "d76b231a02268ef5d6398f134452b51febd7f084", "never")
 	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create second Git TaskRun: %s", err)
@@ -668,7 +685,7 @@ func TestGitResolverCacheAutoMode(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	// Test with cache: auto and commit hash (should cache)
-	tr1 := createGitTaskRunWithCache(t, namespace, "test-git-auto-1", "6bffb6ca708ac9013115baa574801e8127f4c5c2", "auto")
+	tr1 := createGitTaskRunWithCache(t, namespace, "test-git-auto-1", "d76b231a02268ef5d6398f134452b51febd7f084", "auto")
 	_, err := c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create first Git TaskRun: %s", err)
@@ -679,7 +696,7 @@ func TestGitResolverCacheAutoMode(t *testing.T) {
 	}
 
 	// Second request with same commit should be cached
-	tr2 := createGitTaskRunWithCache(t, namespace, "test-git-auto-2", "6bffb6ca708ac9013115baa574801e8127f4c5c2", "auto")
+	tr2 := createGitTaskRunWithCache(t, namespace, "test-git-auto-2", "d76b231a02268ef5d6398f134452b51febd7f084", "auto")
 	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create second Git TaskRun: %s", err)
@@ -897,7 +914,7 @@ spec:
 	}
 
 	// Test git resolver cache
-	tr2 := createGitTaskRunWithCache(t, namespace, "isolation-git-1", "6bffb6ca708ac9013115baa574801e8127f4c5c2", "always")
+	tr2 := createGitTaskRunWithCache(t, namespace, "isolation-git-1", "d76b231a02268ef5d6398f134452b51febd7f084", "always")
 	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create git TaskRun: %s", err)
