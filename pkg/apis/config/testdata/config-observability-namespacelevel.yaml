@@ -21,11 +21,26 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 data:
+  # OpenTelemetry Metrics Configuration
+  metrics-protocol: prometheus
+  metrics-endpoint: ""
+  metrics-export-interval: ""
+  
+  # OpenTelemetry Tracing Configuration
+  tracing-protocol: none
+  tracing-endpoint: ""
+  tracing-sampling-rate: "1.0"
+  
+  # Runtime Configuration
+  runtime-profiling: disabled
+  runtime-export-interval: "15s"
+  
+  # Legacy OpenCensus Configuration (for backward compatibility)
   metrics.backend-destination: prometheus
-  metrics.stackdriver-project-id: "<your stackdriver project id>"
-  metrics.allow-stackdriver-custom-metrics: "false"
+  
+  # Tekton-specific metrics configuration (current implementation expects these)
   metrics.taskrun.level: "namespace"
   metrics.taskrun.duration-type: "histogram"
   metrics.pipelinerun.level: "namespace"
-  metrics.running-pipelinerun.level: "namespace"
   metrics.pipelinerun.duration-type: "lastvalue"
+  metrics.running-pipelinerun.level: "namespace"

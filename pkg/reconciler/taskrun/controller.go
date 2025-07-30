@@ -65,7 +65,10 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		secretinformer := secretinformer.Get(ctx)
 		spireClient := spire.GetControllerAPIClient(ctx)
 		tracerProvider := tracing.New(TracerProviderName, logger.Named("tracing"))
-		taskrunmetricsRecorder := taskrunmetrics.Get(ctx)
+		taskrunmetricsRecorder, err := taskrunmetrics.NewRecorder(ctx)
+		if err != nil {
+			logger.Fatalf("Failed to create taskrun metrics recorder %v", err)
+		}
 		//nolint:contextcheck // OnStore methods does not support context as a parameter
 		configStore := config.NewStore(logger.Named("config-store"),
 			taskrunmetrics.OnStore(logger, taskrunmetricsRecorder),
