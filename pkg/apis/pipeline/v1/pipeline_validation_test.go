@@ -315,6 +315,26 @@ func TestPipeline_Validate_Success(t *testing.T) {
 					"enable-artifacts":  "true",
 					"enable-api-fields": "alpha"})
 		},
+	}, {
+		name: "valid pipeline with onError containing parameter reference",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Params: ParamSpecs{{
+					Name: "error-behavior",
+					Type: ParamTypeString,
+					Default: &ParamValue{
+						Type:      ParamTypeString,
+						StringVal: "continue",
+					},
+				}},
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					OnError: PipelineTaskOnErrorType("$(params.error-behavior)"),
+				}},
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -639,6 +659,39 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "$(params.param1)"`,
 			Paths:   []string{"spec.tasks[0].params[param1]"},
+		},
+	}, {
+		name: "invalid onError value in pipeline task",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					OnError: PipelineTaskOnErrorType("invalid-value"),
+				}},
+			},
+		},
+		expectedError: *apis.ErrInvalidValue(
+			PipelineTaskOnErrorType("invalid-value"), "OnError",
+			"PipelineTask OnError must be either \"continue\" or \"stopAndFail\"").
+			ViaField("spec.tasks[0]"),
+	}, {
+		name: "invalid onError with continue and retries",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					OnError: PipelineTaskContinue,
+					Retries: 3,
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `PipelineTask OnError cannot be set to "continue" when Retries is greater than 0`,
+			Paths:   []string{""},
 		},
 	}}
 	for _, tt := range tests {
