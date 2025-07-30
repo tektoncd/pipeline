@@ -1016,7 +1016,7 @@ func TestShouldUseCache(t *testing.T) {
 			name: "cache mode auto with commit hash",
 			params: map[string]string{
 				git.CacheParam:    CacheModeAuto,
-				git.RevisionParam: "6bffb6ca708ac9013115baa574801e8127f4c5c2",
+				git.RevisionParam: "dd7cc22f2965ff4c9d8855b7161c2ffe94b6153e",
 			},
 			expectedResult: true,
 		},
@@ -1031,7 +1031,7 @@ func TestShouldUseCache(t *testing.T) {
 		{
 			name: "default cache mode (auto) with commit hash",
 			params: map[string]string{
-				git.RevisionParam: "6bffb6ca708ac9013115baa574801e8127f4c5c2",
+				git.RevisionParam: "dd7cc22f2965ff4c9d8855b7161c2ffe94b6153e",
 			},
 			expectedResult: true,
 		},
@@ -1046,7 +1046,7 @@ func TestShouldUseCache(t *testing.T) {
 			name: "invalid cache mode defaults to auto with commit hash",
 			params: map[string]string{
 				git.CacheParam:    "invalid",
-				git.RevisionParam: "6bffb6ca708ac9013115baa574801e8127f4c5c2",
+				git.RevisionParam: "dd7cc22f2965ff4c9d8855b7161c2ffe94b6153e",
 			},
 			expectedResult: true,
 		},

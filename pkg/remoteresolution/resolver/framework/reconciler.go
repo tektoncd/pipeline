@@ -216,18 +216,20 @@ func (r *Reconciler) MarkFailed(ctx context.Context, rr *v1beta1.ResolutionReque
 
 func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.ResolutionRequest, resource framework.ResolvedResource) error {
 	encodedData := base64.StdEncoding.Strict().EncodeToString(resource.Data())
-	annotations := resource.Annotations()
 	patchBytes, err := json.Marshal(map[string]statusDataPatch{
 		"status": {
 			Data:        encodedData,
-			Annotations: annotations,
+			Annotations: resource.Annotations(),
 			RefSource:   resource.RefSource(),
 			Source:      (*pipelinev1beta1.ConfigSource)(resource.RefSource()),
 		},
 	})
 	if err != nil {
-		logging.FromContext(ctx).Warnf("writeResolvedData error serializing resource request patch for resolution request %s:%s: %s", rr.Namespace, rr.Name, err)
-		return err
+		logging.FromContext(ctx).Warnf("writeResolvedData error serializing resource request patch for resolution request %s:%s: %s", rr.Namespace, rr.Name, err.Error())
+		return r.OnError(ctx, rr, &resolutioncommon.UpdatingRequestError{
+			ResolutionRequestKey: fmt.Sprintf("%s/%s", rr.Namespace, rr.Name),
+			Original:             fmt.Errorf("error serializing resource request patch: %w", err),
+		})
 	}
 	_, err = r.resolutionRequestClientSet.ResolutionV1beta1().ResolutionRequests(rr.Namespace).Patch(ctx, rr.Name, types.MergePatchType, patchBytes, metav1.PatchOptions{}, "status")
 	if err != nil {
