@@ -70,7 +70,7 @@ func TestClone(t *testing.T) {
 			if test.username != "" {
 				token := base64.URLEncoding.EncodeToString([]byte(test.username + ":" + test.password))
 				expectedCmd = append(expectedCmd, "--config-env", "http.extraHeader=GIT_AUTH_HEADER")
-				expectedEnv = append(expectedEnv, "GIT_AUTH_HEADER=Authorization=Basic "+token)
+				expectedEnv = append(expectedEnv, "GIT_AUTH_HEADER=Authorization: Basic "+token)
 			}
 			expectedCmd = append(expectedCmd, "clone", test.url, repo.directory, "--depth=1", "--no-checkout")
 
