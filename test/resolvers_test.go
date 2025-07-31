@@ -471,6 +471,59 @@ spec:
 	}
 }
 
+func TestGitResolver_HTTPAuth(t *testing.T) {
+	ctx := t.Context()
+	c, namespace := setup(ctx, t, gitFeatureFlags)
+
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	giteaClusterHostname, tokenSecretName := setupGitea(ctx, t, c, namespace)
+
+	requestUrl := fmt.Sprintf("http://%s/%s/%s", net.JoinHostPort(giteaClusterHostname, "3000"), scmRemoteOrg, scmRemoteRepo)
+
+	trName := helpers.ObjectNameForTest(t)
+	tr := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    resolver: git
+    params:
+    - name: url
+      value: %s
+    - name: revision
+      value: %s
+    - name: pathInRepo
+      value: %s
+    - name: gitToken
+      value: %s
+    - name: gitTokenKey
+      value: %s
+`,
+		trName,
+		namespace,
+		requestUrl,
+		scmRemoteBranch,
+		scmRemoteTaskPath,
+		tokenSecretName,
+		scmTokenSecretKey,
+	))
+
+	_, err := c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create TaskRun: %v", err)
+	}
+
+	t.Logf("Waiting for TaskRun %s in namespace %s to complete", trName, namespace)
+	if err := WaitForTaskRunState(ctx, c, trName, TaskRunSucceed(trName), "TaskRunSuccess", v1Version); err != nil {
+		t.Fatalf("Error waiting for TaskRun %s to finish: %s", trName, err)
+	}
+}
+
 func TestGitResolver_API(t *testing.T) {
 	ctx := context.Background()
 	c, namespace := setup(ctx, t, gitFeatureFlags)
@@ -699,7 +752,7 @@ spec:
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
-			scmTokenSecretKey: []byte(base64.StdEncoding.Strict().EncodeToString([]byte(token))),
+			scmTokenSecretKey: []byte(token),
 		},
 	}, metav1.CreateOptions{})
 
@@ -743,6 +796,7 @@ spec:
 
 		_, _, err = giteaClient.CreateOrgRepo(scmRemoteOrg, gitea.CreateRepoOption{
 			Name:          scmRemoteRepo,
+			Private:       true,
 			AutoInit:      true,
 			DefaultBranch: scmRemoteBranch,
 		})
