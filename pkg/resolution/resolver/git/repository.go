@@ -47,7 +47,7 @@ func (r remote) clone(ctx context.Context) (*repository, func(), error) {
 		os.RemoveAll(tmpDir)
 	}
 
-	repo := repository{
+	repo := &repository{
 		url:       r.url,
 		username:  r.username,
 		password:  r.password,
@@ -62,7 +62,7 @@ func (r remote) clone(ctx context.Context) (*repository, func(), error) {
 		}
 		return nil, cleanupFunc, err
 	}
-	return &repo, cleanupFunc, nil
+	return repo, cleanupFunc, nil
 }
 
 type repository struct {
@@ -105,19 +105,18 @@ func (repo *repository) execGit(ctx context.Context, subCmd string, args ...stri
 	// We need to configure  which directory contains the cloned repository since `cd`ing
 	// into the repository directory is not concurrency-safe
 	configArgs := []string{"-C", repo.directory}
+
 	env := []string{"GIT_TERMINAL_PROMPT=false"}
-	if subCmd == "clone" {
-		// NOTE: Since this is only HTTP basic auth, authentication only supports http
-		// cloning, while unauthenticated cloning works for any other protocol supported
-		// by the git binary which doesn't require authentication.
-		if repo.username != "" && repo.password != "" {
-			token := base64.URLEncoding.EncodeToString([]byte(repo.username + ":" + repo.password))
-			env = append(
-				env,
-				"GIT_AUTH_HEADER=Authorization=Basic "+token,
-			)
-			configArgs = append(configArgs, "--config-env", "http.extraHeader=GIT_AUTH_HEADER")
-		}
+	// NOTE: Since this is only HTTP basic auth, authentication is only supported for http
+	// cloning, while unauthenticated cloning is supported for any other protocol supported
+	// by git which doesn't require authentication.
+	if repo.username != "" && repo.password != "" {
+		token := base64.URLEncoding.EncodeToString([]byte(repo.username + ":" + repo.password))
+		env = append(
+			env,
+			"GIT_AUTH_HEADER=Authorization: Basic "+token,
+		)
+		configArgs = append(configArgs, "--config-env", "http.extraHeader=GIT_AUTH_HEADER")
 	}
 	cmd := repo.executor(ctx, "git", append(configArgs, args...)...)
 	cmd.Env = append(cmd.Environ(), env...)
