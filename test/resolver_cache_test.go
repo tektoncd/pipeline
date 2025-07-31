@@ -246,7 +246,7 @@ func TestGitResolverCache(t *testing.T) {
 }
 
 // TestCacheConfiguration validates cache configuration options
-func TestCacheConfiguration(t *testing.T) {
+func TestResolverCacheConfiguration(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags, cacheGitFeatureFlags)
 
@@ -465,11 +465,17 @@ metadata:
   name: %s
   namespace: %s
 spec:
+  params:
+  - name: url
+    value: "https://github.com/tektoncd/pipeline.git"
+  workspaces:
+  - name: output
+    emptyDir: {}
   taskRef:
     resolver: bundles
     params:
     - name: bundle
-      value: gcr.io/tekton-releases/catalog/upstream/git-clone@sha256:65e61544c5870c8828233406689d812391735fd4100cb444bbd81531cb958bb3
+      value: ghcr.io/tektoncd/catalog/upstream/tasks/git-clone@sha256:65e61544c5870c8828233406689d812391735fd4100cb444bbd81531cb958bb3
     - name: name
       value: git-clone
     - name: kind
@@ -498,6 +504,33 @@ spec:
     - name: cache
       value: %s
 `, name, namespace, repo, taskName, cacheMode))
+}
+
+func createBundleTaskRunGHCR(t *testing.T, namespace, name, cacheMode string) *v1.TaskRun {
+	t.Helper()
+	return parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  params:
+  - name: url
+    value: https://github.com/tektoncd/pipeline.git
+  workspaces:
+  - name: output
+    emptyDir: {}
+  taskRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: ghcr.io/tektoncd/catalog/upstream/tasks/git-clone@sha256:65e61544c5870c8828233406689d812391735fd4100cb444bbd81531cb958bb3
+    - name: name
+      value: git-clone
+    - name: kind
+      value: task
+    - name: cache
+      value: %s
+`, name, namespace, cacheMode))
 }
 
 func createGitTaskRun(t *testing.T, namespace, name, revision string) *v1.TaskRun {
@@ -849,7 +882,7 @@ spec:
 }
 
 // TestCacheIsolationBetweenResolvers validates that cache keys are unique between resolvers
-func TestCacheIsolationBetweenResolvers(t *testing.T) {
+func TestResolverCacheIsolation(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags, cacheGitFeatureFlags, clusterFeatureFlags)
 
@@ -914,7 +947,7 @@ spec:
 	}
 
 	// Verify each resolver has its own cache entry
-	resolutionRequests, err := c.V1alpha1ResolutionRequestclient.List(ctx, metav1.ListOptions{})
+	resolutionRequests, err := c.V1beta1ResolutionRequestclient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("Failed to list ResolutionRequests: %s", err)
 	}
@@ -924,7 +957,7 @@ spec:
 	clusterCacheFound := false
 
 	for _, req := range resolutionRequests.Items {
-		if req.Namespace == namespace && req.Status.Annotations != nil {
+		if req.Namespace == namespace && req.Status.Data != "" && req.Status.Annotations != nil {
 			switch req.Status.Annotations[CacheResolverTypeKey] {
 			case "bundles":
 				bundleCacheFound = true
@@ -950,7 +983,7 @@ spec:
 }
 
 // TestCacheConfigurationComprehensive validates all cache configuration modes across resolvers
-func TestCacheConfigurationComprehensive(t *testing.T) {
+func TestResolverCacheComprehensive(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags, cacheGitFeatureFlags, clusterFeatureFlags)
 
@@ -1045,7 +1078,7 @@ spec:
 }
 
 // TestCacheErrorHandling validates cache error handling scenarios
-func TestCacheErrorHandling(t *testing.T) {
+func TestResolverCacheErrorHandling(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)
 
@@ -1090,7 +1123,7 @@ func TestCacheErrorHandling(t *testing.T) {
 }
 
 // TestCacheTTLExpiration validates cache TTL behavior
-func TestCacheTTLExpiration(t *testing.T) {
+func TestResolverCacheTTL(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)
 
@@ -1133,7 +1166,7 @@ func TestCacheTTLExpiration(t *testing.T) {
 }
 
 // TestCacheStressTest validates cache behavior under stress conditions
-func TestCacheStressTest(t *testing.T) {
+func TestResolverCacheStress(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)
 
@@ -1184,7 +1217,7 @@ func TestCacheStressTest(t *testing.T) {
 }
 
 // TestCacheInvalidParameters validates cache behavior with invalid parameters
-func TestCacheInvalidParameters(t *testing.T) {
+func TestResolverCacheInvalidParams(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)
 
@@ -1194,7 +1227,8 @@ func TestCacheInvalidParameters(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	// Test with malformed cache parameter (should handle gracefully)
-	tr := createBundleTaskRun(t, namespace, "invalid-params-test", "malformed-cache-value")
+	// Use GitHub Container Registry which should be publicly accessible
+	tr := createBundleTaskRunGHCR(t, namespace, "invalid-params-test", "malformed-cache-value")
 	_, err := c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create TaskRun with malformed cache parameter: %s", err)
@@ -1204,10 +1238,10 @@ func TestCacheInvalidParameters(t *testing.T) {
 		t.Fatalf("Error waiting for TaskRun to finish: %s", err)
 	}
 
-	// Should still work (defaults to auto mode)
+	// Should still work (gracefully falls back to auto mode)
 	resolutionRequest := getResolutionRequest(ctx, t, c, namespace, tr.Name)
 	if !hasCacheAnnotation(resolutionRequest.Status.Annotations) {
-		t.Error("TaskRun with malformed cache parameter should still cache (defaults to auto)")
+		t.Error("TaskRun with malformed cache parameter should still cache (falls back to auto)")
 	}
 
 	t.Logf("Cache invalid parameters test completed successfully")

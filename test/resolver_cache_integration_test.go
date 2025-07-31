@@ -32,7 +32,7 @@ import (
 
 // TestCacheAnnotationsIntegration verifies that cache annotations are properly added
 // to resolved resources when they are served from cache
-func TestCacheAnnotationsIntegration(t *testing.T) {
+func TestResolverCacheAnnotationsIntegration(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, requireAllGates(map[string]string{
 		"enable-bundles-resolver": "true",
@@ -50,11 +50,19 @@ metadata:
   name: cache-test-taskrun
   namespace: %s
 spec:
+  params:
+  - name: url
+    value: "https://github.com/tektoncd/pipeline.git"
+  - name: revision
+    value: "main"
+  workspaces:
+  - name: output
+    emptyDir: {}
   taskRef:
     resolver: bundles
     params:
     - name: bundle
-      value: gcr.io/tekton-releases/catalog/upstream/git-clone@sha256:65e61544c5870c8828233406689d812391735fd4100cb444bbd81531cb958bb3
+      value: ghcr.io/tektoncd/catalog/upstream/tasks/git-clone@sha256:65e61544c5870c8828233406689d812391735fd4100cb444bbd81531cb958bb3
     - name: name
       value: git-clone
     - name: kind

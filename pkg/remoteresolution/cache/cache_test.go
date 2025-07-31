@@ -390,7 +390,7 @@ func TestInitializeFromConfigMap(t *testing.T) {
 	}
 }
 
-func TestCacheOperations(t *testing.T) {
+func TestResolverCacheOperations(t *testing.T) {
 	cache := NewResolverCache(100)
 
 	// Test Add and Get

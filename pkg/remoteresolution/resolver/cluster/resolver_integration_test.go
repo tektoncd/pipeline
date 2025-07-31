@@ -614,7 +614,7 @@ func TestResolveWithInvalidParams(t *testing.T) {
 	}
 }
 
-func TestCacheKeyGeneration(t *testing.T) {
+func TestResolverCacheKeyGeneration(t *testing.T) {
 	tests := []struct {
 		name          string
 		resolverType  string
@@ -1121,7 +1121,7 @@ func TestResolveWithEmptyCacheParameter(t *testing.T) {
 	}
 }
 
-func TestCacheModeConstants(t *testing.T) {
+func TestResolverCacheModeConstants(t *testing.T) {
 	// Test that cache mode constants are properly defined
 	if cluster.CacheModeAlways != "always" {
 		t.Errorf("CacheModeAlways should be 'always', got %q", cluster.CacheModeAlways)

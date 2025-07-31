@@ -100,9 +100,16 @@ func OptionsFromParams(ctx context.Context, params []pipelinev1.Param) (RequestO
 	opts.EntryName = nameVal.StringVal
 	opts.Kind = kind
 
-	// Set cache mode, defaulting to "auto" if not specified
+	// Set cache mode, defaulting to "auto" if not specified or invalid
 	if cacheVal, ok := paramsMap[ParamCache]; ok {
-		opts.Cache = cacheVal.StringVal
+		cacheMode := cacheVal.StringVal
+		// Gracefully fall back to "auto" for invalid cache modes
+		switch cacheMode {
+		case "always", "never", "auto":
+			opts.Cache = cacheMode
+		default:
+			opts.Cache = "auto" // graceful fallback
+		}
 	} else {
 		opts.Cache = "auto"
 	}

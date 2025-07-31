@@ -275,6 +275,18 @@ func populateParamsWithDefaults(ctx context.Context, origParams []pipelinev1.Par
 		return nil, fmt.Errorf("access to specified namespace %s is not allowed", params[NamespaceParam])
 	}
 
+	// gracefully handle invalid cache parameter by defaulting to "auto"
+	if cacheVal, ok := paramsMap[CacheParam]; ok && cacheVal.StringVal != "" {
+		cacheMode := cacheVal.StringVal
+		switch cacheMode {
+		case "always", "never", "auto":
+			// Valid cache mode, keep as-is
+		default:
+			// Store corrected value back to paramsMap for graceful fallback
+			paramsMap[CacheParam] = *pipelinev1.NewStructuredValues("auto")
+		}
+	}
+
 	return params, nil
 }
 

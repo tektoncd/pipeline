@@ -400,6 +400,16 @@ func PopulateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[
 		return nil, fmt.Errorf("invalid git repository url: %s", paramsMap[UrlParam])
 	}
 
+	// gracefully handle invalid cache parameter by defaulting to "auto"
+	if cacheMode, exists := paramsMap[CacheParam]; exists {
+		switch cacheMode {
+		case "always", "never", "auto":
+			// Valid cache mode, keep as-is
+		default:
+			paramsMap[CacheParam] = "auto" // graceful fallback
+		}
+	}
+
 	// TODO(sbwsg): validate pathInRepo is valid relative pathInRepo
 	return paramsMap, nil
 }
