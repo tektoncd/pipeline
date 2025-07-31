@@ -249,10 +249,10 @@ func (e Entrypointer) Go() error {
 	var cancel context.CancelFunc
 	if err == nil {
 		if err := e.applyStepResultSubstitutions(pipeline.StepsDir); err != nil {
-			slog.Error("Error while substituting step results:", slog.Any("error", err))
+			slog.ErrorContext(ctx, "Error while substituting step results:", slog.Any("error", err))
 		}
 		if err := e.applyStepArtifactSubstitutions(pipeline.StepsDir); err != nil {
-			slog.Error("Error while substituting step artifacts:", slog.Any("error", err))
+			slog.ErrorContext(ctx, "Error while substituting step artifacts:", slog.Any("error", err))
 		}
 
 		ctx, cancel = context.WithCancel(ctx)
@@ -263,7 +263,7 @@ func (e Entrypointer) Go() error {
 		// start a goroutine to listen for cancellation file
 		go func() {
 			if err := e.waitingCancellation(ctx, cancel); err != nil && (!IsContextCanceledError(err) && !IsContextDeadlineError(err)) {
-				slog.Error("Error while waiting for cancellation", slog.Any("error", err))
+				slog.ErrorContext(ctx, "Error while waiting for cancellation", slog.Any("error", err))
 			}
 		}()
 		allowExec, err1 := e.allowExec()
@@ -274,7 +274,7 @@ func (e Entrypointer) Go() error {
 		case allowExec:
 			err = e.Runner.Run(ctx, e.Command...)
 		default:
-			slog.Info("Step was skipped due to when expressions were evaluated to false.")
+			slog.InfoContext(ctx, "Step was skipped due to when expressions were evaluated to false.")
 			output = append(output, e.outputRunResult(TerminationReasonSkipped))
 			e.WritePostFile(e.PostFile, nil)
 			e.WriteExitCodeFile(e.StepMetadataDir, "0")
@@ -287,7 +287,7 @@ func (e Entrypointer) Go() error {
 	case err != nil && errors.Is(err, errDebugBeforeStep):
 		e.WritePostFile(e.PostFile, err)
 	case err != nil && errors.Is(err, ErrContextCanceled):
-		slog.Info("Step was canceling")
+		slog.InfoContext(ctx, "Step was canceling")
 		output = append(output, e.outputRunResult(TerminationReasonCancelled))
 		e.WritePostFile(e.PostFile, ErrContextCanceled)
 		e.WriteExitCodeFile(e.StepMetadataDir, syscall.SIGKILL.String())
@@ -295,7 +295,7 @@ func (e Entrypointer) Go() error {
 		e.WritePostFile(e.PostFile, err)
 		output = append(output, e.outputRunResult(TerminationReasonTimeoutExceeded))
 	case err != nil && e.BreakpointOnFailure:
-		slog.Info("Skipping writing to PostFile")
+		slog.InfoContext(ctx, "Skipping writing to PostFile")
 	case e.OnError == ContinueOnError && errors.As(err, &ee):
 		// with continue on error and an ExitError, write non-zero exit code and a post file
 		exitCode := strconv.Itoa(ee.ExitCode())
@@ -323,7 +323,7 @@ func (e Entrypointer) Go() error {
 			resultPath = e.ResultsDirectory
 		}
 		if err := e.readResultsFromDisk(ctx, resultPath, result.TaskRunResultType); err != nil {
-			slog.Error("Error while substituting step artifacts:", slog.Any("error", err))
+			slog.ErrorContext(ctx, "Error while substituting step artifacts:", slog.Any("error", err))
 			return err
 		}
 	}
@@ -333,7 +333,7 @@ func (e Entrypointer) Go() error {
 			stepResultPath = e.ResultsDirectory
 		}
 		if err := e.readResultsFromDisk(ctx, stepResultPath, result.StepResultType); err != nil {
-			slog.Error("Error while substituting step artifacts:", slog.Any("error", err))
+			slog.ErrorContext(ctx, "Error while substituting step artifacts:", slog.Any("error", err))
 			return err
 		}
 	}

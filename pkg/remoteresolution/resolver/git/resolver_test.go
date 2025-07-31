@@ -961,7 +961,7 @@ func resolverDisabledContext() context.Context {
 
 func createError(msg string) error {
 	return &common.GetResourceError{
-		ResolverName: gitResolverName,
+		ResolverName: ResolverName,
 		Key:          "foo/rr",
 		Original:     errors.New(msg),
 	}
