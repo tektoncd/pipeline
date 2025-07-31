@@ -331,10 +331,23 @@ spec:
 				t.Fatalf("Failed to create TaskRun: %s", err)
 			}
 
-			// Wait a bit for the resolution request to be created
-			time.Sleep(2 * time.Second)
+			// Wait for ResolutionRequest with annotations to be available (polling with timeout)
+			var resolutionRequest *v1beta1.ResolutionRequest
+			timeout := 30 * time.Second
+			start := time.Now()
 
-			resolutionRequest := getResolutionRequest(ctx, t, c, namespace, tr.Name)
+			for time.Since(start) < timeout {
+				rr := getResolutionRequest(ctx, t, c, namespace, tr.Name)
+				if rr != nil && rr.Status.Data != "" {
+					resolutionRequest = rr
+					break
+				}
+				time.Sleep(500 * time.Millisecond)
+			}
+
+			if resolutionRequest == nil {
+				t.Fatalf("ResolutionRequest not found within timeout for TaskRun %s", tr.Name)
+			}
 
 			// For cache: never, ResolutionRequest should be created but without cache annotations
 			if tc.cacheMode == "never" {
