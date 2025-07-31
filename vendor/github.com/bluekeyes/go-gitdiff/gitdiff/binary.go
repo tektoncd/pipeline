@@ -50,11 +50,11 @@ func (p *parser) ParseBinaryFragments(f *File) (n int, err error) {
 }
 
 func (p *parser) ParseBinaryMarker() (isBinary bool, hasData bool, err error) {
-	switch p.Line(0) {
-	case "GIT binary patch\n":
+	line := p.Line(0)
+	switch {
+	case line == "GIT binary patch\n":
 		hasData = true
-	case "Binary files differ\n":
-	case "Files differ\n":
+	case isBinaryNoDataMarker(line):
 	default:
 		return false, false, nil
 	}
@@ -63,6 +63,13 @@ func (p *parser) ParseBinaryMarker() (isBinary bool, hasData bool, err error) {
 		return false, false, err
 	}
 	return true, hasData, nil
+}
+
+func isBinaryNoDataMarker(line string) bool {
+	if strings.HasSuffix(line, " differ\n") {
+		return strings.HasPrefix(line, "Binary files ") || strings.HasPrefix(line, "Files ")
+	}
+	return false
 }
 
 func (p *parser) ParseBinaryFragmentHeader() (*BinaryFragment, error) {
