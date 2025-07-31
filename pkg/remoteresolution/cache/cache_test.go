@@ -303,6 +303,13 @@ func TestResolverCache(t *testing.T) {
 	if globalCache1 != globalCache2 {
 		t.Error("GetGlobalCache() returned different instances")
 	}
+
+	// Test that WithLogger creates new instances with logger
+	logger1 := globalCache1.WithLogger(nil)
+	logger2 := globalCache1.WithLogger(nil)
+	if logger1 == logger2 {
+		t.Error("WithLogger() should return different instances")
+	}
 }
 
 func TestInitializeFromConfigMap(t *testing.T) {

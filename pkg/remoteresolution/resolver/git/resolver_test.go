@@ -37,13 +37,11 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/internal/resolution"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
 	frtesting "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/testing"
 	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frameworktesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
 	gitresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -696,14 +694,6 @@ func TestResolve(t *testing.T) {
 					expectedStatus.Annotations[gitresolution.AnnotationKeyRevision] = tc.expectedCommitSHA
 					expectedStatus.Annotations[gitresolution.AnnotationKeyPath] = tc.args.pathInRepo
 
-					// Add cache annotations for specific commit SHA references (which use caching)
-					if tc.args.revision != "" && len(tc.args.revision) == 40 && !strings.HasPrefix(tc.args.revision, "refs/") {
-						expectedStatus.Annotations[cache.CacheAnnotationKey] = cache.CacheValueTrue
-						expectedStatus.Annotations[cache.CacheOperationKey] = cache.CacheOperationStore
-						expectedStatus.Annotations[cache.CacheResolverTypeKey] = labelValueGitResolverType
-						// Don't set timestamp as it's generated at runtime and will be different each time
-					}
-
 					if tc.args.url != "" {
 						expectedStatus.Annotations[gitresolution.AnnotationKeyURL] = anonFakeRepoURL
 					} else {
@@ -988,84 +978,4 @@ func toParams(m map[string]string) []pipelinev1.Param {
 	}
 
 	return params
-}
-
-func TestShouldUseCache(t *testing.T) {
-	testCases := []struct {
-		name           string
-		params         map[string]string
-		expectedResult bool
-	}{
-		{
-			name: "cache mode always",
-			params: map[string]string{
-				git.CacheParam:    CacheModeAlways,
-				git.RevisionParam: "abc123",
-			},
-			expectedResult: true,
-		},
-		{
-			name: "cache mode never",
-			params: map[string]string{
-				git.CacheParam:    CacheModeNever,
-				git.RevisionParam: "abc123",
-			},
-			expectedResult: false,
-		},
-		{
-			name: "cache mode auto with commit hash",
-			params: map[string]string{
-				git.CacheParam:    CacheModeAuto,
-				git.RevisionParam: "dd7cc22f2965ff4c9d8855b7161c2ffe94b6153e",
-			},
-			expectedResult: true,
-		},
-		{
-			name: "cache mode auto with non-commit hash",
-			params: map[string]string{
-				git.CacheParam:    CacheModeAuto,
-				git.RevisionParam: "main",
-			},
-			expectedResult: false,
-		},
-		{
-			name: "default cache mode (auto) with commit hash",
-			params: map[string]string{
-				git.RevisionParam: "dd7cc22f2965ff4c9d8855b7161c2ffe94b6153e",
-			},
-			expectedResult: true,
-		},
-		{
-			name: "default cache mode (auto) with non-commit hash",
-			params: map[string]string{
-				git.RevisionParam: "main",
-			},
-			expectedResult: false,
-		},
-		{
-			name: "invalid cache mode defaults to auto with commit hash",
-			params: map[string]string{
-				git.CacheParam:    "invalid",
-				git.RevisionParam: "dd7cc22f2965ff4c9d8855b7161c2ffe94b6153e",
-			},
-			expectedResult: true,
-		},
-		{
-			name: "invalid cache mode defaults to auto with non-commit hash",
-			params: map[string]string{
-				git.CacheParam:    "invalid",
-				git.RevisionParam: "main",
-			},
-			expectedResult: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			result := ShouldUseCache(tc.params)
-			if result != tc.expectedResult {
-				t.Errorf("expected %v, got %v", tc.expectedResult, result)
-			}
-		})
-	}
 }

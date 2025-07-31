@@ -47,9 +47,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	"knative.dev/pkg/logging"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing"
 	"sigs.k8s.io/yaml"
+
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 )
 
 const (
@@ -735,8 +738,11 @@ func TestResolveWithCacheHit(t *testing.T) {
 		t.Fatalf("Failed to generate cache key: %v", err)
 	}
 
+	// Get cache instance
+	cacheInstance := injection.Get(ctx)
+
 	// Add to cache
-	cache.GetGlobalCache().Add(cacheKey, mockResource)
+	cacheInstance.Add(cacheKey, mockResource)
 
 	req := &v1beta1.ResolutionRequestSpec{
 		Params: []pipelinev1.Param{
@@ -1241,13 +1247,15 @@ func TestResolveWithCacheStorage(t *testing.T) {
 		t.Fatalf("Failed to generate cache key: %v", err)
 	}
 
+	// Get cache from injection
+	cacheInstance := injection.Get(ctx)
+
 	// Clear any existing cache entry
-	cache.GetGlobalCache().Remove(cacheKey)
+	cacheInstance.Remove(cacheKey)
 
 	// Test cache initialization
-	cache.GetGlobalCache().InitializeLogger(ctx)
-	if cache.GetGlobalCache() == nil {
-		t.Error("Global cache should be initialized")
+	if cacheInstance == nil {
+		t.Error("Cache instance should be initialized")
 	}
 
 	// Test cache storage operations
@@ -1261,18 +1269,18 @@ func TestResolveWithCacheStorage(t *testing.T) {
 	}
 
 	// Add to cache
-	cache.GetGlobalCache().Add(cacheKey, mockResource)
+	cacheInstance.Add(cacheKey, mockResource)
 
 	// Verify storage
-	if cached, exists := cache.GetGlobalCache().Get(cacheKey); !exists {
+	if cached, exists := cacheInstance.Get(cacheKey); !exists {
 		t.Error("Resource should be in cache")
 	} else if cached == nil {
 		t.Error("Cached resource should not be nil")
 	}
 
 	// Test cache removal
-	cache.GetGlobalCache().Remove(cacheKey)
-	if _, exists := cache.GetGlobalCache().Get(cacheKey); exists {
+	cacheInstance.Remove(cacheKey)
+	if _, exists := cacheInstance.Get(cacheKey); exists {
 		t.Error("Resource should be removed from cache")
 	}
 }
@@ -1306,19 +1314,22 @@ func TestResolveWithCacheAlwaysEndToEnd(t *testing.T) {
 		t.Fatalf("Failed to generate cache key: %v", err)
 	}
 
+	// Get cache from injection
+	cacheInstance := injection.Get(t.Context())
+
 	// Clear any existing cache entry
-	cache.GetGlobalCache().Remove(cacheKey)
+	cacheInstance.Remove(cacheKey)
 
 	// Verify cache is empty initially
-	if _, exists := cache.GetGlobalCache().Get(cacheKey); exists {
+	if _, exists := cacheInstance.Get(cacheKey); exists {
 		t.Error("Cache should be empty initially")
 	}
 
 	// Add mock resource to cache
-	cache.GetGlobalCache().Add(cacheKey, mockResource)
+	cacheInstance.Add(cacheKey, mockResource)
 
 	// Verify resource was stored in cache
-	if cached, exists := cache.GetGlobalCache().Get(cacheKey); !exists {
+	if cached, exists := cacheInstance.Get(cacheKey); !exists {
 		t.Error("Resource should be in cache")
 	} else if cached == nil {
 		t.Error("Cached resource should not be nil")
@@ -1344,8 +1355,11 @@ func TestResolveWithCacheNeverEndToEnd(t *testing.T) {
 		t.Fatalf("Failed to generate cache key: %v", err)
 	}
 
+	// Get cache from injection
+	cacheInstance := injection.Get(t.Context())
+
 	// Clear any existing cache entry
-	cache.GetGlobalCache().Remove(cacheKey)
+	cacheInstance.Remove(cacheKey)
 
 	// Add a mock resource to cache (this should be ignored)
 	mockResource := &clusterresolution.ResolvedClusterResource{
@@ -1356,16 +1370,15 @@ func TestResolveWithCacheNeverEndToEnd(t *testing.T) {
 		Identifier: "test-identifier",
 		Checksum:   []byte{1, 2, 3, 4},
 	}
-	cache.GetGlobalCache().Add(cacheKey, mockResource)
+	cacheInstance.Add(cacheKey, mockResource)
 
 	// Test cache initialization
-	cache.GetGlobalCache().InitializeLogger(t.Context())
-	if cache.GetGlobalCache() == nil {
-		t.Error("Global cache should be initialized")
+	if cacheInstance == nil {
+		t.Error("Cache instance should be initialized")
 	}
 
 	// Verify that the cache contains the mock resource (it won't be used)
-	if cached, exists := cache.GetGlobalCache().Get(cacheKey); !exists {
+	if cached, exists := cacheInstance.Get(cacheKey); !exists {
 		t.Error("Cache should contain the mock resource")
 	} else if cached == nil {
 		t.Error("Cached resource should not be nil")
@@ -1392,8 +1405,11 @@ func TestResolveWithCacheAutoEndToEnd(t *testing.T) {
 		t.Fatalf("Failed to generate cache key: %v", err)
 	}
 
+	// Get cache from injection
+	cacheInstance := injection.Get(ctx)
+
 	// Clear any existing cache entry
-	cache.GetGlobalCache().Remove(cacheKey)
+	cacheInstance.Remove(cacheKey)
 
 	// Add a mock resource to cache (this should be ignored for auto mode)
 	mockResource := &clusterresolution.ResolvedClusterResource{
@@ -1404,16 +1420,15 @@ func TestResolveWithCacheAutoEndToEnd(t *testing.T) {
 		Identifier: "test-identifier",
 		Checksum:   []byte{1, 2, 3, 4},
 	}
-	cache.GetGlobalCache().Add(cacheKey, mockResource)
+	cacheInstance.Add(cacheKey, mockResource)
 
 	// Test cache initialization
-	cache.GetGlobalCache().InitializeLogger(ctx)
-	if cache.GetGlobalCache() == nil {
-		t.Error("Global cache should be initialized")
+	if cacheInstance == nil {
+		t.Error("Cache instance should be initialized")
 	}
 
 	// Verify that the cache contains the mock resource (it won't be used)
-	if cached, exists := cache.GetGlobalCache().Get(cacheKey); !exists {
+	if cached, exists := cacheInstance.Get(cacheKey); !exists {
 		t.Error("Cache should contain the mock resource")
 	} else if cached == nil {
 		t.Error("Cached resource should not be nil")
@@ -1435,11 +1450,12 @@ func TestResolveWithCacheInitialization(t *testing.T) {
 
 	// Test that cache logger initialization works
 	// This should not panic or cause errors
-	cache.GetGlobalCache().InitializeLogger(t.Context())
+	cacheInstance := cache.GetGlobalCache().WithLogger(logging.FromContext(t.Context()))
 
 	// Test cache initialization
-	if cache.GetGlobalCache() == nil {
-		t.Error("Global cache should be initialized")
+	if cacheInstance == nil {
+		_ = cacheInstance // Use variable to avoid unused warning
+		t.Error("Cache instance should be initialized")
 	}
 
 	// Test cache key generation
@@ -1553,8 +1569,11 @@ func TestIntegrationNoCacheParameter(t *testing.T) {
 		t.Fatalf("Failed to generate cache key: %v", err)
 	}
 
+	// Get cache instance
+	cacheInstance := injection.Get(ctx)
+
 	// Clear any existing cache entry
-	cache.GetGlobalCache().Remove(cacheKey)
+	cacheInstance.Remove(cacheKey)
 
 	// Add a mock resource to cache (this should be ignored)
 	mockResource := &clusterresolution.ResolvedClusterResource{
@@ -1565,19 +1584,18 @@ func TestIntegrationNoCacheParameter(t *testing.T) {
 		Identifier: "test-identifier",
 		Checksum:   []byte{1, 2, 3, 4},
 	}
-	cache.GetGlobalCache().Add(cacheKey, mockResource)
+	cacheInstance.Add(cacheKey, mockResource)
 
 	// Verify that the cache contains the mock resource (it won't be used)
-	if cached, exists := cache.GetGlobalCache().Get(cacheKey); !exists {
+	if cached, exists := cacheInstance.Get(cacheKey); !exists {
 		t.Error("Cache should contain the mock resource")
 	} else if cached == nil {
 		t.Error("Cached resource should not be nil")
 	}
 
 	// Test that cache initialization works
-	cache.GetGlobalCache().InitializeLogger(ctx)
-	if cache.GetGlobalCache() == nil {
-		t.Error("Global cache should be initialized")
+	if cacheInstance == nil {
+		t.Error("Cache instance should be initialized")
 	}
 }
 
@@ -1622,8 +1640,11 @@ func TestIntegrationCacheNever(t *testing.T) {
 		t.Fatalf("Failed to generate cache key: %v", err)
 	}
 
+	// Get cache instance
+	cacheInstance := injection.Get(ctx)
+
 	// Clear any existing cache entry
-	cache.GetGlobalCache().Remove(cacheKey)
+	cacheInstance.Remove(cacheKey)
 
 	// Add a mock resource to cache (this should be ignored)
 	mockResource := &clusterresolution.ResolvedClusterResource{
@@ -1634,17 +1655,16 @@ func TestIntegrationCacheNever(t *testing.T) {
 		Identifier: "test-identifier",
 		Checksum:   []byte{1, 2, 3, 4},
 	}
-	cache.GetGlobalCache().Add(cacheKey, mockResource)
+	cacheInstance.Add(cacheKey, mockResource)
 
 	// Verify that the cache contains the mock resource (it won't be used)
-	if cached, exists := cache.GetGlobalCache().Get(cacheKey); !exists {
+	if cached, exists := cacheInstance.Get(cacheKey); !exists {
 		t.Error("Cache should contain the mock resource")
 	} else if cached == nil {
 		t.Error("Cached resource should not be nil")
 	}
 
 	// Test that cache initialization works
-	cache.GetGlobalCache().InitializeLogger(ctx)
 	if cache.GetGlobalCache() == nil {
 		t.Error("Global cache should be initialized")
 	}
@@ -1691,8 +1711,11 @@ func TestIntegrationCacheAuto(t *testing.T) {
 		t.Fatalf("Failed to generate cache key: %v", err)
 	}
 
+	// Get cache instance
+	cacheInstance := injection.Get(ctx)
+
 	// Clear any existing cache entry
-	cache.GetGlobalCache().Remove(cacheKey)
+	cacheInstance.Remove(cacheKey)
 
 	// Add a mock resource to cache (this should be ignored for auto mode)
 	mockResource := &clusterresolution.ResolvedClusterResource{
@@ -1703,17 +1726,16 @@ func TestIntegrationCacheAuto(t *testing.T) {
 		Identifier: "test-identifier",
 		Checksum:   []byte{1, 2, 3, 4},
 	}
-	cache.GetGlobalCache().Add(cacheKey, mockResource)
+	cacheInstance.Add(cacheKey, mockResource)
 
 	// Verify that the cache contains the mock resource (it won't be used)
-	if cached, exists := cache.GetGlobalCache().Get(cacheKey); !exists {
+	if cached, exists := cacheInstance.Get(cacheKey); !exists {
 		t.Error("Cache should contain the mock resource")
 	} else if cached == nil {
 		t.Error("Cached resource should not be nil")
 	}
 
 	// Test that cache initialization works
-	cache.GetGlobalCache().InitializeLogger(ctx)
 	if cache.GetGlobalCache() == nil {
 		t.Error("Global cache should be initialized")
 	}
@@ -1760,8 +1782,11 @@ func TestIntegrationCacheAlways(t *testing.T) {
 		t.Fatalf("Failed to generate cache key: %v", err)
 	}
 
+	// Get cache instance
+	cacheInstance := injection.Get(ctx)
+
 	// Clear any existing cache entry
-	cache.GetGlobalCache().Remove(cacheKey)
+	cacheInstance.Remove(cacheKey)
 
 	// Create a mock resource that would be returned by the resolver
 	mockResource := &clusterresolution.ResolvedClusterResource{
@@ -1774,17 +1799,16 @@ func TestIntegrationCacheAlways(t *testing.T) {
 	}
 
 	// Add mock resource to cache
-	cache.GetGlobalCache().Add(cacheKey, mockResource)
+	cacheInstance.Add(cacheKey, mockResource)
 
 	// Verify resource is in cache
-	if cached, exists := cache.GetGlobalCache().Get(cacheKey); !exists {
+	if cached, exists := cacheInstance.Get(cacheKey); !exists {
 		t.Error("Resource should be in cache")
 	} else if cached == nil {
 		t.Error("Cached resource should not be nil")
 	}
 
 	// Test that cache initialization works
-	cache.GetGlobalCache().InitializeLogger(ctx)
 	if cache.GetGlobalCache() == nil {
 		t.Error("Global cache should be initialized")
 	}

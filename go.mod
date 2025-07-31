@@ -100,6 +100,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/vault/api v1.16.0 // indirect
 	github.com/jellydator/ttlcache/v3 v3.3.0 // indirect
+	github.com/jstemmer/go-junit-report v1.0.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/letsencrypt/boulder v0.0.0-20240620165639-de9c06129bec // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect

@@ -57,6 +57,7 @@ var cacheGitFeatureFlags = requireAllGates(map[string]string{
 
 // clearCache clears the global cache to ensure a clean state for tests
 func clearCache(ctx context.Context) {
+	// Clear cache using logger-free instance
 	cache.GetGlobalCache().Clear()
 	// Small delay to ensure cache clearing is complete
 	time.Sleep(100 * time.Millisecond)

@@ -151,6 +151,12 @@ func GetGlobalCache() *ResolverCache {
 	return globalCache
 }
 
+// WithLogger returns a new ResolverCache instance with the provided logger.
+// This prevents state leak by not storing logger in the global singleton.
+func (c *ResolverCache) WithLogger(logger *zap.SugaredLogger) *ResolverCache {
+	return &ResolverCache{logger: logger, cache: c.cache}
+}
+
 // GenerateCacheKey generates a cache key for the given resolver type and parameters.
 func GenerateCacheKey(resolverType string, params []v1.Param) (string, error) {
 	// Create a deterministic string representation of the parameters

@@ -24,6 +24,7 @@ import (
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
@@ -108,9 +109,10 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		}
 	}
 
+	var cacheInstance *cache.ResolverCache
 	if useCache {
-		// Initialize cache logger
-		cache.GetGlobalCache().InitializeLogger(ctx)
+		// Get cache from dependency injection instead of global singleton
+		cacheInstance = injection.Get(ctx)
 
 		// Generate cache key from request params
 		cacheKey, err := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
@@ -119,7 +121,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		}
 
 		// Check cache first
-		if cached, ok := cache.GetGlobalCache().Get(cacheKey); ok {
+		if cached, ok := cacheInstance.Get(cacheKey); ok {
 			if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
 				return cache.NewAnnotatedResource(resource, LabelValueClusterResolverType, cache.CacheOperationRetrieve), nil
 			}
@@ -137,7 +139,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		cacheKey, _ := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
 		// Store annotated resource with store operation
 		annotatedResource := cache.NewAnnotatedResource(resource, LabelValueClusterResolverType, cache.CacheOperationStore)
-		cache.GetGlobalCache().Add(cacheKey, annotatedResource)
+		cacheInstance.Add(cacheKey, annotatedResource)
 		// Return annotated resource to indicate it was stored in cache
 		return annotatedResource, nil
 	}
