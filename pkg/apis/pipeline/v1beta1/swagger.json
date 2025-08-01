@@ -7,6 +7,152 @@
   },
   "paths": {},
   "definitions": {
+    "..pkg.apis.resolution.v1beta1.ResolutionRequest": {
+      "description": "ResolutionRequest is an object for requesting the content of a Tekton resource like a pipeline.yaml.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the information for the request part of the resource request.",
+          "default": {},
+          "$ref": "#/definitions/..pkg.apis.resolution.v1beta1.ResolutionRequestSpec"
+        },
+        "status": {
+          "description": "Status communicates the state of the request and, ultimately, the content of the resolved resource.",
+          "default": {},
+          "$ref": "#/definitions/..pkg.apis.resolution.v1beta1.ResolutionRequestStatus"
+        }
+      }
+    },
+    "..pkg.apis.resolution.v1beta1.ResolutionRequestList": {
+      "description": "ResolutionRequestList is a list of ResolutionRequests.",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/..pkg.apis.resolution.v1beta1.ResolutionRequest"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "..pkg.apis.resolution.v1beta1.ResolutionRequestSpec": {
+      "description": "ResolutionRequestSpec are all the fields in the spec of the ResolutionRequest CRD.",
+      "type": "object",
+      "properties": {
+        "params": {
+          "description": "Parameters are the runtime attributes passed to the resolver to help it figure out how to resolve the resource being requested. For example: repo URL, commit SHA, path to file, the kind of authentication to leverage, etc.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Param"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "url": {
+          "description": "URL is the runtime url passed to the resolver to help it figure out how to resolver the resource being requested. This is currently at an ALPHA stability level and subject to alpha API compatibility policies.",
+          "type": "string"
+        }
+      }
+    },
+    "..pkg.apis.resolution.v1beta1.ResolutionRequestStatus": {
+      "description": "ResolutionRequestStatus are all the fields in a ResolutionRequest's status subresource.",
+      "type": "object",
+      "required": [
+        "data",
+        "source",
+        "refSource"
+      ],
+      "properties": {
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/knative.Condition"
+          },
+          "x-kubernetes-patch-merge-key": "type",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "data": {
+          "description": "Data is a string representation of the resolved content of the requested resource in-lined into the ResolutionRequest object.",
+          "type": "string",
+          "default": ""
+        },
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "refSource": {
+          "description": "RefSource is the source reference of the remote data that records the url, digest and the entrypoint.",
+          "$ref": "#/definitions/v1.RefSource"
+        },
+        "source": {
+          "description": "Deprecated: Use RefSource instead",
+          "$ref": "#/definitions/v1.RefSource"
+        }
+      }
+    },
+    "..pkg.apis.resolution.v1beta1.ResolutionRequestStatusFields": {
+      "description": "ResolutionRequestStatusFields are the ResolutionRequest-specific fields for the status subresource.",
+      "type": "object",
+      "required": [
+        "data",
+        "source",
+        "refSource"
+      ],
+      "properties": {
+        "data": {
+          "description": "Data is a string representation of the resolved content of the requested resource in-lined into the ResolutionRequest object.",
+          "type": "string",
+          "default": ""
+        },
+        "refSource": {
+          "description": "RefSource is the source reference of the remote data that records the url, digest and the entrypoint.",
+          "$ref": "#/definitions/v1.RefSource"
+        },
+        "source": {
+          "description": "Deprecated: Use RefSource instead",
+          "$ref": "#/definitions/v1.RefSource"
+        }
+      }
+    },
     "pod.AffinityAssistantTemplate": {
       "description": "AffinityAssistantTemplate holds pod specific configuration and is a subset of the generic pod Template",
       "type": "object",
@@ -1659,152 +1805,6 @@
         "uri": {
           "description": "URI indicates the identity of the source of the build definition. Example: \"https://github.com/tektoncd/catalog\"",
           "type": "string"
-        }
-      }
-    },
-    "v1beta1.ResolutionRequest": {
-      "description": "ResolutionRequest is an object for requesting the content of a Tekton resource like a pipeline.yaml.",
-      "type": "object",
-      "properties": {
-        "apiVersion": {
-          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-          "type": "string"
-        },
-        "kind": {
-          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-          "type": "string"
-        },
-        "metadata": {
-          "default": {},
-          "$ref": "#/definitions/v1.ObjectMeta"
-        },
-        "spec": {
-          "description": "Spec holds the information for the request part of the resource request.",
-          "default": {},
-          "$ref": "#/definitions/v1beta1.ResolutionRequestSpec"
-        },
-        "status": {
-          "description": "Status communicates the state of the request and, ultimately, the content of the resolved resource.",
-          "default": {},
-          "$ref": "#/definitions/v1beta1.ResolutionRequestStatus"
-        }
-      }
-    },
-    "v1beta1.ResolutionRequestList": {
-      "description": "ResolutionRequestList is a list of ResolutionRequests.",
-      "type": "object",
-      "required": [
-        "items"
-      ],
-      "properties": {
-        "apiVersion": {
-          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-          "type": "string"
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.ResolutionRequest"
-          }
-        },
-        "kind": {
-          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-          "type": "string"
-        },
-        "metadata": {
-          "default": {},
-          "$ref": "#/definitions/v1.ListMeta"
-        }
-      }
-    },
-    "v1beta1.ResolutionRequestSpec": {
-      "description": "ResolutionRequestSpec are all the fields in the spec of the ResolutionRequest CRD.",
-      "type": "object",
-      "properties": {
-        "params": {
-          "description": "Parameters are the runtime attributes passed to the resolver to help it figure out how to resolve the resource being requested. For example: repo URL, commit SHA, path to file, the kind of authentication to leverage, etc.",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
-        "url": {
-          "description": "URL is the runtime url passed to the resolver to help it figure out how to resolver the resource being requested. This is currently at an ALPHA stability level and subject to alpha API compatibility policies.",
-          "type": "string"
-        }
-      }
-    },
-    "v1beta1.ResolutionRequestStatus": {
-      "description": "ResolutionRequestStatus are all the fields in a ResolutionRequest's status subresource.",
-      "type": "object",
-      "required": [
-        "data",
-        "source",
-        "refSource"
-      ],
-      "properties": {
-        "annotations": {
-          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
-          "type": "object",
-          "additionalProperties": {
-            "type": "string",
-            "default": ""
-          }
-        },
-        "conditions": {
-          "description": "Conditions the latest available observations of a resource's current state.",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/knative.Condition"
-          },
-          "x-kubernetes-patch-merge-key": "type",
-          "x-kubernetes-patch-strategy": "merge"
-        },
-        "data": {
-          "description": "Data is a string representation of the resolved content of the requested resource in-lined into the ResolutionRequest object.",
-          "type": "string",
-          "default": ""
-        },
-        "observedGeneration": {
-          "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
-          "type": "integer",
-          "format": "int64"
-        },
-        "refSource": {
-          "description": "RefSource is the source reference of the remote data that records the url, digest and the entrypoint.",
-          "$ref": "#/definitions/v1.RefSource"
-        },
-        "source": {
-          "description": "Deprecated: Use RefSource instead",
-          "$ref": "#/definitions/v1.RefSource"
-        }
-      }
-    },
-    "v1beta1.ResolutionRequestStatusFields": {
-      "description": "ResolutionRequestStatusFields are the ResolutionRequest-specific fields for the status subresource.",
-      "type": "object",
-      "required": [
-        "data",
-        "source",
-        "refSource"
-      ],
-      "properties": {
-        "data": {
-          "description": "Data is a string representation of the resolved content of the requested resource in-lined into the ResolutionRequest object.",
-          "type": "string",
-          "default": ""
-        },
-        "refSource": {
-          "description": "RefSource is the source reference of the remote data that records the url, digest and the entrypoint.",
-          "$ref": "#/definitions/v1.RefSource"
-        },
-        "source": {
-          "description": "Deprecated: Use RefSource instead",
-          "$ref": "#/definitions/v1.RefSource"
         }
       }
     },
