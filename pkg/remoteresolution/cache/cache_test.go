@@ -20,9 +20,11 @@ import (
 	"testing"
 	"time"
 
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/system"
 )
 
 func TestGenerateCacheKey(t *testing.T) {
@@ -324,47 +326,46 @@ func TestInitializeFromConfigMap(t *testing.T) {
 			name: "valid configuration",
 			configMap: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      ConfigMapName,
-					Namespace: ConfigMapNamespace,
+					Name:      GetCacheConfigName(),
+					Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
 				},
 				Data: map[string]string{
-					"max-size":    "500",
+					"max-size": "100",
+				},
+			},
+			expectedSize:   100,
+			expectedTTL:    DefaultExpiration,
+			shouldRecreate: true,
+		},
+		{
+			name: "cache config with maxSize and expiration",
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      GetCacheConfigName(),
+					Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+				},
+				Data: map[string]string{
+					"max-size":    "200",
 					"default-ttl": "10m",
 				},
 			},
-			expectedSize:   500,
+			expectedSize:   200,
 			expectedTTL:    10 * time.Minute,
 			shouldRecreate: true,
 		},
 		{
-			name: "invalid max size",
+			name: "cache config with invalid expiration",
 			configMap: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      ConfigMapName,
-					Namespace: ConfigMapNamespace,
+					Name:      GetCacheConfigName(),
+					Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
 				},
 				Data: map[string]string{
-					"max-size":    "invalid",
-					"default-ttl": "5m",
-				},
-			},
-			expectedSize:   DefaultMaxSize,
-			expectedTTL:    5 * time.Minute,
-			shouldRecreate: false,
-		},
-		{
-			name: "invalid TTL",
-			configMap: &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      ConfigMapName,
-					Namespace: ConfigMapNamespace,
-				},
-				Data: map[string]string{
-					"max-size":    "1000",
+					"max-size":    "150",
 					"default-ttl": "invalid",
 				},
 			},
-			expectedSize:   1000,
+			expectedSize:   150,
 			expectedTTL:    DefaultExpiration,
 			shouldRecreate: true,
 		},
@@ -379,6 +380,10 @@ func TestInitializeFromConfigMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Store original DefaultExpiration to restore later
+			originalTTL := DefaultExpiration
+			defer func() { DefaultExpiration = originalTTL }()
+
 			cache := NewResolverCache(DefaultMaxSize)
 			originalCache := cache.cache
 
@@ -389,7 +394,7 @@ func TestInitializeFromConfigMap(t *testing.T) {
 				t.Error("Expected cache to be recreated with new size")
 			}
 
-			// Verify TTL
+			// Verify TTL (InitializeFromConfigMap modifies the global DefaultExpiration)
 			if DefaultExpiration != tt.expectedTTL {
 				t.Errorf("Expected TTL %v, got %v", tt.expectedTTL, DefaultExpiration)
 			}

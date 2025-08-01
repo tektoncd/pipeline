@@ -17,15 +17,15 @@ limitations under the License.
 package cache
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"os"
 	"sort"
 	"strconv"
 	"time"
 
-	"context"
-
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	utilcache "k8s.io/apimachinery/pkg/util/cache"
@@ -35,18 +35,21 @@ import (
 const (
 	// DefaultMaxSize is the default size for the cache
 	DefaultMaxSize = 1000
-
-	// ConfigMapName is the name of the ConfigMap containing cache configuration
-	ConfigMapName = "resolver-cache-config"
-
-	// ConfigMapNamespace is the namespace of the ConfigMap
-	ConfigMapNamespace = "tekton-pipelines-resolvers"
 )
 
 var (
 	// DefaultExpiration is the default expiration time for cache entries
 	DefaultExpiration = 5 * time.Minute
 )
+
+// GetCacheConfigName returns the name of the cache configuration ConfigMap.
+// This can be overridden via the CONFIG_RESOLVER_CACHE_NAME environment variable.
+func GetCacheConfigName() string {
+	if e := os.Getenv("CONFIG_RESOLVER_CACHE_NAME"); e != "" {
+		return e
+	}
+	return "resolver-cache-config"
+}
 
 // ResolverCache is a wrapper around utilcache.LRUExpireCache that provides
 // type-safe methods for caching resolver results.
@@ -158,12 +161,12 @@ func (c *ResolverCache) WithLogger(logger *zap.SugaredLogger) *ResolverCache {
 }
 
 // GenerateCacheKey generates a cache key for the given resolver type and parameters.
-func GenerateCacheKey(resolverType string, params []v1.Param) (string, error) {
+func GenerateCacheKey(resolverType string, params []pipelinev1.Param) (string, error) {
 	// Create a deterministic string representation of the parameters
 	paramStr := resolverType + ":"
 
 	// Filter out the 'cache' parameter and sort remaining params by name for determinism
-	filteredParams := make([]v1.Param, 0, len(params))
+	filteredParams := make([]pipelinev1.Param, 0, len(params))
 	for _, p := range params {
 		if p.Name != "cache" {
 			filteredParams = append(filteredParams, p)
@@ -179,9 +182,9 @@ func GenerateCacheKey(resolverType string, params []v1.Param) (string, error) {
 		paramStr += p.Name + "="
 
 		switch p.Value.Type {
-		case v1.ParamTypeString:
+		case pipelinev1.ParamTypeString:
 			paramStr += p.Value.StringVal
-		case v1.ParamTypeArray:
+		case pipelinev1.ParamTypeArray:
 			// Sort array values for determinism
 			arrayVals := make([]string, len(p.Value.ArrayVal))
 			copy(arrayVals, p.Value.ArrayVal)
@@ -192,7 +195,7 @@ func GenerateCacheKey(resolverType string, params []v1.Param) (string, error) {
 				}
 				paramStr += val
 			}
-		case v1.ParamTypeObject:
+		case pipelinev1.ParamTypeObject:
 			// Sort object keys for determinism
 			keys := make([]string, 0, len(p.Value.ObjectVal))
 			for k := range p.Value.ObjectVal {
