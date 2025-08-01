@@ -3587,7 +3587,7 @@ string
 <td>
 <p>EntryPoint identifies the entry point into the build. This is often a path to a
 build definition file and/or a target label within that file.
-Example: &ldquo;task/git-clone/0.8/git-clone.yaml&rdquo;</p>
+Example: &ldquo;task/git-clone/0.10/git-clone.yaml&rdquo;</p>
 </td>
 </tr>
 </tbody>
@@ -10424,7 +10424,7 @@ string
 <td>
 <p>EntryPoint identifies the entry point into the build. This is often a path to a
 build definition file and/or a target label within that file.
-Example: &ldquo;task/git-clone/0.8/git-clone.yaml&rdquo;</p>
+Example: &ldquo;task/git-clone/0.10/git-clone.yaml&rdquo;</p>
 </td>
 </tr>
 </tbody>
@@ -12974,7 +12974,7 @@ string
 <td>
 <p>EntryPoint identifies the entry point into the build. This is often a path to a
 build definition file and/or a target label within that file.
-Example: &ldquo;task/git-clone/0.8/git-clone.yaml&rdquo;</p>
+Example: &ldquo;task/git-clone/0.10/git-clone.yaml&rdquo;</p>
 </td>
 </tr>
 </tbody>

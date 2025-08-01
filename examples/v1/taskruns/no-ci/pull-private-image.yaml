@@ -47,5 +47,5 @@ spec:
     steps:
     - name: pull
       # Private image is just Ubuntu
-      image: gcr.io/tekton-releases/dogfooding/skopeo:latest
+      image: ghcr.io/tektoncd/catalog/upstream/tasks/skopeo-copy:latest
       script: skopeo copy docker://gcr.io/build-crd-testing/secret-sauce dir:///tmp/

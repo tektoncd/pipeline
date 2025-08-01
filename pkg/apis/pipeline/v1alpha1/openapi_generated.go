@@ -30,21 +30,21 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.AffinityAssistantTemplate":   schema_pkg_apis_pipeline_pod_AffinityAssistantTemplate(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template":                    schema_pkg_apis_pipeline_pod_Template(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.Authority":              schema_pkg_apis_pipeline_v1alpha1_Authority(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.EmbeddedRunSpec":        schema_pkg_apis_pipeline_v1alpha1_EmbeddedRunSpec(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.KeyRef":                 schema_pkg_apis_pipeline_v1alpha1_KeyRef(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ResourcePattern":        schema_pkg_apis_pipeline_v1alpha1_ResourcePattern(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.Run":                    schema_pkg_apis_pipeline_v1alpha1_Run(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.RunList":                schema_pkg_apis_pipeline_v1alpha1_RunList(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.RunSpec":                schema_pkg_apis_pipeline_v1alpha1_RunSpec(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepAction":             schema_pkg_apis_pipeline_v1alpha1_StepAction(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepActionList":         schema_pkg_apis_pipeline_v1alpha1_StepActionList(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepActionSpec":         schema_pkg_apis_pipeline_v1alpha1_StepActionSpec(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.VerificationPolicy":     schema_pkg_apis_pipeline_v1alpha1_VerificationPolicy(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.VerificationPolicyList": schema_pkg_apis_pipeline_v1alpha1_VerificationPolicyList(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.VerificationPolicySpec": schema_pkg_apis_pipeline_v1alpha1_VerificationPolicySpec(ref),
+		"./pkg/apis/pipeline/pod.AffinityAssistantTemplate":   schema_pkg_apis_pipeline_pod_AffinityAssistantTemplate(ref),
+		"./pkg/apis/pipeline/pod.Template":                    schema_pkg_apis_pipeline_pod_Template(ref),
+		"./pkg/apis/pipeline/v1alpha1.Authority":              schema_pkg_apis_pipeline_v1alpha1_Authority(ref),
+		"./pkg/apis/pipeline/v1alpha1.EmbeddedRunSpec":        schema_pkg_apis_pipeline_v1alpha1_EmbeddedRunSpec(ref),
+		"./pkg/apis/pipeline/v1alpha1.KeyRef":                 schema_pkg_apis_pipeline_v1alpha1_KeyRef(ref),
+		"./pkg/apis/pipeline/v1alpha1.ResourcePattern":        schema_pkg_apis_pipeline_v1alpha1_ResourcePattern(ref),
+		"./pkg/apis/pipeline/v1alpha1.Run":                    schema_pkg_apis_pipeline_v1alpha1_Run(ref),
+		"./pkg/apis/pipeline/v1alpha1.RunList":                schema_pkg_apis_pipeline_v1alpha1_RunList(ref),
+		"./pkg/apis/pipeline/v1alpha1.RunSpec":                schema_pkg_apis_pipeline_v1alpha1_RunSpec(ref),
+		"./pkg/apis/pipeline/v1alpha1.StepAction":             schema_pkg_apis_pipeline_v1alpha1_StepAction(ref),
+		"./pkg/apis/pipeline/v1alpha1.StepActionList":         schema_pkg_apis_pipeline_v1alpha1_StepActionList(ref),
+		"./pkg/apis/pipeline/v1alpha1.StepActionSpec":         schema_pkg_apis_pipeline_v1alpha1_StepActionSpec(ref),
+		"./pkg/apis/pipeline/v1alpha1.VerificationPolicy":     schema_pkg_apis_pipeline_v1alpha1_VerificationPolicy(ref),
+		"./pkg/apis/pipeline/v1alpha1.VerificationPolicyList": schema_pkg_apis_pipeline_v1alpha1_VerificationPolicyList(ref),
+		"./pkg/apis/pipeline/v1alpha1.VerificationPolicySpec": schema_pkg_apis_pipeline_v1alpha1_VerificationPolicySpec(ref),
 	}
 }
 
@@ -364,7 +364,7 @@ func schema_pkg_apis_pipeline_v1alpha1_Authority(ref common.ReferenceCallback) c
 					"key": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Key contains the public key to validate the resource.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.KeyRef"),
+							Ref:         ref("./pkg/apis/pipeline/v1alpha1.KeyRef"),
 						},
 					},
 				},
@@ -372,7 +372,7 @@ func schema_pkg_apis_pipeline_v1alpha1_Authority(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.KeyRef"},
+			"./pkg/apis/pipeline/v1alpha1.KeyRef"},
 	}
 }
 
@@ -509,7 +509,7 @@ func schema_pkg_apis_pipeline_v1alpha1_Run(ref common.ReferenceCallback) common.
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.RunSpec"),
+							Ref:     ref("./pkg/apis/pipeline/v1alpha1.RunSpec"),
 						},
 					},
 					"status": {
@@ -522,7 +522,7 @@ func schema_pkg_apis_pipeline_v1alpha1_Run(ref common.ReferenceCallback) common.
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.RunSpec", "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1.RunStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"./pkg/apis/pipeline/v1alpha1.RunSpec", "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1.RunStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -560,7 +560,7 @@ func schema_pkg_apis_pipeline_v1alpha1_RunList(ref common.ReferenceCallback) com
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.Run"),
+										Ref:     ref("./pkg/apis/pipeline/v1alpha1.Run"),
 									},
 								},
 							},
@@ -571,7 +571,7 @@ func schema_pkg_apis_pipeline_v1alpha1_RunList(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.Run", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"./pkg/apis/pipeline/v1alpha1.Run", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
 	}
 }
 
@@ -590,7 +590,7 @@ func schema_pkg_apis_pipeline_v1alpha1_RunSpec(ref common.ReferenceCallback) com
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Spec is a specification of a custom task",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.EmbeddedRunSpec"),
+							Ref:         ref("./pkg/apis/pipeline/v1alpha1.EmbeddedRunSpec"),
 						},
 					},
 					"params": {
@@ -664,7 +664,7 @@ func schema_pkg_apis_pipeline_v1alpha1_RunSpec(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.EmbeddedRunSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceBinding", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"./pkg/apis/pipeline/v1alpha1.EmbeddedRunSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceBinding", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -699,14 +699,14 @@ func schema_pkg_apis_pipeline_v1alpha1_StepAction(ref common.ReferenceCallback) 
 						SchemaProps: spec.SchemaProps{
 							Description: "Spec holds the desired state of the Step from the client",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepActionSpec"),
+							Ref:         ref("./pkg/apis/pipeline/v1alpha1.StepActionSpec"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepActionSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"./pkg/apis/pipeline/v1alpha1.StepActionSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -744,7 +744,7 @@ func schema_pkg_apis_pipeline_v1alpha1_StepActionList(ref common.ReferenceCallba
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepAction"),
+										Ref:     ref("./pkg/apis/pipeline/v1alpha1.StepAction"),
 									},
 								},
 							},
@@ -755,7 +755,7 @@ func schema_pkg_apis_pipeline_v1alpha1_StepActionList(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepAction", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"./pkg/apis/pipeline/v1alpha1.StepAction", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
 	}
 }
 
@@ -959,7 +959,7 @@ func schema_pkg_apis_pipeline_v1alpha1_VerificationPolicy(ref common.ReferenceCa
 						SchemaProps: spec.SchemaProps{
 							Description: "Spec holds the desired state of the VerificationPolicy.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.VerificationPolicySpec"),
+							Ref:         ref("./pkg/apis/pipeline/v1alpha1.VerificationPolicySpec"),
 						},
 					},
 				},
@@ -967,7 +967,7 @@ func schema_pkg_apis_pipeline_v1alpha1_VerificationPolicy(ref common.ReferenceCa
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.VerificationPolicySpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"./pkg/apis/pipeline/v1alpha1.VerificationPolicySpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -1005,7 +1005,7 @@ func schema_pkg_apis_pipeline_v1alpha1_VerificationPolicyList(ref common.Referen
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.VerificationPolicy"),
+										Ref:     ref("./pkg/apis/pipeline/v1alpha1.VerificationPolicy"),
 									},
 								},
 							},
@@ -1016,7 +1016,7 @@ func schema_pkg_apis_pipeline_v1alpha1_VerificationPolicyList(ref common.Referen
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.VerificationPolicy", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"./pkg/apis/pipeline/v1alpha1.VerificationPolicy", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
 	}
 }
 
@@ -1035,7 +1035,7 @@ func schema_pkg_apis_pipeline_v1alpha1_VerificationPolicySpec(ref common.Referen
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ResourcePattern"),
+										Ref:     ref("./pkg/apis/pipeline/v1alpha1.ResourcePattern"),
 									},
 								},
 							},
@@ -1049,7 +1049,7 @@ func schema_pkg_apis_pipeline_v1alpha1_VerificationPolicySpec(ref common.Referen
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.Authority"),
+										Ref:     ref("./pkg/apis/pipeline/v1alpha1.Authority"),
 									},
 								},
 							},
@@ -1067,6 +1067,6 @@ func schema_pkg_apis_pipeline_v1alpha1_VerificationPolicySpec(ref common.Referen
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.Authority", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ResourcePattern"},
+			"./pkg/apis/pipeline/v1alpha1.Authority", "./pkg/apis/pipeline/v1alpha1.ResourcePattern"},
 	}
 }
