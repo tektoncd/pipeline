@@ -62,7 +62,10 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		verificationpolicyInformer := verificationpolicyinformer.Get(ctx)
 		secretinformer := secretinformer.Get(ctx)
 		tracerProvider := tracing.New(TracerProviderName, logger.Named("tracing"))
-		pipelinerunmetricsRecorder := pipelinerunmetrics.Get(ctx)
+		pipelinerunmetricsRecorder, err := pipelinerunmetrics.NewRecorder(ctx)
+		if err != nil {
+			logger.Fatalf("Failed to create pipelinerun metrics recorder %v", err)
+		}
 		//nolint:contextcheck // OnStore methods does not support context as a parameter
 		configStore := config.NewStore(logger.Named("config-store"),
 			pipelinerunmetrics.OnStore(logger, pipelinerunmetricsRecorder),

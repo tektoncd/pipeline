@@ -663,7 +663,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		if err := podconvert.UpdateReady(ctx, c.KubeClientSet, *pod); err != nil {
 			return err
 		}
-		if err := c.metrics.RecordPodLatency(ctx, pod, tr); err != nil {
+		if err := c.metrics.PodLatency(ctx, tr, pod); err != nil {
 			logger.Warnf("Failed to log the metrics : %v", err)
 		}
 	}

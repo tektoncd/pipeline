@@ -21,6 +21,16 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 data:
-  metrics.backend-destination: prometheus
-  metrics.stackdriver-project-id: "<your stackdriver project id>"
-  metrics.allow-stackdriver-custom-metrics: "false"
+  # OpenTelemetry Metrics Configuration
+  metrics-protocol: prometheus
+  metrics-endpoint: ""
+  metrics-export-interval: ""
+  
+  # OpenTelemetry Tracing Configuration
+  tracing-protocol: none
+  tracing-endpoint: ""
+  tracing-sampling-rate: "1.0"
+  
+  # Runtime Configuration
+  runtime-profiling: disabled
+  runtime-export-interval: "15s"
