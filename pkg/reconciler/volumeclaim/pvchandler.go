@@ -21,7 +21,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
@@ -37,6 +39,11 @@ const (
 	// ReasonCouldntCreateWorkspacePVC indicates that a Pipeline expects a workspace from a
 	// volumeClaimTemplate but couldn't create a claim.
 	ReasonCouldntCreateWorkspacePVC = "CouldntCreateWorkspacePVC"
+)
+
+var (
+	ErrPvcCreationFailed          = errors.New("PVC creation error")
+	ErrPvcCreationFailedRetryable = errors.New("PVC creation error, retryable")
 )
 
 // PvcHandler is used to create PVCs for workspaces
@@ -70,17 +77,52 @@ func (c *defaultPVCHandler) CreatePVCFromVolumeClaimTemplate(ctx context.Context
 	case apierrors.IsNotFound(err):
 		_, err := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Create(ctx, claim, metav1.CreateOptions{})
 		if err != nil {
-			if apierrors.IsAlreadyExists(err) {
+	_, getErr := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Get(ctx, claim.Name, metav1.GetOptions{})
+	switch {
+	case apierrors.IsNotFound(getErr):
+		_, createErr := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Create(ctx, claim, metav1.CreateOptions{})
+		if createErr == nil {
+			c.logger.Infof("Created PersistentVolumeClaim %s in namespace %s", claim.Name, claim.Namespace)
+			return nil
+		}
+
+		if apierrors.IsAlreadyExists(createErr) {
+			c.logger.Infof("Tried to create PersistentVolumeClaim %s in namespace %s, but it already exists",
+				claim.Name, claim.Namespace)
+			return nil
+		}
+
+		// This is a retry-able error
+		if apierrors.IsForbidden(createErr) && strings.Contains(createErr.Error(), "exceeded quota") {
+			return fmt.Errorf("%w: %v", ErrPvcCreationFailedRetryable, createErr.Error())
+		}
+
+		return fmt.Errorf("%w for %s: %w", ErrPvcCreationFailed, claim.Name, createErr)
+	case getErr != nil:
+		return fmt.Errorf("%w: failed to retrieve PVC %s: %w", ErrPvcCreationFailed, claim.Name, getErr)
+	}
+}
 				c.logger.Infof("Tried to create PersistentVolumeClaim %s in namespace %s, but it already exists",
 					claim.Name, claim.Namespace)
+			} else if apierrors.IsForbidden(err) {
+				if strings.Contains(err.Error(), "exceeded quota") {
+					// This is a retry-able error
+					return fmt.Errorf("%w: %v", ErrPvcCreationFailedRetryable, err.Error())
+				}
+			} else if apierrors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota") {
+       			// This is a retry-able error
+				return fmt.Errorf("%w: %v", ErrPvcCreationFailedRetryable, err.Error())
+			}
+			return fmt.Errorf("%w for %s: %w", ErrPvcCreationFailed, claim.Name, err)
+
 			} else {
-				return fmt.Errorf("failed to create PVC %s: %w", claim.Name, err)
+				return fmt.Errorf("%w for %s: %w", ErrPvcCreationFailed, claim.Name, err)
 			}
 		} else {
 			c.logger.Infof("Created PersistentVolumeClaim %s in namespace %s", claim.Name, claim.Namespace)
 		}
 	case err != nil:
-		return fmt.Errorf("failed to retrieve PVC %s: %w", claim.Name, err)
+		return fmt.Errorf("%w: failed to retrieve PVC %s: %w", ErrPvcCreationFailed, claim.Name, err)
 	}
 
 	return nil
