@@ -9,7 +9,7 @@ on:
       kubernetes_version:
         description: 'Kubernetes version to test with'
         required: false
-        default: 'v1.33.0'
+        default: 'v1.33.x'
       nightly_bucket:
         description: 'Nightly bucket for builds'
         required: false
@@ -17,7 +17,7 @@ on:
         type: string
 
 env:
-  KUBERNETES_VERSION: ${{ inputs.kubernetes_version || 'v1.33.0' }}
+  KUBERNETES_VERSION: ${{ inputs.kubernetes_version || 'v1.33.x' }}
   REGISTRY: ghcr.io
   PACKAGE: github.com/${{ github.repository }}
   BUCKET: ${{ inputs.nightly_bucket || 'gs://tekton-releases-nightly/pipeline' }}
@@ -26,7 +26,7 @@ env:
 
 jobs:
   build:
-    name: Nightly Build (K8s ${{ inputs.kubernetes_version || 'v1.33.0' }})
+    name: Nightly Build (K8s ${{ inputs.kubernetes_version || 'v1.33.x' }})
     runs-on: ubuntu-latest
 
     permissions:
@@ -49,10 +49,9 @@ jobs:
           echo "latest_sha=${latest_sha}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Kind cluster
-        uses: helm/kind-action@v1.8.0
+        uses: chainguard-dev/actions/setup-kind@v1.4.6
         with:
-          node_image: kindest/node:${{ env.KUBERNETES_VERSION }}
-          cluster_name: tekton-nightly
+          k8s-version: ${{ env.KUBERNETES_VERSION }}
 
       - name: Set up Tekton
         uses: tektoncd/actions/setup-tektoncd@main
