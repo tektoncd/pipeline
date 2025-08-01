@@ -1523,7 +1523,7 @@
           "default": ""
         },
         "onError": {
-          "description": "OnError defines the exiting behavior of a container on error can be set to [ continue | stopAndFail ]",
+          "description": "OnError defines the exiting behavior of a container on error can be set to [ continue | stopAndFail | continueAndFail ]",
           "type": "string"
         },
         "params": {
