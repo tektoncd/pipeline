@@ -17,7 +17,6 @@ limitations under the License.
 package platforms
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -90,7 +89,7 @@ func cpuVariant() string {
 			var err error
 			cpuVariantValue, err = getCPUVariant()
 			if err != nil {
-				slog.ErrorContext(context.Background(), "failed to get CPU variant", "os", runtime.GOOS, "error", err)
+				slog.Error("failed to get CPU variant", "os", runtime.GOOS, "error", err)
 			}
 		}
 	})
