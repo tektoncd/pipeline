@@ -23,6 +23,7 @@ import (
 
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/factory"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
@@ -43,57 +44,18 @@ const (
 	// ResolverName defines the git resolver's name.
 	ResolverName string = "Git"
 
-	// ConfigMapName defines the git resolver's configmap name.
-	ConfigMapName string = "git-resolver-config"
-
-	// labelValueGitResolverType defines the value to use for the
+	// LabelValueGitResolverType is the value to use for the
 	// resolution.tekton.dev/type label on resource requests
-	labelValueGitResolverType string = "git"
+	LabelValueGitResolverType string = "git"
 
 	// cacheSize is the size of the LRU secrets cache
 	cacheSize = 1024
 	// ttl is the time to live for a cache entry
 	ttl = 5 * time.Minute
 
-	// CacheModeAlways means always use cache regardless of git revision
-	CacheModeAlways = "always"
-	// CacheModeNever means never use cache regardless of git revision
-	CacheModeNever = "never"
-	// CacheModeAuto means use cache only when git revision is a commit hash
-	CacheModeAuto = "auto"
+	// git revision parameter name
+	RevisionParam = "revision"
 )
-
-// IsCommitHash checks if the given string is a valid git commit hash.
-// A valid git commit hash is a 40-character hexadecimal string.
-func IsCommitHash(s string) bool {
-	if len(s) != 40 {
-		return false
-	}
-	for _, c := range s {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
-			return false
-		}
-	}
-	return true
-}
-
-// ShouldUseCache determines if caching should be used based on the cache mode and git revision.
-func ShouldUseCache(params map[string]string) bool {
-	cacheMode := params[git.CacheParam]
-	gitRevision := params[git.RevisionParam]
-	switch cacheMode {
-	case CacheModeAlways:
-		return true
-	case CacheModeNever:
-		return false
-	case CacheModeAuto, "": // default to auto if not specified
-		return IsCommitHash(gitRevision)
-	default: // invalid cache mode defaults to auto
-		return IsCommitHash(gitRevision)
-	}
-}
-
-var _ framework.Resolver = &Resolver{}
 
 // Resolver implements a framework.Resolver that can fetch files from git.
 type Resolver struct {
@@ -105,6 +67,9 @@ type Resolver struct {
 	// Used in testing
 	clientFunc func(string, string, string, ...factory.ClientOptionFunc) (*scm.Client, error)
 }
+
+// Ensure Resolver implements CacheAwareResolver
+var _ framework.CacheAwareResolver = (*Resolver)(nil)
 
 // Initialize performs any setup required by the git resolver.
 func (r *Resolver) Initialize(ctx context.Context) error {
@@ -128,98 +93,125 @@ func (r *Resolver) GetName(_ context.Context) string {
 // the gitresolver to process them.
 func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 	return map[string]string{
-		resolutioncommon.LabelKeyResolverType: labelValueGitResolverType,
+		resolutioncommon.LabelKeyResolverType: LabelValueGitResolverType,
 	}
 }
 
-// ValidateParams returns an error if the given parameter map is not
+// Validate returns an error if the given parameter map is not
 // valid for a resource request targeting the gitresolver.
 func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestSpec) error {
-	if len(req.Params) > 0 {
-		return git.ValidateParams(ctx, req.Params)
+	if len(req.Params) == 0 {
+		return errors.New("no params")
 	}
-	// Remove this error once validate url has been implemented.
-	return errors.New("cannot validate request. the Validate method has not been implemented.")
+
+	return git.ValidateParams(ctx, req.Params)
+}
+
+// IsImmutable implements CacheAwareResolver.IsImmutable
+// Returns true if the revision parameter is a commit SHA (40-character hex string)
+func (r *Resolver) IsImmutable(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
+	var revision string
+	for _, param := range req.Params {
+		if param.Name == RevisionParam {
+			revision = param.Value.StringVal
+			break
+		}
+	}
+
+	return isCommitSHA(revision)
 }
 
 // Resolve performs the work of fetching a file from git given a map of
 // parameters.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
-	if len(req.Params) > 0 {
-		origParams := req.Params
-
-		if git.IsDisabled(ctx) {
-			return nil, errors.New(disabledError)
-		}
-
-		params, err := git.PopulateDefaultParams(ctx, origParams)
-		if err != nil {
-			return nil, err
-		}
-
-		// Check if caching should be enabled
-		useCache := ShouldUseCache(params)
-
-		// Check cache first if caching is enabled
-		var cacheInstance *cache.ResolverCache
-		if useCache {
-			// Get cache from dependency injection instead of global singleton
-			cacheInstance = injection.Get(ctx)
-
-			// Generate cache key
-			cacheKey, err := cache.GenerateCacheKey(labelValueGitResolverType, req.Params)
-			if err != nil {
-				return nil, err
-			}
-
-			// Check cache first
-			if cached, ok := cacheInstance.Get(cacheKey); ok {
-				if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
-					// Return annotated resource to indicate it came from cache
-					return cache.NewAnnotatedResource(resource, labelValueGitResolverType, cache.CacheOperationRetrieve), nil
-				}
-			}
-		}
-
-		g := &git.GitResolver{
-			KubeClient: r.kubeClient,
-			Logger:     r.logger,
-			Cache:      r.cache,
-			TTL:        r.ttl,
-			Params:     params,
-		}
-
-		var resource resolutionframework.ResolvedResource
-		if params[git.UrlParam] != "" {
-			resource, err = g.ResolveGitClone(ctx)
-		} else {
-			resource, err = g.ResolveAPIGit(ctx, r.clientFunc)
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		// Cache the result if caching is enabled
-		if useCache {
-			cacheKey, _ := cache.GenerateCacheKey(labelValueGitResolverType, req.Params)
-			// Store annotated resource with store operation
-			annotatedResource := cache.NewAnnotatedResource(resource, labelValueGitResolverType, cache.CacheOperationStore)
-			cacheInstance.Add(cacheKey, annotatedResource)
-			// Return annotated resource to indicate it was stored in cache
-			return annotatedResource, nil
-		}
-
-		return resource, nil
+	if len(req.Params) == 0 {
+		return nil, errors.New("no params")
 	}
-	// Remove this error once resolution of url has been implemented.
-	return nil, errors.New("the Resolve method has not been implemented.")
+
+	if git.IsDisabled(ctx) {
+		return nil, errors.New(disabledError)
+	}
+
+	params, err := git.PopulateDefaultParams(ctx, req.Params)
+	if err != nil {
+		return nil, err
+	}
+
+	// Determine if we should use caching using framework logic
+	systemDefault := framework.GetSystemDefaultCacheMode("git")
+	useCache := framework.ShouldUseCache(ctx, r, req, systemDefault)
+
+	// Check cache first if caching is enabled
+	var cacheInstance *cache.ResolverCache
+	if useCache {
+		// Get cache from dependency injection instead of global singleton
+		cacheInstance = injection.Get(ctx)
+
+		// Generate cache key
+		cacheKey, err := cache.GenerateCacheKey(LabelValueGitResolverType, req.Params)
+		if err != nil {
+			return nil, err
+		}
+
+		// Check cache first
+		if cached, ok := cacheInstance.Get(cacheKey); ok {
+			if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
+				// Return annotated resource to indicate it came from cache
+				return cache.NewAnnotatedResource(resource, LabelValueGitResolverType, cache.CacheOperationRetrieve), nil
+			}
+		}
+	}
+
+	g := &git.GitResolver{
+		KubeClient: r.kubeClient,
+		Logger:     r.logger,
+		Cache:      r.cache,
+		TTL:        r.ttl,
+		Params:     params,
+	}
+
+	var resource resolutionframework.ResolvedResource
+	if params[git.UrlParam] != "" {
+		resource, err = g.ResolveGitClone(ctx)
+	} else {
+		resource, err = g.ResolveAPIGit(ctx, r.clientFunc)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Cache the result if caching is enabled
+	if useCache {
+		cacheKey, _ := cache.GenerateCacheKey(LabelValueGitResolverType, req.Params)
+		// Store annotated resource with store operation
+		annotatedResource := cache.NewAnnotatedResource(resource, LabelValueGitResolverType, cache.CacheOperationStore)
+		cacheInstance.Add(cacheKey, annotatedResource)
+		// Return annotated resource to indicate it was stored in cache
+		return annotatedResource, nil
+	}
+
+	return resource, nil
+}
+
+// isCommitSHA checks if the given string looks like a git commit SHA.
+// A valid commit SHA is exactly 40 characters of hexadecimal.
+func isCommitSHA(revision string) bool {
+	if len(revision) != 40 {
+		return false
+	}
+	for _, r := range revision {
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
+			return false
+		}
+	}
+	return true
 }
 
 var _ resolutionframework.ConfigWatcher = &Resolver{}
 
 // GetConfigName returns the name of the git resolver's configmap.
 func (r *Resolver) GetConfigName(context.Context) string {
-	return ConfigMapName
+	return git.ConfigMapName
 }
 
 var _ resolutionframework.TimedResolution = &Resolver{}
@@ -240,4 +232,24 @@ func (r *Resolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time
 		return timeout, nil
 	}
 	return defaultTimeout, nil
+}
+
+// Legacy functions - kept for backward compatibility and tests
+// TODO: Remove these once all tests are updated
+
+// ShouldUseCache is kept for backward compatibility with existing tests
+// New code should use framework.ShouldUseCache instead
+func ShouldUseCache(ctx context.Context, params map[string]string) bool {
+	// Convert params map to ResolutionRequestSpec for framework compatibility
+	req := &v1beta1.ResolutionRequestSpec{}
+	for name, value := range params {
+		req.Params = append(req.Params, pipelinev1.Param{
+			Name:  name,
+			Value: pipelinev1.ParamValue{StringVal: value},
+		})
+	}
+
+	r := &Resolver{}
+	systemDefault := framework.GetSystemDefaultCacheMode("git")
+	return framework.ShouldUseCache(ctx, r, req, systemDefault)
 }

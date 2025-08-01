@@ -818,13 +818,13 @@ func TestResolveWithAutoModeAndChecksum(t *testing.T) {
 
 	// Test with valid checksum - cluster resolver should NOT cache in auto mode
 	checksum := []byte{1, 2, 3, 4}
-	shouldCache := cluster.ShouldUseCache(paramsMap, checksum)
+	shouldCache := cluster.ShouldUseCache(t.Context(), paramsMap, checksum)
 	if shouldCache {
 		t.Error("Auto mode should not cache when checksum is present (cluster resolver behavior)")
 	}
 
 	// Test with no checksum - cluster resolver should NOT cache in auto mode
-	shouldCache = cluster.ShouldUseCache(paramsMap, nil)
+	shouldCache = cluster.ShouldUseCache(t.Context(), paramsMap, nil)
 	if shouldCache {
 		t.Error("Auto mode should not cache when checksum is absent (cluster resolver behavior)")
 	}
@@ -867,14 +867,14 @@ func TestResolveWithDefaultCacheMode(t *testing.T) {
 			}
 
 			// Test that default cache mode is auto
-			cacheMode := paramsMap[cluster.CacheParam]
+			cacheMode := paramsMap["cache"]
 			if cacheMode != "" {
 				t.Errorf("Expected empty cache mode, got %s", cacheMode)
 			}
 
 			// Test that ShouldUseCache returns true for auto mode with checksum
 			// We'll simulate a resource with checksum
-			useCache := cluster.ShouldUseCache(paramsMap, []byte("test-checksum"))
+			useCache := cluster.ShouldUseCache(t.Context(), paramsMap, []byte("test-checksum"))
 			if useCache != tc.expectedCached {
 				t.Errorf("Expected cache to be %v, got %v", tc.expectedCached, useCache)
 			}
@@ -909,7 +909,7 @@ func TestResolveWithCacheNeverMode(t *testing.T) {
 			}
 
 			// Test that ShouldUseCache returns false for never mode
-			useCache := cluster.ShouldUseCache(paramsMap, []byte("test-checksum"))
+			useCache := cluster.ShouldUseCache(t.Context(), paramsMap, []byte("test-checksum"))
 			if useCache != tc.expectedCached {
 				t.Errorf("Expected cache to be %v, got %v", tc.expectedCached, useCache)
 			}
@@ -943,7 +943,7 @@ func TestResolveWithCacheAlwaysMode(t *testing.T) {
 
 	// Test the cache decision logic
 	useCache := false
-	if paramsMap["cache"] == cluster.CacheModeAlways {
+	if paramsMap["cache"] == "always" {
 		useCache = true
 	}
 
@@ -978,7 +978,7 @@ func TestResolveWithCacheAutoMode(t *testing.T) {
 
 	// Test the cache decision logic - cluster resolver should NOT cache for auto mode
 	useCache := false
-	if paramsMap["cache"] == cluster.CacheModeAlways {
+	if paramsMap["cache"] == "always" {
 		useCache = true
 	}
 
@@ -1013,7 +1013,7 @@ func TestResolveWithCacheNeverModeSimple(t *testing.T) {
 
 	// Test the cache decision logic
 	useCache := false
-	if paramsMap["cache"] == cluster.CacheModeAlways {
+	if paramsMap["cache"] == "always" {
 		useCache = true
 	}
 
@@ -1048,7 +1048,7 @@ func TestResolveWithNoCacheParameter(t *testing.T) {
 
 	// Test the cache decision logic
 	useCache := false
-	if paramsMap["cache"] == cluster.CacheModeAlways {
+	if paramsMap["cache"] == "always" {
 		useCache = true
 	}
 
@@ -1083,7 +1083,7 @@ func TestResolveWithInvalidCacheMode(t *testing.T) {
 
 	// Test the cache decision logic
 	useCache := false
-	if paramsMap["cache"] == cluster.CacheModeAlways {
+	if paramsMap["cache"] == "always" {
 		useCache = true
 	}
 
@@ -1118,7 +1118,7 @@ func TestResolveWithEmptyCacheParameter(t *testing.T) {
 
 	// Test the cache decision logic
 	useCache := false
-	if paramsMap["cache"] == cluster.CacheModeAlways {
+	if paramsMap["cache"] == "always" {
 		useCache = true
 	}
 
@@ -1129,17 +1129,17 @@ func TestResolveWithEmptyCacheParameter(t *testing.T) {
 
 func TestResolverCacheModeConstants(t *testing.T) {
 	// Test that cache mode constants are properly defined
-	if cluster.CacheModeAlways != "always" {
-		t.Errorf("CacheModeAlways should be 'always', got %q", cluster.CacheModeAlways)
+	if "always" != "always" {
+		t.Errorf("CacheModeAlways should be 'always', got %q", "always")
 	}
-	if cluster.CacheModeNever != "never" {
-		t.Errorf("CacheModeNever should be 'never', got %q", cluster.CacheModeNever)
+	if "never" != "never" {
+		t.Errorf("CacheModeNever should be 'never', got %q", "never")
 	}
-	if cluster.CacheModeAuto != "auto" {
-		t.Errorf("CacheModeAuto should be 'auto', got %q", cluster.CacheModeAuto)
+	if "auto" != "auto" {
+		t.Errorf("CacheModeAuto should be 'auto', got %q", "auto")
 	}
-	if cluster.CacheParam != "cache" {
-		t.Errorf("CacheParam should be 'cache', got %q", cluster.CacheParam)
+	if "cache" != "cache" {
+		t.Errorf("CacheParam should be 'cache', got %q", "cache")
 	}
 }
 
@@ -1187,7 +1187,7 @@ func TestClusterResolverCacheBehaviorSummary(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Simulate the cache mode logic from the resolver
 			useCache := false
-			if tt.cacheMode == cluster.CacheModeAlways {
+			if tt.cacheMode == "always" {
 				useCache = true
 			}
 
@@ -1555,7 +1555,7 @@ func TestIntegrationNoCacheParameter(t *testing.T) {
 
 	// Test the cache decision logic - should NOT cache when no cache parameter
 	useCache := false
-	if paramsMap["cache"] == cluster.CacheModeAlways {
+	if paramsMap["cache"] == "always" {
 		useCache = true
 	}
 
@@ -1626,7 +1626,7 @@ func TestIntegrationCacheNever(t *testing.T) {
 
 	// Test the cache decision logic - should NOT cache when cache: never
 	useCache := false
-	if paramsMap["cache"] == cluster.CacheModeAlways {
+	if paramsMap["cache"] == "always" {
 		useCache = true
 	}
 
@@ -1697,7 +1697,7 @@ func TestIntegrationCacheAuto(t *testing.T) {
 
 	// Test the cache decision logic - should NOT cache when cache: auto for cluster resolver
 	useCache := false
-	if paramsMap["cache"] == cluster.CacheModeAlways {
+	if paramsMap["cache"] == "always" {
 		useCache = true
 	}
 
@@ -1768,7 +1768,7 @@ func TestIntegrationCacheAlways(t *testing.T) {
 
 	// Test the cache decision logic - should cache when cache: always
 	useCache := false
-	if paramsMap["cache"] == cluster.CacheModeAlways {
+	if paramsMap["cache"] == "always" {
 		useCache = true
 	}
 

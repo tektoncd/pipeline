@@ -36,15 +36,86 @@ along with those that are optional, see [resolver-reference.md](./resolver-refer
 
 ## Resolver Cache Configuration
 
-The resolver cache is used to improve performance by caching resolved resources for bundle and git resolver. By default, the cache uses:
+The resolver cache is used to avoid resolution failures due to rate limiting from external services when resolving resources with bundle, git, and cluster resolvers. By default, the cache uses:
 - 5 minutes ("5m") as the time-to-live (TTL) for cache entries
 - 1000 entries as the maximum cache size
 
-You can override these defaults by editing the `resolver-cache-config.yaml` ConfigMap in the `tekton-pipelines-resolvers` namespace. Set the following keys:
-- `max-size`: Set the maximum number of cache entries (e.g., "500")
-- `default-ttl`: Set the default TTL for cache entries (e.g., "10m", "30s")
+You can override these defaults by adding cache configuration to individual resolver ConfigMaps. The bundle, git, and cluster resolvers can have their own cache settings by adding the following keys to their respective ConfigMaps:
 
-If these values are missing or invalid, the defaults will be used.
+- `cache-max-size`: Set the maximum number of cache entries (e.g., "500", "2000")
+- `cache-default-ttl`: Set the default TTL for cache entries (e.g., "10m", "30s", "1h")
+- `default-cache-mode`: Set the default cache mode when no cache parameter is specified in ResolutionRequests (e.g., "always", "never", "auto")
+
+### Cache Modes
+
+The cache behavior is controlled by the `cache` mode, which can be set either:
+1. **Per-request**: In the ResolutionRequest `cache` parameter (highest priority)
+2. **Per-resolver**: In the resolver's ConfigMap `default-cache-mode` setting
+3. **Fallback**: If neither is specified, defaults to `auto` for git/bundle resolvers, `never` for cluster resolver
+
+| Cache Mode | Git Resolver | Bundle Resolver | Cluster Resolver |
+|------------|--------------|-----------------|------------------|
+| `always` | Always cache | Always cache | Always cache |
+| `never` | Never cache | Never cache | Never cache |
+| `auto` | Cache commit SHAs only | Cache digest refs only | Never cache (no immutable refs) |
+
+### Cache Precedence
+
+The cache mode is determined by the following precedence order:
+1. **Task/Pipeline parameter**: If the `cache` parameter is specified in a ResolutionRequest, it takes highest priority
+2. **ConfigMap default**: If `default-cache-mode` is set in the resolver's ConfigMap, it applies when no task parameter is provided
+3. **System default**: If neither is specified, git and bundle resolvers default to `auto`, cluster resolver defaults to `never`
+
+**Example precedence:**
+```yaml
+# TaskRun with explicit cache parameter (overrides ConfigMap)
+apiVersion: tekton.dev/v1
+kind: TaskRun
+spec:
+  taskRef:
+    resolver: git
+    params:
+    - name: cache
+      value: "never"  # <-- This overrides ConfigMap default-cache-mode
+    - name: url
+      value: https://github.com/example/repo.git
+```
+
+**Examples:**
+
+To configure cache settings for the bundle resolver, edit the `bundleresolver-config` ConfigMap:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bundleresolver-config
+  namespace: tekton-pipelines-resolvers
+data:
+  default-service-account: "default"
+  default-kind: "task"
+  # Cache configuration
+  cache-max-size: "2000"
+  cache-default-ttl: "10m"
+  default-cache-mode: "always"
+```
+
+To configure cache settings for the git resolver, edit the `git-resolver-config` ConfigMap:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: git-resolver-config
+  namespace: tekton-pipelines-resolvers
+data:
+  default-revision: "main"
+  fetch-timeout: "1m"
+  # Cache configuration
+  cache-max-size: "1500"
+  cache-default-ttl: "15m"
+  default-cache-mode: "auto"
+```
+
+If these values are missing or invalid, the defaults will be used. Each of these resolvers can have different cache settings, allowing you to optimize cache behavior based on the specific needs of each resolver type.
 
 ---
 

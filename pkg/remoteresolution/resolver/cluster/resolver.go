@@ -20,156 +20,141 @@ import (
 	"context"
 	"errors"
 
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
-	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
+	clusterresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"knative.dev/pkg/logging"
 )
 
 const (
+	disabledError = "cannot handle resolution request, enable-cluster-resolver feature flag not true"
+
 	// LabelValueClusterResolverType is the value to use for the
 	// resolution.tekton.dev/type label on resource requests
 	LabelValueClusterResolverType string = "cluster"
 
-	// ClusterResolverName is the name that the cluster resolver should be
-	// associated with
-	ClusterResolverName string = "Cluster"
-
-	configMapName = "cluster-resolver-config"
-
-	// CacheModeAlways means always use cache regardless of resource checksum
-	CacheModeAlways = "always"
-	// CacheModeNever means never use cache regardless of resource checksum
-	CacheModeNever = "never"
-	// CacheModeAuto means use cache only when resource has a checksum
-	CacheModeAuto = "auto"
-
-	// CacheParam is the key for the cache mode in the params map
-	CacheParam = "cache"
+	// ClusterResolverName is the name that the cluster resolver should be associated with
+	ClusterResolverName = "cluster"
 )
 
-var _ framework.Resolver = &Resolver{}
-
-// ResolverV2 implements a framework.Resolver that can fetch resources from other namespaces.
+// Resolver implements a framework.Resolver that can fetch resources from the same cluster.
 type Resolver struct {
-	pipelineClientSet clientset.Interface
+	pipelineClientSet versioned.Interface
 }
 
-// Initialize performs any setup required by the cluster resolver.
+// Ensure Resolver implements CacheAwareResolver
+var _ framework.CacheAwareResolver = (*Resolver)(nil)
+
+// Initialize sets up any dependencies needed by the Resolver. None atm.
 func (r *Resolver) Initialize(ctx context.Context) error {
 	r.pipelineClientSet = pipelineclient.Get(ctx)
 	return nil
 }
 
-// GetName returns the string name that the cluster resolver should be
-// associated with.
-func (r *Resolver) GetName(_ context.Context) string {
+// GetName returns a string name to refer to this Resolver by.
+func (r *Resolver) GetName(ctx context.Context) string {
 	return ClusterResolverName
 }
 
-// GetSelector returns the labels that resource requests are required to have for
-// the cluster resolver to process them.
-func (r *Resolver) GetSelector(_ context.Context) map[string]string {
+// GetSelector returns a map of labels to match against tasks requesting
+// resolution from this Resolver.
+func (r *Resolver) GetSelector(ctx context.Context) map[string]string {
 	return map[string]string{
 		resolutioncommon.LabelKeyResolverType: LabelValueClusterResolverType,
 	}
 }
 
-// Validate returns an error if the given parameter map is not
-// valid for a resource request targeting the cluster resolver.
+// Validate ensures parameters from a request are as expected.
 func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestSpec) error {
-	if len(req.Params) > 0 {
-		return cluster.ValidateParams(ctx, req.Params)
+	if len(req.Params) == 0 {
+		return errors.New("no params")
 	}
-	// Remove this error once validate url has been implemented.
-	return errors.New("cannot validate request. the Validate method has not been implemented")
+
+	return clusterresolution.ValidateParams(ctx, req.Params)
 }
 
-// Resolve performs the work of fetching a resource from a namespace with the given
-// resolution spec.
+// IsImmutable implements CacheAwareResolver.IsImmutable
+// Returns false because cluster resources don't have immutable references
+func (r *Resolver) IsImmutable(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
+	// Cluster resources (Tasks, Pipelines, etc.) don't have immutable references
+	// like Git commit hashes or bundle digests, so we always return false
+	return false
+}
+
+// Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
-	if cluster.IsDisabled(ctx) {
-		return nil, errors.New(cluster.DisabledError)
+	// Guard pattern: early return if no params
+	if len(req.Params) == 0 {
+		return nil, errors.New("no params")
 	}
 
-	// Default to no caching
-	useCache := false
-	if len(req.Params) > 0 {
-		paramsMap := make(map[string]string)
-		for _, p := range req.Params {
-			paramsMap[p.Name] = p.Value.StringVal
-		}
-		if paramsMap[CacheParam] == CacheModeAlways {
-			useCache = true
-		}
-	}
+	logger := logging.FromContext(ctx)
 
-	var cacheInstance *cache.ResolverCache
+	// Determine if we should use caching using framework logic
+	systemDefault := framework.GetSystemDefaultCacheMode("cluster")
+	useCache := framework.ShouldUseCache(ctx, r, req, systemDefault)
+
 	if useCache {
-		// Get cache from dependency injection instead of global singleton
-		cacheInstance = injection.Get(ctx)
-
-		// Generate cache key from request params
+		// Get cache instance
+		cacheInstance := injection.Get(ctx)
 		cacheKey, err := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
 		if err != nil {
-			return nil, err
-		}
-
-		// Check cache first
-		if cached, ok := cacheInstance.Get(cacheKey); ok {
-			if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
-				return cache.NewAnnotatedResource(resource, LabelValueClusterResolverType, cache.CacheOperationRetrieve), nil
+			logger.Warnf("Failed to generate cache key: %v", err)
+		} else {
+			// Check cache first
+			if cached, ok := cacheInstance.Get(cacheKey); ok {
+				if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
+					return cache.NewAnnotatedResource(resource, LabelValueClusterResolverType, cache.CacheOperationRetrieve), nil
+				}
 			}
 		}
 	}
 
 	// If not caching or cache miss, resolve from params
-	resource, err := cluster.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
+	resource, err := clusterresolution.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
 	if err != nil {
 		return nil, err
 	}
 
 	// Cache the result if caching is enabled
 	if useCache {
-		cacheKey, _ := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
-		// Store annotated resource with store operation
-		annotatedResource := cache.NewAnnotatedResource(resource, LabelValueClusterResolverType, cache.CacheOperationStore)
-		cacheInstance.Add(cacheKey, annotatedResource)
-		// Return annotated resource to indicate it was stored in cache
-		return annotatedResource, nil
+		cacheInstance := injection.Get(ctx)
+		cacheKey, err := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
+		if err == nil {
+			// Store annotated resource with store operation
+			annotatedResource := cache.NewAnnotatedResource(resource, LabelValueClusterResolverType, cache.CacheOperationStore)
+			cacheInstance.Add(cacheKey, annotatedResource)
+			// Return annotated resource to indicate it was stored in cache
+			return annotatedResource, nil
+		}
 	}
 
 	return resource, nil
 }
 
-var _ resolutionframework.ConfigWatcher = &Resolver{}
+// Legacy functions - kept for backward compatibility and tests
+// TODO: Remove these once all tests are updated
 
-// GetConfigName returns the name of the cluster resolver's configmap.
-func (r *Resolver) GetConfigName(context.Context) string {
-	return configMapName
-}
-
-// ShouldUseCache determines whether caching should be used based on the cache mode parameter.
-// For cluster resolver, caching is only enabled when cache mode is "always".
-func ShouldUseCache(params map[string]string, checksum []byte) bool {
-	cacheMode, exists := params[CacheParam]
-	if !exists {
-		return false // No cache parameter means no caching
+// ShouldUseCache is kept for backward compatibility with existing tests
+// New code should use framework.ShouldUseCache instead
+func ShouldUseCache(ctx context.Context, params map[string]string, checksum []byte) bool {
+	// Convert params map to ResolutionRequestSpec for framework compatibility
+	req := &v1beta1.ResolutionRequestSpec{}
+	for name, value := range params {
+		req.Params = append(req.Params, pipelinev1.Param{
+			Name:  name,
+			Value: pipelinev1.ParamValue{StringVal: value},
+		})
 	}
 
-	switch cacheMode {
-	case CacheModeAlways:
-		return true
-	case CacheModeNever:
-		return false
-	case CacheModeAuto:
-		return false // Cluster resolver doesn't cache in auto mode
-	default:
-		return false // Invalid cache mode means no caching
-	}
+	r := &Resolver{}
+	systemDefault := framework.GetSystemDefaultCacheMode("cluster")
+	return framework.ShouldUseCache(ctx, r, req, systemDefault)
 }

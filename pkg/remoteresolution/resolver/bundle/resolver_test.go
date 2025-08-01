@@ -617,7 +617,7 @@ func createRequest(p *params) *v1beta1.ResolutionRequest {
 
 func createError(image, msg string) error {
 	return &resolutioncommon.GetResourceError{
-		ResolverName: bundle.BundleResolverName,
+		ResolverName: "Bundles",
 		Key:          "foo/rr",
 		Original:     fmt.Errorf("invalid tekton bundle %s, error: %s", image, msg),
 	}
@@ -726,37 +726,37 @@ func TestShouldUseCache(t *testing.T) {
 	}{
 		{
 			name:      "always mode with digest",
-			cacheMode: bundle.CacheModeAlways,
+			cacheMode: "always",
 			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build@sha256:23293df97dc11957ec36a88c80101bb554039a76e8992a435112eea8283b30d4",
 			wantCache: true,
 		},
 		{
 			name:      "always mode without digest",
-			cacheMode: bundle.CacheModeAlways,
+			cacheMode: "always",
 			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build:latest",
 			wantCache: true,
 		},
 		{
 			name:      "never mode with digest",
-			cacheMode: bundle.CacheModeNever,
+			cacheMode: "never",
 			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build@sha256:23293df97dc11957ec36a88c80101bb554039a76e8992a435112eea8283b30d4",
 			wantCache: false,
 		},
 		{
 			name:      "never mode without digest",
-			cacheMode: bundle.CacheModeNever,
+			cacheMode: "never",
 			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build:latest",
 			wantCache: false,
 		},
 		{
 			name:      "auto mode with digest",
-			cacheMode: bundle.CacheModeAuto,
+			cacheMode: "auto",
 			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build@sha256:23293df97dc11957ec36a88c80101bb554039a76e8992a435112eea8283b30d4",
 			wantCache: true,
 		},
 		{
 			name:      "auto mode without digest",
-			cacheMode: bundle.CacheModeAuto,
+			cacheMode: "auto",
 			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build:latest",
 			wantCache: false,
 		},
@@ -792,9 +792,135 @@ func TestShouldUseCache(t *testing.T) {
 				Cache:  tt.cacheMode,
 				Bundle: tt.bundleRef,
 			}
-			got := bundle.ShouldUseCache(opts)
+			got := bundle.ShouldUseCache(context.Background(), opts)
 			if got != tt.wantCache {
 				t.Errorf("ShouldUseCache() = %v, want %v", got, tt.wantCache)
+			}
+		})
+	}
+}
+
+func TestShouldUseCachePrecedence(t *testing.T) {
+	const bundleWithDigest = "registry.io/my/bundle@sha256:abcdef123456789012345678901234567890abcdef123456789012345678901234" // has digest
+	const bundleWithTag = "registry.io/my/bundle:v1.0.0"                                                                       // tag only
+
+	tests := []struct {
+		name           string
+		taskCacheParam string            // cache parameter from task/ResolutionRequest
+		configMap      map[string]string // resolver ConfigMap
+		bundleRef      string            // bundle reference (affects auto mode)
+		expected       bool              // expected result
+		description    string            // test case description
+	}{
+		// Test case 1: Default behavior (no config, no task param) -> should be "auto"
+		{
+			name:           "no_config_no_task_param_with_digest",
+			taskCacheParam: "",                  // no cache param in task
+			configMap:      map[string]string{}, // no default-cache-mode in ConfigMap
+			bundleRef:      bundleWithDigest,    // bundle with digest
+			expected:       true,                // auto mode + digest = cache
+			description:    "No config anywhere, defaults to auto, digest should be cached",
+		},
+		{
+			name:           "no_config_no_task_param_with_tag",
+			taskCacheParam: "",                  // no cache param in task
+			configMap:      map[string]string{}, // no default-cache-mode in ConfigMap
+			bundleRef:      bundleWithTag,       // tag only
+			expected:       false,               // auto mode + tag = no cache
+			description:    "No config anywhere, defaults to auto, tag should not be cached",
+		},
+
+		// Test case 2: ConfigMap has setting, task has nothing -> should use ConfigMap value
+		{
+			name:           "configmap_always_no_task_param",
+			taskCacheParam: "",                                                // no cache param in task
+			configMap:      map[string]string{"default-cache-mode": "always"}, // ConfigMap says always
+			bundleRef:      bundleWithTag,                                     // irrelevant for always mode
+			expected:       true,                                              // always = cache
+			description:    "ConfigMap says always, no task param, should cache",
+		},
+		{
+			name:           "configmap_never_no_task_param",
+			taskCacheParam: "",                                               // no cache param in task
+			configMap:      map[string]string{"default-cache-mode": "never"}, // ConfigMap says never
+			bundleRef:      bundleWithDigest,                                 // irrelevant for never mode
+			expected:       false,                                            // never = no cache
+			description:    "ConfigMap says never, no task param, should not cache",
+		},
+		{
+			name:           "configmap_auto_no_task_param_with_digest",
+			taskCacheParam: "",                                              // no cache param in task
+			configMap:      map[string]string{"default-cache-mode": "auto"}, // ConfigMap says auto
+			bundleRef:      bundleWithDigest,                                // bundle with digest
+			expected:       true,                                            // auto + digest = cache
+			description:    "ConfigMap says auto, no task param, digest should be cached",
+		},
+
+		// Test case 3: ConfigMap has setting AND task has setting -> task should win
+		{
+			name:           "configmap_always_task_never",
+			taskCacheParam: "never",                                           // task says never
+			configMap:      map[string]string{"default-cache-mode": "always"}, // ConfigMap says always
+			bundleRef:      bundleWithDigest,                                  // irrelevant
+			expected:       false,                                             // task wins: never = no cache
+			description:    "Task says never, ConfigMap says always, task should win",
+		},
+		{
+			name:           "configmap_never_task_always",
+			taskCacheParam: "always",                                         // task says always
+			configMap:      map[string]string{"default-cache-mode": "never"}, // ConfigMap says never
+			bundleRef:      bundleWithTag,                                    // irrelevant
+			expected:       true,                                             // task wins: always = cache
+			description:    "Task says always, ConfigMap says never, task should win",
+		},
+		{
+			name:           "configmap_auto_task_always",
+			taskCacheParam: "always",                                        // task says always
+			configMap:      map[string]string{"default-cache-mode": "auto"}, // ConfigMap says auto
+			bundleRef:      bundleWithTag,                                   // would be false for auto mode
+			expected:       true,                                            // task wins: always = cache
+			description:    "Task says always, ConfigMap says auto, task should win",
+		},
+
+		// Test edge cases
+		{
+			name:           "invalid_task_param_falls_back_to_auto",
+			taskCacheParam: "invalid",           // invalid cache mode
+			configMap:      map[string]string{}, // no default
+			bundleRef:      bundleWithDigest,    // bundle with digest
+			expected:       true,                // invalid falls back to auto
+			description:    "Invalid task cache mode should fall back to auto behavior",
+		},
+		{
+			name:           "invalid_configmap_default_with_task_param",
+			taskCacheParam: "never",                                            // valid task param
+			configMap:      map[string]string{"default-cache-mode": "invalid"}, // invalid ConfigMap default
+			bundleRef:      bundleWithDigest,                                   // irrelevant
+			expected:       false,                                              // task should still win
+			description:    "Invalid ConfigMap default should not affect valid task param",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up context with resolver config
+			ctx := context.Background()
+			if len(tt.configMap) > 0 {
+				ctx = framework.InjectResolverConfigToContext(ctx, tt.configMap)
+			}
+
+			// Set up RequestOptions
+			opts := bundleresolution.RequestOptions{
+				Bundle: tt.bundleRef,
+				Cache:  tt.taskCacheParam,
+			}
+
+			// Test the function
+			result := bundle.ShouldUseCache(ctx, opts)
+
+			// Verify result
+			if result != tt.expected {
+				t.Errorf("ShouldUseCache() = %v, expected %v\nDescription: %s", result, tt.expected, tt.description)
 			}
 		})
 	}

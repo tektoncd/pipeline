@@ -55,7 +55,10 @@ func Get(ctx context.Context) *cache.ResolverCache {
 	if untyped == nil {
 		// Fallback for test contexts or when injection is not available
 		logger := logging.FromContext(ctx)
-		return sharedCache.WithLogger(logger)
+		return sharedCache.WithLogger(logger).WithConfigFromContext(ctx)
 	}
-	return untyped.(*cache.ResolverCache)
+
+	// Configure the cache from resolver context to pick up cache settings
+	resolverCache := untyped.(*cache.ResolverCache)
+	return resolverCache.WithConfigFromContext(ctx)
 }

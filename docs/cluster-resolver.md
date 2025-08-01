@@ -22,7 +22,9 @@ This Resolver responds to type `cluster`.
 
 ### Cache Parameter
 
-The `cache` parameter controls whether the cluster resolver caches resolved resources:
+The `cache` parameter controls whether the cluster resolver caches resolved resources. Caching behavior can be configured using the `cache` parameter in ResolutionRequests or the `default-cache-mode` setting in the ConfigMap.
+
+#### Cache Modes
 
 | Cache Mode | Description |
 |------------|-------------|
@@ -31,7 +33,32 @@ The `cache` parameter controls whether the cluster resolver caches resolved reso
 | `auto`     | **Cluster resolver behavior**: Never cache (cluster resources lack immutable references). |
 | (not specified) | **Default behavior**: Never cache (same as `auto` for cluster resolver). |
 
+#### Cache Precedence
+
+The cache mode is determined by the following precedence order:
+1. **ResolutionRequest parameter**: If the `cache` parameter is specified in a TaskRun/PipelineRun, it takes highest priority
+2. **ConfigMap default**: If `default-cache-mode` is set in the `cluster-resolver-config` ConfigMap, it applies when no task parameter is provided
+3. **System default**: If neither is specified, defaults to `never` (same as `auto` for cluster resolver)
+
 **Note**: The cluster resolver only caches when `cache: always` is explicitly specified. This is because cluster resources (Tasks, Pipelines, etc.) do not have immutable references like Git commit hashes or bundle digests, making automatic caching unreliable.
+
+**Example with cache parameter:**
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+spec:
+  taskRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: task
+    - name: name
+      value: example-task
+    - name: namespace
+      value: default
+    - name: cache
+      value: "always"  # <-- Forces caching despite lack of immutable reference
+```
 
 ## Requirements
 
@@ -55,6 +82,9 @@ for the name, namespace and defaults that the resolver ships with.
 | `default-namespace`  | The default namespace to fetch resources from if not specified in parameters.                                                                       | `default`, `some-namespace`        |
 | `allowed-namespaces` | An optional comma-separated list of namespaces which the resolver is allowed to access. Defaults to empty, meaning all namespaces are allowed.      | `default,some-namespace`, (empty)  |
 | `blocked-namespaces` | An optional comma-separated list of namespaces which the resolver is blocked from accessing. If the value is a `*` all namespaces will be disallowed and allowed namespace will need to be explicitely listed in `allowed-namespaces`. Defaults to empty, meaning all namespaces are allowed. | `default,other-namespace`, `*`, (empty) |
+| `cache-max-size`     | Maximum number of cache entries for resolved cluster resources to avoid repeated API calls.                                                                                     | `500`, `2000`                      |
+| `cache-default-ttl`  | Default time-to-live for cached cluster resources to reduce Kubernetes API load.                                                                                                  | `5m`, `30m`, `1h`                  |
+| `default-cache-mode` | Default cache mode when no cache parameter is specified in the ResolutionRequest.                                                                                              | `always`, `never`, `auto`          |
 
 ## Usage
 

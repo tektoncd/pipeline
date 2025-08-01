@@ -45,16 +45,46 @@ for the name, namespace and defaults that the resolver ships with.
 | `backoff-steps`      | The number of backoffs to attempt.                                | `3`, `7`              |
 | `backoff-cap`        | The maxumum backoff duration. If reached, remaining steps are zeroed.| `10s`, `20s`       |
 | `default-kind`       | The default layer kind in the bundle image.                       | `task`, `pipeline`    |
+| `cache-max-size`     | Maximum number of cache entries for resolved bundles to mitigate rate limiting.             | `500`, `2000`         |
+| `cache-default-ttl`  | Default time-to-live for cached bundle resources to avoid repeated API calls.                 | `5m`, `30m`, `1h`     |
+| `default-cache-mode` | Default cache mode when no cache parameter is specified in the ResolutionRequest.           | `always`, `never`, `auto` |
 
 ### Caching Options
 
-The bundle resolver supports caching of resolved resources to improve performance. The caching behavior can be configured using the `cache` option:
+The bundle resolver supports caching of resolved resources to avoid resolution failures due to rate limiting from OCI registries. The caching behavior can be configured using the `cache` parameter in ResolutionRequests or the `default-cache-mode` setting in the ConfigMap.
+
+#### Cache Modes
 
 | Cache Value | Description |
 |-------------|-------------|
 | `always` | Always cache resolved resources. This is the most aggressive caching strategy and will cache all resolved resources regardless of their source. |
 | `never` | Never cache resolved resources. This disables caching completely. |
-| `auto` | Caching will only occur for bundles pulled by digest. (default) |
+| `auto` | Caching will only occur for bundles pulled by digest (`@sha256:...`). Tag-based bundles are not cached. (default) |
+
+#### Cache Precedence
+
+The cache mode is determined by the following precedence order:
+1. **ResolutionRequest parameter**: If the `cache` parameter is specified in a TaskRun/PipelineRun, it takes highest priority
+2. **ConfigMap default**: If `default-cache-mode` is set in the `bundleresolver-config` ConfigMap, it applies when no task parameter is provided
+3. **System default**: If neither is specified, defaults to `auto`
+
+**Example with cache parameter:**
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+spec:
+  taskRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: docker.io/example/bundle:latest
+    - name: name
+      value: hello-world
+    - name: kind
+      value: task
+    - name: cache
+      value: "never"  # <-- Overrides ConfigMap default-cache-mode
+```
 
 ## Usage
 

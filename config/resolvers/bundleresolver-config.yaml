@@ -26,3 +26,8 @@ data:
   default-service-account: "default"
   # The default layer kind in the bundle image.
   default-kind: "task"
+  # Cache configuration
+  cache-max-size: "1000"
+  cache-default-ttl: "5m"
+  # Default cache mode when no cache parameter is specified in the ResolutionRequest
+  default-cache-mode: "auto"
