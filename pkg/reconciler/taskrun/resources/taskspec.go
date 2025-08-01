@@ -104,10 +104,24 @@ func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask) (*re
 // GetStepActionsData extracts the StepActions and merges them with the inlined Step specification.
 func GetStepActionsData(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.TaskRun, tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester) ([]v1.Step, error) {
 	steps := []v1.Step{}
+
+	// Get the task's namespace from the taskRun's status
+	taskNamespace := taskRun.Namespace
+	if taskRun.Status.TaskSpec != nil {
+		// If this is a referenced Task, use its namespace
+		if taskRun.Spec.TaskRef != nil && taskRun.Spec.TaskRef.Name != "" {
+			// Get the Task to find its namespace
+			task, err := tekton.TektonV1().Tasks(taskRun.Namespace).Get(ctx, taskRun.Spec.TaskRef.Name, metav1.GetOptions{})
+			if err == nil {
+				taskNamespace = task.Namespace
+			}
+		}
+	}
+
 	for i, step := range taskSpec.Steps {
 		s := step.DeepCopy()
 		if step.Ref != nil {
-			getStepAction := GetStepActionFunc(tekton, k8s, requester, taskRun, taskSpec, s)
+			getStepAction := GetStepActionFunc(tekton, k8s, requester, taskRun, taskSpec, s, taskNamespace)
 			stepAction, source, err := getStepAction(ctx, s.Ref.Name)
 			if err != nil {
 				return nil, err
