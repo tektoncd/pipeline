@@ -126,6 +126,8 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 
 	errs = errs.Also(validateSpecStatus(ps.Status))
 
+	errs = errs.Also(validatePipelineTaskRunSpecTimeouts(ps, ctx))
+
 	if ps.Workspaces != nil {
 		wsNames := make(map[string]int)
 		for idx, ws := range ps.Workspaces {
@@ -359,6 +361,58 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s + %s %s", ps.Timeouts.Tasks.Duration.String(), ps.Timeouts.Finally.Duration.String(), errorMsg), "timeouts.finally"))
 		}
 	}
+	return errs
+}
+
+// validatePipelineTaskRunSpecTimeouts validates timeouts for TaskRunSpecs in a PipelineRun
+func validatePipelineTaskRunSpecTimeouts(ps *PipelineRunSpec, ctx context.Context) *apis.FieldError {
+	cfg := config.FromContextOrDefaults(ctx)
+	var errs *apis.FieldError
+
+	if len(ps.TaskRunSpecs) == 0 {
+		return errs
+	}
+
+	// Determine max timeout with proper precedence: Tasks → Pipeline → Default
+	maxTimeout := &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
+	timeoutSource := "default timeout duration"
+
+	if ps.Timeouts != nil {
+		// Check timeouts in order of precedence
+		if ps.Timeouts.Tasks != nil {
+			validatedTimeout, err := validate.Timeout(ps.Timeouts.Tasks, cfg.Defaults.DefaultTimeoutMinutes)
+			if err != nil {
+				errs = errs.Also(err)
+			} else {
+				maxTimeout = validatedTimeout
+				timeoutSource = "pipeline tasks duration"
+			}
+		} else if ps.Timeouts.Pipeline != nil {
+			validatedTimeout, err := validate.Timeout(ps.Timeouts.Pipeline, cfg.Defaults.DefaultTimeoutMinutes)
+			if err != nil {
+				errs = errs.Also(err)
+			} else {
+				maxTimeout = validatedTimeout
+				timeoutSource = "pipeline duration"
+			}
+		}
+	}
+
+	if maxTimeout.Duration == config.NoTimeoutDuration {
+		return errs
+	}
+
+	for _, taskRunSpec := range ps.TaskRunSpecs {
+		taskRunTimeout, err := validate.Timeout(taskRunSpec.Timeout, cfg.Defaults.DefaultTimeoutMinutes)
+		if err != nil {
+			errs = errs.Also(err.ViaField("taskRunSpecs[" + taskRunSpec.PipelineTaskName + "].timeout"))
+		} else if taskRunTimeout.Duration > maxTimeout.Duration {
+			errs = errs.Also(apis.ErrInvalidValue(
+				fmt.Sprintf("%s should be <= %s %s", taskRunTimeout.Duration, timeoutSource, maxTimeout.Duration),
+				"taskRunSpecs["+taskRunSpec.PipelineTaskName+"].timeout"))
+		}
+	}
+
 	return errs
 }
 

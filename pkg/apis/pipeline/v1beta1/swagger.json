@@ -1517,6 +1517,10 @@
         },
         "taskServiceAccountName": {
           "type": "string"
+        },
+        "timeout": {
+          "description": "Time after which the TaskRun times out. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
         }
       }
     },

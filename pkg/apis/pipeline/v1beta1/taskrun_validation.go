@@ -107,15 +107,18 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		}
 	}
 
-	if ts.Timeout != nil {
-		// timeout should be a valid duration of at least 0.
-		if ts.Timeout.Duration < 0 {
-			errs = errs.Also(apis.ErrInvalidValue(ts.Timeout.Duration.String()+" should be >= 0", "timeout"))
-		}
-	}
 	if ts.PodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *ts.PodTemplate))
 	}
+
+	cfg := config.FromContextOrDefaults(ctx)
+	defaultTimeout := 60 // fallback default
+	if cfg.Defaults != nil {
+		defaultTimeout = cfg.Defaults.DefaultTimeoutMinutes
+	}
+	_, timeoutErr := validate.Timeout(ts.Timeout, defaultTimeout)
+	errs = errs.Also(timeoutErr)
+
 	if ts.Resources != nil {
 		errs = errs.Also(apis.ErrDisallowedFields("resources"))
 	}

@@ -4021,6 +4021,170 @@ spec:
 	}
 }
 
+// TestReconcileTaskRunSpecTimeout tests that timeout specified in taskRunSpecs
+// takes precedence over pipeline task timeout
+func TestReconcileTaskRunSpecTimeout(t *testing.T) {
+	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-run"
+	trName := "test-pipeline-run-hello-world-1"
+
+	ps := []*v1.Pipeline{simpleHelloWorldPipeline}
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunSpecs:
+  - pipelineTaskName: hello-world-1
+    timeout: "2h"
+`)}
+	ts := []*v1.Task{simpleHelloWorldTask}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
+
+	// Check that the expected TaskRun was created with correct timeout
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 1)
+
+	actual := getTaskRunByName(t, taskRuns, trName)
+	expectedTimeout := metav1.Duration{Duration: 2 * time.Hour}
+	if actual.Spec.Timeout == nil {
+		t.Errorf("expected TaskRun timeout to be set, but was nil")
+	} else if *actual.Spec.Timeout != expectedTimeout {
+		t.Errorf("expected TaskRun timeout to be %v, but was %v", expectedTimeout, *actual.Spec.Timeout)
+	}
+}
+
+// TestReconcileTaskRunSpecTimeoutPrecedence tests that taskRunSpec timeout
+// takes precedence over pipelineTask timeout
+func TestReconcileTaskRunSpecTimeoutPrecedence(t *testing.T) {
+	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-run"
+	trName := "test-pipeline-run-hello-world-1"
+
+	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      name: hello-world
+      kind: Task
+    timeout: "1h"
+`)}
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunSpecs:
+  - pipelineTaskName: hello-world-1
+    timeout: "30m"
+`)}
+	ts := []*v1.Task{simpleHelloWorldTask}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
+
+	// Check that TaskRun uses taskRunSpec timeout, not pipeline task timeout
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 1)
+
+	actual := getTaskRunByName(t, taskRuns, trName)
+	expectedTimeout := metav1.Duration{Duration: 30 * time.Minute}
+	if actual.Spec.Timeout == nil {
+		t.Errorf("expected TaskRun timeout to be set, but was nil")
+	} else if *actual.Spec.Timeout != expectedTimeout {
+		t.Errorf("expected TaskRun timeout to be %v (from taskRunSpec), but was %v", expectedTimeout, *actual.Spec.Timeout)
+	}
+}
+
+// TestReconcileCustomRunSpecTimeout tests that timeout specified in taskRunSpecs
+// is applied to CustomRuns
+func TestReconcileCustomRunSpecTimeout(t *testing.T) {
+	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-run"
+
+	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      apiVersion: example.dev/v0
+      kind: Example
+`)}
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunSpecs:
+  - pipelineTaskName: hello-world-1
+    timeout: "45m"
+`)}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
+
+	// Check that the expected CustomRun was created with correct timeout
+	customRuns, err := clients.Pipeline.TektonV1beta1().CustomRuns(namespace).List(prt.TestAssets.Ctx, metav1.ListOptions{
+		LabelSelector: "tekton.dev/pipelineRun=" + prName,
+	})
+	if err != nil {
+		t.Fatalf("Failure to list CustomRuns: %s", err)
+	}
+
+	if len(customRuns.Items) != 1 {
+		t.Fatalf("Expected 1 CustomRun but got %d", len(customRuns.Items))
+	}
+
+	actual := &customRuns.Items[0]
+	expectedTimeout := metav1.Duration{Duration: 45 * time.Minute}
+	if actual.Spec.Timeout == nil {
+		t.Errorf("expected CustomRun timeout to be set, but was nil")
+	} else if *actual.Spec.Timeout != expectedTimeout {
+		t.Errorf("expected CustomRun timeout to be %v, but was %v", expectedTimeout, *actual.Spec.Timeout)
+	}
+}
+
 func TestReconcileWithWhenExpressionsWithTaskResultsAndParams(t *testing.T) {
 	names.TestingSeed()
 	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
