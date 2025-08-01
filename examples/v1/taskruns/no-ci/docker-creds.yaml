@@ -37,6 +37,6 @@ spec:
   taskSpec:
     steps:
     - name: test
-      image: gcr.io/tekton-releases/dogfooding/skopeo:latest
+      image: ghcr.io/tektoncd/catalog/upstream/tasks/skopeo-copy:latest
       # Test pulling a private builder container.
       script: skopeo copy docker://gcr.io/build-crd-testing/secret-sauce dir:///tmp/

@@ -8,7 +8,7 @@ spec:
     # Multi-arch image with no command defined. We should look up the command
     # for each platform-specific image and pass it to the Pod, which selects
     # the right command at runtime based on the node's runtime platform.
-    - image: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/cmd/nop
+    - image: ghcr.io/tektoncd/pipeline/nop-8eac7c133edad5df719dc37b36b62482:latest
 
     # Multi-arch image with no command defined, but with args. We'll look
     # up the commands and pass it to the entrypoint binary via env var, then

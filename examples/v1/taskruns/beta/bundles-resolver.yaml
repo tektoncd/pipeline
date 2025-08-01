@@ -13,7 +13,7 @@ spec:
     resolver: bundles
     params:
       - name: bundle
-        value: gcr.io/tekton-releases/catalog/upstream/git-clone@sha256:8e2c3fb0f719d6463e950f3e44965aa314e69b800833e29e68ba2616bb82deeb
+        value: ghcr.io/tektoncd/catalog/upstream/tasks/git-clone@sha256:65e61544c5870c8828233406689d812391735fd4100cb444bbd81531cb958bb3 # 0.10 bundle
       - name: name
         value: git-clone
       - name: kind

@@ -44,7 +44,7 @@ type RefSource struct {
 
 	// EntryPoint identifies the entry point into the build. This is often a path to a
 	// build definition file and/or a target label within that file.
-	// Example: "task/git-clone/0.8/git-clone.yaml"
+	// Example: "task/git-clone/0.10/git-clone.yaml"
 	EntryPoint string `json:"entryPoint,omitempty"`
 }
 
@@ -62,6 +62,6 @@ type ConfigSource struct {
 
 	// EntryPoint identifies the entry point into the build. This is often a path to a
 	// build definition file and/or a target label within that file.
-	// Example: "task/git-clone/0.8/git-clone.yaml"
+	// Example: "task/git-clone/0.10/git-clone.yaml"
 	EntryPoint string `json:"entryPoint,omitempty"`
 }
