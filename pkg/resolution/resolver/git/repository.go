@@ -102,23 +102,16 @@ func (repo *repository) execGit(ctx context.Context, subCmd string, args ...stri
 
 	args = append([]string{subCmd}, args...)
 
-	// We need to configure  which directory contains the cloned repository since `cd`ing
-	// into the repository directory is not concurrency-safe
+	// Set up git command with proper working directory
 	configArgs := []string{"-C", repo.directory}
 	env := []string{"GIT_TERMINAL_PROMPT=false"}
-	if subCmd == "clone" {
-		// NOTE: Since this is only HTTP basic auth, authentication only supports http
-		// cloning, while unauthenticated cloning works for any other protocol supported
-		// by the git binary which doesn't require authentication.
-		if repo.username != "" && repo.password != "" {
-			token := base64.URLEncoding.EncodeToString([]byte(repo.username + ":" + repo.password))
-			env = append(
-				env,
-				"GIT_AUTH_HEADER=Authorization=Basic "+token,
-			)
-			configArgs = append(configArgs, "--config-env", "http.extraHeader=GIT_AUTH_HEADER")
-		}
+
+	if repo.username != "" && repo.password != "" {
+		token := base64.URLEncoding.EncodeToString([]byte(repo.username + ":" + repo.password))
+		env = append(env, "GIT_AUTH_HEADER=Authorization=Basic "+token)
+		configArgs = append(configArgs, "--config-env", "http.extraHeader=GIT_AUTH_HEADER")
 	}
+
 	cmd := repo.executor(ctx, "git", append(configArgs, args...)...)
 	cmd.Env = append(cmd.Environ(), env...)
 

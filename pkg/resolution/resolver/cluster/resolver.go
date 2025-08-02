@@ -39,6 +39,9 @@ import (
 const (
 	disabledError = "cannot handle resolution request, enable-cluster-resolver feature flag not true"
 
+	// DisabledError is the error message returned when the cluster resolver is disabled
+	DisabledError = disabledError
+
 	// LabelValueClusterResolverType is the value to use for the
 	// resolution.tekton.dev/type label on resource requests
 	LabelValueClusterResolverType string = "cluster"
@@ -272,6 +275,18 @@ func populateParamsWithDefaults(ctx context.Context, origParams []pipelinev1.Par
 		return nil, fmt.Errorf("access to specified namespace %s is not allowed", params[NamespaceParam])
 	}
 
+	// gracefully handle invalid cache parameter by defaulting to "auto"
+	if cacheVal, ok := paramsMap[CacheParam]; ok && cacheVal.StringVal != "" {
+		cacheMode := cacheVal.StringVal
+		switch cacheMode {
+		case "always", "never", "auto":
+			// Valid cache mode, keep as-is
+		default:
+			// Store corrected value back to paramsMap for graceful fallback
+			paramsMap[CacheParam] = *pipelinev1.NewStructuredValues("auto")
+		}
+	}
+
 	return params, nil
 }
 
@@ -287,6 +302,11 @@ func isInCommaSeparatedList(checkVal string, commaList string) bool {
 func isDisabled(ctx context.Context) bool {
 	cfg := resolverconfig.FromContextOrDefaults(ctx)
 	return !cfg.FeatureFlags.EnableClusterResolver
+}
+
+// IsDisabled returns true if the cluster resolver is disabled.
+func IsDisabled(ctx context.Context) bool {
+	return isDisabled(ctx)
 }
 
 func ValidateParams(ctx context.Context, params []pipelinev1.Param) error {

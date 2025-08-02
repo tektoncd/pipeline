@@ -43,6 +43,16 @@ const ParamName = resource.ParamName
 // image is.
 const ParamKind = "kind"
 
+// ParamCache is the parameter defining whether to use cache for bundle requests.
+const ParamCache = "cache"
+
+// Cache mode constants
+const (
+	CacheModeAlways = "always"
+	CacheModeNever  = "never"
+	CacheModeAuto   = "auto"
+)
+
 // OptionsFromParams parses the params from a resolution request and
 // converts them into options to pass as part of a bundle request.
 func OptionsFromParams(ctx context.Context, params []pipelinev1.Param) (RequestOptions, error) {
@@ -96,6 +106,20 @@ func OptionsFromParams(ctx context.Context, params []pipelinev1.Param) (RequestO
 	opts.Bundle = bundleVal.StringVal
 	opts.EntryName = nameVal.StringVal
 	opts.Kind = kind
+
+	// Set cache mode, defaulting to "auto" if not specified or invalid
+	if cacheVal, ok := paramsMap[ParamCache]; ok {
+		cacheMode := cacheVal.StringVal
+		// Gracefully fall back to "auto" for invalid cache modes
+		switch cacheMode {
+		case CacheModeAlways, CacheModeNever, CacheModeAuto:
+			opts.Cache = cacheMode
+		default:
+			opts.Cache = CacheModeAuto // graceful fallback
+		}
+	} else {
+		opts.Cache = CacheModeAuto
+	}
 
 	return opts, nil
 }
