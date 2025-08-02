@@ -41,8 +41,3 @@ data:
   # The default organization to look for repositories under when using the authenticated API,
   # if not specified in the resolver parameters. Optional.
   default-org: ""
-  # Cache configuration
-  cache-max-size: "1000"
-  cache-default-ttl: "5m"
-  # Default cache mode when no cache parameter is specified in the ResolutionRequest
-  default-cache-mode: "auto"

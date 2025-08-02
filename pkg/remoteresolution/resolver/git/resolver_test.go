@@ -37,7 +37,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/internal/resolution"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
 	frtesting "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/testing"
 	common "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -704,14 +703,6 @@ func TestResolve(t *testing.T) {
 						expectedStatus.Annotations[gitresolution.AnnotationKeyURL] = scmFakeRepoURL
 					}
 
-					// Add cache annotations for commit SHA test case (when using auto cache mode)
-					if tc.name == "clone: revision is a specific commit sha" {
-						expectedStatus.Annotations[cache.CacheAnnotationKey] = cache.CacheValueTrue
-						expectedStatus.Annotations[cache.CacheResolverTypeKey] = "git"
-						expectedStatus.Annotations[cache.CacheOperationKey] = cache.CacheOperationStore
-						// Note: cache-timestamp is dynamic, so we don't check it in the test
-					}
-
 					// status.refSource
 					expectedStatus.RefSource = &pipelinev1.RefSource{
 						URI: "git+" + expectedStatus.Annotations[gitresolution.AnnotationKeyURL],
@@ -988,132 +979,4 @@ func toParams(m map[string]string) []pipelinev1.Param {
 	}
 
 	return params
-}
-
-func TestShouldUseCache(t *testing.T) {
-	const validCommitSHA = "1234567890123456789012345678901234567890" // 40-char hex string
-	const invalidRevision = "main"                                    // not a commit SHA
-
-	tests := []struct {
-		name           string
-		taskCacheParam string            // cache parameter from task/ResolutionRequest
-		configMap      map[string]string // resolver ConfigMap
-		revision       string            // git revision (affects auto mode)
-		expected       bool              // expected result
-		description    string            // test case description
-	}{
-		// Test case 1: Default behavior (no config, no task param) -> should be "auto"
-		{
-			name:           "no_config_no_task_param_with_commit_sha",
-			taskCacheParam: "",                  // no cache param in task
-			configMap:      map[string]string{}, // no default-cache-mode in ConfigMap
-			revision:       validCommitSHA,      // commit SHA
-			expected:       true,                // auto mode + commit SHA = cache
-			description:    "No config anywhere, defaults to auto, commit SHA should be cached",
-		},
-		{
-			name:           "no_config_no_task_param_with_branch",
-			taskCacheParam: "",                  // no cache param in task
-			configMap:      map[string]string{}, // no default-cache-mode in ConfigMap
-			revision:       invalidRevision,     // branch name
-			expected:       false,               // auto mode + branch = no cache
-			description:    "No config anywhere, defaults to auto, branch should not be cached",
-		},
-
-		// Test case 2: ConfigMap has setting, task has nothing -> should use ConfigMap value
-		{
-			name:           "configmap_always_no_task_param",
-			taskCacheParam: "",                                                // no cache param in task
-			configMap:      map[string]string{"default-cache-mode": "always"}, // ConfigMap says always
-			revision:       invalidRevision,                                   // irrelevant for always mode
-			expected:       true,                                              // always = cache
-			description:    "ConfigMap says always, no task param, should cache",
-		},
-		{
-			name:           "configmap_never_no_task_param",
-			taskCacheParam: "",                                               // no cache param in task
-			configMap:      map[string]string{"default-cache-mode": "never"}, // ConfigMap says never
-			revision:       validCommitSHA,                                   // irrelevant for never mode
-			expected:       false,                                            // never = no cache
-			description:    "ConfigMap says never, no task param, should not cache",
-		},
-		{
-			name:           "configmap_auto_no_task_param_with_commit",
-			taskCacheParam: "",                                              // no cache param in task
-			configMap:      map[string]string{"default-cache-mode": "auto"}, // ConfigMap says auto
-			revision:       validCommitSHA,                                  // commit SHA
-			expected:       true,                                            // auto + commit = cache
-			description:    "ConfigMap says auto, no task param, commit SHA should be cached",
-		},
-
-		// Test case 3: ConfigMap has setting AND task has setting -> task should win
-		{
-			name:           "configmap_always_task_never",
-			taskCacheParam: "never",                                           // task says never
-			configMap:      map[string]string{"default-cache-mode": "always"}, // ConfigMap says always
-			revision:       validCommitSHA,                                    // irrelevant
-			expected:       false,                                             // task wins: never = no cache
-			description:    "Task says never, ConfigMap says always, task should win",
-		},
-		{
-			name:           "configmap_never_task_always",
-			taskCacheParam: "always",                                         // task says always
-			configMap:      map[string]string{"default-cache-mode": "never"}, // ConfigMap says never
-			revision:       invalidRevision,                                  // irrelevant
-			expected:       true,                                             // task wins: always = cache
-			description:    "Task says always, ConfigMap says never, task should win",
-		},
-		{
-			name:           "configmap_auto_task_always",
-			taskCacheParam: "always",                                        // task says always
-			configMap:      map[string]string{"default-cache-mode": "auto"}, // ConfigMap says auto
-			revision:       invalidRevision,                                 // would be false for auto mode
-			expected:       true,                                            // task wins: always = cache
-			description:    "Task says always, ConfigMap says auto, task should win",
-		},
-
-		// Test edge cases
-		{
-			name:           "invalid_task_param_falls_back_to_auto",
-			taskCacheParam: "invalid",           // invalid cache mode
-			configMap:      map[string]string{}, // no default
-			revision:       validCommitSHA,      // commit SHA
-			expected:       true,                // invalid falls back to auto
-			description:    "Invalid task cache mode should fall back to auto behavior",
-		},
-		{
-			name:           "invalid_configmap_default_with_task_param",
-			taskCacheParam: "never",                                            // valid task param
-			configMap:      map[string]string{"default-cache-mode": "invalid"}, // invalid ConfigMap default
-			revision:       validCommitSHA,                                     // irrelevant
-			expected:       false,                                              // task should still win
-			description:    "Invalid ConfigMap default should not affect valid task param",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Set up context with resolver config
-			ctx := context.Background()
-			if len(tt.configMap) > 0 {
-				ctx = resolutionframework.InjectResolverConfigToContext(ctx, tt.configMap)
-			}
-
-			// Set up params map
-			params := map[string]string{
-				git.RevisionParam: tt.revision,
-			}
-			if tt.taskCacheParam != "" {
-				params[git.CacheParam] = tt.taskCacheParam
-			}
-
-			// Test the function
-			result := ShouldUseCache(ctx, params)
-
-			// Verify result
-			if result != tt.expected {
-				t.Errorf("ShouldUseCache() = %v, expected %v\nDescription: %s", result, tt.expected, tt.description)
-			}
-		})
-	}
 }

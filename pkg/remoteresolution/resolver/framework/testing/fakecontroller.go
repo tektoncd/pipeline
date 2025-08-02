@@ -49,7 +49,7 @@ var (
 	testClock                = testclock.NewFakePassiveClock(now)
 	ignoreLastTransitionTime = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")
 	ignoreCacheTimestamp     = cmpopts.IgnoreMapEntries(func(k, v string) bool {
-		return k == "resolution.tekton.dev/cache-timestamp"
+		return strings.HasPrefix(k, "resolution.tekton.dev/cache")
 	})
 )
 

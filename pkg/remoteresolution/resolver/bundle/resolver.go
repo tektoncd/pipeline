@@ -21,7 +21,6 @@ import (
 	"errors"
 	"strings"
 
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
@@ -29,6 +28,8 @@ import (
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	bundleresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/bundle"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"k8s.io/client-go/kubernetes"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/logging"
 )
 
@@ -41,19 +42,34 @@ const (
 )
 
 // Resolver implements a framework.Resolver that can fetch files from OCI bundles.
-type Resolver struct{}
+type Resolver struct {
+	kubeClientSet      kubernetes.Interface
+	resolveRequestFunc func(context.Context, kubernetes.Interface, *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error)
+}
 
 // Ensure Resolver implements CacheAwareResolver
 var _ framework.CacheAwareResolver = (*Resolver)(nil)
 
+// Ensure Resolver implements ConfigWatcher
+var _ resolutionframework.ConfigWatcher = (*Resolver)(nil)
+
 // Initialize sets up any dependencies needed by the Resolver. None atm.
 func (r *Resolver) Initialize(ctx context.Context) error {
+	r.kubeClientSet = kubeclient.Get(ctx)
+	if r.resolveRequestFunc == nil {
+		r.resolveRequestFunc = bundleresolution.ResolveRequest
+	}
 	return nil
 }
 
 // GetName returns a string name to refer to this Resolver by.
 func (r *Resolver) GetName(ctx context.Context) string {
 	return "Bundles"
+}
+
+// GetConfigName returns the name of the bundle resolver's configmap.
+func (r *Resolver) GetConfigName(context.Context) string {
+	return bundleresolution.ConfigMapName
 }
 
 // GetSelector returns a map of labels to match against tasks requesting
@@ -117,7 +133,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	}
 
 	// If not caching or cache miss, resolve from params
-	resource, err := bundleresolution.ResolveRequest(ctx, nil, req)
+	resource, err := r.resolveRequestFunc(ctx, r.kubeClientSet, req)
 	if err != nil {
 		return nil, err
 	}
@@ -150,32 +166,4 @@ func IsOCIPullSpecByDigest(pullSpec string) bool {
 		return true
 	}
 	return false
-}
-
-// Legacy functions - kept for backward compatibility and tests
-// TODO: Remove these once all tests are updated
-
-// ShouldUseCache is kept for backward compatibility with existing tests
-// New code should use framework.ShouldUseCache instead
-func ShouldUseCache(ctx context.Context, opts bundleresolution.RequestOptions) bool {
-	// Convert RequestOptions to ResolutionRequestSpec for framework compatibility
-	req := &v1beta1.ResolutionRequestSpec{
-		Params: []pipelinev1.Param{
-			{Name: bundleresolution.ParamBundle, Value: pipelinev1.ParamValue{StringVal: opts.Bundle}},
-			{Name: bundleresolution.ParamName, Value: pipelinev1.ParamValue{StringVal: opts.EntryName}},
-			{Name: bundleresolution.ParamKind, Value: pipelinev1.ParamValue{StringVal: opts.Kind}},
-		},
-	}
-
-	// Add cache parameter if provided
-	if opts.Cache != "" {
-		req.Params = append(req.Params, pipelinev1.Param{
-			Name:  framework.CacheParam,
-			Value: pipelinev1.ParamValue{StringVal: opts.Cache},
-		})
-	}
-
-	r := &Resolver{}
-	systemDefault := framework.GetSystemDefaultCacheMode("bundle")
-	return framework.ShouldUseCache(ctx, r, req, systemDefault)
 }

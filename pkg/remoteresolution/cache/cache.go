@@ -20,14 +20,16 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"os"
 	"sort"
 	"strconv"
 	"time"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	utilcache "k8s.io/apimachinery/pkg/util/cache"
+	"knative.dev/pkg/logging"
 )
 
 const (
@@ -40,6 +42,15 @@ var (
 	DefaultExpiration = 5 * time.Minute
 )
 
+// GetCacheConfigName returns the name of the cache configuration ConfigMap.
+// This can be overridden via the CONFIG_RESOLVER_CACHE_NAME environment variable.
+func GetCacheConfigName() string {
+	if e := os.Getenv("CONFIG_RESOLVER_CACHE_NAME"); e != "" {
+		return e
+	}
+	return "resolver-cache-config"
+}
+
 // ResolverCache is a wrapper around utilcache.LRUExpireCache that provides
 // type-safe methods for caching resolver results.
 type ResolverCache struct {
@@ -51,6 +62,39 @@ type ResolverCache struct {
 func NewResolverCache(maxSize int) *ResolverCache {
 	return &ResolverCache{
 		cache: utilcache.NewLRUExpireCache(maxSize),
+	}
+}
+
+// InitializeFromConfigMap initializes the cache with configuration from a ConfigMap
+func (c *ResolverCache) InitializeFromConfigMap(configMap *corev1.ConfigMap) {
+	// Set defaults
+	maxSize := DefaultMaxSize
+	ttl := DefaultExpiration
+
+	if configMap != nil {
+		// Parse max size
+		if maxSizeStr, ok := configMap.Data["max-size"]; ok {
+			if parsed, err := strconv.Atoi(maxSizeStr); err == nil && parsed > 0 {
+				maxSize = parsed
+			}
+		}
+
+		// Parse default TTL
+		if ttlStr, ok := configMap.Data["default-ttl"]; ok {
+			if parsed, err := time.ParseDuration(ttlStr); err == nil && parsed > 0 {
+				ttl = parsed
+			}
+		}
+	}
+
+	c.cache = utilcache.NewLRUExpireCache(maxSize)
+	DefaultExpiration = ttl
+}
+
+// InitializeLogger initializes the logger for the cache using the provided context
+func (c *ResolverCache) InitializeLogger(ctx context.Context) {
+	if c.logger == nil {
+		c.logger = logging.FromContext(ctx)
 	}
 }
 
@@ -114,49 +158,6 @@ func GetGlobalCache() *ResolverCache {
 // This prevents state leak by not storing logger in the global singleton.
 func (c *ResolverCache) WithLogger(logger *zap.SugaredLogger) *ResolverCache {
 	return &ResolverCache{logger: logger, cache: c.cache}
-}
-
-// WithConfigFromContext returns a new ResolverCache instance configured from the resolver context.
-// This reads cache-max-size and cache-default-ttl from the resolver's ConfigMap if available.
-func (c *ResolverCache) WithConfigFromContext(ctx context.Context) *ResolverCache {
-	conf := resolutionframework.GetResolverConfigFromContext(ctx)
-
-	// Start with current instance configuration
-	maxSize := DefaultMaxSize
-	ttl := DefaultExpiration
-	logger := c.logger
-	needsNewCache := false
-
-	// Parse configuration from resolver context if available
-	if conf != nil && len(conf) > 0 {
-		// Parse max size
-		if maxSizeStr, ok := conf["cache-max-size"]; ok {
-			if parsed, err := strconv.Atoi(maxSizeStr); err == nil && parsed > 0 {
-				maxSize = parsed
-				needsNewCache = true
-			}
-		}
-
-		// Parse default TTL
-		if ttlStr, ok := conf["cache-default-ttl"]; ok {
-			if parsed, err := time.ParseDuration(ttlStr); err == nil && parsed > 0 {
-				ttl = parsed
-				DefaultExpiration = ttl // Update global default
-				needsNewCache = true
-			}
-		}
-	}
-
-	// Only create a new cache if configuration changed, otherwise return current instance
-	if needsNewCache {
-		return &ResolverCache{
-			cache:  utilcache.NewLRUExpireCache(maxSize),
-			logger: logger,
-		}
-	}
-
-	// Return current instance if no configuration changes needed
-	return c
 }
 
 // GenerateCacheKey generates a cache key for the given resolver type and parameters.

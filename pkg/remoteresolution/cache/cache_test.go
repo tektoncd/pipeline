@@ -17,12 +17,14 @@ limitations under the License.
 package cache
 
 import (
-	"context"
 	"testing"
 	"time"
 
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/system"
 )
 
 func TestGenerateCacheKey(t *testing.T) {
@@ -312,44 +314,67 @@ func TestResolverCache(t *testing.T) {
 	}
 }
 
-func TestWithConfigFromContext(t *testing.T) {
+func TestInitializeFromConfigMap(t *testing.T) {
 	tests := []struct {
-		name              string
-		config            map[string]string
-		expectedTTL       time.Duration
-		expectNewInstance bool
+		name           string
+		configMap      *corev1.ConfigMap
+		expectedSize   int
+		expectedTTL    time.Duration
+		shouldRecreate bool
 	}{
 		{
-			name: "valid cache configuration",
-			config: map[string]string{
-				"cache-max-size":    "100",
-				"cache-default-ttl": "10m",
+			name: "valid configuration",
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      GetCacheConfigName(),
+					Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+				},
+				Data: map[string]string{
+					"max-size": "100",
+				},
 			},
-			expectedTTL:       10 * time.Minute,
-			expectNewInstance: true,
+			expectedSize:   100,
+			expectedTTL:    DefaultExpiration,
+			shouldRecreate: true,
 		},
 		{
-			name: "cache config with invalid TTL",
-			config: map[string]string{
-				"cache-max-size":    "150",
-				"cache-default-ttl": "invalid",
+			name: "cache config with maxSize and expiration",
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      GetCacheConfigName(),
+					Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+				},
+				Data: map[string]string{
+					"max-size":    "200",
+					"default-ttl": "10m",
+				},
 			},
-			expectedTTL:       5 * time.Minute, // Should use default
-			expectNewInstance: true,            // max-size is valid, so new instance
+			expectedSize:   200,
+			expectedTTL:    10 * time.Minute,
+			shouldRecreate: true,
 		},
 		{
-			name:              "no cache configuration",
-			config:            map[string]string{},
-			expectedTTL:       5 * time.Minute,
-			expectNewInstance: false, // No config, should return same instance
+			name: "cache config with invalid expiration",
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      GetCacheConfigName(),
+					Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+				},
+				Data: map[string]string{
+					"max-size":    "150",
+					"default-ttl": "invalid",
+				},
+			},
+			expectedSize:   150,
+			expectedTTL:    DefaultExpiration,
+			shouldRecreate: true,
 		},
 		{
-			name: "partial cache configuration",
-			config: map[string]string{
-				"cache-max-size": "200", // Only max size, no TTL
-			},
-			expectedTTL:       5 * time.Minute,
-			expectNewInstance: true, // max-size is provided, so new instance
+			name:           "nil config map",
+			configMap:      nil,
+			expectedSize:   DefaultMaxSize,
+			expectedTTL:    DefaultExpiration,
+			shouldRecreate: false,
 		},
 	}
 
@@ -359,25 +384,17 @@ func TestWithConfigFromContext(t *testing.T) {
 			originalTTL := DefaultExpiration
 			defer func() { DefaultExpiration = originalTTL }()
 
-			// Create a context with resolver configuration
-			ctx := context.Background()
-			ctx = resolutionframework.InjectResolverConfigToContext(ctx, tt.config)
-
 			cache := NewResolverCache(DefaultMaxSize)
-			configuredCache := cache.WithConfigFromContext(ctx)
+			originalCache := cache.cache
 
-			// Verify instance creation expectation
-			if tt.expectNewInstance {
-				if configuredCache == cache {
-					t.Error("Expected WithConfigFromContext to return a new instance")
-				}
-			} else {
-				if configuredCache != cache {
-					t.Error("Expected WithConfigFromContext to return the same instance")
-				}
+			cache.InitializeFromConfigMap(tt.configMap)
+
+			// Verify cache size
+			if tt.shouldRecreate && cache.cache == originalCache {
+				t.Error("Expected cache to be recreated with new size")
 			}
 
-			// Verify TTL was set correctly
+			// Verify TTL (InitializeFromConfigMap modifies the global DefaultExpiration)
 			if DefaultExpiration != tt.expectedTTL {
 				t.Errorf("Expected TTL %v, got %v", tt.expectedTTL, DefaultExpiration)
 			}

@@ -30,7 +30,6 @@ import (
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	clusterresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
-	"knative.dev/pkg/logging"
 )
 
 const (
@@ -40,8 +39,15 @@ const (
 	// resolution.tekton.dev/type label on resource requests
 	LabelValueClusterResolverType string = "cluster"
 
-	// ClusterResolverName is the name that the cluster resolver should be associated with
-	ClusterResolverName = "cluster"
+	// ClusterResolverName is the name that the cluster resolver should be
+	// associated with
+	ClusterResolverName string = "Cluster"
+
+	// Legacy cache constants for backward compatibility with tests
+	CacheModeAlways = framework.CacheModeAlways
+	CacheModeNever  = framework.CacheModeNever
+	CacheModeAuto   = framework.CacheModeAuto
+	CacheParam      = framework.CacheParam
 )
 
 // Resolver implements a framework.Resolver that can fetch resources from the same cluster.
@@ -95,8 +101,6 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		return nil, errors.New("no params")
 	}
 
-	logger := logging.FromContext(ctx)
-
 	// Determine if we should use caching using framework logic
 	systemDefault := framework.GetSystemDefaultCacheMode("cluster")
 	useCache := framework.ShouldUseCache(ctx, r, req, systemDefault)
@@ -106,13 +110,13 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		cacheInstance := injection.Get(ctx)
 		cacheKey, err := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
 		if err != nil {
-			logger.Warnf("Failed to generate cache key: %v", err)
-		} else {
-			// Check cache first
-			if cached, ok := cacheInstance.Get(cacheKey); ok {
-				if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
-					return cache.NewAnnotatedResource(resource, LabelValueClusterResolverType, cache.CacheOperationRetrieve), nil
-				}
+			return nil, err
+		}
+
+		// Check cache first
+		if cached, ok := cacheInstance.Get(cacheKey); ok {
+			if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
+				return cache.NewAnnotatedResource(resource, LabelValueClusterResolverType, cache.CacheOperationRetrieve), nil
 			}
 		}
 	}
@@ -139,22 +143,23 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	return resource, nil
 }
 
-// Legacy functions - kept for backward compatibility and tests
-// TODO: Remove these once all tests are updated
-
-// ShouldUseCache is kept for backward compatibility with existing tests
-// New code should use framework.ShouldUseCache instead
+// ShouldUseCache is a legacy function for backward compatibility with existing tests.
+// It converts the old-style params map to the new framework API.
 func ShouldUseCache(ctx context.Context, params map[string]string, checksum []byte) bool {
-	// Convert params map to ResolutionRequestSpec for framework compatibility
-	req := &v1beta1.ResolutionRequestSpec{}
-	for name, value := range params {
-		req.Params = append(req.Params, pipelinev1.Param{
-			Name:  name,
+	// Convert params map to ResolutionRequestSpec
+	var reqParams []pipelinev1.Param
+	for key, value := range params {
+		reqParams = append(reqParams, pipelinev1.Param{
+			Name:  key,
 			Value: pipelinev1.ParamValue{StringVal: value},
 		})
 	}
 
-	r := &Resolver{}
+	req := &v1beta1.ResolutionRequestSpec{
+		Params: reqParams,
+	}
+
+	resolver := &Resolver{}
 	systemDefault := framework.GetSystemDefaultCacheMode("cluster")
-	return framework.ShouldUseCache(ctx, r, req, systemDefault)
+	return framework.ShouldUseCache(ctx, resolver, req, systemDefault)
 }

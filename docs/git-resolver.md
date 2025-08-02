@@ -55,46 +55,16 @@ for the name, namespace and defaults that the resolver ships with.
 | `api-token-secret-key`       | The key within the token secret containing the actual secret. Required if using the authenticated API with `org` and `repo`.                                  | `oauth`, `token`                                                 |
 | `api-token-secret-namespace` | The namespace containing the token secret, if not `default`.                                                                                                  | `other-namespace`                                                |
 | `default-org`                | The default organization to look for repositories under when using the authenticated API, if not specified in the resolver parameters. Optional.              | `tektoncd`, `kubernetes`                                         |
-| `cache-max-size`             | Maximum number of cache entries for resolved git resources to mitigate rate limiting.                                                                                                   | `500`, `2000`                                                    |
-| `cache-default-ttl`          | Default time-to-live for cached git resources to avoid repeated API calls.                                                                                                                | `5m`, `30m`, `1h`                                                |
-| `default-cache-mode`         | Default cache mode when no cache parameter is specified in the ResolutionRequest.                                                                                                        | `always`, `never`, `auto`                                        |
 
 ### Caching Options
 
-The git resolver supports caching of resolved resources to avoid resolution failures due to rate limiting from Git service providers (GitHub, GitLab, etc.). The caching behavior can be configured using the `cache` parameter in ResolutionRequests or the `default-cache-mode` setting in the ConfigMap.
-
-#### Cache Modes
+The git resolver supports caching of resolved resources to improve performance. The caching behavior can be configured using the `cache` option:
 
 | Cache Value | Description |
 |-------------|-------------|
 | `always` | Always cache resolved resources. This is the most aggressive caching strategy and will cache all resolved resources regardless of their source. |
 | `never` | Never cache resolved resources. This disables caching completely. |
-| `auto` | Caching will only occur when revision is a commit hash (40-character hexadecimal SHA). Branches and tags are not cached. (default) |
-
-#### Cache Precedence
-
-The cache mode is determined by the following precedence order:
-1. **ResolutionRequest parameter**: If the `cache` parameter is specified in a TaskRun/PipelineRun, it takes highest priority
-2. **ConfigMap default**: If `default-cache-mode` is set in the `git-resolver-config` ConfigMap, it applies when no task parameter is provided  
-3. **System default**: If neither is specified, defaults to `auto`
-
-**Example with cache parameter:**
-```yaml
-apiVersion: tekton.dev/v1
-kind: TaskRun
-spec:
-  taskRef:
-    resolver: git
-    params:
-    - name: url
-      value: https://github.com/tektoncd/catalog.git
-    - name: revision
-      value: main
-    - name: pathInRepo
-      value: task/git-clone/0.6/git-clone.yaml
-    - name: cache
-      value: "always"  # <-- Overrides ConfigMap default-cache-mode
-```
+| `auto` | Caching will only occur when revision is a commit hash. (default) |
 
 ## Usage
 
@@ -304,9 +274,6 @@ data:
   api-token-secret-key: ""
   api-token-secret-namespace: "default"
   default-org: ""
-  cache-max-size: "500"
-  cache-default-ttl: "5m"
-  default-cache-mode: "auto"
 
   # configuration 2, will be used if configKey param passed with value test1
   test1.fetch-timeout: "5m"
@@ -318,9 +285,6 @@ data:
   test1.api-token-secret-key: "token"
   test1.api-token-secret-namespace: "test1"
   test1.default-org: "tektoncd"
-  test1.cache-max-size: "1000"
-  test1.cache-default-ttl: "10m"
-  test1.default-cache-mode: "never"
 
   # configuration 3, will be used if configKey param passed with value test2
   test2.fetch-timeout: "10m"
@@ -332,9 +296,6 @@ data:
   test2.api-token-secret-key: "pat"
   test2.api-token-secret-namespace: "test2"
   test2.default-org: "tektoncd-infra"
-  test2.cache-max-size: "2000"
-  test2.cache-default-ttl: "30m"
-  test2.default-cache-mode: "always"
 ```
 
 #### Task Resolution

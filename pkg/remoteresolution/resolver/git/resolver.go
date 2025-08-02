@@ -23,7 +23,6 @@ import (
 
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/factory"
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
@@ -64,7 +63,7 @@ type Resolver struct {
 	cache      *k8scache.LRUExpireCache
 	ttl        time.Duration
 
-	// Used in testing
+	// Function for creating a SCM client so we can change it in tests.
 	clientFunc func(string, string, string, ...factory.ClientOptionFunc) (*scm.Client, error)
 }
 
@@ -74,16 +73,20 @@ var _ framework.CacheAwareResolver = (*Resolver)(nil)
 // Initialize performs any setup required by the git resolver.
 func (r *Resolver) Initialize(ctx context.Context) error {
 	r.kubeClient = kubeclient.Get(ctx)
-	r.logger = logging.FromContext(ctx)
-	r.cache = k8scache.NewLRUExpireCache(cacheSize)
-	r.ttl = ttl
+	r.logger = logging.FromContext(ctx).Named(ResolverName)
+	if r.cache == nil {
+		r.cache = k8scache.NewLRUExpireCache(cacheSize)
+	}
+	if r.ttl == 0 {
+		r.ttl = ttl
+	}
 	if r.clientFunc == nil {
 		r.clientFunc = factory.NewClient
 	}
 	return nil
 }
 
-// GetName returns the string name that the gitresolver should be
+// GetName returns the string name that the git resolver should be
 // associated with.
 func (r *Resolver) GetName(_ context.Context) string {
 	return ResolverName
@@ -216,10 +219,11 @@ func (r *Resolver) GetConfigName(context.Context) string {
 
 var _ resolutionframework.TimedResolution = &Resolver{}
 
-// GetResolutionTimeout returns a time.Duration for the amount of time a
-// single git fetch may take. This can be configured with the
-// fetch-timeout field in the git-resolver-config configmap.
+// GetResolutionTimeout returns the configured timeout for git resolution requests.
 func (r *Resolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time.Duration, params map[string]string) (time.Duration, error) {
+	if git.IsDisabled(ctx) {
+		return defaultTimeout, errors.New(disabledError)
+	}
 	conf, err := git.GetScmConfigForParamConfigKey(ctx, params)
 	if err != nil {
 		return time.Duration(0), err
@@ -232,24 +236,4 @@ func (r *Resolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time
 		return timeout, nil
 	}
 	return defaultTimeout, nil
-}
-
-// Legacy functions - kept for backward compatibility and tests
-// TODO: Remove these once all tests are updated
-
-// ShouldUseCache is kept for backward compatibility with existing tests
-// New code should use framework.ShouldUseCache instead
-func ShouldUseCache(ctx context.Context, params map[string]string) bool {
-	// Convert params map to ResolutionRequestSpec for framework compatibility
-	req := &v1beta1.ResolutionRequestSpec{}
-	for name, value := range params {
-		req.Params = append(req.Params, pipelinev1.Param{
-			Name:  name,
-			Value: pipelinev1.ParamValue{StringVal: value},
-		})
-	}
-
-	r := &Resolver{}
-	systemDefault := framework.GetSystemDefaultCacheMode("git")
-	return framework.ShouldUseCache(ctx, r, req, systemDefault)
 }
