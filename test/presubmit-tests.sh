@@ -55,7 +55,7 @@ function ko_resolve() {
       github.com/tektoncd/pipeline/cmd/nop: ghcr.io/tektoncd/pipeline/github.com/tektoncd/pipeline/combined-base-image:latest
       github.com/tektoncd/pipeline/cmd/workingdirinit: ghcr.io/tektoncd/pipeline/github.com/tektoncd/pipeline/combined-base-image:latest
 
-      github.com/tektoncd/pipeline/cmd/resolvers: ghcr.io/tektoncd/plumbing/tini-git@sha256:3d56865f83236872b0986c6c0716f5de56a1ca8eb3a86f37a46ce6202a6d4a66
+      github.com/tektoncd/pipeline/cmd/resolvers: ghcr.io/tektoncd/plumbing/tini-git@sha256:2c18f0b3ed4394e27068b5c70bb55419797e8fc743d8ea9e0c2766001b36b5b4
 EOF
 
   KO_DOCKER_REPO=example.com ko resolve -l 'app.kubernetes.io/component!=resolvers' --platform=all --push=false -R -f config 1>/dev/null
