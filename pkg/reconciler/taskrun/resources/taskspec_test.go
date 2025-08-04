@@ -358,8 +358,11 @@ func TestHasStepRefs(t *testing.T) {
 			name: "multiple steps with multiple refs",
 			spec: &v1.TaskSpec{
 				Steps: []v1.Step{
+					{Name: "inline-step-1"},
 					{Ref: &v1.Ref{Name: "step-action-1"}},
+					{Name: "inline-step-2"},
 					{Ref: &v1.Ref{Name: "step-action-2"}},
+					{Name: "inline-step-3"},
 				},
 			},
 			expected: true,
