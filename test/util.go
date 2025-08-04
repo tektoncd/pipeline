@@ -28,6 +28,8 @@ import (
 	"sync"
 	"testing"
 
+	cacheinjection "github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
+
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -62,9 +64,19 @@ var (
 	ignoreSAPipelineRunSpec = cmpopts.IgnoreFields(v1.PipelineTaskRunTemplate{}, "ServiceAccountName")
 )
 
+// clearResolverCaches clears the shared resolver cache to ensure test isolation
+func clearResolverCaches(ctx context.Context) {
+	// Clear the injection cache used by all resolvers
+	cache := cacheinjection.Get(ctx)
+	cache.Clear()
+}
+
 func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
 	t.Helper()
 	skipIfExcluded(t)
+
+	// Clear resolver caches to ensure test isolation
+	clearResolverCaches(ctx)
 
 	namespace := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("arendelle")
 
