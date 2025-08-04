@@ -47,12 +47,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
-	"knative.dev/pkg/logging"
+
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing"
 	"sigs.k8s.io/yaml"
 
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
+	cacheinjection "github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 )
 
 const (
@@ -739,7 +739,7 @@ func TestResolveWithCacheHit(t *testing.T) {
 	}
 
 	// Get cache instance
-	cacheInstance := injection.Get(ctx)
+	cacheInstance := cacheinjection.Get(ctx)
 
 	// Add to cache
 	cacheInstance.Add(cacheKey, mockResource)
@@ -1248,7 +1248,7 @@ func TestResolveWithCacheStorage(t *testing.T) {
 	}
 
 	// Get cache from injection
-	cacheInstance := injection.Get(ctx)
+	cacheInstance := cacheinjection.Get(ctx)
 
 	// Clear any existing cache entry
 	cacheInstance.Remove(cacheKey)
@@ -1315,7 +1315,7 @@ func TestResolveWithCacheAlwaysEndToEnd(t *testing.T) {
 	}
 
 	// Get cache from injection
-	cacheInstance := injection.Get(t.Context())
+	cacheInstance := cacheinjection.Get(t.Context())
 
 	// Clear any existing cache entry
 	cacheInstance.Remove(cacheKey)
@@ -1356,7 +1356,7 @@ func TestResolveWithCacheNeverEndToEnd(t *testing.T) {
 	}
 
 	// Get cache from injection
-	cacheInstance := injection.Get(t.Context())
+	cacheInstance := cacheinjection.Get(t.Context())
 
 	// Clear any existing cache entry
 	cacheInstance.Remove(cacheKey)
@@ -1406,7 +1406,7 @@ func TestResolveWithCacheAutoEndToEnd(t *testing.T) {
 	}
 
 	// Get cache from injection
-	cacheInstance := injection.Get(ctx)
+	cacheInstance := cacheinjection.Get(ctx)
 
 	// Clear any existing cache entry
 	cacheInstance.Remove(cacheKey)
@@ -1450,7 +1450,7 @@ func TestResolveWithCacheInitialization(t *testing.T) {
 
 	// Test that cache logger initialization works
 	// This should not panic or cause errors
-	cacheInstance := cache.GetGlobalCache().WithLogger(logging.FromContext(t.Context()))
+	cacheInstance := cacheinjection.Get(t.Context())
 
 	// Test cache initialization
 	if cacheInstance == nil {
@@ -1570,7 +1570,7 @@ func TestIntegrationNoCacheParameter(t *testing.T) {
 	}
 
 	// Get cache instance
-	cacheInstance := injection.Get(ctx)
+	cacheInstance := cacheinjection.Get(ctx)
 
 	// Clear any existing cache entry
 	cacheInstance.Remove(cacheKey)
@@ -1641,7 +1641,7 @@ func TestIntegrationCacheNever(t *testing.T) {
 	}
 
 	// Get cache instance
-	cacheInstance := injection.Get(ctx)
+	cacheInstance := cacheinjection.Get(ctx)
 
 	// Clear any existing cache entry
 	cacheInstance.Remove(cacheKey)
@@ -1665,8 +1665,8 @@ func TestIntegrationCacheNever(t *testing.T) {
 	}
 
 	// Test that cache initialization works
-	if cache.GetGlobalCache() == nil {
-		t.Error("Global cache should be initialized")
+	if cacheinjection.Get(t.Context()) == nil {
+		t.Error("Injection cache should be initialized")
 	}
 }
 
@@ -1712,7 +1712,7 @@ func TestIntegrationCacheAuto(t *testing.T) {
 	}
 
 	// Get cache instance
-	cacheInstance := injection.Get(ctx)
+	cacheInstance := cacheinjection.Get(ctx)
 
 	// Clear any existing cache entry
 	cacheInstance.Remove(cacheKey)
@@ -1736,8 +1736,8 @@ func TestIntegrationCacheAuto(t *testing.T) {
 	}
 
 	// Test that cache initialization works
-	if cache.GetGlobalCache() == nil {
-		t.Error("Global cache should be initialized")
+	if cacheinjection.Get(t.Context()) == nil {
+		t.Error("Injection cache should be initialized")
 	}
 }
 
@@ -1783,7 +1783,7 @@ func TestIntegrationCacheAlways(t *testing.T) {
 	}
 
 	// Get cache instance
-	cacheInstance := injection.Get(ctx)
+	cacheInstance := cacheinjection.Get(ctx)
 
 	// Clear any existing cache entry
 	cacheInstance.Remove(cacheKey)
@@ -1809,7 +1809,7 @@ func TestIntegrationCacheAlways(t *testing.T) {
 	}
 
 	// Test that cache initialization works
-	if cache.GetGlobalCache() == nil {
-		t.Error("Global cache should be initialized")
+	if cacheinjection.Get(t.Context()) == nil {
+		t.Error("Injection cache should be initialized")
 	}
 }
