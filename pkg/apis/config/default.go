@@ -56,7 +56,7 @@ const (
 
 	DefaultSidecarLogPollingInterval = 100 * time.Millisecond
 
-	// DefaultStepRefConcurrencyLimit is the default limit for concurrency on step references resolution.
+	// DefaultStepRefConcurrencyLimit is the default concurrency limit for resolving step references.
 	DefaultStepRefConcurrencyLimit = 5
 
 	defaultTimeoutMinutesKey                = "default-timeout-minutes"
