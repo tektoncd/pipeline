@@ -114,9 +114,8 @@ spec:
           value: tekton.dev/resolution
         - name: PROBES_PORT
           value: "8080"
-        # Override this env var to set a private hub api endpoint
         - name: TEKTON_HUB_API
-          value: ""
+          value: "" # Override this env var to set a private hub api endpoint
         - name: ARTIFACT_HUB_API
           value: "https://artifacthub.io/"
         volumeMounts:
