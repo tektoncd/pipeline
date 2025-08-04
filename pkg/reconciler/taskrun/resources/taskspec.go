@@ -202,10 +202,10 @@ func GetStepActionsData(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.T
 	}
 
 	// Phase 1: Concurrently resolve all StepActions
-	stepActionParallelismLimit := config.FromContextOrDefaults(ctx).Defaults.DefaultStepActionParallelismLimit
+	stepRefConcurrencyLimit := config.FromContextOrDefaults(ctx).Defaults.DefaultStepRefConcurrencyLimit
 	g, ctx := errgroup.WithContext(ctx)
 	// This limit prevents overwhelming the API server or remote git servers
-	g.SetLimit(stepActionParallelismLimit)
+	g.SetLimit(stepRefConcurrencyLimit)
 
 	stepRefResolutions := make([]*stepRefResolution, len(taskSpec.Steps))
 	for i, step := range taskSpec.Steps {

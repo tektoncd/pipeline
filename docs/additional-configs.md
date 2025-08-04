@@ -245,7 +245,7 @@ The example below customizes the following:
 more information, see [`Matrix`](matrix.md).
 - the default resolver type to `git`.
 - the default polling interval for the sidecar log results container via `default-sidecar-log-polling-interval`.
-- the default limit for parallel StepAction resolution via `default-step-action-parallelism-limit`.
+- the default limit for concurrency on step references resolution  via `default-step-ref-concurrency-limit`.
 
 ```yaml
 apiVersion: v1
@@ -264,7 +264,7 @@ data:
   default-max-matrix-combinations-count: "1024"
   default-resolver-type: "git"
   default-sidecar-log-polling-interval: "100ms"
-  default-step-action-parallelism-limit: "10"
+  default-step-ref-concurrency-limit: "10"
 ```
 
 ### `default-sidecar-log-polling-interval`

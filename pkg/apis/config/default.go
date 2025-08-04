@@ -56,8 +56,8 @@ const (
 
 	DefaultSidecarLogPollingInterval = 100 * time.Millisecond
 
-	// DefaultStepActionParallelismLimit is the default limit for parallel StepAction resolution.
-	DefaultStepActionParallelismLimit = 5
+	// DefaultStepRefConcurrencyLimit is the default limit for concurrency on step references resolution.
+	DefaultStepRefConcurrencyLimit = 5
 
 	defaultTimeoutMinutesKey                = "default-timeout-minutes"
 	defaultServiceAccountKey                = "default-service-account"
@@ -73,7 +73,7 @@ const (
 	defaultImagePullBackOffTimeout          = "default-imagepullbackoff-timeout"
 	defaultMaximumResolutionTimeout         = "default-maximum-resolution-timeout"
 	defaultSidecarLogPollingIntervalKey     = "default-sidecar-log-polling-interval"
-	defaultStepActionParallelismLimitKey    = "default-step-action-parallelism-limit"
+	DefaultStepRefConcurrencyLimitKey       = "default-step-ref-concurrency-limit"
 )
 
 // DefaultConfig holds all the default configurations for the config.
@@ -98,8 +98,8 @@ type Defaults struct {
 	// DefaultSidecarLogPollingInterval specifies how frequently (as a time.Duration) the Tekton sidecar log results container polls for step completion files.
 	// This value is loaded from the 'sidecar-log-polling-interval' key in the config-defaults ConfigMap.
 	// It is used to control the responsiveness and resource usage of the sidecar in both production and test environments.
-	DefaultSidecarLogPollingInterval  time.Duration
-	DefaultStepActionParallelismLimit int
+	DefaultSidecarLogPollingInterval time.Duration
+	DefaultStepRefConcurrencyLimit   int
 }
 
 // GetDefaultsConfigName returns the name of the configmap containing all
@@ -133,7 +133,7 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 		other.DefaultImagePullBackOffTimeout == cfg.DefaultImagePullBackOffTimeout &&
 		other.DefaultMaximumResolutionTimeout == cfg.DefaultMaximumResolutionTimeout &&
 		other.DefaultSidecarLogPollingInterval == cfg.DefaultSidecarLogPollingInterval &&
-		other.DefaultStepActionParallelismLimit == cfg.DefaultStepActionParallelismLimit &&
+		other.DefaultStepRefConcurrencyLimit == cfg.DefaultStepRefConcurrencyLimit &&
 		reflect.DeepEqual(other.DefaultForbiddenEnv, cfg.DefaultForbiddenEnv)
 }
 
@@ -149,7 +149,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		DefaultImagePullBackOffTimeout:    DefaultImagePullBackOffTimeout,
 		DefaultMaximumResolutionTimeout:   DefaultMaximumResolutionTimeout,
 		DefaultSidecarLogPollingInterval:  DefaultSidecarLogPollingInterval,
-		DefaultStepActionParallelismLimit: DefaultStepActionParallelismLimit,
+		DefaultStepRefConcurrencyLimit:    DefaultStepRefConcurrencyLimit,
 	}
 
 	if defaultTimeoutMin, ok := cfgMap[defaultTimeoutMinutesKey]; ok {
@@ -244,12 +244,12 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		tc.DefaultSidecarLogPollingInterval = interval
 	}
 
-	if defaultStepActionParallelismLimit, ok := cfgMap[defaultStepActionParallelismLimitKey]; ok {
-		stepActionParallelismLimit, err := strconv.ParseInt(defaultStepActionParallelismLimit, 10, 0)
+	if DefaultStepRefConcurrencyLimit, ok := cfgMap[DefaultStepRefConcurrencyLimitKey]; ok {
+		stepRefConcurrencyLimit, err := strconv.ParseInt(DefaultStepRefConcurrencyLimit, 10, 0)
 		if err != nil {
-			return nil, fmt.Errorf("failed parsing default config %q", defaultStepActionParallelismLimitKey)
+			return nil, fmt.Errorf("failed parsing default config %q", DefaultStepRefConcurrencyLimitKey)
 		}
-		tc.DefaultStepActionParallelismLimit = int(stepActionParallelismLimit)
+		tc.DefaultStepRefConcurrencyLimit = int(stepRefConcurrencyLimit)
 	}
 
 	return &tc, nil

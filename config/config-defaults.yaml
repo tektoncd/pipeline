@@ -158,5 +158,5 @@ data:
     # Example values: "100ms", "500ms", "1s"
     default-sidecar-log-polling-interval: "100ms"
 
-    # default-step-action-parallelism-limit specifies the default limit for parallel StepAction resolution.
-    default-step-action-parallelism-limit: "5"
+    # default-step-ref-concurrency-limit specifies the default limit for concurrency on step references resolution.
+    default-step-ref-concurrency-limit: "5"

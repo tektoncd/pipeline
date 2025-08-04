@@ -18,4 +18,4 @@ metadata:
   name: config-defaults
   namespace: tekton-pipelines
 data:
-  default-step-action-parallelism-limit: "10"
+  default-step-ref-concurrency-limit: "abc"
