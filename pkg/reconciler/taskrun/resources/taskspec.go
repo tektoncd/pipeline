@@ -109,8 +109,8 @@ type stepRefResolution struct {
 	source       *v1.RefSource
 }
 
-// HasStepRefs provides a fast check to see if any steps in a TaskSpec contain a reference to a StepAction.
-func HasStepRefs(taskSpec *v1.TaskSpec) bool {
+// hasStepRefs provides a fast check to see if any steps in a TaskSpec contain a reference to a StepAction.
+func hasStepRefs(taskSpec *v1.TaskSpec) bool {
 	for _, step := range taskSpec.Steps {
 		if step.Ref != nil {
 			return true
@@ -197,7 +197,7 @@ func updateTaskRunProvenance(taskRun *v1.TaskRun, stepName string, stepIndex int
 // GetStepActionsData extracts the StepActions and merges them with the inlined Step specification.
 func GetStepActionsData(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.TaskRun, tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester) ([]v1.Step, error) {
 	// If there are no step-ref to resolve, return immediately
-	if !HasStepRefs(&taskSpec) {
+	if !hasStepRefs(&taskSpec) {
 		return taskSpec.Steps, nil
 	}
 

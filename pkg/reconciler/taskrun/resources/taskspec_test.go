@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resources_test
+package resources
 
 import (
 	"context"
@@ -27,7 +27,6 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -71,7 +70,7 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return task, refSourceSample.DeepCopy(), nil, nil
 	}
-	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(t.Context(), tr, gt)
+	resolvedObjectMeta, taskSpec, err := GetTaskData(t.Context(), tr, gt)
 	if err != nil {
 		t.Fatalf("Did not expect error getting task spec but got: %s", err)
 	}
@@ -104,7 +103,7 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("shouldn't be called")
 	}
-	resolvedObjectMeta, taskSpec, err := resources.GetTaskData(t.Context(), tr, gt)
+	resolvedObjectMeta, taskSpec, err := GetTaskData(t.Context(), tr, gt)
 	if err != nil {
 		t.Fatalf("Did not expect error getting task spec but got: %s", err)
 	}
@@ -132,7 +131,7 @@ func TestGetTaskSpec_Invalid(t *testing.T) {
 	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("shouldn't be called")
 	}
-	_, _, err := resources.GetTaskData(t.Context(), tr, gt)
+	_, _, err := GetTaskData(t.Context(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error resolving spec with no embedded or referenced task spec but didn't get error")
 	}
@@ -152,7 +151,7 @@ func TestGetTaskSpec_Error(t *testing.T) {
 	gt := func(ctx context.Context, n string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 		return nil, nil, nil, errors.New("something went wrong")
 	}
-	_, _, err := resources.GetTaskData(t.Context(), tr, gt)
+	_, _, err := GetTaskData(t.Context(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")
 	}
@@ -196,7 +195,7 @@ func TestGetTaskData_ResolutionSuccess(t *testing.T) {
 		}, refSourceSample.DeepCopy(), nil, nil
 	}
 	ctx := t.Context()
-	resolvedMeta, resolvedSpec, err := resources.GetTaskData(ctx, tr, getTask)
+	resolvedMeta, resolvedSpec, err := GetTaskData(ctx, tr, getTask)
 	if err != nil {
 		t.Fatalf("Unexpected error getting mocked data: %v", err)
 	}
@@ -230,7 +229,7 @@ func TestGetPipelineData_ResolutionError(t *testing.T) {
 		return nil, nil, nil, errors.New("something went wrong")
 	}
 	ctx := t.Context()
-	_, _, err := resources.GetTaskData(ctx, tr, getTask)
+	_, _, err := GetTaskData(ctx, tr, getTask)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")
 	}
@@ -253,7 +252,7 @@ func TestGetTaskData_ResolvedNilTask(t *testing.T) {
 		return nil, nil, nil, nil
 	}
 	ctx := t.Context()
-	_, _, err := resources.GetTaskData(ctx, tr, getTask)
+	_, _, err := GetTaskData(ctx, tr, getTask)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")
 	}
@@ -300,7 +299,7 @@ func TestGetTaskData_VerificationResult(t *testing.T) {
 			Spec:       *sourceSpec.DeepCopy(),
 		}, nil, verificationResult, nil
 	}
-	r, _, err := resources.GetTaskData(t.Context(), tr, getTask)
+	r, _, err := GetTaskData(t.Context(), tr, getTask)
 	if err != nil {
 		t.Fatalf("Did not expect error but got: %s", err)
 	}
@@ -369,8 +368,8 @@ func TestHasStepRefs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := resources.HasStepRefs(tc.spec); got != tc.expected {
-				t.Errorf("HasStepRefs() = %v, want %v", got, tc.expected)
+			if got := hasStepRefs(tc.spec); got != tc.expected {
+				t.Errorf("hasStepRefs() = %v, want %v", got, tc.expected)
 			}
 		})
 	}
@@ -702,7 +701,7 @@ spec:
 	for _, tt := range tests {
 		ctx := t.Context()
 		tektonclient := fake.NewSimpleClientset(stepAction)
-		_, err := resources.GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, requester)
+		_, err := GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, requester)
 		if err != nil {
 			t.Fatalf("Did not expect an error but got : %s", err)
 		}
@@ -1710,7 +1709,7 @@ func TestGetStepActionsData(t *testing.T) {
 				}
 			}
 
-			got, err := resources.GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, nil)
+			got, err := GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, nil)
 			if err != nil {
 				t.Fatalf("Did not expect an error but got : %s", err)
 			}
@@ -1939,7 +1938,7 @@ func TestGetStepActionsData_Error(t *testing.T) {
 			ctx := t.Context()
 			tektonclient := fake.NewSimpleClientset(tt.stepAction)
 
-			_, err := resources.GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, nil)
+			_, err := GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, nil)
 			if err == nil {
 				t.Fatalf("Expected to get an error but did not find any.")
 			}
@@ -1992,7 +1991,7 @@ func TestGetStepActionsData_InvalidStepResultReference(t *testing.T) {
 	expectedError := `failed to resolve step ref for step "step1" (index 0): must be one of the form 1). "steps.<stepName>.results.<resultName>"; 2). "steps.<stepName>.results.<objectResultName>.<individualAttribute>"`
 	ctx := t.Context()
 	tektonclient := fake.NewSimpleClientset(stepAction)
-	if _, err := resources.GetStepActionsData(ctx, *tr.Spec.TaskSpec, tr, tektonclient, nil, nil); err.Error() != expectedError {
+	if _, err := GetStepActionsData(ctx, *tr.Spec.TaskSpec, tr, tektonclient, nil, nil); err.Error() != expectedError {
 		t.Errorf("Expected error message %s but got %s", expectedError, err.Error())
 	}
 }
