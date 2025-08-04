@@ -30,7 +30,7 @@ import (
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
+	cacheinjection "github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,13 +55,14 @@ var cacheGitFeatureFlags = requireAllGates(map[string]string{
 	"enable-api-fields":   "beta",
 })
 
-// clearCache clears the global cache to ensure a clean state for tests
+// clearCache clears the injection cache to ensure a clean state for tests
 func clearCache(ctx context.Context) {
-	// Clear cache using logger-free instance
-	cache.GetGlobalCache().Clear()
+	// Clear cache using injection-based instance
+	cacheInstance := cacheinjection.Get(ctx)
+	cacheInstance.Clear()
 	// Verify cache is cleared by attempting to retrieve a known key
 	// If cache is properly cleared, this should return nil
-	if result, found := cache.GetGlobalCache().Get("test-verification-key"); found || result != nil {
+	if result, found := cacheInstance.Get("test-verification-key"); found || result != nil {
 		// This should not happen with a properly functioning cache
 		panic("Cache clear verification failed: cache not properly cleared")
 	}

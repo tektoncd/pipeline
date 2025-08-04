@@ -146,13 +146,7 @@ func (c *ResolverCache) Clear() {
 	})
 }
 
-// globalCache is the global instance of ResolverCache
-var globalCache = NewResolverCache(DefaultMaxSize)
-
-// GetGlobalCache returns the global cache instance.
-func GetGlobalCache() *ResolverCache {
-	return globalCache
-}
+// Note: Global cache removed - use dependency injection via cache/injection package
 
 // WithLogger returns a new ResolverCache instance with the provided logger.
 // This prevents state leak by not storing logger in the global singleton.
