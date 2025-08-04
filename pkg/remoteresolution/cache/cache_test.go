@@ -300,16 +300,12 @@ func TestResolverCache(t *testing.T) {
 		t.Error("Get() returned true for expired key")
 	}
 
-	// Test global cache
-	globalCache1 := GetGlobalCache()
-	globalCache2 := GetGlobalCache()
-	if globalCache1 != globalCache2 {
-		t.Error("GetGlobalCache() returned different instances")
-	}
+	// Test removed - using dependency injection instead of global cache
 
 	// Test that WithLogger creates new instances with logger
-	logger1 := globalCache1.WithLogger(nil)
-	logger2 := globalCache1.WithLogger(nil)
+	testCache := NewResolverCache(1000)
+	logger1 := testCache.WithLogger(nil)
+	logger2 := testCache.WithLogger(nil)
 	if logger1 == logger2 {
 		t.Error("WithLogger() should return different instances")
 	}
