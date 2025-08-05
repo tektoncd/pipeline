@@ -472,7 +472,7 @@ spec:
 }
 
 func TestGitResolver_HTTPAuth(t *testing.T) {
-	ctx := t.Context()
+	ctx := context.Background()
 	c, namespace := setup(ctx, t, gitFeatureFlags)
 
 	t.Parallel()
