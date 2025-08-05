@@ -18,6 +18,7 @@ package framework_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -53,7 +54,7 @@ func (r *mockCacheAwareResolver) Validate(ctx context.Context, req *v1beta1.Reso
 }
 
 func (r *mockCacheAwareResolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolvedresource.ResolvedResource, error) {
-	return nil, nil
+	return nil, errors.New("mock resolver - not implemented")
 }
 
 func TestShouldUseCache(t *testing.T) {
@@ -77,7 +78,7 @@ func TestShouldUseCache(t *testing.T) {
 			expected:      true,
 		},
 		{
-			name: "task param never overrides config and system defaults",
+			name: "task param 'never overrides config and system defaults",
 			params: []pipelinev1.Param{
 				{Name: framework.CacheParam, Value: pipelinev1.ParamValue{StringVal: framework.CacheModeNever}},
 			},
