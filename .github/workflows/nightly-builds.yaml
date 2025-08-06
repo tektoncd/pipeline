@@ -28,6 +28,7 @@ jobs:
   build:
     name: Nightly Build (K8s ${{ inputs.kubernetes_version || 'v1.33.x' }})
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'tektoncd'  # do not run this elsewhere
 
     permissions:
       contents: read
