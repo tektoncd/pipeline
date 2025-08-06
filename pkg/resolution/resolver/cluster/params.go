@@ -23,4 +23,6 @@ const (
 	NameParam = "name"
 	// NamespaceParam is the parameter for the namespace containing the object
 	NamespaceParam = "namespace"
+	// CacheParam is the parameter defining whether to use cache for cluster requests
+	CacheParam = "cache"
 )

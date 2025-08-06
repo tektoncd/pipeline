@@ -69,7 +69,7 @@ func TestClone(t *testing.T) {
 			expectedEnv := []string{"GIT_TERMINAL_PROMPT=false"}
 			expectedCmd := []string{"git", "-C", repo.directory}
 			if test.username != "" {
-				token := base64.URLEncoding.EncodeToString([]byte(test.username + ":" + test.password))
+				token := base64.StdEncoding.EncodeToString([]byte(test.username + ":" + test.password))
 				expectedCmd = append(expectedCmd, "--config-env", "http.extraHeader=GIT_AUTH_HEADER")
 				expectedEnv = append(expectedEnv, "GIT_AUTH_HEADER=Authorization: Basic "+token)
 			}
