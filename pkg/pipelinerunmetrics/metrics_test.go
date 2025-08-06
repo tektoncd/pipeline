@@ -483,9 +483,12 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 func TestRecordRunningPipelineRunsCount(t *testing.T) {
 	unregisterMetrics()
 
-	newPipelineRun := func(status corev1.ConditionStatus) *v1.PipelineRun {
+	newPipelineRun := func(status corev1.ConditionStatus, specStatus v1.PipelineRunSpecStatus) *v1.PipelineRun {
 		return &v1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("pipelinerun-")},
+			Spec: v1.PipelineRunSpec{
+				Status: specStatus,
+			},
 			Status: v1.PipelineRunStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
@@ -500,13 +503,18 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 	ctx, _ := ttesting.SetupFakeContext(t)
 	informer := fakepipelineruninformer.Get(ctx)
 	// Add N randomly-named PipelineRuns with differently-succeeded statuses.
-	for _, tr := range []*v1.PipelineRun{
-		newPipelineRun(corev1.ConditionTrue),
-		newPipelineRun(corev1.ConditionUnknown),
-		newPipelineRun(corev1.ConditionFalse),
+	for _, pr := range []*v1.PipelineRun{
+		// Completed PipelineRun - should NOT be counted as running
+		newPipelineRun(corev1.ConditionTrue, ""),
+		// Actually running PipelineRun - should be counted as running
+		newPipelineRun(corev1.ConditionUnknown, ""),
+		// Pending PipelineRun - should NOT be counted as running
+		newPipelineRun(corev1.ConditionUnknown, v1.PipelineRunSpecStatusPending),
+		// Failed PipelineRun - should NOT be counted as running
+		newPipelineRun(corev1.ConditionFalse, ""),
 	} {
-		if err := informer.Informer().GetIndexer().Add(tr); err != nil {
-			t.Fatalf("Adding TaskRun to informer: %v", err)
+		if err := informer.Informer().GetIndexer().Add(pr); err != nil {
+			t.Fatalf("Adding PipelineRun to informer: %v", err)
 		}
 	}
 
