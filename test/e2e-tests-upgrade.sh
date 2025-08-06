@@ -82,14 +82,30 @@ header "Create resources at previous release version"
 kubectl create namespace upgrade
 trap "kubectl delete namespace upgrade" EXIT
 kubectl create -f ./test/upgrade/simpleResources.yaml || fail_test
+kubectl create -f ./test/upgrade/resultRefResources.yaml || fail_test
 
 # Upgrade to the current release.
 header "Upgrade to the current release of Tekton pipeline"
 install_pipeline_crd
 
+initRestartCount=$(kubectl get pods -o=jsonpath='{.items[?(@.metadata.labels.app=="tekton-pipelines-controller")].status.containerStatuses[0].restartCount}' -n ${SYSTEM_NAMESPACE})
+
 # Create runs from the Task and Pipeline resources created at the previous release version
 header "Creating TaskRuns and PipelineRuns referencing existing Tasks and Pipelines"
 kubectl create -f ./test/upgrade/simpleRuns.yaml || fail_test
+kubectl create -f ./test/upgrade/resultRefRuns.yaml || fail_test
+
+for i in $(kc get pr -o=custom-columns=NAMENAME:.metadata.name --no-headers);
+      do kubectl wait --for=jsonpath='{.status.conditions[0].reason}'=Succeeded pipelinerun $i;
+done
+
+curRestartCount=$(kubectl get pods -o=jsonpath='{.items[?(@.metadata.labels.app=="tekton-pipelines-controller")].status.containerStatuses[0].restartCount}' -n ${SYSTEM_NAMESPACE})
+
+if [ ${initRestartCount} -ne ${curRestartCount} ];
+   echo "controller restarted"
+   then fail_test;
+fi
+
 
 # Run the post-integration tests. We do not need to install the resources again, since
 # they are installed before the upgrade. We verify if they still work, after going through
