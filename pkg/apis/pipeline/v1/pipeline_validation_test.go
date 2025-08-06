@@ -1415,7 +1415,7 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 			if err == nil {
 				t.Errorf("PipelineSpec.Validate() did not return error for invalid pipelineSpec")
 			}
-			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error()); d != "" {
 				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
 			}
 		})

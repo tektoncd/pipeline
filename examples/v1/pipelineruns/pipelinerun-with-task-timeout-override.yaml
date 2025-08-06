@@ -1,0 +1,58 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: taskrun-timeout-override
+spec:
+  tasks:
+  - name: long-running-task
+    taskRef:
+      name: sleep-task
+      kind: Task
+    timeout: "60s"  # pipeline task timeout (increased to account for infrastructure overhead)
+  - name: verify-timeout
+    taskRef:
+      name: verify-task
+      kind: Task
+    runAfter: ["long-running-task"]
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: taskrun-timeout-override
+spec:
+  pipelineRef:
+    name: taskrun-timeout-override
+  taskRunSpecs:
+  - pipelineTaskName: long-running-task
+    timeout: "30s"      # Override: 30s timeout instead of 60s pipeline task timeout
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: sleep-task
+spec:
+  steps:
+  - name: sleep-long
+    image: alpine:latest
+    script: |
+      #!/bin/sh
+      echo "started task - will sleep for 10s (within 30s override timeout)"
+      sleep 10
+      echo "completed successfully with timeout override"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: verify-task
+spec:
+  steps:
+  - name: verify-completion
+    image: alpine:latest
+    script: |
+      #!/bin/sh
+      echo "Verification task running successfully!"
+      echo "- Pipeline task timeout: 60s (defined in pipeline spec)"
+      echo "- TaskRunSpecs override: 30s (defined in pipelinerun spec)"
+      echo "- Actual task duration: 10s (completes within override timeout)"
+      echo "- Result: Task completed successfully with 30s timeout override"
+      echo "- This shows taskRunSpecs.timeout can override pipeline task timeouts"

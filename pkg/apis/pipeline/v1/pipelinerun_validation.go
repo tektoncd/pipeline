@@ -87,6 +87,11 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	// Validate propagated parameters
 	errs = errs.Also(ps.validateInlineParameters(ctx))
 
+	// Validate task run specs first
+	for _, trs := range ps.TaskRunSpecs {
+		errs = errs.Also(validateTaskRunSpec(ctx, trs).ViaFieldKey("taskRunSpecs", trs.PipelineTaskName))
+	}
+
 	if ps.Timeouts != nil {
 		// tasks timeout should be a valid duration of at least 0.
 		errs = errs.Also(validateTimeoutDuration("tasks", ps.Timeouts.Tasks))
@@ -103,6 +108,8 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 			defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
 			errs = errs.Also(ps.validatePipelineTimeout(defaultTimeout, "should be <= default timeout duration"))
 		}
+
+		errs = errs.Also(validatePipelineTaskRunSpecTimeouts(ctx, ps))
 	}
 
 	errs = errs.Also(validateSpecStatus(ps.Status))
@@ -116,9 +123,6 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 			}
 			wsNames[ws.Name] = idx
 		}
-	}
-	for idx, trs := range ps.TaskRunSpecs {
-		errs = errs.Also(validateTaskRunSpec(ctx, trs).ViaIndex(idx).ViaField("taskRunSpecs"))
 	}
 
 	if ps.TaskRunTemplate.PodTemplate != nil {
@@ -273,6 +277,13 @@ func validateTimeoutDuration(field string, d *metav1.Duration) (errs *apis.Field
 	return nil
 }
 
+func validateDurationField(field string, d *metav1.Duration) (errs *apis.FieldError) {
+	if d != nil && d.Duration < 0 {
+		return errs.Also(apis.ErrInvalidValue(d.Duration.String()+" should be >= 0", field))
+	}
+	return nil
+}
+
 func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorMsg string) (errs *apis.FieldError) {
 	if ps.Timeouts.Tasks != nil {
 		tasksTimeoutErr := false
@@ -329,5 +340,58 @@ func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *ap
 	if trs.PodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *trs.PodTemplate))
 	}
+	errs = errs.Also(validateDurationField("timeout", trs.Timeout))
+	return errs
+}
+
+// validatePipelineTaskRunSpecTimeouts validates timeouts for TaskRunSpecs in a PipelineRun
+func validatePipelineTaskRunSpecTimeouts(ctx context.Context, ps *PipelineRunSpec) *apis.FieldError {
+	cfg := config.FromContextOrDefaults(ctx)
+	var errs *apis.FieldError
+
+	if len(ps.TaskRunSpecs) == 0 {
+		return errs
+	}
+
+	// Determine max timeout with proper precedence: Tasks → Pipeline → Default
+	maxTimeout := &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
+	timeoutSource := "default timeout duration"
+
+	if ps.Timeouts != nil {
+		// Check timeouts in order of precedence
+		if ps.Timeouts.Tasks != nil {
+			validatedTimeout, err := validate.Timeout(ps.Timeouts.Tasks, cfg.Defaults.DefaultTimeoutMinutes)
+			if err != nil {
+				errs = errs.Also(err)
+			} else {
+				maxTimeout = validatedTimeout
+				timeoutSource = "pipeline tasks duration"
+			}
+		} else if ps.Timeouts.Pipeline != nil {
+			validatedTimeout, err := validate.Timeout(ps.Timeouts.Pipeline, cfg.Defaults.DefaultTimeoutMinutes)
+			if err != nil {
+				errs = errs.Also(err)
+			} else {
+				maxTimeout = validatedTimeout
+				timeoutSource = "pipeline duration"
+			}
+		}
+	}
+
+	if maxTimeout.Duration == config.NoTimeoutDuration {
+		return errs
+	}
+
+	for _, taskRunSpec := range ps.TaskRunSpecs {
+		taskRunTimeout, err := validate.Timeout(taskRunSpec.Timeout, cfg.Defaults.DefaultTimeoutMinutes)
+		if err != nil {
+			errs = errs.Also(err.ViaField("taskRunSpecs[" + taskRunSpec.PipelineTaskName + "].timeout"))
+		} else if taskRunTimeout.Duration > maxTimeout.Duration {
+			errs = errs.Also(apis.ErrInvalidValue(
+				fmt.Sprintf("%s should be <= %s %s", taskRunTimeout.Duration, timeoutSource, maxTimeout.Duration),
+				"taskRunSpecs["+taskRunSpec.PipelineTaskName+"].timeout"))
+		}
+	}
+
 	return errs
 }

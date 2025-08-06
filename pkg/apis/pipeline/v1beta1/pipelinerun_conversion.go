@@ -189,6 +189,7 @@ func (ptrs PipelineTaskRunSpec) convertTo(ctx context.Context, sink *v1.Pipeline
 		ptrs.Metadata.convertTo(ctx, sink.Metadata)
 	}
 	sink.ComputeResources = ptrs.ComputeResources
+	sink.Timeout = ptrs.Timeout
 }
 
 func (ptrs *PipelineTaskRunSpec) convertFrom(ctx context.Context, source v1.PipelineTaskRunSpec) {
@@ -213,6 +214,7 @@ func (ptrs *PipelineTaskRunSpec) convertFrom(ctx context.Context, source v1.Pipe
 		ptrs.Metadata = &newMetadata
 	}
 	ptrs.ComputeResources = source.ComputeResources
+	ptrs.Timeout = source.Timeout
 }
 
 func (prs *PipelineRunStatus) convertTo(ctx context.Context, sink *v1.PipelineRunStatus, meta *metav1.ObjectMeta) error {
