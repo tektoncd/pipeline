@@ -33,6 +33,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	testhelpers "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -233,13 +234,136 @@ var pts = []v1.PipelineTask{{
 	},
 }}
 
+// var pts = []v1.PipelineTask{{
+// 	Name:    "mytask1",
+// 	TaskRef: &v1.TaskRef{Name: "task"},
+// }, {
+// 	Name:    "mytask2",
+// 	TaskRef: &v1.TaskRef{Name: "task"},
+// }, {
+// 	Name:    "mytask3",
+// 	TaskRef: &v1.TaskRef{Name: "task"},
+// }, {
+// 	Name:    "mytask4",
+// 	TaskRef: &v1.TaskRef{Name: "task"},
+// 	Retries: 1,
+// }, {
+// 	Name:    "mytask5",
+// 	TaskRef: &v1.TaskRef{Name: "cancelledTask"},
+// 	Retries: 2,
+// }, {
+// 	Name:    "mytask6",
+// 	TaskRef: &v1.TaskRef{Name: "task"},
+// }, {
+// 	Name:     "mytask7",
+// 	TaskRef:  &v1.TaskRef{Name: "taskWithOneParent"},
+// 	RunAfter: []string{"mytask6"},
+// }, {
+// 	Name:     "mytask8",
+// 	TaskRef:  &v1.TaskRef{Name: "taskWithTwoParents"},
+// 	RunAfter: []string{"mytask1", "mytask6"},
+// }, {
+// 	Name:     "mytask9",
+// 	TaskRef:  &v1.TaskRef{Name: "taskHasParentWithRunAfter"},
+// 	RunAfter: []string{"mytask8"},
+// }, {
+// 	Name:    "mytask10",
+// 	TaskRef: &v1.TaskRef{Name: "taskWithWhenExpressions"},
+// 	When: []v1.WhenExpression{{
+// 		Input:    "foo",
+// 		Operator: selection.In,
+// 		Values:   []string{"foo", "bar"},
+// 	}},
+// }, {
+// 	Name:    "mytask11",
+// 	TaskRef: &v1.TaskRef{Name: "taskWithWhenExpressions"},
+// 	When: []v1.WhenExpression{{
+// 		Input:    "foo",
+// 		Operator: selection.NotIn,
+// 		Values:   []string{"foo", "bar"},
+// 	}},
+// }, {
+// 	Name:    "mytask12",
+// 	TaskRef: &v1.TaskRef{Name: "taskWithWhenExpressions"},
+// 	When: []v1.WhenExpression{{
+// 		Input:    "foo",
+// 		Operator: selection.In,
+// 		Values:   []string{"foo", "bar"},
+// 	}},
+// 	RunAfter: []string{"mytask1"},
+// }, {
+// 	Name:    "mytask13",
+// 	TaskRef: &v1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: "customtask"},
+// }, {
+// 	Name:    "mytask14",
+// 	TaskRef: &v1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: "customtask"},
+// }, {
+// 	Name:    "mytask15",
+// 	TaskRef: &v1.TaskRef{Name: "taskWithReferenceToTaskResult"},
+// 	Params:  v1.Params{{Name: "param1", Value: *v1.NewStructuredValues("$(tasks.mytask1.results.result1)")}},
+// }, {
+// 	Name: "mytask16",
+// 	Matrix: &v1.Matrix{
+// 		Params: v1.Params{{
+// 			Name:  "browser",
+// 			Value: v1.ParamValue{ArrayVal: []string{"safari", "chrome"}},
+// 		}},
+// 	},
+// }, {
+// 	Name: "mytask17",
+// 	Matrix: &v1.Matrix{
+// 		Params: v1.Params{{
+// 			Name:  "browser",
+// 			Value: v1.ParamValue{ArrayVal: []string{"safari", "chrome"}},
+// 		}},
+// 	},
+// }, {
+// 	Name:    "mytask18",
+// 	TaskRef: &v1.TaskRef{Name: "task"},
+// 	Retries: 1,
+// 	Matrix: &v1.Matrix{
+// 		Params: v1.Params{{
+// 			Name:  "browser",
+// 			Value: v1.ParamValue{ArrayVal: []string{"safari", "chrome"}},
+// 		}},
+// 	},
+// }, {
+// 	Name:    "mytask19",
+// 	TaskRef: &v1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: "customtask"},
+// 	Matrix: &v1.Matrix{
+// 		Params: v1.Params{{
+// 			Name:  "browser",
+// 			Value: v1.ParamValue{ArrayVal: []string{"safari", "chrome"}},
+// 		}},
+// 	},
+// }, {
+// 	Name:    "mytask20",
+// 	TaskRef: &v1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: "customtask"},
+// 	Matrix: &v1.Matrix{
+// 		Params: v1.Params{{
+// 			Name:  "browser",
+// 			Value: v1.ParamValue{ArrayVal: []string{"safari", "chrome"}},
+// 		}},
+// 	},
+// }, {
+// 	Name:    "mytask21",
+// 	TaskRef: &v1.TaskRef{Name: "task"},
+// 	Retries: 2,
+// 	Matrix: &v1.Matrix{
+// 		Params: v1.Params{{
+// 			Name:  "browser",
+// 			Value: v1.ParamValue{ArrayVal: []string{"safari", "chrome"}},
+// 		}},
+// 	},
+// }}
+
 var p = &v1.Pipeline{
 	ObjectMeta: metav1.ObjectMeta{
 		Namespace: "namespace",
 		Name:      "pipeline",
 	},
 	Spec: v1.PipelineSpec{
-		Tasks: pts,
+		Tasks: testhelpers.PipelineTasks,
 	},
 }
 
@@ -520,14 +644,14 @@ func newPipelineRun(pr v1.PipelineRun) *v1.PipelineRun {
 }
 
 var noneStartedState = PipelineRunState{{
-	PipelineTask: &pts[0],
+	PipelineTask: &testhelpers.PipelineTasks[0],
 	TaskRunNames: []string{"pipelinerun-mytask1"},
 	TaskRuns:     nil,
 	ResolvedTask: &resources.ResolvedTask{
 		TaskSpec: &task.Spec,
 	},
 }, {
-	PipelineTask: &pts[1],
+	PipelineTask: &testhelpers.PipelineTasks[1],
 	TaskRunNames: []string{"pipelinerun-mytask2"},
 	TaskRuns:     nil,
 	ResolvedTask: &resources.ResolvedTask{
@@ -536,14 +660,14 @@ var noneStartedState = PipelineRunState{{
 }}
 
 var oneStartedState = PipelineRunState{{
-	PipelineTask: &pts[0],
+	PipelineTask: &testhelpers.PipelineTasks[0],
 	TaskRunNames: []string{"pipelinerun-mytask1"},
 	TaskRuns:     []*v1.TaskRun{makeStarted(trs[0])},
 	ResolvedTask: &resources.ResolvedTask{
 		TaskSpec: &task.Spec,
 	},
 }, {
-	PipelineTask: &pts[1],
+	PipelineTask: &testhelpers.PipelineTasks[1],
 	TaskRunNames: []string{"pipelinerun-mytask2"},
 	TaskRuns:     nil,
 	ResolvedTask: &resources.ResolvedTask{
@@ -552,14 +676,14 @@ var oneStartedState = PipelineRunState{{
 }}
 
 var oneFinishedState = PipelineRunState{{
-	PipelineTask: &pts[0],
+	PipelineTask: &testhelpers.PipelineTasks[0],
 	TaskRunNames: []string{"pipelinerun-mytask1"},
 	TaskRuns:     []*v1.TaskRun{makeSucceeded(trs[0])},
 	ResolvedTask: &resources.ResolvedTask{
 		TaskSpec: &task.Spec,
 	},
 }, {
-	PipelineTask: &pts[1],
+	PipelineTask: &testhelpers.PipelineTasks[1],
 	TaskRunNames: []string{"pipelinerun-mytask2"},
 	TaskRuns:     nil,
 	ResolvedTask: &resources.ResolvedTask{
@@ -568,14 +692,14 @@ var oneFinishedState = PipelineRunState{{
 }}
 
 var oneFailedState = PipelineRunState{{
-	PipelineTask: &pts[0],
+	PipelineTask: &testhelpers.PipelineTasks[0],
 	TaskRunNames: []string{"pipelinerun-mytask1"},
 	TaskRuns:     []*v1.TaskRun{makeFailed(trs[0])},
 	ResolvedTask: &resources.ResolvedTask{
 		TaskSpec: &task.Spec,
 	},
 }, {
-	PipelineTask: &pts[1],
+	PipelineTask: &testhelpers.PipelineTasks[1],
 	TaskRunNames: []string{"pipelinerun-mytask2"},
 	TaskRuns:     nil,
 	ResolvedTask: &resources.ResolvedTask{
@@ -584,14 +708,14 @@ var oneFailedState = PipelineRunState{{
 }}
 
 var finalScheduledState = PipelineRunState{{
-	PipelineTask: &pts[0],
+	PipelineTask: &testhelpers.PipelineTasks[0],
 	TaskRunNames: []string{"pipelinerun-mytask1"},
 	TaskRuns:     []*v1.TaskRun{makeSucceeded(trs[0])},
 	ResolvedTask: &resources.ResolvedTask{
 		TaskSpec: &task.Spec,
 	},
 }, {
-	PipelineTask: &pts[1],
+	PipelineTask: &testhelpers.PipelineTasks[1],
 	TaskRunNames: []string{"pipelinerun-mytask2"},
 	TaskRuns:     []*v1.TaskRun{makeScheduled(trs[1])},
 	ResolvedTask: &resources.ResolvedTask{
@@ -600,14 +724,14 @@ var finalScheduledState = PipelineRunState{{
 }}
 
 var allFinishedState = PipelineRunState{{
-	PipelineTask: &pts[0],
+	PipelineTask: &testhelpers.PipelineTasks[0],
 	TaskRunNames: []string{"pipelinerun-mytask1"},
 	TaskRuns:     []*v1.TaskRun{makeSucceeded(trs[0])},
 	ResolvedTask: &resources.ResolvedTask{
 		TaskSpec: &task.Spec,
 	},
 }, {
-	PipelineTask: &pts[1],
+	PipelineTask: &testhelpers.PipelineTasks[1],
 	TaskRunNames: []string{"pipelinerun-mytask2"},
 	TaskRuns:     []*v1.TaskRun{makeSucceeded(trs[0])},
 	ResolvedTask: &resources.ResolvedTask{
@@ -616,55 +740,55 @@ var allFinishedState = PipelineRunState{{
 }}
 
 var noCustomRunStartedState = PipelineRunState{{
-	PipelineTask:   &pts[12],
+	PipelineTask:   &testhelpers.PipelineTasks[12],
 	CustomTask:     true,
 	CustomRunNames: []string{"pipelinerun-mytask13"},
 	CustomRuns:     nil,
 }, {
-	PipelineTask:   &pts[13],
+	PipelineTask:   &testhelpers.PipelineTasks[13],
 	CustomTask:     true,
 	CustomRunNames: []string{"pipelinerun-mytask14"},
 	CustomRuns:     nil,
 }}
 
 var oneCustomRunStartedState = PipelineRunState{{
-	PipelineTask:   &pts[12],
+	PipelineTask:   &testhelpers.PipelineTasks[12],
 	CustomTask:     true,
 	CustomRunNames: []string{"pipelinerun-mytask13"},
 	CustomRuns:     []*v1beta1.CustomRun{makeCustomRunStarted(customRuns[0])},
 }, {
-	PipelineTask:   &pts[13],
+	PipelineTask:   &testhelpers.PipelineTasks[13],
 	CustomTask:     true,
 	CustomRunNames: []string{"pipelinerun-mytask14"},
 	CustomRuns:     nil,
 }}
 
 var oneCustomRunFinishedState = PipelineRunState{{
-	PipelineTask:   &pts[12],
+	PipelineTask:   &testhelpers.PipelineTasks[12],
 	CustomTask:     true,
 	CustomRunNames: []string{"pipelinerun-mytask13"},
 	CustomRuns:     []*v1beta1.CustomRun{makeCustomRunSucceeded(customRuns[0])},
 }, {
-	PipelineTask:   &pts[13],
+	PipelineTask:   &testhelpers.PipelineTasks[13],
 	CustomTask:     true,
 	CustomRunNames: []string{"pipelinerun-mytask14"},
 	CustomRuns:     nil,
 }}
 
 var oneCustomRunFailedState = PipelineRunState{{
-	PipelineTask:   &pts[12],
+	PipelineTask:   &testhelpers.PipelineTasks[12],
 	CustomTask:     true,
 	CustomRunNames: []string{"pipelinerun-mytask13"},
 	CustomRuns:     []*v1beta1.CustomRun{makeCustomRunFailed(customRuns[0])},
 }, {
-	PipelineTask:   &pts[13],
+	PipelineTask:   &testhelpers.PipelineTasks[13],
 	CustomTask:     true,
 	CustomRunNames: []string{"pipelinerun-mytask14"},
 	CustomRuns:     nil,
 }}
 
 var taskCancelled = PipelineRunState{{
-	PipelineTask: &pts[4],
+	PipelineTask: &testhelpers.PipelineTasks[4],
 	TaskRunNames: []string{"pipelinerun-mytask1"},
 	TaskRuns:     []*v1.TaskRun{withCancelled(makeRetried(trs[0]))},
 	ResolvedTask: &resources.ResolvedTask{
@@ -673,20 +797,20 @@ var taskCancelled = PipelineRunState{{
 }}
 
 var customRunCancelled = PipelineRunState{{
-	PipelineTask:   &pts[12],
+	PipelineTask:   &testhelpers.PipelineTasks[12],
 	CustomRunNames: []string{"pipelinerun-mytask13"},
 	CustomRuns:     []*v1beta1.CustomRun{withCustomRunCancelled(newCustomRun(customRuns[0]))},
 }}
 
 var noneStartedStateMatrix = PipelineRunState{{
-	PipelineTask: &pts[15],
+	PipelineTask: &testhelpers.PipelineTasks[15],
 	TaskRunNames: []string{"pipelinerun-mytask1"},
 	TaskRuns:     nil,
 	ResolvedTask: &resources.ResolvedTask{
 		TaskSpec: &task.Spec,
 	},
 }, {
-	PipelineTask: &pts[16],
+	PipelineTask: &testhelpers.PipelineTasks[16],
 	TaskRunNames: []string{"pipelinerun-mytask3"},
 	TaskRuns:     nil,
 	ResolvedTask: &resources.ResolvedTask{
@@ -695,14 +819,14 @@ var noneStartedStateMatrix = PipelineRunState{{
 }}
 
 var oneStartedStateMatrix = PipelineRunState{{
-	PipelineTask: &pts[15],
+	PipelineTask: &testhelpers.PipelineTasks[15],
 	TaskRunNames: []string{"pipelinerun-mytask1"},
 	TaskRuns:     []*v1.TaskRun{makeStarted(trs[0])},
 	ResolvedTask: &resources.ResolvedTask{
 		TaskSpec: &task.Spec,
 	},
 }, {
-	PipelineTask: &pts[16],
+	PipelineTask: &testhelpers.PipelineTasks[16],
 	TaskRunNames: []string{"pipelinerun-mytask2"},
 	TaskRuns:     nil,
 	ResolvedTask: &resources.ResolvedTask{
@@ -711,14 +835,14 @@ var oneStartedStateMatrix = PipelineRunState{{
 }}
 
 var oneFinishedStateMatrix = PipelineRunState{{
-	PipelineTask: &pts[15],
+	PipelineTask: &testhelpers.PipelineTasks[15],
 	TaskRunNames: []string{"pipelinerun-mytask1"},
 	TaskRuns:     []*v1.TaskRun{makeSucceeded(trs[0])},
 	ResolvedTask: &resources.ResolvedTask{
 		TaskSpec: &task.Spec,
 	},
 }, {
-	PipelineTask: &pts[16],
+	PipelineTask: &testhelpers.PipelineTasks[16],
 	TaskRunNames: []string{"pipelinerun-mytask2"},
 	TaskRuns:     nil,
 	ResolvedTask: &resources.ResolvedTask{
@@ -727,14 +851,14 @@ var oneFinishedStateMatrix = PipelineRunState{{
 }}
 
 var oneFailedStateMatrix = PipelineRunState{{
-	PipelineTask: &pts[15],
+	PipelineTask: &testhelpers.PipelineTasks[15],
 	TaskRunNames: []string{"pipelinerun-mytask1"},
 	TaskRuns:     []*v1.TaskRun{makeFailed(trs[0])},
 	ResolvedTask: &resources.ResolvedTask{
 		TaskSpec: &task.Spec,
 	},
 }, {
-	PipelineTask: &pts[16],
+	PipelineTask: &testhelpers.PipelineTasks[16],
 	TaskRunNames: []string{"pipelinerun-mytask2"},
 	TaskRuns:     nil,
 	ResolvedTask: &resources.ResolvedTask{
@@ -743,14 +867,14 @@ var oneFailedStateMatrix = PipelineRunState{{
 }}
 
 var finalScheduledStateMatrix = PipelineRunState{{
-	PipelineTask: &pts[15],
+	PipelineTask: &testhelpers.PipelineTasks[15],
 	TaskRunNames: []string{"pipelinerun-mytask1"},
 	TaskRuns:     []*v1.TaskRun{makeSucceeded(trs[0])},
 	ResolvedTask: &resources.ResolvedTask{
 		TaskSpec: &task.Spec,
 	},
 }, {
-	PipelineTask: &pts[16],
+	PipelineTask: &testhelpers.PipelineTasks[16],
 	TaskRunNames: []string{"pipelinerun-mytask2"},
 	TaskRuns:     []*v1.TaskRun{makeScheduled(trs[1])},
 	ResolvedTask: &resources.ResolvedTask{
@@ -759,14 +883,14 @@ var finalScheduledStateMatrix = PipelineRunState{{
 }}
 
 var allFinishedStateMatrix = PipelineRunState{{
-	PipelineTask: &pts[15],
+	PipelineTask: &testhelpers.PipelineTasks[15],
 	TaskRunNames: []string{"pipelinerun-mytask1"},
 	TaskRuns:     []*v1.TaskRun{makeSucceeded(trs[0])},
 	ResolvedTask: &resources.ResolvedTask{
 		TaskSpec: &task.Spec,
 	},
 }, {
-	PipelineTask: &pts[16],
+	PipelineTask: &testhelpers.PipelineTasks[16],
 	TaskRunNames: []string{"pipelinerun-mytask2"},
 	TaskRuns:     []*v1.TaskRun{makeSucceeded(trs[0])},
 	ResolvedTask: &resources.ResolvedTask{
@@ -775,43 +899,43 @@ var allFinishedStateMatrix = PipelineRunState{{
 }}
 
 var noCustomRunStartedStateMatrix = PipelineRunState{{
-	PipelineTask:   &pts[18],
+	PipelineTask:   &testhelpers.PipelineTasks[18],
 	CustomTask:     true,
 	CustomRunNames: []string{"pipelinerun-mytask13"},
 	CustomRuns:     nil,
 }, {
-	PipelineTask:   &pts[19],
+	PipelineTask:   &testhelpers.PipelineTasks[19],
 	CustomTask:     true,
 	CustomRunNames: []string{"pipelinerun-mytask13"},
 	CustomRuns:     nil,
 }}
 
 var oneCustomRunStartedStateMatrix = PipelineRunState{{
-	PipelineTask:   &pts[18],
+	PipelineTask:   &testhelpers.PipelineTasks[18],
 	CustomTask:     true,
 	CustomRunNames: []string{"pipelinerun-mytask13"},
 	CustomRuns:     []*v1beta1.CustomRun{makeCustomRunStarted(customRuns[0])},
 }, {
-	PipelineTask:   &pts[19],
+	PipelineTask:   &testhelpers.PipelineTasks[19],
 	CustomTask:     true,
 	CustomRunNames: []string{"pipelinerun-mytask14"},
 	CustomRuns:     nil,
 }}
 
 var oneCustomRunFailedStateMatrix = PipelineRunState{{
-	PipelineTask:   &pts[18],
+	PipelineTask:   &testhelpers.PipelineTasks[18],
 	CustomTask:     true,
 	CustomRunNames: []string{"pipelinerun-mytask13"},
 	CustomRuns:     []*v1beta1.CustomRun{makeCustomRunFailed(customRuns[0])},
 }, {
-	PipelineTask:   &pts[19],
+	PipelineTask:   &testhelpers.PipelineTasks[19],
 	CustomTask:     true,
 	CustomRunNames: []string{"pipelinerun-mytask14"},
 	CustomRuns:     nil,
 }}
 
 var taskCancelledMatrix = PipelineRunState{{
-	PipelineTask: &pts[20],
+	PipelineTask: &testhelpers.PipelineTasks[20],
 	TaskRunNames: []string{"pipelinerun-mytask1"},
 	TaskRuns:     []*v1.TaskRun{withCancelled(makeRetried(trs[0]))},
 	ResolvedTask: &resources.ResolvedTask{
@@ -959,14 +1083,14 @@ func TestIsSkipped(t *testing.T) {
 	}, {
 		name: "tasks-parent-failed",
 		state: PipelineRunState{{
-			PipelineTask: &pts[5],
+			PipelineTask: &testhelpers.PipelineTasks[5],
 			TaskRunNames: []string{"pipelinerun-mytask1"},
 			TaskRuns:     []*v1.TaskRun{makeFailed(trs[0])},
 			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}, {
-			PipelineTask: &pts[6], // mytask7 runAfter mytask6
+			PipelineTask: &testhelpers.PipelineTasks[6], // mytask7 runAfter mytask6
 			TaskRunNames: []string{"pipelinerun-mytask2"},
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
@@ -979,14 +1103,14 @@ func TestIsSkipped(t *testing.T) {
 	}, {
 		name: "tasks-parent-cancelled",
 		state: PipelineRunState{{
-			PipelineTask: &pts[5],
+			PipelineTask: &testhelpers.PipelineTasks[5],
 			TaskRunNames: []string{"pipelinerun-mytask1"},
 			TaskRuns:     []*v1.TaskRun{withCancelled(makeFailed(trs[0]))},
 			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}, {
-			PipelineTask: &pts[6], // mytask7 runAfter mytask6
+			PipelineTask: &testhelpers.PipelineTasks[6], // mytask7 runAfter mytask6
 			TaskRunNames: []string{"pipelinerun-mytask2"},
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
@@ -999,14 +1123,14 @@ func TestIsSkipped(t *testing.T) {
 	}, {
 		name: "tasks-grandparent-failed",
 		state: PipelineRunState{{
-			PipelineTask: &pts[5],
+			PipelineTask: &testhelpers.PipelineTasks[5],
 			TaskRunNames: []string{"pipelinerun-mytask1"},
 			TaskRuns:     []*v1.TaskRun{makeFailed(trs[0])},
 			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}, {
-			PipelineTask: &pts[6], // mytask7 runAfter mytask6
+			PipelineTask: &testhelpers.PipelineTasks[6], // mytask7 runAfter mytask6
 			TaskRunNames: []string{"pipelinerun-mytask2"},
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
@@ -1030,21 +1154,21 @@ func TestIsSkipped(t *testing.T) {
 	}, {
 		name: "tasks-parents-failed-passed",
 		state: PipelineRunState{{
-			PipelineTask: &pts[5],
+			PipelineTask: &testhelpers.PipelineTasks[5],
 			TaskRunNames: []string{"pipelinerun-mytask1"},
 			TaskRuns:     []*v1.TaskRun{makeSucceeded(trs[0])},
 			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}, {
-			PipelineTask: &pts[0],
+			PipelineTask: &testhelpers.PipelineTasks[0],
 			TaskRunNames: []string{"pipelinerun-mytask2"},
 			TaskRuns:     []*v1.TaskRun{makeFailed(trs[0])},
 			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}, {
-			PipelineTask: &pts[7], // mytask8 runAfter mytask1, mytask6
+			PipelineTask: &testhelpers.PipelineTasks[7], // mytask8 runAfter mytask1, mytask6
 			TaskRunNames: []string{"pipelinerun-mytask3"},
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
@@ -1057,21 +1181,21 @@ func TestIsSkipped(t *testing.T) {
 	}, {
 		name: "task-failed-pipeline-stopping",
 		state: PipelineRunState{{
-			PipelineTask: &pts[0],
+			PipelineTask: &testhelpers.PipelineTasks[0],
 			TaskRunNames: []string{"pipelinerun-mytask1"},
 			TaskRuns:     []*v1.TaskRun{makeFailed(trs[0])},
 			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}, {
-			PipelineTask: &pts[5],
+			PipelineTask: &testhelpers.PipelineTasks[5],
 			TaskRunNames: []string{"pipelinerun-mytask2"},
 			TaskRuns:     []*v1.TaskRun{makeStarted(trs[1])},
 			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}, {
-			PipelineTask: &pts[6], // mytask7 runAfter mytask6
+			PipelineTask: &testhelpers.PipelineTasks[6], // mytask7 runAfter mytask6
 			TaskRunNames: []string{"pipelinerun-mytask3"},
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
@@ -1084,7 +1208,7 @@ func TestIsSkipped(t *testing.T) {
 	}, {
 		name: "tasks-when-expressions-passed",
 		state: PipelineRunState{{
-			PipelineTask: &pts[9],
+			PipelineTask: &testhelpers.PipelineTasks[9],
 			TaskRunNames: []string{"pipelinerun-guardedtask"},
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
@@ -1097,7 +1221,7 @@ func TestIsSkipped(t *testing.T) {
 	}, {
 		name: "tasks-when-expression-failed",
 		state: PipelineRunState{{
-			PipelineTask: &pts[10],
+			PipelineTask: &testhelpers.PipelineTasks[10],
 			TaskRunNames: []string{"pipelinerun-guardedtask"},
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
@@ -1110,13 +1234,13 @@ func TestIsSkipped(t *testing.T) {
 	}, {
 		name: "when-expression-task-but-without-parent-done",
 		state: PipelineRunState{{
-			PipelineTask: &pts[0],
+			PipelineTask: &testhelpers.PipelineTasks[0],
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}, {
-			PipelineTask: &pts[11],
+			PipelineTask: &testhelpers.PipelineTasks[11],
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
@@ -1141,7 +1265,7 @@ func TestIsSkipped(t *testing.T) {
 		name: "tasks-when-expressions",
 		state: PipelineRunState{{
 			// skipped because when expressions evaluate to false
-			PipelineTask: &pts[10],
+			PipelineTask: &testhelpers.PipelineTasks[10],
 			TaskRunNames: []string{"pipelinerun-guardedtask"},
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
@@ -1168,7 +1292,7 @@ func TestIsSkipped(t *testing.T) {
 		name: "tasks-when-expressions-run-multiple-dependent-tasks",
 		state: PipelineRunState{{
 			// skipped because when expressions evaluate to false
-			PipelineTask: &pts[10],
+			PipelineTask: &testhelpers.PipelineTasks[10],
 			TaskRunNames: []string{"pipelinerun-guardedtask"},
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
@@ -1208,7 +1332,7 @@ func TestIsSkipped(t *testing.T) {
 		name: "tasks-when-expressions-run-multiple-ordering-and-resource-dependent-tasks",
 		state: PipelineRunState{{
 			// skipped because when expressions evaluate to false
-			PipelineTask: &pts[10],
+			PipelineTask: &testhelpers.PipelineTasks[10],
 			TaskRunNames: []string{"pipelinerun-guardedtask"},
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
@@ -2449,14 +2573,14 @@ func TestSkipBecauseParentTaskWasSkipped(t *testing.T) {
 		name: "when-expression-task-but-without-parent-done",
 		state: PipelineRunState{{
 			// parent task has when expressions but is not yet done
-			PipelineTask: &pts[0],
+			PipelineTask: &testhelpers.PipelineTasks[0],
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}, {
 			// child task not skipped because parent is not yet done
-			PipelineTask: &pts[11],
+			PipelineTask: &testhelpers.PipelineTasks[11],
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
@@ -2469,7 +2593,7 @@ func TestSkipBecauseParentTaskWasSkipped(t *testing.T) {
 		name: "tasks-when-expressions",
 		state: PipelineRunState{{
 			// parent task is skipped because when expressions evaluate to false, not because of its parent tasks
-			PipelineTask: &pts[10],
+			PipelineTask: &testhelpers.PipelineTasks[10],
 			TaskRunNames: []string{"pipelinerun-guardedtask"},
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
@@ -2497,7 +2621,7 @@ func TestSkipBecauseParentTaskWasSkipped(t *testing.T) {
 		name: "tasks-when-expressions-run-multiple-dependent-tasks",
 		state: PipelineRunState{{
 			// parent task is skipped because when expressions evaluate to false, not because of its parent tasks
-			PipelineTask: &pts[10],
+			PipelineTask: &testhelpers.PipelineTasks[10],
 			TaskRunNames: []string{"pipelinerun-guardedtask"},
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
@@ -2619,17 +2743,17 @@ func TestResolvePipelineRun_CustomTask(t *testing.T) {
 	}
 
 	expectedState := PipelineRunState{{
-		PipelineTask:   &pts[0],
+		PipelineTask:   &testhelpers.PipelineTasks[0],
 		CustomTask:     true,
 		CustomRunNames: []string{"pipelinerun-customtask"},
 		CustomRuns:     nil,
 	}, {
-		PipelineTask:   &pts[1],
+		PipelineTask:   &testhelpers.PipelineTasks[1],
 		CustomTask:     true,
 		CustomRunNames: []string{"pipelinerun-customtask-spec"},
 		CustomRuns:     nil,
 	}, {
-		PipelineTask:   &pts[2],
+		PipelineTask:   &testhelpers.PipelineTasks[2],
 		CustomTask:     true,
 		CustomRunNames: []string{"pipelinerun-run-exists"},
 		CustomRuns:     []*v1beta1.CustomRun{run},
@@ -4184,7 +4308,7 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 		want: &ResolvedPipelineTask{
 			TaskRunNames: taskRunsNames[:3],
 			TaskRuns:     taskRuns[:3],
-			PipelineTask: &pts[0],
+			PipelineTask: &testhelpers.PipelineTasks[0],
 			ResolvedTask: rtr,
 		},
 	}, {
@@ -4193,7 +4317,7 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 		want: &ResolvedPipelineTask{
 			TaskRunNames: taskRunsNames,
 			TaskRuns:     taskRuns,
-			PipelineTask: &pts[1],
+			PipelineTask: &testhelpers.PipelineTasks[1],
 			ResolvedTask: rtr,
 		},
 	}, {
@@ -4202,7 +4326,7 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 		want: &ResolvedPipelineTask{
 			TaskRunNames: []string{"pipelinerun-pipelinetask-with-whole-array-results"},
 			TaskRuns:     nil,
-			PipelineTask: &pts[2],
+			PipelineTask: &testhelpers.PipelineTasks[2],
 			ResolvedTask: rtr,
 		},
 		pst: pipelineRunState,
@@ -4336,7 +4460,7 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 			CustomTask:     true,
 			CustomRunNames: runNames[:3],
 			CustomRuns:     runs[:3],
-			PipelineTask:   &pts[0],
+			PipelineTask:   &testhelpers.PipelineTasks[0],
 		},
 	}, {
 		name: "custom task with matrix - multiple parameters",
@@ -4345,7 +4469,7 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 			CustomTask:     true,
 			CustomRunNames: runNames,
 			CustomRuns:     runs,
-			PipelineTask:   &pts[1],
+			PipelineTask:   &testhelpers.PipelineTasks[1],
 		},
 	}, {
 		name: "custom task with matrix - nil run",
@@ -4357,7 +4481,7 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 			CustomTask:     true,
 			CustomRunNames: runNames,
 			CustomRuns:     nil,
-			PipelineTask:   &pts[1],
+			PipelineTask:   &testhelpers.PipelineTasks[1],
 		},
 	}, {
 		name: "custom task with matrix - whole array results",
@@ -4366,7 +4490,7 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 			CustomTask:     true,
 			CustomRunNames: []string{"pipelinerun-customTask-with-whole-array-results"},
 			CustomRuns:     nil,
-			PipelineTask:   &pts[2],
+			PipelineTask:   &testhelpers.PipelineTasks[2],
 		},
 		pst: pipelineRunState,
 	}} {
