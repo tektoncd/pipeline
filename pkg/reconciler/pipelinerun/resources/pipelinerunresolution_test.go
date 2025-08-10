@@ -358,15 +358,16 @@ var pts = []v1.PipelineTask{{
 // 	},
 // }}
 
-var p = &v1.Pipeline{
-	ObjectMeta: metav1.ObjectMeta{
-		Namespace: "namespace",
-		Name:      "pipeline",
-	},
-	Spec: v1.PipelineSpec{
-		Tasks: testhelpers.PipelineTasks,
-	},
-}
+// TODO: Remove this
+// var p = &v1.Pipeline{
+// 	ObjectMeta: metav1.ObjectMeta{
+// 		Namespace: "namespace",
+// 		Name:      "pipeline",
+// 	},
+// 	Spec: v1.PipelineSpec{
+// 		Tasks: testhelpers.PipelineTasks,
+// 	},
+// }
 
 var task = &v1.Task{
 	ObjectMeta: metav1.ObjectMeta{
@@ -2837,7 +2838,7 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 	for _, task := range pts {
 		ps, err := ResolvePipelineTask(t.Context(), pr, nopGetPipelineRun, getTask, getTaskRun, nopGetCustomRun, task, nil)
 		if err != nil {
-			t.Errorf("Error getting tasks for fake pipeline %s: %s", p.ObjectMeta.Name, err)
+			t.Errorf("Error getting tasks for fake pipeline %s: %s", testhelpers.ExamplePipeline.ObjectMeta.Name, err)
 		}
 		pipelineState = append(pipelineState, ps)
 	}
@@ -2874,10 +2875,10 @@ func TestResolvePipelineRun_PipelineTaskHasPipelineRef(t *testing.T) {
 
 	_, err := ResolvePipelineTask(t.Context(), pr, nopGetPipelineRun, getTask, getTaskRun, nopGetCustomRun, pt, nil)
 	if err == nil {
-		t.Errorf("Error getting tasks for fake pipeline %s, expected an error but got nil.", p.ObjectMeta.Name)
+		t.Errorf("Error getting tasks for fake pipeline %s, expected an error but got nil.", testhelpers.ExamplePipeline.ObjectMeta.Name)
 	}
-	if !strings.Contains(err.Error(), "does not support PipelineRef, please use PipelineSpec, TaskRef or TaskSpec instead") {
-		t.Errorf("Error getting tasks for fake pipeline %s: expected contains keyword but got %s", p.ObjectMeta.Name, err)
+	if !strings.Contains(err.Error(), "does not support PipelineRef or PipelineSpec") {
+		t.Errorf("Error getting tasks for fake pipeline %s: expected contains keyword but got %s", testhelpers.ExamplePipeline.ObjectMeta.Name, err)
 	}
 }
 
@@ -2928,14 +2929,14 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 		var tnf *TaskNotFoundError
 		switch {
 		case err == nil:
-			t.Fatalf("Pipeline %s: want error, got nil", p.Name)
+			t.Fatalf("Pipeline %s: want error, got nil", testhelpers.ExamplePipeline.Name)
 		case errors.As(err, &tnf):
 			// expected error
 			if len(tnf.Name) == 0 {
-				t.Fatalf("Pipeline %s: TaskNotFoundError did not have name set: %s", p.Name, tnf.Error())
+				t.Fatalf("Pipeline %s: TaskNotFoundError did not have name set: %s", testhelpers.ExamplePipeline.Name, tnf.Error())
 			}
 		default:
-			t.Fatalf("Pipeline %s: Want %T, got %s of type %T", p.Name, tnf, err, err)
+			t.Fatalf("Pipeline %s: Want %T, got %s of type %T", testhelpers.ExamplePipeline.Name, tnf, err, err)
 		}
 	}
 }
