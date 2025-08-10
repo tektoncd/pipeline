@@ -50,7 +50,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{withCancelled(makeRetried(testhelpers.ExampleTaskRuns[0]))},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -59,7 +59,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{withCancelledBySpec(makeRetried(testhelpers.ExampleTaskRuns[0]))},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -68,7 +68,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{makeStarted(testhelpers.ExampleTaskRuns[0])},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -77,7 +77,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{makeSucceeded(testhelpers.ExampleTaskRuns[0])},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -86,7 +86,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{withCancelled(makeRetried(testhelpers.ExampleTaskRuns[0]))},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -95,7 +95,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{withRetries(makeToBeRetried(testhelpers.ExampleTaskRuns[0]))},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -104,7 +104,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     nil,
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -134,7 +134,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{withCancelled(makeFailed(testhelpers.ExampleTaskRuns[0]))},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -618,7 +618,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{withCancelled(makeRetried(testhelpers.ExampleTaskRuns[0]))},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -627,7 +627,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{withCancelledBySpec(makeRetried(testhelpers.ExampleTaskRuns[0]))},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -636,7 +636,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{makeStarted(testhelpers.ExampleTaskRuns[0])},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -645,7 +645,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{makeSucceeded(testhelpers.ExampleTaskRuns[0])},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -654,7 +654,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{withCancelled(makeRetried(testhelpers.ExampleTaskRuns[0]))},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -664,7 +664,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		CustomRuns:     []*v1beta1.CustomRun{withCustomRunCancelled(withCustomRunRetries(newCustomRun(customRuns[0])))},
 		CustomTask:     true,
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -674,7 +674,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		CustomRuns:     []*v1beta1.CustomRun{withCustomRunCancelledBySpec(withCustomRunRetries(newCustomRun(customRuns[0])))},
 		CustomTask:     true,
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -684,7 +684,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		CustomRuns:     []*v1beta1.CustomRun{makeCustomRunStarted(customRuns[0])},
 		CustomTask:     true,
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -694,7 +694,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		CustomRuns:     []*v1beta1.CustomRun{makeCustomRunSucceeded(customRuns[0])},
 		CustomTask:     true,
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -703,7 +703,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{withCancelled(makeRetried(testhelpers.ExampleTaskRuns[0]))},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -712,7 +712,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{withCancelledBySpec(makeRetried(testhelpers.ExampleTaskRuns[0]))},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -721,7 +721,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{makeStarted(testhelpers.ExampleTaskRuns[0])},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -730,7 +730,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{makeSucceeded(testhelpers.ExampleTaskRuns[0])},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -739,7 +739,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{withCancelled(makeRetried(testhelpers.ExampleTaskRuns[0]))},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -749,7 +749,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		CustomRuns:     []*v1beta1.CustomRun{withCustomRunCancelled(withCustomRunRetries(newCustomRun(customRuns[0])))},
 		CustomTask:     true,
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -759,7 +759,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		CustomRuns:     []*v1beta1.CustomRun{withCustomRunCancelledBySpec(withCustomRunRetries(newCustomRun(customRuns[0])))},
 		CustomTask:     true,
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -769,7 +769,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		CustomRuns:     []*v1beta1.CustomRun{makeCustomRunStarted(customRuns[0])},
 		CustomTask:     true,
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -779,7 +779,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		CustomRuns:     []*v1beta1.CustomRun{makeCustomRunSucceeded(customRuns[0])},
 		CustomTask:     true,
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -789,7 +789,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		CustomRuns:     []*v1beta1.CustomRun{withCustomRunCancelled(withCustomRunRetries(newCustomRun(customRuns[0])))},
 		CustomTask:     true,
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -918,7 +918,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 		},
 		TaskRunNames: []string{"createdtask"},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}
 	createdRun := ResolvedPipelineTask{
@@ -947,7 +947,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 		TaskRunNames: []string{"runningtask"},
 		TaskRuns:     []*v1.TaskRun{newTaskRun(testhelpers.ExampleTaskRuns[0])},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}
 	runningRun := ResolvedPipelineTask{
@@ -978,7 +978,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 		TaskRunNames: []string{"successfultask"},
 		TaskRuns:     []*v1.TaskRun{makeSucceeded(testhelpers.ExampleTaskRuns[0])},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}
 	successfulRun := ResolvedPipelineTask{
@@ -1009,7 +1009,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 		TaskRunNames: []string{"failedtask"},
 		TaskRuns:     []*v1.TaskRun{makeFailed(testhelpers.ExampleTaskRuns[0])},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}
 	failedCustomRun := ResolvedPipelineTask{
@@ -1155,7 +1155,7 @@ func TestDAGExecutionQueueSequentialTasks(t *testing.T) {
 				},
 				TaskRunNames: []string{"task-1"},
 				ResolvedTask: &resources.ResolvedTask{
-					TaskSpec: &task.Spec,
+					TaskSpec: &testhelpers.ExampleTask.Spec,
 				},
 			}
 			secondTask := ResolvedPipelineTask{
@@ -1166,7 +1166,7 @@ func TestDAGExecutionQueueSequentialTasks(t *testing.T) {
 				},
 				TaskRunNames: []string{"task-2"},
 				ResolvedTask: &resources.ResolvedTask{
-					TaskSpec: &task.Spec,
+					TaskSpec: &testhelpers.ExampleTask.Spec,
 				},
 			}
 			if tc.firstTaskRun != nil {
@@ -1807,7 +1807,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{withCancelled(makeRetried(testhelpers.ExampleTaskRuns[0]))},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -1836,7 +1836,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 			},
 		}},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 
@@ -2401,14 +2401,14 @@ func TestGetPipelineConditionStatus_OnError(t *testing.T) {
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1.TaskRun{makeFailed(testhelpers.ExampleTaskRuns[0])},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}, {
 		PipelineTask: &testhelpers.PipelineTasks[0],
 		TaskRunNames: []string{"pipelinerun-mytask2"},
 		TaskRuns:     []*v1.TaskRun{makeSucceeded(testhelpers.ExampleTaskRuns[0])},
 		ResolvedTask: &resources.ResolvedTask{
-			TaskSpec: &task.Spec,
+			TaskSpec: &testhelpers.ExampleTask.Spec,
 		},
 	}}
 	d, err := dagFromState(oneFailedStateOnError)
@@ -2704,7 +2704,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 			TaskRunNames: []string{"pr-guard-succeeded-task-not-started"},
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
-				TaskSpec: &task.Spec,
+				TaskSpec: &testhelpers.ExampleTask.Spec,
 			},
 		}},
 		dagTasks: []v1.PipelineTask{testhelpers.PipelineTasks[9]},
@@ -2719,7 +2719,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 			PipelineTask: &testhelpers.PipelineTasks[10],
 			TaskRunNames: []string{"pr-guardedtask-skipped"},
 			ResolvedTask: &resources.ResolvedTask{
-				TaskSpec: &task.Spec,
+				TaskSpec: &testhelpers.ExampleTask.Spec,
 			},
 		}},
 		dagTasks: []v1.PipelineTask{testhelpers.PipelineTasks[10]},
@@ -2734,13 +2734,13 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 			PipelineTask: &testhelpers.PipelineTasks[0],
 			TaskRuns:     []*v1.TaskRun{makeStarted(testhelpers.ExampleTaskRuns[0])},
 			ResolvedTask: &resources.ResolvedTask{
-				TaskSpec: &task.Spec,
+				TaskSpec: &testhelpers.ExampleTask.Spec,
 			},
 		}, {
 			PipelineTask: &testhelpers.PipelineTasks[11],
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
-				TaskSpec: &task.Spec,
+				TaskSpec: &testhelpers.ExampleTask.Spec,
 			},
 		}},
 		dagTasks: []v1.PipelineTask{testhelpers.PipelineTasks[0], testhelpers.PipelineTasks[11]},
@@ -2766,14 +2766,14 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 			PipelineTask: &testhelpers.PipelineTasks[10],
 			TaskRunNames: []string{"pr-guardedtask-skipped"},
 			ResolvedTask: &resources.ResolvedTask{
-				TaskSpec: &task.Spec,
+				TaskSpec: &testhelpers.ExampleTask.Spec,
 			},
 		}, {
 			PipelineTask: &testhelpers.PipelineTasks[0],
 			TaskRunNames: []string{"pipelinerun-mytask1"},
 			TaskRuns:     []*v1.TaskRun{makeFailed(testhelpers.ExampleTaskRuns[0])},
 			ResolvedTask: &resources.ResolvedTask{
-				TaskSpec: &task.Spec,
+				TaskSpec: &testhelpers.ExampleTask.Spec,
 			},
 		}},
 		dagTasks: []v1.PipelineTask{testhelpers.PipelineTasks[0], testhelpers.PipelineTasks[10]},
@@ -2860,7 +2860,7 @@ func TestPipelineRunFacts_GetPipelineFinalTaskStatus(t *testing.T) {
 			TaskRunNames: []string{"pr-guard-succeeded-task-not-started"},
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
-				TaskSpec: &task.Spec,
+				TaskSpec: &testhelpers.ExampleTask.Spec,
 			},
 		}},
 		finalTasks: []v1.PipelineTask{testhelpers.PipelineTasks[9]},
@@ -2873,7 +2873,7 @@ func TestPipelineRunFacts_GetPipelineFinalTaskStatus(t *testing.T) {
 			PipelineTask: &testhelpers.PipelineTasks[10],
 			TaskRunNames: []string{"pr-guardedtask-skipped"},
 			ResolvedTask: &resources.ResolvedTask{
-				TaskSpec: &task.Spec,
+				TaskSpec: &testhelpers.ExampleTask.Spec,
 			},
 		}},
 		finalTasks: []v1.PipelineTask{testhelpers.PipelineTasks[10]},
@@ -2886,13 +2886,13 @@ func TestPipelineRunFacts_GetPipelineFinalTaskStatus(t *testing.T) {
 			PipelineTask: &testhelpers.PipelineTasks[0],
 			TaskRuns:     []*v1.TaskRun{makeStarted(testhelpers.ExampleTaskRuns[0])},
 			ResolvedTask: &resources.ResolvedTask{
-				TaskSpec: &task.Spec,
+				TaskSpec: &testhelpers.ExampleTask.Spec,
 			},
 		}, {
 			PipelineTask: &testhelpers.PipelineTasks[11],
 			TaskRuns:     nil,
 			ResolvedTask: &resources.ResolvedTask{
-				TaskSpec: &task.Spec,
+				TaskSpec: &testhelpers.ExampleTask.Spec,
 			},
 		}},
 		finalTasks: []v1.PipelineTask{testhelpers.PipelineTasks[0], testhelpers.PipelineTasks[11]},
@@ -2913,14 +2913,14 @@ func TestPipelineRunFacts_GetPipelineFinalTaskStatus(t *testing.T) {
 			PipelineTask: &testhelpers.PipelineTasks[10],
 			TaskRunNames: []string{"pr-guardedtask-skipped"},
 			ResolvedTask: &resources.ResolvedTask{
-				TaskSpec: &task.Spec,
+				TaskSpec: &testhelpers.ExampleTask.Spec,
 			},
 		}, {
 			PipelineTask: &testhelpers.PipelineTasks[0],
 			TaskRunNames: []string{"pipelinerun-mytask1"},
 			TaskRuns:     []*v1.TaskRun{makeFailed(testhelpers.ExampleTaskRuns[0])},
 			ResolvedTask: &resources.ResolvedTask{
-				TaskSpec: &task.Spec,
+				TaskSpec: &testhelpers.ExampleTask.Spec,
 			},
 		}},
 		finalTasks: []v1.PipelineTask{testhelpers.PipelineTasks[0], testhelpers.PipelineTasks[10]},
