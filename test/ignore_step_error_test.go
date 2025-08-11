@@ -22,8 +22,9 @@ package test
 import (
 	"context"
 	"fmt"
-	"testing"
 	"strings"
+	"testing"
+
 	"github.com/google/go-cmp/cmp"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -35,7 +36,7 @@ import (
 )
 
 var (
-	onErrorContinue = "continue"
+	onErrorContinue        = "continue"
 	onErrorContinueAndFail = "continueAndFail"
 )
 
@@ -46,8 +47,8 @@ func successfulStep(name string, onError *string) string {
         script: 'echo hello'`, name)
 
 	if onError != nil {
-		step += "\n" + fmt.Sprintf(`
-        onError: %s`, *onError)
+		step += "\n" + `
+        onError: ` + *onError
 	}
 
 	return step
@@ -60,8 +61,8 @@ func failingStep(name string, onError *string) string {
         script: 'echo -n 123 | tee $(results.result1.path); exit 1; echo -n 456 | tee $(results.result2.path)'`, name)
 
 	if onError != nil {
-		step += "\n" + fmt.Sprintf(`
-        onError: %s`, *onError)
+		step += "\n" + `
+        onError: ` + *onError
 	}
 
 	return step
@@ -76,100 +77,100 @@ func TestFailingStepOnContinue(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	tests := []struct {
-		description   string
-		steps 	      []string
-		shouldSucceed bool
+		description       string
+		steps             []string
+		shouldSucceed     bool
 		expectedStatusMsg string
-		state         string
-		conditionFn   func(name string) ConditionAccessorFn
+		state             string
+		conditionFn       func(name string) ConditionAccessorFn
 	}{
 		{
-			description:   "failing step with onError continue and successful follow-up step",
+			description: "failing step with onError continue and successful follow-up step",
 			steps: []string{
 				failingStep("failing-step", &onErrorContinue),
 				successfulStep("successful-step", nil),
 			},
-			shouldSucceed: true,
+			shouldSucceed:     true,
 			expectedStatusMsg: "All Steps have completed executing",
-			state:         "TaskRunSucceeded",
-			conditionFn:   TaskRunSucceed,
+			state:             "TaskRunSucceeded",
+			conditionFn:       TaskRunSucceed,
 		},
 		{
-			description:   "failing step with onError continueAndFail and successful follow-up step",
+			description: "failing step with onError continueAndFail and successful follow-up step",
 			steps: []string{
 				failingStep("failing-step", &onErrorContinueAndFail),
 				successfulStep("successful-step", nil),
 			},
-			shouldSucceed: false,
+			shouldSucceed:     false,
 			expectedStatusMsg: `"step-failing-step" exited with code 1`,
-			state:         "TaskRunFailed",
-			conditionFn:   TaskRunFailed,
+			state:             "TaskRunFailed",
+			conditionFn:       TaskRunFailed,
 		},
 		{
-			description:   "failing step with onError continue and failing follow-up step",
+			description: "failing step with onError continue and failing follow-up step",
 			steps: []string{
 				failingStep("failing-step-1", &onErrorContinue),
 				failingStep("failing-step-2", nil),
 			},
-			shouldSucceed: false,
+			shouldSucceed:     false,
 			expectedStatusMsg: `"step-failing-step-2" exited with code 1`,
-			state:         "TaskRunFailed",
-			conditionFn:   TaskRunFailed,
+			state:             "TaskRunFailed",
+			conditionFn:       TaskRunFailed,
 		},
 		{
-			description:   "failing step with onError continueAndFail and failing follow-up step",
+			description: "failing step with onError continueAndFail and failing follow-up step",
 			steps: []string{
 				failingStep("failing-step-1", &onErrorContinueAndFail),
 				failingStep("failing-step-2", nil),
 			},
-			shouldSucceed: false,
+			shouldSucceed:     false,
 			expectedStatusMsg: `"step-failing-step-1" exited with code 1`,
-			state:         "TaskRunFailed",
-			conditionFn:   TaskRunFailed,
+			state:             "TaskRunFailed",
+			conditionFn:       TaskRunFailed,
 		},
 		{
-			description:   "failing step with onError continue and failing follow-up step with onError continueAndFail",
+			description: "failing step with onError continue and failing follow-up step with onError continueAndFail",
 			steps: []string{
 				failingStep("failing-step-1", &onErrorContinue),
 				failingStep("failing-step-2", &onErrorContinueAndFail),
 			},
-			shouldSucceed: false,
+			shouldSucceed:     false,
 			expectedStatusMsg: `"step-failing-step-2" exited with code 1`,
-			state:         "TaskRunFailed",
-			conditionFn:   TaskRunFailed,
+			state:             "TaskRunFailed",
+			conditionFn:       TaskRunFailed,
 		},
 		{
-			description:   "failing step with onError continueAndFail and failing follow-up step with onError continueAndFail",
+			description: "failing step with onError continueAndFail and failing follow-up step with onError continueAndFail",
 			steps: []string{
 				failingStep("failing-step-1", &onErrorContinueAndFail),
 				failingStep("failing-step-2", &onErrorContinueAndFail),
 			},
-			shouldSucceed: false,
+			shouldSucceed:     false,
 			expectedStatusMsg: `"step-failing-step-1" exited with code 1`,
-			state:         "TaskRunFailed",
-			conditionFn:   TaskRunFailed,
+			state:             "TaskRunFailed",
+			conditionFn:       TaskRunFailed,
 		},
 		{
-			description:   "failing step with onError continue and failing follow-up step with onError continue",
+			description: "failing step with onError continue and failing follow-up step with onError continue",
 			steps: []string{
 				failingStep("failing-step-1", &onErrorContinue),
 				failingStep("failing-step-2", &onErrorContinue),
 			},
-			shouldSucceed: true,
+			shouldSucceed:     true,
 			expectedStatusMsg: "All Steps have completed executing",
-			state:         "TaskRunSucceeded",
-			conditionFn:   TaskRunSucceed,
+			state:             "TaskRunSucceeded",
+			conditionFn:       TaskRunSucceed,
 		},
 		{
-			description:   "failing step with onError continueAndFail and failing follow-up step with onError continue",
+			description: "failing step with onError continueAndFail and failing follow-up step with onError continue",
 			steps: []string{
 				failingStep("failing-step-1", &onErrorContinueAndFail),
 				failingStep("failing-step-2", &onErrorContinue),
 			},
-			shouldSucceed: false,
+			shouldSucceed:     false,
 			expectedStatusMsg: `"step-failing-step-1" exited with code 1`,
-			state:         "TaskRunFailed",
-			conditionFn:   TaskRunFailed,
+			state:             "TaskRunFailed",
+			conditionFn:       TaskRunFailed,
 		},
 	}
 
