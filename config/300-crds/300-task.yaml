@@ -6808,7 +6808,7 @@ spec:
                       onError:
                         description: |-
                           OnError defines the exiting behavior of a container on error
-                          can be set to [ continue | stopAndFail ]
+                          can be set to [ continue | stopAndFail | continueAndFail ]
                         type: string
                       params:
                         description: Params declares parameters passed to this step action.
