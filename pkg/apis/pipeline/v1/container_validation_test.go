@@ -669,11 +669,11 @@ func TestStepOnError(t *testing.T) {
 		},
 	}, {
 		name: "valid step - valid onError usage - set to continueAndFail",
-		step: []v1.Step{{
+		step: v1.Step{
 			OnError: v1.ContinueAndFail,
 			Image:   "image",
 			Args:    []string{"arg"},
-		}},
+		},
 	}, {
 		name: "valid step - valid onError usage - set to a task parameter",
 		params: []v1.ParamSpec{{
