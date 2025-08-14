@@ -349,7 +349,7 @@ spec:
                         x-kubernetes-preserve-unknown-fields: true
                       timeout:
                         description: |-
-                          Time after which the TaskRun times out. Defaults to 1 hour.
+                          Duration after which the TaskRun times out. Defaults to 1 hour.
                           Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
                         type: string
                       when:
@@ -794,7 +794,7 @@ spec:
                         x-kubernetes-preserve-unknown-fields: true
                       timeout:
                         description: |-
-                          Time after which the TaskRun times out. Defaults to 1 hour.
+                          Duration after which the TaskRun times out. Defaults to 1 hour.
                           Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
                         type: string
                       when:
@@ -1126,7 +1126,7 @@ spec:
                         x-kubernetes-preserve-unknown-fields: true
                       timeout:
                         description: |-
-                          Time after which the TaskRun times out. Defaults to 1 hour.
+                          Duration after which the TaskRun times out. Defaults to 1 hour.
                           Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
                         type: string
                       when:
@@ -1465,7 +1465,7 @@ spec:
                         x-kubernetes-preserve-unknown-fields: true
                       timeout:
                         description: |-
-                          Time after which the TaskRun times out. Defaults to 1 hour.
+                          Duration after which the TaskRun times out. Defaults to 1 hour.
                           Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
                         type: string
                       when:

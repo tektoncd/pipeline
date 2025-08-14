@@ -1419,6 +1419,11 @@ spec:
                             x-kubernetes-preserve-unknown-fields: true
                       taskServiceAccountName:
                         type: string
+                      timeout:
+                        description: |-
+                          Duration after which the TaskRun times out.
+                          Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+                        type: string
                   x-kubernetes-list-type: atomic
                 timeout:
                   description: |-
@@ -3901,6 +3906,13 @@ spec:
                               description: The name of the Step to override.
                               type: string
                         x-kubernetes-list-type: atomic
+                      timeout:
+                        description: |-
+                          Duration after which the TaskRun times out. Overrides the timeout specified
+                          on the Task's spec if specified. Takes lower precedence to PipelineRun's
+                          `spec.timeouts.tasks`
+                          Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+                        type: string
                   x-kubernetes-list-type: atomic
                 taskRunTemplate:
                   description: TaskRunTemplate represent template of taskrun

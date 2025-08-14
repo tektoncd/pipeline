@@ -951,6 +951,7 @@ spec:
       podTemplate:
         nodeSelector:
           disktype: ssd
+      timeout: "1h30m"
 ```
 {{% /tab %}}
 
@@ -968,12 +969,16 @@ spec:
       taskPodTemplate:
         nodeSelector:
           disktype: ssd
+      timeout: "1h30m"
 ```
 {{% /tab %}}
 {{< /tabs >}}
 
 If used with this `Pipeline`,  `build-task` will use the task specific `PodTemplate` (where `nodeSelector` has `disktype` equal to `ssd`)
-along with `securityContext` from the `pipelineRun.spec.podTemplate`.
+along with `securityContext` from the `pipelineRun.spec.podTemplate`. The task will also have a specific timeout of 1 hour and 30 minutes. This overrides any existing timeout already defined by the pipelineTask as well, though the specified `pipelineRun.spec.timeouts.tasks` will still take precedence.
+
+For more details on timeout overrides, precedence rules, validation, and practical examples, see [Overriding Individual Task Timeouts](#overriding-individual-task-timeouts) in the failure timeout section.
+
 `PipelineTaskRunSpec` may also contain `StepSpecs` and `SidecarSpecs`; see
 [Overriding `Task` `Steps` and `Sidecars`](./taskruns.md#overriding-task-steps-and-sidecars) for more information.
 
@@ -1413,6 +1418,36 @@ To set `timeouts.tasks` or `timeouts.finally` to "0", you must also set `timeout
 The global default timeout is set to 60 minutes when you first install Tekton. You can set
 a different global default timeout value using the `default-timeout-minutes` field in
 [`config/config-defaults.yaml`](./../config/config-defaults.yaml).
+
+#### Overriding Individual Task Timeouts
+
+You can use `taskRunSpecs` to override individual task timeouts at runtime without modifying the Pipeline definition.
+
+**Timeout Precedence (highest to lowest):**
+1. `taskRunSpecs[].timeout` - runtime override per task
+2. `pipeline.spec.tasks[].timeout` - Pipeline spec timeout
+3. `timeouts.tasks` or `timeouts.pipeline` - PipelineRun constraints  
+4. Global default timeout
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+spec:
+  timeouts:
+    pipeline: "10m"    # 3. PipelineRun constraint
+  pipelineSpec:
+    tasks:
+    - name: task-a
+      timeout: "8m"     # 2. Pipeline spec timeout
+      taskSpec: { ... }
+    - name: task-b  
+      taskSpec: { ... } # 4. Uses global default (60m)
+  taskRunSpecs:
+  - pipelineTaskName: task-a
+    timeout: "5m"       # 1. Highest priority - overrides 8m Pipeline timeout
+```
+
+**Note:** `taskRunSpecs` timeouts cannot exceed pipeline-level constraints and will fail validation if they do.
 
 Example timeouts usages are as follows:
 

@@ -1340,7 +1340,7 @@
           "$ref": "#/definitions/v1beta1.EmbeddedTask"
         },
         "timeout": {
-          "description": "Time after which the TaskRun times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "description": "Duration after which the TaskRun times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
           "$ref": "#/definitions/v1.Duration"
         },
         "when": {
@@ -1517,6 +1517,10 @@
         },
         "taskServiceAccountName": {
           "type": "string"
+        },
+        "timeout": {
+          "description": "Duration after which the TaskRun times out. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
         }
       }
     },
