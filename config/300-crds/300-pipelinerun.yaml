@@ -3130,6 +3130,11 @@ spec:
               description: PipelineRunSpec defines the desired state of PipelineRun
               type: object
               properties:
+                managedBy:
+                  description: |-
+                    ManagedBy is the platform that is managing this PipelineRun.
+                    This field is immutable.
+                  type: string
                 params:
                   description: Params is a list of parameter names and values.
                   type: array

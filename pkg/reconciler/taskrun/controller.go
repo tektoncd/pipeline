@@ -107,7 +107,21 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			logging.FromContext(ctx).Panicf("Couldn't register Secret informer event handler: %w", err)
 		}
 
-		if _, err := taskRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
+		if _, err := taskRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: func(obj interface{}) bool {
+				tr, ok := obj.(*v1.TaskRun)
+				if !ok {
+					// We don't care about anything other than TaskRuns.
+					return true
+				}
+				// The taskrun-controller should not reconcile TaskRuns managed by other controllers.
+				if tr.Spec.ManagedBy != "" && tr.Spec.ManagedBy != pipeline.ManagedBy {
+					return false
+				}
+				return true
+			},
+			Handler: controller.HandleAll(impl.Enqueue),
+		}); err != nil {
 			logging.FromContext(ctx).Panicf("Couldn't register TaskRun informer event handler: %w", err)
 		}
 

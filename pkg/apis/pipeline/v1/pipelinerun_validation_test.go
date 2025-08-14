@@ -1667,6 +1667,56 @@ func TestPipelineRunSpec_ValidateUpdate(t *testing.T) {
 				Message: `invalid value: Once the PipelineRun is complete, no updates are allowed`,
 				Paths:   []string{""},
 			},
+		}, {
+			name: "is update ctx, baseline is not done, managedBy changes",
+			baselinePipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					ManagedBy: "tekton.dev/pipeline",
+				},
+				Status: v1.PipelineRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown},
+						},
+					},
+				},
+			},
+			pipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					ManagedBy: "some-other-controller",
+				},
+			},
+			isCreate: false,
+			isUpdate: true,
+			expectedError: apis.FieldError{
+				Message: `invalid value: managedBy is immutable`,
+				Paths:   []string{"spec.managedBy"},
+			},
+		}, {
+			name: "is update ctx, baseline is unknown, managedBy changes",
+			baselinePipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					ManagedBy: "tekton.dev/pipeline",
+				},
+				Status: v1.PipelineRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown},
+						},
+					},
+				},
+			},
+			pipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					ManagedBy: "some-other-controller",
+				},
+			},
+			isCreate: false,
+			isUpdate: true,
+			expectedError: apis.FieldError{
+				Message: `invalid value: managedBy is immutable`,
+				Paths:   []string{"spec.managedBy"},
+			},
 		},
 	}
 

@@ -7771,3 +7771,135 @@ spec:
 		t.Errorf("Custom volumes mismatch: %s", diff.PrintWantGot(d))
 	}
 }
+
+func TestReconcile_ManagedBy(t *testing.T) {
+	namespace := "foo"
+	trManagedByTektonName := "test-tr-managed-by-tekton"
+	trManagedByOtherName := "test-tr-managed-by-other"
+
+	ts := []*v1.Task{simpleTask}
+
+	trs := []*v1.TaskRun{
+		parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    name: test-task
+  managedBy: tekton.dev/pipeline
+`, trManagedByTektonName, namespace)),
+		parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    name: test-task
+  managedBy: other-controller
+`, trManagedByOtherName, namespace)),
+	}
+
+	// This data includes all resources and will be used by the fake client.
+	d := test.Data{
+		TaskRuns: trs,
+		Tasks:    ts,
+		ServiceAccounts: []*corev1.ServiceAccount{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default",
+				Namespace: namespace,
+			},
+		}},
+		ConfigMaps: []*corev1.ConfigMap{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+				Data: map[string]string{
+					"default-timeout-minutes":        "60",
+					"default-managed-by-label-value": "tekton-pipelines",
+				},
+			},
+		},
+	}
+
+	// This data is filtered and simulates what the informer would pass to the reconciler.
+	// It only contains the TaskRun that should be reconciled.
+	filteredData := test.Data{
+		TaskRuns: []*v1.TaskRun{trs[0]}, // Only the one managed by Tekton
+		Tasks:    ts,
+		ServiceAccounts: []*corev1.ServiceAccount{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default",
+				Namespace: namespace,
+			},
+		}},
+		ConfigMaps: []*corev1.ConfigMap{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+				Data: map[string]string{
+					"default-timeout-minutes":        "60",
+					"default-managed-by-label-value": "tekton-pipelines",
+				},
+			},
+		},
+	}
+
+	// Initialize controller with filtered data for the listers
+	testAssets, cancel := getTaskRunController(t, filteredData)
+	defer cancel()
+
+	// Create clients with all the data for verification
+	ctx, _ := ttesting.SetupFakeContext(t)
+	clients, _ := test.SeedTestData(t, ctx, d)
+
+	// 1. Reconcile the TaskRun managed by "other-controller"
+	// We expect nothing to happen because it's not in the lister.
+	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(trs[1]))
+	if err != nil {
+		t.Errorf("Expected reconcile to return nil for externally managed TaskRun, but got: %v", err)
+	}
+
+	// Verify no Pods were created for the externally managed TaskRun
+	podsOther, err := testAssets.Clients.Kube.CoreV1().Pods(namespace).List(testAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Error listing pods: %v", err)
+	}
+	if len(podsOther.Items) != 0 {
+		t.Errorf("Expected no Pods for externally managed TaskRun, but found %d", len(podsOther.Items))
+	}
+
+	// Verify its status is unchanged
+	reconciledOther, err := clients.Pipeline.TektonV1().TaskRuns(namespace).Get(testAssets.Ctx, trManagedByOtherName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get externally managed TaskRun: %v", err)
+	}
+	if len(reconciledOther.Status.Conditions) != 0 {
+		t.Errorf("Expected externally managed TaskRun to have no conditions, but it did")
+	}
+
+	// 2. Reconcile the TaskRun managed by "tekton.dev/pipeline"
+	// We expect this one to be processed normally.
+	err = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(trs[0]))
+	if err == nil {
+		t.Errorf("Expected reconcile to return a requeue indicating the pod was created, but got nil")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
+		t.Errorf("Expected a requeue error, got: %v", err)
+	}
+
+	// Verify a Pod was created for the Tekton-managed TaskRun
+	podsTekton, err := testAssets.Clients.Kube.CoreV1().Pods(namespace).List(testAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Error listing pods: %v", err)
+	}
+	if len(podsTekton.Items) != 1 {
+		t.Errorf("Expected 1 Pod for Tekton-managed TaskRun, but found %d", len(podsTekton.Items))
+	}
+
+	// Verify its status was updated
+	reconciledTekton, err := clients.Pipeline.TektonV1().TaskRuns(namespace).Get(testAssets.Ctx, trManagedByTektonName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get Tekton-managed TaskRun: %v", err)
+	}
+	if !reconciledTekton.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+		t.Errorf("Expected Tekton-managed TaskRun to be running, but it was not")
+	}
+}
