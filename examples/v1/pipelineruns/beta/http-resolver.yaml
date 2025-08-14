@@ -5,11 +5,11 @@ metadata:
   generateName: http-resolver-
 spec:
   workspaces:
-  - name: output
-    emptyDir: {}
+    - name: output
+      emptyDir: {}
   pipelineSpec:
     workspaces:
-    - name: output
+      - name: output
     tasks:
       - name: http-resolver
         taskRef:
