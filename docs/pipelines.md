@@ -1206,6 +1206,8 @@ format. For example, valid values are `1h30m`, `1h`, `1m`, and `60s`.
 For example, if the `PipelineRun` sets `timeouts.pipeline = 1h` and the `Pipeline` sets `tasks[0].timeout = 3h`, the task will still timeout after `1h`.
 See [`PipelineRun - Configuring a failure timeout`](pipelineruns.md#configuring-a-failure-timeout) for details.
 
+**Note:** Task timeouts specified in the Pipeline can be overridden at runtime using the [`taskRunSpecs`](pipelineruns.md#overriding-individual-task-timeouts) field in the PipelineRun. This provides flexibility to adjust timeouts for specific execution contexts without modifying the Pipeline definition.
+
 In the example below, the `build-the-image` `Task` is configured to time out after 90 seconds:
 
 ```yaml

@@ -105,6 +105,10 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		}
 	}
 
+	// Validate individual TaskRunSpecs with timeout context
+	for idx, trs := range ps.TaskRunSpecs {
+		errs = errs.Also(validateTaskRunSpec(ctx, trs, ps.Timeouts).ViaIndex(idx).ViaField("taskRunSpecs"))
+	}
 	errs = errs.Also(validateSpecStatus(ps.Status))
 
 	if ps.Workspaces != nil {
@@ -116,9 +120,6 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 			}
 			wsNames[ws.Name] = idx
 		}
-	}
-	for idx, trs := range ps.TaskRunSpecs {
-		errs = errs.Also(validateTaskRunSpec(ctx, trs).ViaIndex(idx).ViaField("taskRunSpecs"))
 	}
 
 	if ps.TaskRunTemplate.PodTemplate != nil {
@@ -313,7 +314,7 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 	return errs
 }
 
-func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *apis.FieldError) {
+func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec, pipelineTimeouts *TimeoutFields) (errs *apis.FieldError) {
 	if trs.StepSpecs != nil {
 		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepSpecs", config.BetaAPIFields).ViaField("stepSpecs"))
 		errs = errs.Also(validateStepSpecs(trs.StepSpecs).ViaField("stepSpecs"))
@@ -329,5 +330,72 @@ func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *ap
 	if trs.PodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *trs.PodTemplate))
 	}
+
+	errs = errs.Also(validateTaskRunSpecTimeout(ctx, trs.Timeout, pipelineTimeouts))
+
 	return errs
+}
+
+// validateTaskRunSpecTimeout validates a TaskRunSpec's timeout against pipeline timeouts.
+// This function works in isolation and doesn't rely on previous validation steps.
+func validateTaskRunSpecTimeout(ctx context.Context, timeout *metav1.Duration, pipelineTimeouts *TimeoutFields) *apis.FieldError {
+	if timeout == nil {
+		return nil
+	}
+
+	cfg := config.FromContextOrDefaults(ctx)
+
+	// Validate basic timeout (negative values)
+	if _, err := validateTimeout(timeout, cfg.Defaults.DefaultTimeoutMinutes); err != nil {
+		return err
+	}
+
+	// Find applicable timeout limit: Tasks -> Pipeline -> Default (60min)
+	var maxTimeout *metav1.Duration
+	var timeoutSource string
+
+	switch {
+	case pipelineTimeouts != nil && pipelineTimeouts.Tasks != nil:
+		if validatedTimeout, err := validateTimeout(pipelineTimeouts.Tasks, cfg.Defaults.DefaultTimeoutMinutes); err != nil {
+			// Return error if Tasks timeout is invalid (prevents silent failures)
+			return err
+		} else {
+			maxTimeout = validatedTimeout
+			timeoutSource = "pipeline tasks duration"
+		}
+	case pipelineTimeouts != nil && pipelineTimeouts.Pipeline != nil:
+		if validatedTimeout, err := validateTimeout(pipelineTimeouts.Pipeline, cfg.Defaults.DefaultTimeoutMinutes); err != nil {
+			// Return error if Pipeline timeout is invalid (prevents silent failures)
+			return err
+		} else {
+			maxTimeout = validatedTimeout
+			timeoutSource = "pipeline duration"
+		}
+	default:
+		maxTimeout = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
+		timeoutSource = "default pipeline duration"
+	}
+
+	// always check against max timeout
+	if maxTimeout != nil && maxTimeout.Duration != config.NoTimeoutDuration {
+		if taskRunTimeout, _ := validateTimeout(timeout, cfg.Defaults.DefaultTimeoutMinutes); taskRunTimeout.Duration > maxTimeout.Duration { // We know this won't error from above
+			return apis.ErrInvalidValue(
+				fmt.Sprintf("%s should be <= %s %s", taskRunTimeout.Duration, timeoutSource, maxTimeout.Duration),
+				"timeout")
+		}
+	}
+
+	return nil
+}
+
+// validateTimeout validates a timeout field and returns the validated timeout with defaults applied.
+// If timeout is nil, returns default timeout. If timeout is negative, returns an error.
+func validateTimeout(timeout *metav1.Duration, defaultTimeoutMinutes int) (*metav1.Duration, *apis.FieldError) {
+	if timeout == nil {
+		return &metav1.Duration{Duration: time.Duration(defaultTimeoutMinutes) * time.Minute}, nil
+	}
+	if timeout.Duration < 0 {
+		return nil, apis.ErrInvalidValue(timeout.Duration.String()+" should be >= 0", "timeout")
+	}
+	return timeout, nil
 }

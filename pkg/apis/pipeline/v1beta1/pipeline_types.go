@@ -250,7 +250,7 @@ type PipelineTask struct {
 	// +listType=atomic
 	Workspaces []WorkspacePipelineTaskBinding `json:"workspaces,omitempty"`
 
-	// Time after which the TaskRun times out. Defaults to 1 hour.
+	// Duration after which the TaskRun times out. Defaults to 1 hour.
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`

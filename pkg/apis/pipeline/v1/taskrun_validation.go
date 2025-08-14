@@ -109,16 +109,15 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if ts.Retries < 0 {
 		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%d should be >= 0", ts.Retries), "retries"))
 	}
-	if ts.Timeout != nil {
-		// timeout should be a valid duration of at least 0.
-		if ts.Timeout.Duration < 0 {
-			errs = errs.Also(apis.ErrInvalidValue(ts.Timeout.Duration.String()+" should be >= 0", "timeout"))
-		}
-	}
 
 	if ts.PodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *ts.PodTemplate))
 	}
+
+	if ts.Timeout != nil && ts.Timeout.Duration < 0 {
+		errs = errs.Also(apis.ErrInvalidValue(ts.Timeout.Duration.String()+" should be >= 0", "timeout"))
+	}
+
 	return errs
 }
 

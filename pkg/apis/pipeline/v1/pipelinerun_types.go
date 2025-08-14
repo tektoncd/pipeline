@@ -656,6 +656,13 @@ type PipelineTaskRunSpec struct {
 
 	// Compute resources to use for this TaskRun
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
+
+	// Duration after which the TaskRun times out. Overrides the timeout specified
+	// on the Task's spec if specified. Takes lower precedence to PipelineRun's
+	// `spec.timeouts.tasks`
+	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+	// +optional
+	Timeout *metav1.Duration `json:"timeout,omitempty"`
 }
 
 // GetTaskRunSpec returns the task specific spec for a given
@@ -678,6 +685,7 @@ func (pr *PipelineRun) GetTaskRunSpec(pipelineTaskName string) PipelineTaskRunSp
 			s.SidecarSpecs = task.SidecarSpecs
 			s.Metadata = task.Metadata
 			s.ComputeResources = task.ComputeResources
+			s.Timeout = task.Timeout
 		}
 	}
 	return s

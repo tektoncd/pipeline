@@ -998,7 +998,7 @@
           "$ref": "#/definitions/v1.EmbeddedTask"
         },
         "timeout": {
-          "description": "Time after which the TaskRun times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "description": "Duration after which the TaskRun times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
           "$ref": "#/definitions/v1.Duration"
         },
         "when": {
@@ -1102,6 +1102,10 @@
             "$ref": "#/definitions/v1.TaskRunStepSpec"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "timeout": {
+          "description": "Duration after which the TaskRun times out. Overrides the timeout specified on the Task's spec if specified. Takes lower precedence to PipelineRun's `spec.timeouts.tasks` Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
         }
       }
     },

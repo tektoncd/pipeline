@@ -1068,6 +1068,11 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 		tr.Spec.Timeout = rpt.PipelineTask.Timeout
 	}
 
+	// taskRunSpec timeout overrides pipeline task timeout
+	if taskRunSpec.Timeout != nil {
+		tr.Spec.Timeout = taskRunSpec.Timeout
+	}
+
 	if rpt.ResolvedTask.TaskName != "" {
 		// We pass the entire, original task ref because it may contain additional references like a Bundle url.
 		tr.Spec.TaskRef = rpt.PipelineTask.TaskRef
@@ -1168,6 +1173,11 @@ func (c *Reconciler) createCustomRun(ctx context.Context, runName string, params
 	params = append(params, rpt.PipelineTask.Params...)
 
 	taskTimeout := rpt.PipelineTask.Timeout
+	// taskRunSpec timeout overrides pipeline task timeout
+	if taskRunSpec.Timeout != nil {
+		taskTimeout = taskRunSpec.Timeout
+	}
+
 	var pipelinePVCWorkspaceName string
 	var err error
 	var workspaces []v1.WorkspaceBinding
