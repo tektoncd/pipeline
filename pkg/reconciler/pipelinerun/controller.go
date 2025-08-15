@@ -96,7 +96,17 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			logging.FromContext(ctx).Panicf("Couldn't register Secret informer event handler: %w", err)
 		}
 
-		if _, err := pipelineRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
+		if _, err := pipelineRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: func(obj interface{}) bool {
+				if pr, ok := obj.(*v1.PipelineRun); ok {
+					if pr.Spec.ManagedBy != "" && pr.Spec.ManagedBy != pipeline.ManagedBy {
+						return false
+					}
+				}
+				return true
+			},
+			Handler: controller.HandleAll(impl.Enqueue),
+		}); err != nil {
 			logging.FromContext(ctx).Panicf("Couldn't register PipelineRun informer event handler: %w", err)
 		}
 

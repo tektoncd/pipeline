@@ -2336,6 +2336,11 @@ spec:
                             if enabled, pause TaskRun on failure of a step
                             failed step will not exit
                           type: string
+                managedBy:
+                  description: |-
+                    ManagedBy is the platform that is managing this TaskRun.
+                    This field is immutable.
+                  type: string
                 params:
                   description: Params is a list of Param
                   type: array

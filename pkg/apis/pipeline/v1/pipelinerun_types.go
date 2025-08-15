@@ -283,6 +283,10 @@ type PipelineRunSpec struct {
 	// +optional
 	// +listType=atomic
 	TaskRunSpecs []PipelineTaskRunSpec `json:"taskRunSpecs,omitempty"`
+	// ManagedBy is the platform that is managing this PipelineRun.
+	// This field is immutable.
+	// +optional
+	ManagedBy string `json:"managedBy,omitempty"`
 }
 
 // TimeoutFields allows granular specification of pipeline, task, and finally timeouts

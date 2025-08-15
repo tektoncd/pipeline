@@ -85,6 +85,10 @@ type TaskRunSpec struct {
 	SidecarSpecs []TaskRunSidecarSpec `json:"sidecarSpecs,omitempty"`
 	// Compute resources to use for this TaskRun
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
+	// ManagedBy is the platform that is managing this TaskRun.
+	// This field is immutable.
+	// +optional
+	ManagedBy string `json:"managedBy,omitempty"`
 }
 
 // TaskRunSpecStatus defines the TaskRun spec status the user can provide
