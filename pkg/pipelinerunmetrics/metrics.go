@@ -412,7 +412,7 @@ func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 		if err_ != nil {
 			return err
 		}
-		if !pr.IsDone() {
+		if !pr.IsDone() && !pr.IsPending() {
 			countMap[pipelineRunKey]++
 			metrics.Record(ctx_, runningPRs.M(float64(countMap[pipelineRunKey])))
 			runningPipelineRuns++
