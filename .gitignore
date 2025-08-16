@@ -16,6 +16,9 @@
 *.dylib
 *.dll
 
+# Go test binaries
+*.test
+
 # Fortran module files
 *.smod
 

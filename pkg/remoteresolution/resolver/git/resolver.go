@@ -23,9 +23,8 @@ import (
 
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/factory"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
@@ -67,8 +66,8 @@ type Resolver struct {
 	clientFunc func(string, string, string, ...factory.ClientOptionFunc) (*scm.Client, error)
 }
 
-// Ensure Resolver implements CacheAwareResolver
-var _ framework.CacheAwareResolver = (*Resolver)(nil)
+// Ensure Resolver implements ImmutabilityChecker
+var _ framework.ImmutabilityChecker = (*Resolver)(nil)
 
 // Initialize performs any setup required by the git resolver.
 func (r *Resolver) Initialize(ctx context.Context) error {
@@ -88,13 +87,13 @@ func (r *Resolver) Initialize(ctx context.Context) error {
 
 // GetName returns the string name that the git resolver should be
 // associated with.
-func (r *Resolver) GetName(_ context.Context) string {
+func (r *Resolver) GetName(ctx context.Context) string {
 	return ResolverName
 }
 
 // GetSelector returns the labels that resource requests are required to have for
 // the gitresolver to process them.
-func (r *Resolver) GetSelector(_ context.Context) map[string]string {
+func (r *Resolver) GetSelector(ctx context.Context) map[string]string {
 	return map[string]string{
 		resolutioncommon.LabelKeyResolverType: LabelValueGitResolverType,
 	}
@@ -106,11 +105,11 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 	return git.ValidateParams(ctx, req.Params)
 }
 
-// IsImmutable implements CacheAwareResolver.IsImmutable
+// IsImmutable implements ImmutabilityChecker.IsImmutable
 // Returns true if the revision parameter is a commit SHA (40-character hex string)
-func (r *Resolver) IsImmutable(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
+func (r *Resolver) IsImmutable(ctx context.Context, params []pipelinev1.Param) bool {
 	var revision string
-	for _, param := range req.Params {
+	for _, param := range params {
 		if param.Name == RevisionParam {
 			revision = param.Value.StringVal
 			break
@@ -126,38 +125,31 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	if len(req.Params) == 0 {
 		return nil, errors.New("no params")
 	}
-
 	if git.IsDisabled(ctx) {
 		return nil, errors.New(disabledError)
 	}
-
 	params, err := git.PopulateDefaultParams(ctx, req.Params)
 	if err != nil {
 		return nil, err
 	}
-
-	// Determine if we should use caching using framework logic
-	systemDefault := framework.GetSystemDefaultCacheMode("git")
-	useCache := framework.ShouldUseCache(ctx, r, req, systemDefault)
-
-	// Check cache first if caching is enabled
-	var cacheInstance *cache.ResolverCache
-	if useCache {
-		// Get cache from dependency injection instead of global singleton
-		cacheInstance = injection.Get(ctx)
-
-		// Generate cache key
-		cacheKey := cache.GenerateCacheKey(LabelValueGitResolverType, req.Params)
-
-		// Check cache first
-		if cached, ok := cacheInstance.Get(cacheKey); ok {
-			if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
-				// Return annotated resource to indicate it came from cache
-				return cache.NewAnnotatedResource(resource, LabelValueGitResolverType, cache.CacheOperationRetrieve), nil
-			}
-		}
+	if r.useCache(ctx, req) {
+		return framework.RunCacheOperations(
+			ctx,
+			req.Params,
+			LabelValueGitResolverType,
+			func() (resolutionframework.ResolvedResource, error) {
+				return r.resolveViaGit(ctx, params)
+			},
+		)
 	}
+	return r.resolveViaGit(ctx, params)
+}
 
+func (r *Resolver) useCache(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
+	return framework.ShouldUseCache(ctx, r, req.Params, "git")
+}
+
+func (r *Resolver) resolveViaGit(ctx context.Context, params map[string]string) (resolutionframework.ResolvedResource, error) {
 	g := &git.GitResolver{
 		KubeClient: r.kubeClient,
 		Logger:     r.logger,
@@ -165,28 +157,10 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		TTL:        r.ttl,
 		Params:     params,
 	}
-
-	var resource resolutionframework.ResolvedResource
 	if params[git.UrlParam] != "" {
-		resource, err = g.ResolveGitClone(ctx)
-	} else {
-		resource, err = g.ResolveAPIGit(ctx, r.clientFunc)
+		return g.ResolveGitClone(ctx)
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	// Cache the result if caching is enabled
-	if useCache {
-		cacheKey := cache.GenerateCacheKey(LabelValueGitResolverType, req.Params)
-		// Store annotated resource with store operation
-		annotatedResource := cache.NewAnnotatedResource(resource, LabelValueGitResolverType, cache.CacheOperationStore)
-		cacheInstance.Add(cacheKey, annotatedResource)
-		// Return annotated resource to indicate it was stored in cache
-		return annotatedResource, nil
-	}
-
-	return resource, nil
+	return g.ResolveAPIGit(ctx, r.clientFunc)
 }
 
 // isCommitSHA checks if the given string looks like a git commit SHA.
