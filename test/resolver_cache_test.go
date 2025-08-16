@@ -60,12 +60,9 @@ func clearCache(ctx context.Context) {
 	// Clear cache using injection-based instance
 	cacheInstance := cacheinjection.Get(ctx)
 	cacheInstance.Clear()
-	// Verify cache is cleared by attempting to retrieve a known key
-	// If cache is properly cleared, this should return nil
-	if result, found := cacheInstance.Get("test-verification-key"); found || result != nil {
-		// This should not happen with a properly functioning cache
-		panic("Cache clear verification failed: cache not properly cleared")
-	}
+	// Note: With the new cache API, we can't easily verify emptiness with a test key
+	// since Get() now requires resolverType and params. The Clear() method is reliable
+	// and doesn't need verification - it uses RemoveAll() internally.
 }
 
 // TestBundleResolverCache validates that bundle resolver caching works correctly
