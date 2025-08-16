@@ -44,13 +44,13 @@ func (r *FakeResolver) Initialize(ctx context.Context) error {
 
 // GetName returns the string name that the fake resolver should be
 // associated with.
-func (r *FakeResolver) GetName(_ context.Context) string {
+func (r *FakeResolver) GetName(ctx context.Context) string {
 	return framework.FakeResolverName
 }
 
 // GetSelector returns the labels that resource requests are required to have for
 // the fake resolver to process them.
-func (r *FakeResolver) GetSelector(_ context.Context) map[string]string {
+func (r *FakeResolver) GetSelector(ctx context.Context) map[string]string {
 	return map[string]string{
 		resolutioncommon.LabelKeyResolverType: framework.LabelValueFakeResolverType,
 	}

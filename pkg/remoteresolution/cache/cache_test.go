@@ -22,25 +22,37 @@ import (
 
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 
+func newMockResolvedResource(content string) resolutionframework.ResolvedResource {
+	return &mockResolvedResource{
+		data:        []byte(content),
+		annotations: map[string]string{"test": "annotation"},
+		refSource:   &pipelinev1.RefSource{URI: "test://example.com"},
+	}
+}
+
 func TestGenerateCacheKey(t *testing.T) {
 	tests := []struct {
 		name         string
 		resolverType string
 		params       []pipelinev1.Param
+		expectedKey  string
 	}{
 		{
 			name:         "empty params",
 			resolverType: "http",
 			params:       []pipelinev1.Param{},
+			// SHA-256 of "http:"
+			expectedKey: "1c31dda07cb1e09e89bd660a8d114936b44f728b73a3bc52c69a409ee1d44e67",
 		},
 		{
-			name:         "single param",
+			name:         "single string param",
 			resolverType: "http",
 			params: []pipelinev1.Param{
 				{
@@ -51,9 +63,11 @@ func TestGenerateCacheKey(t *testing.T) {
 					},
 				},
 			},
+			// SHA-256 of "http:url=https://example.com;"
+			expectedKey: "63f68e3e567eafd7efb4149b3389b3261784c8ac5847b62e90b7ae8d23f6e889",
 		},
 		{
-			name:         "multiple params",
+			name:         "multiple string params sorted by name",
 			resolverType: "git",
 			params: []pipelinev1.Param{
 				{
@@ -71,14 +85,121 @@ func TestGenerateCacheKey(t *testing.T) {
 					},
 				},
 			},
+			// SHA-256 of "git:revision=main;url=https://github.com/tektoncd/pipeline;" (params sorted alphabetically)
+			expectedKey: "fbe74989962e04dbb512a986864acff592dd02e84ab20f7544fa6b473648f28c",
+		},
+		{
+			name:         "array param with sorted values",
+			resolverType: "bundle",
+			params: []pipelinev1.Param{
+				{
+					Name: "layers",
+					Value: pipelinev1.ParamValue{
+						Type:     pipelinev1.ParamTypeArray,
+						ArrayVal: []string{"config", "base", "app"}, // Will be sorted: app,base,config
+					},
+				},
+			},
+			// SHA-256 of "bundle:layers=app,base,config;" (array values sorted)
+			expectedKey: "f49a5f32af71ceaf14a749cf9d81c633abf962744dfd5214c3504d8c6485853d",
+		},
+		{
+			name:         "object param with sorted keys",
+			resolverType: "cluster",
+			params: []pipelinev1.Param{
+				{
+					Name: "metadata",
+					Value: pipelinev1.ParamValue{
+						Type: pipelinev1.ParamTypeObject,
+						ObjectVal: map[string]string{
+							"namespace": "tekton-pipelines",
+							"name":      "my-task",
+							"kind":      "Task",
+						},
+					},
+				},
+			},
+			// SHA-256 of "cluster:metadata=kind:Task,name:my-task,namespace:tekton-pipelines;" (object keys sorted)
+			expectedKey: "526a5d7e242d438999cb09ac17f3a789bec124fb249573e411ce57f77fcf9858",
+		},
+		{
+			name:         "params with cache param excluded",
+			resolverType: "bundle",
+			params: []pipelinev1.Param{
+				{
+					Name: "bundle",
+					Value: pipelinev1.ParamValue{
+						Type:      pipelinev1.ParamTypeString,
+						StringVal: "gcr.io/tekton/catalog:v1.0.0",
+					},
+				},
+				{
+					Name: "cache", // This should be excluded from the key
+					Value: pipelinev1.ParamValue{
+						Type:      pipelinev1.ParamTypeString,
+						StringVal: "always",
+					},
+				},
+			},
+			// SHA-256 of "bundle:bundle=gcr.io/tekton/catalog:v1.0.0;" (cache param excluded)
+			expectedKey: "bb4509c0a043f4677f84005a320791c384a15b35026665bd95ff3bca0f563862",
+		},
+		{
+			name:         "complex mixed param types",
+			resolverType: "test",
+			params: []pipelinev1.Param{
+				{
+					Name: "string-param",
+					Value: pipelinev1.ParamValue{
+						Type:      pipelinev1.ParamTypeString,
+						StringVal: "simple-value",
+					},
+				},
+				{
+					Name: "array-param",
+					Value: pipelinev1.ParamValue{
+						Type:     pipelinev1.ParamTypeArray,
+						ArrayVal: []string{"zebra", "alpha", "beta"}, // Will be sorted: alpha,beta,zebra
+					},
+				},
+				{
+					Name: "object-param",
+					Value: pipelinev1.ParamValue{
+						Type: pipelinev1.ParamTypeObject,
+						ObjectVal: map[string]string{
+							"z-key": "z-value",
+							"a-key": "a-value",
+							"m-key": "m-value",
+						}, // Will be sorted: a-key:a-value,m-key:m-value,z-key:z-value
+					},
+				},
+			},
+			// SHA-256 of "test:array-param=alpha,beta,zebra;object-param=a-key:a-value,m-key:m-value,z-key:z-value;string-param=simple-value;"
+			expectedKey: "776a04a1cd162d3df653260f01b9be45c158649bdbb019fddb36a419810a5364",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			key := GenerateCacheKey(tt.resolverType, tt.params)
-			if key == "" {
-				t.Error("GenerateCacheKey() returned empty key")
+			actualKey := generateCacheKey(tt.resolverType, tt.params)
+
+			// First verify key is not empty
+			if actualKey == "" {
+				t.Error("generateCacheKey() returned empty key")
+				return
+			}
+
+			// Then verify it's a valid SHA-256 hex string (64 characters)
+			if len(actualKey) != 64 {
+				t.Errorf("Expected 64-character SHA-256 hex string, got %d characters: %s", len(actualKey), actualKey)
+				return
+			}
+
+			// Most importantly: verify exact expected key for regression testing
+			// Note: Update expected keys if the algorithm changes intentionally
+			if actualKey != tt.expectedKey {
+				t.Errorf("Cache key mismatch:\nExpected: %s\nActual:   %s\n\nThis indicates the cache key generation algorithm has changed.\nIf this is intentional, update the expected key.\nOtherwise, this is a regression that could invalidate existing cache entries.",
+					tt.expectedKey, actualKey)
 			}
 		})
 	}
@@ -162,7 +283,7 @@ func TestGenerateCacheKey_IndependentOfCacheParam(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.expectedSame {
 				// Generate key with cache param
-				keyWithCache := GenerateCacheKey(tt.resolverType, tt.params)
+				keyWithCache := generateCacheKey(tt.resolverType, tt.params)
 
 				// Generate key without cache param
 				paramsWithoutCache := make([]pipelinev1.Param, 0, len(tt.params))
@@ -171,7 +292,7 @@ func TestGenerateCacheKey_IndependentOfCacheParam(t *testing.T) {
 						paramsWithoutCache = append(paramsWithoutCache, p)
 					}
 				}
-				keyWithoutCache := GenerateCacheKey(tt.resolverType, paramsWithoutCache)
+				keyWithoutCache := generateCacheKey(tt.resolverType, paramsWithoutCache)
 
 				if keyWithCache != keyWithoutCache {
 					t.Errorf("Expected same keys, but got different:\nWith cache: %s\nWithout cache: %s\nDescription: %s",
@@ -189,9 +310,9 @@ func TestGenerateCacheKey_IndependentOfCacheParam(t *testing.T) {
 					}
 				}
 
-				key1 := GenerateCacheKey(tt.resolverType, tt.params)
+				key1 := generateCacheKey(tt.resolverType, tt.params)
 
-				key2 := GenerateCacheKey(tt.resolverType, params2)
+				key2 := generateCacheKey(tt.resolverType, params2)
 
 				if key1 == key2 {
 					t.Errorf("Expected different keys, but got same: %s\nDescription: %s",
@@ -211,9 +332,9 @@ func TestGenerateCacheKey_Deterministic(t *testing.T) {
 	}
 
 	// Generate the same key multiple times
-	key1 := GenerateCacheKey(resolverType, params)
+	key1 := generateCacheKey(resolverType, params)
 
-	key2 := GenerateCacheKey(resolverType, params)
+	key2 := generateCacheKey(resolverType, params)
 
 	if key1 != key2 {
 		t.Errorf("Cache key generation is not deterministic. Got different keys: %s vs %s", key1, key2)
@@ -230,7 +351,7 @@ func TestGenerateCacheKey_AllParamTypes(t *testing.T) {
 	}
 
 	// Generate key with cache param
-	keyWithCache := GenerateCacheKey(resolverType, params)
+	keyWithCache := generateCacheKey(resolverType, params)
 
 	// Generate key without cache param
 	paramsWithoutCache := make([]pipelinev1.Param, 0, len(params))
@@ -239,7 +360,7 @@ func TestGenerateCacheKey_AllParamTypes(t *testing.T) {
 			paramsWithoutCache = append(paramsWithoutCache, p)
 		}
 	}
-	keyWithoutCache := GenerateCacheKey(resolverType, paramsWithoutCache)
+	keyWithoutCache := generateCacheKey(resolverType, paramsWithoutCache)
 
 	if keyWithCache != keyWithoutCache {
 		t.Errorf("Expected same keys for all param types, but got different:\nWith cache: %s\nWithout cache: %s",
@@ -251,21 +372,53 @@ func TestResolverCache(t *testing.T) {
 	cache := NewResolverCache(DefaultMaxSize)
 
 	// Test adding and getting a value
-	key := "test-key"
-	value := "test-value"
-	cache.Add(key, value)
+	resolverType := "http"
+	params := []pipelinev1.Param{
+		{Name: "url", Value: *pipelinev1.NewStructuredValues("https://example.com")},
+	}
+	resource := newMockResolvedResource("test-value")
+	annotatedResource := cache.Add(resolverType, params, resource)
 
-	if got, ok := cache.Get(key); !ok || got != value {
-		t.Errorf("Get() = %v, %v, want %v, true", got, ok, value)
+	if got, ok := cache.Get(resolverType, params); !ok {
+		t.Errorf("Get() = %v, %v, want resource, true", got, ok)
+	} else {
+		// Verify it's an annotated resource
+		if string(got.Data()) != "test-value" {
+			t.Errorf("Expected data 'test-value', got %s", string(got.Data()))
+		}
+		if got.Annotations()[CacheOperationKey] != CacheOperationRetrieve {
+			t.Errorf("Expected retrieve annotation, got %s", got.Annotations()[CacheOperationKey])
+		}
 	}
 
-	// Test expiration
-	shortExpiration := 100 * time.Millisecond
-	cache.AddWithExpiration("expiring-key", "expiring-value", shortExpiration)
-	time.Sleep(shortExpiration + 50*time.Millisecond)
+	// Verify that Add returns an annotated resource
+	if string(annotatedResource.Data()) != "test-value" {
+		t.Errorf("Expected annotated resource data 'test-value', got %s", string(annotatedResource.Data()))
+	}
+	if annotatedResource.Annotations()[CacheOperationKey] != CacheOperationStore {
+		t.Errorf("Expected store annotation, got %s", annotatedResource.Annotations()[CacheOperationKey])
+	}
 
-	if _, ok := cache.Get("expiring-key"); ok {
-		t.Error("Get() returned true for expired key")
+	// Test expiration with short duration for faster tests
+	shortExpiration := 10 * time.Millisecond
+	expiringParams := []pipelinev1.Param{
+		{Name: "url", Value: *pipelinev1.NewStructuredValues("https://expiring.com")},
+	}
+	expiringResource := newMockResolvedResource("expiring-value")
+	cache.AddWithExpiration("http", expiringParams, expiringResource, shortExpiration)
+
+	// Wait for expiration with polling to make test more reliable
+	expired := false
+	for i := 0; i < 20; i++ { // Max 200ms wait
+		time.Sleep(10 * time.Millisecond)
+		if _, ok := cache.Get("http", expiringParams); !ok {
+			expired = true
+			break
+		}
+	}
+
+	if !expired {
+		t.Error("Key should have expired but was still found in cache")
 	}
 
 	// Test removed - using dependency injection instead of global cache
@@ -371,31 +524,62 @@ func TestResolverCacheOperations(t *testing.T) {
 	cache := NewResolverCache(100)
 
 	// Test Add and Get
-	key := "test-key"
-	value := "test-value"
-	cache.Add(key, value)
+	resolverType := "bundle"
+	params := []pipelinev1.Param{
+		{Name: "bundle", Value: *pipelinev1.NewStructuredValues("gcr.io/test/bundle:v1.0.0")},
+	}
+	resource := newMockResolvedResource("test-value")
+	annotatedResource := cache.Add(resolverType, params, resource)
 
-	if v, found := cache.Get(key); !found || v != value {
-		t.Errorf("Expected to find value %v, got %v (found: %v)", value, v, found)
+	if v, found := cache.Get(resolverType, params); !found {
+		t.Error("Expected to find value in cache")
+	} else {
+		if string(v.Data()) != "test-value" {
+			t.Errorf("Expected data 'test-value', got %s", string(v.Data()))
+		}
 	}
 
-	// Test Remove
+	// Verify Add returns annotated resource
+	if string(annotatedResource.Data()) != "test-value" {
+		t.Errorf("Expected annotated resource data 'test-value', got %s", string(annotatedResource.Data()))
+	}
+
+	// Test Remove - generate key for removal since Remove still uses key-based API
+	key := generateCacheKey(resolverType, params)
 	cache.Remove(key)
-	if _, found := cache.Get(key); found {
+	if _, found := cache.Get(resolverType, params); found {
 		t.Error("Expected key to be removed")
 	}
 
 	// Test AddWithExpiration
 	customTTL := 1 * time.Second
-	cache.AddWithExpiration(key, value, customTTL)
+	expirationParams := []pipelinev1.Param{
+		{Name: "bundle", Value: *pipelinev1.NewStructuredValues("gcr.io/test/expiring:v1.0.0")},
+	}
+	expiringResource := newMockResolvedResource("expiring-value")
+	cache.AddWithExpiration("bundle", expirationParams, expiringResource, customTTL)
 
-	if v, found := cache.Get(key); !found || v != value {
-		t.Errorf("Expected to find value %v, got %v (found: %v)", value, v, found)
+	if v, found := cache.Get("bundle", expirationParams); !found {
+		t.Error("Expected to find value in cache")
+	} else {
+		if string(v.Data()) != "expiring-value" {
+			t.Errorf("Expected data 'expiring-value', got %s", string(v.Data()))
+		}
 	}
 
-	// Wait for expiration
-	time.Sleep(customTTL + 100*time.Millisecond)
-	if _, found := cache.Get(key); found {
-		t.Error("Expected key to be expired")
+	// Wait for expiration with polling for more reliable test
+	expired := false
+	maxWait := customTTL + 100*time.Millisecond
+	iterations := int(maxWait / (10 * time.Millisecond))
+	for i := 0; i < iterations; i++ {
+		time.Sleep(10 * time.Millisecond)
+		if _, found := cache.Get("bundle", expirationParams); !found {
+			expired = true
+			break
+		}
+	}
+
+	if !expired {
+		t.Error("Expected key to be expired but was still found in cache")
 	}
 }

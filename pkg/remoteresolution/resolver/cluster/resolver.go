@@ -23,8 +23,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	clusterresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
@@ -52,8 +50,8 @@ type Resolver struct {
 	pipelineClientSet versioned.Interface
 }
 
-// Ensure Resolver implements CacheAwareResolver
-var _ framework.CacheAwareResolver = (*Resolver)(nil)
+// Ensure Resolver implements ImmutabilityChecker
+var _ framework.ImmutabilityChecker = (*Resolver)(nil)
 
 // Initialize sets up any dependencies needed by the Resolver. None atm.
 func (r *Resolver) Initialize(ctx context.Context) error {
@@ -79,9 +77,9 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 	return clusterresolution.ValidateParams(ctx, req.Params)
 }
 
-// IsImmutable implements CacheAwareResolver.IsImmutable
+// IsImmutable implements ImmutabilityChecker.IsImmutable
 // Returns false because cluster resources don't have immutable references
-func (r *Resolver) IsImmutable(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
+func (r *Resolver) IsImmutable(ctx context.Context, params []pipelinev1.Param) bool {
 	// Cluster resources (Tasks, Pipelines, etc.) don't have immutable references
 	// like Git commit hashes or bundle digests, so we always return false
 	return false
@@ -89,41 +87,21 @@ func (r *Resolver) IsImmutable(ctx context.Context, req *v1beta1.ResolutionReque
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
-	// Determine if we should use caching using framework logic
-	systemDefault := framework.GetSystemDefaultCacheMode("cluster")
-	useCache := framework.ShouldUseCache(ctx, r, req, systemDefault)
-
-	if useCache {
-		// Get cache instance
-		cacheInstance := injection.Get(ctx)
-		cacheKey := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
-
-		// Check cache first
-		if cached, ok := cacheInstance.Get(cacheKey); ok {
-			if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
-				return cache.NewAnnotatedResource(resource, LabelValueClusterResolverType, cache.CacheOperationRetrieve), nil
-			}
-		}
+	if r.useCache(ctx, req) {
+		return framework.RunCacheOperations(
+			ctx,
+			req.Params,
+			LabelValueClusterResolverType,
+			func() (resolutionframework.ResolvedResource, error) {
+				return clusterresolution.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
+			},
+		)
 	}
+	return clusterresolution.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
+}
 
-	// If not caching or cache miss, resolve from params
-	resource, err := clusterresolution.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
-	if err != nil {
-		return nil, err
-	}
-
-	// Cache the result if caching is enabled
-	if useCache {
-		cacheInstance := injection.Get(ctx)
-		cacheKey := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
-		// Store annotated resource with store operation
-		annotatedResource := cache.NewAnnotatedResource(resource, LabelValueClusterResolverType, cache.CacheOperationStore)
-		cacheInstance.Add(cacheKey, annotatedResource)
-		// Return annotated resource to indicate it was stored in cache
-		return annotatedResource, nil
-	}
-
-	return resource, nil
+func (r *Resolver) useCache(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
+	return framework.ShouldUseCache(ctx, r, req.Params, "cluster")
 }
 
 var _ resolutionframework.ConfigWatcher = &Resolver{}
@@ -136,7 +114,7 @@ func (r *Resolver) GetConfigName(context.Context) string {
 // ShouldUseCache is a legacy function for backward compatibility with existing tests.
 // It converts the old-style params map to the new framework API.
 func ShouldUseCache(ctx context.Context, params map[string]string, checksum []byte) bool {
-	// Convert params map to ResolutionRequestSpec
+	// Convert params map to []pipelinev1.Param
 	var reqParams []pipelinev1.Param
 	for key, value := range params {
 		reqParams = append(reqParams, pipelinev1.Param{
@@ -145,11 +123,6 @@ func ShouldUseCache(ctx context.Context, params map[string]string, checksum []by
 		})
 	}
 
-	req := &v1beta1.ResolutionRequestSpec{
-		Params: reqParams,
-	}
-
 	resolver := &Resolver{}
-	systemDefault := framework.GetSystemDefaultCacheMode("cluster")
-	return framework.ShouldUseCache(ctx, resolver, req, systemDefault)
+	return framework.ShouldUseCache(ctx, resolver, reqParams, "cluster")
 }

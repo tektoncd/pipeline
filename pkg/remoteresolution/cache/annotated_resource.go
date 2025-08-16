@@ -48,9 +48,15 @@ type AnnotatedResource struct {
 
 // NewAnnotatedResource creates a new AnnotatedResource with cache annotations
 func NewAnnotatedResource(resource resolutionframework.ResolvedResource, resolverType, operation string) *AnnotatedResource {
-	annotations := resource.Annotations()
-	if annotations == nil {
-		annotations = make(map[string]string)
+	// Create a copy of the annotations to avoid modifying the original resource
+	originalAnnotations := resource.Annotations()
+	annotations := make(map[string]string)
+
+	// Copy original annotations if they exist
+	if originalAnnotations != nil {
+		for k, v := range originalAnnotations {
+			annotations[k] = v
+		}
 	}
 
 	annotations[CacheAnnotationKey] = CacheValueTrue

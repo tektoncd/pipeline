@@ -26,6 +26,7 @@ import (
 	"time"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	utilcache "k8s.io/apimachinery/pkg/util/cache"
@@ -98,25 +99,46 @@ func (c *ResolverCache) InitializeLogger(ctx context.Context) {
 	}
 }
 
-// Get retrieves a value from the cache.
-func (c *ResolverCache) Get(key string) (interface{}, bool) {
+// Get retrieves a value from the cache using resolver type and parameters.
+func (c *ResolverCache) Get(resolverType string, params []pipelinev1.Param) (resolutionframework.ResolvedResource, bool) {
+	key := generateCacheKey(resolverType, params)
+
 	value, found := c.cache.Get(key)
-	if c.logger != nil {
-		if found {
-			c.logger.Infow("Cache hit", "key", key)
-		} else {
-			c.logger.Infow("Cache miss", "key", key)
+	if !found {
+		if c.logger != nil {
+			c.logger.Infow("Cache miss", "key", key, "resolverType", resolverType)
 		}
+		return nil, found
 	}
-	return value, found
+
+	resource, ok := value.(resolutionframework.ResolvedResource)
+	if !ok {
+		if c.logger != nil {
+			c.logger.Infow("Failed casting cached resource", "key", key, "resolverType", resolverType)
+		}
+		return nil, false
+	}
+
+	if c.logger != nil {
+		c.logger.Infow("Cache hit", "key", key, "resolverType", resolverType)
+	}
+
+	return NewAnnotatedResource(resource, resolverType, CacheOperationRetrieve), true
 }
 
-// Add adds a value to the cache with the default expiration time.
-func (c *ResolverCache) Add(key string, value interface{}) {
+// Add adds a value to the cache with the default expiration time using resolver type and parameters.
+func (c *ResolverCache) Add(resolverType string, params []pipelinev1.Param, resource resolutionframework.ResolvedResource) resolutionframework.ResolvedResource {
+	key := generateCacheKey(resolverType, params)
+
 	if c.logger != nil {
-		c.logger.Infow("Adding to cache", "key", key, "expiration", DefaultExpiration)
+		c.logger.Infow("Adding to cache", "key", key, "resolverType", resolverType, "expiration", DefaultExpiration)
 	}
-	c.cache.Add(key, value, DefaultExpiration)
+
+	// Store the original resource in the cache
+	c.cache.Add(key, resource, DefaultExpiration)
+
+	// Return an annotated resource indicating this was a store operation
+	return NewAnnotatedResource(resource, resolverType, CacheOperationStore)
 }
 
 // Remove removes a value from the cache.
@@ -127,12 +149,19 @@ func (c *ResolverCache) Remove(key string) {
 	c.cache.Remove(key)
 }
 
-// AddWithExpiration adds a value to the cache with a custom expiration time
-func (c *ResolverCache) AddWithExpiration(key string, value interface{}, expiration time.Duration) {
+// AddWithExpiration adds a value to the cache with a custom expiration time using resolver type and parameters.
+func (c *ResolverCache) AddWithExpiration(resolverType string, params []pipelinev1.Param, resource resolutionframework.ResolvedResource, expiration time.Duration) resolutionframework.ResolvedResource {
+	key := generateCacheKey(resolverType, params)
+
 	if c.logger != nil {
-		c.logger.Infow("Adding to cache with custom expiration", "key", key, "expiration", expiration)
+		c.logger.Infow("Adding to cache with custom expiration", "key", key, "resolverType", resolverType, "expiration", expiration)
 	}
-	c.cache.Add(key, value, expiration)
+
+	// Store the original resource in the cache
+	c.cache.Add(key, resource, expiration)
+
+	// Return an annotated resource indicating this was a store operation
+	return NewAnnotatedResource(resource, resolverType, CacheOperationStore)
 }
 
 // Clear removes all entries from the cache.
@@ -146,16 +175,15 @@ func (c *ResolverCache) Clear() {
 	})
 }
 
-// Note: Global cache removed - use dependency injection via cache/injection package
-
 // WithLogger returns a new ResolverCache instance with the provided logger.
 // This prevents state leak by not storing logger in the global singleton.
 func (c *ResolverCache) WithLogger(logger *zap.SugaredLogger) *ResolverCache {
 	return &ResolverCache{logger: logger, cache: c.cache}
 }
 
-// GenerateCacheKey generates a cache key for the given resolver type and parameters.
-func GenerateCacheKey(resolverType string, params []pipelinev1.Param) string {
+// generateCacheKey generates a cache key for the given resolver type and parameters.
+// This is an internal implementation detail and should not be exposed publicly.
+func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 	// Create a deterministic string representation of the parameters
 	paramStr := resolverType + ":"
 
