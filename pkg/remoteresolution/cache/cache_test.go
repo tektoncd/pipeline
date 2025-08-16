@@ -33,13 +33,11 @@ func TestGenerateCacheKey(t *testing.T) {
 		name         string
 		resolverType string
 		params       []pipelinev1.Param
-		wantErr      bool
 	}{
 		{
 			name:         "empty params",
 			resolverType: "http",
 			params:       []pipelinev1.Param{},
-			wantErr:      false,
 		},
 		{
 			name:         "single param",
@@ -53,7 +51,6 @@ func TestGenerateCacheKey(t *testing.T) {
 					},
 				},
 			},
-			wantErr: false,
 		},
 		{
 			name:         "multiple params",
@@ -74,18 +71,13 @@ func TestGenerateCacheKey(t *testing.T) {
 					},
 				},
 			},
-			wantErr: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			key, err := GenerateCacheKey(tt.resolverType, tt.params)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GenerateCacheKey() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !tt.wantErr && key == "" {
+			key := GenerateCacheKey(tt.resolverType, tt.params)
+			if key == "" {
 				t.Error("GenerateCacheKey() returned empty key")
 			}
 		})
@@ -170,10 +162,7 @@ func TestGenerateCacheKey_IndependentOfCacheParam(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.expectedSame {
 				// Generate key with cache param
-				keyWithCache, err := GenerateCacheKey(tt.resolverType, tt.params)
-				if err != nil {
-					t.Fatalf("Failed to generate cache key with cache param: %v", err)
-				}
+				keyWithCache := GenerateCacheKey(tt.resolverType, tt.params)
 
 				// Generate key without cache param
 				paramsWithoutCache := make([]pipelinev1.Param, 0, len(tt.params))
@@ -182,10 +171,7 @@ func TestGenerateCacheKey_IndependentOfCacheParam(t *testing.T) {
 						paramsWithoutCache = append(paramsWithoutCache, p)
 					}
 				}
-				keyWithoutCache, err := GenerateCacheKey(tt.resolverType, paramsWithoutCache)
-				if err != nil {
-					t.Fatalf("Failed to generate cache key without cache param: %v", err)
-				}
+				keyWithoutCache := GenerateCacheKey(tt.resolverType, paramsWithoutCache)
 
 				if keyWithCache != keyWithoutCache {
 					t.Errorf("Expected same keys, but got different:\nWith cache: %s\nWithout cache: %s\nDescription: %s",
@@ -203,15 +189,9 @@ func TestGenerateCacheKey_IndependentOfCacheParam(t *testing.T) {
 					}
 				}
 
-				key1, err := GenerateCacheKey(tt.resolverType, tt.params)
-				if err != nil {
-					t.Fatalf("Failed to generate cache key for first params: %v", err)
-				}
+				key1 := GenerateCacheKey(tt.resolverType, tt.params)
 
-				key2, err := GenerateCacheKey(tt.resolverType, params2)
-				if err != nil {
-					t.Fatalf("Failed to generate cache key for second params: %v", err)
-				}
+				key2 := GenerateCacheKey(tt.resolverType, params2)
 
 				if key1 == key2 {
 					t.Errorf("Expected different keys, but got same: %s\nDescription: %s",
@@ -231,15 +211,9 @@ func TestGenerateCacheKey_Deterministic(t *testing.T) {
 	}
 
 	// Generate the same key multiple times
-	key1, err := GenerateCacheKey(resolverType, params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
+	key1 := GenerateCacheKey(resolverType, params)
 
-	key2, err := GenerateCacheKey(resolverType, params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
+	key2 := GenerateCacheKey(resolverType, params)
 
 	if key1 != key2 {
 		t.Errorf("Cache key generation is not deterministic. Got different keys: %s vs %s", key1, key2)
@@ -256,10 +230,7 @@ func TestGenerateCacheKey_AllParamTypes(t *testing.T) {
 	}
 
 	// Generate key with cache param
-	keyWithCache, err := GenerateCacheKey(resolverType, params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key with cache param: %v", err)
-	}
+	keyWithCache := GenerateCacheKey(resolverType, params)
 
 	// Generate key without cache param
 	paramsWithoutCache := make([]pipelinev1.Param, 0, len(params))
@@ -268,10 +239,7 @@ func TestGenerateCacheKey_AllParamTypes(t *testing.T) {
 			paramsWithoutCache = append(paramsWithoutCache, p)
 		}
 	}
-	keyWithoutCache, err := GenerateCacheKey(resolverType, paramsWithoutCache)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key without cache param: %v", err)
-	}
+	keyWithoutCache := GenerateCacheKey(resolverType, paramsWithoutCache)
 
 	if keyWithCache != keyWithoutCache {
 		t.Errorf("Expected same keys for all param types, but got different:\nWith cache: %s\nWithout cache: %s",

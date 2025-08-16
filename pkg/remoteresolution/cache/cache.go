@@ -155,7 +155,7 @@ func (c *ResolverCache) WithLogger(logger *zap.SugaredLogger) *ResolverCache {
 }
 
 // GenerateCacheKey generates a cache key for the given resolver type and parameters.
-func GenerateCacheKey(resolverType string, params []pipelinev1.Param) (string, error) {
+func GenerateCacheKey(resolverType string, params []pipelinev1.Param) string {
 	// Create a deterministic string representation of the parameters
 	paramStr := resolverType + ":"
 
@@ -211,5 +211,5 @@ func GenerateCacheKey(resolverType string, params []pipelinev1.Param) (string, e
 
 	// Generate a SHA-256 hash of the parameter string
 	hash := sha256.Sum256([]byte(paramStr))
-	return hex.EncodeToString(hash[:]), nil
+	return hex.EncodeToString(hash[:])
 }

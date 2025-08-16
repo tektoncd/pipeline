@@ -96,10 +96,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	if useCache {
 		// Get cache instance
 		cacheInstance := injection.Get(ctx)
-		cacheKey, err := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
-		if err != nil {
-			return nil, err
-		}
+		cacheKey := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
 
 		// Check cache first
 		if cached, ok := cacheInstance.Get(cacheKey); ok {
@@ -118,14 +115,12 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	// Cache the result if caching is enabled
 	if useCache {
 		cacheInstance := injection.Get(ctx)
-		cacheKey, err := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
-		if err == nil {
-			// Store annotated resource with store operation
-			annotatedResource := cache.NewAnnotatedResource(resource, LabelValueClusterResolverType, cache.CacheOperationStore)
-			cacheInstance.Add(cacheKey, annotatedResource)
-			// Return annotated resource to indicate it was stored in cache
-			return annotatedResource, nil
-		}
+		cacheKey := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
+		// Store annotated resource with store operation
+		annotatedResource := cache.NewAnnotatedResource(resource, LabelValueClusterResolverType, cache.CacheOperationStore)
+		cacheInstance.Add(cacheKey, annotatedResource)
+		// Return annotated resource to indicate it was stored in cache
+		return annotatedResource, nil
 	}
 
 	return resource, nil
