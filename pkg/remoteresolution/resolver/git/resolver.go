@@ -147,10 +147,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		cacheInstance = injection.Get(ctx)
 
 		// Generate cache key
-		cacheKey, err := cache.GenerateCacheKey(LabelValueGitResolverType, req.Params)
-		if err != nil {
-			return nil, err
-		}
+		cacheKey := cache.GenerateCacheKey(LabelValueGitResolverType, req.Params)
 
 		// Check cache first
 		if cached, ok := cacheInstance.Get(cacheKey); ok {
@@ -181,7 +178,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 
 	// Cache the result if caching is enabled
 	if useCache {
-		cacheKey, _ := cache.GenerateCacheKey(LabelValueGitResolverType, req.Params)
+		cacheKey := cache.GenerateCacheKey(LabelValueGitResolverType, req.Params)
 		// Store annotated resource with store operation
 		annotatedResource := cache.NewAnnotatedResource(resource, LabelValueGitResolverType, cache.CacheOperationStore)
 		cacheInstance.Add(cacheKey, annotatedResource)

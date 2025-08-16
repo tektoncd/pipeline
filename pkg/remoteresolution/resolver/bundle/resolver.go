@@ -30,7 +30,6 @@ import (
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	"knative.dev/pkg/logging"
 )
 
 const (
@@ -107,8 +106,6 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		return nil, errors.New("no params")
 	}
 
-	logger := logging.FromContext(ctx)
-
 	// Determine if we should use caching using framework logic
 	systemDefault := framework.GetSystemDefaultCacheMode("bundle")
 	useCache := framework.ShouldUseCache(ctx, r, req, systemDefault)
@@ -116,15 +113,11 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	if useCache {
 		// Get cache instance
 		cacheInstance := injection.Get(ctx)
-		cacheKey, err := cache.GenerateCacheKey(LabelValueBundleResolverType, req.Params)
-		if err != nil {
-			logger.Warnf("Failed to generate cache key: %v", err)
-		} else {
-			// Check cache first
-			if cached, ok := cacheInstance.Get(cacheKey); ok {
-				if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
-					return cache.NewAnnotatedResource(resource, LabelValueBundleResolverType, cache.CacheOperationRetrieve), nil
-				}
+		cacheKey := cache.GenerateCacheKey(LabelValueBundleResolverType, req.Params)
+		// Check cache first
+		if cached, ok := cacheInstance.Get(cacheKey); ok {
+			if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
+				return cache.NewAnnotatedResource(resource, LabelValueBundleResolverType, cache.CacheOperationRetrieve), nil
 			}
 		}
 	}
@@ -138,14 +131,12 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	// Cache the result if caching is enabled
 	if useCache {
 		cacheInstance := injection.Get(ctx)
-		cacheKey, err := cache.GenerateCacheKey(LabelValueBundleResolverType, req.Params)
-		if err == nil {
-			// Store annotated resource with store operation
-			annotatedResource := cache.NewAnnotatedResource(resource, LabelValueBundleResolverType, cache.CacheOperationStore)
-			cacheInstance.Add(cacheKey, annotatedResource)
-			// Return annotated resource to indicate it was stored in cache
-			return annotatedResource, nil
-		}
+		cacheKey := cache.GenerateCacheKey(LabelValueBundleResolverType, req.Params)
+		// Store annotated resource with store operation
+		annotatedResource := cache.NewAnnotatedResource(resource, LabelValueBundleResolverType, cache.CacheOperationStore)
+		cacheInstance.Add(cacheKey, annotatedResource)
+		// Return annotated resource to indicate it was stored in cache
+		return annotatedResource, nil
 	}
 
 	return resource, nil

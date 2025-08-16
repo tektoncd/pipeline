@@ -551,10 +551,7 @@ func TestResolveWithCacheIntegration(t *testing.T) {
 	}
 
 	// Test cache key generation
-	cacheKey, err := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
+	cacheKey := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
 	if cacheKey == "" {
 		t.Error("Generated cache key should not be empty")
 	}
@@ -649,14 +646,8 @@ func TestResolverCacheKeyGeneration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cacheKey, err := cache.GenerateCacheKey(tt.resolverType, tt.params)
-			if tt.expectedError && err == nil {
-				t.Error("Expected error but got none")
-			}
-			if !tt.expectedError && err != nil {
-				t.Errorf("Unexpected error: %v", err)
-			}
-			if !tt.expectedError && cacheKey == "" {
+			cacheKey := cache.GenerateCacheKey(tt.resolverType, tt.params)
+			if cacheKey == "" {
 				t.Error("Generated cache key should not be empty")
 			}
 		})
@@ -728,15 +719,12 @@ func TestResolveWithCacheHit(t *testing.T) {
 	}
 
 	// Add the resource to the global cache
-	cacheKey, err := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, []pipelinev1.Param{
+	cacheKey := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, []pipelinev1.Param{
 		{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
 		{Name: "name", Value: *pipelinev1.NewStructuredValues("test-task")},
 		{Name: "namespace", Value: *pipelinev1.NewStructuredValues("test-ns")},
 		{Name: "cache", Value: *pipelinev1.NewStructuredValues("always")},
 	})
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
 
 	// Get cache instance
 	cacheInstance := cacheinjection.Get(ctx)
@@ -789,10 +777,7 @@ func TestResolveWithCacheKeyGenerationError(t *testing.T) {
 	}
 
 	// Test that cache key generation works correctly
-	cacheKey, err := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
-	if err != nil {
-		t.Fatalf("Cache key generation should not fail for valid params: %v", err)
-	}
+	cacheKey := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
 	if cacheKey == "" {
 		t.Error("Generated cache key should not be empty")
 	}
@@ -1242,10 +1227,7 @@ func TestResolveWithCacheStorage(t *testing.T) {
 	}
 
 	// Generate cache key
-	cacheKey, err := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
+	cacheKey := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
 
 	// Get cache from injection
 	cacheInstance := cacheinjection.Get(ctx)
@@ -1309,10 +1291,7 @@ func TestResolveWithCacheAlwaysEndToEnd(t *testing.T) {
 	}
 
 	// Generate cache key
-	cacheKey, err := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
+	cacheKey := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
 
 	// Get cache from injection
 	cacheInstance := cacheinjection.Get(t.Context())
@@ -1350,10 +1329,7 @@ func TestResolveWithCacheNeverEndToEnd(t *testing.T) {
 	}
 
 	// Generate cache key
-	cacheKey, err := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
+	cacheKey := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
 
 	// Get cache from injection
 	cacheInstance := cacheinjection.Get(t.Context())
@@ -1400,10 +1376,7 @@ func TestResolveWithCacheAutoEndToEnd(t *testing.T) {
 	}
 
 	// Generate cache key
-	cacheKey, err := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
+	cacheKey := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
 
 	// Get cache from injection
 	cacheInstance := cacheinjection.Get(ctx)
@@ -1459,10 +1432,7 @@ func TestResolveWithCacheInitialization(t *testing.T) {
 	}
 
 	// Test cache key generation
-	cacheKey, err := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
+	cacheKey := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
 
 	if cacheKey == "" {
 		t.Error("Generated cache key should not be empty")
@@ -1510,10 +1480,7 @@ func TestResolveWithCacheKeyUniqueness(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cacheKey, err := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, tc.params)
-			if err != nil {
-				t.Fatalf("Failed to generate cache key: %v", err)
-			}
+			cacheKey := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, tc.params)
 
 			if cacheKey == "" {
 				t.Error("Generated cache key should not be empty")
@@ -1564,10 +1531,7 @@ func TestIntegrationNoCacheParameter(t *testing.T) {
 	}
 
 	// Generate cache key to verify it's not used
-	cacheKey, err := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
+	cacheKey := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
 
 	// Get cache instance
 	cacheInstance := cacheinjection.Get(ctx)
@@ -1635,10 +1599,7 @@ func TestIntegrationCacheNever(t *testing.T) {
 	}
 
 	// Generate cache key to verify it's not used
-	cacheKey, err := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
+	cacheKey := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
 
 	// Get cache instance
 	cacheInstance := cacheinjection.Get(ctx)
@@ -1706,10 +1667,7 @@ func TestIntegrationCacheAuto(t *testing.T) {
 	}
 
 	// Generate cache key to verify it's not used
-	cacheKey, err := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
+	cacheKey := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
 
 	// Get cache instance
 	cacheInstance := cacheinjection.Get(ctx)
@@ -1777,10 +1735,7 @@ func TestIntegrationCacheAlways(t *testing.T) {
 	}
 
 	// Generate cache key
-	cacheKey, err := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
+	cacheKey := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
 
 	// Get cache instance
 	cacheInstance := cacheinjection.Get(ctx)
