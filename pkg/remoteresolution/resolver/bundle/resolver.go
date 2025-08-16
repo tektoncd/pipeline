@@ -37,6 +37,9 @@ const (
 	// LabelValueBundleResolverType is the value to use for the
 	// resolution.tekton.dev/type label on resource requests
 	LabelValueBundleResolverType string = "bundles"
+
+	// BundleResolverName is the name that the bundle resolver should be associated with.
+	BundleResolverName string = "Bundles"
 )
 
 // Resolver implements a framework.Resolver that can fetch files from OCI bundles.
@@ -62,7 +65,7 @@ func (r *Resolver) Initialize(ctx context.Context) error {
 
 // GetName returns a string name to refer to this Resolver by.
 func (r *Resolver) GetName(ctx context.Context) string {
-	return "Bundles"
+	return BundleResolverName
 }
 
 // GetConfigName returns the name of the bundle resolver's configmap.
