@@ -226,7 +226,7 @@ spec:
     type: string
   steps:
   - name: config-docker
-    image: gcr.io/tekton-releases/dogfooding/skopeo:latest
+    image: ghcr.io/tektoncd/catalog/upstream/tasks/skopeo-copy:latest
     command: ['skopeo']
     args: ['copy', '$(params["the.path"])', '$(params["the.dest"])']
 `, helpers.ObjectNameForTest(t), namespace))
@@ -273,7 +273,7 @@ spec:
     type: string
   steps:
   - name: config-docker
-    image: gcr.io/tekton-releases/dogfooding/skopeo:latest
+    image: ghcr.io/tektoncd/catalog/upstream/tasks/skopeo-copy:latest
     command: ['skopeo']
     args: ['copy', '$(params["the.path"])', '$(params["the.dest"])']
 `, helpers.ObjectNameForTest(t), namespace))

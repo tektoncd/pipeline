@@ -57,7 +57,7 @@ spec:
       description: The precise commit SHA that was fetched by this Task
   steps:
     - name: clone
-      image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+      image: ghcr.io/tektoncd-catalog/git-clone:v1.1.0
       securityContext:
         runAsUser: 0  # This needs root, and git-init is nonroot by default
       script: |
