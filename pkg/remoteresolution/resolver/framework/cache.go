@@ -42,7 +42,7 @@ type ImmutabilityChecker interface {
 
 // ShouldUseCache determines whether caching should be used based on:
 // 1. Task/Pipeline cache parameter (highest priority)
-// 2. ConfigMap default-cache-mode (middle priority)  
+// 2. ConfigMap default-cache-mode (middle priority)
 // 3. System default for resolver type (lowest priority)
 func ShouldUseCache(ctx context.Context, resolver ImmutabilityChecker, params []pipelinev1.Param, resolverType string) bool {
 	// Get cache mode from task parameter
