@@ -51,8 +51,6 @@ import (
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing"
 	"sigs.k8s.io/yaml"
-
-
 )
 
 const (
@@ -526,9 +524,6 @@ func createRequest(kind, name, namespace string) *v1beta1.ResolutionRequest {
 func resolverDisabledContext() context.Context {
 	return frameworktesting.ContextWithClusterResolverDisabled(context.Background())
 }
-
-/*
-*/
 
 func TestResolveWithDisabledResolver(t *testing.T) {
 	ctx := frameworktesting.ContextWithClusterResolverDisabled(t.Context())

@@ -31,7 +31,7 @@ func TestKey(t *testing.T) {
 	key2 := Key{}
 
 	// Keys should be equivalent when used as context keys
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx = context.WithValue(ctx, key1, "test-value")
 
 	value := ctx.Value(key2)
@@ -55,19 +55,19 @@ func TestSharedCacheInitialization(t *testing.T) {
 func TestWithCacheFromConfig(t *testing.T) {
 	tests := []struct {
 		name        string
-		ctx         context.Context
+		setupCtx    func() context.Context
 		cfg         *rest.Config
 		expectCache bool
 	}{
 		{
 			name:        "basic context with config",
-			ctx:         context.Background(),
+			setupCtx:    func() context.Context { return t.Context() },
 			cfg:         &rest.Config{},
 			expectCache: true,
 		},
 		{
 			name:        "context with logger",
-			ctx:         logtesting.TestContextWithLogger(t),
+			setupCtx:    func() context.Context { return logtesting.TestContextWithLogger(t) },
 			cfg:         &rest.Config{},
 			expectCache: true,
 		},
@@ -75,7 +75,7 @@ func TestWithCacheFromConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := withCacheFromConfig(tt.ctx, tt.cfg)
+			result := withCacheFromConfig(tt.setupCtx(), tt.cfg)
 
 			// Check that result context contains cache
 			cache := result.Value(Key{})
@@ -86,10 +86,7 @@ func TestWithCacheFromConfig(t *testing.T) {
 			// Check that cache is functional (don't need type assertion for this test)
 			if tt.expectCache && cache != nil {
 				// The fact that it was stored and retrieved indicates correct type
-				// Just check that we have a non-nil interface value
-				if cache == nil {
-					t.Errorf("Expected non-nil cache")
-				}
+				// Cache is non-nil as verified by outer condition, so it's functional
 			}
 		})
 	}
@@ -105,7 +102,7 @@ func TestGet(t *testing.T) {
 		{
 			name: "context without cache",
 			setupContext: func() context.Context {
-				return context.Background()
+				return t.Context()
 			},
 			expectNotNil:       true,
 			expectSameInstance: false, // Should get fallback instance
@@ -113,7 +110,7 @@ func TestGet(t *testing.T) {
 		{
 			name: "context with cache",
 			setupContext: func() context.Context {
-				ctx := context.Background()
+				ctx := t.Context()
 				testCache := cache.NewResolverCache(100)
 				return context.WithValue(ctx, Key{}, testCache)
 			},
@@ -150,7 +147,7 @@ func TestGet(t *testing.T) {
 
 func TestGetConsistency(t *testing.T) {
 	// Test that Get returns consistent results for fallback case
-	ctx := context.Background()
+	ctx := t.Context()
 
 	cache1 := Get(ctx)
 	cache2 := Get(ctx)
@@ -166,7 +163,7 @@ func TestGetConsistency(t *testing.T) {
 
 func TestGetWithInjectedCache(t *testing.T) {
 	// Test that Get returns the injected cache when available
-	ctx := context.Background()
+	ctx := t.Context()
 	testCache := cache.NewResolverCache(50)
 	ctx = context.WithValue(ctx, Key{}, testCache)
 

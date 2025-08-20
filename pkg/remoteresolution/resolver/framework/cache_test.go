@@ -222,7 +222,7 @@ func TestShouldUseCache(t *testing.T) {
 			resolver := &mockImmutabilityChecker{immutable: tt.immutable}
 
 			// Create context with config
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx = resolutionframework.InjectResolverConfigToContext(ctx, tt.configMap)
 
 			// Test ShouldUseCache
@@ -327,7 +327,7 @@ func TestShouldUseCachePrecedence(t *testing.T) {
 			}
 
 			// Setup context with resolver config
-			ctx := context.Background()
+			ctx := t.Context()
 			if len(tt.configMap) > 0 {
 				ctx = resolutionframework.InjectResolverConfigToContext(ctx, tt.configMap)
 			}
@@ -554,7 +554,7 @@ func TestShouldUseCacheBundleResolver(t *testing.T) {
 				},
 			}...)
 
-			ctx := context.Background()
+			ctx := t.Context()
 
 			// Test the cache decision logic
 			actual := framework.ShouldUseCache(ctx, resolver, params, "bundle")
@@ -614,7 +614,7 @@ func TestRunCacheOperations(t *testing.T) {
 			}
 
 			// Create context with cache injection
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx = context.WithValue(ctx, cacheinjection.Key{}, testCache)
 
 			// Track if resolve function was called

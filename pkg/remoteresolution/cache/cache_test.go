@@ -409,7 +409,7 @@ func TestResolverCache(t *testing.T) {
 
 	// Wait for expiration with polling to make test more reliable
 	expired := false
-	for i := 0; i < 20; i++ { // Max 200ms wait
+	for range 20 { // Max 200ms wait
 		time.Sleep(10 * time.Millisecond)
 		if _, ok := cache.Get("http", expiringParams); !ok {
 			expired = true
@@ -533,10 +533,8 @@ func TestResolverCacheOperations(t *testing.T) {
 
 	if v, found := cache.Get(resolverType, params); !found {
 		t.Error("Expected to find value in cache")
-	} else {
-		if string(v.Data()) != "test-value" {
-			t.Errorf("Expected data 'test-value', got %s", string(v.Data()))
-		}
+	} else if string(v.Data()) != "test-value" {
+		t.Errorf("Expected data 'test-value', got %s", string(v.Data()))
 	}
 
 	// Verify Add returns annotated resource
@@ -561,17 +559,15 @@ func TestResolverCacheOperations(t *testing.T) {
 
 	if v, found := cache.Get("bundle", expirationParams); !found {
 		t.Error("Expected to find value in cache")
-	} else {
-		if string(v.Data()) != "expiring-value" {
-			t.Errorf("Expected data 'expiring-value', got %s", string(v.Data()))
-		}
+	} else if string(v.Data()) != "expiring-value" {
+		t.Errorf("Expected data 'expiring-value', got %s", string(v.Data()))
 	}
 
 	// Wait for expiration with polling for more reliable test
 	expired := false
 	maxWait := customTTL + 100*time.Millisecond
 	iterations := int(maxWait / (10 * time.Millisecond))
-	for i := 0; i < iterations; i++ {
+	for range iterations {
 		time.Sleep(10 * time.Millisecond)
 		if _, found := cache.Get("bundle", expirationParams); !found {
 			expired = true
