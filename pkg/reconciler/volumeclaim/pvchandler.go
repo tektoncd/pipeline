@@ -80,20 +80,17 @@ func (c *defaultPVCHandler) CreatePVCFromVolumeClaimTemplate(ctx context.Context
 			if apierrors.IsAlreadyExists(err) {
 				c.logger.Infof("Tried to create PersistentVolumeClaim %s in namespace %s, but it already exists",
 					claim.Name, claim.Namespace)
-			} else if apierrors.IsForbidden(err) {
-				if strings.Contains(err.Error(), "exceeded quota") {
-					// This is a retry-able error
-					return fmt.Errorf("%w: %v", ErrPvcCreationFailedRetryable, err.Error())
-				}
-				return fmt.Errorf("%w for %s: %w", ErrPvcCreationFailed, claim.Name, err)
+			} else if isRetryableError(err) {
+				// This is a retry-able error
+				return fmt.Errorf("%w for %s: %v", ErrPvcCreationFailedRetryable, claim.Name, err.Error())
 			} else {
-				return fmt.Errorf("%w for %s: %w", ErrPvcCreationFailed, claim.Name, err)
+				return fmt.Errorf("%w for %s: %v", ErrPvcCreationFailed, claim.Name, err.Error())
 			}
 		} else {
 			c.logger.Infof("Created PersistentVolumeClaim %s in namespace %s", claim.Name, claim.Namespace)
 		}
 	case err != nil:
-		return fmt.Errorf("%w: failed to retrieve PVC %s: %w", ErrPvcCreationFailed, claim.Name, err)
+		return fmt.Errorf("failed to retrieve PVC %s: %w", claim.Name, err)
 	}
 
 	return nil
@@ -180,4 +177,11 @@ func getPersistentVolumeClaimIdentity(workspaceName, ownerName string) string {
 	hashBytes := sha256.Sum256([]byte(workspaceName + ownerName))
 	hashString := hex.EncodeToString(hashBytes[:])
 	return hashString[:10]
+}
+
+func isRetryableError(err error) bool {
+	if (apierrors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota")) || apierrors.IsConflict(err) {
+		return true
+	}
+	return false
 }
