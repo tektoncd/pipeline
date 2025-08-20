@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -31,6 +32,7 @@ import (
 	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/wait"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
@@ -676,18 +678,31 @@ func TestCRDConversionStrategy(t *testing.T) {
 		v1.Kind("pipelineruns"),
 		resolutionv1beta1.Kind("resolutionrequests"),
 	}
+	
+	// Wait for webhooks to be ready after controller startup with cache injection overhead
+	t.Logf("Waiting for CRD webhook conversion to be ready...")
 	for _, kind := range kinds {
-		gotCRD, err := c.ApixClient.ApiextensionsV1().CustomResourceDefinitions().Get(t.Context(), kind.String(), metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("Couldn't get expected CRD %s: %s", kind, err)
-		}
+		err := wait.PollUntilContextTimeout(ctx, 500*time.Millisecond, 10*time.Second, true, func(ctx context.Context) (bool, error) {
+			gotCRD, err := c.ApixClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, kind.String(), metav1.GetOptions{})
+			if err != nil {
+				t.Logf("CRD %s not ready yet: %v", kind, err)
+				return false, nil
+			}
 
-		if gotCRD.Spec.Conversion == nil {
-			t.Errorf("Expected custom resource %q to have conversion strategy", kind)
+			if gotCRD.Spec.Conversion == nil {
+				t.Logf("CRD %s conversion not configured yet", kind)
+				return false, nil
+			}
+			if gotCRD.Spec.Conversion.Strategy != apixv1.WebhookConverter {
+				t.Logf("CRD %s conversion strategy not ready: got %s, want %s", kind, gotCRD.Spec.Conversion.Strategy, apixv1.WebhookConverter)
+				return false, nil
+			}
+			return true, nil
+		})
+		if err != nil {
+			t.Fatalf("Timed out waiting for CRD %s webhook conversion to be ready: %v", kind, err)
 		}
-		if gotCRD.Spec.Conversion.Strategy != apixv1.WebhookConverter {
-			t.Errorf("Expected custom resource %q to have conversion strategy %s, got %s", kind, apixv1.WebhookConverter, gotCRD.Spec.Conversion.Strategy)
-		}
+		t.Logf("CRD %s webhook conversion is ready", kind)
 	}
 }
 

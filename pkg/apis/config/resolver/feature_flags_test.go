@@ -117,6 +117,68 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	}
 }
 
+func TestAnyResolverEnabled(t *testing.T) {
+	testCases := []struct {
+		name     string
+		flags    *resolver.FeatureFlags
+		expected bool
+	}{
+		{
+			name: "All resolvers enabled",
+			flags: &resolver.FeatureFlags{
+				EnableGitResolver:     true,
+				EnableHubResolver:     true,
+				EnableBundleResolver:  true,
+				EnableClusterResolver: true,
+				EnableHttpResolver:    true,
+			},
+			expected: true,
+		},
+		{
+			name: "All resolvers disabled",
+			flags: &resolver.FeatureFlags{
+				EnableGitResolver:     false,
+				EnableHubResolver:     false,
+				EnableBundleResolver:  false,
+				EnableClusterResolver: false,
+				EnableHttpResolver:    false,
+			},
+			expected: false,
+		},
+		{
+			name: "Only git resolver enabled",
+			flags: &resolver.FeatureFlags{
+				EnableGitResolver:     true,
+				EnableHubResolver:     false,
+				EnableBundleResolver:  false,
+				EnableClusterResolver: false,
+				EnableHttpResolver:    false,
+			},
+			expected: true,
+		},
+		{
+			name: "Only bundle resolver enabled",
+			flags: &resolver.FeatureFlags{
+				EnableGitResolver:     false,
+				EnableHubResolver:     false,
+				EnableBundleResolver:  true,
+				EnableClusterResolver: false,
+				EnableHttpResolver:    false,
+			},
+			expected: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := tc.flags.AnyResolverEnabled()
+			if result != tc.expected {
+				t.Errorf("AnyResolverEnabled() = %t, want %t", result, tc.expected)
+			}
+		})
+	}
+}
+
 func verifyConfigFileWithExpectedFeatureFlagsConfig(t *testing.T, fileName string, expectedConfig *resolver.FeatureFlags) {
 	t.Helper()
 	cm := test.ConfigMapFromTestFile(t, fileName)

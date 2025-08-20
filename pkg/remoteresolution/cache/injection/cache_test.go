@@ -18,8 +18,10 @@ package injection
 
 import (
 	"context"
+	"sync"
 	"testing"
 
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	"k8s.io/client-go/rest"
 	logtesting "knative.dev/pkg/logging/testing"
@@ -41,14 +43,16 @@ func TestKey(t *testing.T) {
 }
 
 func TestSharedCacheInitialization(t *testing.T) {
-	// Test that sharedCache is properly initialized
-	if sharedCache == nil {
-		t.Fatal("sharedCache should be initialized")
-	}
+	// Reset globals and create context with resolvers enabled
+	resetCacheGlobals()
+	ctx := createContextWithResolverConfig(t, true)
 
-	// Test that it's a valid ResolverCache instance
+	// Initialize cache by calling Get
+	Get(ctx)
+
+	// Test that sharedCache is properly initialized when resolvers are enabled
 	if sharedCache == nil {
-		t.Fatal("sharedCache should be a valid ResolverCache instance")
+		t.Fatal("sharedCache should be initialized when resolvers are enabled")
 	}
 }
 
@@ -203,4 +207,76 @@ func TestGetFallbackWithLogger(t *testing.T) {
 
 	// Cache should be functional
 	cache.Clear()
+}
+
+// TestConditionalCacheLoading tests that cache is only loaded when resolvers are enabled
+func TestConditionalCacheLoading(t *testing.T) {
+	testCases := []struct {
+		name             string
+		resolversEnabled bool
+		expectCacheNil   bool
+	}{
+		{
+			name:             "Cache loaded when resolvers enabled",
+			resolversEnabled: true,
+			expectCacheNil:   false,
+		},
+		{
+			name:             "Cache not loaded when resolvers disabled",
+			resolversEnabled: false,
+			expectCacheNil:   true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Reset global state for each test
+			resetCacheGlobals()
+
+			// Create context with resolver config
+			ctx := createContextWithResolverConfig(t, tc.resolversEnabled)
+
+			// Test Get function
+			cache := Get(ctx)
+
+			if tc.expectCacheNil && cache != nil {
+				t.Errorf("Expected cache to be nil when resolvers disabled, got non-nil cache")
+			}
+			if !tc.expectCacheNil && cache == nil {
+				t.Errorf("Expected cache to be non-nil when resolvers enabled, got nil")
+			}
+		})
+	}
+}
+
+// resetCacheGlobals resets the global cache state for testing
+// This is necessary because sync.Once prevents re-initialization
+func resetCacheGlobals() {
+	// Reset the sync.Once variables by creating new instances
+	cacheOnce = sync.Once{}
+	injectionOnce = sync.Once{}
+	sharedCache = nil
+	resolversEnabled = false
+}
+
+// createContextWithResolverConfig creates a test context with resolver configuration
+func createContextWithResolverConfig(t *testing.T, anyResolverEnabled bool) context.Context {
+	t.Helper()
+
+	ctx := t.Context()
+
+	// Create feature flags based on test case
+	featureFlags := &resolverconfig.FeatureFlags{
+		EnableGitResolver:     anyResolverEnabled,
+		EnableHubResolver:     false,
+		EnableBundleResolver:  false,
+		EnableClusterResolver: false,
+		EnableHttpResolver:    false,
+	}
+
+	config := &resolverconfig.Config{
+		FeatureFlags: featureFlags,
+	}
+
+	return resolverconfig.ToContext(ctx, config)
 }
