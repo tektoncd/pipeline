@@ -18,7 +18,9 @@ package injection
 
 import (
 	"context"
+	"sync"
 
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/injection"
@@ -28,34 +30,68 @@ import (
 // Key is used as the key for associating information with a context.Context.
 type Key struct{}
 
-// sharedCache is the shared cache instance used across all contexts
-var sharedCache = cache.NewResolverCache(cache.DefaultMaxSize)
+// sharedCache is the shared cache instance used across all contexts (lazy initialized)
+var (
+	sharedCache      *cache.ResolverCache
+	cacheOnce        sync.Once
+	injectionOnce    sync.Once
+	resolversEnabled bool
+)
 
-func init() {
-	injection.Default.RegisterClient(withCacheFromConfig)
-	injection.Default.RegisterClientFetcher(func(ctx context.Context) interface{} {
-		return Get(ctx)
+// initializeCacheIfNeeded initializes the cache and injection only if resolvers are enabled
+func initializeCacheIfNeeded(ctx context.Context) {
+	cacheOnce.Do(func() {
+		cfg := resolverconfig.FromContextOrDefaults(ctx)
+		resolversEnabled = cfg.FeatureFlags.AnyResolverEnabled()
+
+		if resolversEnabled {
+			sharedCache = cache.NewResolverCache(cache.DefaultMaxSize)
+
+			// Register injection only if resolvers are enabled
+			injectionOnce.Do(func() {
+				injection.Default.RegisterClient(withCacheFromConfig)
+				injection.Default.RegisterClientFetcher(func(ctx context.Context) interface{} {
+					return Get(ctx)
+				})
+			})
+		}
 	})
 }
 
 func withCacheFromConfig(ctx context.Context, cfg *rest.Config) context.Context {
+	// Ensure cache is initialized if needed
+	initializeCacheIfNeeded(ctx)
+
+	// Only inject cache if resolvers are enabled
+	if !resolversEnabled || sharedCache == nil {
+		return ctx // Return context unchanged if caching is disabled
+	}
+
 	logger := logging.FromContext(ctx)
-
-	// Return the SAME shared cache instance with logger to prevent state leak
 	resolverCache := sharedCache.WithLogger(logger)
-
 	return context.WithValue(ctx, Key{}, resolverCache)
 }
 
 // Get extracts the ResolverCache from the context.
-// If the cache is not available in the context (e.g., in tests),
-// it falls back to the shared cache with a logger from the context.
+// Returns nil if resolvers are disabled to avoid cache overhead when not needed.
 func Get(ctx context.Context) *cache.ResolverCache {
+	// Ensure we've checked if cache should be initialized
+	initializeCacheIfNeeded(ctx)
+
+	// If resolvers are disabled, return nil - no caching needed
+	if !resolversEnabled {
+		return nil
+	}
+
 	untyped := ctx.Value(Key{})
 	if untyped == nil {
 		// Fallback for test contexts or when injection is not available
-		logger := logging.FromContext(ctx)
-		return sharedCache.WithLogger(logger)
+		// but only if resolvers are enabled
+		if sharedCache != nil {
+			logger := logging.FromContext(ctx)
+			return sharedCache.WithLogger(logger)
+		}
+		return nil
 	}
 	return untyped.(*cache.ResolverCache)
 }

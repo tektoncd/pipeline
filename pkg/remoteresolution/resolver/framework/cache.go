@@ -112,9 +112,15 @@ type resolveFn = func() (resolutionframework.ResolvedResource, error)
 //
 // This centralizes all cache logic that was previously duplicated across
 // bundle, git, and cluster resolvers, following twoGiants' architectural vision.
+// If resolvers are disabled (cache is nil), it bypasses cache operations entirely.
 func RunCacheOperations(ctx context.Context, params []pipelinev1.Param, resolverType string, resolve resolveFn) (resolutionframework.ResolvedResource, error) {
 	// Get cache instance from injection
 	cacheInstance := injection.Get(ctx)
+
+	// If cache is not available (resolvers disabled), bypass cache entirely
+	if cacheInstance == nil {
+		return resolve()
+	}
 
 	// Check cache first (cache hit)
 	if cached, ok := cacheInstance.Get(resolverType, params); ok {
