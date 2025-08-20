@@ -18,13 +18,15 @@ package volumeclaim
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -207,7 +209,7 @@ func TestCreateExistPersistentVolumeClaims(t *testing.T) {
 	fn := func(action client_go_testing.Action) (bool, runtime.Object, error) {
 		switch action := action.(type) {
 		case client_go_testing.GetActionImpl:
-			return true, nil, errors.NewNotFound(schema.GroupResource{}, action.Name)
+			return true, nil, apierrors.NewNotFound(schema.GroupResource{}, action.Name)
 		default:
 			return false, nil, fmt.Errorf("no reaction implemented for %s", action)
 		}
@@ -293,5 +295,152 @@ func TestPurgeFinalizerAndDeletePVCForWorkspace(t *testing.T) {
 	}
 	if len(pvc.Finalizers) > 0 {
 		t.Errorf("pvc %s kubernetes.io/pvc-protection finalizer is not removed properly", pvcName)
+	}
+}
+
+// TestCreatePVCFromVolumeClaimTemplate_GetError tests error handling when getting existing PVC fails
+func TestCreatePVCFromVolumeClaimTemplate_GetError(t *testing.T) {
+	ownerRef := metav1.OwnerReference{UID: types.UID("test-owner")}
+	namespace := "test-ns"
+
+	wb := v1.WorkspaceBinding{
+		Name: "test-workspace",
+		VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-claim"},
+			Spec:       corev1.PersistentVolumeClaimSpec{},
+		},
+	}
+
+	fakekubeclient := fakek8s.NewSimpleClientset()
+	pvcHandler := defaultPVCHandler{fakekubeclient, zap.NewExample().Sugar()}
+
+	// Mock Get to return an error that's not NotFound
+	fakekubeclient.Fake.PrependReactor("get", "persistentvolumeclaims",
+		func(action client_go_testing.Action) (bool, runtime.Object, error) {
+			return true, nil, apierrors.NewInternalError(errors.New("internal server error"))
+		})
+
+	err := pvcHandler.CreatePVCFromVolumeClaimTemplate(t.Context(), wb, ownerRef, namespace)
+
+	if err == nil {
+		t.Fatal("Expected error when Get fails with error")
+	}
+
+	if !strings.Contains(err.Error(), "failed to retrieve PVC") {
+		t.Errorf("Expected error message about failed to retrieve PVC, got: %v", err)
+	}
+}
+
+// TestCreatePVCFromVolumeClaimTemplate_CreateRetryableError tests retryable error handling
+func TestCreatePVCFromVolumeClaimTemplate_CreateRetryableError(t *testing.T) {
+	ownerRef := metav1.OwnerReference{UID: types.UID("test-owner")}
+	namespace := "test-ns"
+
+	wb := v1.WorkspaceBinding{
+		Name: "test-workspace",
+		VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-claim"},
+			Spec:       corev1.PersistentVolumeClaimSpec{},
+		},
+	}
+
+	fakekubeclient := fakek8s.NewSimpleClientset()
+	pvcHandler := defaultPVCHandler{fakekubeclient, zap.NewExample().Sugar()}
+
+	// Mock Get to return NotFound, then Create to return quota exceeded error
+	fakekubeclient.Fake.PrependReactor("get", "persistentvolumeclaims",
+		func(action client_go_testing.Action) (bool, runtime.Object, error) {
+			return true, nil, apierrors.NewNotFound(schema.GroupResource{}, "test-claim")
+		})
+
+	fakekubeclient.Fake.PrependReactor("create", "persistentvolumeclaims",
+		func(action client_go_testing.Action) (bool, runtime.Object, error) {
+			return true, nil, apierrors.NewForbidden(schema.GroupResource{}, "test-claim", errors.New("foo exceeded quota"))
+		})
+
+	err := pvcHandler.CreatePVCFromVolumeClaimTemplate(t.Context(), wb, ownerRef, namespace)
+
+	if err == nil {
+		t.Fatal("Expected retryable error")
+	}
+
+	if !strings.Contains(err.Error(), ErrPvcCreationFailedRetryable.Error()) {
+		t.Errorf("Expected retryable error, got: %v", err)
+	}
+}
+
+// TestCreatePVCFromVolumeClaimTemplate_CreateNonRetryableError tests non-retryable error handling
+func TestCreatePVCFromVolumeClaimTemplate_CreateNonRetryableError(t *testing.T) {
+	ownerRef := metav1.OwnerReference{UID: types.UID("test-owner")}
+	namespace := "test-ns"
+
+	wb := v1.WorkspaceBinding{
+		Name: "test-workspace",
+		VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-claim"},
+			Spec:       corev1.PersistentVolumeClaimSpec{},
+		},
+	}
+
+	fakekubeclient := fakek8s.NewSimpleClientset()
+	pvcHandler := defaultPVCHandler{fakekubeclient, zap.NewExample().Sugar()}
+
+	// Mock Get to return NotFound, then Create to return non-retryable error
+	fakekubeclient.Fake.PrependReactor("get", "persistentvolumeclaims",
+		func(action client_go_testing.Action) (bool, runtime.Object, error) {
+			return true, nil, apierrors.NewNotFound(schema.GroupResource{}, "test-claim")
+		})
+
+	fakekubeclient.Fake.PrependReactor("create", "persistentvolumeclaims",
+		func(action client_go_testing.Action) (bool, runtime.Object, error) {
+			return true, nil, apierrors.NewInternalError(errors.New("internal server error"))
+		})
+
+	err := pvcHandler.CreatePVCFromVolumeClaimTemplate(t.Context(), wb, ownerRef, namespace)
+
+	if err == nil {
+		t.Fatal("Expected non-retryable error")
+	}
+
+	if !strings.Contains(err.Error(), ErrPvcCreationFailed.Error()) {
+		t.Errorf("Expected non-retryable error, got: %v", err)
+	}
+}
+
+// TestCreatePVCFromVolumeClaimTemplate_ConflictError tests conflict error handling (retryable)
+func TestCreatePVCFromVolumeClaimTemplate_ConflictError(t *testing.T) {
+	ownerRef := metav1.OwnerReference{UID: types.UID("test-owner")}
+	namespace := "test-ns"
+
+	wb := v1.WorkspaceBinding{
+		Name: "test-workspace",
+		VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-claim"},
+			Spec:       corev1.PersistentVolumeClaimSpec{},
+		},
+	}
+
+	fakekubeclient := fakek8s.NewSimpleClientset()
+	pvcHandler := defaultPVCHandler{fakekubeclient, zap.NewExample().Sugar()}
+
+	// Mock Get to return NotFound, then Create to return conflict error
+	fakekubeclient.Fake.PrependReactor("get", "persistentvolumeclaims",
+		func(action client_go_testing.Action) (bool, runtime.Object, error) {
+			return true, nil, apierrors.NewNotFound(schema.GroupResource{}, "test-claim")
+		})
+
+	fakekubeclient.Fake.PrependReactor("create", "persistentvolumeclaims",
+		func(action client_go_testing.Action) (bool, runtime.Object, error) {
+			return true, nil, apierrors.NewConflict(schema.GroupResource{}, "test-claim", errors.New("conflict"))
+		})
+
+	err := pvcHandler.CreatePVCFromVolumeClaimTemplate(t.Context(), wb, ownerRef, namespace)
+
+	if err == nil {
+		t.Fatal("Expected conflict error (retryable)")
+	}
+
+	if !strings.Contains(err.Error(), ErrPvcCreationFailedRetryable.Error()) {
+		t.Errorf("Expected retryable conflict error, got: %v", err)
 	}
 }
