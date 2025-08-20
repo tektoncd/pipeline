@@ -785,6 +785,58 @@ func TestTaskRunCRDConversion(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
+	// Wait for webhooks to be ready after controller startup with cache injection overhead
+	t.Logf("Waiting for CRD webhook conversion to be ready...")
+	for _, kind := range []schema.GroupKind{v1.Kind("taskruns")} {
+		err := wait.PollUntilContextTimeout(ctx, 500*time.Millisecond, 10*time.Second, true, func(ctx context.Context) (bool, error) {
+			gotCRD, err := c.ApixClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, kind.String(), metav1.GetOptions{})
+			if err != nil {
+				t.Logf("CRD %s not ready yet: %v", kind, err)
+				return false, nil
+			}
+
+			if gotCRD.Spec.Conversion == nil {
+				t.Logf("CRD %s conversion not configured yet", kind)
+				return false, nil
+			}
+			if gotCRD.Spec.Conversion.Strategy != apixv1.WebhookConverter {
+				t.Logf("CRD %s conversion strategy not ready: got %s, want %s", kind, gotCRD.Spec.Conversion.Strategy, apixv1.WebhookConverter)
+				return false, nil
+			}
+			return true, nil
+		})
+		if err != nil {
+			t.Fatalf("Timed out waiting for CRD %s webhook conversion to be ready: %v", kind, err)
+		}
+		t.Logf("CRD %s webhook conversion is ready", kind)
+	}
+
+	// Wait for webhooks to be ready after controller startup with cache injection overhead
+	t.Logf("Waiting for CRD webhook conversion to be ready...")
+	for _, kind := range []schema.GroupKind{v1.Kind("taskruns")} {
+		err := wait.PollUntilContextTimeout(ctx, 500*time.Millisecond, 10*time.Second, true, func(ctx context.Context) (bool, error) {
+			gotCRD, err := c.ApixClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, kind.String(), metav1.GetOptions{})
+			if err != nil {
+				t.Logf("CRD %s not ready yet: %v", kind, err)
+				return false, nil
+			}
+
+			if gotCRD.Spec.Conversion == nil {
+				t.Logf("CRD %s conversion not configured yet", kind)
+				return false, nil
+			}
+			if gotCRD.Spec.Conversion.Strategy != apixv1.WebhookConverter {
+				t.Logf("CRD %s conversion strategy not ready: got %s, want %s", kind, gotCRD.Spec.Conversion.Strategy, apixv1.WebhookConverter)
+				return false, nil
+			}
+			return true, nil
+		})
+		if err != nil {
+			t.Fatalf("Timed out waiting for CRD %s webhook conversion to be ready: %v", kind, err)
+		}
+		t.Logf("CRD %s webhook conversion is ready", kind)
+	}
+
 	v1beta1TaskRunName := helpers.ObjectNameForTest(t)
 	v1beta1TaskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunYaml, v1beta1TaskRunName, namespace))
 	v1TaskRunExpected := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunExpectedYaml, v1beta1TaskRunName, namespace, v1beta1TaskRunName))
@@ -931,6 +983,58 @@ func TestPipelineRunCRDConversion(t *testing.T) {
 	c, namespace := setup(ctx, t)
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+
+	// Wait for webhooks to be ready after controller startup with cache injection overhead
+	t.Logf("Waiting for CRD webhook conversion to be ready...")
+	for _, kind := range []schema.GroupKind{v1.Kind("pipelineruns")} {
+		err := wait.PollUntilContextTimeout(ctx, 500*time.Millisecond, 10*time.Second, true, func(ctx context.Context) (bool, error) {
+			gotCRD, err := c.ApixClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, kind.String(), metav1.GetOptions{})
+			if err != nil {
+				t.Logf("CRD %s not ready yet: %v", kind, err)
+				return false, nil
+			}
+
+			if gotCRD.Spec.Conversion == nil {
+				t.Logf("CRD %s conversion not configured yet", kind)
+				return false, nil
+			}
+			if gotCRD.Spec.Conversion.Strategy != apixv1.WebhookConverter {
+				t.Logf("CRD %s conversion strategy not ready: got %s, want %s", kind, gotCRD.Spec.Conversion.Strategy, apixv1.WebhookConverter)
+				return false, nil
+			}
+			return true, nil
+		})
+		if err != nil {
+			t.Fatalf("Timed out waiting for CRD %s webhook conversion to be ready: %v", kind, err)
+		}
+		t.Logf("CRD %s webhook conversion is ready", kind)
+	}
+
+	// Wait for webhooks to be ready after controller startup with cache injection overhead
+	t.Logf("Waiting for CRD webhook conversion to be ready...")
+	for _, kind := range []schema.GroupKind{v1.Kind("pipelineruns")} {
+		err := wait.PollUntilContextTimeout(ctx, 500*time.Millisecond, 10*time.Second, true, func(ctx context.Context) (bool, error) {
+			gotCRD, err := c.ApixClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, kind.String(), metav1.GetOptions{})
+			if err != nil {
+				t.Logf("CRD %s not ready yet: %v", kind, err)
+				return false, nil
+			}
+
+			if gotCRD.Spec.Conversion == nil {
+				t.Logf("CRD %s conversion not configured yet", kind)
+				return false, nil
+			}
+			if gotCRD.Spec.Conversion.Strategy != apixv1.WebhookConverter {
+				t.Logf("CRD %s conversion strategy not ready: got %s, want %s", kind, gotCRD.Spec.Conversion.Strategy, apixv1.WebhookConverter)
+				return false, nil
+			}
+			return true, nil
+		})
+		if err != nil {
+			t.Fatalf("Timed out waiting for CRD %s webhook conversion to be ready: %v", kind, err)
+		}
+		t.Logf("CRD %s webhook conversion is ready", kind)
+	}
 
 	v1beta1ToV1PipelineRunName := helpers.ObjectNameForTest(t)
 	v1beta1PipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunYaml, v1beta1ToV1PipelineRunName, namespace))
