@@ -127,6 +127,13 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 
 	complete := areContainersCompleted(ctx, pod) || isPodCompleted(pod)
 
+	// When EnableKubernetesSidecar is true, we need to ensure all init containers
+	// are completed before considering the taskRun complete, in addition to the regular containers.
+	// This is because sidecars in Kubernetes can keep running after the main containers complete.
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
+		complete = complete && areInitContainersCompleted(ctx, pod)
+	}
+
 	if complete {
 		onError, ok := tr.Annotations[v1.PipelineTaskOnErrorAnnotation]
 		if ok {
@@ -157,6 +164,7 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 	}
 
 	err := setTaskRunStatusBasedOnStepStatus(ctx, logger, stepStatuses, &tr, pod.Status.Phase, kubeclient, ts)
+
 	setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses, trs)
 
 	trs.Results = removeDuplicateResults(trs.Results)
@@ -697,6 +705,21 @@ func isMatchingAnyFilter(name string, filters []containerNameFilter) bool {
 		}
 	}
 	return false
+}
+
+// areInitContainersCompleted returns true if all init containers in the pod are completed.
+func areInitContainersCompleted(ctx context.Context, pod *corev1.Pod) bool {
+	if len(pod.Status.InitContainerStatuses) == 0 ||
+		!(pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodSucceeded) {
+		return false
+	}
+	for _, containerStatus := range pod.Status.InitContainerStatuses {
+		if containerStatus.State.Terminated == nil {
+			// if any init container is not completed, return false
+			return false
+		}
+	}
+	return true
 }
 
 // areContainersCompleted returns true if all related containers in the pod are completed.
