@@ -127,7 +127,7 @@ type Step struct {
 	Workspaces []WorkspaceUsage `json:"workspaces,omitempty"`
 
 	// OnError defines the exiting behavior of a container on error
-	// can be set to [ continue | stopAndFail ]
+	// can be set to [ continue | stopAndFail | continueAndFail ]
 	OnError OnErrorType `json:"onError,omitempty"`
 	// Stores configuration for the stdout stream of the step.
 	// +optional
@@ -173,6 +173,8 @@ const (
 	StopAndFail OnErrorType = "stopAndFail"
 	// Continue indicates continue executing the rest of the steps irrespective of the container exit code
 	Continue OnErrorType = "continue"
+	// Continue indicates continue executing the rest of the steps irrespective of the container exit code and exit after all steps are completed with the first possible non-zero exit code of the step that has this OnErrorType
+	ContinueAndFail OnErrorType = "continueAndFail"
 )
 
 // StepOutputConfig stores configuration for a step output stream.
