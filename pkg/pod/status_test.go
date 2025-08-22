@@ -2193,6 +2193,150 @@ func TestMakeTaskRunStatus_SidecarNotCompleted(t *testing.T) {
 	}
 }
 
+func TestMakeTaskRunStatus_KubernetesNativeSidecar(t *testing.T) {
+	for _, c := range []struct {
+		desc      string
+		podStatus corev1.PodStatus
+		pod       corev1.Pod
+		taskSpec  v1.TaskSpec
+		want      v1.TaskRunStatus
+	}{{
+		desc: "test sidecar not completed",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name: "step-foo",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Message: `[{"key":"resultName","value":"", "type":1}, {"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`,
+						},
+					},
+				},
+				{
+					Name: "step-bar",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Message: `[{"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`,
+						},
+					},
+				}},
+			InitContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name: "sidecar-baz",
+					State: corev1.ContainerState{
+						Terminated: nil,
+					},
+				},
+			},
+		},
+		taskSpec: v1.TaskSpec{
+			Steps:    []v1.Step{{Name: "step-foo"}, {Name: "step-bar"}},
+			Sidecars: []v1.Sidecar{{Name: "sidecar-baz"}},
+			Results: []v1.TaskResult{
+				{
+					Name: "resultName",
+					Type: v1.ResultsTypeString,
+				},
+			},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusRunning(),
+		},
+	}, {
+		desc: "test sidecar already completed",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name: "step-foo",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Message: `[{"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`,
+						},
+					},
+				},
+				{
+					Name: "step-bar",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Message: `[{"key":"resultName","value":"", "type":1}, {"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`,
+						},
+					},
+				}},
+			InitContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name: "sidecar-baz",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 0,
+						},
+					},
+				},
+			},
+		},
+		taskSpec: v1.TaskSpec{
+			Steps:    []v1.Step{{Name: "step-bar"}},
+			Sidecars: []v1.Sidecar{{Name: "sidecar-baz"}},
+			Results: []v1.TaskResult{
+				{
+					Name: "resultName",
+					Type: v1.ResultsTypeString,
+				},
+			},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusSuccess(),
+		},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			c.pod = corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "pod",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.Now(),
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Name: "step-foo",
+					}, {
+						Name: "step-bar",
+					}},
+					InitContainers: []corev1.Container{{
+						Name: "sidecar-baz",
+					}},
+				},
+				Status: c.podStatus,
+			}
+
+			tr := v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task-run",
+					Namespace: "foo",
+				},
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						TaskSpec: &c.taskSpec,
+					},
+				},
+			}
+			logger, _ := logging.NewLogger("", "status")
+			kubeclient := fakek8s.NewSimpleClientset()
+			ctx := config.ToContext(t.Context(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					ResultExtractionMethod:  config.ResultExtractionMethodSidecarLogs,
+					MaxResultSize:           1024,
+					EnableKubernetesSidecar: true,
+				},
+			})
+			got, _ := MakeTaskRunStatus(ctx, logger, tr, &c.pod, kubeclient, &c.taskSpec)
+			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime); d != "" {
+				t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestMakeTaskRunStatusAlpha(t *testing.T) {
 	for _, c := range []struct {
 		desc      string
