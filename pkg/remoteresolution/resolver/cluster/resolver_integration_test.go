@@ -1,5 +1,5 @@
 /*
- Copyright 2024 The Tekton Authors
+ Copyright 2025 The Tekton Authors
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -22,8 +22,11 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"strings"
 	"testing"
 	"time"
+
+	"bytes"
 
 	"github.com/google/go-cmp/cmp"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
@@ -32,6 +35,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/internal/resolution"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	cluster "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/cluster"
 	frtesting "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -43,6 +47,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing"
 	"sigs.k8s.io/yaml"
@@ -88,7 +93,7 @@ func TestValidate(t *testing.T) {
 }
 
 func TestValidateNotEnabled(t *testing.T) {
-	resolver := cluster.Resolver{}
+	resolver := &cluster.Resolver{}
 
 	var err error
 
@@ -102,13 +107,27 @@ func TestValidateNotEnabled(t *testing.T) {
 		Name:  clusterresolution.NameParam,
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
+
+	ctx := resolverDisabledContext()
 	req := v1beta1.ResolutionRequestSpec{Params: params}
-	err = resolver.Validate(resolverDisabledContext(), &req)
-	if err == nil {
-		t.Fatalf("expected disabled err")
+	if err = resolver.Validate(ctx, &req); err == nil {
+		t.Fatalf("expected error, got nil")
+	} else if err.Error() != disabledError {
+		t.Fatalf("expected error %q, got %q", disabledError, err.Error())
 	}
-	if d := cmp.Diff(disabledError, err.Error()); d != "" {
-		t.Errorf("unexpected error: %s", diff.PrintWantGot(d))
+}
+
+func TestValidateWithNoParams(t *testing.T) {
+	resolver := &cluster.Resolver{}
+
+	// Test Validate with no parameters - should get validation error about missing params
+	req := v1beta1.ResolutionRequestSpec{Params: []pipelinev1.Param{}}
+	err := resolver.Validate(t.Context(), &req)
+	if err == nil {
+		t.Fatalf("expected error when no params provided, got nil")
+	}
+	if !strings.Contains(err.Error(), "missing required cluster resolver params") {
+		t.Fatalf("expected validation error about missing params, got %q", err.Error())
 	}
 }
 
@@ -505,3 +524,164 @@ func createRequest(kind, name, namespace string) *v1beta1.ResolutionRequest {
 func resolverDisabledContext() context.Context {
 	return frameworktesting.ContextWithClusterResolverDisabled(context.Background())
 }
+
+func TestResolveWithDisabledResolver(t *testing.T) {
+	ctx := frameworktesting.ContextWithClusterResolverDisabled(t.Context())
+	resolver := &cluster.Resolver{}
+
+	req := &v1beta1.ResolutionRequestSpec{
+		Params: []pipelinev1.Param{
+			{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
+			{Name: "name", Value: *pipelinev1.NewStructuredValues("test-task")},
+			{Name: "namespace", Value: *pipelinev1.NewStructuredValues("test-ns")},
+			{Name: "cache", Value: *pipelinev1.NewStructuredValues("always")},
+		},
+	}
+
+	_, err := resolver.Resolve(ctx, req)
+	if err == nil {
+		t.Error("Expected error when resolver is disabled")
+	}
+	if !strings.Contains(err.Error(), "enable-cluster-resolver feature flag not true") {
+		t.Errorf("Expected disabled error, got: %v", err)
+	}
+}
+
+func TestResolveWithNoParams(t *testing.T) {
+	resolver := &cluster.Resolver{}
+
+	req := &v1beta1.ResolutionRequestSpec{
+		Params: []pipelinev1.Param{},
+	}
+
+	_, err := resolver.Resolve(t.Context(), req)
+	if err == nil {
+		t.Error("Expected error when no params provided")
+	}
+	if !strings.Contains(err.Error(), "missing required cluster resolver params") {
+		t.Errorf("Expected validation error about missing params, got: %v", err)
+	}
+}
+
+func TestResolveWithInvalidParams(t *testing.T) {
+	resolver := &cluster.Resolver{}
+
+	req := &v1beta1.ResolutionRequestSpec{
+		Params: []pipelinev1.Param{
+			{Name: "invalid", Value: *pipelinev1.NewStructuredValues("value")},
+		},
+	}
+
+	_, err := resolver.Resolve(t.Context(), req)
+	if err == nil {
+		t.Error("Expected error with invalid params")
+	}
+	if !strings.Contains(err.Error(), "missing required cluster resolver params") {
+		t.Errorf("Expected validation error, got: %v", err)
+	}
+}
+
+
+func TestAnnotatedResourceCreation(t *testing.T) {
+	// Create a mock resolved resource using the correct type
+	mockResource := &clusterresolution.ResolvedClusterResource{
+		Content:    []byte("test content"),
+		Spec:       []byte("test spec"),
+		Name:       "test-task",
+		Namespace:  "test-ns",
+		Identifier: "test-identifier",
+		Checksum:   []byte{1, 2, 3, 4},
+	}
+
+	// Create annotated resource
+	annotatedResource := cache.NewAnnotatedResource(mockResource, "cluster", cache.CacheOperationStore)
+
+	// Verify annotations are present
+	annotations := annotatedResource.Annotations()
+	if annotations == nil {
+		t.Fatal("Annotations should not be nil")
+	}
+
+	// Check specific annotation keys
+	expectedKeys := []string{
+		"resolution.tekton.dev/cached",
+		"resolution.tekton.dev/cache-timestamp",
+		"resolution.tekton.dev/cache-resolver-type",
+	}
+
+	for _, key := range expectedKeys {
+		if _, exists := annotations[key]; !exists {
+			t.Errorf("Expected annotation key '%s' not found", key)
+		}
+	}
+
+	// Verify resolver type annotation
+	if annotations["resolution.tekton.dev/cache-resolver-type"] != "cluster" {
+		t.Errorf("Expected resolver type 'cluster', got '%s'", annotations["resolution.tekton.dev/cache-resolver-type"])
+	}
+
+	// Verify cached annotation
+	if annotations["resolution.tekton.dev/cached"] != "true" {
+		t.Errorf("Expected cached value 'true', got '%s'", annotations["resolution.tekton.dev/cached"])
+	}
+
+	// Verify data is preserved
+	if !bytes.Equal(annotatedResource.Data(), mockResource.Data()) {
+		t.Error("Data should be preserved in annotated resource")
+	}
+}
+
+
+
+func TestResolveWithAutoModeAndChecksum(t *testing.T) {
+	// Test auto mode with valid checksum
+
+	req := &v1beta1.ResolutionRequestSpec{
+		Params: []pipelinev1.Param{
+			{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
+			{Name: "name", Value: *pipelinev1.NewStructuredValues("test-task")},
+			{Name: "namespace", Value: *pipelinev1.NewStructuredValues("test-ns")},
+			{Name: "cache", Value: *pipelinev1.NewStructuredValues("auto")},
+		},
+	}
+
+	// Test that auto mode works correctly
+	paramsMap := make(map[string]string)
+	for _, p := range req.Params {
+		paramsMap[p.Name] = p.Value.StringVal
+	}
+
+	// Test with valid checksum - cluster resolver should NOT cache in auto mode
+	checksum := []byte{1, 2, 3, 4}
+	shouldCache := cluster.ShouldUseCache(t.Context(), paramsMap, checksum)
+	if shouldCache {
+		t.Error("Auto mode should not cache when checksum is present (cluster resolver behavior)")
+	}
+
+	// Test with no checksum - cluster resolver should NOT cache in auto mode
+	shouldCache = cluster.ShouldUseCache(t.Context(), paramsMap, nil)
+	if shouldCache {
+		t.Error("Auto mode should not cache when checksum is absent (cluster resolver behavior)")
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

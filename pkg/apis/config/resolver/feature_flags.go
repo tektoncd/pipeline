@@ -101,6 +101,15 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	return &tc, nil
 }
 
+// AnyResolverEnabled returns true if any resolver is enabled
+func (ff *FeatureFlags) AnyResolverEnabled() bool {
+	return ff.EnableGitResolver ||
+		ff.EnableHubResolver ||
+		ff.EnableBundleResolver ||
+		ff.EnableClusterResolver ||
+		ff.EnableHttpResolver
+}
+
 // NewFeatureFlagsFromConfigMap returns a Config for the given configmap
 func NewFeatureFlagsFromConfigMap(config *corev1.ConfigMap) (*FeatureFlags, error) {
 	return NewFeatureFlagsFromMap(config.Data)
