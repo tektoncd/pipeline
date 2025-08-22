@@ -1,4 +1,4 @@
-# Copyright 2019 The Tekton Authors
+# Copyright 2025 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,9 +18,4 @@ metadata:
   name: config-defaults
   namespace: tekton-pipelines
 data:
-  default-timeout-minutes: "50"
-  default-service-account: "tekton"
-  default-managed-by-label-value: "something-else"
-  default-resolver-type: "git"
-  default-imagepullbackoff-timeout: "5s"
-  default-step-ref-concurrency-limit: "5"
+  default-step-ref-concurrency-limit: "10"
