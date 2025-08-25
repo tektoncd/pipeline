@@ -35,6 +35,7 @@ weight: 204
     - [The <code>status</code> field](#the-status-field)
     - [Monitoring execution status](#monitoring-execution-status)
     - [Marking off user errors](#marking-off-user-errors)
+  - [Delegating reconciliation](#delegating-reconciliation)
   - [Cancelling a <code>PipelineRun</code>](#cancelling-a-pipelinerun)
   - [Gracefully cancelling a <code>PipelineRun</code>](#gracefully-cancelling-a-pipelinerun)
   - [Gracefully stopping a <code>PipelineRun</code>](#gracefully-stopping-a-pipelinerun)
@@ -80,6 +81,7 @@ A `PipelineRun` definition supports the following fields:
   - [`timeouts`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails. `timeouts` allows more granular timeout configuration, at the pipeline, tasks, and finally levels
   - [`podTemplate`](#specifying-a-pod-template) - Specifies a [`Pod` template](./podtemplates.md) to use as the basis for the configuration of the `Pod` that executes each `Task`.
   - [`workspaces`](#specifying-workspaces) - Specifies a set of workspace bindings which must match the names of workspaces declared in the pipeline being used.
+  - [`managedBy`](#delegating-reconciliation) - Specifies the controller responsible for managing this PipelineRun's lifecycle.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -1606,6 +1608,46 @@ status:
 NAME                      STARTED         DURATION   STATUS
 pipelinerun-with-params   5 seconds ago   0s         Failed(ParameterMissing)
 ```
+
+## Delegating reconciliation
+
+The `managedBy` field allows you to delegate the responsibility of managing a `PipelineRun`'s lifecycle to an external controller. When this field is set to a value other than `"tekton.dev/pipeline"`, the Tekton Pipeline controller will ignore the `PipelineRun`, allowing your external controller to take full control.
+
+### Use cases
+
+- **Custom orchestration**: Implement your own pipeline execution logic
+- **Integration with external systems**: Let external tools manage PipelineRuns
+- **Advanced scheduling**: Implement custom scheduling algorithms
+- **Multi-cluster management**: Coordinate PipelineRuns across multiple clusters
+
+### Example
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: externally-managed-pipeline
+spec:
+  pipelineRef:
+    name: my-pipeline
+  managedBy: "my-custom-controller"
+```
+
+### Behavior
+
+- **When `managedBy` is empty**: The Tekton Pipeline controller manages the PipelineRun normally
+- **When `managedBy` is set to `"tekton.dev/pipeline"`**: The Tekton Pipeline controller manages the PipelineRun normally
+- **When `managedBy` is set to any other value**: The Tekton Pipeline controller ignores the PipelineRun completely
+- **Immutability**: The `managedBy` field is immutable and cannot be changed after creation
+
+### External controller responsibilities
+
+When you set `managedBy` to a custom value, your external controller is responsible for:
+
+- Creating and managing TaskRuns
+- Updating PipelineRun status
+- Handling timeouts and cancellations
+- Managing retries and error handling
 
 ## Cancelling a `PipelineRun`
 

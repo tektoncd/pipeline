@@ -140,14 +140,18 @@ func (ps *PipelineRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.Field
 	old := &oldObj.Spec
 
 	// If already in the done state, the spec cannot be modified. Otherwise, only the status field can be modified.
-	tips := "Once the PipelineRun is complete, no updates are allowed"
-	if !oldObj.IsDone() {
-		old = old.DeepCopy()
-		old.Status = ps.Status
-		tips = "Once the PipelineRun has started, only status updates are allowed"
-	}
-	if !equality.Semantic.DeepEqual(old, ps) {
-		errs = errs.Also(apis.ErrInvalidValue(tips, ""))
+	if (old.ManagedBy == nil) != (ps.ManagedBy == nil) || (old.ManagedBy != nil && *old.ManagedBy != *ps.ManagedBy) {
+		errs = errs.Also(apis.ErrInvalidValue("managedBy is immutable", "spec.managedBy"))
+	} else {
+		tips := "Once the PipelineRun is complete, no updates are allowed"
+		if !oldObj.IsDone() {
+			old = old.DeepCopy()
+			old.Status = ps.Status
+			tips = "Once the PipelineRun has started, only status updates are allowed"
+		}
+		if !equality.Semantic.DeepEqual(old, ps) {
+			errs = errs.Also(apis.ErrInvalidValue(tips, ""))
+		}
 	}
 
 	return
