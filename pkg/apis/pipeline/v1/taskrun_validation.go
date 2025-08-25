@@ -134,16 +134,20 @@ func (ts *TaskRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.FieldErro
 
 	// If already in the done state, the spec cannot be modified.
 	// Otherwise, only the status, statusMessage field can be modified.
-	tips := "Once the TaskRun is complete, no updates are allowed"
-	if !oldObj.IsDone() {
-		old = old.DeepCopy()
-		old.Status = ts.Status
-		old.StatusMessage = ts.StatusMessage
-		tips = "Once the TaskRun has started, only status and statusMessage updates are allowed"
-	}
+	if (old.ManagedBy == nil) != (ts.ManagedBy == nil) || (old.ManagedBy != nil && *old.ManagedBy != *ts.ManagedBy) {
+		errs = errs.Also(apis.ErrInvalidValue("managedBy is immutable", "spec.managedBy"))
+	} else {
+		tips := "Once the TaskRun is complete, no updates are allowed"
+		if !oldObj.IsDone() {
+			old = old.DeepCopy()
+			old.Status = ts.Status
+			old.StatusMessage = ts.StatusMessage
+			tips = "Once the TaskRun has started, only status and statusMessage updates are allowed"
+		}
 
-	if !equality.Semantic.DeepEqual(old, ts) {
-		errs = errs.Also(apis.ErrInvalidValue(tips, ""))
+		if !equality.Semantic.DeepEqual(old, ts) {
+			errs = errs.Also(apis.ErrInvalidValue(tips, ""))
+		}
 	}
 
 	return
