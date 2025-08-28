@@ -119,6 +119,49 @@ stringData:
   # This is non-standard, but its use is encouraged to make this more secure.
   # Omitting this results in the server's public key being blindly accepted.
 ```
+## Known limitation with multiple Git SSH credentials
+
+When annotating a `Secret` with multiple `tekton.dev/git-*` entries for different Git hosts, only the
+first annotated Git credential may be used successfully.
+
+For example:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    tekton.dev/git-0: github.com
+    tekton.dev/git-1: gitlab.com
+type: kubernetes.io/ssh-auth
+stringData:
+  ssh-privatekey: <private-key>
+```
+In this case, the repository for tekton.dev/git-0 might clone correctly, while the repository for
+tekton.dev/git-1 can fail with SSH authentication errors.
+
+## Workaround with multiple Git SSH credentials
+
+As a workaround, you can configure multiple SSH keys for different repositories by mounting a workspace
+that provides a custom SSH configuration file instead of relying solely on annotations.
+If neither the annotation tekton.dev/git-* nor the Task param USER_HOME=/home/nonroot is set, and 
+you mount a workspace that contains a Secret with multiple SSH keys, git clone works as expected
+by following the configuration in .ssh/config.
+
+For example:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: git-credentials
+  namespace: test
+type: Opaque
+data:
+  config: <.ssh.config>
+  id_test: <private key for repo 1>
+  id_prod: <private key for repo 2>
+```
 
 ## Using `Secrets` as a non-root user
 
