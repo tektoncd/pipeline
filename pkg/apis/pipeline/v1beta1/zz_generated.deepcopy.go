@@ -1492,7 +1492,7 @@ func (in *Provenance) DeepCopyInto(out *Provenance) {
 	if in.FeatureFlags != nil {
 		in, out := &in.FeatureFlags, &out.FeatureFlags
 		*out = new(config.FeatureFlags)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
