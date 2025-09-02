@@ -1922,6 +1922,112 @@ func TestPipelineRunSpec_ValidateUpdate(t *testing.T) {
 	}
 }
 
+func TestPipelineRunSpec_ValidateUpdate_FinalizerChanges(t *testing.T) {
+	tests := []struct {
+		name                string
+		baselinePipelineRun *v1beta1.PipelineRun
+		pipelineRun         *v1beta1.PipelineRun
+		expectedError       string
+	}{
+		{
+			name: "allow finalizer update when specs are identical",
+			baselinePipelineRun: &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-pr",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "test-pipeline",
+					},
+					Timeouts: &v1beta1.TimeoutFields{
+						Pipeline: &metav1.Duration{Duration: 60 * time.Minute},
+					},
+				},
+				Status: v1beta1.PipelineRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+			},
+			pipelineRun: &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "test-pr",
+					Finalizers: []string{"chains.tekton.dev/finalizer"},
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "test-pipeline",
+					},
+					Timeouts: &v1beta1.TimeoutFields{
+						Pipeline: &metav1.Duration{Duration: 60 * time.Minute},
+					},
+				},
+			},
+			expectedError: "",
+		},
+		{
+			name: "block actual spec changes on completed PipelineRun",
+			baselinePipelineRun: &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-pr",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "test-pipeline",
+					},
+				},
+				Status: v1beta1.PipelineRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+			},
+			pipelineRun: &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "test-pr",
+					Finalizers: []string{"chains.tekton.dev/finalizer"},
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "different-pipeline",
+					},
+				},
+			},
+			expectedError: "invalid value: Once the PipelineRun is complete, no updates are allowed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := config.ToContext(t.Context(), &config.Config{
+				Defaults: &config.Defaults{
+					DefaultResolverType:   "bundles",
+					DefaultTimeoutMinutes: 60,
+				},
+			})
+			ctx = apis.WithinUpdate(ctx, tt.baselinePipelineRun)
+
+			err := tt.pipelineRun.Spec.ValidateUpdate(ctx)
+
+			if tt.expectedError == "" {
+				if err != nil {
+					t.Errorf("Expected no error, but got: %v", err)
+				}
+			} else {
+				if err == nil {
+					t.Errorf("Expected error containing %q, but got none", tt.expectedError)
+				} else if !strings.Contains(err.Error(), tt.expectedError) {
+					t.Errorf("Expected error containing %q, but got: %v", tt.expectedError, err)
+				}
+			}
+		})
+	}
+}
+
 func TestPipelineRunTaskRunSpecTimeout_Validate(t *testing.T) {
 	tests := []struct {
 		name        string
