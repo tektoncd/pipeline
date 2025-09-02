@@ -219,7 +219,7 @@ data:
         memory: "128Mi"
         cpu: "500m"
   
-    default: # updates resource requirements of init-containers and containers which has empty resource resource requirements
+    default: # updates resource requirements of init-containers and containers which has empty resource requirements
       requests:
         memory: "64Mi"
         cpu: "250m"
