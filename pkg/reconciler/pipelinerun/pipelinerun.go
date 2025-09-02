@@ -454,7 +454,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		pr.Status.MarkRunning(v1.PipelineRunReasonResolvingPipelineRef.String(), message)
 		return nil
 	case errors.Is(err, apiserver.ErrReferencedObjectValidationFailed), errors.Is(err, apiserver.ErrCouldntValidateObjectPermanent):
-		logger.Errorf("Failed dryRunValidation for PipelineRun %s: %w", pr.Name, err)
+		logger.Errorf("Failed dryRunValidation for PipelineRun %s: %v", pr.Name, err)
 		pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(),
 			"Failed dryRunValidation for PipelineRun %s: %s",
 			pr.Name, pipelineErrors.WrapUserError(err))
@@ -690,7 +690,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		if !rpt.IsCustomTask() {
 			err := taskrun.ValidateResolvedTask(ctx, rpt.PipelineTask.Params, rpt.PipelineTask.Matrix, rpt.ResolvedTask)
 			if err != nil {
-				logger.Errorf("Failed to validate pipelinerun %s with error %w", pr.Name, err)
+				logger.Errorf("Failed to validate pipelinerun %s with error %v", pr.Name, err)
 				pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(),
 					"Validation failed for pipelinerun %s with error %s",
 					pr.Name, pipelineErrors.WrapUserError(err))
@@ -699,7 +699,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 
 			if config.FromContextOrDefaults(ctx).FeatureFlags.EnableParamEnum {
 				if err := resources.ValidateParamEnumSubset(originalTasks[i].Params, pipelineSpec.Params, rpt.ResolvedTask); err != nil {
-					logger.Errorf("Failed to validate pipelinerun %q with error %w", pr.Name, err)
+					logger.Errorf("Failed to validate pipelinerun %q with error %v", pr.Name, err)
 					pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(),
 						"Validation failed for pipelinerun with error %s",
 						pipelineErrors.WrapUserError(err))
@@ -715,7 +715,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		if err != nil {
 			logger.Errorf("Error evaluating CEL %s: %v", pr.Name, err)
 			pr.Status.MarkFailed(string(v1.PipelineRunReasonCELEvaluationFailed),
-				"Error evaluating CEL %s: %w", pr.Name, pipelineErrors.WrapUserError(err))
+				"Error evaluating CEL %s: %v", pr.Name, pipelineErrors.WrapUserError(err))
 			return controller.NewPermanentError(err)
 		}
 	}
@@ -738,17 +738,17 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		}
 
 		if err := resources.ValidatePipelineResults(pipelineSpec, pipelineRunFacts.State); err != nil {
-			logger.Errorf("Failed to resolve pipeline result reference for %q with error %w", pr.Name, err)
+			logger.Errorf("Failed to resolve pipeline result reference for %q with error %v", pr.Name, err)
 			pr.Status.MarkFailed(v1.PipelineRunReasonInvalidPipelineResultReference.String(),
-				"Failed to resolve pipeline result reference for %q with error %w",
+				"Failed to resolve pipeline result reference for %q with error %v",
 				pr.Name, err)
 			return controller.NewPermanentError(err)
 		}
 
 		if err := resources.ValidateOptionalWorkspaces(pipelineSpec.Workspaces, pipelineRunFacts.State); err != nil {
-			logger.Errorf("Optional workspace not supported by task: %w", err)
+			logger.Errorf("Optional workspace not supported by task: %v", err)
 			pr.Status.MarkFailed(v1.PipelineRunReasonRequiredWorkspaceMarkedOptional.String(),
-				"Optional workspace not supported by task: %w", pipelineErrors.WrapUserError(err))
+				"Optional workspace not supported by task: %v", pipelineErrors.WrapUserError(err))
 			return controller.NewPermanentError(err)
 		}
 
@@ -921,7 +921,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 			if err := rpt.EvaluateCEL(); err != nil {
 				logger.Errorf("Final task %q is not executed, due to error evaluating CEL %s: %v", rpt.PipelineTask.Name, pr.Name, err)
 				pr.Status.MarkFailed(string(v1.PipelineRunReasonCELEvaluationFailed),
-					"Error evaluating CEL %s: %w", pr.Name, pipelineErrors.WrapUserError(err))
+					"Error evaluating CEL %s: %v", pr.Name, pipelineErrors.WrapUserError(err))
 				return controller.NewPermanentError(err)
 			}
 
@@ -959,9 +959,9 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 		// Validate parameter types in matrix after apply substitutions from Task Results
 		if rpt.PipelineTask.IsMatrixed() {
 			if err := resources.ValidateParameterTypesInMatrix(pipelineRunFacts.State); err != nil {
-				logger.Errorf("Failed to validate matrix %q with error %w", pr.Name, err)
+				logger.Errorf("Failed to validate matrix %q with error %v", pr.Name, err)
 				pr.Status.MarkFailed(v1.PipelineRunReasonInvalidMatrixParameterTypes.String(),
-					"Failed to validate matrix %q with error %w", pipelineErrors.WrapUserError(err))
+					"Failed to validate matrix %q with error %v", pipelineErrors.WrapUserError(err))
 				return controller.NewPermanentError(err)
 			}
 		}
@@ -1015,7 +1015,7 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 			params = append(params, rpt.PipelineTask.Params...)
 			if err := taskrun.ValidateEnumParam(ctx, params, rpt.ResolvedTask.TaskSpec.Params); err != nil {
 				pr.Status.MarkFailed(v1.PipelineRunReasonInvalidParamValue.String(),
-					"Invalid param value from PipelineTask \"%s\": %w",
+					"Invalid param value from PipelineTask \"%s\": %v",
 					rpt.PipelineTask.Name, pipelineErrors.WrapUserError(err))
 				return nil, controller.NewPermanentError(err)
 			}
