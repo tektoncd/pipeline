@@ -131,6 +131,13 @@ func (ts *TaskRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.FieldErro
 		return
 	}
 	old := &oldObj.Spec
+	// Apply defaults to both old and new specs before comparison to handle
+	// cases where default field values have changed between API versions.
+	// This prevents upgrade scenarios from being incorrectly flagged as
+	// user modifications when only default values have changed.
+	old.SetDefaults(ctx)
+	tsCopy := ts.DeepCopy()
+	tsCopy.SetDefaults(ctx)
 
 	// If already in the done state, the spec cannot be modified.
 	// Otherwise, only the status, statusMessage field can be modified.
@@ -142,7 +149,7 @@ func (ts *TaskRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.FieldErro
 		tips = "Once the TaskRun has started, only status and statusMessage updates are allowed"
 	}
 
-	if !equality.Semantic.DeepEqual(old, ts) {
+	if !equality.Semantic.DeepEqual(old, tsCopy) {
 		errs = errs.Also(apis.ErrInvalidValue(tips, ""))
 	}
 

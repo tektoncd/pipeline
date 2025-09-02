@@ -1107,6 +1107,41 @@ func TestTaskRunSpec_ValidateUpdate(t *testing.T) {
 				Message: `invalid value: Once the TaskRun is complete, no updates are allowed`,
 				Paths:   []string{""},
 			},
+		}, {
+			name: "update with API version upgrade default changes should not error",
+			// Bug scenario: v1beta1 TaskRun resources in production after Tekton upgrade
+			// 1. Original v1beta1 TaskRun had Timeout field or was nil (stored in etcd)
+			// 2. User tries to modify annotations via kubectl after upgrade
+			// 3. API server converts v1beta1 -> v1: timeout field structure may change
+			// 4. Mutating webhook applies v1 SetDefaults: creates default Timeout if nil
+			// 5. ValidateUpdate compares: old (nil Timeout) vs new (default Timeout) -> false error
+			// 6. Solution: Apply SetDefaults to both old and new before comparison
+			baselineTaskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{
+						Name: "test",
+					},
+					Timeout: nil, // Simulates v1beta1 -> v1 converted object (no defaults applied yet)
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown},
+						},
+					},
+				},
+			},
+			taskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{
+						Name: "test",
+					},
+					Timeout: &metav1.Duration{}, // Simulates object after mutating webhook applies SetDefaults
+				},
+			},
+			isCreate:      false,
+			isUpdate:      true,
+			expectedError: apis.FieldError{}, // Should NOT error - difference is only due to SetDefaults, not user changes
 		},
 	}
 

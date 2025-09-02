@@ -139,6 +139,13 @@ func (ps *PipelineRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.Field
 		return
 	}
 	old := &oldObj.Spec
+	// Apply defaults to both old and new specs before comparison to handle
+	// cases where default field values have changed between API versions.
+	// This prevents upgrade scenarios from being incorrectly flagged as
+	// user modifications when only default values have changed.
+	old.SetDefaults(ctx)
+	psCopy := ps.DeepCopy()
+	psCopy.SetDefaults(ctx)
 
 	// If already in the done state, the spec cannot be modified. Otherwise, only the status field can be modified.
 	tips := "Once the PipelineRun is complete, no updates are allowed"
@@ -147,7 +154,7 @@ func (ps *PipelineRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.Field
 		old.Status = ps.Status
 		tips = "Once the PipelineRun has started, only status updates are allowed"
 	}
-	if !equality.Semantic.DeepEqual(old, ps) {
+	if !equality.Semantic.DeepEqual(old, psCopy) {
 		errs = errs.Also(apis.ErrInvalidValue(tips, ""))
 	}
 

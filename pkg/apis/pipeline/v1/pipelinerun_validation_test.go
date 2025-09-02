@@ -1751,11 +1751,79 @@ func TestPipelineRunSpec_ValidateUpdate(t *testing.T) {
 				Message: `invalid value: Once the PipelineRun is complete, no updates are allowed`,
 				Paths:   []string{""},
 			},
+		}, {
+			name: "update with API version upgrade default changes should not error",
+			// Bug scenario: v1beta1 PipelineRun resources in production after Tekton upgrade
+			// 1. Original v1beta1 PipelineRun had Timeouts: nil (stored in etcd)
+			// 2. User tries to modify annotations via kubectl after upgrade
+			// 3. API server converts v1beta1 -> v1: conversion keeps Timeouts: nil
+			// 4. Mutating webhook applies v1 SetDefaults: Timeouts becomes &TimeoutFields{}
+			// 5. ValidateUpdate compares: old (nil) vs new (&TimeoutFields{}) -> false error
+			// 6. Solution: Apply SetDefaults to both old and new before comparison
+			baselinePipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					PipelineRef: &v1.PipelineRef{
+						Name: "test",
+					},
+					Timeouts: nil, // Simulates v1beta1 -> v1 converted object (no defaults applied yet)
+				},
+				Status: v1.PipelineRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown},
+						},
+					},
+				},
+			},
+			pipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					PipelineRef: &v1.PipelineRef{
+						Name: "test",
+					},
+					Timeouts: &v1.TimeoutFields{}, // Simulates object after mutating webhook SetDefaults
+				},
+			},
+			isCreate:      false,
+			isUpdate:      true,
+			expectedError: apis.FieldError{}, // Should NOT error - difference is only due to SetDefaults, not user changes
+		}, {
+			name: "update with actual user timeout change should error",
+			// Test that actual user modifications are still caught correctly
+			baselinePipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					PipelineRef: &v1.PipelineRef{Name: "test"},
+					Timeouts: &v1.TimeoutFields{
+						Pipeline: &metav1.Duration{Duration: 30 * time.Minute}, // User set this explicitly
+					},
+				},
+				Status: v1.PipelineRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown},
+						},
+					},
+				},
+			},
+			pipelineRun: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					PipelineRef: &v1.PipelineRef{Name: "test"},
+					Timeouts: &v1.TimeoutFields{
+						Pipeline: &metav1.Duration{Duration: 45 * time.Minute}, // User changed this
+					},
+				},
+			},
+			isCreate: false,
+			isUpdate: true,
+			expectedError: apis.FieldError{
+				Message: `invalid value: Once the PipelineRun has started, only status updates are allowed`,
+				Paths:   []string{""},
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Configure context with default resolver to simulate upgrade scenario
 			ctx := config.ToContext(t.Context(), &config.Config{
 				FeatureFlags: &config.FeatureFlags{},
 				Defaults:     &config.Defaults{},
@@ -1769,7 +1837,7 @@ func TestPipelineRunSpec_ValidateUpdate(t *testing.T) {
 			pr := tt.pipelineRun
 			err := pr.Spec.ValidateUpdate(ctx)
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
-				t.Errorf("PipelineRunSpec.ValidateUpdate() errors diff %s", diff.PrintWantGot(d))
+				t.Errorf("PipelineRunSpec.ValidateUpdate() validation error mismatch (-want +got):\n%s", diff.PrintWantGot(d))
 			}
 		})
 	}

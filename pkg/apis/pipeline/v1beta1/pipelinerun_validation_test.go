@@ -1898,6 +1898,42 @@ func TestPipelineRunSpec_ValidateUpdate(t *testing.T) {
 				Message: `invalid value: Once the PipelineRun is complete, no updates are allowed`,
 				Paths:   []string{""},
 			},
+		}, {
+			name: "update with API version upgrade default changes should not error",
+			// Bug scenario: v1beta1 PipelineRun resources in production after Tekton upgrade
+			// 1. Original v1beta1 PipelineRun had Timeout field (deprecated) or nil Timeouts (stored in etcd)
+			// 2. User tries to modify annotations via kubectl after upgrade
+			// 3. API server processes v1beta1 object with potential field migrations
+			// 4. Mutating webhook applies v1beta1 SetDefaults: may convert Timeout to Timeouts structure
+			// 5. ValidateUpdate compares: old (original structure) vs new (migrated structure) -> false error
+			// 6. Solution: Apply SetDefaults to both old and new before comparison
+			baselinePipelineRun: &v1beta1.PipelineRun{
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "test",
+					},
+					Timeout:  nil, // Simulates legacy v1beta1 object with old timeout structure
+					Timeouts: nil, // No new timeout structure yet
+				},
+				Status: v1beta1.PipelineRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown},
+						},
+					},
+				},
+			},
+			pipelineRun: &v1beta1.PipelineRun{
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "test",
+					},
+					Timeout: &metav1.Duration{}, // Simulates object after SetDefaults migration
+				},
+			},
+			isCreate:      false,
+			isUpdate:      true,
+			expectedError: apis.FieldError{}, // Should NOT error - difference is only due to SetDefaults migration, not user changes
 		},
 	}
 
