@@ -651,7 +651,7 @@ spec:
 }
 
 // setupGitea reads git-resolver/gitea.yaml, replaces "default" namespace references in "namespace: default" and
-// svc.cluster.local hostnames with the test namespace, calls kubectl create, and waits for the gitea-0 pod to be up
+// svc.cluster.local hostnames with the test namespace, calls kubectl create, and waits for the gitea pod to be up
 // and running. At that point, it'll create a test user and token, create a Secret containing that token, create an org
 // and repository in gitea, add the test task to that repo, and verify that it's been created properly, returning the
 // Gitea service's internal-to-cluster hostname and the token secret name.
@@ -679,9 +679,20 @@ func setupGitea(ctx context.Context, t *testing.T, c *clients, namespace string)
 	}
 
 	// Sleep 5 seconds to make sure the pod gets created, then wait for it to be running. It'll take over 30s, due to
-	// waiting for the postgres and memcached pods it depends on to be running.
+	// setting up of cache and db.
 	time.Sleep(5 * time.Second)
-	if err := WaitForPodState(ctx, c, "gitea-0", namespace, func(r *corev1.Pod) (bool, error) {
+	labelSelector := "app.kubernetes.io/name=gitea,app.kubernetes.io/instance=gitea"
+	pods, err := c.KubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		t.Fatalf("failed to list gitea pods: %v", err)
+	}
+	if len(pods.Items) == 0 {
+		t.Fatalf("failed to get any gitea pod: %v", pods)
+	}
+
+	if err := WaitForPodState(ctx, c, pods.Items[0].Name, namespace, func(r *corev1.Pod) (bool, error) {
 		if r.Status.Phase == corev1.PodRunning {
 			for _, cs := range r.Status.ContainerStatuses {
 				return cs.Name == "gitea" && cs.State.Running != nil && cs.Ready, nil
@@ -689,7 +700,7 @@ func setupGitea(ctx context.Context, t *testing.T, c *clients, namespace string)
 		}
 		return false, nil
 	}, "PodRunning"); err != nil {
-		t.Fatalf("Error waiting for gitea-0 pod to be running: %v", err)
+		t.Fatalf("Error waiting for gitea pod :%s to be running: %v", pods.Items[0].Name, err)
 	}
 
 	giteaUserJSON := fmt.Sprintf(`{"admin":true,"email":"%s@example.com","full_name":"%s","login_name":"%s","must_change_password":false,"password":"%s","send_notify":false,"source_id":0,"username":"%s"}`, scmRemoteUser, scmRemoteUser, scmRemoteUser, scmRemoteUserPassword, scmRemoteUser)
@@ -770,9 +781,9 @@ spec:
 		t.Fatalf("failed to create configuration obj from %s for cluster %s: %s", knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, err)
 	}
 
-	// To do API operations in Gitea from outside of the cluster, we need to forward the gitea-0 pod's port 3000 locally.
+	// To do API operations in Gitea from outside of the cluster, we need to forward the gitea pod's port 3000 locally.
 	// We're using https://github.com/goccy/kpoward so we can do this programmatically.
-	kpow := kpoward.New(restCfg, "gitea-0", 3000)
+	kpow := kpoward.New(restCfg, pods.Items[0].Name, 3000)
 	kpow.SetNamespace(namespace)
 
 	if err := kpow.Run(ctx, func(ctx context.Context, localPort uint16) error {
