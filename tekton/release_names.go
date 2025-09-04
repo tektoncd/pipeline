@@ -72,6 +72,9 @@ func httpGet(url string) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Set("User-Agent", "golang-tekton-bot/0.1")
+
 	return http.DefaultClient.Do(req)
 }
 
