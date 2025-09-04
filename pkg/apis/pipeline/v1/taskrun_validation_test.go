@@ -18,6 +18,7 @@ package v1_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -1126,6 +1127,115 @@ func TestTaskRunSpec_ValidateUpdate(t *testing.T) {
 			err := tr.Spec.ValidateUpdate(ctx)
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("TaskRunSpec.ValidateUpdate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestTaskRunSpec_ValidateUpdate_FinalizerChanges(t *testing.T) {
+	tests := []struct {
+		name            string
+		baselineTaskRun *v1.TaskRun
+		taskRun         *v1.TaskRun
+		expectedError   string
+	}{
+		{
+			name: "allow finalizer update when specs are identical",
+			baselineTaskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-tr",
+				},
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{
+						Name: "test-task",
+						ResolverRef: v1.ResolverRef{
+							Resolver: "bundles",
+						},
+					},
+					Timeout: &metav1.Duration{Duration: 60 * time.Minute},
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+			},
+			taskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "test-tr",
+					Finalizers: []string{"chains.tekton.dev/finalizer"},
+				},
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{
+						Name: "test-task",
+						ResolverRef: v1.ResolverRef{
+							Resolver: "bundles",
+						},
+					},
+					Timeout: &metav1.Duration{Duration: 60 * time.Minute},
+				},
+			},
+			expectedError: "",
+		},
+		{
+			name: "block actual spec changes on completed TaskRun",
+			baselineTaskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-tr",
+				},
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{
+						Name: "test-task",
+					},
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+			},
+			taskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "test-tr",
+					Finalizers: []string{"chains.tekton.dev/finalizer"},
+				},
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{
+						Name: "different-task",
+					},
+				},
+			},
+			expectedError: "invalid value: Once the TaskRun is complete, no updates are allowed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := config.ToContext(t.Context(), &config.Config{
+				Defaults: &config.Defaults{
+					DefaultResolverType:   "bundles",
+					DefaultTimeoutMinutes: 60,
+					DefaultServiceAccount: "default",
+				},
+			})
+			ctx = apis.WithinUpdate(ctx, tt.baselineTaskRun)
+
+			err := tt.taskRun.Spec.ValidateUpdate(ctx)
+
+			if tt.expectedError == "" {
+				if err != nil {
+					t.Errorf("Expected no error, but got: %v", err)
+				}
+			} else {
+				if err == nil {
+					t.Errorf("Expected error containing %q, but got none", tt.expectedError)
+				} else if !strings.Contains(err.Error(), tt.expectedError) {
+					t.Errorf("Expected error containing %q, but got: %v", tt.expectedError, err)
+				}
 			}
 		})
 	}
