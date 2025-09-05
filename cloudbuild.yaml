@@ -1,0 +1,172 @@
+# This Cloud Build file deploys 7 parallel AI agents to work on your codebase.
+# Each agent checks out a new branch, runs Gemini to modify the code for a specific purpose,
+# commits the changes, and pushes the new branch to your GitHub repository.
+
+steps:
+- id: 'BugHunterAgent'
+  name: 'gcr.io/$PROJECT_ID/gemini-cli-node20:latest'
+  waitFor: ['-'] # Run in parallel
+  secretEnv: ['GEMINI_API_KEY', 'GITHUB_PAT']
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    set -ex
+    git config --global user.email "cloud-build-bot@google.com"
+    git config --global user.name "Cloud Build Bot (Bug Hunter)"
+    git checkout -b "BugHunterAgent-${BUILD_ID}"
+    gemini --prompt "You are a senior engineering agent. Analyze the code within the '${_DIRECTORY}' directory for potential bugs, including race conditions, null pointer exceptions, and logical flaws. If you find any, modify the code to fix them directly." --approval-mode=yolo
+    # Only commit and push if the agent made changes
+    if ! git diff --quiet; then
+      git add .
+      git commit -m "fix(ai): Automated bug fixes from BugHunterAgent in ${_DIRECTORY}"
+      git push https://$$GITHUB_PAT@github.com/${_GITHUB_REPO_OWNER}/${_GITHUB_REPO_NAME}.git "BugHunterAgent-${BUILD_ID}"
+    else
+      echo "BugHunterAgent found no issues to fix in ${_DIRECTORY}."
+    fi
+
+- id: 'DocWriterAgent'
+  name: 'gcr.io/$PROJECT_ID/gemini-cli-node20:latest'
+  waitFor: ['-'] # Run in parallel
+  secretEnv: ['GEMINI_API_KEY', 'GITHUB_PAT']
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    set -ex
+    git config --global user.email "cloud-build-bot@google.com"
+    git config --global user.name "Cloud Build Bot (Doc Writer)"
+    git checkout -b "DocWriterAgent-${BUILD_ID}"
+    gemini --prompt "You are a senior technical writer agent. Scan the '${_DIRECTORY}' directory for a README.md file. Update it to fully reflect the code in that specific directory. Ensure it explains the code's purpose, lists public functions or API endpoints, and provides clear usage examples. If a README.md is missing in '${_DIRECTORY}', create one there." --approval-mode=yolo
+    if ! git diff --quiet; then
+      git add .
+      git commit -m "docs(ai): Automated documentation updates from DocWriterAgent in ${_DIRECTORY}"
+      git push https://$$GITHUB_PAT@github.com/${_GITHUB_REPO_OWNER}/${_GITHUB_REPO_NAME}.git "DocWriterAgent-${BUILD_ID}"
+    else
+      echo "DocWriterAgent found no documentation to update in ${_DIRECTORY}."
+    fi
+
+- id: 'TestWriterAgent'
+  name: 'gcr.io/$PROJECT_ID/gemini-cli-node20:latest'
+  waitFor: ['-'] # Run in parallel
+  secretEnv: ['GEMINI_API_KEY', 'GITHUB_PAT']
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    set -ex
+    git config --global user.email "cloud-build-bot@google.com"
+    git config --global user.name "Cloud Build Bot (Test Writer)"
+    git checkout -b "TestWriterAgent-${BUILD_ID}"
+    gemini --prompt "You are a senior software engineer in test. Your goal is to increase test coverage for the code in the '${_DIRECTORY}' directory. Identify critical code paths missing unit tests within that directory, write the necessary test files, and add them. After writing the tests, run them to ensure they pass and correctly validate behavior. Only keep tests that pass." --approval-mode=yolo
+    # Run tests only in the specified directory
+    go test ./$${_DIRECTORY}/...
+    if ! git diff --quiet; then
+      git add .
+      git commit -m "test(ai): Add new unit tests from TestWriterAgent for ${_DIRECTORY}"
+      git push https://$$GITHUB_PAT@github.com/${_GITHUB_REPO_OWNER}/${_GITHUB_REPO_NAME}.git "TestWriterAgent-${BUILD_ID}"
+    else
+      echo "TestWriterAgent did not add any new tests in ${_DIRECTORY}."
+    fi
+
+- id: 'RefactorAgent'
+  name: 'gcr.io/$PROJECT_ID/gemini-cli-node20:latest'
+  waitFor: ['-'] # Run in parallel
+  secretEnv: ['GEMINI_API_KEY', 'GITHUB_PAT']
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    set -ex
+    git config --global user.email "cloud-build-bot@google.com"
+    git config --global user.name "Cloud Build Bot (Refactor Agent)"
+    git checkout -b "RefactorAgent-${BUILD_ID}"
+    gemini --prompt "You are a senior engineering agent focused on code quality. Review the code within the '${_DIRECTORY}' directory and identify areas for refactoring. Look for long methods, complex logic, or tightly coupled components. Apply refactors to improve code elegance and maintainability without changing external behavior." --approval-mode=yolo
+    if ! git diff --quiet; then
+      git add .
+      git commit -m "refactor(ai): Automated code refactoring from RefactorAgent in ${_DIRECTORY}"
+      git push https://$$GITHUB_PAT@github.com/${_GITHUB_REPO_OWNER}/${_GITHUB_REPO_NAME}.git "RefactorAgent-${BUILD_ID}"
+    else
+      echo "RefactorAgent found no opportunities for refactoring in ${_DIRECTORY}."
+    fi
+
+- id: 'StyleAgent'
+  name: 'gcr.io/$PROJECT_ID/gemini-cli-node20:latest'
+  waitFor: ['-'] # Run in parallel
+  secretEnv: ['GEMINI_API_KEY', 'GITHUB_PAT']
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    set -ex
+    git config --global user.email "cloud-build-bot@google.com"
+    git config --global user.name "Cloud Build Bot (Style Agent)"
+    git checkout -b "StyleAgent-${BUILD_ID}"
+    gemini --prompt "You are a senior engineering agent for Go. Analyze the Go code within the '${_DIRECTORY}' directory and enforce the best practices from the Google Go Style Guide (https://google.github.io/styleguide/go/best-practices.html). Correct any deviations in formatting, naming, error handling, and other style rules in that directory." --approval-mode=yolo
+    if ! git diff --quiet; then
+      git add .
+      git commit -m "style(ai): Enforce Go style guide in ${_DIRECTORY}"
+      git push https://$$GITHUB_PAT@github.com/${_GITHUB_REPO_OWNER}/${_GITHUB_REPO_NAME}.git "StyleAgent-${BUILD_ID}"
+    else
+      echo "StyleAgent found no style violations in ${_DIRECTORY}."
+    fi
+
+- id: 'ModernizerAgent'
+  name: 'gcr.io/$PROJECT_ID/gemini-cli-node20:latest'
+  waitFor: ['-'] # Run in parallel
+  secretEnv: ['GEMINI_API_KEY', 'GITHUB_PAT']
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    set -ex
+    git config --global user.email "cloud-build-bot@google.com"
+    git config --global user.name "Cloud Build Bot (Modernizer)"
+    git checkout -b "ModernizerAgent-${BUILD_ID}"
+    gemini --prompt "You are a senior engineering agent. Scan dependencies (e.g., go.mod) and the source code within the '${_DIRECTORY}' directory for usage of deprecated packages or API calls. Replace them with modern alternatives, ensuring the code remains functional." --approval-mode=yolo
+    if ! git diff --quiet; then
+      git add .
+      git commit -m "chore(ai): Update deprecated packages and APIs in ${_DIRECTORY}"
+      git push https://$$GITHUB_PAT@github.com/${_GITHUB_REPO_OWNER}/${_GITHUB_REPO_NAME}.git "ModernizerAgent-${BUILD_ID}"
+    else
+      echo "ModernizerAgent found no deprecated code to update in ${_DIRECTORY}."
+    fi
+
+- id: 'SecurityAgent'
+  name: 'gcr.io/$PROJECT_ID/gemini-cli-node20:latest'
+  waitFor: ['-'] # Run in parallel
+  secretEnv: ['GEMINI_API_KEY', 'GITHUB_PAT']
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    set -ex
+    git config --global user.email "cloud-build-bot@google.com"
+    git config --global user.name "Cloud Build Bot (Security Agent)"
+    git checkout -b "SecurityAgent-${BUILD_ID}"
+    gemini --prompt "You are a senior security reviewer agent. Audit the code within the '${_DIRECTORY}' directory for hardcoded API keys/secrets, Cloud Storage bucket squatting, SQL injection points, and XSS vulnerabilities. If you find hardcoded credentials, replace them with a placeholder like 'REPLACE_WITH_SECRET_MANAGER_KEY' and add a TODO. Patch other vulnerabilities directly." --approval-mode=yolo
+    if ! git diff --quiet; then
+      git add .
+      git commit -m "security(ai): Automated security fixes from SecurityAgent in ${_DIRECTORY}"
+      git push https://$$GITHUB_PAT@github.com/${_GITHUB_REPO_OWNER}/${_GITHUB_REPO_NAME}.git "SecurityAgent-${BUILD_ID}"
+    else
+      echo "SecurityAgent found no security issues in ${_DIRECTORY}."
+    fi
+
+# --- Configuration ---
+
+# Secrets to make available as environment variables for all steps.
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/$_SECRET_NAME_GEMINI/versions/latest
+    env: 'GEMINI_API_KEY'
+  - versionName: projects/$PROJECT_id/secrets/$_SECRET_NAME_GITHUB/versions/latest
+    env: 'GITHUB_PAT'
+
+# User-defined substitutions to pass variables into the build.
+substitutions:
+  _SECRET_NAME_GEMINI: 'ed-gemini-api-key'
+  _SECRET_NAME_GITHUB: 'ed-hazel-hackers-github-pat'
+  _GITHUB_REPO_OWNER: 'codrienne'
+  _GITHUB_REPO_NAME: 'tekton-pipelines'
+  _DIRECTORY: 'pkg/apis' # The directory for the agents to focus on.
