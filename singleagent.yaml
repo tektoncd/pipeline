@@ -1,5 +1,5 @@
 steps:
-- id: 'DocWriterAgent'
+- id: 'BugHunterAgent'
   name: 'gcr.io/$PROJECT_ID/gemini-cli-node20:latest'
   waitFor: ['-'] # Run in parallel
   secretEnv: ['GEMINI_API_KEY', 'GITHUB_PAT']
@@ -9,15 +9,16 @@ steps:
   - |
     set -ex
     git config --global user.email "cloud-build-bot@google.com"
-    git config --global user.name "Cloud Build Bot (Doc Writer)"
-    git checkout -b "DocWriterAgent-${BUILD_ID}"
-    gemini --prompt "You are a senior technical writer agent. Scan the '${_DIRECTORY}' directory for a README.md file. Update it to fully reflect the code in that specific directory. Ensure it explains the code's purpose, lists public functions or API endpoints, and provides clear usage examples. If a README.md is missing in '${_DIRECTORY}', create one there." --approval-mode=yolo
+    git config --global user.name "Cloud Build Bot (Bug Hunter)"
+    git checkout -b "BugHunterAgent-${BUILD_ID}"
+    gemini --prompt "You are a senior engineering agent. Analyze the code within the '${_DIRECTORY}' directory for potential bugs, including race conditions, null pointer exceptions, and logical flaws. If you find any, modify the code to fix them directly." --approval-mode=yolo
+    # Only commit and push if the agent made changes
     if ! git diff --quiet; then
       git add .
-      git commit -m "docs(ai): Automated documentation updates from DocWriterAgent in ${_DIRECTORY}"
-      git push https://$$GITHUB_PAT@github.com/${_GITHUB_REPO_OWNER}/${_GITHUB_REPO_NAME}.git "DocWriterAgent-${BUILD_ID}"
+      git commit -m "fix(ai): Automated bug fixes from BugHunterAgent in ${_DIRECTORY}"
+      git push https://$$GITHUB_PAT@github.com/${_GITHUB_REPO_OWNER}/${_GITHUB_REPO_NAME}.git "BugHunterAgent-${BUILD_ID}"
     else
-      echo "DocWriterAgent found no documentation to update in ${_DIRECTORY}."
+      echo "BugHunterAgent found no issues to fix in ${_DIRECTORY}."
     fi
 
 # --- Configuration ---
