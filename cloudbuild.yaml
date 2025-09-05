@@ -160,7 +160,7 @@ availableSecrets:
   secretManager:
   - versionName: projects/$PROJECT_ID/secrets/$_SECRET_NAME_GEMINI/versions/latest
     env: 'GEMINI_API_KEY'
-  - versionName: projects/$PROJECT_id/secrets/$_SECRET_NAME_GITHUB/versions/latest
+  - versionName: projects/$PROJECT_ID/secrets/$_SECRET_NAME_GITHUB/versions/latest
     env: 'GITHUB_PAT'
 
 # User-defined substitutions to pass variables into the build.
