@@ -36,13 +36,12 @@ func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
 		ps.Params[i].SetDefaults(ctx)
 	}
 
-	for _, pt := range ps.Tasks {
-		pt.SetDefaults(ctx)
+	for i := range ps.Tasks {
+		ps.Tasks[i].SetDefaults(ctx)
 	}
 
-	for _, ft := range ps.Finally {
-		ctx := ctx // Ensure local scoping per Task
-		ft.SetDefaults(ctx)
+	for i := range ps.Finally {
+		ps.Finally[i].SetDefaults(ctx)
 	}
 }
 

@@ -663,6 +663,7 @@ func validatePipelineResults(results []PipelineResult, tasks []PipelineTask, fin
 		if !ok {
 			errs = errs.Also(apis.ErrInvalidValue("expected pipeline results to be task result expressions but no expressions were found",
 				"value").ViaFieldIndex("results", idx))
+			continue
 		}
 
 		if !LooksLikeContainsResultRefs(expressions) {
