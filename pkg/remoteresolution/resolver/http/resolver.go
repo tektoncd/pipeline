@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Tekton Authors
+Copyright 2025 The Tekton Authors
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -81,28 +81,19 @@ func (r *Resolver) GetSelector(context.Context) map[string]string {
 
 // Validate ensures parameters from a request are as expected.
 func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestSpec) error {
-	if len(req.Params) > 0 {
-		return http.ValidateParams(ctx, req.Params)
-	}
-	// Remove this error once validate url has been implemented.
-	return errors.New("cannot validate request. the Validate method has not been implemented.")
+	return http.ValidateParams(ctx, req.Params)
 }
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
-	if len(req.Params) > 0 {
-		oParams := req.Params
-		if http.IsDisabled(ctx) {
-			return nil, errors.New(disabledError)
-		}
-
-		params, err := http.PopulateDefaultParams(ctx, oParams)
-		if err != nil {
-			return nil, err
-		}
-
-		return http.FetchHttpResource(ctx, params, r.kubeClient, r.logger)
+	if http.IsDisabled(ctx) {
+		return nil, errors.New(disabledError)
 	}
-	// Remove this error once resolution of url has been implemented.
-	return nil, errors.New("the Resolve method has not been implemented.")
+
+	params, err := http.PopulateDefaultParams(ctx, req.Params)
+	if err != nil {
+		return nil, err
+	}
+
+	return http.FetchHttpResource(ctx, params, r.kubeClient, r.logger)
 }

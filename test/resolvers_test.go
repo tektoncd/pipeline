@@ -250,7 +250,7 @@ spec:
 func TestGitResolver_Clone_Failure(t *testing.T) {
 	defaultURL := "https://github.com/tektoncd/catalog.git"
 	defaultPathInRepo := "/task/git-clone/0.10/git-clone.yaml"
-	defaultCommit := "783b4fe7d21148f3b1a93bfa49b0024d8c6c2955"
+	defaultCommit := "dd7cc22f2965ff4c9d8855b7161c2ffe94b6153e"
 
 	testCases := []struct {
 		name        string
