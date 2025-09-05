@@ -1,0 +1,38 @@
+- id: 'DocWriterAgent'
+  name: 'gcr.io/$PROJECT_ID/gemini-cli-node20:latest'
+  waitFor: ['-'] # Run in parallel
+  secretEnv: ['GEMINI_API_KEY', 'GITHUB_PAT']
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    set -ex
+    git config --global user.email "cloud-build-bot@google.com"
+    git config --global user.name "Cloud Build Bot (Doc Writer)"
+    git checkout -b "DocWriterAgent-${BUILD_ID}"
+    gemini --prompt "You are a senior technical writer agent. Scan the '${_DIRECTORY}' directory for a README.md file. Update it to fully reflect the code in that specific directory. Ensure it explains the code's purpose, lists public functions or API endpoints, and provides clear usage examples. If a README.md is missing in '${_DIRECTORY}', create one there." --approval-mode=yolo
+    if ! git diff --quiet; then
+      git add .
+      git commit -m "docs(ai): Automated documentation updates from DocWriterAgent in ${_DIRECTORY}"
+      git push https://$$GITHUB_PAT@github.com/${_GITHUB_REPO_OWNER}/${_GITHUB_REPO_NAME}.git "DocWriterAgent-${BUILD_ID}"
+    else
+      echo "DocWriterAgent found no documentation to update in ${_DIRECTORY}."
+    fi
+
+# --- Configuration ---
+
+# Secrets to make available as environment variables for all steps.
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/$_SECRET_NAME_GEMINI/versions/latest
+    env: 'GEMINI_API_KEY'
+  - versionName: projects/$PROJECT_ID/secrets/$_SECRET_NAME_GITHUB/versions/latest
+    env: 'GITHUB_PAT'
+
+# User-defined substitutions to pass variables into the build.
+substitutions:
+  _SECRET_NAME_GEMINI: 'ed-gemini-argo-local-edrienne-key'
+  _SECRET_NAME_GITHUB: 'ed-hazel-hackers-github-pat'
+  _GITHUB_REPO_OWNER: 'codrienne'
+  _GITHUB_REPO_NAME: 'tekton-pipelines'
+  _DIRECTORY: 'pkg/apis/pipeline/v1' # The directory for the agents to focus on.
