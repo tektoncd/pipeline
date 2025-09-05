@@ -209,6 +209,8 @@ Optional: Add a photo of this release's "purr programmer" (someone's cat).
 1. Update [the catalog repo](https://github.com/tektoncd/catalog) test infrastructure
 to use the new release by updating the `RELEASE_YAML` link in [e2e-tests.sh](https://github.com/tektoncd/catalog/blob/main/test/e2e-tests.sh).
 
+1. Update [the plumbing repo](https://github.com/tektoncd/plumbing/blob/d244554a42d7b6a5f1180c58c513eeecc9febcde/tekton/cd/pipeline/overlays/oci-ci-cd/kustomization.yaml#L4) to deploy the latest version to the dogfooging cluster on OCI.
+
 1. For major releases, the [website sync configuration](https://github.com/tektoncd/website/blob/main/sync/config/pipelines.yaml)
    to include the new release.
 
