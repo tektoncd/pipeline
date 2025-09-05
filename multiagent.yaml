@@ -1,4 +1,4 @@
-# This Cloud Build file deploys 7 parallel AI agents to work on your codebase.
+# This Cloud Build file deploys 5 parallel AI agents to work on your codebase.
 # Each agent checks out a new branch, runs Gemini to modify the code for a specific purpose,
 # commits the changes, and pushes the new branch to your GitHub repository.
 
@@ -69,7 +69,8 @@ steps:
       echo "TestWriterAgent did not add any new tests in ${_DIRECTORY}."
     fi
 
-- id: 'RefactorAgent'
+# --- Combined Code Quality Agent ---
+- id: 'CodeQualityAgent'
   name: 'gcr.io/$PROJECT_ID/gemini-cli-node20:latest'
   waitFor: ['-'] # Run in parallel
   secretEnv: ['GEMINI_API_KEY', 'GITHUB_PAT']
@@ -79,57 +80,18 @@ steps:
   - |
     set -ex
     git config --global user.email "cloud-build-bot@google.com"
-    git config --global user.name "Cloud Build Bot (Refactor Agent)"
-    git checkout -b "RefactorAgent-${BUILD_ID}"
-    gemini --prompt "You are a senior engineering agent focused on code quality. Review the code within the '${_DIRECTORY}' directory and identify areas for refactoring. Look for long methods, complex logic, or tightly coupled components. Apply refactors to improve code elegance and maintainability without changing external behavior." --approval-mode=yolo
+    git config --global user.name "Cloud Build Bot (Code Quality)"
+    git checkout -b "CodeQualityAgent-${BUILD_ID}"
+    gemini --prompt "You are a senior engineering agent specializing in Go code quality. Your task is to analyze the code within the '${_DIRECTORY}' directory and apply three types of improvements:
+    1. **Refactor:** Identify and refactor long methods, complex logic, or tightly coupled components to improve code elegance and maintainability without changing external behavior.
+    2. **Style:** Enforce the best practices from the Google Go Style Guide (https://google.github.io/styleguide/go/best-practices.html). Correct any deviations in formatting, naming, error handling, and other style rules.
+    3. **Modernize:** Scan dependencies (e.g., go.mod) and source code for usage of deprecated packages or API calls. Replace them with modern alternatives, ensuring the code remains functional." --approval-mode=yolo
     if ! git diff --quiet; then
       git add .
-      git commit -m "refactor(ai): Automated code refactoring from RefactorAgent in ${_DIRECTORY}"
-      git push https://$$GITHUB_PAT@github.com/${_GITHUB_REPO_OWNER}/${_GITHUB_REPO_NAME}.git "RefactorAgent-${BUILD_ID}"
+      git commit -m "refactor(ai): Apply automated code quality improvements in ${_DIRECTORY}"
+      git push https://$$GITHUB_PAT@github.com/${_GITHUB_REPO_OWNER}/${_GITHUB_REPO_NAME}.git "CodeQualityAgent-${BUILD_ID}"
     else
-      echo "RefactorAgent found no opportunities for refactoring in ${_DIRECTORY}."
-    fi
-
-- id: 'StyleAgent'
-  name: 'gcr.io/$PROJECT_ID/gemini-cli-node20:latest'
-  waitFor: ['-'] # Run in parallel
-  secretEnv: ['GEMINI_API_KEY', 'GITHUB_PAT']
-  entrypoint: 'bash'
-  args:
-  - '-c'
-  - |
-    set -ex
-    git config --global user.email "cloud-build-bot@google.com"
-    git config --global user.name "Cloud Build Bot (Style Agent)"
-    git checkout -b "StyleAgent-${BUILD_ID}"
-    gemini --prompt "You are a senior engineering agent for Go. Analyze the Go code within the '${_DIRECTORY}' directory and enforce the best practices from the Google Go Style Guide (https://google.github.io/styleguide/go/best-practices.html). Correct any deviations in formatting, naming, error handling, and other style rules in that directory." --approval-mode=yolo
-    if ! git diff --quiet; then
-      git add .
-      git commit -m "style(ai): Enforce Go style guide in ${_DIRECTORY}"
-      git push https://$$GITHUB_PAT@github.com/${_GITHUB_REPO_OWNER}/${_GITHUB_REPO_NAME}.git "StyleAgent-${BUILD_ID}"
-    else
-      echo "StyleAgent found no style violations in ${_DIRECTORY}."
-    fi
-
-- id: 'ModernizerAgent'
-  name: 'gcr.io/$PROJECT_ID/gemini-cli-node20:latest'
-  waitFor: ['-'] # Run in parallel
-  secretEnv: ['GEMINI_API_KEY', 'GITHUB_PAT']
-  entrypoint: 'bash'
-  args:
-  - '-c'
-  - |
-    set -ex
-    git config --global user.email "cloud-build-bot@google.com"
-    git config --global user.name "Cloud Build Bot (Modernizer)"
-    git checkout -b "ModernizerAgent-${BUILD_ID}"
-    gemini --prompt "You are a senior engineering agent. Scan dependencies (e.g., go.mod) and the source code within the '${_DIRECTORY}' directory for usage of deprecated packages or API calls. Replace them with modern alternatives, ensuring the code remains functional." --approval-mode=yolo
-    if ! git diff --quiet; then
-      git add .
-      git commit -m "chore(ai): Update deprecated packages and APIs in ${_DIRECTORY}"
-      git push https://$$GITHUB_PAT@github.com/${_GITHUB_REPO_OWNER}/${_GITHUB_REPO_NAME}.git "ModernizerAgent-${BUILD_ID}"
-    else
-      echo "ModernizerAgent found no deprecated code to update in ${_DIRECTORY}."
+      echo "CodeQualityAgent found no improvements to make in ${_DIRECTORY}."
     fi
 
 - id: 'SecurityAgent'
