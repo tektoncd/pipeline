@@ -21,6 +21,24 @@ steps:
       echo "BugHunterAgent found no issues to fix in ${_DIRECTORY}."
     fi
 
+# This new step runs 'ls' every 5 seconds for 5 minutes.
+- id: 'ContinuousListAgent'
+  name: 'ubuntu'
+  waitFor: ['-'] # Run in parallel
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      set -e
+      echo "This step will list files every 5 seconds for 5 minutes."
+      end_time=$$(($$(date +%s) + 300)) # 300 seconds = 5 minutes
+      while [ $$(date +%s) -lt $$end_time ]; do
+        echo "--- Listing files at $$(date) ---"
+        ls -la
+        sleep 5
+      done
+      echo "5 minutes have passed. Step complete."    
+
 # --- Configuration ---
 
 # Secrets to make available as environment variables for all steps.
