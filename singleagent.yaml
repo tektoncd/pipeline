@@ -1,3 +1,4 @@
+steps:
 - id: 'DocWriterAgent'
   name: 'gcr.io/$PROJECT_ID/gemini-cli-node20:latest'
   waitFor: ['-'] # Run in parallel
