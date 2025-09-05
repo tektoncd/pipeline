@@ -169,4 +169,4 @@ substitutions:
   _SECRET_NAME_GITHUB: 'ed-hazel-hackers-github-pat'
   _GITHUB_REPO_OWNER: 'codrienne'
   _GITHUB_REPO_NAME: 'tekton-pipelines'
-  _DIRECTORY: 'pkg/apis' # The directory for the agents to focus on.
+  _DIRECTORY: 'pkg/apis/pipeline/v1' # The directory for the agents to focus on.
