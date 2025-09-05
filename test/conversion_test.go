@@ -678,7 +678,7 @@ func TestCRDConversionStrategy(t *testing.T) {
 		v1.Kind("pipelineruns"),
 		resolutionv1beta1.Kind("resolutionrequests"),
 	}
-	
+
 	// Wait for webhooks to be ready after controller startup with cache injection overhead
 	t.Logf("Waiting for CRD webhook conversion to be ready...")
 	for _, kind := range kinds {

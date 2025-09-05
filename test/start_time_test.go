@@ -83,7 +83,7 @@ spec:
 		t.Errorf("Got unexpected number of step states: got %d, want %d", got, want)
 	}
 	// Account for additional system overhead from cache injection during startup
-	// Original test expected >= 2s, but with cache initialization overhead, 
+	// Original test expected >= 2s, but with cache initialization overhead,
 	// allow slightly more tolerance while still validating step timing works
 	minimumDiff := 1800 * time.Millisecond // 1.8s instead of 2.0s
 	var lastStart metav1.Time

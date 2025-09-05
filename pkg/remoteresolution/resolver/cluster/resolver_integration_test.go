@@ -581,7 +581,6 @@ func TestResolveWithInvalidParams(t *testing.T) {
 	}
 }
 
-
 func TestAnnotatedResourceCreation(t *testing.T) {
 	// Create a mock resolved resource using the correct type
 	mockResource := &clusterresolution.ResolvedClusterResource{
@@ -631,8 +630,6 @@ func TestAnnotatedResourceCreation(t *testing.T) {
 	}
 }
 
-
-
 func TestResolveWithAutoModeAndChecksum(t *testing.T) {
 	// Test auto mode with valid checksum
 
@@ -664,24 +661,3 @@ func TestResolveWithAutoModeAndChecksum(t *testing.T) {
 		t.Error("Auto mode should not cache when checksum is absent (cluster resolver behavior)")
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
