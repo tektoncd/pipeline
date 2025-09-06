@@ -34,6 +34,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	"knative.dev/pkg/ptr"
 )
 
 func TestTaskRun_Invalidate(t *testing.T) {
@@ -1107,6 +1108,56 @@ func TestTaskRunSpec_ValidateUpdate(t *testing.T) {
 			expectedError: apis.FieldError{
 				Message: `invalid value: Once the TaskRun is complete, no updates are allowed`,
 				Paths:   []string{""},
+			},
+		}, {
+			name: "is update ctx, baseline is not done, managedBy changes",
+			baselineTaskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					ManagedBy: ptr.String("tekton.dev/pipeline"),
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown},
+						},
+					},
+				},
+			},
+			taskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					ManagedBy: ptr.String("some-other-controller"),
+				},
+			},
+			isCreate: false,
+			isUpdate: true,
+			expectedError: apis.FieldError{
+				Message: `invalid value: managedBy is immutable`,
+				Paths:   []string{"spec.managedBy"},
+			},
+		}, {
+			name: "is update ctx, baseline is unknown, managedBy changes",
+			baselineTaskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					ManagedBy: ptr.String("tekton.dev/pipeline"),
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown},
+						},
+					},
+				},
+			},
+			taskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					ManagedBy: ptr.String("some-other-controller"),
+				},
+			},
+			isCreate: false,
+			isUpdate: true,
+			expectedError: apis.FieldError{
+				Message: `invalid value: managedBy is immutable`,
+				Paths:   []string{"spec.managedBy"},
 			},
 		},
 	}
