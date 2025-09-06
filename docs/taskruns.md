@@ -44,7 +44,6 @@ weight: 202
 - [Code examples](#code-examples)
   - [Example `TaskRun` with a referenced `Task`](#example-taskrun-with-a-referenced-task)
   - [Example `TaskRun` with an embedded `Task`](#example-taskrun-with-an-embedded-task)
-  - [Example of reusing a `Task`](#example-of-reusing-a-task)
   - [Example of Using custom `ServiceAccount` credentials](#example-of-using-custom-serviceaccount-credentials)
   - [Example of Running Step Containers as a Non Root User](#example-of-running-step-containers-as-a-non-root-user)
 <!-- /toc -->
@@ -957,7 +956,6 @@ To better understand `TaskRuns`, study the following code examples:
 
 - [Example `TaskRun` with a referenced `Task`](#example-taskrun-with-a-referenced-task)
 - [Example `TaskRun` with an embedded `Task`](#example-taskrun-with-an-embedded-task)
-- [Example of reusing a `Task`](#example-of-reusing-a-task)
 - [Example of Using custom `ServiceAccount` credentials](#example-of-using-custom-serviceaccount-credentials)
 - [Example of Running Step Containers as a Non Root User](#example-of-running-step-containers-as-a-non-root-user)
 
