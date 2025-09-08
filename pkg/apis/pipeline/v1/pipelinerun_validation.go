@@ -131,11 +131,11 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 // ValidateUpdate validates the update of a PipelineRunSpec
 func (ps *PipelineRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.FieldError) {
 	if !apis.IsInUpdate(ctx) {
-		return
+		return errs
 	}
 	oldObj, ok := apis.GetBaseline(ctx).(*PipelineRun)
 	if !ok || oldObj == nil {
-		return
+		return errs
 	}
 	if oldObj.IsDone() {
 		// try comparing without any copying first
@@ -165,7 +165,7 @@ func (ps *PipelineRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.Field
 		errs = errs.Also(apis.ErrInvalidValue("Once the PipelineRun has started, only status updates are allowed", ""))
 	}
 
-	return
+	return errs
 }
 
 func (ps *PipelineRunSpec) validatePipelineRunParameters(ctx context.Context) (errs *apis.FieldError) {

@@ -1953,7 +1953,7 @@ func TestPipelineRunSpec_ValidateUpdate_FinalizerChanges(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := config.ToContext(t.Context(), &config.Config{
+			ctx := config.ToContext(context.Background(), &config.Config{
 				Defaults: &config.Defaults{
 					DefaultResolverType:   "bundles",
 					DefaultTimeoutMinutes: 60,
