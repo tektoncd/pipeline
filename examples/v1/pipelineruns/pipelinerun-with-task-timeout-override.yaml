@@ -1,3 +1,6 @@
+---
+# This example demonstrates how TaskRunSpecs can override timeout settings
+# defined in the Pipeline spec, providing more granular timeout control
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
@@ -21,8 +24,8 @@ spec:
     script: |
       #!/bin/sh
       echo "- Pipeline task timeout: 60s (defined in pipeline spec)"
-      echo "- TaskRunSpecs override: 20s (defined in pipelinerun spec)"
-      echo "- Actual task duration: 10s (within 20s override timeout)"
+      echo "- TaskRunSpecs override: 45s (defined in pipelinerun spec)"
+      echo "- Actual task duration: 10s (within 45s override timeout)"
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
@@ -32,14 +35,15 @@ spec:
   tasks:
   - name: long-running-task
     taskRef:
+      kind: Task
       name: sleep-task
-      kind: Task
-    timeout: "60s"  # pipeline task timeout (will be overridden to 20s)
+    timeout: 1m0s  # 60 seconds - this is the baseline timeout
   - name: verify-timeout
+    runAfter:
+    - long-running-task
     taskRef:
-      name: verify-task
       kind: Task
-    runAfter: ["long-running-task"]
+      name: verify-task
 ---
 apiVersion: tekton.dev/v1
 kind: PipelineRun
@@ -50,4 +54,5 @@ spec:
     name: taskrun-timeout-override
   taskRunSpecs:
   - pipelineTaskName: long-running-task
-    timeout: "20s"      # 20s timeout (can't actually test with a timeout lesser than  10s else the task fails)
+    serviceAccountName: default
+    timeout: 45s  # Override: reduced from 60s to 45s to demonstrate override functionality
