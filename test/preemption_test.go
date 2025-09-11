@@ -33,9 +33,9 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
-// TestTaskRunPremption tests that Taskrun can run again
-// after its pod has been prempted before completion.
-func TestTaskRunPremption(t *testing.T) {
+// TestTaskRunPreemption tests that Taskrun can run again
+// after its pod has been preempted before completion.
+func TestTaskRunPreemption(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -85,7 +85,7 @@ spec:
         type: string
         default: Good Morning!
     tasks:
-      - name: test-pod-premption
+      - name: test-pod-preemption
         workspaces:
           - name: task-ws
             workspace: ws
