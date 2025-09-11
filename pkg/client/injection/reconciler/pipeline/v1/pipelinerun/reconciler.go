@@ -22,6 +22,7 @@ import (
 	context "context"
 	json "encoding/json"
 	fmt "fmt"
+	strings "strings"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	versioned "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -30,7 +31,7 @@ import (
 	zapcore "go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	equality "k8s.io/apimachinery/pkg/api/equality"
-	errors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	types "k8s.io/apimachinery/pkg/types"
@@ -101,6 +102,9 @@ type reconcilerImpl struct {
 	// finalizerName is the name of the finalizer to reconcile.
 	finalizerName string
 
+	// agentName is the name of the agent this reconciler uses, used as field manager for server-side apply.
+	agentName string
+
 	// skipStatusUpdates configures whether or not this reconciler automatically updates
 	// the status of the reconciled resource.
 	skipStatusUpdates bool
@@ -146,6 +150,7 @@ func NewReconciler(ctx context.Context, logger *zap.SugaredLogger, client versio
 		Recorder:      recorder,
 		reconciler:    r,
 		finalizerName: defaultFinalizerName,
+		agentName:     defaultControllerAgentName,
 	}
 
 	for _, opts := range options {
@@ -154,6 +159,9 @@ func NewReconciler(ctx context.Context, logger *zap.SugaredLogger, client versio
 		}
 		if opts.FinalizerName != "" {
 			rec.finalizerName = opts.FinalizerName
+		}
+		if opts.AgentName != "" {
+			rec.agentName = opts.AgentName
 		}
 		if opts.SkipStatusUpdates {
 			rec.skipStatusUpdates = true
@@ -200,7 +208,7 @@ func (r *reconcilerImpl) Reconcile(ctx context.Context, key string) error {
 
 	original, err := getter.Get(s.name)
 
-	if errors.IsNotFound(err) {
+	if apierrors.IsNotFound(err) {
 		// The resource may no longer exist, in which case we stop processing and call
 		// the ObserveDeletion handler if appropriate.
 		logger.Debugf("Resource %q no longer exists", key)
@@ -336,13 +344,10 @@ func (r *reconcilerImpl) updateStatus(ctx context.Context, logger *zap.SugaredLo
 }
 
 // updateFinalizersFiltered will update the Finalizers of the resource.
-// TODO: this method could be generic and sync all finalizers. For now it only
-// updates defaultFinalizerName or its override.
+// Uses server-side apply if AgentName is provided (new behavior), otherwise falls back to merge patch (legacy behavior).
 func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource *v1.PipelineRun, desiredFinalizers sets.Set[string]) (*v1.PipelineRun, error) {
 	// Don't modify the informers copy.
 	existing := resource.DeepCopy()
-
-	var finalizers []string
 
 	// If there's nothing to update, just return.
 	existingFinalizers := sets.New[string](existing.Finalizers...)
@@ -352,22 +357,197 @@ func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource 
 			// Nothing to do.
 			return resource, nil
 		}
-		// Add the finalizer.
-		finalizers = append(existing.Finalizers, r.finalizerName)
+		// Add the finalizer
+		return r.addFinalizer(ctx, existing)
 	} else {
 		if !existingFinalizers.Has(r.finalizerName) {
 			// Nothing to do.
 			return resource, nil
 		}
-		// Remove the finalizer.
-		existingFinalizers.Delete(r.finalizerName)
-		finalizers = sets.List(existingFinalizers)
+		// Remove the finalizer
+		return r.removeFinalizer(ctx, existing)
 	}
+}
+
+// addFinalizer adds the finalizer using server-side apply if AgentName is provided, otherwise uses merge patch
+func (r *reconcilerImpl) addFinalizer(ctx context.Context, resource *v1.PipelineRun) (*v1.PipelineRun, error) {
+	// Check if AgentName was explicitly provided - if so, use server-side apply
+	// Empty agentName means no explicit AgentName was set, so use legacy merge patch
+	if r.agentName != "" {
+		return r.addFinalizerSSA(ctx, resource)
+	}
+	// Fall back to legacy merge patch behavior for backward compatibility
+	return r.addFinalizerMergePatch(ctx, resource)
+}
+
+// removeFinalizer removes the finalizer using server-side apply if AgentName is provided, otherwise uses merge patch
+func (r *reconcilerImpl) removeFinalizer(ctx context.Context, resource *v1.PipelineRun) (*v1.PipelineRun, error) {
+	// Check if AgentName was explicitly provided - if so, use server-side apply
+	// Empty agentName means no explicit AgentName was set, so use legacy merge patch
+	if r.agentName != "" {
+		return r.removeFinalizerSSA(ctx, resource)
+	}
+	// Fall back to legacy merge patch behavior for backward compatibility
+	return r.removeFinalizerMergePatch(ctx, resource)
+}
+
+// handleSSAErrorForMissingObject checks if the error is a result of trying to create
+// a missing object and returns nil to prevent retries. In comparison with merge patch where
+// patching a non-existent object results in a permanent error, SSA patch tries to create the
+// object which then fails admission validation or RBAC, resulting in a non-permanent error that
+// makes the controller requeue and retry until the stale object is gone from the informer cache.
+func (r *reconcilerImpl) handleSSAErrorForMissingObject(ctx context.Context, err error, resource *v1.PipelineRun) error {
+	// Check if this is a BadRequest error (Knative admission webhooks) or Forbidden error (RBAC)
+	// Both can indicate SSA trying to create an object when it should just patch it
+	if !apierrors.IsBadRequest(err) && !apierrors.IsForbidden(err) {
+		return err
+	}
+
+	// For Forbidden errors, check if it's specifically about "create" permissions
+	// SSA on non-existent objects tries to create the object, which might fail due to RBAC
+	if apierrors.IsForbidden(err) && !strings.Contains(err.Error(), "cannot create resource") {
+		return err
+	}
+
+	// Check if the object actually exists.
+	// If the object doesn't exist, then the error is likely due to SSA
+	// trying to create a minimal object that fails validation or lacks permissions.
+	_, getErr := r.Client.TektonV1().PipelineRuns(resource.Namespace).Get(ctx, resource.Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(getErr) {
+		// Object doesn't exist - this confirms the error is due to
+		// server-side apply trying to patch a non-existent object
+		logger := logging.FromContext(ctx)
+		logger.Debugf("Ignoring SSA error for deleted object %s/%s - no retry needed", resource.Namespace, resource.Name)
+		return nil // Object is gone, nothing to retry
+	}
+
+	// Object exists or we got a different error - return the original error
+	return err
+}
+
+// addFinalizerSSA adds only the specific finalizer managed by this controller using server-side apply
+func (r *reconcilerImpl) addFinalizerSSA(ctx context.Context, resource *v1.PipelineRun) (*v1.PipelineRun, error) {
+	logger := logging.FromContext(ctx)
+
+	// Create an apply patch that only specifies our specific finalizer
+	applyPatch := map[string]interface{}{
+		"apiVersion": "tekton.dev/v1",
+		"kind":       "PipelineRun",
+		"metadata": map[string]interface{}{
+			"name":       resource.Name,
+			"namespace":  resource.Namespace,
+			"finalizers": []string{r.finalizerName},
+		},
+	}
+
+	patch, err := json.Marshal(applyPatch)
+	if err != nil {
+		return resource, err
+	}
+
+	patcher := r.Client.TektonV1().PipelineRuns(resource.Namespace)
+
+	// Use specific fieldManager for each field we update (e.g. finalizers, annotations). With
+	// Server-Side Apply each fieldManager should always create a patch including all fields it manages.
+	// Otherwise they are removed.
+	fieldManager := r.agentName + "/finalizers"
+	force := false
+	updated, err := patcher.Patch(ctx, resource.Name, types.ApplyPatchType, patch, metav1.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        &force,
+	})
+
+	if apierrors.IsConflict(err) {
+		// Log warning about conflict and retry with force=true
+		logger.Warnf("failed to add finalizer %q to PipelineRun %s/%s due to Server-Side Apply conflict, retrying with force=true",
+			r.finalizerName, resource.Namespace, resource.Name)
+		force = true
+		updated, err = patcher.Patch(ctx, resource.Name, types.ApplyPatchType, patch, metav1.PatchOptions{
+			FieldManager: fieldManager,
+			Force:        &force,
+		})
+	}
+
+	if err != nil {
+		// Check if this is an SSA admission webhook error for missing object. This happens with stale
+		// objects in informers cache.
+		if missingObjErr := r.handleSSAErrorForMissingObject(ctx, err, resource); missingObjErr != err {
+			return resource, missingObjErr
+		}
+		r.Recorder.Eventf(resource, corev1.EventTypeWarning, "FinalizerUpdateFailed",
+			"Failed to add finalizer for %q: %v", resource.Name, err)
+	} else {
+		r.Recorder.Eventf(updated, corev1.EventTypeNormal, "FinalizerUpdate",
+			"Added %q finalizer", resource.GetName())
+	}
+	return updated, err
+}
+
+// removeFinalizerSSA removes only the specific finalizer managed by this controller using server-side apply
+func (r *reconcilerImpl) removeFinalizerSSA(ctx context.Context, resource *v1.PipelineRun) (*v1.PipelineRun, error) {
+	logger := logging.FromContext(ctx)
+
+	// Create an apply patch with an empty finalizers list for our field manager
+	// This tells server-side apply to remove our finalizer while leaving others intact
+	applyPatch := map[string]interface{}{
+		"apiVersion": "tekton.dev/v1",
+		"kind":       "PipelineRun",
+		"metadata": map[string]interface{}{
+			"name":       resource.Name,
+			"namespace":  resource.Namespace,
+			"finalizers": []string{},
+		},
+	}
+
+	patch, err := json.Marshal(applyPatch)
+	if err != nil {
+		return resource, err
+	}
+
+	patcher := r.Client.TektonV1().PipelineRuns(resource.Namespace)
+
+	// Try patch with force=false first
+	force := false
+	fieldManager := r.agentName + "/finalizers"
+	updated, err := patcher.Patch(ctx, resource.Name, types.ApplyPatchType, patch, metav1.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        &force,
+	})
+
+	if apierrors.IsConflict(err) {
+		// Log warning about conflict and retry with force=true
+		logger.Warnf("failed to remove finalizer %q from PipelineRun %s/%s due to Server-Side Apply conflict, retrying with force=true",
+			r.finalizerName, resource.Namespace, resource.Name)
+		force = true
+		updated, err = patcher.Patch(ctx, resource.Name, types.ApplyPatchType, patch, metav1.PatchOptions{
+			FieldManager: fieldManager,
+			Force:        &force,
+		})
+	}
+
+	if err != nil {
+		// Check if this is an SSA admission webhook error for missing object
+		if missingObjErr := r.handleSSAErrorForMissingObject(ctx, err, resource); missingObjErr != err {
+			return resource, missingObjErr
+		}
+		r.Recorder.Eventf(resource, corev1.EventTypeWarning, "FinalizerUpdateFailed",
+			"Failed to remove finalizer for %q: %v", resource.Name, err)
+	} else {
+		r.Recorder.Eventf(updated, corev1.EventTypeNormal, "FinalizerUpdate",
+			"Removed %q finalizer", resource.GetName())
+	}
+	return updated, err
+}
+
+// addFinalizerMergePatch adds the finalizer using legacy merge patch (backward compatibility)
+func (r *reconcilerImpl) addFinalizerMergePatch(ctx context.Context, resource *v1.PipelineRun) (*v1.PipelineRun, error) {
+	// Add the finalizer to the existing list
+	finalizers := append(resource.Finalizers, r.finalizerName)
 
 	mergePatch := map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"finalizers":      finalizers,
-			"resourceVersion": existing.ResourceVersion,
+			"resourceVersion": resource.ResourceVersion,
 		},
 	}
 
@@ -377,15 +557,44 @@ func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource 
 	}
 
 	patcher := r.Client.TektonV1().PipelineRuns(resource.Namespace)
-
-	resourceName := resource.Name
-	updated, err := patcher.Patch(ctx, resourceName, types.MergePatchType, patch, metav1.PatchOptions{})
+	updated, err := patcher.Patch(ctx, resource.Name, types.MergePatchType, patch, metav1.PatchOptions{})
 	if err != nil {
-		r.Recorder.Eventf(existing, corev1.EventTypeWarning, "FinalizerUpdateFailed",
-			"Failed to update finalizers for %q: %v", resourceName, err)
+		r.Recorder.Eventf(resource, corev1.EventTypeWarning, "FinalizerUpdateFailed",
+			"Failed to add finalizer for %q: %v", resource.Name, err)
 	} else {
 		r.Recorder.Eventf(updated, corev1.EventTypeNormal, "FinalizerUpdate",
-			"Updated %q finalizers", resource.GetName())
+			"Added %q finalizer", resource.GetName())
+	}
+	return updated, err
+}
+
+// removeFinalizerMergePatch removes the finalizer using legacy merge patch (backward compatibility)
+func (r *reconcilerImpl) removeFinalizerMergePatch(ctx context.Context, resource *v1.PipelineRun) (*v1.PipelineRun, error) {
+	// Remove the finalizer from the existing list
+	existingFinalizers := sets.New[string](resource.Finalizers...)
+	existingFinalizers.Delete(r.finalizerName)
+	finalizers := sets.List(existingFinalizers)
+
+	mergePatch := map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"finalizers":      finalizers,
+			"resourceVersion": resource.ResourceVersion,
+		},
+	}
+
+	patch, err := json.Marshal(mergePatch)
+	if err != nil {
+		return resource, err
+	}
+
+	patcher := r.Client.TektonV1().PipelineRuns(resource.Namespace)
+	updated, err := patcher.Patch(ctx, resource.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+	if err != nil {
+		r.Recorder.Eventf(resource, corev1.EventTypeWarning, "FinalizerUpdateFailed",
+			"Failed to remove finalizer for %q: %v", resource.Name, err)
+	} else {
+		r.Recorder.Eventf(updated, corev1.EventTypeNormal, "FinalizerUpdate",
+			"Removed %q finalizer", resource.GetName())
 	}
 	return updated, err
 }
