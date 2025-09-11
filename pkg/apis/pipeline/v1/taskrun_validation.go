@@ -126,17 +126,22 @@ func (ts *TaskRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.FieldErro
 	if !apis.IsInUpdate(ctx) {
 		return
 	}
+
 	oldObj, ok := apis.GetBaseline(ctx).(*TaskRun)
 	if !ok || oldObj == nil {
 		return
 	}
+
+	if (oldObj.Spec.ManagedBy == nil) != (ts.ManagedBy == nil) || (oldObj.Spec.ManagedBy != nil && *oldObj.Spec.ManagedBy != *ts.ManagedBy) {
+		errs = errs.Also(apis.ErrInvalidValue("managedBy is immutable", "spec.managedBy"))
+	}
+
 	if oldObj.IsDone() {
 		// try comparing without any copying first
 		// this handles the common case where only finalizers changed
 		if equality.Semantic.DeepEqual(&oldObj.Spec, ts) {
 			return nil // Specs identical, allow update
 		}
-
 		// Specs differ, this could be due to different defaults after upgrade
 		// Apply current defaults to old spec to normalize
 		oldCopy := oldObj.Spec.DeepCopy()
@@ -155,10 +160,10 @@ func (ts *TaskRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.FieldErro
 	old := oldObj.Spec.DeepCopy()
 	old.Status = ts.Status
 	old.StatusMessage = ts.StatusMessage
+	old.ManagedBy = ts.ManagedBy // Already tested before
 	if !equality.Semantic.DeepEqual(old, ts) {
 		errs = errs.Also(apis.ErrInvalidValue("Once the TaskRun has started, only status and statusMessage updates are allowed", ""))
 	}
-
 	return
 }
 

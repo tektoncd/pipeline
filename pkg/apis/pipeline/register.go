@@ -55,6 +55,10 @@ const (
 	// MemberOfLabelKey is used as the label identifier for a PipelineTask
 	// Set to Tasks/Finally depending on the position of the PipelineTask
 	MemberOfLabelKey = GroupName + "/memberOf"
+
+	// ManagedBy is the value of the "managedBy" field for resources
+	// managed by the Tekton Pipeline controller.
+	ManagedBy = GroupName + "/pipeline"
 )
 
 var (
