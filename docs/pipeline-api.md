@@ -4389,6 +4389,19 @@ Each Step in a Task must have a unique name.</p>
 </tr>
 <tr>
 <td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisplayName is a user-facing name of the step that may be
+used to populate a UI.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>image</code><br/>
 <em>
 string
@@ -13512,6 +13525,19 @@ string
 <td>
 <p>Name of the Step specified as a DNS_LABEL.
 Each Step in a Task must have a unique name.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisplayName is a user-facing name of the step that may be
+used to populate a UI.</p>
 </td>
 </tr>
 <tr>

@@ -27,6 +27,10 @@ type Step struct {
 	// Name of the Step specified as a DNS_LABEL.
 	// Each Step in a Task must have a unique name.
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
+	// DisplayName is a user-facing name of the step that may be
+	// used to populate a UI.
+	// +optional
+	DisplayName string `json:"displayName,omitempty"`
 	// Image reference name to run for this Step.
 	// More info: https://kubernetes.io/docs/concepts/containers/images
 	// +optional

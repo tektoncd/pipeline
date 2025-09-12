@@ -18,6 +18,7 @@ spec:
       description: The sum of the two provided integers
   steps:
     - name: sum
+      displayName: Do the sum
       image: mirror.gcr.io/bash
       script: |
         #!/usr/bin/env bash
