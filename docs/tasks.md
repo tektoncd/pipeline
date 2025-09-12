@@ -20,6 +20,7 @@ weight: 201
     - [Breakpoint on failure with `onError`](#breakpoint-on-failure-with-onerror)
     - [Redirecting step output streams with `stdoutConfig` and `stderrConfig`](#redirecting-step-output-streams-with-stdoutconfig-and-stderrconfig)
     - [Guarding `Step` execution using `when` expressions](#guarding-step-execution-using-when-expressions)
+    - [Specifying `DisplayName`](#specifying-displayname)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Emitting `Results`](#emitting-results)
@@ -598,6 +599,22 @@ The StepState for a skipped step looks like something similar to the below:
       }
 ```
 Where `terminated.exitCode` is `0` and `terminationReason` is `Skipped` to indicate the Step exited successfully and was skipped. 
+
+#### Specifying `DisplayName`
+
+The `displayName` field is an optional field that allows you to add a user-facing name to the step that may be used to populate a UI.
+
+```yaml
+steps:
+  - name: ignore-failure-and-produce-a-result
+    displayName: "Ignore failure and produce a result"
+    onError: continue
+    image: busybox
+    script: |
+      echo -n 123 | tee $(results.result1.path)
+      exit 1
+      echo -n 456 | tee $(results.result2.path)
+```
 
 ### Specifying `Parameters`
 

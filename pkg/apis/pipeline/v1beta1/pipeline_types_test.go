@@ -1120,6 +1120,19 @@ func TestPipelineTask_ValidateEmbeddedOrType(t *testing.T) {
 				},
 			},
 		}, {
+			name: "just steps with DisplayName",
+			pt: PipelineTask{
+				TaskSpec: &EmbeddedTask{
+					TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:        "foo",
+							DisplayName: "step DisplayName",
+							Image:       "bar",
+						}},
+					},
+				},
+			},
+		}, {
 			name: "apiVersion and steps",
 			pt: PipelineTask{
 				TaskSpec: &EmbeddedTask{

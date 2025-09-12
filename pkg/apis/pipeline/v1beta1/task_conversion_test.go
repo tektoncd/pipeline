@@ -52,6 +52,7 @@ spec:
   description: test
   steps:
   - image: foo
+  - displayName: "step-display-name"
   params:
   - name: param-1
     type: string
