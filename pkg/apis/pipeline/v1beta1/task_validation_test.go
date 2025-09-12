@@ -424,6 +424,19 @@ func TestTaskSpecValidate(t *testing.T) {
 			}},
 		},
 	}, {
+		name: "valid step with displayName",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Image:       "my-image",
+				DisplayName: "Step with DisplayName",
+				Args:        []string{"arg"},
+			}},
+			Results: []v1beta1.TaskResult{{
+				Name:        "MY-RESULT",
+				Description: "my great result",
+			}},
+		},
+	}, {
 		name: "valid result",
 		fields: fields{
 			Steps: []v1beta1.Step{{
@@ -2786,4 +2799,26 @@ func TestTaskSpecValidate_StepWhen_Error(t *testing.T) {
 			}
 		})
 	}
+}
+func TestTaskValidateStepWithDisplayName(t *testing.T) {
+	t.Run("valid task with step display name", func(t *testing.T) {
+		ctx := t.Context()
+		task := &v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "task"},
+			Spec: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Name:        "my-step",
+					DisplayName: "My Step",
+					Image:       "my-image",
+					Script: `
+					#!/usr/bin/env  bash
+					echo hello`,
+				}},
+			},
+		}
+		err := task.Validate(ctx)
+		if err != nil {
+			t.Errorf("Task.Validate() returned error for valid Task: %v", err)
+		}
+	})
 }
