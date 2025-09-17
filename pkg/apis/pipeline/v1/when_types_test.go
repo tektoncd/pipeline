@@ -371,7 +371,69 @@ func TestApplyReplacements(t *testing.T) {
 			Operator: selection.In,
 			Values:   []string{"dev", "stage", "foo.txt", "readme.md", "test.go"},
 		},
-	}}
+	}, {
+		name: "replace input with empty results array",
+		original: &WhenExpression{
+			Input:    "$(tasks.foo.results.bar[*])",
+			Operator: selection.In,
+			Values:   []string{"main"},
+		},
+		arrayReplacements: map[string][]string{
+			"tasks.foo.results.bar": {},
+		},
+		expected: &WhenExpression{
+			Input:    "[]",
+			Operator: selection.In,
+			Values:   []string{"main"},
+		},
+	}, {
+		name: "replace input with non-empty results array",
+		original: &WhenExpression{
+			Input:    "$(tasks.foo.results.bar[*])",
+			Operator: selection.In,
+			Values:   []string{"main"},
+		},
+		arrayReplacements: map[string][]string{
+			"tasks.foo.results.bar": {"main", "devel"},
+		},
+		expected: &WhenExpression{
+			Input:    `["main","devel"]`,
+			Operator: selection.In,
+			Values:   []string{"main"},
+		},
+	},
+		{
+			name: "replace input with empty params array",
+			original: &WhenExpression{
+				Input:    "$(params.branches[*])",
+				Operator: selection.In,
+				Values:   []string{"main"},
+			},
+			arrayReplacements: map[string][]string{
+				"params.branches": {},
+			},
+			expected: &WhenExpression{
+				Input:    "[]",
+				Operator: selection.In,
+				Values:   []string{"main"},
+			},
+		},
+		{
+			name: "replace input with non-empty params array",
+			original: &WhenExpression{
+				Input:    "$(params.branches[*])",
+				Operator: selection.In,
+				Values:   []string{"main"},
+			},
+			arrayReplacements: map[string][]string{
+				"params.branches": {"main", "devel"},
+			},
+			expected: &WhenExpression{
+				Input:    `["main","devel"]`,
+				Operator: selection.In,
+				Values:   []string{"main"},
+			},
+		}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.original.applyReplacements(tc.replacements, tc.arrayReplacements)
