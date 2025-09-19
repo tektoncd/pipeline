@@ -189,7 +189,7 @@ spec:
 			}
 
 			ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
-			ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Name", "Container")
+			ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Name", "Container", "Provenance")
 			if d := cmp.Diff(tr.Status.Steps, tc.expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
 				t.Fatalf("-got, +want: %v", d)
 			}
