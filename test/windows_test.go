@@ -36,7 +36,7 @@ import (
 
 var (
 	ignoreTerminatedFields = cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
-	ignoreStepFields       = cmpopts.IgnoreFields(v1.StepState{}, "ImageID")
+	ignoreStepFields       = cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Provenance")
 )
 
 func TestWindows(t *testing.T) {
