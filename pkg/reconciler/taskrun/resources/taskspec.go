@@ -174,6 +174,8 @@ func resolveStepRef(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.TaskR
 
 // updateTaskRunProvenance update the TaskRun's status with source provenance information for a given step
 func updateTaskRunProvenance(taskRun *v1.TaskRun, stepName string, stepIndex int, source *v1.RefSource, stepStatusIndex map[string]int) {
+	var provenance *v1.Provenance
+
 	// The StepState already exists. Update it in place
 	if index, found := stepStatusIndex[stepName]; found {
 		if taskRun.Status.Steps[index].Provenance == nil {
@@ -183,10 +185,12 @@ func updateTaskRunProvenance(taskRun *v1.TaskRun, stepName string, stepIndex int
 		return
 	}
 
+	provenance = &v1.Provenance{RefSource: source}
+
 	// No existing StepState found. Create and append a new one
 	newState := v1.StepState{
 		Name:       pod.TrimStepPrefix(pod.StepName(stepName, stepIndex)),
-		Provenance: &v1.Provenance{RefSource: source},
+		Provenance: provenance,
 	}
 	taskRun.Status.Steps = append(taskRun.Status.Steps, newState)
 }
@@ -237,15 +241,13 @@ func GetStepActionsData(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.T
 	for i, step := range taskSpec.Steps {
 		if step.Ref == nil {
 			steps[i] = step
+			updateTaskRunProvenance(taskRun, step.Name, i, nil, stepStatusIndex) // create StepState for inline step with nil provenance
 			continue
 		}
 
 		stepRefResolution := stepRefResolutions[i]
 		steps[i] = *stepRefResolution.resolvedStep
-
-		if stepRefResolution.source != nil {
-			updateTaskRunProvenance(taskRun, stepRefResolution.resolvedStep.Name, i, stepRefResolution.source, stepStatusIndex)
-		}
+		updateTaskRunProvenance(taskRun, stepRefResolution.resolvedStep.Name, i, stepRefResolution.source, stepStatusIndex)
 	}
 
 	return steps, nil
