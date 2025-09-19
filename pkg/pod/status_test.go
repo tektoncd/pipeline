@@ -814,14 +814,14 @@ func TestMakeTaskRunStatus_StepArtifacts(t *testing.T) {
 
 func TestMakeTaskRunStatus(t *testing.T) {
 	for _, c := range []struct {
-		desc      string
-		podStatus corev1.PodStatus
-		pod       corev1.Pod
-		want      v1.TaskRunStatus
+		desc       string
+		podStatus  corev1.PodStatus
+		pod        corev1.Pod
+		stepStates []v1.StepState
+		want       v1.TaskRunStatus
 	}{{
 		desc:      "empty",
 		podStatus: corev1.PodStatus{},
-
 		want: v1.TaskRunStatus{
 			Status: statusRunning(),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
@@ -1742,6 +1742,137 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			},
 		},
 	}, {
+		desc: "TaskRun status steps ordering based on pod spec containers",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pod",
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{{
+					Name: "step-first-inline",
+				}, {
+					Name: "step-second-remote",
+				}, {
+					Name: "step-third-inline",
+				}, {
+					Name: "step--inline",
+				}, {
+					Name: "step-fourth-remote",
+				}, {
+					Name: "step-fifth-remote",
+				}},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodSucceeded,
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "step-second-remote",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
+				}, {
+					Name: "step-fourth-remote",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
+				}, {
+					Name: "step--inline",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
+				}, {
+					Name: "step-first-inline",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
+				}, {
+					Name: "step-fifth-remote",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
+				}, {
+					Name: "step-third-inline",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
+				}},
+			},
+		},
+		stepStates: []v1.StepState{
+			{
+				Name: "second-remote",
+				Provenance: &v1.Provenance{
+					RefSource: &v1.RefSource{
+						URI:    "test-uri",
+						Digest: map[string]string{"sha256": "digest"},
+					},
+				},
+			},
+			{
+				Name: "fourth-remote",
+			},
+			{
+				Name: "fifth-remote",
+				Provenance: &v1.Provenance{
+					RefSource: nil,
+				},
+			},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusSuccess(),
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
+					Name:      "first-inline",
+					Container: "step-first-inline",
+				}, {
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
+					Name:      "second-remote",
+					Container: "step-second-remote",
+					Provenance: &v1.Provenance{
+						RefSource: &v1.RefSource{
+							URI:    "test-uri",
+							Digest: map[string]string{"sha256": "digest"},
+						},
+					},
+				}, {
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
+					Name:      "third-inline",
+					Container: "step-third-inline",
+				}, {
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
+					Name:      "-inline",
+					Container: "step--inline",
+				}, {
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
+					Name:      "fourth-remote",
+					Container: "step-fourth-remote",
+				}, {
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{},
+					},
+					Name:      "fifth-remote",
+					Container: "step-fifth-remote",
+					Provenance: &v1.Provenance{
+						RefSource: nil,
+					},
+				}},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
 		desc: "include non zero exit code in a container termination message if entrypoint is set to ignore the error",
 		pod: corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -1964,6 +2095,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Status: v1.TaskRunStatus{
 					TaskRunStatusFields: v1.TaskRunStatusFields{
 						StartTime: &metav1.Time{Time: startTime},
+						Steps:     c.stepStates,
 					},
 				},
 			}
