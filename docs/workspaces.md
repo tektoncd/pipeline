@@ -486,7 +486,7 @@ Using a `configMap` as a `Workspace` has the following limitations:
 ```yaml
 workspaces:
   - name: myworkspace
-    configmap:
+    configMap:
       name: my-configmap
 ```
 

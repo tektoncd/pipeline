@@ -217,6 +217,8 @@ metadata:
 spec:
   tasks:
     - name: task
+      taskRef:
+        name: task
 ---
 apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: PipelineRun
