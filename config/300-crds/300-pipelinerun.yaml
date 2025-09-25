@@ -61,6 +61,13 @@ spec:
               description: PipelineRunSpec defines the desired state of PipelineRun
               type: object
               properties:
+                managedBy:
+                  description: |-
+                    ManagedBy indicates which controller is responsible for reconciling
+                    this resource. If unset or set to "tekton.dev/pipeline", the default
+                    Tekton controller will manage this resource.
+                    This field is immutable.
+                  type: string
                 params:
                   description: Params is a list of parameter names and values.
                   type: array
@@ -3135,6 +3142,13 @@ spec:
               description: PipelineRunSpec defines the desired state of PipelineRun
               type: object
               properties:
+                managedBy:
+                  description: |-
+                    ManagedBy indicates which controller is responsible for reconciling
+                    this resource. If unset or set to "tekton.dev/pipeline", the default
+                    Tekton controller will manage this resource.
+                    This field is immutable.
+                  type: string
                 params:
                   description: Params is a list of parameter names and values.
                   type: array

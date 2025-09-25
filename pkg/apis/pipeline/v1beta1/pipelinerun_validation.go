@@ -158,6 +158,11 @@ func (ps *PipelineRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.Field
 	if !ok || oldObj == nil {
 		return
 	}
+
+	if (oldObj.Spec.ManagedBy == nil) != (ps.ManagedBy == nil) || (oldObj.Spec.ManagedBy != nil && *oldObj.Spec.ManagedBy != *ps.ManagedBy) {
+		errs = errs.Also(apis.ErrInvalidValue("managedBy is immutable", "spec.managedBy"))
+	}
+
 	if oldObj.IsDone() {
 		// try comparing without any copying first
 		// this handles the common case where only finalizers changed
@@ -182,6 +187,7 @@ func (ps *PipelineRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.Field
 	// Handle started but not done case
 	old := oldObj.Spec.DeepCopy()
 	old.Status = ps.Status
+	old.ManagedBy = ps.ManagedBy // Already tested before
 	if !equality.Semantic.DeepEqual(old, ps) {
 		errs = errs.Also(apis.ErrInvalidValue("Once the PipelineRun has started, only status updates are allowed", ""))
 	}
