@@ -47,6 +47,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	taskresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	th "github.com/tektoncd/pipeline/pkg/reconciler/testing"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
@@ -80,6 +81,7 @@ import (
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	logtesting "knative.dev/pkg/logging/testing"
+	"knative.dev/pkg/ptr"
 	"knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
@@ -18384,5 +18386,94 @@ spec:
 				t.Errorf("expected %d attempts, got %d", tc.expectCalls, callCount)
 			}
 		})
+	}
+}
+
+func TestReconcile_ManagedBy(t *testing.T) {
+	namespace := "foo"
+	prManagedByTektonName := "test-pr-managed-by-tekton"
+	prManagedByOtherName := "test-pr-managed-by-other"
+
+	ps := []*v1.Pipeline{simpleHelloWorldPipeline}
+	ts := []*v1.Task{simpleHelloWorldTask}
+
+	prs := []*v1.PipelineRun{
+		parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: test-pipeline
+  managedBy: "tekton.dev/pipeline"
+`, prManagedByTektonName, namespace)),
+		parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: test-pipeline
+  managedBy: "other-controller"
+`, prManagedByOtherName, namespace)),
+	}
+	// Change ManagedBy to a pointer
+	prs[0].Spec.ManagedBy = ptr.String("tekton.dev/pipeline")
+	prs[1].Spec.ManagedBy = ptr.String("other-controller")
+
+	// This data is filtered and simulates what the informer would pass to the reconciler.
+	// It only contains the PipelineRun that should be reconciled.
+	filteredData := test.Data{
+		PipelineRuns: []*v1.PipelineRun{prs[0]}, // Only the one managed by Tekton
+		Pipelines:    ps,
+		Tasks:        ts,
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
+	}
+
+	// Initialize controller with filtered data for the listers
+	prt := newPipelineRunTest(t, filteredData)
+	defer prt.Cancel()
+
+	// Create clients with all the data for verification
+	ctx, _ := ttesting.SetupFakeContext(t)
+	clients, _ := test.SeedTestData(t, ctx, test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
+	})
+
+	// Verify no TaskRuns were created for the externally managed PipelineRun
+	taskRunsOther := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prManagedByOtherName)
+	if len(taskRunsOther) != 0 {
+		t.Errorf("Expected no TaskRuns for externally managed PipelineRun, but found %d", len(taskRunsOther))
+	}
+
+	// Verify its status is unchanged
+	reconciledOther, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(prt.TestAssets.Ctx, prManagedByOtherName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get externally managed PipelineRun: %v", err)
+	}
+	if len(reconciledOther.Status.Conditions) != 0 {
+		t.Errorf("Expected externally managed PipelineRun to have no conditions, but it did")
+	}
+
+	// 2. Reconcile the PipelineRun managed by "tekton.dev/pipeline"
+	// We expect this one to be processed normally.
+	wantEvents := []string{
+		"Normal Started",
+		"Normal Running Tasks Completed: 0",
+	}
+	reconciledTekton, clients := prt.reconcileRun(namespace, prManagedByTektonName, wantEvents, false)
+
+	// Verify a TaskRun was created for the Tekton-managed PipelineRun
+	taskRunsTekton := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prManagedByTektonName)
+	if len(taskRunsTekton) != 1 {
+		t.Errorf("Expected 1 TaskRun for Tekton-managed PipelineRun, but found %d", len(taskRunsTekton))
+	}
+
+	// Verify its status was updated
+	if !reconciledTekton.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+		t.Errorf("Expected Tekton-managed PipelineRun to be running, but it was not")
 	}
 }

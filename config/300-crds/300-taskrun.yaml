@@ -136,6 +136,13 @@ spec:
                             if enabled, pause TaskRun on failure of a step
                             failed step will not exit
                           type: string
+                managedBy:
+                  description: |-
+                    ManagedBy indicates which controller is responsible for reconciling
+                    this resource. If unset or set to "tekton.dev/pipeline", the default
+                    Tekton controller will manage this resource.
+                    This field is immutable.
+                  type: string
                 params:
                   description: Params is a list of Param
                   type: array
@@ -2336,6 +2343,13 @@ spec:
                             if enabled, pause TaskRun on failure of a step
                             failed step will not exit
                           type: string
+                managedBy:
+                  description: |-
+                    ManagedBy indicates which controller is responsible for reconciling
+                    this resource. If unset or set to "tekton.dev/pipeline", the default
+                    Tekton controller will manage this resource.
+                    This field is immutable.
+                  type: string
                 params:
                   description: Params is a list of Param
                   type: array
