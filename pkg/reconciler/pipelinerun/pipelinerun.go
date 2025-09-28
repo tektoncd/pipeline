@@ -308,8 +308,7 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, pr *v1.Pipelin
 	defer span.End()
 	logger := logging.FromContext(ctx)
 	if pr.IsDone() {
-		err := c.metrics.DurationAndCount(pr, beforeCondition)
-		if err != nil {
+		if err := c.metrics.DurationAndCount(ctx, pr, beforeCondition); err != nil {
 			logger.Warnf("Failed to log the metrics : %v", err)
 		}
 	}
