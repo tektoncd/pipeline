@@ -28,17 +28,17 @@ import (
 )
 
 func TestKey(t *testing.T) {
-	// Test that Key is a distinct type that can be used as context key
-	key1 := Key{}
-	key2 := Key{}
+	// Test that key is a distinct type that can be used as context key
+	key1 := key{}
+	key2 := key{}
 
-	// Keys should be equivalent when used as context keys
+	// Keys should be equivalent when used as context keys  
 	ctx := t.Context()
 	ctx = context.WithValue(ctx, key1, "test-value")
 
 	value := ctx.Value(key2)
 	if value != "test-value" {
-		t.Errorf("Expected Key{} to be usable as context key, got nil")
+		t.Errorf("Expected key{} to be usable as context key, got nil")
 	}
 }
 
@@ -82,7 +82,7 @@ func TestWithCacheFromConfig(t *testing.T) {
 			result := withCacheFromConfig(tt.setupCtx(), tt.cfg)
 
 			// Check that result context contains cache
-			cache := result.Value(Key{})
+			cache := result.Value(key{})
 			if tt.expectCache && cache == nil {
 				t.Errorf("Expected cache in context, got nil")
 			}
@@ -116,7 +116,7 @@ func TestGet(t *testing.T) {
 			setupContext: func() context.Context {
 				ctx := t.Context()
 				testCache := cache.NewResolverCache(100)
-				return context.WithValue(ctx, Key{}, testCache)
+				return context.WithValue(ctx, key{}, testCache)
 			},
 			expectNotNil:       true,
 			expectSameInstance: false, // Should get the injected instance
@@ -169,7 +169,7 @@ func TestGetWithInjectedCache(t *testing.T) {
 	// Test that Get returns the injected cache when available
 	ctx := t.Context()
 	testCache := cache.NewResolverCache(50)
-	ctx = context.WithValue(ctx, Key{}, testCache)
+	ctx = context.WithValue(ctx, key{}, testCache)
 
 	result := Get(ctx)
 	if result != testCache {
