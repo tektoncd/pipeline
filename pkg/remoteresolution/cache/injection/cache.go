@@ -27,8 +27,8 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-// Key is used as the key for associating information with a context.Context.
-type Key struct{}
+// key is used as the key for associating information with a context.Context.
+type key struct{}
 
 // sharedCache is the shared cache instance used across all contexts (lazy initialized)
 var (
@@ -69,7 +69,7 @@ func withCacheFromConfig(ctx context.Context, cfg *rest.Config) context.Context 
 
 	logger := logging.FromContext(ctx)
 	resolverCache := sharedCache.WithLogger(logger)
-	return context.WithValue(ctx, Key{}, resolverCache)
+	return context.WithValue(ctx, key{}, resolverCache)
 }
 
 // Get extracts the ResolverCache from the context.
@@ -83,7 +83,7 @@ func Get(ctx context.Context) *cache.ResolverCache {
 		return nil
 	}
 
-	untyped := ctx.Value(Key{})
+	untyped := ctx.Value(key{})
 	if untyped == nil {
 		// Fallback for test contexts or when injection is not available
 		// but only if resolvers are enabled

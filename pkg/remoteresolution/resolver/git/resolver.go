@@ -122,31 +122,35 @@ func (r *Resolver) IsImmutable(ctx context.Context, params []pipelinev1.Param) b
 // Resolve performs the work of fetching a file from git given a map of
 // parameters.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
+	// Guard: validate request has parameters
 	if len(req.Params) == 0 {
 		return nil, errors.New("no params")
 	}
+	
+	// Guard: check if git resolver is disabled
 	if git.IsDisabled(ctx) {
 		return nil, errors.New(disabledError)
 	}
+	
+	// Populate default parameters
 	params, err := git.PopulateDefaultParams(ctx, req.Params)
 	if err != nil {
 		return nil, err
 	}
-	if r.useCache(ctx, req) {
-		return framework.RunCacheOperations(
-			ctx,
-			req.Params,
-			LabelValueGitResolverType,
-			func() (resolutionframework.ResolvedResource, error) {
-				return r.resolveViaGit(ctx, params)
-			},
-		)
+	
+	// Use framework cache operations if caching is enabled
+	if !framework.ShouldUseCache(ctx, r, req.Params, LabelValueGitResolverType) {
+		return r.resolveViaGit(ctx, params)
 	}
-	return r.resolveViaGit(ctx, params)
-}
-
-func (r *Resolver) useCache(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
-	return framework.ShouldUseCache(ctx, r, req.Params, "git")
+	
+	return framework.RunCacheOperations(
+		ctx,
+		req.Params,
+		LabelValueGitResolverType,
+		func() (resolutionframework.ResolvedResource, error) {
+			return r.resolveViaGit(ctx, params)
+		},
+	)
 }
 
 func (r *Resolver) resolveViaGit(ctx context.Context, params map[string]string) (resolutionframework.ResolvedResource, error) {

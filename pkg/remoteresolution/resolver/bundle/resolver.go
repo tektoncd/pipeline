@@ -99,29 +99,27 @@ func (r *Resolver) IsImmutable(ctx context.Context, params []pipelinev1.Param) b
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
+	// Guard: validate request has parameters
 	if len(req.Params) == 0 {
 		return nil, errors.New("no params")
 	}
 
-	// Get the resolve function - default to bundleresolution.ResolveRequest if not set
-	resolveFunc := r.resolveRequestFunc
-	if resolveFunc == nil {
-		resolveFunc = bundleresolution.ResolveRequest
+	// Ensure resolve function is set
+	if r.resolveRequestFunc == nil {
+		r.resolveRequestFunc = bundleresolution.ResolveRequest
 	}
 
-	if r.useCache(ctx, req) {
-		return framework.RunCacheOperations(
-			ctx,
-			req.Params,
-			LabelValueBundleResolverType,
-			func() (resolutionframework.ResolvedResource, error) {
-				return resolveFunc(ctx, r.kubeClientSet, req)
-			},
-		)
+	// Use framework cache operations if caching is enabled
+	if !framework.ShouldUseCache(ctx, r, req.Params, LabelValueBundleResolverType) {
+		return r.resolveRequestFunc(ctx, r.kubeClientSet, req)
 	}
-	return resolveFunc(ctx, r.kubeClientSet, req)
-}
 
-func (r *Resolver) useCache(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
-	return framework.ShouldUseCache(ctx, r, req.Params, "bundle")
+	return framework.RunCacheOperations(
+		ctx,
+		req.Params,
+		LabelValueBundleResolverType,
+		func() (resolutionframework.ResolvedResource, error) {
+			return r.resolveRequestFunc(ctx, r.kubeClientSet, req)
+		},
+	)
 }
