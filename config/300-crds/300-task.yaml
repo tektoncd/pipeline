@@ -422,7 +422,7 @@ spec:
                           Cannot be updated.
                         type: array
                         items:
-                          description: EnvFromSource represents the source of a set of ConfigMaps
+                          description: EnvFromSource represents the source of a set of ConfigMaps or Secrets
                           type: object
                           properties:
                             configMapRef:
@@ -443,7 +443,7 @@ spec:
                                   type: boolean
                               x-kubernetes-map-type: atomic
                             prefix:
-                              description: An optional identifier to prepend to each key in the ConfigMap. Must be a C_IDENTIFIER.
+                              description: Optional text to prepend to the name of each environment variable. Must be a C_IDENTIFIER.
                               type: string
                             secretRef:
                               description: The Secret to select from
@@ -689,6 +689,12 @@ spec:
                                       - type: integer
                                       - type: string
                                     x-kubernetes-int-or-string: true
+                          stopSignal:
+                            description: |-
+                              StopSignal defines which signal will be sent to a container when it is being stopped.
+                              If not specified, the default is defined by the container runtime in use.
+                              StopSignal can only be set for Pods with a non-empty .spec.os.name
+                            type: string
                       livenessProbe:
                         description: |-
                           Periodic probe of Sidecar liveness.
@@ -1781,7 +1787,7 @@ spec:
                         Cannot be updated.
                       type: array
                       items:
-                        description: EnvFromSource represents the source of a set of ConfigMaps
+                        description: EnvFromSource represents the source of a set of ConfigMaps or Secrets
                         type: object
                         properties:
                           configMapRef:
@@ -1802,7 +1808,7 @@ spec:
                                 type: boolean
                             x-kubernetes-map-type: atomic
                           prefix:
-                            description: An optional identifier to prepend to each key in the ConfigMap. Must be a C_IDENTIFIER.
+                            description: Optional text to prepend to the name of each environment variable. Must be a C_IDENTIFIER.
                             type: string
                           secretRef:
                             description: The Secret to select from
@@ -2052,6 +2058,12 @@ spec:
                                     - type: integer
                                     - type: string
                                   x-kubernetes-int-or-string: true
+                        stopSignal:
+                          description: |-
+                            StopSignal defines which signal will be sent to a container when it is being stopped.
+                            If not specified, the default is defined by the container runtime in use.
+                            StopSignal can only be set for Pods with a non-empty .spec.os.name
+                          type: string
                     livenessProbe:
                       description: |-
                         Periodic probe of container liveness.
@@ -3107,7 +3119,7 @@ spec:
                           Cannot be updated.
                         type: array
                         items:
-                          description: EnvFromSource represents the source of a set of ConfigMaps
+                          description: EnvFromSource represents the source of a set of ConfigMaps or Secrets
                           type: object
                           properties:
                             configMapRef:
@@ -3128,7 +3140,7 @@ spec:
                                   type: boolean
                               x-kubernetes-map-type: atomic
                             prefix:
-                              description: An optional identifier to prepend to each key in the ConfigMap. Must be a C_IDENTIFIER.
+                              description: Optional text to prepend to the name of each environment variable. Must be a C_IDENTIFIER.
                               type: string
                             secretRef:
                               description: The Secret to select from
@@ -3376,6 +3388,12 @@ spec:
                                       - type: integer
                                       - type: string
                                     x-kubernetes-int-or-string: true
+                          stopSignal:
+                            description: |-
+                              StopSignal defines which signal will be sent to a container when it is being stopped.
+                              If not specified, the default is defined by the container runtime in use.
+                              StopSignal can only be set for Pods with a non-empty .spec.os.name
+                            type: string
                       livenessProbe:
                         description: |-
                           Periodic probe of container liveness.
@@ -4834,7 +4852,7 @@ spec:
                           Cannot be updated.
                         type: array
                         items:
-                          description: EnvFromSource represents the source of a set of ConfigMaps
+                          description: EnvFromSource represents the source of a set of ConfigMaps or Secrets
                           type: object
                           properties:
                             configMapRef:
@@ -4855,7 +4873,7 @@ spec:
                                   type: boolean
                               x-kubernetes-map-type: atomic
                             prefix:
-                              description: An optional identifier to prepend to each key in the ConfigMap. Must be a C_IDENTIFIER.
+                              description: Optional text to prepend to the name of each environment variable. Must be a C_IDENTIFIER.
                               type: string
                             secretRef:
                               description: The Secret to select from
@@ -5101,6 +5119,12 @@ spec:
                                       - type: integer
                                       - type: string
                                     x-kubernetes-int-or-string: true
+                          stopSignal:
+                            description: |-
+                              StopSignal defines which signal will be sent to a container when it is being stopped.
+                              If not specified, the default is defined by the container runtime in use.
+                              StopSignal can only be set for Pods with a non-empty .spec.os.name
+                            type: string
                       livenessProbe:
                         description: |-
                           Periodic probe of Sidecar liveness.
@@ -6191,7 +6215,7 @@ spec:
                         Cannot be updated.
                       type: array
                       items:
-                        description: EnvFromSource represents the source of a set of ConfigMaps
+                        description: EnvFromSource represents the source of a set of ConfigMaps or Secrets
                         type: object
                         properties:
                           configMapRef:
@@ -6212,7 +6236,7 @@ spec:
                                 type: boolean
                             x-kubernetes-map-type: atomic
                           prefix:
-                            description: An optional identifier to prepend to each key in the ConfigMap. Must be a C_IDENTIFIER.
+                            description: Optional text to prepend to the name of each environment variable. Must be a C_IDENTIFIER.
                             type: string
                           secretRef:
                             description: The Secret to select from
@@ -6746,7 +6770,7 @@ spec:
                           Cannot be updated.
                         type: array
                         items:
-                          description: EnvFromSource represents the source of a set of ConfigMaps
+                          description: EnvFromSource represents the source of a set of ConfigMaps or Secrets
                           type: object
                           properties:
                             configMapRef:
@@ -6767,7 +6791,7 @@ spec:
                                   type: boolean
                               x-kubernetes-map-type: atomic
                             prefix:
-                              description: An optional identifier to prepend to each key in the ConfigMap. Must be a C_IDENTIFIER.
+                              description: Optional text to prepend to the name of each environment variable. Must be a C_IDENTIFIER.
                               type: string
                             secretRef:
                               description: The Secret to select from

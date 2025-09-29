@@ -554,7 +554,6 @@ spec:
                               - Ignore: nodeAffinity/nodeSelector are ignored. All nodes are included in the calculations.
 
                               If this value is nil, the behavior is equivalent to the Honor policy.
-                              This is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.
                             type: string
                           nodeTaintsPolicy:
                             description: |-
@@ -565,7 +564,6 @@ spec:
                               - Ignore: node taints are ignored. All nodes are included.
 
                               If this value is nil, the behavior is equivalent to the Ignore policy.
-                              This is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.
                             type: string
                           topologyKey:
                             description: |-
@@ -1363,7 +1361,6 @@ spec:
                                     - Ignore: nodeAffinity/nodeSelector are ignored. All nodes are included in the calculations.
 
                                     If this value is nil, the behavior is equivalent to the Honor policy.
-                                    This is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.
                                   type: string
                                 nodeTaintsPolicy:
                                   description: |-
@@ -1374,7 +1371,6 @@ spec:
                                     - Ignore: node taints are ignored. All nodes are included.
 
                                     If this value is nil, the behavior is equivalent to the Ignore policy.
-                                    This is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.
                                   type: string
                                 topologyKey:
                                   description: |-
@@ -3706,7 +3702,6 @@ spec:
                                     - Ignore: nodeAffinity/nodeSelector are ignored. All nodes are included in the calculations.
 
                                     If this value is nil, the behavior is equivalent to the Honor policy.
-                                    This is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.
                                   type: string
                                 nodeTaintsPolicy:
                                   description: |-
@@ -3717,7 +3712,6 @@ spec:
                                     - Ignore: node taints are ignored. All nodes are included.
 
                                     If this value is nil, the behavior is equivalent to the Ignore policy.
-                                    This is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.
                                   type: string
                                 topologyKey:
                                   description: |-
@@ -4349,7 +4343,6 @@ spec:
                                   - Ignore: nodeAffinity/nodeSelector are ignored. All nodes are included in the calculations.
 
                                   If this value is nil, the behavior is equivalent to the Honor policy.
-                                  This is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.
                                 type: string
                               nodeTaintsPolicy:
                                 description: |-
@@ -4360,7 +4353,6 @@ spec:
                                   - Ignore: node taints are ignored. All nodes are included.
 
                                   If this value is nil, the behavior is equivalent to the Ignore policy.
-                                  This is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.
                                 type: string
                               topologyKey:
                                 description: |-
