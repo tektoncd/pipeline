@@ -42,8 +42,11 @@ type ImmutabilityChecker interface {
 
 // ShouldUseCache determines whether caching should be used based on:
 // 1. Task/Pipeline cache parameter (highest priority)
-// 2. ConfigMap default-cache-mode (middle priority)
+// 2. ConfigMap default-cache-mode (middle priority) - dynamically read from config
 // 3. System default for resolver type (lowest priority)
+//
+// Configuration changes are picked up dynamically without requiring controller restart.
+// The ConfigMap watcher ensures that changes to default-cache-mode are reflected immediately.
 func ShouldUseCache(ctx context.Context, resolver ImmutabilityChecker, params []pipelinev1.Param, resolverType string) bool {
 	// Get cache mode from task parameter
 	cacheMode := ""

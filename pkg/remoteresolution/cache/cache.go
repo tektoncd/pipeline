@@ -66,7 +66,11 @@ func NewResolverCache(maxSize int) *ResolverCache {
 	}
 }
 
-// InitializeFromConfigMap initializes the cache with configuration from a ConfigMap
+// InitializeFromConfigMap initializes the cache with configuration from a ConfigMap.
+// Note: This method is called during controller initialization and when ConfigMaps are updated.
+// Changes to cache configuration (max-size, default-ttl) take effect immediately without requiring
+// a controller restart. The cache itself is recreated with new parameters, which means existing
+// cached entries will be cleared when configuration changes.
 func (c *ResolverCache) InitializeFromConfigMap(configMap *corev1.ConfigMap) {
 	// Set defaults
 	maxSize := DefaultMaxSize
