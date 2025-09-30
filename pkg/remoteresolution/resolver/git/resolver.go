@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The Tekton Authors
+Copyright 2024 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -126,23 +126,23 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	if len(req.Params) == 0 {
 		return nil, errors.New("no params")
 	}
-	
+
 	// Guard: check if git resolver is disabled
 	if git.IsDisabled(ctx) {
 		return nil, errors.New(disabledError)
 	}
-	
+
 	// Populate default parameters
 	params, err := git.PopulateDefaultParams(ctx, req.Params)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Use framework cache operations if caching is enabled
 	if !framework.ShouldUseCache(ctx, r, req.Params, LabelValueGitResolverType) {
 		return r.resolveViaGit(ctx, params)
 	}
-	
+
 	return framework.RunCacheOperations(
 		ctx,
 		req.Params,

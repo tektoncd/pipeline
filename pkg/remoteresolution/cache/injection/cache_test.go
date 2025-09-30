@@ -32,7 +32,7 @@ func TestKey(t *testing.T) {
 	key1 := key{}
 	key2 := key{}
 
-	// Keys should be equivalent when used as context keys  
+	// Keys should be equivalent when used as context keys
 	ctx := t.Context()
 	ctx = context.WithValue(ctx, key1, "test-value")
 
