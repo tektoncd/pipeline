@@ -116,6 +116,13 @@ func (in *Template) DeepCopyInto(out *Template) {
 		*out = new(string)
 		**out = **in
 	}
+
+	if in.HostUsers != nil {
+		in, out := &in.HostUsers, &out.HostUsers
+		*out = new(bool)
+		**out = **in
+	}
+
 	if in.AutomountServiceAccountToken != nil {
 		in, out := &in.AutomountServiceAccountToken, &out.AutomountServiceAccountToken
 		*out = new(bool)
