@@ -28,18 +28,19 @@ import (
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 
+// TODO: add result strings
 func TestGenerateCacheKey(t *testing.T) {
 	tests := []struct {
 		name         string
 		resolverType string
 		params       []pipelinev1.Param
-		wantErr      bool
+		expectedKey  string
 	}{
 		{
 			name:         "empty params",
 			resolverType: "http",
 			params:       []pipelinev1.Param{},
-			wantErr:      false,
+			expectedKey:  "",
 		},
 		{
 			name:         "single param",
@@ -53,7 +54,7 @@ func TestGenerateCacheKey(t *testing.T) {
 					},
 				},
 			},
-			wantErr: false,
+			expectedKey: "",
 		},
 		{
 			name:         "multiple params",
@@ -74,19 +75,15 @@ func TestGenerateCacheKey(t *testing.T) {
 					},
 				},
 			},
-			wantErr: false,
+			expectedKey: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			key, err := GenerateCacheKey(tt.resolverType, tt.params)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GenerateCacheKey() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !tt.wantErr && key == "" {
-				t.Error("GenerateCacheKey() returned empty key")
+			actualKey := GenerateCacheKey(tt.resolverType, tt.params)
+			if tt.expectedKey != actualKey {
+				t.Error("want %s, got %s", tt.expectedKey, actualKey)
 			}
 		})
 	}
