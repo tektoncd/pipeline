@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The Tekton Authors
+Copyright 2024 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -92,12 +92,12 @@ func systemDefaultCacheMode(resolverType string) string {
 
 // ValidateCacheMode validates cache mode parameters.
 // Returns an error for invalid cache modes to ensure consistent validation across all resolvers.
-func ValidateCacheMode(cacheMode string) (string, error) {
+func ValidateCacheMode(cacheMode string) error {
 	switch cacheMode {
 	case CacheModeAlways, CacheModeNever, CacheModeAuto:
-		return cacheMode, nil // Valid cache mode
+		return nil // Valid cache mode
 	default:
-		return "", fmt.Errorf("invalid cache mode '%s', must be one of: always, never, auto", cacheMode)
+		return fmt.Errorf("invalid cache mode '%s', must be one of: always, never, auto", cacheMode)
 	}
 }
 

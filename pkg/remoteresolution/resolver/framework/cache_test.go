@@ -45,7 +45,7 @@ func createTestContextWithCache(t *testing.T, testCache *cache.ResolverCache) co
 	// the private key since RunCacheOperations uses cacheinjection.Get(ctx).
 	// We'll create a basic context and let the framework handle cache retrieval.
 	ctx := context.Background()
-	
+
 	// The actual cache injection happens through the injection package.
 	// For this test, we'll set up a minimal context that allows testing.
 	// Since we can't directly use the private key, we'll rely on the fact that
@@ -364,68 +364,58 @@ func TestValidateCacheMode(t *testing.T) {
 	tests := []struct {
 		name      string
 		cacheMode string
-		expected  string
 		wantError bool
 	}{
 		{
 			name:      "valid always mode",
 			cacheMode: framework.CacheModeAlways,
-			expected:  framework.CacheModeAlways,
 			wantError: false,
 		},
 		{
 			name:      "valid never mode",
 			cacheMode: framework.CacheModeNever,
-			expected:  framework.CacheModeNever,
 			wantError: false,
 		},
 		{
 			name:      "valid auto mode",
 			cacheMode: framework.CacheModeAuto,
-			expected:  framework.CacheModeAuto,
 			wantError: false,
 		},
 		{
 			name:      "invalid mode returns error",
 			cacheMode: "invalid-mode",
-			expected:  "",
 			wantError: true,
 		},
 		{
 			name:      "empty mode returns error",
 			cacheMode: "",
-			expected:  "",
 			wantError: true,
 		},
 		{
 			name:      "case sensitive - Always returns error",
 			cacheMode: "Always",
-			expected:  "",
 			wantError: true,
 		},
 		{
 			name:      "case sensitive - NEVER returns error",
 			cacheMode: "NEVER",
-			expected:  "",
 			wantError: true,
 		},
 		{
 			name:      "case sensitive - Auto returns error",
 			cacheMode: "Auto",
-			expected:  "",
 			wantError: true,
 		},
 		{
 			name:      "whitespace mode returns error",
 			cacheMode: " always ",
-			expected:  "",
 			wantError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := framework.ValidateCacheMode(tt.cacheMode)
+			err := framework.ValidateCacheMode(tt.cacheMode)
 
 			if tt.wantError {
 				if err == nil {
@@ -435,10 +425,6 @@ func TestValidateCacheMode(t *testing.T) {
 				if err != nil {
 					t.Errorf("ValidateCacheMode(%q) unexpected error: %v", tt.cacheMode, err)
 				}
-			}
-
-			if result != tt.expected {
-				t.Errorf("ValidateCacheMode(%q) = %q, expected %q", tt.cacheMode, result, tt.expected)
 			}
 		})
 	}
