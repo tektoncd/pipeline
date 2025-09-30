@@ -53,6 +53,17 @@ jobs:
       ARTIFACTS: ${{ github.workspace }}/artifacts
 
     steps:
+    - name: Free disk space
+      run: |
+        echo "--- Disk space before cleanup ---"
+        df -h
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        sudo docker image prune -a -f
+        echo "--- Disk space after cleanup ---"
+        df -h
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
     - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5  # v5.5.0
       with:
