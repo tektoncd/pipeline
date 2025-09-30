@@ -525,6 +525,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 			Affinity:                     podTemplate.Affinity,
 			SecurityContext:              podTemplate.SecurityContext,
 			RuntimeClassName:             podTemplate.RuntimeClassName,
+			HostUsers:                    podTemplate.HostUsers,
 			AutomountServiceAccountToken: podTemplate.AutomountServiceAccountToken,
 			SchedulerName:                podTemplate.SchedulerName,
 			HostNetwork:                  podTemplate.HostNetwork,
