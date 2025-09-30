@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Tekton Authors
+Copyright 2025 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-// Key is used as the key for associating information with a context.Context.
-type Key struct{}
+// key is used as the key for associating information with a context.Context.
+type key struct{}
 
 // sharedCache is the shared cache instance used across all contexts
 var sharedCache = cache.NewResolverCache(cache.DefaultMaxSize)
@@ -44,14 +44,14 @@ func withCacheFromConfig(ctx context.Context, cfg *rest.Config) context.Context 
 	// Return the SAME shared cache instance with logger to prevent state leak
 	resolverCache := sharedCache.WithLogger(logger)
 
-	return context.WithValue(ctx, Key{}, resolverCache)
+	return context.WithValue(ctx, key{}, resolverCache)
 }
 
 // Get extracts the ResolverCache from the context.
 // If the cache is not available in the context (e.g., in tests),
 // it falls back to the shared cache with a logger from the context.
 func Get(ctx context.Context) *cache.ResolverCache {
-	untyped := ctx.Value(Key{})
+	untyped := ctx.Value(key{})
 	if untyped == nil {
 		// Fallback for test contexts or when injection is not available
 		logger := logging.FromContext(ctx)
