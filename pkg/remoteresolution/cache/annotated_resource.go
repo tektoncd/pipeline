@@ -24,20 +24,20 @@ import (
 )
 
 const (
-	// CacheAnnotationKey is the annotation key indicating if a resource was cached
-	CacheAnnotationKey = "resolution.tekton.dev/cached"
-	// CacheTimestampKey is the annotation key for when the resource was cached
-	CacheTimestampKey = "resolution.tekton.dev/cache-timestamp"
-	// CacheResolverTypeKey is the annotation key for the resolver type that cached it
-	CacheResolverTypeKey = "resolution.tekton.dev/cache-resolver-type"
-	// CacheOperationKey is the annotation key for the cache operation type
-	CacheOperationKey = "resolution.tekton.dev/cache-operation"
-	// CacheValueTrue is the value used for cache annotations
-	CacheValueTrue = "true"
-	// CacheOperationStore is the value for cache store operations
-	CacheOperationStore = "store"
-	// CacheOperationRetrieve is the value for cache retrieve operations
-	CacheOperationRetrieve = "retrieve"
+	// cacheAnnotationKey is the annotation key indicating if a resource was cached
+	cacheAnnotationKey = "resolution.tekton.dev/cached"
+	// cacheTimestampKey is the annotation key for when the resource was cached
+	cacheTimestampKey = "resolution.tekton.dev/cache-timestamp"
+	// cacheResolverTypeKey is the annotation key for the resolver type that cached it
+	cacheResolverTypeKey = "resolution.tekton.dev/cache-resolver-type"
+	// cacheOperationKey is the annotation key for the cache operation type
+	cacheOperationKey = "resolution.tekton.dev/cache-operation"
+	// cacheValueTrue is the value used for cache annotations
+	cacheValueTrue = "true"
+	// cacheOperationStore is the value for cache store operations
+	cacheOperationStore = "store"
+	// cacheOperationRetrieve is the value for cache retrieve operations
+	cacheOperationRetrieve = "retrieve"
 )
 
 // AnnotatedResource wraps a ResolvedResource with cache annotations
@@ -59,10 +59,10 @@ func NewAnnotatedResource(resource resolutionframework.ResolvedResource, resolve
 		}
 	}
 
-	annotations[CacheAnnotationKey] = CacheValueTrue
-	annotations[CacheTimestampKey] = time.Now().Format(time.RFC3339)
-	annotations[CacheResolverTypeKey] = resolverType
-	annotations[CacheOperationKey] = operation
+	annotations[cacheAnnotationKey] = cacheValueTrue
+	annotations[cacheTimestampKey] = time.Now().Format(time.RFC3339)
+	annotations[cacheResolverTypeKey] = resolverType
+	annotations[cacheOperationKey] = operation
 
 	return &AnnotatedResource{
 		resource:    resource,

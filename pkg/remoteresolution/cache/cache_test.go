@@ -386,8 +386,8 @@ func TestResolverCache(t *testing.T) {
 		if string(got.Data()) != "test-value" {
 			t.Errorf("Expected data 'test-value', got %s", string(got.Data()))
 		}
-		if got.Annotations()[CacheOperationKey] != CacheOperationRetrieve {
-			t.Errorf("Expected retrieve annotation, got %s", got.Annotations()[CacheOperationKey])
+		if got.Annotations()[cacheOperationKey] != cacheOperationRetrieve {
+			t.Errorf("Expected retrieve annotation, got %s", got.Annotations()[cacheOperationKey])
 		}
 	}
 
@@ -395,8 +395,8 @@ func TestResolverCache(t *testing.T) {
 	if string(annotatedResource.Data()) != "test-value" {
 		t.Errorf("Expected annotated resource data 'test-value', got %s", string(annotatedResource.Data()))
 	}
-	if annotatedResource.Annotations()[CacheOperationKey] != CacheOperationStore {
-		t.Errorf("Expected store annotation, got %s", annotatedResource.Annotations()[CacheOperationKey])
+	if annotatedResource.Annotations()[cacheOperationKey] != cacheOperationStore {
+		t.Errorf("Expected store annotation, got %s", annotatedResource.Annotations()[cacheOperationKey])
 	}
 
 	// Test expiration with short duration for faster tests

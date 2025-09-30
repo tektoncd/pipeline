@@ -23,6 +23,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -127,7 +128,7 @@ func (c *ResolverCache) Get(resolverType string, params []pipelinev1.Param) (res
 		c.logger.Infow("Cache hit", "key", key, "resolverType", resolverType)
 	}
 
-	return NewAnnotatedResource(resource, resolverType, CacheOperationRetrieve), true
+	return NewAnnotatedResource(resource, resolverType, cacheOperationRetrieve), true
 }
 
 // Add adds a value to the cache with the default expiration time using resolver type and parameters.
@@ -142,7 +143,7 @@ func (c *ResolverCache) Add(resolverType string, params []pipelinev1.Param, reso
 	c.cache.Add(key, resource, DefaultExpiration)
 
 	// Return an annotated resource indicating this was a store operation
-	return NewAnnotatedResource(resource, resolverType, CacheOperationStore)
+	return NewAnnotatedResource(resource, resolverType, cacheOperationStore)
 }
 
 // Remove removes a value from the cache.
@@ -165,7 +166,7 @@ func (c *ResolverCache) AddWithExpiration(resolverType string, params []pipeline
 	c.cache.Add(key, resource, expiration)
 
 	// Return an annotated resource indicating this was a store operation
-	return NewAnnotatedResource(resource, resolverType, CacheOperationStore)
+	return NewAnnotatedResource(resource, resolverType, cacheOperationStore)
 }
 
 // Clear removes all entries from the cache.
@@ -188,8 +189,10 @@ func (c *ResolverCache) WithLogger(logger *zap.SugaredLogger) *ResolverCache {
 // generateCacheKey generates a cache key for the given resolver type and parameters.
 // This is an internal implementation detail and should not be exposed publicly.
 func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
-	// Create a deterministic string representation of the parameters
-	paramStr := resolverType + ":"
+	// Create a deterministic string representation of the parameters using strings.Builder
+	var builder strings.Builder
+	builder.WriteString(resolverType)
+	builder.WriteString(":")
 
 	// Filter out the 'cache' parameter and sort remaining params by name for determinism
 	filteredParams := make([]pipelinev1.Param, 0, len(params))
@@ -205,11 +208,12 @@ func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 	})
 
 	for _, p := range filteredParams {
-		paramStr += p.Name + "="
+		builder.WriteString(p.Name)
+		builder.WriteString("=")
 
 		switch p.Value.Type {
 		case pipelinev1.ParamTypeString:
-			paramStr += p.Value.StringVal
+			builder.WriteString(p.Value.StringVal)
 		case pipelinev1.ParamTypeArray:
 			// Sort array values for determinism
 			arrayVals := make([]string, len(p.Value.ArrayVal))
@@ -217,9 +221,9 @@ func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 			sort.Strings(arrayVals)
 			for i, val := range arrayVals {
 				if i > 0 {
-					paramStr += ","
+					builder.WriteString(",")
 				}
-				paramStr += val
+				builder.WriteString(val)
 			}
 		case pipelinev1.ParamTypeObject:
 			// Sort object keys for determinism
@@ -230,18 +234,20 @@ func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 			sort.Strings(keys)
 			for i, key := range keys {
 				if i > 0 {
-					paramStr += ","
+					builder.WriteString(",")
 				}
-				paramStr += key + ":" + p.Value.ObjectVal[key]
+				builder.WriteString(key)
+				builder.WriteString(":")
+				builder.WriteString(p.Value.ObjectVal[key])
 			}
 		default:
 			// For unknown types, use StringVal as fallback
-			paramStr += p.Value.StringVal
+			builder.WriteString(p.Value.StringVal)
 		}
-		paramStr += ";"
+		builder.WriteString(";")
 	}
 
 	// Generate a SHA-256 hash of the parameter string
-	hash := sha256.Sum256([]byte(paramStr))
+	hash := sha256.Sum256([]byte(builder.String()))
 	return hex.EncodeToString(hash[:])
 }

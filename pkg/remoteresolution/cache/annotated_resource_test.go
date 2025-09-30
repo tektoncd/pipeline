@@ -77,7 +77,7 @@ func TestNewAnnotatedResource(t *testing.T) {
 			}
 
 			// Create annotated resource
-			annotated := NewAnnotatedResource(mockResource, tt.resolverType, CacheOperationStore)
+			annotated := NewAnnotatedResource(mockResource, tt.resolverType, cacheOperationStore)
 
 			// Verify data is preserved
 			if string(annotated.Data()) != "test data" {
@@ -86,16 +86,16 @@ func TestNewAnnotatedResource(t *testing.T) {
 
 			// Verify annotations are added
 			annotations := annotated.Annotations()
-			if annotations[CacheAnnotationKey] != "true" {
-				t.Errorf("Expected cache annotation to be 'true', got '%s'", annotations[CacheAnnotationKey])
+			if annotations[cacheAnnotationKey] != "true" {
+				t.Errorf("Expected cache annotation to be 'true', got '%s'", annotations[cacheAnnotationKey])
 			}
 
-			if annotations[CacheResolverTypeKey] != tt.resolverType {
-				t.Errorf("Expected resolver type '%s', got '%s'", tt.resolverType, annotations[CacheResolverTypeKey])
+			if annotations[cacheResolverTypeKey] != tt.resolverType {
+				t.Errorf("Expected resolver type '%s', got '%s'", tt.resolverType, annotations[cacheResolverTypeKey])
 			}
 
 			// Verify timestamp is added and valid
-			timestamp := annotations[CacheTimestampKey]
+			timestamp := annotations[cacheTimestampKey]
 			if timestamp == "" {
 				t.Error("Expected cache timestamp to be set")
 			}
@@ -107,8 +107,8 @@ func TestNewAnnotatedResource(t *testing.T) {
 			}
 
 			// Verify cache operation is set
-			if annotations[CacheOperationKey] != CacheOperationStore {
-				t.Errorf("Expected cache operation '%s', got '%s'", CacheOperationStore, annotations[CacheOperationKey])
+			if annotations[cacheOperationKey] != cacheOperationStore {
+				t.Errorf("Expected cache operation '%s', got '%s'", cacheOperationStore, annotations[cacheOperationKey])
 			}
 
 			// Verify existing annotations are preserved
@@ -137,7 +137,7 @@ func TestNewAnnotatedResourceWithNilAnnotations(t *testing.T) {
 	}
 
 	// Create annotated resource
-	annotated := NewAnnotatedResource(mockResource, "bundles", CacheOperationStore)
+	annotated := NewAnnotatedResource(mockResource, "bundles", cacheOperationStore)
 
 	// Verify annotations map is created
 	annotations := annotated.Annotations()
@@ -146,17 +146,17 @@ func TestNewAnnotatedResourceWithNilAnnotations(t *testing.T) {
 	}
 
 	// Verify cache annotations are added
-	if annotations[CacheAnnotationKey] != "true" {
-		t.Errorf("Expected cache annotation to be 'true', got '%s'", annotations[CacheAnnotationKey])
+	if annotations[cacheAnnotationKey] != "true" {
+		t.Errorf("Expected cache annotation to be 'true', got '%s'", annotations[cacheAnnotationKey])
 	}
 
-	if annotations[CacheResolverTypeKey] != "bundles" {
-		t.Errorf("Expected resolver type 'bundles', got '%s'", annotations[CacheResolverTypeKey])
+	if annotations[cacheResolverTypeKey] != "bundles" {
+		t.Errorf("Expected resolver type 'bundles', got '%s'", annotations[cacheResolverTypeKey])
 	}
 
 	// Verify cache operation is set
-	if annotations[CacheOperationKey] != CacheOperationStore {
-		t.Errorf("Expected cache operation '%s', got '%s'", CacheOperationStore, annotations[CacheOperationKey])
+	if annotations[cacheOperationKey] != cacheOperationStore {
+		t.Errorf("Expected cache operation '%s', got '%s'", cacheOperationStore, annotations[cacheOperationKey])
 	}
 }
 
@@ -173,7 +173,7 @@ func TestAnnotatedResourcePreservesOriginal(t *testing.T) {
 	}
 
 	// Create annotated resource
-	annotated := NewAnnotatedResource(mockResource, "git", CacheOperationStore)
+	annotated := NewAnnotatedResource(mockResource, "git", cacheOperationStore)
 
 	// Verify original resource is not modified
 	if string(mockResource.Data()) != "original data" {
@@ -194,13 +194,13 @@ func TestAnnotatedResourcePreservesOriginal(t *testing.T) {
 		t.Error("Annotated resource should preserve original annotations")
 	}
 
-	if annotations[CacheAnnotationKey] != "true" {
+	if annotations[cacheAnnotationKey] != "true" {
 		t.Error("Annotated resource should have cache annotation")
 	}
 
 	// Verify cache operation is set correctly
-	if annotations[CacheOperationKey] != CacheOperationStore {
-		t.Errorf("Expected cache operation '%s', got '%s'", CacheOperationStore, annotations[CacheOperationKey])
+	if annotations[cacheOperationKey] != cacheOperationStore {
+		t.Errorf("Expected cache operation '%s', got '%s'", cacheOperationStore, annotations[cacheOperationKey])
 	}
 }
 
@@ -217,20 +217,20 @@ func TestNewAnnotatedResourceWithRetrieveOperation(t *testing.T) {
 	}
 
 	// Create annotated resource with retrieve operation
-	annotated := NewAnnotatedResource(mockResource, "bundles", CacheOperationRetrieve)
+	annotated := NewAnnotatedResource(mockResource, "bundles", cacheOperationRetrieve)
 
 	// Verify cache operation is set correctly
 	annotations := annotated.Annotations()
-	if annotations[CacheOperationKey] != CacheOperationRetrieve {
-		t.Errorf("Expected cache operation '%s', got '%s'", CacheOperationRetrieve, annotations[CacheOperationKey])
+	if annotations[cacheOperationKey] != cacheOperationRetrieve {
+		t.Errorf("Expected cache operation '%s', got '%s'", cacheOperationRetrieve, annotations[cacheOperationKey])
 	}
 
 	// Verify other annotations are still set
-	if annotations[CacheAnnotationKey] != "true" {
-		t.Errorf("Expected cache annotation to be 'true', got '%s'", annotations[CacheAnnotationKey])
+	if annotations[cacheAnnotationKey] != "true" {
+		t.Errorf("Expected cache annotation to be 'true', got '%s'", annotations[cacheAnnotationKey])
 	}
 
-	if annotations[CacheResolverTypeKey] != "bundles" {
-		t.Errorf("Expected resolver type 'bundles', got '%s'", annotations[CacheResolverTypeKey])
+	if annotations[cacheResolverTypeKey] != "bundles" {
+		t.Errorf("Expected resolver type 'bundles', got '%s'", annotations[cacheResolverTypeKey])
 	}
 }
