@@ -54,7 +54,7 @@ var (
 	ignoreObjectMeta      = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion", "UID", "CreationTimestamp", "Generation", "ManagedFields", "Labels", "Annotations", "OwnerReferences")
 	ignoreCondition       = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time", "Message")
 	ignoreConditions      = cmpopts.IgnoreFields(duckv1.Status{}, "Conditions")
-	ignoreStepState       = cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "TerminationReason")
+	ignoreStepState       = cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "TerminationReason", "Provenance")
 	ignoreContainerStates = cmpopts.IgnoreFields(corev1.ContainerState{}, "Terminated")
 	// ignoreSATaskRunSpec ignores the service account in the TaskRunSpec as it may differ across platforms
 	ignoreSATaskRunSpec = cmpopts.IgnoreFields(v1.TaskRunSpec{}, "ServiceAccountName")

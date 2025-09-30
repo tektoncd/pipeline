@@ -737,7 +737,8 @@ spec:
 			Status: v1.TaskRunStatus{
 				TaskRunStatusFields: v1.TaskRunStatusFields{
 					Steps: []v1.StepState{{
-						Name: "step1",
+						Name:       "step1",
+						Provenance: &v1.Provenance{},
 					}},
 				},
 			},
@@ -804,7 +805,20 @@ spec:
 					},
 				},
 			},
-			want: v1.TaskRunStatus{},
+			want: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{
+						{
+							Name:       "first-inline",
+							Provenance: &v1.Provenance{},
+						},
+						{
+							Name:       "second-inline",
+							Provenance: &v1.Provenance{},
+						},
+					},
+				},
+			},
 		}, {
 			name: "StepAction only",
 			tr: &v1.TaskRun{

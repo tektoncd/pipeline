@@ -197,9 +197,24 @@ func updateTaskRunProvenance(taskRun *v1.TaskRun, stepName string, stepIndex int
 
 // GetStepActionsData extracts the StepActions and merges them with the inlined Step specification.
 func GetStepActionsData(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.TaskRun, tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester) ([]v1.Step, error) {
-	// If there are no step-ref to resolve, return immediately
+	steps := make([]v1.Step, len(taskSpec.Steps))
+
+	// Init step states and known step states indexes lookup map
+	if taskRun.Status.Steps == nil {
+		taskRun.Status.Steps = []v1.StepState{}
+	}
+	stepStatusIndex := make(map[string]int, len(taskRun.Status.Steps))
+	for i, stepState := range taskRun.Status.Steps {
+		stepStatusIndex[stepState.Name] = i
+	}
+
+	// If there are no step-ref to resolve, return immediately with nil provenance
 	if !hasStepRefs(&taskSpec) {
-		return taskSpec.Steps, nil
+		for i, step := range taskSpec.Steps {
+			steps[i] = step
+			updateTaskRunProvenance(taskRun, step.Name, i, nil, stepStatusIndex) // create StepState with nil provenance
+		}
+		return steps, nil
 	}
 
 	// Phase 1: Concurrently resolve all StepActions
@@ -229,15 +244,6 @@ func GetStepActionsData(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.T
 	}
 
 	// Phase 2: Sequentially merge results into the final step list and update status
-	if taskRun.Status.Steps == nil {
-		taskRun.Status.Steps = []v1.StepState{}
-	}
-	stepStatusIndex := make(map[string]int, len(taskRun.Status.Steps))
-	for i, stepState := range taskRun.Status.Steps {
-		stepStatusIndex[stepState.Name] = i
-	}
-
-	steps := make([]v1.Step, len(taskSpec.Steps))
 	for i, step := range taskSpec.Steps {
 		if step.Ref == nil {
 			steps[i] = step
