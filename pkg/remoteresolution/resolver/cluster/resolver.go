@@ -37,12 +37,6 @@ const (
 	// ClusterResolverName is the name that the cluster resolver should be
 	// associated with
 	ClusterResolverName string = "Cluster"
-
-	// Legacy cache constants for backward compatibility with tests
-	CacheModeAlways = framework.CacheModeAlways
-	CacheModeNever  = framework.CacheModeNever
-	CacheModeAuto   = framework.CacheModeAuto
-	CacheParam      = framework.CacheParam
 )
 
 // Resolver implements a framework.Resolver that can fetch resources from the same cluster.

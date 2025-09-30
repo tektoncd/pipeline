@@ -30,7 +30,4 @@ const (
 
 	// ParamBasicAuthSecretKey is the parameter defining what key in the secret to use for basic auth
 	ParamBasicAuthSecretKey = "secretKey"
-
-	// CacheParam is the parameter defining whether to cache the resolved resource
-	CacheParam = "cache"
 )
