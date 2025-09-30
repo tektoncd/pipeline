@@ -37,6 +37,9 @@ const (
 	// LabelValueBundleResolverType is the value to use for the
 	// resolution.tekton.dev/type label on resource requests
 	LabelValueBundleResolverType string = "bundles"
+
+	// BundleResolverName is the name that the bundle resolver should be associated with.
+	BundleResolverName = "bundleresolver"
 )
 
 // Resolver implements a framework.Resolver that can fetch files from OCI bundles.
