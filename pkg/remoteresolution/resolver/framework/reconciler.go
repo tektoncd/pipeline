@@ -123,6 +123,16 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 		paramsMap[p.Name] = p.Value.StringVal
 	}
 
+	// Centralized cache parameter validation for all resolvers
+	if cacheMode, exists := paramsMap[CacheParam]; exists && cacheMode != "" {
+		if _, err := ValidateCacheMode(cacheMode); err != nil {
+			return &resolutioncommon.InvalidRequestError{
+				ResolutionRequestKey: key,
+				Message:              err.Error(),
+			}
+		}
+	}
+
 	timeoutDuration := defaultMaximumResolutionDuration
 	if timed, ok := r.resolver.(framework.TimedResolution); ok {
 		var err error
