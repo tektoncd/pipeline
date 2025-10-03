@@ -11,6 +11,7 @@ spec:
     - name: browser
   steps:
     - name: echo
+      displayName: "echo platform and browser"
       image: mirror.gcr.io/alpine
       script: |
         echo "$(params.platform) and $(params.browser)"

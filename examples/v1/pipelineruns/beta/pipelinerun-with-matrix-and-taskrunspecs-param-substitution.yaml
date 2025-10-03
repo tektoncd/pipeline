@@ -27,6 +27,7 @@ spec:
             - name: node-type
           steps:
             - name: build-and-push
+              displayName: "Build and push"
               image: ubuntu
               script: |
                 echo "building on $(params.node-type)"
