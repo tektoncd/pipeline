@@ -6,10 +6,8 @@ aliases:
   - itsmurugappan
   client-wg-leads:
   - dsimansk
-  - rhuss
   client-writers:
   - dsimansk
-  - rhuss
   - vyasgun
   docs-reviewers:
   - nainaz
@@ -53,6 +51,7 @@ aliases:
   - dprotaso
   - dsimansk
   - evankanderson
+  - gauron99
   - knative-automation
   - knative-prow-releaser-robot
   - knative-prow-robot
@@ -65,6 +64,7 @@ aliases:
   knative-release-leads:
   - dprotaso
   - dsimansk
+  - gauron99
   - skonto
   knative-robots:
   - knative-automation
@@ -120,12 +120,12 @@ aliases:
   - matzew
   - nrrso
   ux-wg-leads:
+  - Leo6Leo
   - cali0707
-  - leo6leo
   - mmejia02
   - zainabhusain227
   ux-writers:
+  - Leo6Leo
   - cali0707
-  - leo6leo
   - mmejia02
   - zainabhusain227
