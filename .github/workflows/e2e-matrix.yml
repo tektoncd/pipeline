@@ -68,7 +68,7 @@ jobs:
     - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00  # v6.0.0
       with:
         go-version-file: "go.mod"
-    - uses: ko-build/setup-ko@v0.9
+    - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
 
     - name: Install Dependencies
       working-directory: ./
@@ -94,12 +94,12 @@ jobs:
           --e2e-env ./test/e2e-tests-kind-${{ matrix.env-file }}.env
 
     - name: Upload test results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}
         path: ${{ env.ARTIFACTS }}
 
-    - uses: chainguard-dev/actions/kind-diag@main
+    - uses: chainguard-dev/actions/kind-diag@6f4f4de7549514e7b659741b30f6476f245600dd # v1.5.3
       if: ${{ failure() }}
       with:
         artifact-name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-logs
