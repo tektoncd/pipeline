@@ -143,8 +143,7 @@ func (c *Client) DeleteLabel(owner, repo string, id int64) (*Response, error) {
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/labels/%d", owner, repo, id), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/labels/%d", owner, repo, id), nil, nil)
 }
 
 // GetIssueLabels get labels of one issue via issue id
@@ -197,8 +196,7 @@ func (c *Client) DeleteIssueLabel(owner, repo string, index, label int64) (*Resp
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/issues/%d/labels/%d", owner, repo, index, label), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/issues/%d/labels/%d", owner, repo, index, label), nil, nil)
 }
 
 // ClearIssueLabels delete all the labels of one issue.
@@ -206,6 +204,5 @@ func (c *Client) ClearIssueLabels(owner, repo string, index int64) (*Response, e
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/issues/%d/labels", owner, repo, index), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/issues/%d/labels", owner, repo, index), nil, nil)
 }
