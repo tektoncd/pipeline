@@ -37,10 +37,6 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
-var requireAlphaFeatureFlag = requireAnyGate(map[string]string{
-	"enable-api-fields": "alpha",
-})
-
 // TestPipelineRunMatrixed is an integration test that verifies that a Matrixed PipelineRun
 // succeeds with both `matrix params` and `matrix include params`. It also tests array indexing
 // and whole array replacements by consuming results produced by other PipelineTasks.
@@ -49,7 +45,9 @@ func TestPipelineRunMatrixed(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t, requireAlphaFeatureFlag)
+	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{
+		"enable-api-fields": "alpha",
+	}))
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 	t.Logf("Creating Tasks in namespace %s", namespace)
@@ -587,7 +585,9 @@ func TestPipelineRunMatrixedFailed(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t, requireAlphaFeatureFlag)
+	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{
+		"enable-api-fields": "alpha",
+	}))
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 	t.Logf("Creating Task in namespace %s", namespace)
