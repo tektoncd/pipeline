@@ -107,7 +107,7 @@ jobs:
           --nodes 3 \
           --k8s-version ${{ matrix.k8s-version }} \
           --e2e-script ./test/e2e-tests.sh \
-          --e2e-env ./test/e2e-tests-kind-prow-${{ matrix.feature-flags }}.env
+          --e2e-env ./test/e2e-tests-kind-${{ matrix.feature-flags }}.env
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
