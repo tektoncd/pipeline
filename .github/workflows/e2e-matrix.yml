@@ -19,34 +19,50 @@ jobs:
       matrix:
         k8s-name:
         - k8s-oldest             # 1.28
-        - k8s-latest-minus-three # 1.29
-        - k8s-latest-minus-two   # 1.30
-        - k8s-latest-minus-one   # 1.31
-        - k8s-latest             # 1.32
+        - k8s-latest-minus-four  # 1.29
+        - k8s-latest-minus-three # 1.30
+        - k8s-latest-minus-two   # 1.31
+        - k8s-latest-minus-one   # 1.32
+        - k8s-latest             # 1.33
 
         feature-flags:
         - stable
         - beta
         - alpha
-        # - prow-feature-flags  - this is tested today as a periodic job, but we could integrate it here
 
         include:
         - k8s-name: k8s-oldest
           k8s-version: v1.28.x
-        - k8s-name: k8s-latest-minus-three
+        - k8s-name: k8s-latest-minus-four
           k8s-version: v1.29.x
-        - k8s-name: k8s-latest-minus-two
+        - k8s-name: k8s-latest-minus-three
           k8s-version: v1.30.x
-        - k8s-name: k8s-latest-minus-one
+        - k8s-name: k8s-latest-minus-two
           k8s-version: v1.31.x
-        - k8s-name: k8s-latest
+        - k8s-name: k8s-latest-minus-one
           k8s-version: v1.32.x
-        - feature-flags: stable
-          env-file: prow
-        - feature-flags: alpha
-          env-file: prow-alpha
-        - feature-flags: beta
-          env-file: prow-beta
+        - k8s-name: k8s-latest
+          k8s-version: v1.33.x
+
+        # Run beta and alpha only on latest and oldest
+        exclude:
+        - k8s-name: k8s-latest-minus-four
+          feature-flags: beta
+        - k8s-name: k8s-latest-minus-four
+          feature-flags: alpha
+        - k8s-name: k8s-latest-minus-three
+          feature-flags: beta
+        - k8s-name: k8s-latest-minus-three
+          feature-flags: alpha
+        - k8s-name: k8s-latest-minus-two
+          feature-flags: beta
+        - k8s-name: k8s-latest-minus-two
+          feature-flags: alpha
+        - k8s-name: k8s-latest-minus-one
+          feature-flags: beta
+        - k8s-name: k8s-latest-minus-one
+          feature-flags: alpha
+
     env:
       KO_DOCKER_REPO: registry.local:5000/tekton
       CLUSTER_DOMAIN: c${{ github.run_id }}.local
@@ -91,7 +107,7 @@ jobs:
           --nodes 3 \
           --k8s-version ${{ matrix.k8s-version }} \
           --e2e-script ./test/e2e-tests.sh \
-          --e2e-env ./test/e2e-tests-kind-${{ matrix.env-file }}.env
+          --e2e-env ./test/e2e-tests-kind-prow-${{ matrix.feature-flags }}.env
 
     - name: Upload test results
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
