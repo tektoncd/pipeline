@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Tekton Authors
+Copyright 2025 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
 
@@ -32,21 +32,20 @@ const (
 	CacheParam      = "cache"
 )
 
-// CacheAwareResolver extends the base Resolver interface with cache-specific methods.
+// ImmutabilityChecker extends the base Resolver interface with cache-specific methods.
 // Each resolver implements IsImmutable to define what "auto" mode means in their context.
-type CacheAwareResolver interface {
-	Resolver
-	IsImmutable(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool
+type ImmutabilityChecker interface {
+	IsImmutable(params []v1.Param) bool
 }
 
 // ShouldUseCache determines whether caching should be used based on:
 // 1. Task/Pipeline cache parameter (highest priority)
 // 2. ConfigMap default-cache-mode (middle priority)
 // 3. System default for resolver type (lowest priority)
-func ShouldUseCache(ctx context.Context, resolver CacheAwareResolver, req *v1beta1.ResolutionRequestSpec, systemDefault string) bool {
+func ShouldUseCache(ctx context.Context, resolver ImmutabilityChecker, params []v1.Param, resolverType string) bool {
 	// Get cache mode from task parameter
 	cacheMode := ""
-	for _, param := range req.Params {
+	for _, param := range params {
 		if param.Name == CacheParam {
 			cacheMode = param.Value.StringVal
 			break
@@ -63,7 +62,7 @@ func ShouldUseCache(ctx context.Context, resolver CacheAwareResolver, req *v1bet
 
 	// If still no mode, use system default
 	if cacheMode == "" {
-		cacheMode = systemDefault
+		cacheMode = systemDefaultCacheMode(resolverType)
 	}
 
 	// Apply cache mode logic
@@ -73,16 +72,16 @@ func ShouldUseCache(ctx context.Context, resolver CacheAwareResolver, req *v1bet
 	case CacheModeNever:
 		return false
 	case CacheModeAuto:
-		return resolver.IsImmutable(ctx, req)
+		return resolver.IsImmutable(params)
 	default:
 		// Invalid mode defaults to auto
-		return resolver.IsImmutable(ctx, req)
+		return resolver.IsImmutable(params)
 	}
 }
 
-// GetSystemDefaultCacheMode returns the system default cache mode for a resolver type.
+// systemDefaultCacheMode returns the system default cache mode for a resolver type.
 // This can be customized per resolver if needed.
-func GetSystemDefaultCacheMode(resolverType string) string {
+func systemDefaultCacheMode(resolverType string) string {
 	return CacheModeAuto
 }
 

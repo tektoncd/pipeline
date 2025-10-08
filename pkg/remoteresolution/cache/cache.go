@@ -17,19 +17,15 @@ limitations under the License.
 package cache
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
 	"sort"
-	"strconv"
 	"time"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
 	utilcache "k8s.io/apimachinery/pkg/util/cache"
-	"knative.dev/pkg/logging"
 )
 
 const (
@@ -62,39 +58,6 @@ type ResolverCache struct {
 func NewResolverCache(maxSize int) *ResolverCache {
 	return &ResolverCache{
 		cache: utilcache.NewLRUExpireCache(maxSize),
-	}
-}
-
-// InitializeFromConfigMap initializes the cache with configuration from a ConfigMap
-func (c *ResolverCache) InitializeFromConfigMap(configMap *corev1.ConfigMap) {
-	// Set defaults
-	maxSize := DefaultMaxSize
-	ttl := DefaultExpiration
-
-	if configMap != nil {
-		// Parse max size
-		if maxSizeStr, ok := configMap.Data["max-size"]; ok {
-			if parsed, err := strconv.Atoi(maxSizeStr); err == nil && parsed > 0 {
-				maxSize = parsed
-			}
-		}
-
-		// Parse default TTL
-		if ttlStr, ok := configMap.Data["default-ttl"]; ok {
-			if parsed, err := time.ParseDuration(ttlStr); err == nil && parsed > 0 {
-				ttl = parsed
-			}
-		}
-	}
-
-	c.cache = utilcache.NewLRUExpireCache(maxSize)
-	DefaultExpiration = ttl
-}
-
-// InitializeLogger initializes the logger for the cache using the provided context
-func (c *ResolverCache) InitializeLogger(ctx context.Context) {
-	if c.logger == nil {
-		c.logger = logging.FromContext(ctx)
 	}
 }
 
@@ -155,7 +118,7 @@ func (c *ResolverCache) WithLogger(logger *zap.SugaredLogger) *ResolverCache {
 }
 
 // GenerateCacheKey generates a cache key for the given resolver type and parameters.
-func GenerateCacheKey(resolverType string, params []pipelinev1.Param) string {
+func GenerateCacheKey(resolverType string, params []pipelinev1.Param) (string, error) {
 	// Create a deterministic string representation of the parameters
 	paramStr := resolverType + ":"
 
@@ -211,5 +174,5 @@ func GenerateCacheKey(resolverType string, params []pipelinev1.Param) string {
 
 	// Generate a SHA-256 hash of the parameter string
 	hash := sha256.Sum256([]byte(paramStr))
-	return hex.EncodeToString(hash[:])
+	return hex.EncodeToString(hash[:]), nil
 }
