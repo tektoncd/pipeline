@@ -19,7 +19,7 @@ package cluster
 import (
 	"context"
 
-	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
@@ -39,12 +39,6 @@ const (
 	// ClusterResolverName is the name that the cluster resolver should be
 	// associated with
 	ClusterResolverName string = "Cluster"
-
-	// Legacy cache constants for backward compatibility with tests
-	CacheModeAlways = framework.CacheModeAlways
-	CacheModeNever  = framework.CacheModeNever
-	CacheModeAuto   = framework.CacheModeAuto
-	CacheParam      = framework.CacheParam
 )
 
 // Resolver implements a framework.Resolver that can fetch resources from the same cluster.
@@ -53,7 +47,7 @@ type Resolver struct {
 }
 
 // Ensure Resolver implements CacheAwareResolver
-var _ framework.CacheAwareResolver = (*Resolver)(nil)
+var _ framework.ImmutabilityChecker = (*Resolver)(nil)
 
 // Initialize sets up any dependencies needed by the Resolver. None atm.
 func (r *Resolver) Initialize(ctx context.Context) error {
@@ -62,13 +56,13 @@ func (r *Resolver) Initialize(ctx context.Context) error {
 }
 
 // GetName returns a string name to refer to this Resolver by.
-func (r *Resolver) GetName(ctx context.Context) string {
+func (r *Resolver) GetName(context.Context) string {
 	return ClusterResolverName
 }
 
 // GetSelector returns a map of labels to match against tasks requesting
 // resolution from this Resolver.
-func (r *Resolver) GetSelector(ctx context.Context) map[string]string {
+func (r *Resolver) GetSelector(context.Context) map[string]string {
 	return map[string]string{
 		resolutioncommon.LabelKeyResolverType: LabelValueClusterResolverType,
 	}
@@ -81,7 +75,7 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 
 // IsImmutable implements CacheAwareResolver.IsImmutable
 // Returns false because cluster resources don't have immutable references
-func (r *Resolver) IsImmutable(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
+func (r *Resolver) IsImmutable([]v1.Param) bool {
 	// Cluster resources (Tasks, Pipelines, etc.) don't have immutable references
 	// like Git commit hashes or bundle digests, so we always return false
 	return false
@@ -90,8 +84,7 @@ func (r *Resolver) IsImmutable(ctx context.Context, req *v1beta1.ResolutionReque
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
 	// Determine if we should use caching using framework logic
-	systemDefault := framework.GetSystemDefaultCacheMode("cluster")
-	useCache := framework.ShouldUseCache(ctx, r, req, systemDefault)
+	useCache := framework.ShouldUseCache(ctx, r, req.Params, LabelValueClusterResolverType)
 
 	if useCache {
 		// Get cache instance
@@ -136,25 +129,4 @@ var _ resolutionframework.ConfigWatcher = &Resolver{}
 // GetConfigName returns the name of the cluster resolver's configmap.
 func (r *Resolver) GetConfigName(context.Context) string {
 	return "cluster-resolver-config"
-}
-
-// ShouldUseCache is a legacy function for backward compatibility with existing tests.
-// It converts the old-style params map to the new framework API.
-func ShouldUseCache(ctx context.Context, params map[string]string, checksum []byte) bool {
-	// Convert params map to ResolutionRequestSpec
-	var reqParams []pipelinev1.Param
-	for key, value := range params {
-		reqParams = append(reqParams, pipelinev1.Param{
-			Name:  key,
-			Value: pipelinev1.ParamValue{StringVal: value},
-		})
-	}
-
-	req := &v1beta1.ResolutionRequestSpec{
-		Params: reqParams,
-	}
-
-	resolver := &Resolver{}
-	systemDefault := framework.GetSystemDefaultCacheMode("cluster")
-	return framework.ShouldUseCache(ctx, resolver, req, systemDefault)
 }
