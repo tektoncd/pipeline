@@ -779,36 +779,3 @@ func TestGetResolutionBackoffCustom(t *testing.T) {
 		t.Fatalf("expected steps from config to be returned")
 	}
 }
-
-func TestIsOCIPullSpecByDigest(t *testing.T) {
-	tests := []struct {
-		name     string
-		pullspec string
-		want     bool
-	}{
-		{
-			name:     "digest",
-			pullspec: "gcr.io/tekton-releases/catalog/upstream/golang-build@sha256:23293df97dc11957ec36a88c80101bb554039a76e8992a435112eea8283b30d4",
-			want:     true,
-		},
-		{
-			name:     "tag",
-			pullspec: "gcr.io/tekton-releases/catalog/upstream/golang-build:v1.0.0",
-			want:     false,
-		},
-		{
-			name:     "no tag or digest",
-			pullspec: "gcr.io/tekton-releases/catalog/upstream/golang-build",
-			want:     false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := bundle.IsOCIPullSpecByDigest(tt.pullspec)
-			if got != tt.want {
-				t.Errorf("IsOCIPullSpecByDigest(%q) = %v, want %v", tt.pullspec, got, tt.want)
-			}
-		})
-	}
-}

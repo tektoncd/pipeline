@@ -527,40 +527,6 @@ func resolverDisabledContext() context.Context {
 	return frameworktesting.ContextWithClusterResolverDisabled(context.Background())
 }
 
-/*
-func TestResolveWithCacheIntegration(t *testing.T) {
-	// Test that cache parameters are properly handled
-	req := &v1beta1.ResolutionRequestSpec{
-		Params: []pipelinev1.Param{
-			{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
-			{Name: "name", Value: *pipelinev1.NewStructuredValues("test-task")},
-			{Name: "namespace", Value: *pipelinev1.NewStructuredValues("test-ns")},
-			{Name: "cache", Value: *pipelinev1.NewStructuredValues("always")},
-		},
-	}
-
-	// Test that the request is properly formatted for cache key generation
-	paramsMap := make(map[string]string)
-	for _, p := range req.Params {
-		paramsMap[p.Name] = p.Value.StringVal
-	}
-
-	// Verify cache mode is correctly extracted
-	if paramsMap["cache"] != "always" {
-		t.Errorf("Expected cache mode 'always', got '%s'", paramsMap["cache"])
-	}
-
-	// Test cache key generation
-	cacheKey, err := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, req.Params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
-	if cacheKey == "" {
-		t.Error("Generated cache key should not be empty")
-	}
-}
-*/
-
 func TestResolveWithDisabledResolver(t *testing.T) {
 	ctx := frameworktesting.ContextWithClusterResolverDisabled(t.Context())
 	resolver := &cluster.Resolver{}
@@ -802,125 +768,6 @@ func TestResolveWithCacheKeyGenerationError(t *testing.T) {
 	}
 }
 
-func TestResolveWithAutoModeAndChecksum(t *testing.T) {
-	// Test auto mode with valid checksum
-
-	req := &v1beta1.ResolutionRequestSpec{
-		Params: []pipelinev1.Param{
-			{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
-			{Name: "name", Value: *pipelinev1.NewStructuredValues("test-task")},
-			{Name: "namespace", Value: *pipelinev1.NewStructuredValues("test-ns")},
-			{Name: "cache", Value: *pipelinev1.NewStructuredValues("auto")},
-		},
-	}
-
-	// Test that auto mode works correctly
-	paramsMap := make(map[string]string)
-	for _, p := range req.Params {
-		paramsMap[p.Name] = p.Value.StringVal
-	}
-
-	// Test with valid checksum - cluster resolver should NOT cache in auto mode
-	checksum := []byte{1, 2, 3, 4}
-	shouldCache := cluster.ShouldUseCache(t.Context(), paramsMap, checksum)
-	if shouldCache {
-		t.Error("Auto mode should not cache when checksum is present (cluster resolver behavior)")
-	}
-
-	// Test with no checksum - cluster resolver should NOT cache in auto mode
-	shouldCache = cluster.ShouldUseCache(t.Context(), paramsMap, nil)
-	if shouldCache {
-		t.Error("Auto mode should not cache when checksum is absent (cluster resolver behavior)")
-	}
-}
-
-func TestResolveWithDefaultCacheMode(t *testing.T) {
-	tests := []struct {
-		name           string
-		params         []pipelinev1.Param
-		expectedCached bool
-	}{
-		{
-			name: "no cache parameter defaults to no caching",
-			params: []pipelinev1.Param{
-				{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
-				{Name: "name", Value: *pipelinev1.NewStructuredValues("test-task")},
-				{Name: "namespace", Value: *pipelinev1.NewStructuredValues("test-ns")},
-				// No cache parameter - should default to no caching
-			},
-			expectedCached: false, // Should not cache when no parameter provided
-		},
-		{
-			name: "empty cache parameter defaults to no caching",
-			params: []pipelinev1.Param{
-				{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
-				{Name: "name", Value: *pipelinev1.NewStructuredValues("test-task")},
-				{Name: "namespace", Value: *pipelinev1.NewStructuredValues("test-ns")},
-				{Name: "cache", Value: *pipelinev1.NewStructuredValues("")}, // Empty cache parameter
-			},
-			expectedCached: false, // Should not cache when empty parameter provided
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Convert params to map for testing
-			paramsMap := make(map[string]string)
-			for _, p := range tc.params {
-				paramsMap[p.Name] = p.Value.StringVal
-			}
-
-			// Test that default cache mode is auto
-			cacheMode := paramsMap["cache"]
-			if cacheMode != "" {
-				t.Errorf("Expected empty cache mode, got %s", cacheMode)
-			}
-
-			// Test that ShouldUseCache returns true for auto mode with checksum
-			// We'll simulate a resource with checksum
-			useCache := cluster.ShouldUseCache(t.Context(), paramsMap, []byte("test-checksum"))
-			if useCache != tc.expectedCached {
-				t.Errorf("Expected cache to be %v, got %v", tc.expectedCached, useCache)
-			}
-		})
-	}
-}
-
-func TestResolveWithCacheNeverMode(t *testing.T) {
-	tests := []struct {
-		name           string
-		params         []pipelinev1.Param
-		expectedCached bool
-	}{
-		{
-			name: "cache never mode should not cache",
-			params: []pipelinev1.Param{
-				{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
-				{Name: "name", Value: *pipelinev1.NewStructuredValues("test-task")},
-				{Name: "namespace", Value: *pipelinev1.NewStructuredValues("test-ns")},
-				{Name: "cache", Value: *pipelinev1.NewStructuredValues("never")},
-			},
-			expectedCached: false, // Should not cache regardless of checksum
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Convert params to map for testing
-			paramsMap := make(map[string]string)
-			for _, p := range tc.params {
-				paramsMap[p.Name] = p.Value.StringVal
-			}
-
-			// Test that ShouldUseCache returns false for never mode
-			useCache := cluster.ShouldUseCache(t.Context(), paramsMap, []byte("test-checksum"))
-			if useCache != tc.expectedCached {
-				t.Errorf("Expected cache to be %v, got %v", tc.expectedCached, useCache)
-			}
-		})
-	}
-}
-
 func TestResolveWithCacheAlwaysMode(t *testing.T) {
 	// Test that cluster resolver caches when cache mode is 'always'
 
@@ -1128,22 +975,6 @@ func TestResolveWithEmptyCacheParameter(t *testing.T) {
 
 	if useCache {
 		t.Error("Expected cache to be disabled for empty cache parameter")
-	}
-}
-
-func TestResolverCacheModeConstants(t *testing.T) {
-	// Test that cache mode constants are properly defined
-	if cluster.CacheModeAlways != "always" {
-		t.Errorf("CacheModeAlways should be 'always', got %q", cluster.CacheModeAlways)
-	}
-	if cluster.CacheModeNever != "never" {
-		t.Errorf("CacheModeNever should be 'never', got %q", cluster.CacheModeNever)
-	}
-	if cluster.CacheModeAuto != "auto" {
-		t.Errorf("CacheModeAuto should be 'auto', got %q", cluster.CacheModeAuto)
-	}
-	if cluster.CacheParam != "cache" {
-		t.Errorf("CacheParam should be 'cache', got %q", cluster.CacheParam)
 	}
 }
 

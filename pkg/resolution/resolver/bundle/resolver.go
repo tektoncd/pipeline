@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	DisabledError = "cannot handle resolution request, enable-bundles-resolver feature flag not true"
+	disabledError = "cannot handle resolution request, enable-bundles-resolver feature flag not true"
 
 	// LabelValueBundleResolverType is the value to use for the
 	// resolution.tekton.dev/type label on resource requests
@@ -92,8 +92,8 @@ func (r *Resolver) Resolve(ctx context.Context, params []v1.Param) (framework.Re
 
 // Resolve uses the given params to resolve the requested file or resource.
 func ResolveRequest(ctx context.Context, kubeClientSet kubernetes.Interface, req *v1beta1.ResolutionRequestSpec) (framework.ResolvedResource, error) {
-	if IsDisabled(ctx) {
-		return nil, errors.New(DisabledError)
+	if isDisabled(ctx) {
+		return nil, errors.New(disabledError)
 	}
 	opts, err := OptionsFromParams(ctx, req.Params)
 	if err != nil {
@@ -116,8 +116,8 @@ func ResolveRequest(ctx context.Context, kubeClientSet kubernetes.Interface, req
 }
 
 func ValidateParams(ctx context.Context, params []v1.Param) error {
-	if IsDisabled(ctx) {
-		return errors.New(DisabledError)
+	if isDisabled(ctx) {
+		return errors.New(disabledError)
 	}
 	if _, err := OptionsFromParams(ctx, params); err != nil {
 		return err
@@ -125,7 +125,7 @@ func ValidateParams(ctx context.Context, params []v1.Param) error {
 	return nil
 }
 
-func IsDisabled(ctx context.Context) bool {
+func isDisabled(ctx context.Context) bool {
 	cfg := resolverconfig.FromContextOrDefaults(ctx)
 	return !cfg.FeatureFlags.EnableBundleResolver
 }

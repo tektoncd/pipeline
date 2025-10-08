@@ -21,6 +21,7 @@ import (
 	"errors"
 	"strings"
 
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
@@ -49,7 +50,7 @@ type Resolver struct {
 }
 
 // Ensure Resolver implements CacheAwareResolver
-var _ framework.CacheAwareResolver = (*Resolver)(nil)
+var _ framework.ImmutabilityChecker = (*Resolver)(nil)
 
 // Ensure Resolver implements ConfigWatcher
 var _ resolutionframework.ConfigWatcher = (*Resolver)(nil)
@@ -64,7 +65,7 @@ func (r *Resolver) Initialize(ctx context.Context) error {
 }
 
 // GetName returns a string name to refer to this Resolver by.
-func (r *Resolver) GetName(ctx context.Context) string {
+func (r *Resolver) GetName(context.Context) string {
 	return "Bundles"
 }
 
@@ -75,7 +76,7 @@ func (r *Resolver) GetConfigName(context.Context) string {
 
 // GetSelector returns a map of labels to match against tasks requesting
 // resolution from this Resolver.
-func (r *Resolver) GetSelector(ctx context.Context) map[string]string {
+func (r *Resolver) GetSelector(context.Context) map[string]string {
 	return map[string]string{
 		resolutioncommon.LabelKeyResolverType: LabelValueBundleResolverType,
 	}
@@ -88,16 +89,27 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 
 // IsImmutable implements CacheAwareResolver.IsImmutable
 // Returns true if the bundle parameter contains a digest reference (@sha256:...)
-func (r *Resolver) IsImmutable(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
+func (r *Resolver) IsImmutable(params []v1.Param) bool {
 	var bundleRef string
-	for _, param := range req.Params {
+	for _, param := range params {
 		if param.Name == bundleresolution.ParamBundle {
 			bundleRef = param.Value.StringVal
 			break
 		}
 	}
 
-	return IsOCIPullSpecByDigest(bundleRef)
+	// Checks if the given string looks like an OCI pull spec by digest.
+	// A digest is typically in the format of @sha256:<hash> or :<tag>@sha256:<hash>
+	// Check for @sha256: pattern
+	if strings.Contains(bundleRef, "@sha256:") {
+		return true
+	}
+	// Check for :<tag>@sha256: pattern
+	if strings.Contains(bundleRef, ":") && strings.Contains(bundleRef, "@sha256:") {
+		return true
+	}
+
+	return false
 }
 
 // Resolve uses the given params to resolve the requested file or resource.
@@ -109,9 +121,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 
 	logger := logging.FromContext(ctx)
 
-	// Determine if we should use caching using framework logic
-	systemDefault := framework.GetSystemDefaultCacheMode("bundle")
-	useCache := framework.ShouldUseCache(ctx, r, req, systemDefault)
+	useCache := framework.ShouldUseCache(ctx, r, req.Params, LabelValueBundleResolverType)
 
 	if useCache {
 		// Get cache instance
@@ -149,18 +159,4 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	}
 
 	return resource, nil
-}
-
-// IsOCIPullSpecByDigest checks if the given string looks like an OCI pull spec by digest.
-// A digest is typically in the format of @sha256:<hash> or :<tag>@sha256:<hash>
-func IsOCIPullSpecByDigest(pullSpec string) bool {
-	// Check for @sha256: pattern
-	if strings.Contains(pullSpec, "@sha256:") {
-		return true
-	}
-	// Check for :<tag>@sha256: pattern
-	if strings.Contains(pullSpec, ":") && strings.Contains(pullSpec, "@sha256:") {
-		return true
-	}
-	return false
 }

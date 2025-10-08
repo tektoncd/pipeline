@@ -57,7 +57,7 @@ func TestGetSelector(t *testing.T) {
 	sel := resolver.GetSelector(t.Context())
 	if typ, has := sel[common.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
-	} else if typ != LabelValueGitResolverType {
+	} else if typ != labelValueGitResolverType {
 		t.Fatalf("unexpected type: %q", typ)
 	}
 }
@@ -889,7 +889,7 @@ func createRequest(args *params) *v1beta1.ResolutionRequest {
 			Namespace:         "foo",
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels: map[string]string{
-				common.LabelKeyResolverType: LabelValueGitResolverType,
+				common.LabelKeyResolverType: labelValueGitResolverType,
 			},
 		},
 		Spec: v1beta1.ResolutionRequestSpec{
@@ -962,7 +962,7 @@ func resolverDisabledContext() context.Context {
 
 func createError(msg string) error {
 	return &common.GetResourceError{
-		ResolverName: ResolverName,
+		ResolverName: resolverName,
 		Key:          "foo/rr",
 		Original:     errors.New(msg),
 	}

@@ -23,6 +23,7 @@ import (
 
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/factory"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
@@ -40,12 +41,12 @@ import (
 const (
 	disabledError = "cannot handle resolution request, enable-git-resolver feature flag not true"
 
-	// ResolverName defines the git resolver's name.
-	ResolverName string = "Git"
+	// resolverName defines the git resolver's name.
+	resolverName string = "Git"
 
-	// LabelValueGitResolverType is the value to use for the
+	// labelValueGitResolverType is the value to use for the
 	// resolution.tekton.dev/type label on resource requests
-	LabelValueGitResolverType string = "git"
+	labelValueGitResolverType string = "git"
 
 	// cacheSize is the size of the LRU secrets cache
 	cacheSize = 1024
@@ -53,7 +54,7 @@ const (
 	ttl = 5 * time.Minute
 
 	// git revision parameter name
-	RevisionParam = "revision"
+	revisionParam = "revision"
 )
 
 // Resolver implements a framework.Resolver that can fetch files from git.
@@ -68,12 +69,12 @@ type Resolver struct {
 }
 
 // Ensure Resolver implements CacheAwareResolver
-var _ framework.CacheAwareResolver = (*Resolver)(nil)
+var _ framework.ImmutabilityChecker = (*Resolver)(nil)
 
 // Initialize performs any setup required by the git resolver.
 func (r *Resolver) Initialize(ctx context.Context) error {
 	r.kubeClient = kubeclient.Get(ctx)
-	r.logger = logging.FromContext(ctx).Named(ResolverName)
+	r.logger = logging.FromContext(ctx).Named(resolverName)
 	if r.cache == nil {
 		r.cache = k8scache.NewLRUExpireCache(cacheSize)
 	}
@@ -88,15 +89,15 @@ func (r *Resolver) Initialize(ctx context.Context) error {
 
 // GetName returns the string name that the git resolver should be
 // associated with.
-func (r *Resolver) GetName(_ context.Context) string {
-	return ResolverName
+func (r *Resolver) GetName(context.Context) string {
+	return resolverName
 }
 
 // GetSelector returns the labels that resource requests are required to have for
 // the gitresolver to process them.
-func (r *Resolver) GetSelector(_ context.Context) map[string]string {
+func (r *Resolver) GetSelector(context.Context) map[string]string {
 	return map[string]string{
-		resolutioncommon.LabelKeyResolverType: LabelValueGitResolverType,
+		resolutioncommon.LabelKeyResolverType: labelValueGitResolverType,
 	}
 }
 
@@ -108,16 +109,26 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 
 // IsImmutable implements CacheAwareResolver.IsImmutable
 // Returns true if the revision parameter is a commit SHA (40-character hex string)
-func (r *Resolver) IsImmutable(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
+func (r *Resolver) IsImmutable(params []v1.Param) bool {
 	var revision string
-	for _, param := range req.Params {
-		if param.Name == RevisionParam {
+	for _, param := range params {
+		if param.Name == revisionParam {
 			revision = param.Value.StringVal
 			break
 		}
 	}
 
-	return isCommitSHA(revision)
+	// Checks if the given string looks like a git commit SHA.
+	// A valid commit SHA is exactly 40 characters of hexadecimal.
+	if len(revision) != 40 {
+		return false
+	}
+	for _, r := range revision {
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
+			return false
+		}
+	}
+	return true
 }
 
 // Resolve performs the work of fetching a file from git given a map of
@@ -137,8 +148,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	}
 
 	// Determine if we should use caching using framework logic
-	systemDefault := framework.GetSystemDefaultCacheMode("git")
-	useCache := framework.ShouldUseCache(ctx, r, req, systemDefault)
+	useCache := framework.ShouldUseCache(ctx, r, req.Params, labelValueGitResolverType)
 
 	// Check cache first if caching is enabled
 	var cacheInstance *cache.ResolverCache
@@ -147,7 +157,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		cacheInstance = injection.Get(ctx)
 
 		// Generate cache key
-		cacheKey, err := cache.GenerateCacheKey(LabelValueGitResolverType, req.Params)
+		cacheKey, err := cache.GenerateCacheKey(labelValueGitResolverType, req.Params)
 		if err != nil {
 			return nil, err
 		}
@@ -156,7 +166,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		if cached, ok := cacheInstance.Get(cacheKey); ok {
 			if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
 				// Return annotated resource to indicate it came from cache
-				return cache.NewAnnotatedResource(resource, LabelValueGitResolverType, cache.CacheOperationRetrieve), nil
+				return cache.NewAnnotatedResource(resource, labelValueGitResolverType, cache.CacheOperationRetrieve), nil
 			}
 		}
 	}
@@ -181,29 +191,15 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 
 	// Cache the result if caching is enabled
 	if useCache {
-		cacheKey, _ := cache.GenerateCacheKey(LabelValueGitResolverType, req.Params)
+		cacheKey, _ := cache.GenerateCacheKey(labelValueGitResolverType, req.Params)
 		// Store annotated resource with store operation
-		annotatedResource := cache.NewAnnotatedResource(resource, LabelValueGitResolverType, cache.CacheOperationStore)
+		annotatedResource := cache.NewAnnotatedResource(resource, labelValueGitResolverType, cache.CacheOperationStore)
 		cacheInstance.Add(cacheKey, annotatedResource)
 		// Return annotated resource to indicate it was stored in cache
 		return annotatedResource, nil
 	}
 
 	return resource, nil
-}
-
-// isCommitSHA checks if the given string looks like a git commit SHA.
-// A valid commit SHA is exactly 40 characters of hexadecimal.
-func isCommitSHA(revision string) bool {
-	if len(revision) != 40 {
-		return false
-	}
-	for _, r := range revision {
-		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
-			return false
-		}
-	}
-	return true
 }
 
 var _ resolutionframework.ConfigWatcher = &Resolver{}
