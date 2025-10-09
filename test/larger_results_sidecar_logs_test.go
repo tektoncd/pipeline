@@ -36,8 +36,9 @@ import (
 )
 
 var (
-	ignoreTaskRunStatusFields = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "Steps", "Results")
-	ignoreSidecarState        = cmpopts.IgnoreFields(v1.SidecarState{}, "ImageID")
+	ignoreTaskRunStatusFields   = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "Steps", "Results")
+	ignoreSidecarState          = cmpopts.IgnoreFields(v1.SidecarState{}, "ImageID")
+	ignorePipelineRunProvenance = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "Provenance")
 
 	requireSidecarLogResultsGate = map[string]string{
 		"results-from": "sidecar-logs",
@@ -79,10 +80,6 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 			t.Logf("Setting up test resources for %q test in namespace %s", td.name, namespace)
 			pipelineRun, expectedResolvedPipelineRun, expectedTaskRuns := td.pipelineRunFunc(t, namespace)
 
-			expectedResolvedPipelineRun.Status.Provenance = &v1.Provenance{
-				FeatureFlags: expectedFeatureFlags,
-			}
-
 			prName := pipelineRun.Name
 			_, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 			if err != nil {
@@ -103,14 +100,12 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 				ignoreConditions,
 				ignoreContainerStates,
 				ignoreStepState,
+				ignorePipelineRunProvenance,
 			)
 			if d != "" {
 				t.Fatalf(`The resolved spec does not match the expected spec. Here is the diff: %v`, d)
 			}
 			for _, tr := range expectedTaskRuns {
-				tr.Status.Provenance = &v1.Provenance{
-					FeatureFlags: expectedFeatureFlags,
-				}
 				t.Logf("Checking Taskrun %s", tr.Name)
 				taskrun, _ := c.V1TaskRunClient.Get(ctx, tr.Name, metav1.GetOptions{})
 				d = cmp.Diff(tr, taskrun,
@@ -122,6 +117,7 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 					ignoreStepState,
 					ignoreTaskRunStatusFields,
 					ignoreSidecarState,
+					ignoreTaskRunProvenance,
 				)
 				if d != "" {
 					t.Fatalf(`The expected taskrun does not match created taskrun. Here is the diff: %v`, d)

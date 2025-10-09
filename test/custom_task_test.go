@@ -417,8 +417,6 @@ func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
 	// Cleanup the controller after finishing the test
 	defer cleanUpV1beta1Controller(t)
 
-	featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
-
 	for _, tc := range []struct {
 		name                  string
 		customRunDuration     string
@@ -651,9 +649,6 @@ func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
 								},
 							},
 						},
-						Provenance: &v1.Provenance{
-							FeatureFlags: featureFlags,
-						},
 					},
 				},
 			}
@@ -691,6 +686,7 @@ func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
 				filterCondition,
 				filterCustomRunStatus,
 				filterPipelineRunStatus,
+				ignorePipelineRunProvenance,
 				// ignore serviceaccount field also, because it can be different based on the value in config-defaults
 				ignoreSAPipelineRunSpec,
 			); d != "" {
