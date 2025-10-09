@@ -36,7 +36,7 @@ import (
 )
 
 var (
-	ignoreProvenance = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "Provenance")
+	ignoreTaskRunProvenance = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "Provenance")
 )
 
 func TestStepResultsStepActions(t *testing.T) {
@@ -97,7 +97,7 @@ func TestStepResultsStepActions(t *testing.T) {
 				ignoreCondition,
 				ignoreTaskRunStatus,
 				ignoreContainerStates,
-				ignoreProvenance,
+				ignoreTaskRunProvenance,
 				ignoreSidecarState,
 				ignoreStepState,
 			)
