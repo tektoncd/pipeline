@@ -70,7 +70,7 @@ const (
 type ConditionAccessorFn func(ca apis.ConditionAccessor) (bool, error)
 
 func pollImmediateWithContext(ctx context.Context, fn func() (bool, error)) error {
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(ctx, interval, timeout, true, func(context.Context) (bool, error) {
 		select {
 		case <-ctx.Done():
 			return true, ctx.Err()
