@@ -100,6 +100,9 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 				ignoreConditions,
 				ignoreContainerStates,
 				ignoreStepState,
+				// Ignoring Provenance field as it differs from one instance to the other (different flags,
+				// new flags, ...). It can also be modified by another test. In addition, we don't care about its value here.
+				// #9071, #9066
 				ignorePipelineRunProvenance,
 			)
 			if d != "" {
@@ -117,6 +120,9 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 					ignoreStepState,
 					ignoreTaskRunStatusFields,
 					ignoreSidecarState,
+					// Ignoring Provenance field as it differs from one instance to the other (different flags,
+					// new flags, ...). It can also be modified by another test. In addition, we don't care about its value here.
+					// #9071, #9066
 					ignoreTaskRunProvenance,
 				)
 				if d != "" {
