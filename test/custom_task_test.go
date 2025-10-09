@@ -686,6 +686,9 @@ func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
 				filterCondition,
 				filterCustomRunStatus,
 				filterPipelineRunStatus,
+				// Ignoring Provenance field as it differs from one instance to the other (different flags,
+				// new flags, ...). It can also be modified by another test. In addition, we don't care about its value here.
+				// #9071, #9066
 				ignorePipelineRunProvenance,
 				// ignore serviceaccount field also, because it can be different based on the value in config-defaults
 				ignoreSAPipelineRunSpec,
