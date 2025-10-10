@@ -365,6 +365,8 @@ spec:
                     hostNetwork:
                       description: HostNetwork specifies whether the pod may use the node network namespace
                       type: boolean
+                    hostUsers:
+                      type: boolean
                     imagePullSecrets:
                       description: ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified
                       type: array
@@ -2572,6 +2574,8 @@ spec:
                     hostNetwork:
                       description: HostNetwork specifies whether the pod may use the node network namespace
                       type: boolean
+                    hostUsers:
+                      type: boolean
                     imagePullSecrets:
                       description: ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified
                       type: array
@@ -2850,9 +2854,6 @@ spec:
                         More info: https://kubernetes.io/docs/concepts/storage/volumes
                         See Pod.spec.volumes (API version: v1)
                       x-kubernetes-preserve-unknown-fields: true
-                    hostUsers:
-                      description: hostUsers specifies whether the pod may use the hostUsers
-                      type: boolean
                 retries:
                   description: Retries represents how many times this TaskRun should be retried in the event of task failure.
                   type: integer
