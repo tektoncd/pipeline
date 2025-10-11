@@ -365,6 +365,8 @@ spec:
                     hostNetwork:
                       description: HostNetwork specifies whether the pod may use the node network namespace
                       type: boolean
+                    hostUsers:
+                      type: boolean
                     imagePullSecrets:
                       description: ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified
                       type: array
@@ -2571,6 +2573,8 @@ spec:
                       x-kubernetes-list-type: atomic
                     hostNetwork:
                       description: HostNetwork specifies whether the pod may use the node network namespace
+                      type: boolean
+                    hostUsers:
                       type: boolean
                     imagePullSecrets:
                       description: ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified
