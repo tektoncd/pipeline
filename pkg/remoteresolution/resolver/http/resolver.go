@@ -31,24 +31,16 @@ import (
 const (
 	// LabelValueHttpResolverType is the value to use for the
 	// resolution.tekton.dev/type label on resource requests
-	LabelValueHttpResolverType string = "http"
-
-	disabledError = "cannot handle resolution request, enable-http-resolver feature flag not true"
-
-	// httpResolverName The name of the resolver
-	httpResolverName = "Http"
-
-	// configMapName is the http resolver's config map
-	configMapName = "http-resolver-config"
-
-	// default Timeout value when fetching http resources in seconds
-	defaultHttpTimeoutValue = "1m"
-
-	// default key in the HTTP password secret
-	defaultBasicAuthSecretKey = "password"
+	LabelValueHttpResolverType = "http"
+	disabledError              = "cannot handle resolution request, enable-http-resolver feature flag not true"
+	httpResolverName           = "Http"
+	configMapName              = "http-resolver-config"
+	defaultHttpTimeoutValue    = "1m"
+	defaultBasicAuthSecretKey  = "password" // default key in the HTTP password secret
 )
 
-var _ framework.Resolver = &Resolver{}
+var _ framework.Resolver = (*Resolver)(nil)
+var _ resolutionframework.ConfigWatcher = (*Resolver)(nil)
 
 // Resolver implements a framework.Resolver that can fetch files from an HTTP URL
 type Resolver struct {
@@ -63,17 +55,17 @@ func (r *Resolver) Initialize(ctx context.Context) error {
 }
 
 // GetName returns a string name to refer to this resolver by.
-func (r *Resolver) GetName(context.Context) string {
+func (r *Resolver) GetName(_ context.Context) string {
 	return httpResolverName
 }
 
 // GetConfigName returns the name of the http resolver's configmap.
-func (r *Resolver) GetConfigName(context.Context) string {
+func (r *Resolver) GetConfigName(_ context.Context) string {
 	return configMapName
 }
 
 // GetSelector returns a map of labels to match requests to this resolver.
-func (r *Resolver) GetSelector(context.Context) map[string]string {
+func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 	return map[string]string{
 		common.LabelKeyResolverType: LabelValueHttpResolverType,
 	}
