@@ -29,16 +29,16 @@ import (
 type key struct{}
 
 // sharedCache is the shared cache instance used across all contexts
-var sharedCache = cache.NewResolverCache(cache.DefaultMaxSize)
+var sharedCache = cache.NewResolverCache(cache.DefaultCacheSize)
 
 func init() {
-	injection.Default.RegisterClient(withCacheFromConfig)
-	injection.Default.RegisterClientFetcher(func(ctx context.Context) interface{} {
-		return Get(ctx)
+	injection.Default.RegisterClient(cacheWithLoggerFromCtx)
+	injection.Default.RegisterClientFetcher(func(ctx context.Context) any {
+		return GetResolverCache(ctx)
 	})
 }
 
-func withCacheFromConfig(ctx context.Context, cfg *rest.Config) context.Context {
+func cacheWithLoggerFromCtx(ctx context.Context, _ *rest.Config) context.Context {
 	logger := logging.FromContext(ctx)
 
 	// Return the SAME shared cache instance with logger to prevent state leak
@@ -47,15 +47,15 @@ func withCacheFromConfig(ctx context.Context, cfg *rest.Config) context.Context 
 	return context.WithValue(ctx, key{}, resolverCache)
 }
 
-// Get extracts the ResolverCache from the context.
+// GetResolverCache extracts the ResolverCache from the context.
 // If the cache is not available in the context (e.g., in tests),
 // it falls back to the shared cache with a logger from the context.
-func Get(ctx context.Context) *cache.ResolverCache {
-	untyped := ctx.Value(key{})
-	if untyped == nil {
-		// Fallback for test contexts or when injection is not available
-		logger := logging.FromContext(ctx)
-		return sharedCache.WithLogger(logger)
+func GetResolverCache(ctx context.Context) *cache.ResolverCache {
+	if resolverCache := ctx.Value(key{}); resolverCache != nil {
+		return resolverCache.(*cache.ResolverCache)
 	}
-	return untyped.(*cache.ResolverCache)
+
+	// Fallback for test contexts or when injection is not available
+	logger := logging.FromContext(ctx)
+	return sharedCache.WithLogger(logger)
 }

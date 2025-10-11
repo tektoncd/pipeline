@@ -19,16 +19,16 @@ package framework
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
 
-// Cache mode constants - shared across all resolvers
 const (
-	CacheModeAlways = "always"
-	CacheModeNever  = "never"
-	CacheModeAuto   = "auto"
+	cacheModeAlways = "always"
+	cacheModeNever  = "never"
+	cacheModeAuto   = "auto"
 	CacheParam      = "cache"
 )
 
@@ -42,7 +42,12 @@ type ImmutabilityChecker interface {
 // 1. Task/Pipeline cache parameter (highest priority)
 // 2. ConfigMap default-cache-mode (middle priority)
 // 3. System default for resolver type (lowest priority)
-func ShouldUseCache(ctx context.Context, resolver ImmutabilityChecker, params []v1.Param, resolverType string) bool {
+func ShouldUseCache(
+	ctx context.Context,
+	resolver ImmutabilityChecker,
+	params []v1.Param,
+	resolverType string,
+) bool {
 	// Get cache mode from task parameter
 	cacheMode := ""
 	for _, param := range params {
@@ -67,11 +72,11 @@ func ShouldUseCache(ctx context.Context, resolver ImmutabilityChecker, params []
 
 	// Apply cache mode logic
 	switch cacheMode {
-	case CacheModeAlways:
+	case cacheModeAlways:
 		return true
-	case CacheModeNever:
+	case cacheModeNever:
 		return false
-	case CacheModeAuto:
+	case cacheModeAuto:
 		return resolver.IsImmutable(params)
 	default:
 		// Invalid mode defaults to auto
@@ -79,19 +84,17 @@ func ShouldUseCache(ctx context.Context, resolver ImmutabilityChecker, params []
 	}
 }
 
-// systemDefaultCacheMode returns the system default cache mode for a resolver type.
-// This can be customized per resolver if needed.
-func systemDefaultCacheMode(resolverType string) string {
-	return CacheModeAuto
+func systemDefaultCacheMode(string) string {
+	return cacheModeAuto
 }
 
-// ValidateCacheMode validates cache mode parameters.
-// Returns an error for invalid cache modes to ensure consistent validation across all resolvers.
-func ValidateCacheMode(cacheMode string) (string, error) {
-	switch cacheMode {
-	case CacheModeAlways, CacheModeNever, CacheModeAuto:
-		return cacheMode, nil // Valid cache mode
-	default:
-		return "", fmt.Errorf("invalid cache mode '%s', must be one of: always, never, auto", cacheMode)
+// ValidateCacheMode returns an error if the cache mode is not "always", "never"
+// or "auto".
+func ValidateCacheMode(cacheMode string) error {
+	validCacheModes := []string{cacheModeAlways, cacheModeNever, cacheModeAuto}
+	if slices.Contains(validCacheModes, cacheMode) {
+		return nil
 	}
+
+	return fmt.Errorf("invalid cache mode '%s', must be one of: %v", cacheMode, validCacheModes)
 }

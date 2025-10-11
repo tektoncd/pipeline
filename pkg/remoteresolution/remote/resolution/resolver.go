@@ -27,6 +27,8 @@ import (
 	"knative.dev/pkg/kmeta"
 )
 
+var _ remote.Resolver = (*Resolver)(nil)
+
 // Resolver implements remote.Resolver and encapsulates the majority of
 // code required to interface with the tektoncd/resolution project. It
 // is used to make async requests for resources like pipelines from
@@ -37,8 +39,6 @@ type Resolver struct {
 	resolverName    string
 	resolverPayload remoteresource.ResolverPayload
 }
-
-var _ remote.Resolver = &Resolver{}
 
 // NewResolver returns an implementation of remote.Resolver capable
 // of performing asynchronous remote resolution.

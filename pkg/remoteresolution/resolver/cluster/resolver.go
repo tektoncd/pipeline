@@ -34,20 +34,21 @@ import (
 const (
 	// LabelValueClusterResolverType is the value to use for the
 	// resolution.tekton.dev/type label on resource requests
-	LabelValueClusterResolverType string = "cluster"
+	LabelValueClusterResolverType = "cluster"
 
 	// ClusterResolverName is the name that the cluster resolver should be
 	// associated with
-	ClusterResolverName string = "Cluster"
+	ClusterResolverName = "Cluster"
 )
+
+var _ framework.Resolver = (*Resolver)(nil)
+var _ resolutionframework.ConfigWatcher = (*Resolver)(nil)
+var _ framework.ImmutabilityChecker = (*Resolver)(nil)
 
 // Resolver implements a framework.Resolver that can fetch resources from the same cluster.
 type Resolver struct {
 	pipelineClientSet versioned.Interface
 }
-
-// Ensure Resolver implements CacheAwareResolver
-var _ framework.ImmutabilityChecker = (*Resolver)(nil)
 
 // Initialize sets up any dependencies needed by the Resolver. None atm.
 func (r *Resolver) Initialize(ctx context.Context) error {
@@ -56,16 +57,21 @@ func (r *Resolver) Initialize(ctx context.Context) error {
 }
 
 // GetName returns a string name to refer to this Resolver by.
-func (r *Resolver) GetName(context.Context) string {
+func (r *Resolver) GetName(_ context.Context) string {
 	return ClusterResolverName
 }
 
 // GetSelector returns a map of labels to match against tasks requesting
 // resolution from this Resolver.
-func (r *Resolver) GetSelector(context.Context) map[string]string {
+func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 	return map[string]string{
 		resolutioncommon.LabelKeyResolverType: LabelValueClusterResolverType,
 	}
+}
+
+// GetConfigName returns the name of the cluster resolver's configmap.
+func (r *Resolver) GetConfigName(_ context.Context) string {
+	return clusterresolution.ConfigMapName
 }
 
 // Validate ensures parameters from a request are as expected.
@@ -73,7 +79,7 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 	return clusterresolution.ValidateParams(ctx, req.Params)
 }
 
-// IsImmutable implements CacheAwareResolver.IsImmutable
+// IsImmutable implements ImmutabilityChecker.IsImmutable
 // Returns false because cluster resources don't have immutable references
 func (r *Resolver) IsImmutable([]v1.Param) bool {
 	// Cluster resources (Tasks, Pipelines, etc.) don't have immutable references
@@ -87,8 +93,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	useCache := framework.ShouldUseCache(ctx, r, req.Params, LabelValueClusterResolverType)
 
 	if useCache {
-		// Get cache instance
-		cacheInstance := injection.Get(ctx)
+		cacheInstance := injection.GetResolverCache(ctx)
 		cacheKey, err := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
 		if err != nil {
 			return nil, err
@@ -110,7 +115,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 
 	// Cache the result if caching is enabled
 	if useCache {
-		cacheInstance := injection.Get(ctx)
+		cacheInstance := injection.GetResolverCache(ctx)
 		cacheKey, err := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
 		if err == nil {
 			// Store annotated resource with store operation
@@ -122,11 +127,4 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	}
 
 	return resource, nil
-}
-
-var _ resolutionframework.ConfigWatcher = &Resolver{}
-
-// GetConfigName returns the name of the cluster resolver's configmap.
-func (r *Resolver) GetConfigName(context.Context) string {
-	return "cluster-resolver-config"
 }

@@ -21,30 +21,60 @@ import (
 	"encoding/hex"
 	"os"
 	"sort"
+	"strconv"
 	"time"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	utilcache "k8s.io/apimachinery/pkg/util/cache"
 )
 
 const (
-	// DefaultMaxSize is the default size for the cache
-	DefaultMaxSize = 1000
+	DefaultCacheSize     = 1000
+	defaultConfigMapName = "resolver-cache-config"
 )
 
 var (
-	// DefaultExpiration is the default expiration time for cache entries
-	DefaultExpiration = 5 * time.Minute
+	defaultExpiration = 5 * time.Minute
 )
 
+// TODO(twoGiants): implement this feature
+// InitializeFromConfigMap initializes the cache with configuration from a ConfigMap
+func (c *ResolverCache) InitializeFromConfigMap(configMap *corev1.ConfigMap) {
+	// Set defaults
+	maxSize := DefaultCacheSize
+	ttl := defaultExpiration
+
+	if configMap != nil {
+		// Parse max size
+		if maxSizeStr, ok := configMap.Data["max-size"]; ok {
+			if parsed, err := strconv.Atoi(maxSizeStr); err == nil && parsed > 0 {
+				maxSize = parsed
+			}
+		}
+
+		// Parse default TTL
+		if ttlStr, ok := configMap.Data["default-ttl"]; ok {
+			if parsed, err := time.ParseDuration(ttlStr); err == nil && parsed > 0 {
+				ttl = parsed
+			}
+		}
+	}
+
+	c.cache = utilcache.NewLRUExpireCache(maxSize)
+	defaultExpiration = ttl
+}
+
+// TODO(twoGiants): implement this feature
 // GetCacheConfigName returns the name of the cache configuration ConfigMap.
 // This can be overridden via the CONFIG_RESOLVER_CACHE_NAME environment variable.
 func GetCacheConfigName() string {
-	if e := os.Getenv("CONFIG_RESOLVER_CACHE_NAME"); e != "" {
-		return e
+	if configMapName := os.Getenv("CONFIG_RESOLVER_CACHE_NAME"); configMapName != "" {
+		return configMapName
 	}
-	return "resolver-cache-config"
+
+	return defaultConfigMapName
 }
 
 // ResolverCache is a wrapper around utilcache.LRUExpireCache that provides
@@ -77,9 +107,9 @@ func (c *ResolverCache) Get(key string) (interface{}, bool) {
 // Add adds a value to the cache with the default expiration time.
 func (c *ResolverCache) Add(key string, value interface{}) {
 	if c.logger != nil {
-		c.logger.Infow("Adding to cache", "key", key, "expiration", DefaultExpiration)
+		c.logger.Infow("Adding to cache", "key", key, "expiration", defaultExpiration)
 	}
-	c.cache.Add(key, value, DefaultExpiration)
+	c.cache.Add(key, value, defaultExpiration)
 }
 
 // Remove removes a value from the cache.

@@ -20,11 +20,103 @@ import (
 	"testing"
 	"time"
 
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 
-// TODO: add result strings
+func TestInitializeFromConfigMap(t *testing.T) {
+	tests := []struct {
+		name           string
+		configMap      *corev1.ConfigMap
+		expectedSize   int
+		expectedTTL    time.Duration
+		shouldRecreate bool
+	}{
+		{
+			name: "valid configuration",
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      GetCacheConfigName(),
+					Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+				},
+				Data: map[string]string{
+					"max-size": "100",
+				},
+			},
+			expectedSize:   100,
+			expectedTTL:    defaultExpiration,
+			shouldRecreate: true,
+		},
+		{
+			name: "cache config with maxSize and expiration",
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      GetCacheConfigName(),
+					Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+				},
+				Data: map[string]string{
+					"max-size":    "200",
+					"default-ttl": "10m",
+				},
+			},
+			expectedSize:   200,
+			expectedTTL:    10 * time.Minute,
+			shouldRecreate: true,
+		},
+		{
+			name: "cache config with invalid expiration",
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      GetCacheConfigName(),
+					Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+				},
+				Data: map[string]string{
+					"max-size":    "150",
+					"default-ttl": "invalid",
+				},
+			},
+			expectedSize:   150,
+			expectedTTL:    defaultExpiration,
+			shouldRecreate: true,
+		},
+		{
+			name:           "nil config map",
+			configMap:      nil,
+			expectedSize:   DefaultCacheSize,
+			expectedTTL:    defaultExpiration,
+			shouldRecreate: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Store original defaultExpiration to restore later
+			originalTTL := defaultExpiration
+			defer func() { defaultExpiration = originalTTL }()
+
+			cache := NewResolverCache(DefaultCacheSize)
+			originalCache := cache.cache
+
+			cache.InitializeFromConfigMap(tt.configMap)
+
+			// Verify cache size
+			if tt.shouldRecreate && cache.cache == originalCache {
+				t.Error("Expected cache to be recreated with new size")
+			}
+
+			// Verify TTL (InitializeFromConfigMap modifies the global defaultExpiration)
+			if defaultExpiration != tt.expectedTTL {
+				t.Errorf("Expected TTL %v, got %v", tt.expectedTTL, defaultExpiration)
+			}
+		})
+	}
+}
+
+// TODO(twoGiants): test against result strings => fix broken test
 func TestGenerateCacheKey(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -77,7 +169,7 @@ func TestGenerateCacheKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actualKey := GenerateCacheKey(tt.resolverType, tt.params)
+			actualKey, _ := GenerateCacheKey(tt.resolverType, tt.params)
 			if tt.expectedKey != actualKey {
 				t.Error("want %s, got %s", tt.expectedKey, actualKey)
 			}
@@ -273,7 +365,7 @@ func TestGenerateCacheKey_AllParamTypes(t *testing.T) {
 }
 
 func TestResolverCache(t *testing.T) {
-	cache := NewResolverCache(DefaultMaxSize)
+	cache := NewResolverCache(DefaultCacheSize)
 
 	// Test adding and getting a value
 	key := "test-key"

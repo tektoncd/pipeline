@@ -37,23 +37,21 @@ import (
 const (
 	// LabelValueBundleResolverType is the value to use for the
 	// resolution.tekton.dev/type label on resource requests
-	LabelValueBundleResolverType string = "bundles"
+	LabelValueBundleResolverType = "bundles"
 
 	// BundleResolverName is the name that the bundle resolver should be associated with.
 	BundleResolverName = "bundleresolver"
 )
+
+var _ framework.Resolver = (*Resolver)(nil)
+var _ resolutionframework.ConfigWatcher = (*Resolver)(nil)
+var _ framework.ImmutabilityChecker = (*Resolver)(nil)
 
 // Resolver implements a framework.Resolver that can fetch files from OCI bundles.
 type Resolver struct {
 	kubeClientSet      kubernetes.Interface
 	resolveRequestFunc func(context.Context, kubernetes.Interface, *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error)
 }
-
-// Ensure Resolver implements CacheAwareResolver
-var _ framework.ImmutabilityChecker = (*Resolver)(nil)
-
-// Ensure Resolver implements ConfigWatcher
-var _ resolutionframework.ConfigWatcher = (*Resolver)(nil)
 
 // Initialize sets up any dependencies needed by the Resolver. None atm.
 func (r *Resolver) Initialize(ctx context.Context) error {
@@ -65,21 +63,21 @@ func (r *Resolver) Initialize(ctx context.Context) error {
 }
 
 // GetName returns a string name to refer to this Resolver by.
-func (r *Resolver) GetName(context.Context) string {
-	return "Bundles"
-}
-
-// GetConfigName returns the name of the bundle resolver's configmap.
-func (r *Resolver) GetConfigName(context.Context) string {
-	return bundleresolution.ConfigMapName
+func (r *Resolver) GetName(_ context.Context) string {
+	return BundleResolverName
 }
 
 // GetSelector returns a map of labels to match against tasks requesting
 // resolution from this Resolver.
-func (r *Resolver) GetSelector(context.Context) map[string]string {
+func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 	return map[string]string{
 		resolutioncommon.LabelKeyResolverType: LabelValueBundleResolverType,
 	}
+}
+
+// GetConfigName returns the name of the bundle resolver's configmap.
+func (r *Resolver) GetConfigName(_ context.Context) string {
+	return bundleresolution.ConfigMapName
 }
 
 // Validate ensures parameters from a request are as expected.
@@ -87,7 +85,7 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 	return bundleresolution.ValidateParams(ctx, req.Params)
 }
 
-// IsImmutable implements CacheAwareResolver.IsImmutable
+// IsImmutable implements ImmutabilityChecker.IsImmutable
 // Returns true if the bundle parameter contains a digest reference (@sha256:...)
 func (r *Resolver) IsImmutable(params []v1.Param) bool {
 	var bundleRef string
@@ -104,6 +102,7 @@ func (r *Resolver) IsImmutable(params []v1.Param) bool {
 	if strings.Contains(bundleRef, "@sha256:") {
 		return true
 	}
+	// TODO(twoGiants): doesn't look right => write test => should check for two colons
 	// Check for :<tag>@sha256: pattern
 	if strings.Contains(bundleRef, ":") && strings.Contains(bundleRef, "@sha256:") {
 		return true
@@ -124,8 +123,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	useCache := framework.ShouldUseCache(ctx, r, req.Params, LabelValueBundleResolverType)
 
 	if useCache {
-		// Get cache instance
-		cacheInstance := injection.Get(ctx)
+		cacheInstance := injection.GetResolverCache(ctx)
 		cacheKey, err := cache.GenerateCacheKey(LabelValueBundleResolverType, req.Params)
 		if err != nil {
 			logger.Warnf("Failed to generate cache key: %v", err)
@@ -147,7 +145,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 
 	// Cache the result if caching is enabled
 	if useCache {
-		cacheInstance := injection.Get(ctx)
+		cacheInstance := injection.GetResolverCache(ctx)
 		cacheKey, err := cache.GenerateCacheKey(LabelValueBundleResolverType, req.Params)
 		if err == nil {
 			// Store annotated resource with store operation

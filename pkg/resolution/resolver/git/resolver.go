@@ -142,8 +142,7 @@ func ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
 		return errors.New(disabledError)
 	}
 
-	_, err := PopulateDefaultParams(ctx, params)
-	if err != nil {
+	if _, err := PopulateDefaultParams(ctx, params); err != nil {
 		return err
 	}
 	return nil
