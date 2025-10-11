@@ -63,7 +63,7 @@ func clearCache(ctx context.Context) {
 	cacheInstance.Clear()
 	// Verify cache is cleared by attempting to retrieve a known key
 	// If cache is properly cleared, this should return nil
-	if result, found := cacheInstance.Get("test-verification-key"); found || result != nil {
+	if result, found := cacheInstance.DEPRECATED_Get("test-verification-key"); found || result != nil {
 		// This should not happen with a properly functioning cache
 		panic("Cache clear verification failed: cache not properly cleared")
 	}

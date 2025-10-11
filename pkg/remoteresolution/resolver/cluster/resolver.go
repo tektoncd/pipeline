@@ -23,8 +23,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	clusterresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
@@ -89,42 +87,20 @@ func (r *Resolver) IsImmutable([]v1.Param) bool {
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
-	// Determine if we should use caching using framework logic
-	useCache := framework.ShouldUseCache(ctx, r, req.Params, LabelValueClusterResolverType)
-
-	if useCache {
-		cacheInstance := injection.GetResolverCache(ctx)
-		cacheKey, err := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
-		if err != nil {
-			return nil, err
-		}
-
-		// Check cache first
-		if cached, ok := cacheInstance.Get(cacheKey); ok {
-			if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
-				return cache.NewAnnotatedResource(resource, LabelValueClusterResolverType, cache.CacheOperationRetrieve), nil
-			}
-		}
+	if r.useCache(ctx, req) {
+		return framework.RunCommonCacheOperations(
+			ctx,
+			req.Params,
+			LabelValueClusterResolverType,
+			func() (resolutionframework.ResolvedResource, error) {
+				return clusterresolution.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
+			},
+		)
 	}
 
-	// If not caching or cache miss, resolve from params
-	resource, err := clusterresolution.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
-	if err != nil {
-		return nil, err
-	}
+	return clusterresolution.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
+}
 
-	// Cache the result if caching is enabled
-	if useCache {
-		cacheInstance := injection.GetResolverCache(ctx)
-		cacheKey, err := cache.GenerateCacheKey(LabelValueClusterResolverType, req.Params)
-		if err == nil {
-			// Store annotated resource with store operation
-			annotatedResource := cache.NewAnnotatedResource(resource, LabelValueClusterResolverType, cache.CacheOperationStore)
-			cacheInstance.Add(cacheKey, annotatedResource)
-			// Return annotated resource to indicate it was stored in cache
-			return annotatedResource, nil
-		}
-	}
-
-	return resource, nil
+func (r *Resolver) useCache(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
+	return framework.ShouldUseCache(ctx, r, req.Params, LabelValueClusterResolverType)
 }
