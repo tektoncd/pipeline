@@ -424,6 +424,19 @@ func TestTaskSpecValidate(t *testing.T) {
 			}},
 		},
 	}, {
+		name: "valid step with displayName",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Image:       "my-image",
+				DisplayName: "Step with DisplayName",
+				Args:        []string{"arg"},
+			}},
+			Results: []v1beta1.TaskResult{{
+				Name:        "MY-RESULT",
+				Description: "my great result",
+			}},
+		},
+	}, {
 		name: "valid result",
 		fields: fields{
 			Steps: []v1beta1.Step{{
@@ -2783,6 +2796,40 @@ func TestTaskSpecValidate_StepWhen_Error(t *testing.T) {
 			err := tt.ts.Validate(ctx)
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("StepActionSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+func TestTaskValidateStepWithDisplayName(t *testing.T) {
+	tests := []struct {
+		name string
+		t    *v1beta1.Task
+		wc   func(context.Context) context.Context
+	}{{
+		name: "valid task with step display name",
+		t: &v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "task"},
+			Spec: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Name:        "my-step",
+					DisplayName: "My Step",
+					Image:       "my-image",
+					Script: `
+					#!/usr/bin/env  bash
+					echo hello`,
+				}},
+			},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+			if tt.wc != nil {
+				ctx = tt.wc(ctx)
+			}
+			err := tt.t.Validate(ctx)
+			if err != nil {
+				t.Errorf("Task.Validate() returned error for valid Task: %v", err)
 			}
 		})
 	}

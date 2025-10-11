@@ -2985,6 +2985,11 @@ spec:
                         items:
                           type: string
                         x-kubernetes-list-type: atomic
+                      displayName:
+                        description: |-
+                          DisplayName is a user-facing name of the step that may be
+                          used to populate a UI.
+                        type: string
                       env:
                         description: |-
                           List of environment variables to set in the container.
@@ -6624,6 +6629,11 @@ spec:
                                 - type: integer
                                 - type: string
                               x-kubernetes-int-or-string: true
+                      displayName:
+                        description: |-
+                          DisplayName is a user-facing name of the step that may be
+                          used to populate a UI.
+                        type: string
                       env:
                         description: |-
                           List of environment variables to set in the Step.
