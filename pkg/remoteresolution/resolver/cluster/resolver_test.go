@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,6 +33,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/internal/resolution"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
+	cacheinjection "github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	cluster "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/cluster"
 	frtesting "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -43,6 +46,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing"
 	"sigs.k8s.io/yaml"
@@ -88,7 +92,7 @@ func TestValidate(t *testing.T) {
 }
 
 func TestValidateNotEnabled(t *testing.T) {
-	resolver := cluster.Resolver{}
+	resolver := &cluster.Resolver{}
 
 	var err error
 
@@ -102,13 +106,27 @@ func TestValidateNotEnabled(t *testing.T) {
 		Name:  clusterresolution.NameParam,
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
+
+	ctx := resolverDisabledContext()
 	req := v1beta1.ResolutionRequestSpec{Params: params}
-	err = resolver.Validate(resolverDisabledContext(), &req)
-	if err == nil {
-		t.Fatalf("expected disabled err")
+	if err = resolver.Validate(ctx, &req); err == nil {
+		t.Fatalf("expected error, got nil")
+	} else if err.Error() != disabledError {
+		t.Fatalf("expected error %q, got %q", disabledError, err.Error())
 	}
-	if d := cmp.Diff(disabledError, err.Error()); d != "" {
-		t.Errorf("unexpected error: %s", diff.PrintWantGot(d))
+}
+
+func TestValidateWithNoParams(t *testing.T) {
+	resolver := &cluster.Resolver{}
+
+	// Test Validate with no parameters - should get validation error about missing params
+	req := v1beta1.ResolutionRequestSpec{Params: []pipelinev1.Param{}}
+	err := resolver.Validate(t.Context(), &req)
+	if err == nil {
+		t.Fatalf("expected error when no params provided, got nil")
+	}
+	if !strings.Contains(err.Error(), "missing required cluster resolver params") {
+		t.Fatalf("expected validation error about missing params, got %q", err.Error())
 	}
 }
 
@@ -223,6 +241,7 @@ func TestValidateFailure(t *testing.T) {
 	}
 }
 
+// TODO(twoGiants): add comment which test case covers cache misses implicitly
 func TestResolve(t *testing.T) {
 	defaultNS := "pipeline-ns"
 
@@ -504,4 +523,121 @@ func createRequest(kind, name, namespace string) *v1beta1.ResolutionRequest {
 
 func resolverDisabledContext() context.Context {
 	return frameworktesting.ContextWithClusterResolverDisabled(context.Background())
+}
+
+func TestResolveWithDisabledResolver(t *testing.T) {
+	ctx := frameworktesting.ContextWithClusterResolverDisabled(t.Context())
+	resolver := &cluster.Resolver{}
+
+	req := &v1beta1.ResolutionRequestSpec{
+		Params: []pipelinev1.Param{
+			{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
+			{Name: "name", Value: *pipelinev1.NewStructuredValues("test-task")},
+			{Name: "namespace", Value: *pipelinev1.NewStructuredValues("test-ns")},
+			{Name: "cache", Value: *pipelinev1.NewStructuredValues("always")},
+		},
+	}
+
+	_, err := resolver.Resolve(ctx, req)
+	if err == nil {
+		t.Error("Expected error when resolver is disabled")
+	}
+	if !strings.Contains(err.Error(), "enable-cluster-resolver feature flag not true") {
+		t.Errorf("Expected disabled error, got: %v", err)
+	}
+}
+
+func TestResolveWithNoParams(t *testing.T) {
+	resolver := &cluster.Resolver{}
+
+	req := &v1beta1.ResolutionRequestSpec{
+		Params: []pipelinev1.Param{},
+	}
+
+	_, err := resolver.Resolve(t.Context(), req)
+	if err == nil {
+		t.Error("Expected error when no params provided")
+	}
+	if !strings.Contains(err.Error(), "missing required cluster resolver params") {
+		t.Errorf("Expected validation error about missing params, got: %v", err)
+	}
+}
+
+func TestResolveWithInvalidParams(t *testing.T) {
+	resolver := &cluster.Resolver{}
+
+	req := &v1beta1.ResolutionRequestSpec{
+		Params: []pipelinev1.Param{
+			{Name: "invalid", Value: *pipelinev1.NewStructuredValues("value")},
+		},
+	}
+
+	_, err := resolver.Resolve(t.Context(), req)
+	if err == nil {
+		t.Error("Expected error with invalid params")
+	}
+	if !strings.Contains(err.Error(), "missing required cluster resolver params") {
+		t.Errorf("Expected validation error, got: %v", err)
+	}
+}
+
+// TODO(twoGiants): FIX broken test
+func TestResolveWithCacheHit(t *testing.T) {
+	// Test that cache hits work correctly
+	ctx := t.Context()
+	resolver := &cluster.Resolver{}
+
+	// Create a mock cached resource
+	mockResource := &clusterresolution.ResolvedClusterResource{
+		Content:    []byte("cached content"),
+		Spec:       []byte("cached spec"),
+		Name:       "cached-task",
+		Namespace:  "cached-ns",
+		Identifier: "cached-identifier",
+		Checksum:   []byte{1, 2, 3, 4},
+	}
+
+	// TODO(twoGiants): fix test => this function won't be there anymore
+
+	params := []pipelinev1.Param{
+		{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
+		{Name: "name", Value: *pipelinev1.NewStructuredValues("test-task")},
+		{Name: "namespace", Value: *pipelinev1.NewStructuredValues("test-ns")},
+		{Name: "cache", Value: *pipelinev1.NewStructuredValues("always")},
+	}
+
+	cacheInstance := cacheinjection.GetResolverCache(ctx)
+
+	cacheInstance.Add(cluster.LabelValueClusterResolverType, params, mockResource)
+
+	req := &v1beta1.ResolutionRequestSpec{
+		Params: []pipelinev1.Param{
+			{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
+			{Name: "name", Value: *pipelinev1.NewStructuredValues("test-task")},
+			{Name: "namespace", Value: *pipelinev1.NewStructuredValues("test-ns")},
+			{Name: "cache", Value: *pipelinev1.NewStructuredValues("always")},
+		},
+	}
+
+	// This should hit the cache and return the cached resource
+	result, err := resolver.Resolve(ctx, req)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	// TODO(twoGiants): fix this
+	// Verify it's an annotated resource (indicating it came from cache)
+	annotatedResource, ok := result.(*cache.AnnotatedResource)
+	if !ok {
+		t.Fatal("Expected annotated resource from cache")
+	}
+
+	// Verify annotations indicate it came from cache
+	annotations := annotatedResource.Annotations()
+	if annotations["resolution.tekton.dev/cached"] != "true" {
+		t.Error("Expected cached annotation to be true")
+	}
+	if annotations["resolution.tekton.dev/cache-resolver-type"] != "cluster" {
+		t.Error("Expected resolver type to be cluster")
+	}
 }

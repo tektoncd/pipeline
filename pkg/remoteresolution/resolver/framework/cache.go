@@ -1,0 +1,126 @@
+/*
+Copyright 2025 The Tekton Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package framework
+
+import (
+	"context"
+	"fmt"
+	"slices"
+
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
+	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+)
+
+const (
+	cacheModeAlways = "always"
+	cacheModeNever  = "never"
+	cacheModeAuto   = "auto"
+	CacheParam      = "cache"
+)
+
+// ImmutabilityChecker extends the base Resolver interface with cache-specific methods.
+// Each resolver implements IsImmutable to define what "auto" mode means in their context.
+type ImmutabilityChecker interface {
+	IsImmutable(params []v1.Param) bool
+}
+
+// ShouldUseCache determines whether caching should be used based on:
+// 1. Task/Pipeline cache parameter (highest priority)
+// 2. ConfigMap default-cache-mode (middle priority)
+// 3. System default for resolver type (lowest priority)
+func ShouldUseCache(
+	ctx context.Context,
+	resolver ImmutabilityChecker,
+	params []v1.Param,
+	resolverType string,
+) bool {
+	// Get cache mode from task parameter
+	cacheMode := ""
+	for _, param := range params {
+		if param.Name == CacheParam {
+			cacheMode = param.Value.StringVal
+			break
+		}
+	}
+
+	// If no task parameter, get default from ConfigMap
+	if cacheMode == "" {
+		conf := resolutionframework.GetResolverConfigFromContext(ctx)
+		if defaultMode, ok := conf["default-cache-mode"]; ok {
+			cacheMode = defaultMode
+		}
+	}
+
+	// If still no mode, use system default
+	if cacheMode == "" {
+		cacheMode = systemDefaultCacheMode(resolverType)
+	}
+
+	// Apply cache mode logic
+	switch cacheMode {
+	case cacheModeAlways:
+		return true
+	case cacheModeNever:
+		return false
+	case cacheModeAuto:
+		return resolver.IsImmutable(params)
+	default:
+		// Invalid mode defaults to auto
+		return resolver.IsImmutable(params)
+	}
+}
+
+func systemDefaultCacheMode(string) string {
+	return cacheModeAuto
+}
+
+// ValidateCacheMode returns an error if the cache mode is not "always", "never"
+// or "auto".
+func ValidateCacheMode(cacheMode string) error {
+	validCacheModes := []string{cacheModeAlways, cacheModeNever, cacheModeAuto}
+	if slices.Contains(validCacheModes, cacheMode) {
+		return nil
+	}
+
+	return fmt.Errorf("invalid cache mode '%s', must be one of: %v", cacheMode, validCacheModes)
+}
+
+type resolveFn = func() (resolutionframework.ResolvedResource, error)
+
+func RunCommonCacheOperations(
+	ctx context.Context,
+	params []v1.Param,
+	resolverType string,
+	resolve resolveFn,
+) (resolutionframework.ResolvedResource, error) {
+	cacheInstance := injection.GetResolverCache(ctx)
+
+	if cached, ok := cacheInstance.Get(resolverType, params); ok {
+		return cached, nil
+	}
+
+	// If cache miss, resolve from params
+	resource, err := resolve()
+	if err != nil {
+		return nil, err
+	}
+
+	// Store annotated resource with store operation and return annotated resource
+	// to indicate it was stored in cache
+	return cacheInstance.Add(resolverType, params, resource), nil
+}
