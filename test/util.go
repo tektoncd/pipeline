@@ -64,10 +64,11 @@ var (
 	ignoreSAPipelineRunSpec = cmpopts.IgnoreFields(v1.PipelineTaskRunTemplate{}, "ServiceAccountName")
 )
 
+// TODO(twoGiants): duplicated in resolver_cache_test.go
 // clearResolverCaches clears the shared resolver cache to ensure test isolation
 func clearResolverCaches(ctx context.Context) {
 	// Clear the injection cache used by all resolvers
-	cache := cacheinjection.Get(ctx)
+	cache := cacheinjection.GetResolverCache(ctx)
 	cache.Clear()
 }
 

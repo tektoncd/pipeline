@@ -39,23 +39,26 @@ import (
 )
 
 const (
-	disabledError = "cannot handle resolution request, enable-git-resolver feature flag not true"
-
-	// resolverName defines the git resolver's name.
-	resolverName string = "Git"
+	disabledError   = "cannot handle resolution request, enable-git-resolver feature flag not true"
+	gitResolverName = "Git"
 
 	// labelValueGitResolverType is the value to use for the
 	// resolution.tekton.dev/type label on resource requests
-	labelValueGitResolverType string = "git"
+	labelValueGitResolverType = "git"
 
-	// cacheSize is the size of the LRU secrets cache
+	// size of the LRU secrets cache
 	cacheSize = 1024
-	// ttl is the time to live for a cache entry
+	// the time to live for a cache entry
 	ttl = 5 * time.Minute
 
 	// git revision parameter name
 	revisionParam = "revision"
 )
+
+var _ framework.Resolver = (*Resolver)(nil)
+var _ resolutionframework.ConfigWatcher = (*Resolver)(nil)
+var _ framework.ImmutabilityChecker = (*Resolver)(nil)
+var _ resolutionframework.TimedResolution = (*Resolver)(nil)
 
 // Resolver implements a framework.Resolver that can fetch files from git.
 type Resolver struct {
@@ -68,13 +71,10 @@ type Resolver struct {
 	clientFunc func(string, string, string, ...factory.ClientOptionFunc) (*scm.Client, error)
 }
 
-// Ensure Resolver implements CacheAwareResolver
-var _ framework.ImmutabilityChecker = (*Resolver)(nil)
-
 // Initialize performs any setup required by the git resolver.
 func (r *Resolver) Initialize(ctx context.Context) error {
 	r.kubeClient = kubeclient.Get(ctx)
-	r.logger = logging.FromContext(ctx).Named(resolverName)
+	r.logger = logging.FromContext(ctx).Named(gitResolverName)
 	if r.cache == nil {
 		r.cache = k8scache.NewLRUExpireCache(cacheSize)
 	}
@@ -89,16 +89,21 @@ func (r *Resolver) Initialize(ctx context.Context) error {
 
 // GetName returns the string name that the git resolver should be
 // associated with.
-func (r *Resolver) GetName(context.Context) string {
-	return resolverName
+func (r *Resolver) GetName(_ context.Context) string {
+	return gitResolverName
 }
 
 // GetSelector returns the labels that resource requests are required to have for
 // the gitresolver to process them.
-func (r *Resolver) GetSelector(context.Context) map[string]string {
+func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 	return map[string]string{
 		resolutioncommon.LabelKeyResolverType: labelValueGitResolverType,
 	}
+}
+
+// GetConfigName returns the name of the git resolver's configmap.
+func (r *Resolver) GetConfigName(_ context.Context) string {
+	return git.ConfigMapName
 }
 
 // Validate returns an error if the given parameter map is not
@@ -107,7 +112,7 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 	return git.ValidateParams(ctx, req.Params)
 }
 
-// IsImmutable implements CacheAwareResolver.IsImmutable
+// IsImmutable implements ImmutabilityChecker.IsImmutable
 // Returns true if the revision parameter is a commit SHA (40-character hex string)
 func (r *Resolver) IsImmutable(params []v1.Param) bool {
 	var revision string
@@ -129,6 +134,25 @@ func (r *Resolver) IsImmutable(params []v1.Param) bool {
 		}
 	}
 	return true
+}
+
+// GetResolutionTimeout returns the configured timeout for git resolution requests.
+func (r *Resolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time.Duration, params map[string]string) (time.Duration, error) {
+	if git.IsDisabled(ctx) {
+		return defaultTimeout, errors.New(disabledError)
+	}
+	conf, err := git.GetScmConfigForParamConfigKey(ctx, params)
+	if err != nil {
+		return time.Duration(0), err
+	}
+	if timeoutString := conf.Timeout; timeoutString != "" {
+		timeout, err := time.ParseDuration(timeoutString)
+		if err != nil {
+			return time.Duration(0), err
+		}
+		return timeout, nil
+	}
+	return defaultTimeout, nil
 }
 
 // Resolve performs the work of fetching a file from git given a map of
@@ -153,8 +177,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	// Check cache first if caching is enabled
 	var cacheInstance *cache.ResolverCache
 	if useCache {
-		// Get cache from dependency injection instead of global singleton
-		cacheInstance = injection.Get(ctx)
+		cacheInstance = injection.GetResolverCache(ctx)
 
 		// Generate cache key
 		cacheKey, err := cache.GenerateCacheKey(labelValueGitResolverType, req.Params)
@@ -200,32 +223,4 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	}
 
 	return resource, nil
-}
-
-var _ resolutionframework.ConfigWatcher = &Resolver{}
-
-// GetConfigName returns the name of the git resolver's configmap.
-func (r *Resolver) GetConfigName(context.Context) string {
-	return git.ConfigMapName
-}
-
-var _ resolutionframework.TimedResolution = &Resolver{}
-
-// GetResolutionTimeout returns the configured timeout for git resolution requests.
-func (r *Resolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time.Duration, params map[string]string) (time.Duration, error) {
-	if git.IsDisabled(ctx) {
-		return defaultTimeout, errors.New(disabledError)
-	}
-	conf, err := git.GetScmConfigForParamConfigKey(ctx, params)
-	if err != nil {
-		return time.Duration(0), err
-	}
-	if timeoutString := conf.Timeout; timeoutString != "" {
-		timeout, err := time.ParseDuration(timeoutString)
-		if err != nil {
-			return time.Duration(0), err
-		}
-		return timeout, nil
-	}
-	return defaultTimeout, nil
 }

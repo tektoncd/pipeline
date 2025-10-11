@@ -55,10 +55,11 @@ var cacheGitFeatureFlags = requireAllGates(map[string]string{
 	"enable-api-fields":   "beta",
 })
 
+// TODO(twoGiants): duplicated in util.go
 // clearCache clears the injection cache to ensure a clean state for tests
 func clearCache(ctx context.Context) {
 	// Clear cache using injection-based instance
-	cacheInstance := cacheinjection.Get(ctx)
+	cacheInstance := cacheinjection.GetResolverCache(ctx)
 	cacheInstance.Clear()
 	// Verify cache is cleared by attempting to retrieve a known key
 	// If cache is properly cleared, this should return nil

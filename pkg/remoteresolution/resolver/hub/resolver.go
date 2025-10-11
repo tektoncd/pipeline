@@ -26,16 +26,19 @@ import (
 const (
 	// LabelValueHubResolverType is the value to use for the
 	// resolution.tekton.dev/type label on resource requests
-	LabelValueHubResolverType string = "hub"
+	LabelValueHubResolverType = "hub"
+	hubResolverName           = "Hub"
+	configMapName             = "hubresolver-config"
 
 	// ArtifactHubType is the value to use setting the type field to artifact
-	ArtifactHubType string = "artifact"
+	ArtifactHubType = "artifact"
 
 	// TektonHubType is the value to use setting the type field to tekton
-	TektonHubType string = "tekton"
+	TektonHubType = "tekton"
 )
 
-var _ framework.Resolver = &Resolver{}
+var _ framework.Resolver = (*Resolver)(nil)
+var _ resolutionframework.ConfigWatcher = (*Resolver)(nil)
 
 // Resolver implements a framework.Resolver that can fetch files from OCI bundles.
 type Resolver struct {
@@ -46,22 +49,22 @@ type Resolver struct {
 }
 
 // Initialize sets up any dependencies needed by the resolver. None atm.
-func (r *Resolver) Initialize(context.Context) error {
+func (r *Resolver) Initialize(_ context.Context) error {
 	return nil
 }
 
 // GetName returns a string name to refer to this resolver by.
-func (r *Resolver) GetName(context.Context) string {
-	return "Hub"
+func (r *Resolver) GetName(_ context.Context) string {
+	return hubResolverName
 }
 
 // GetConfigName returns the name of the bundle resolver's configmap.
-func (r *Resolver) GetConfigName(context.Context) string {
-	return "hubresolver-config"
+func (r *Resolver) GetConfigName(_ context.Context) string {
+	return configMapName
 }
 
 // GetSelector returns a map of labels to match requests to this resolver.
-func (r *Resolver) GetSelector(context.Context) map[string]string {
+func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 	return map[string]string{
 		common.LabelKeyResolverType: LabelValueHubResolverType,
 	}
