@@ -25,8 +25,6 @@ import (
 	"github.com/jenkins-x/go-scm/scm/factory"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
@@ -171,29 +169,24 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		return nil, err
 	}
 
-	// Determine if we should use caching using framework logic
-	useCache := framework.ShouldUseCache(ctx, r, req.Params, labelValueGitResolverType)
-
-	// Check cache first if caching is enabled
-	var cacheInstance *cache.ResolverCache
-	if useCache {
-		cacheInstance = injection.GetResolverCache(ctx)
-
-		// Generate cache key
-		cacheKey, err := cache.GenerateCacheKey(labelValueGitResolverType, req.Params)
-		if err != nil {
-			return nil, err
-		}
-
-		// Check cache first
-		if cached, ok := cacheInstance.Get(cacheKey); ok {
-			if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
-				// Return annotated resource to indicate it came from cache
-				return cache.NewAnnotatedResource(resource, labelValueGitResolverType, cache.CacheOperationRetrieve), nil
-			}
-		}
+	if r.useCache(ctx, req) {
+		return framework.RunCommonCacheOperations(
+			ctx,
+			req.Params,
+			labelValueGitResolverType,
+			func() (resolutionframework.ResolvedResource, error) {
+				return r.resolveViaGit(ctx, params)
+			},
+		)
 	}
+	return r.resolveViaGit(ctx, params)
+}
 
+func (r *Resolver) useCache(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
+	return framework.ShouldUseCache(ctx, r, req.Params, labelValueGitResolverType)
+}
+
+func (r *Resolver) resolveViaGit(ctx context.Context, params map[string]string) (resolutionframework.ResolvedResource, error) {
 	g := &git.GitResolver{
 		KubeClient: r.kubeClient,
 		Logger:     r.logger,
@@ -202,25 +195,9 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		Params:     params,
 	}
 
-	var resource resolutionframework.ResolvedResource
 	if params[git.UrlParam] != "" {
-		resource, err = g.ResolveGitClone(ctx)
-	} else {
-		resource, err = g.ResolveAPIGit(ctx, r.clientFunc)
-	}
-	if err != nil {
-		return nil, err
+		return g.ResolveGitClone(ctx)
 	}
 
-	// Cache the result if caching is enabled
-	if useCache {
-		cacheKey, _ := cache.GenerateCacheKey(labelValueGitResolverType, req.Params)
-		// Store annotated resource with store operation
-		annotatedResource := cache.NewAnnotatedResource(resource, labelValueGitResolverType, cache.CacheOperationStore)
-		cacheInstance.Add(cacheKey, annotatedResource)
-		// Return annotated resource to indicate it was stored in cache
-		return annotatedResource, nil
-	}
-
-	return resource, nil
+	return g.ResolveAPIGit(ctx, r.clientFunc)
 }

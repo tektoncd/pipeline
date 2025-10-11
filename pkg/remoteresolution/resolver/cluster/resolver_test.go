@@ -34,6 +34,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/internal/resolution"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
+	cacheinjection "github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	cluster "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/cluster"
 	frtesting "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -49,8 +50,6 @@ import (
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing"
 	"sigs.k8s.io/yaml"
-
-	cacheinjection "github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 )
 
 const (
@@ -599,17 +598,17 @@ func TestResolveWithCacheHit(t *testing.T) {
 	}
 
 	// TODO(twoGiants): fix test => this function won't be there anymore
-	// Add the resource to the global cache
-	cacheKey, _ := cache.GenerateCacheKey(cluster.LabelValueClusterResolverType, []pipelinev1.Param{
+
+	params := []pipelinev1.Param{
 		{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
 		{Name: "name", Value: *pipelinev1.NewStructuredValues("test-task")},
 		{Name: "namespace", Value: *pipelinev1.NewStructuredValues("test-ns")},
 		{Name: "cache", Value: *pipelinev1.NewStructuredValues("always")},
-	})
+	}
 
 	cacheInstance := cacheinjection.GetResolverCache(ctx)
 
-	cacheInstance.Add(cacheKey, mockResource)
+	cacheInstance.Add(cluster.LabelValueClusterResolverType, params, mockResource)
 
 	req := &v1beta1.ResolutionRequestSpec{
 		Params: []pipelinev1.Param{

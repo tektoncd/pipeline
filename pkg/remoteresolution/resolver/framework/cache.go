@@ -22,6 +22,7 @@ import (
 	"slices"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
 
@@ -97,4 +98,29 @@ func ValidateCacheMode(cacheMode string) error {
 	}
 
 	return fmt.Errorf("invalid cache mode '%s', must be one of: %v", cacheMode, validCacheModes)
+}
+
+type resolveFn = func() (resolutionframework.ResolvedResource, error)
+
+func RunCommonCacheOperations(
+	ctx context.Context,
+	params []v1.Param,
+	resolverType string,
+	resolve resolveFn,
+) (resolutionframework.ResolvedResource, error) {
+	cacheInstance := injection.GetResolverCache(ctx)
+
+	if cached, ok := cacheInstance.Get(resolverType, params); ok {
+		return cached, nil
+	}
+
+	// If cache miss, resolve from params
+	resource, err := resolve()
+	if err != nil {
+		return nil, err
+	}
+
+	// Store annotated resource with store operation and return annotated resource
+	// to indicate it was stored in cache
+	return cacheInstance.Add(resolverType, params, resource), nil
 }

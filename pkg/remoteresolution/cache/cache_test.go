@@ -169,7 +169,7 @@ func TestGenerateCacheKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actualKey, _ := GenerateCacheKey(tt.resolverType, tt.params)
+			actualKey := generateCacheKey(tt.resolverType, tt.params)
 			if tt.expectedKey != actualKey {
 				t.Error("want %s, got %s", tt.expectedKey, actualKey)
 			}
@@ -255,10 +255,7 @@ func TestGenerateCacheKey_IndependentOfCacheParam(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.expectedSame {
 				// Generate key with cache param
-				keyWithCache, err := GenerateCacheKey(tt.resolverType, tt.params)
-				if err != nil {
-					t.Fatalf("Failed to generate cache key with cache param: %v", err)
-				}
+				keyWithCache := generateCacheKey(tt.resolverType, tt.params)
 
 				// Generate key without cache param
 				paramsWithoutCache := make([]pipelinev1.Param, 0, len(tt.params))
@@ -267,10 +264,7 @@ func TestGenerateCacheKey_IndependentOfCacheParam(t *testing.T) {
 						paramsWithoutCache = append(paramsWithoutCache, p)
 					}
 				}
-				keyWithoutCache, err := GenerateCacheKey(tt.resolverType, paramsWithoutCache)
-				if err != nil {
-					t.Fatalf("Failed to generate cache key without cache param: %v", err)
-				}
+				keyWithoutCache := generateCacheKey(tt.resolverType, paramsWithoutCache)
 
 				if keyWithCache != keyWithoutCache {
 					t.Errorf("Expected same keys, but got different:\nWith cache: %s\nWithout cache: %s\nDescription: %s",
@@ -288,16 +282,8 @@ func TestGenerateCacheKey_IndependentOfCacheParam(t *testing.T) {
 					}
 				}
 
-				key1, err := GenerateCacheKey(tt.resolverType, tt.params)
-				if err != nil {
-					t.Fatalf("Failed to generate cache key for first params: %v", err)
-				}
-
-				key2, err := GenerateCacheKey(tt.resolverType, params2)
-				if err != nil {
-					t.Fatalf("Failed to generate cache key for second params: %v", err)
-				}
-
+				key1 := generateCacheKey(tt.resolverType, tt.params)
+				key2 := generateCacheKey(tt.resolverType, params2)
 				if key1 == key2 {
 					t.Errorf("Expected different keys, but got same: %s\nDescription: %s",
 						key1, tt.description)
@@ -316,15 +302,8 @@ func TestGenerateCacheKey_Deterministic(t *testing.T) {
 	}
 
 	// Generate the same key multiple times
-	key1, err := GenerateCacheKey(resolverType, params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
-
-	key2, err := GenerateCacheKey(resolverType, params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key: %v", err)
-	}
+	key1 := generateCacheKey(resolverType, params)
+	key2 := generateCacheKey(resolverType, params)
 
 	if key1 != key2 {
 		t.Errorf("Cache key generation is not deterministic. Got different keys: %s vs %s", key1, key2)
@@ -341,10 +320,7 @@ func TestGenerateCacheKey_AllParamTypes(t *testing.T) {
 	}
 
 	// Generate key with cache param
-	keyWithCache, err := GenerateCacheKey(resolverType, params)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key with cache param: %v", err)
-	}
+	keyWithCache := generateCacheKey(resolverType, params)
 
 	// Generate key without cache param
 	paramsWithoutCache := make([]pipelinev1.Param, 0, len(params))
@@ -353,11 +329,7 @@ func TestGenerateCacheKey_AllParamTypes(t *testing.T) {
 			paramsWithoutCache = append(paramsWithoutCache, p)
 		}
 	}
-	keyWithoutCache, err := GenerateCacheKey(resolverType, paramsWithoutCache)
-	if err != nil {
-		t.Fatalf("Failed to generate cache key without cache param: %v", err)
-	}
-
+	keyWithoutCache := generateCacheKey(resolverType, paramsWithoutCache)
 	if keyWithCache != keyWithoutCache {
 		t.Errorf("Expected same keys for all param types, but got different:\nWith cache: %s\nWithout cache: %s",
 			keyWithCache, keyWithoutCache)
@@ -370,18 +342,18 @@ func TestResolverCache(t *testing.T) {
 	// Test adding and getting a value
 	key := "test-key"
 	value := "test-value"
-	cache.Add(key, value)
+	cache.DEPRECATED_Add(key, value)
 
-	if got, ok := cache.Get(key); !ok || got != value {
+	if got, ok := cache.DEPRECATED_Get(key); !ok || got != value {
 		t.Errorf("Get() = %v, %v, want %v, true", got, ok, value)
 	}
 
 	// Test expiration
 	shortExpiration := 100 * time.Millisecond
-	cache.AddWithExpiration("expiring-key", "expiring-value", shortExpiration)
+	cache.DEPRECATED_AddWithExpiration("expiring-key", "expiring-value", shortExpiration)
 	time.Sleep(shortExpiration + 50*time.Millisecond)
 
-	if _, ok := cache.Get("expiring-key"); ok {
+	if _, ok := cache.DEPRECATED_Get("expiring-key"); ok {
 		t.Error("Get() returned true for expired key")
 	}
 
@@ -402,29 +374,29 @@ func TestResolverCacheOperations(t *testing.T) {
 	// Test Add and Get
 	key := "test-key"
 	value := "test-value"
-	cache.Add(key, value)
+	cache.DEPRECATED_Add(key, value)
 
-	if v, found := cache.Get(key); !found || v != value {
+	if v, found := cache.DEPRECATED_Get(key); !found || v != value {
 		t.Errorf("Expected to find value %v, got %v (found: %v)", value, v, found)
 	}
 
 	// Test Remove
-	cache.Remove(key)
-	if _, found := cache.Get(key); found {
+	cache.DEPRECATED_Remove(key)
+	if _, found := cache.DEPRECATED_Get(key); found {
 		t.Error("Expected key to be removed")
 	}
 
 	// Test AddWithExpiration
 	customTTL := 1 * time.Second
-	cache.AddWithExpiration(key, value, customTTL)
+	cache.DEPRECATED_AddWithExpiration(key, value, customTTL)
 
-	if v, found := cache.Get(key); !found || v != value {
+	if v, found := cache.DEPRECATED_Get(key); !found || v != value {
 		t.Errorf("Expected to find value %v, got %v (found: %v)", value, v, found)
 	}
 
 	// Wait for expiration
 	time.Sleep(customTTL + 100*time.Millisecond)
-	if _, found := cache.Get(key); found {
+	if _, found := cache.DEPRECATED_Get(key); found {
 		t.Error("Expected key to be expired")
 	}
 }

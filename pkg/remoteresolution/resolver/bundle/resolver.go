@@ -23,15 +23,12 @@ import (
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	bundleresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/bundle"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	"knative.dev/pkg/logging"
 )
 
 const (
@@ -113,48 +110,24 @@ func (r *Resolver) IsImmutable(params []v1.Param) bool {
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
-	// Guard pattern: early return if no params
 	if len(req.Params) == 0 {
 		return nil, errors.New("no params")
 	}
 
-	logger := logging.FromContext(ctx)
-
-	useCache := framework.ShouldUseCache(ctx, r, req.Params, LabelValueBundleResolverType)
-
-	if useCache {
-		cacheInstance := injection.GetResolverCache(ctx)
-		cacheKey, err := cache.GenerateCacheKey(LabelValueBundleResolverType, req.Params)
-		if err != nil {
-			logger.Warnf("Failed to generate cache key: %v", err)
-		} else {
-			// Check cache first
-			if cached, ok := cacheInstance.Get(cacheKey); ok {
-				if resource, ok := cached.(resolutionframework.ResolvedResource); ok {
-					return cache.NewAnnotatedResource(resource, LabelValueBundleResolverType, cache.CacheOperationRetrieve), nil
-				}
-			}
-		}
+	if r.useCache(ctx, req) {
+		return framework.RunCommonCacheOperations(
+			ctx,
+			req.Params,
+			LabelValueBundleResolverType,
+			func() (resolutionframework.ResolvedResource, error) {
+				return r.resolveRequestFunc(ctx, r.kubeClientSet, req)
+			},
+		)
 	}
 
-	// If not caching or cache miss, resolve from params
-	resource, err := r.resolveRequestFunc(ctx, r.kubeClientSet, req)
-	if err != nil {
-		return nil, err
-	}
+	return r.resolveRequestFunc(ctx, r.kubeClientSet, req)
+}
 
-	// Cache the result if caching is enabled
-	if useCache {
-		cacheInstance := injection.GetResolverCache(ctx)
-		cacheKey, err := cache.GenerateCacheKey(LabelValueBundleResolverType, req.Params)
-		if err == nil {
-			// Store annotated resource with store operation
-			annotatedResource := cache.NewAnnotatedResource(resource, LabelValueBundleResolverType, cache.CacheOperationStore)
-			cacheInstance.Add(cacheKey, annotatedResource)
-			// Return annotated resource to indicate it was stored in cache
-			return annotatedResource, nil
-		}
-	}
-
-	return resource, nil
+func (r *Resolver) useCache(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
+	return framework.ShouldUseCache(ctx, r, req.Params, LabelValueBundleResolverType)
 }

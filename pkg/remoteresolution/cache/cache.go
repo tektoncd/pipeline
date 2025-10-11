@@ -25,6 +25,7 @@ import (
 	"time"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	utilcache "k8s.io/apimachinery/pkg/util/cache"
@@ -39,7 +40,27 @@ var (
 	defaultExpiration = 5 * time.Minute
 )
 
-// TODO(twoGiants): implement this feature
+// ResolverCache is a wrapper around utilcache.LRUExpireCache that provides
+// type-safe methods for caching resolver results.
+type ResolverCache struct {
+	cache  *utilcache.LRUExpireCache
+	logger *zap.SugaredLogger
+}
+
+// NewResolverCache creates a new ResolverCache with the given expiration time and max size
+func NewResolverCache(maxSize int) *ResolverCache {
+	return &ResolverCache{
+		cache: utilcache.NewLRUExpireCache(maxSize),
+	}
+}
+
+// WithLogger returns a new ResolverCache instance with the provided logger.
+// This prevents state leak by not storing logger in the global singleton.
+func (c *ResolverCache) WithLogger(logger *zap.SugaredLogger) *ResolverCache {
+	return &ResolverCache{logger: logger, cache: c.cache}
+}
+
+// TODO(twoGiants): implement this feature => doesn't look right as it currently is
 // InitializeFromConfigMap initializes the cache with configuration from a ConfigMap
 func (c *ResolverCache) InitializeFromConfigMap(configMap *corev1.ConfigMap) {
 	// Set defaults
@@ -66,33 +87,62 @@ func (c *ResolverCache) InitializeFromConfigMap(configMap *corev1.ConfigMap) {
 	defaultExpiration = ttl
 }
 
-// TODO(twoGiants): implement this feature
-// GetCacheConfigName returns the name of the cache configuration ConfigMap.
-// This can be overridden via the CONFIG_RESOLVER_CACHE_NAME environment variable.
-func GetCacheConfigName() string {
-	if configMapName := os.Getenv("CONFIG_RESOLVER_CACHE_NAME"); configMapName != "" {
-		return configMapName
+func (c *ResolverCache) Get(resolverType string, params []pipelinev1.Param) (resolutionframework.ResolvedResource, bool) {
+	key := generateCacheKey(resolverType, params)
+	value, found := c.cache.Get(key)
+	if !found {
+		c.infow("Cache miss", "key", key)
+		return nil, found
 	}
 
-	return defaultConfigMapName
+	resource, ok := value.(resolutionframework.ResolvedResource)
+	if !ok {
+		c.infow("Failed casting cached resource", "key", key)
+		return nil, false
+	}
+
+	c.infow("Cache hit", "key", key)
+	return NewAnnotatedResource(resource, resolverType, CacheOperationRetrieve), true
 }
 
-// ResolverCache is a wrapper around utilcache.LRUExpireCache that provides
-// type-safe methods for caching resolver results.
-type ResolverCache struct {
-	cache  *utilcache.LRUExpireCache
-	logger *zap.SugaredLogger
-}
-
-// NewResolverCache creates a new ResolverCache with the given expiration time and max size
-func NewResolverCache(maxSize int) *ResolverCache {
-	return &ResolverCache{
-		cache: utilcache.NewLRUExpireCache(maxSize),
+func (c *ResolverCache) infow(msg string, keysAndValues ...any) {
+	if c.logger != nil {
+		c.logger.Infow(msg, keysAndValues...)
 	}
 }
 
-// Get retrieves a value from the cache.
-func (c *ResolverCache) Get(key string) (interface{}, bool) {
+func (c *ResolverCache) Add(
+	resolverType string,
+	params []pipelinev1.Param,
+	resource resolutionframework.ResolvedResource,
+) resolutionframework.ResolvedResource {
+	key := generateCacheKey(resolverType, params)
+	c.infow("Adding to cache", "key", key, "expiration", defaultExpiration)
+
+	annotatedResource := NewAnnotatedResource(resource, resolverType, CacheOperationStore)
+
+	c.cache.Add(key, annotatedResource, defaultExpiration)
+
+	return annotatedResource
+}
+
+func (c *ResolverCache) Remove(resolverType string, params []pipelinev1.Param) {
+	key := generateCacheKey(resolverType, params)
+	c.infow("Removing from cache", "key", key)
+
+	c.cache.Remove(key)
+}
+
+// Clear removes all entries from the cache.
+func (c *ResolverCache) Clear() {
+	c.infow("Clearing all cache entries")
+	// predicate that returns true clears all entries
+	c.cache.RemoveAll(func(_ any) bool { return true })
+}
+
+// TODO(twoGiants): remove and fix tests
+// DEPRECATED_Get retrieves a value from the cache.
+func (c *ResolverCache) DEPRECATED_Get(key string) (interface{}, bool) {
 	value, found := c.cache.Get(key)
 	if c.logger != nil {
 		if found {
@@ -104,51 +154,34 @@ func (c *ResolverCache) Get(key string) (interface{}, bool) {
 	return value, found
 }
 
-// Add adds a value to the cache with the default expiration time.
-func (c *ResolverCache) Add(key string, value interface{}) {
+// TODO(twoGiants): remove and fix tests
+// DEPRECATED_Add adds a value to the cache with the default expiration time.
+func (c *ResolverCache) DEPRECATED_Add(key string, value interface{}) {
 	if c.logger != nil {
 		c.logger.Infow("Adding to cache", "key", key, "expiration", defaultExpiration)
 	}
 	c.cache.Add(key, value, defaultExpiration)
 }
 
-// Remove removes a value from the cache.
-func (c *ResolverCache) Remove(key string) {
+// TODO(twoGiants): remove and fix tests
+// DEPRECATED_Remove removes a value from the cache.
+func (c *ResolverCache) DEPRECATED_Remove(key string) {
 	if c.logger != nil {
 		c.logger.Infow("Removing from cache", "key", key)
 	}
 	c.cache.Remove(key)
 }
 
-// AddWithExpiration adds a value to the cache with a custom expiration time
-func (c *ResolverCache) AddWithExpiration(key string, value interface{}, expiration time.Duration) {
+// TODO(twoGiants): looks unused => can be deleted, expiration is set via defaultExpiration
+// DEPRECATED_AddWithExpiration adds a value to the cache with a custom expiration time
+func (c *ResolverCache) DEPRECATED_AddWithExpiration(key string, value interface{}, expiration time.Duration) {
 	if c.logger != nil {
 		c.logger.Infow("Adding to cache with custom expiration", "key", key, "expiration", expiration)
 	}
 	c.cache.Add(key, value, expiration)
 }
 
-// Clear removes all entries from the cache.
-func (c *ResolverCache) Clear() {
-	if c.logger != nil {
-		c.logger.Infow("Clearing all cache entries")
-	}
-	// Use RemoveAll with a predicate that always returns true to clear all entries
-	c.cache.RemoveAll(func(key any) bool {
-		return true
-	})
-}
-
-// Note: Global cache removed - use dependency injection via cache/injection package
-
-// WithLogger returns a new ResolverCache instance with the provided logger.
-// This prevents state leak by not storing logger in the global singleton.
-func (c *ResolverCache) WithLogger(logger *zap.SugaredLogger) *ResolverCache {
-	return &ResolverCache{logger: logger, cache: c.cache}
-}
-
-// GenerateCacheKey generates a cache key for the given resolver type and parameters.
-func GenerateCacheKey(resolverType string, params []pipelinev1.Param) (string, error) {
+func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 	// Create a deterministic string representation of the parameters
 	paramStr := resolverType + ":"
 
@@ -204,5 +237,16 @@ func GenerateCacheKey(resolverType string, params []pipelinev1.Param) (string, e
 
 	// Generate a SHA-256 hash of the parameter string
 	hash := sha256.Sum256([]byte(paramStr))
-	return hex.EncodeToString(hash[:]), nil
+	return hex.EncodeToString(hash[:])
+}
+
+// TODO(twoGiants): implement this feature
+// GetCacheConfigName returns the name of the cache configuration ConfigMap.
+// This can be overridden via the CONFIG_RESOLVER_CACHE_NAME environment variable.
+func GetCacheConfigName() string {
+	if configMapName := os.Getenv("CONFIG_RESOLVER_CACHE_NAME"); configMapName != "" {
+		return configMapName
+	}
+
+	return defaultConfigMapName
 }
