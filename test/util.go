@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	cacheinjection "github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 
@@ -50,14 +51,20 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+const (
+	sleepDuration = 15 * time.Second
+)
+
 var (
-	initMetrics           sync.Once
-	ignoreTypeMeta        = cmpopts.IgnoreFields(metav1.TypeMeta{}, "Kind", "APIVersion")
-	ignoreObjectMeta      = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion", "UID", "CreationTimestamp", "Generation", "ManagedFields", "Labels", "Annotations", "OwnerReferences")
-	ignoreCondition       = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time", "Message")
-	ignoreConditions      = cmpopts.IgnoreFields(duckv1.Status{}, "Conditions")
-	ignoreStepState       = cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "TerminationReason")
-	ignoreContainerStates = cmpopts.IgnoreFields(corev1.ContainerState{}, "Terminated")
+	initMetrics             sync.Once
+	ignoreTypeMeta          = cmpopts.IgnoreFields(metav1.TypeMeta{}, "Kind", "APIVersion")
+	ignoreObjectMeta        = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion", "UID", "CreationTimestamp", "Generation", "ManagedFields", "Labels", "Annotations", "OwnerReferences")
+	ignoreCondition         = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time", "Message")
+	ignoreConditions        = cmpopts.IgnoreFields(duckv1.Status{}, "Conditions")
+	ignoreStepState         = cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "TerminationReason")
+	ignoreContainerStates   = cmpopts.IgnoreFields(corev1.ContainerState{}, "Terminated")
+	ignorePipelineRunStatus = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "StartTime", "CompletionTime", "FinallyStartTime", "ChildReferences", "Provenance")
+	ignoreTaskRunStatus     = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime", "Provenance")
 	// ignoreSATaskRunSpec ignores the service account in the TaskRunSpec as it may differ across platforms
 	ignoreSATaskRunSpec = cmpopts.IgnoreFields(v1.TaskRunSpec{}, "ServiceAccountName")
 	// ignoreSAPipelineRunSpec ignores the service account in the PipelineRunSpec as it may differ across platforms
