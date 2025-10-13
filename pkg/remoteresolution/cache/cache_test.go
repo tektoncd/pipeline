@@ -116,7 +116,6 @@ func TestInitializeFromConfigMap(t *testing.T) {
 	}
 }
 
-// TODO(twoGiants): test against result strings => fix broken test
 func TestGenerateCacheKey(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -128,7 +127,7 @@ func TestGenerateCacheKey(t *testing.T) {
 			name:         "empty params",
 			resolverType: "http",
 			params:       []pipelinev1.Param{},
-			expectedKey:  "",
+			expectedKey:  "1c31dda07cb1e09e89bd660a8d114936b44f728b73a3bc52c69a409ee1d44e67",
 		},
 		{
 			name:         "single param",
@@ -142,7 +141,7 @@ func TestGenerateCacheKey(t *testing.T) {
 					},
 				},
 			},
-			expectedKey: "",
+			expectedKey: "63f68e3e567eafd7efb4149b3389b3261784c8ac5847b62e90b7ae8d23f6e889",
 		},
 		{
 			name:         "multiple params",
@@ -163,7 +162,7 @@ func TestGenerateCacheKey(t *testing.T) {
 					},
 				},
 			},
-			expectedKey: "",
+			expectedKey: "fbe74989962e04dbb512a986864acff592dd02e84ab20f7544fa6b473648f28c",
 		},
 	}
 
@@ -171,7 +170,7 @@ func TestGenerateCacheKey(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			actualKey := generateCacheKey(tt.resolverType, tt.params)
 			if tt.expectedKey != actualKey {
-				t.Error("want %s, got %s", tt.expectedKey, actualKey)
+				t.Errorf("want %s, got %s", tt.expectedKey, actualKey)
 			}
 		})
 	}
