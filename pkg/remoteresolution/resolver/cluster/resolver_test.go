@@ -241,7 +241,10 @@ func TestValidateFailure(t *testing.T) {
 	}
 }
 
-// TODO(twoGiants): add comment which test case covers cache misses implicitly
+// TestResolve tests the cluster resolver's resolve functionality.
+// All test cases in this function implicitly cover cache misses, as each test case is the
+// first resolution attempt for its respective resource, resulting in a cache miss and
+// subsequent fetch from the cluster. The cache is then populated for future requests.
 func TestResolve(t *testing.T) {
 	defaultNS := "pipeline-ns"
 
