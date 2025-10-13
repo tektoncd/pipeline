@@ -18,8 +18,10 @@ package injection
 
 import (
 	"context"
+	"sync"
 
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
@@ -30,6 +32,9 @@ type key struct{}
 
 // sharedCache is the shared cache instance used across all contexts
 var sharedCache = cache.NewResolverCache(cache.DefaultCacheSize)
+
+// initOnce ensures InitializeSharedCache is only called once
+var initOnce sync.Once
 
 func init() {
 	injection.Default.RegisterClient(cacheWithLoggerFromCtx)
@@ -58,4 +63,14 @@ func GetResolverCache(ctx context.Context) *cache.ResolverCache {
 	// Fallback for test contexts or when injection is not available
 	logger := logging.FromContext(ctx)
 	return sharedCache.WithLogger(logger)
+}
+
+// InitializeSharedCache initializes the shared cache from a ConfigMap.
+// This function uses sync.Once to ensure it's only called once, even if
+// multiple resolvers try to initialize it. This is safe to call from
+// any resolver's Initialize method.
+func InitializeSharedCache(configMap *corev1.ConfigMap) {
+	initOnce.Do(func() {
+		sharedCache.InitializeFromConfigMap(configMap)
+	})
 }
