@@ -32,7 +32,6 @@ func (r *resolverFake) IsImmutable([]pipelinev1.Param) bool {
 }
 
 func TestShouldUseCachePrecedence(t *testing.T) {
-
 	tests := []struct {
 		name           string
 		taskCacheParam string            // cache parameter from task/ResolutionRequest
