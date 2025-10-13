@@ -58,7 +58,7 @@ type Resolver struct {
 func (r *Resolver) Initialize(ctx context.Context) error {
 	r.pipelineClientSet = pipelineclient.Get(ctx)
 
-	// Initialize cache from ConfigMap if available
+	// Initialize shared cache from ConfigMap if available
 	logger := logging.FromContext(ctx)
 	kubeClient := kubeclient.Get(ctx)
 
@@ -69,9 +69,8 @@ func (r *Resolver) Initialize(ctx context.Context) error {
 		// Log but don't fail if ConfigMap doesn't exist - cache will use defaults
 		logger.Debugf("Could not load resolver-cache-config ConfigMap: %v. Using default cache configuration.", err)
 	} else {
-		// Initialize the cache with ConfigMap settings
-		cache := cacheinjection.GetResolverCache(ctx)
-		cache.InitializeFromConfigMap(configMap)
+		// Initialize the shared cache with ConfigMap settings (only happens once)
+		cacheinjection.InitializeSharedCache(configMap)
 		logger.Info("Initialized resolver cache from ConfigMap")
 	}
 

@@ -60,8 +60,9 @@ func (c *ResolverCache) WithLogger(logger *zap.SugaredLogger) *ResolverCache {
 	return &ResolverCache{logger: logger, cache: c.cache}
 }
 
-// TODO(twoGiants): implement this feature => doesn't look right as it currently is
-// InitializeFromConfigMap initializes the cache with configuration from a ConfigMap
+// InitializeFromConfigMap initializes the cache with configuration from a ConfigMap.
+// This method should be called via injection.InitializeSharedCache which ensures it's only
+// called once using sync.Once to prevent recreating the cache and losing cached data.
 func (c *ResolverCache) InitializeFromConfigMap(configMap *corev1.ConfigMap) {
 	// Set defaults
 	maxSize := DefaultCacheSize
