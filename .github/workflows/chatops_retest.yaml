@@ -61,7 +61,7 @@ jobs:
 
     - name: Create comment
       if: ${{ failure() && steps.landStack.outcome == 'failure' }}
-      uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
+      uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
       with:
         token: ${{ secrets.CHATOPS_TOKEN }}
         repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
@@ -73,7 +73,7 @@ jobs:
 
     - name: Add reaction
       if: ${{ success() }}
-      uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
+      uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
       with:
         token: ${{ secrets.CHATOPS_TOKEN }}
         repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
