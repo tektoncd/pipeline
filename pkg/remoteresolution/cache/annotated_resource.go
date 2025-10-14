@@ -40,14 +40,14 @@ const (
 	CacheOperationRetrieve = "retrieve"
 )
 
-// AnnotatedResource wraps a ResolvedResource with cache annotations
-type AnnotatedResource struct {
+// annotatedResource wraps a ResolvedResource with cache annotations
+type annotatedResource struct {
 	resource    resolutionframework.ResolvedResource
 	annotations map[string]string
 }
 
-// NewAnnotatedResource creates a new AnnotatedResource with cache annotations
-func NewAnnotatedResource(resource resolutionframework.ResolvedResource, resolverType, operation string) *AnnotatedResource {
+// newAnnotatedResource creates a new annotatedResource with cache annotations
+func newAnnotatedResource(resource resolutionframework.ResolvedResource, resolverType, operation string) *annotatedResource {
 	annotations := resource.Annotations()
 	if annotations == nil {
 		annotations = make(map[string]string)
@@ -58,23 +58,23 @@ func NewAnnotatedResource(resource resolutionframework.ResolvedResource, resolve
 	annotations[cacheResolverTypeKey] = resolverType
 	annotations[cacheOperationKey] = operation
 
-	return &AnnotatedResource{
+	return &annotatedResource{
 		resource:    resource,
 		annotations: annotations,
 	}
 }
 
 // Data returns the bytes of the resource
-func (a *AnnotatedResource) Data() []byte {
+func (a *annotatedResource) Data() []byte {
 	return a.resource.Data()
 }
 
 // Annotations returns the annotations with cache metadata
-func (a *AnnotatedResource) Annotations() map[string]string {
+func (a *annotatedResource) Annotations() map[string]string {
 	return a.annotations
 }
 
 // RefSource returns the source reference of the remote data
-func (a *AnnotatedResource) RefSource() *v1.RefSource {
+func (a *annotatedResource) RefSource() *v1.RefSource {
 	return a.resource.RefSource()
 }

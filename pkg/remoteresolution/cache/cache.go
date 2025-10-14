@@ -103,7 +103,7 @@ func (c *ResolverCache) Get(resolverType string, params []pipelinev1.Param) (res
 	}
 
 	c.infow("Cache hit", "key", key)
-	return NewAnnotatedResource(resource, resolverType, CacheOperationRetrieve), true
+	return newAnnotatedResource(resource, resolverType, CacheOperationRetrieve), true
 }
 
 func (c *ResolverCache) infow(msg string, keysAndValues ...any) {
@@ -120,7 +120,7 @@ func (c *ResolverCache) Add(
 	key := generateCacheKey(resolverType, params)
 	c.infow("Adding to cache", "key", key, "expiration", defaultExpiration)
 
-	annotatedResource := NewAnnotatedResource(resource, resolverType, CacheOperationStore)
+	annotatedResource := newAnnotatedResource(resource, resolverType, CacheOperationStore)
 
 	c.cache.Add(key, annotatedResource, defaultExpiration)
 

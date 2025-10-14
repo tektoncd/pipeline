@@ -33,7 +33,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/internal/resolution"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	cacheinjection "github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	cluster "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/cluster"
 	frtesting "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/testing"
@@ -628,15 +627,8 @@ func TestResolveWithCacheHit(t *testing.T) {
 		t.Fatalf("Expected no error, got: %v", err)
 	}
 
-	// TODO(twoGiants): fix this
-	// Verify it's an annotated resource (indicating it came from cache)
-	annotatedResource, ok := result.(*cache.AnnotatedResource)
-	if !ok {
-		t.Fatal("Expected annotated resource from cache")
-	}
-
 	// Verify annotations indicate it came from cache
-	annotations := annotatedResource.Annotations()
+	annotations := result.Annotations()
 	if annotations["resolution.tekton.dev/cached"] != "true" {
 		t.Error("Expected cached annotation to be true")
 	}
