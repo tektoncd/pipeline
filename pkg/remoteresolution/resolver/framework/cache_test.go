@@ -17,6 +17,7 @@ limitations under the License.
 package framework
 
 import (
+	"strings"
 	"testing"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -27,8 +28,15 @@ import (
 
 type resolverFake struct{}
 
-func (r *resolverFake) IsImmutable([]pipelinev1.Param) bool {
-	return true
+func (r *resolverFake) IsImmutable(params []pipelinev1.Param) bool {
+	// Check if bundle parameter contains a digest (@sha256:)
+	for _, param := range params {
+		if param.Name == bundleresolution.ParamBundle {
+			bundleRef := param.Value.StringVal
+			return strings.Contains(bundleRef, "@sha256:")
+		}
+	}
+	return false
 }
 
 func TestShouldUseCachePrecedence(t *testing.T) {
