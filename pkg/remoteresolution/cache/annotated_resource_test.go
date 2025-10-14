@@ -77,7 +77,7 @@ func TestNewAnnotatedResource(t *testing.T) {
 			}
 
 			// Create annotated resource
-			annotated := NewAnnotatedResource(mockResource, tt.resolverType, CacheOperationStore)
+			annotated := newAnnotatedResource(mockResource, tt.resolverType, CacheOperationStore)
 
 			// Verify data is preserved
 			if string(annotated.Data()) != "test data" {
@@ -137,7 +137,7 @@ func TestNewAnnotatedResourceWithNilAnnotations(t *testing.T) {
 	}
 
 	// Create annotated resource
-	annotated := NewAnnotatedResource(mockResource, "bundles", CacheOperationStore)
+	annotated := newAnnotatedResource(mockResource, "bundles", CacheOperationStore)
 
 	// Verify annotations map is created
 	annotations := annotated.Annotations()
@@ -173,7 +173,7 @@ func TestAnnotatedResourcePreservesOriginal(t *testing.T) {
 	}
 
 	// Create annotated resource
-	annotated := NewAnnotatedResource(mockResource, "git", CacheOperationStore)
+	annotated := newAnnotatedResource(mockResource, "git", CacheOperationStore)
 
 	// Verify original resource is not modified
 	if string(mockResource.Data()) != "original data" {
@@ -217,7 +217,7 @@ func TestNewAnnotatedResourceWithRetrieveOperation(t *testing.T) {
 	}
 
 	// Create annotated resource with retrieve operation
-	annotated := NewAnnotatedResource(mockResource, "bundles", CacheOperationRetrieve)
+	annotated := newAnnotatedResource(mockResource, "bundles", CacheOperationRetrieve)
 
 	// Verify cache operation is set correctly
 	annotations := annotated.Annotations()
