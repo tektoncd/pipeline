@@ -30,7 +30,6 @@ import (
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
-	cacheinjection "github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
