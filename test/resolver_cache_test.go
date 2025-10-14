@@ -55,20 +55,6 @@ var cacheGitFeatureFlags = requireAllGates(map[string]string{
 	"enable-api-fields":   "beta",
 })
 
-// TODO(twoGiants): duplicated in util.go
-// clearCache clears the injection cache to ensure a clean state for tests
-func clearCache(ctx context.Context) {
-	// Clear cache using injection-based instance
-	cacheInstance := cacheinjection.GetResolverCache(ctx)
-	cacheInstance.Clear()
-	// Verify cache is cleared by attempting to retrieve a known key
-	// If cache is properly cleared, this should return nil
-	if result, found := cacheInstance.DEPRECATED_Get("test-verification-key"); found || result != nil {
-		// This should not happen with a properly functioning cache
-		panic("Cache clear verification failed: cache not properly cleared")
-	}
-}
-
 // TestBundleResolverCache validates that bundle resolver caching works correctly
 func TestBundleResolverCache(t *testing.T) {
 	ctx := t.Context()
@@ -80,7 +66,7 @@ func TestBundleResolverCache(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	// Clear the cache to ensure we start with a clean state
-	clearCache(ctx)
+	clearResolverCaches(ctx)
 
 	// Set up local bundle registry with different repositories for each task
 	taskName1 := helpers.ObjectNameForTest(t) + "-1"
@@ -263,7 +249,7 @@ func TestResolverCacheConfiguration(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	// Clear the cache to ensure we start with a clean state
-	clearCache(ctx)
+	clearResolverCaches(ctx)
 
 	// Set up local bundle registry
 	taskName := helpers.ObjectNameForTest(t)

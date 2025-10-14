@@ -71,12 +71,17 @@ var (
 	ignoreSAPipelineRunSpec = cmpopts.IgnoreFields(v1.PipelineTaskRunTemplate{}, "ServiceAccountName")
 )
 
-// TODO(twoGiants): duplicated in resolver_cache_test.go
 // clearResolverCaches clears the shared resolver cache to ensure test isolation
 func clearResolverCaches(ctx context.Context) {
-	// Clear the injection cache used by all resolvers
-	cache := cacheinjection.GetResolverCache(ctx)
-	cache.Clear()
+	// Clear cache using injection-based instance
+	cacheInstance := cacheinjection.GetResolverCache(ctx)
+	cacheInstance.Clear()
+	// Verify cache is cleared by attempting to retrieve a known key
+	// If cache is properly cleared, this should return nil
+	if result, found := cacheInstance.DEPRECATED_Get("test-verification-key"); found || result != nil {
+		// This should not happen with a properly functioning cache
+		panic("Cache clear verification failed: cache not properly cleared")
+	}
 }
 
 func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
