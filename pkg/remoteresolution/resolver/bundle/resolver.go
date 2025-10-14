@@ -114,18 +114,24 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		return nil, errors.New("no params")
 	}
 
+	// Ensure resolveRequestFunc is set (handles case where Initialize wasn't called)
+	resolveFunc := r.resolveRequestFunc
+	if resolveFunc == nil {
+		resolveFunc = bundleresolution.ResolveRequest
+	}
+
 	if r.useCache(ctx, req) {
 		return framework.RunCommonCacheOperations(
 			ctx,
 			req.Params,
 			LabelValueBundleResolverType,
 			func() (resolutionframework.ResolvedResource, error) {
-				return r.resolveRequestFunc(ctx, r.kubeClientSet, req)
+				return resolveFunc(ctx, r.kubeClientSet, req)
 			},
 		)
 	}
 
-	return r.resolveRequestFunc(ctx, r.kubeClientSet, req)
+	return resolveFunc(ctx, r.kubeClientSet, req)
 }
 
 func (r *Resolver) useCache(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
