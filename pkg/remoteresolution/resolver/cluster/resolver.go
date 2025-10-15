@@ -19,20 +19,14 @@ package cluster
 import (
 	"context"
 
-	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
-	cacheinjection "github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	clusterresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	"knative.dev/pkg/logging"
-	"knative.dev/pkg/system"
 )
 
 const (
@@ -54,26 +48,9 @@ type Resolver struct {
 	pipelineClientSet versioned.Interface
 }
 
-// Initialize sets up any dependencies needed by the Resolver including cache configuration.
+// Initialize sets up any dependencies needed by the Resolver.
 func (r *Resolver) Initialize(ctx context.Context) error {
 	r.pipelineClientSet = pipelineclient.Get(ctx)
-
-	// Initialize shared cache from ConfigMap if available
-	logger := logging.FromContext(ctx)
-	kubeClient := kubeclient.Get(ctx)
-
-	// Try to load cache configuration from ConfigMap
-	configMap, err := kubeClient.CoreV1().ConfigMaps(resolverconfig.ResolversNamespace(system.Namespace())).Get(
-		ctx, "resolver-cache-config", metav1.GetOptions{})
-	if err != nil {
-		// Log but don't fail if ConfigMap doesn't exist - cache will use defaults
-		logger.Debugf("Could not load resolver-cache-config ConfigMap: %v. Using default cache configuration.", err)
-	} else {
-		// Initialize the shared cache with ConfigMap settings (only happens once)
-		cacheinjection.InitializeSharedCache(configMap)
-		logger.Info("Initialized resolver cache from ConfigMap")
-	}
-
 	return nil
 }
 
