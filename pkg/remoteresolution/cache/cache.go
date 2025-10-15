@@ -61,8 +61,8 @@ func (c *ResolverCache) WithLogger(logger *zap.SugaredLogger) *ResolverCache {
 }
 
 // InitializeFromConfigMap initializes the cache with configuration from a ConfigMap.
-// This method should be called via injection.InitializeSharedCache which ensures it's only
-// called once using sync.Once to prevent recreating the cache and losing cached data.
+// This method should be called once at startup from main() via injection.InitializeSharedCache
+// to prevent recreating the cache and losing cached data.
 func (c *ResolverCache) InitializeFromConfigMap(configMap *corev1.ConfigMap) {
 	// Set defaults
 	maxSize := DefaultCacheSize
