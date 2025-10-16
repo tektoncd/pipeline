@@ -28,15 +28,15 @@ import (
 
 	"sync"
 
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
-	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/system"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
-	"knative.dev/pkg/system"
 )
 
 const (
