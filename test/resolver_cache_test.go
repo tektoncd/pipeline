@@ -30,11 +30,13 @@ import (
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
+	"knative.dev/pkg/system"
 )
 
 const (
@@ -53,6 +55,35 @@ var cacheGitFeatureFlags = requireAllGates(map[string]string{
 	"enable-git-resolver": "true",
 	"enable-api-fields":   "beta",
 })
+
+// getResolverPodLogs gets logs from the tekton-resolvers pod
+func getResolverPodLogs(ctx context.Context, t *testing.T, c *clients) string {
+	t.Helper()
+
+	resolverNamespace := resolverconfig.ResolversNamespace(system.Namespace())
+
+	// List pods in the resolver namespace
+	pods, err := c.KubeClient.CoreV1().Pods(resolverNamespace).List(ctx, metav1.ListOptions{
+		LabelSelector: "app.kubernetes.io/name=resolvers",
+	})
+	if err != nil {
+		t.Fatalf("Failed to list resolver pods in namespace %s: %v", resolverNamespace, err)
+	}
+
+	if len(pods.Items) == 0 {
+		t.Fatalf("No resolver pods found in namespace %s", resolverNamespace)
+	}
+
+	// Get logs from the first resolver pod
+	pod := pods.Items[0]
+	req := c.KubeClient.CoreV1().Pods(resolverNamespace).GetLogs(pod.Name, &corev1.PodLogOptions{})
+	logs, err := req.DoRaw(ctx)
+	if err != nil {
+		t.Fatalf("Failed to get logs from resolver pod %s: %v", pod.Name, err)
+	}
+
+	return string(logs)
+}
 
 // TestBundleResolverCache validates that bundle resolver caching works correctly
 func TestBundleResolverCache(t *testing.T) {
@@ -158,6 +189,22 @@ spec:
 	// Verify cache annotations have correct values
 	if resolutionRequest2.Status.Annotations[CacheResolverTypeKey] != "bundles" {
 		t.Errorf("Expected resolver type 'bundles', got '%s'", resolutionRequest2.Status.Annotations[CacheResolverTypeKey])
+	}
+
+	// Verify resolver logs show cache behavior
+	logs := getResolverPodLogs(ctx, t, c)
+
+	// Check for cache miss on first request (should see "Cache miss" followed by "Adding to cache")
+	if !strings.Contains(logs, "Cache miss") {
+		t.Error("Expected to find 'Cache miss' in resolver logs for first request")
+	}
+	if !strings.Contains(logs, "Adding to cache") {
+		t.Error("Expected to find 'Adding to cache' in resolver logs for first request")
+	}
+
+	// Check for cache hit on second request
+	if !strings.Contains(logs, "Cache hit") {
+		t.Error("Expected to find 'Cache hit' in resolver logs for second request")
 	}
 
 	// Test 3: Request with different parameters should not be cached
