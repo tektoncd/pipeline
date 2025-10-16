@@ -222,7 +222,15 @@ func TestValidateMissing(t *testing.T) {
 }
 
 func TestResolveDisabled(t *testing.T) {
+	ctx, _ := ttesting.SetupFakeContext(t)
+
 	resolver := bundle.Resolver{}
+	if err := resolver.Initialize(ctx); err != nil {
+		t.Fatalf("failed to initialize resolver: %v", err)
+	}
+
+	// Now overlay the disabled context on top
+	ctx = resolverDisabledContext()
 
 	var err error
 
@@ -240,7 +248,7 @@ func TestResolveDisabled(t *testing.T) {
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	req := v1beta1.ResolutionRequestSpec{Params: params}
-	_, err = resolver.Resolve(resolverDisabledContext(), &req)
+	_, err = resolver.Resolve(ctx, &req)
 	if err == nil {
 		t.Fatalf("expected disabled err")
 	}

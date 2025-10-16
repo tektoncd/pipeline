@@ -528,8 +528,13 @@ func resolverDisabledContext() context.Context {
 }
 
 func TestResolveWithDisabledResolver(t *testing.T) {
-	ctx := frameworktesting.ContextWithClusterResolverDisabled(t.Context())
+	ctx, _ := ttesting.SetupFakeContext(t)
+	ctx = frameworktesting.ContextWithClusterResolverDisabled(ctx)
 	resolver := &cluster.Resolver{}
+
+	if err := resolver.Initialize(ctx); err != nil {
+		t.Fatalf("failed to initialize resolver: %v", err)
+	}
 
 	req := &v1beta1.ResolutionRequestSpec{
 		Params: []pipelinev1.Param{
@@ -550,13 +555,18 @@ func TestResolveWithDisabledResolver(t *testing.T) {
 }
 
 func TestResolveWithNoParams(t *testing.T) {
+	ctx, _ := ttesting.SetupFakeContext(t)
 	resolver := &cluster.Resolver{}
+
+	if err := resolver.Initialize(ctx); err != nil {
+		t.Fatalf("failed to initialize resolver: %v", err)
+	}
 
 	req := &v1beta1.ResolutionRequestSpec{
 		Params: []pipelinev1.Param{},
 	}
 
-	_, err := resolver.Resolve(t.Context(), req)
+	_, err := resolver.Resolve(ctx, req)
 	if err == nil {
 		t.Error("Expected error when no params provided")
 	}
@@ -566,7 +576,12 @@ func TestResolveWithNoParams(t *testing.T) {
 }
 
 func TestResolveWithInvalidParams(t *testing.T) {
+	ctx, _ := ttesting.SetupFakeContext(t)
 	resolver := &cluster.Resolver{}
+
+	if err := resolver.Initialize(ctx); err != nil {
+		t.Fatalf("failed to initialize resolver: %v", err)
+	}
 
 	req := &v1beta1.ResolutionRequestSpec{
 		Params: []pipelinev1.Param{
@@ -574,7 +589,7 @@ func TestResolveWithInvalidParams(t *testing.T) {
 		},
 	}
 
-	_, err := resolver.Resolve(t.Context(), req)
+	_, err := resolver.Resolve(ctx, req)
 	if err == nil {
 		t.Error("Expected error with invalid params")
 	}
@@ -586,8 +601,12 @@ func TestResolveWithInvalidParams(t *testing.T) {
 // TODO(twoGiants): FIX broken test
 func TestResolveWithCacheHit(t *testing.T) {
 	// Test that cache hits work correctly
-	ctx := t.Context()
+	ctx, _ := ttesting.SetupFakeContext(t)
 	resolver := &cluster.Resolver{}
+
+	if err := resolver.Initialize(ctx); err != nil {
+		t.Fatalf("failed to initialize resolver: %v", err)
+	}
 
 	// Create a mock cached resource
 	mockResource := &clusterresolution.ResolvedClusterResource{

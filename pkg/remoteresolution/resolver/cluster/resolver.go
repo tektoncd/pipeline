@@ -18,6 +18,7 @@ package cluster
 
 import (
 	"context"
+	"errors"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
@@ -87,6 +88,11 @@ func (r *Resolver) IsImmutable([]v1.Param) bool {
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
+	// Verify resolver was initialized - pipelineClientSet must be set by Initialize()
+	if r.pipelineClientSet == nil {
+		return nil, errors.New("cluster resolver not properly initialized: Initialize() must be called before Resolve()")
+	}
+
 	if r.useCache(ctx, req) {
 		return framework.RunCommonCacheOperations(
 			ctx,
