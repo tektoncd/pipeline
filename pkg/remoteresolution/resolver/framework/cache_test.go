@@ -17,6 +17,7 @@ limitations under the License.
 package framework
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -117,6 +118,22 @@ func TestShouldUseCachePrecedence(t *testing.T) {
 			expected:       true,                                            // task wins: always = cache
 			description:    "Task says always, ConfigMap says auto, task should win",
 		},
+		{
+			name:           "invalid_task_cache_param_falls_back_to_auto",
+			taskCacheParam: "invalid-value",                  // task has invalid cache value
+			configMap:      map[string]string{},              // no ConfigMap setting
+			bundleRef:      "registry.io/repo@sha256:abcdef", // has digest
+			expected:       true,                             // invalid defaults to auto + digest = cache
+			description:    "Invalid task cache parameter should fall back to auto mode",
+		},
+		{
+			name:           "invalid_configmap_value_falls_back_to_auto",
+			taskCacheParam: "",                                               // no task param
+			configMap:      map[string]string{"default-cache-mode": "wrong"}, // invalid ConfigMap value
+			bundleRef:      "registry.io/repo@sha256:abcdef",                 // has digest
+			expected:       true,                                             // invalid defaults to auto + digest = cache
+			description:    "Invalid ConfigMap cache mode should fall back to auto mode",
+		},
 	}
 
 	for _, tt := range tests {
@@ -152,4 +169,175 @@ func TestShouldUseCachePrecedence(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestValidateCacheMode(t *testing.T) {
+	tests := []struct {
+		name      string
+		cacheMode string
+		wantErr   bool
+	}{
+		{
+			name:      "valid always mode",
+			cacheMode: "always",
+			wantErr:   false,
+		},
+		{
+			name:      "valid never mode",
+			cacheMode: "never",
+			wantErr:   false,
+		},
+		{
+			name:      "valid auto mode",
+			cacheMode: "auto",
+			wantErr:   false,
+		},
+		{
+			name:      "invalid mode",
+			cacheMode: "invalid",
+			wantErr:   true,
+		},
+		{
+			name:      "empty mode",
+			cacheMode: "",
+			wantErr:   true,
+		},
+		{
+			name:      "uppercase mode",
+			cacheMode: "ALWAYS",
+			wantErr:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateCacheMode(tt.cacheMode)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateCacheMode() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRunCommonCacheOperations(t *testing.T) {
+	tests := []struct {
+		name         string
+		params       []pipelinev1.Param
+		resolverType string
+		cacheHit     bool
+		resolveErr   error
+		description  string
+	}{
+		{
+			name: "cache hit",
+			params: []pipelinev1.Param{
+				{
+					Name:  bundleresolution.ParamBundle,
+					Value: pipelinev1.ParamValue{StringVal: "registry.io/repo@sha256:abcdef"},
+				},
+			},
+			resolverType: bundleresolution.LabelValueBundleResolverType,
+			cacheHit:     true,
+			description:  "Should return cached resource",
+		},
+		{
+			name: "cache miss - successful resolve",
+			params: []pipelinev1.Param{
+				{
+					Name:  bundleresolution.ParamBundle,
+					Value: pipelinev1.ParamValue{StringVal: "registry.io/repo:latest"},
+				},
+			},
+			resolverType: bundleresolution.LabelValueBundleResolverType,
+			cacheHit:     false,
+			description:  "Should resolve and add to cache",
+		},
+		{
+			name: "cache miss - resolve error",
+			params: []pipelinev1.Param{
+				{
+					Name:  bundleresolution.ParamBundle,
+					Value: pipelinev1.ParamValue{StringVal: "registry.io/repo:error"},
+				},
+			},
+			resolverType: bundleresolution.LabelValueBundleResolverType,
+			cacheHit:     false,
+			resolveErr:   errors.New("resolve error"),
+			description:  "Should return error from resolver",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+
+			// Create mock resolver function
+			resolveCalled := false
+			resolveFn := func() (resolutionframework.ResolvedResource, error) {
+				resolveCalled = true
+				if tt.resolveErr != nil {
+					return nil, tt.resolveErr
+				}
+				return &mockResolvedResource{data: []byte("test data")}, nil
+			}
+
+			// If this is a cache hit test, pre-populate the cache
+			if tt.cacheHit {
+				// We need to set up the cache first by calling the function once
+				_, _ = RunCommonCacheOperations(ctx, tt.params, tt.resolverType, resolveFn)
+				resolveCalled = false // Reset for actual test
+			}
+
+			// Run the actual test
+			result, err := RunCommonCacheOperations(ctx, tt.params, tt.resolverType, resolveFn)
+
+			// Verify error handling
+			if tt.resolveErr != nil {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+				return
+			}
+
+			// Verify result
+			if result == nil {
+				t.Errorf("Expected result but got nil")
+				return
+			}
+
+			// Verify cache behavior
+			if tt.cacheHit && resolveCalled {
+				t.Errorf("Expected cache hit but resolve function was called")
+			}
+			if !tt.cacheHit && !resolveCalled {
+				t.Errorf("Expected cache miss but resolve function was not called")
+			}
+		})
+	}
+}
+
+// mockResolvedResource implements resolutionframework.ResolvedResource for testing
+type mockResolvedResource struct {
+	data []byte
+}
+
+func (m *mockResolvedResource) Data() []byte {
+	return m.data
+}
+
+func (m *mockResolvedResource) Annotations() map[string]string {
+	return map[string]string{}
+}
+
+func (m *mockResolvedResource) RefSource() *pipelinev1.RefSource {
+	return nil
+}
+
+func (m *mockResolvedResource) Checksum() string {
+	return ""
 }
