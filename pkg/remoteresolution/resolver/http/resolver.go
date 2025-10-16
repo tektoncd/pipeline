@@ -82,6 +82,11 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		return nil, errors.New(disabledError)
 	}
 
+	// Verify resolver was initialized - critical fields must be set by Initialize()
+	if r.kubeClient == nil || r.logger == nil {
+		return nil, errors.New("http resolver not properly initialized: Initialize() must be called before Resolve()")
+	}
+
 	params, err := http.PopulateDefaultParams(ctx, req.Params)
 	if err != nil {
 		return nil, err

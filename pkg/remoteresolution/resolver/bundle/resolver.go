@@ -114,7 +114,12 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		return nil, errors.New("no params")
 	}
 
-	// Ensure resolveRequestFunc is set (handles case where Initialize wasn't called)
+	// Verify resolver was initialized - kubeClientSet must be set by Initialize()
+	if r.kubeClientSet == nil {
+		return nil, errors.New("bundle resolver not properly initialized: Initialize() must be called before Resolve()")
+	}
+
+	// Defensive: set default resolveRequestFunc if somehow nil
 	resolveFunc := r.resolveRequestFunc
 	if resolveFunc == nil {
 		resolveFunc = bundleresolution.ResolveRequest
