@@ -14,45 +14,46 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package injection
+package cache
 
 import (
 	"context"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
+
 	logtesting "knative.dev/pkg/logging/testing"
 )
 
-func TestGetResolverCache(t *testing.T) {
+func TestGet(t *testing.T) {
 	ctx := logtesting.TestContextWithLogger(t)
 
 	// Test getting cache from context
-	resolverCache := GetResolverCache(ctx)
+	resolverCache := Get(ctx)
 	if resolverCache == nil {
 		t.Error("Expected resolver cache but got nil")
 	}
 
-	// GetResolverCache creates a new wrapper with logger each time
+	// Get creates a new wrapper with logger each time
 	// but the underlying cache data is shared
-	resolverCache2 := GetResolverCache(ctx)
+	resolverCache2 := Get(ctx)
 	if resolverCache2 == nil {
 		t.Error("Expected resolver cache but got nil on second call")
 	}
 }
 
-func TestGetResolverCacheWithContextValue(t *testing.T) {
+func TestGetWithContextValue(t *testing.T) {
 	logger := logtesting.TestLogger(t)
 	ctx := t.Context()
 
 	// Create a cache and inject it into context
-	testCache := cache.NewResolverCache(100).WithLogger(logger)
-	ctx = context.WithValue(ctx, key{}, testCache)
+	testCache := newResolverCache(100).withLogger(logger)
+	ctx = context.WithValue(ctx, resolverCacheKey{}, testCache)
 
 	// Get cache from context
-	resolverCache := GetResolverCache(ctx)
+	resolverCache := Get(ctx)
 	if resolverCache == nil {
 		t.Error("Expected resolver cache but got nil")
 	}
@@ -62,12 +63,12 @@ func TestGetResolverCacheWithContextValue(t *testing.T) {
 	}
 }
 
-func TestGetResolverCacheFallback(t *testing.T) {
+func TestGetFallback(t *testing.T) {
 	// Create a plain context without any injected cache
 	ctx := logtesting.TestContextWithLogger(t)
 
 	// Should fall back to shared cache
-	resolverCache := GetResolverCache(ctx)
+	resolverCache := Get(ctx)
 	if resolverCache == nil {
 		t.Error("Expected resolver cache but got nil")
 	}
@@ -89,7 +90,7 @@ func TestInitializeSharedCache(t *testing.T) {
 
 	// Verify we can still get the cache
 	ctx := logtesting.TestContextWithLogger(t)
-	resolverCache := GetResolverCache(ctx)
+	resolverCache := Get(ctx)
 	if resolverCache == nil {
 		t.Error("Expected resolver cache after initialization but got nil")
 	}
@@ -101,7 +102,7 @@ func TestInitializeSharedCacheWithNil(t *testing.T) {
 
 	// Verify we can still get the cache
 	ctx := logtesting.TestContextWithLogger(t)
-	resolverCache := GetResolverCache(ctx)
+	resolverCache := Get(ctx)
 	if resolverCache == nil {
 		t.Error("Expected resolver cache after initialization with nil but got nil")
 	}
@@ -113,13 +114,13 @@ func TestCacheSharing(t *testing.T) {
 	ctx2 := logtesting.TestContextWithLogger(t)
 
 	// Get cache from first context
-	cache1 := GetResolverCache(ctx1)
+	cache1 := Get(ctx1)
 	if cache1 == nil {
 		t.Fatal("Expected cache from ctx1")
 	}
 
 	// Get cache from second context
-	cache2 := GetResolverCache(ctx2)
+	cache2 := Get(ctx2)
 	if cache2 == nil {
 		t.Fatal("Expected cache from ctx2")
 	}

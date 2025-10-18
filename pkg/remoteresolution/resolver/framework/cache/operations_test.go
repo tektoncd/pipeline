@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package framework
+package cache
 
 import (
 	"errors"
@@ -161,11 +161,11 @@ func TestShouldUseCachePrecedence(t *testing.T) {
 			}
 
 			// Test the framework function
-			result := ShouldUseCache(ctx, &resolverFake{}, req.Params, bundleresolution.LabelValueBundleResolverType)
+			result := ShouldUse(ctx, &resolverFake{}, req.Params, bundleresolution.LabelValueBundleResolverType)
 
 			// Verify result
 			if result != tt.expected {
-				t.Errorf("ShouldUseCache() = %v, expected %v\nDescription: %s", result, tt.expected, tt.description)
+				t.Errorf("ShouldUse() = %v, expected %v\nDescription: %s", result, tt.expected, tt.description)
 			}
 		})
 	}
@@ -219,7 +219,7 @@ func TestValidateCacheMode(t *testing.T) {
 	}
 }
 
-func TestRunCommonCacheOperations(t *testing.T) {
+func TestUseCache(t *testing.T) {
 	tests := []struct {
 		name         string
 		params       []pipelinev1.Param
@@ -281,15 +281,16 @@ func TestRunCommonCacheOperations(t *testing.T) {
 				return &mockResolvedResource{data: []byte("test data")}, nil
 			}
 
+			// TODO(twoGiants): doesn't look right => fix test
 			// If this is a cache hit test, pre-populate the cache
 			if tt.cacheHit {
 				// We need to set up the cache first by calling the function once
-				_, _ = RunCommonCacheOperations(ctx, tt.params, tt.resolverType, resolveFn)
+				_, _ = Use(ctx, tt.params, tt.resolverType, resolveFn)
 				resolveCalled = false // Reset for actual test
 			}
 
 			// Run the actual test
-			result, err := RunCommonCacheOperations(ctx, tt.params, tt.resolverType, resolveFn)
+			result, err := Use(ctx, tt.params, tt.resolverType, resolveFn)
 
 			// Verify error handling
 			if tt.resolveErr != nil {
@@ -319,25 +320,4 @@ func TestRunCommonCacheOperations(t *testing.T) {
 			}
 		})
 	}
-}
-
-// mockResolvedResource implements resolutionframework.ResolvedResource for testing
-type mockResolvedResource struct {
-	data []byte
-}
-
-func (m *mockResolvedResource) Data() []byte {
-	return m.data
-}
-
-func (m *mockResolvedResource) Annotations() map[string]string {
-	return map[string]string{}
-}
-
-func (m *mockResolvedResource) RefSource() *pipelinev1.RefSource {
-	return nil
-}
-
-func (m *mockResolvedResource) Checksum() string {
-	return ""
 }

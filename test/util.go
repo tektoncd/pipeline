@@ -29,12 +29,11 @@ import (
 	"testing"
 	"time"
 
-	cacheinjection "github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
-
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -71,25 +70,11 @@ var (
 	ignoreSAPipelineRunSpec = cmpopts.IgnoreFields(v1.PipelineTaskRunTemplate{}, "ServiceAccountName")
 )
 
-// clearResolverCaches clears the shared resolver cache to ensure test isolation
-func clearResolverCaches(ctx context.Context) {
-	// Clear cache using injection-based instance
-	cacheInstance := cacheinjection.GetResolverCache(ctx)
-	cacheInstance.Clear()
-	// Verify cache is cleared by attempting to retrieve a known key
-	// If cache is properly cleared, this should return nil
-	if result, found := cacheInstance.DEPRECATED_Get("test-verification-key"); found || result != nil {
-		// This should not happen with a properly functioning cache
-		panic("Cache clear verification failed: cache not properly cleared")
-	}
-}
-
 func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
 	t.Helper()
 	skipIfExcluded(t)
 
-	// Clear resolver caches to ensure test isolation
-	clearResolverCaches(ctx)
+	cache.Get(ctx).Clear()
 
 	namespace := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("arendelle")
 

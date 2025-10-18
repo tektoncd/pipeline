@@ -25,10 +25,10 @@ import (
 
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
-	cacheinjection "github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/bundle"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/cluster"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/git"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/http"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/hub"
@@ -84,7 +84,7 @@ func main() {
 	if err != nil {
 		logger.Debugf("Could not load resolver-cache-config ConfigMap: %v. Using default cache configuration.", err)
 	} else {
-		cacheinjection.InitializeSharedCache(configMap)
+		cache.InitializeSharedCache(configMap)
 		logger.Info("Initialized resolver cache from ConfigMap")
 	}
 

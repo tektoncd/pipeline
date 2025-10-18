@@ -26,6 +26,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
@@ -55,7 +56,7 @@ const (
 
 var _ framework.Resolver = (*Resolver)(nil)
 var _ resolutionframework.ConfigWatcher = (*Resolver)(nil)
-var _ framework.ImmutabilityChecker = (*Resolver)(nil)
+var _ cache.ImmutabilityChecker = (*Resolver)(nil)
 var _ resolutionframework.TimedResolution = (*Resolver)(nil)
 
 // Resolver implements a framework.Resolver that can fetch files from git.
@@ -136,9 +137,6 @@ func (r *Resolver) IsImmutable(params []v1.Param) bool {
 
 // GetResolutionTimeout returns the configured timeout for git resolution requests.
 func (r *Resolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time.Duration, params map[string]string) (time.Duration, error) {
-	if git.IsDisabled(ctx) {
-		return defaultTimeout, errors.New(disabledError)
-	}
 	conf, err := git.GetScmConfigForParamConfigKey(ctx, params)
 	if err != nil {
 		return time.Duration(0), err
@@ -174,8 +172,8 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		return nil, err
 	}
 
-	if r.useCache(ctx, req) {
-		return framework.RunCommonCacheOperations(
+	if cache.ShouldUse(ctx, r, req.Params, labelValueGitResolverType) {
+		return cache.Use(
 			ctx,
 			req.Params,
 			labelValueGitResolverType,
@@ -185,10 +183,6 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		)
 	}
 	return r.resolveViaGit(ctx, params)
-}
-
-func (r *Resolver) useCache(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
-	return framework.ShouldUseCache(ctx, r, req.Params, labelValueGitResolverType)
 }
 
 func (r *Resolver) resolveViaGit(ctx context.Context, params map[string]string) (resolutionframework.ResolvedResource, error) {

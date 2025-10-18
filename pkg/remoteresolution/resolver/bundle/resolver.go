@@ -24,6 +24,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	bundleresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/bundle"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
@@ -42,7 +43,7 @@ const (
 
 var _ framework.Resolver = (*Resolver)(nil)
 var _ resolutionframework.ConfigWatcher = (*Resolver)(nil)
-var _ framework.ImmutabilityChecker = (*Resolver)(nil)
+var _ cache.ImmutabilityChecker = (*Resolver)(nil)
 
 // Resolver implements a framework.Resolver that can fetch files from OCI bundles.
 type Resolver struct {
@@ -125,8 +126,8 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		resolveFunc = bundleresolution.ResolveRequest
 	}
 
-	if r.useCache(ctx, req) {
-		return framework.RunCommonCacheOperations(
+	if cache.ShouldUse(ctx, r, req.Params, LabelValueBundleResolverType) {
+		return cache.Use(
 			ctx,
 			req.Params,
 			LabelValueBundleResolverType,
@@ -137,8 +138,4 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	}
 
 	return resolveFunc(ctx, r.kubeClientSet, req)
-}
-
-func (r *Resolver) useCache(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
-	return framework.ShouldUseCache(ctx, r, req.Params, LabelValueBundleResolverType)
 }
