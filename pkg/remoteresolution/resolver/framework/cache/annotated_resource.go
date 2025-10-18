@@ -34,10 +34,10 @@ const (
 	cacheOperationKey = "resolution.tekton.dev/cache-operation"
 	// cacheValueTrue is the value used for cache annotations
 	cacheValueTrue = "true"
-	// CacheOperationStore is the value for cache store operations
-	CacheOperationStore = "store"
-	// CacheOperationRetrieve is the value for cache retrieve operations
-	CacheOperationRetrieve = "retrieve"
+	// cacheOperationStore is the value for cache store operations
+	cacheOperationStore = "store"
+	// cacheOperationRetrieve is the value for cache retrieve operations
+	cacheOperationRetrieve = "retrieve"
 )
 
 // annotatedResource wraps a ResolvedResource with cache annotations

@@ -77,7 +77,7 @@ func TestNewAnnotatedResource(t *testing.T) {
 			}
 
 			// Create annotated resource
-			annotated := newAnnotatedResource(mockResource, tt.resolverType, CacheOperationStore)
+			annotated := newAnnotatedResource(mockResource, tt.resolverType, cacheOperationStore)
 
 			// Verify data is preserved
 			if string(annotated.Data()) != "test data" {
@@ -107,8 +107,8 @@ func TestNewAnnotatedResource(t *testing.T) {
 			}
 
 			// Verify cache operation is set
-			if annotations[cacheOperationKey] != CacheOperationStore {
-				t.Errorf("Expected cache operation '%s', got '%s'", CacheOperationStore, annotations[cacheOperationKey])
+			if annotations[cacheOperationKey] != cacheOperationStore {
+				t.Errorf("Expected cache operation '%s', got '%s'", cacheOperationStore, annotations[cacheOperationKey])
 			}
 
 			// Verify existing annotations are preserved
@@ -137,7 +137,7 @@ func TestNewAnnotatedResourceWithNilAnnotations(t *testing.T) {
 	}
 
 	// Create annotated resource
-	annotated := newAnnotatedResource(mockResource, "bundles", CacheOperationStore)
+	annotated := newAnnotatedResource(mockResource, "bundles", cacheOperationStore)
 
 	// Verify annotations map is created
 	annotations := annotated.Annotations()
@@ -155,8 +155,8 @@ func TestNewAnnotatedResourceWithNilAnnotations(t *testing.T) {
 	}
 
 	// Verify cache operation is set
-	if annotations[cacheOperationKey] != CacheOperationStore {
-		t.Errorf("Expected cache operation '%s', got '%s'", CacheOperationStore, annotations[cacheOperationKey])
+	if annotations[cacheOperationKey] != cacheOperationStore {
+		t.Errorf("Expected cache operation '%s', got '%s'", cacheOperationStore, annotations[cacheOperationKey])
 	}
 }
 
@@ -173,7 +173,7 @@ func TestAnnotatedResourcePreservesOriginal(t *testing.T) {
 	}
 
 	// Create annotated resource
-	annotated := newAnnotatedResource(mockResource, "git", CacheOperationStore)
+	annotated := newAnnotatedResource(mockResource, "git", cacheOperationStore)
 
 	// Verify original resource is not modified
 	if string(mockResource.Data()) != "original data" {
@@ -199,8 +199,8 @@ func TestAnnotatedResourcePreservesOriginal(t *testing.T) {
 	}
 
 	// Verify cache operation is set correctly
-	if annotations[cacheOperationKey] != CacheOperationStore {
-		t.Errorf("Expected cache operation '%s', got '%s'", CacheOperationStore, annotations[cacheOperationKey])
+	if annotations[cacheOperationKey] != cacheOperationStore {
+		t.Errorf("Expected cache operation '%s', got '%s'", cacheOperationStore, annotations[cacheOperationKey])
 	}
 }
 
@@ -217,12 +217,12 @@ func TestNewAnnotatedResourceWithRetrieveOperation(t *testing.T) {
 	}
 
 	// Create annotated resource with retrieve operation
-	annotated := newAnnotatedResource(mockResource, "bundles", CacheOperationRetrieve)
+	annotated := newAnnotatedResource(mockResource, "bundles", cacheOperationRetrieve)
 
 	// Verify cache operation is set correctly
 	annotations := annotated.Annotations()
-	if annotations[cacheOperationKey] != CacheOperationRetrieve {
-		t.Errorf("Expected cache operation '%s', got '%s'", CacheOperationRetrieve, annotations[cacheOperationKey])
+	if annotations[cacheOperationKey] != cacheOperationRetrieve {
+		t.Errorf("Expected cache operation '%s', got '%s'", cacheOperationRetrieve, annotations[cacheOperationKey])
 	}
 
 	// Verify other annotations are still set

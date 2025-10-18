@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	clusterresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
@@ -42,7 +43,7 @@ const (
 
 var _ framework.Resolver = (*Resolver)(nil)
 var _ resolutionframework.ConfigWatcher = (*Resolver)(nil)
-var _ framework.ImmutabilityChecker = (*Resolver)(nil)
+var _ cache.ImmutabilityChecker = (*Resolver)(nil)
 
 // Resolver implements a framework.Resolver that can fetch resources from the same cluster.
 type Resolver struct {
@@ -93,8 +94,8 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		return nil, errors.New("cluster resolver not properly initialized: Initialize() must be called before Resolve()")
 	}
 
-	if r.useCache(ctx, req) {
-		return framework.RunCommonCacheOperations(
+	if cache.ShouldUse(ctx, r, req.Params, LabelValueClusterResolverType) {
+		return cache.Use(
 			ctx,
 			req.Params,
 			LabelValueClusterResolverType,
@@ -105,8 +106,4 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	}
 
 	return clusterresolution.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
-}
-
-func (r *Resolver) useCache(ctx context.Context, req *v1beta1.ResolutionRequestSpec) bool {
-	return framework.ShouldUseCache(ctx, r, req.Params, LabelValueClusterResolverType)
 }

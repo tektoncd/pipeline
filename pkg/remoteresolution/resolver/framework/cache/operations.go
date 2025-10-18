@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package framework
+package cache
 
 import (
 	"context"
@@ -22,15 +22,15 @@ import (
 	"slices"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
 
 const (
-	cacheModeAlways = "always"
-	cacheModeNever  = "never"
-	cacheModeAuto   = "auto"
-	CacheParam      = "cache"
+	cacheModeAlways              = "always"
+	cacheModeNever               = "never"
+	cacheModeAuto                = "auto"
+	CacheParam                   = "cache"
+	defaultCacheModeConfigMapKey = "default-cache-mode"
 )
 
 // ImmutabilityChecker extends the base Resolver interface with cache-specific methods.
@@ -39,11 +39,11 @@ type ImmutabilityChecker interface {
 	IsImmutable(params []v1.Param) bool
 }
 
-// ShouldUseCache determines whether caching should be used based on:
+// ShouldUse determines whether caching should be used based on:
 // 1. Task/Pipeline cache parameter (highest priority)
 // 2. ConfigMap default-cache-mode (middle priority)
 // 3. System default for resolver type (lowest priority)
-func ShouldUseCache(
+func ShouldUse(
 	ctx context.Context,
 	resolver ImmutabilityChecker,
 	params []v1.Param,
@@ -61,7 +61,7 @@ func ShouldUseCache(
 	// If no task parameter, get default from ConfigMap
 	if cacheMode == "" {
 		conf := resolutionframework.GetResolverConfigFromContext(ctx)
-		if defaultMode, ok := conf["default-cache-mode"]; ok {
+		if defaultMode, ok := conf[defaultCacheModeConfigMapKey]; ok {
 			cacheMode = defaultMode
 		}
 	}
@@ -102,13 +102,13 @@ func ValidateCacheMode(cacheMode string) error {
 
 type resolveFn = func() (resolutionframework.ResolvedResource, error)
 
-func RunCommonCacheOperations(
+func Use(
 	ctx context.Context,
 	params []v1.Param,
 	resolverType string,
 	resolve resolveFn,
 ) (resolutionframework.ResolvedResource, error) {
-	cacheInstance := injection.GetResolverCache(ctx)
+	cacheInstance := Get(ctx)
 
 	if cached, ok := cacheInstance.Get(resolverType, params); ok {
 		return cached, nil

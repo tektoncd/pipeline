@@ -40,7 +40,7 @@ func TestInitializeFromConfigMap(t *testing.T) {
 			name: "valid configuration",
 			configMap: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      GetCacheConfigName(),
+					Name:      getCacheConfigName(),
 					Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
 				},
 				Data: map[string]string{
@@ -55,7 +55,7 @@ func TestInitializeFromConfigMap(t *testing.T) {
 			name: "cache config with maxSize and expiration",
 			configMap: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      GetCacheConfigName(),
+					Name:      getCacheConfigName(),
 					Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
 				},
 				Data: map[string]string{
@@ -71,7 +71,7 @@ func TestInitializeFromConfigMap(t *testing.T) {
 			name: "cache config with invalid expiration",
 			configMap: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      GetCacheConfigName(),
+					Name:      getCacheConfigName(),
 					Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
 				},
 				Data: map[string]string{
@@ -86,7 +86,7 @@ func TestInitializeFromConfigMap(t *testing.T) {
 		{
 			name:           "nil config map",
 			configMap:      nil,
-			expectedSize:   DefaultCacheSize,
+			expectedSize:   defaultCacheSize,
 			expectedTTL:    defaultExpiration,
 			shouldRecreate: false,
 		},
@@ -98,10 +98,10 @@ func TestInitializeFromConfigMap(t *testing.T) {
 			originalTTL := defaultExpiration
 			defer func() { defaultExpiration = originalTTL }()
 
-			cache := NewResolverCache(DefaultCacheSize)
+			cache := newResolverCache(defaultCacheSize)
 			originalCache := cache.cache
 
-			cache.InitializeFromConfigMap(tt.configMap)
+			cache.initializeFromConfigMap(tt.configMap)
 
 			// Verify cache size
 			if tt.shouldRecreate && cache.cache == originalCache {
@@ -332,70 +332,5 @@ func TestGenerateCacheKey_AllParamTypes(t *testing.T) {
 	if keyWithCache != keyWithoutCache {
 		t.Errorf("Expected same keys for all param types, but got different:\nWith cache: %s\nWithout cache: %s",
 			keyWithCache, keyWithoutCache)
-	}
-}
-
-func TestResolverCache(t *testing.T) {
-	cache := NewResolverCache(DefaultCacheSize)
-
-	// Test adding and getting a value
-	key := "test-key"
-	value := "test-value"
-	cache.DEPRECATED_Add(key, value)
-
-	if got, ok := cache.DEPRECATED_Get(key); !ok || got != value {
-		t.Errorf("Get() = %v, %v, want %v, true", got, ok, value)
-	}
-
-	// Test expiration
-	shortExpiration := 100 * time.Millisecond
-	cache.DEPRECATED_AddWithExpiration("expiring-key", "expiring-value", shortExpiration)
-	time.Sleep(shortExpiration + 50*time.Millisecond)
-
-	if _, ok := cache.DEPRECATED_Get("expiring-key"); ok {
-		t.Error("Get() returned true for expired key")
-	}
-
-	// Test removed - using dependency injection instead of global cache
-
-	// Test that WithLogger creates new instances with logger
-	testCache := NewResolverCache(1000)
-	logger1 := testCache.WithLogger(nil)
-	logger2 := testCache.WithLogger(nil)
-	if logger1 == logger2 {
-		t.Error("WithLogger() should return different instances")
-	}
-}
-
-func TestResolverCacheOperations(t *testing.T) {
-	cache := NewResolverCache(100)
-
-	// Test Add and Get
-	key := "test-key"
-	value := "test-value"
-	cache.DEPRECATED_Add(key, value)
-
-	if v, found := cache.DEPRECATED_Get(key); !found || v != value {
-		t.Errorf("Expected to find value %v, got %v (found: %v)", value, v, found)
-	}
-
-	// Test Remove
-	cache.DEPRECATED_Remove(key)
-	if _, found := cache.DEPRECATED_Get(key); found {
-		t.Error("Expected key to be removed")
-	}
-
-	// Test AddWithExpiration
-	customTTL := 1 * time.Second
-	cache.DEPRECATED_AddWithExpiration(key, value, customTTL)
-
-	if v, found := cache.DEPRECATED_Get(key); !found || v != value {
-		t.Errorf("Expected to find value %v, got %v (found: %v)", value, v, found)
-	}
-
-	// Wait for expiration
-	time.Sleep(customTTL + 100*time.Millisecond)
-	if _, found := cache.DEPRECATED_Get(key); found {
-		t.Error("Expected key to be expired")
 	}
 }

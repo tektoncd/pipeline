@@ -31,6 +31,7 @@ import (
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -95,8 +96,7 @@ func TestBundleResolverCache(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	// Clear the cache to ensure we start with a clean state
-	clearResolverCaches(ctx)
+	cache.Get(ctx).Clear()
 
 	// Set up local bundle registry with different repositories for each task
 	taskName1 := helpers.ObjectNameForTest(t) + "-1"
@@ -294,8 +294,7 @@ func TestResolverCacheConfiguration(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	// Clear the cache to ensure we start with a clean state
-	clearResolverCaches(ctx)
+	cache.Get(ctx).Clear()
 
 	// Set up local bundle registry
 	taskName := helpers.ObjectNameForTest(t)

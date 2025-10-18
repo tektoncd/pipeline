@@ -33,8 +33,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/internal/resolution"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
-	cacheinjection "github.com/tektoncd/pipeline/pkg/remoteresolution/cache/injection"
 	cluster "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/cluster"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	frtesting "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	clusterresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
@@ -627,7 +627,7 @@ func TestResolveWithCacheHit(t *testing.T) {
 		{Name: "cache", Value: *pipelinev1.NewStructuredValues("always")},
 	}
 
-	cacheInstance := cacheinjection.GetResolverCache(ctx)
+	cacheInstance := cache.Get(ctx)
 
 	cacheInstance.Add(cluster.LabelValueClusterResolverType, params, mockResource)
 
