@@ -146,7 +146,7 @@ func (t ResolvedPipelineTask) IsCustomTask() bool {
 	return t.CustomTask
 }
 
-// IsChildPipeline returns true if the PipelineTask references a child (PinP) Pipeline.
+// IsChildPipeline returns true if the PipelineTask references a child Pipeline.
 func (t ResolvedPipelineTask) IsChildPipeline() bool {
 	return t.PipelineTask.PipelineSpec != nil
 }
@@ -359,7 +359,7 @@ func (t ResolvedPipelineTask) isScheduled() bool {
 	return len(t.TaskRuns) > 0
 }
 
-// haveAnyRunsFailed returns true when any of the child (PinP) PipelineRuns/TaskRuns/CustomRuns have succeeded condition with status set to false
+// haveAnyRunsFailed returns true when any of the child PipelineRuns/TaskRuns/CustomRuns have succeeded condition with status set to false
 func (t ResolvedPipelineTask) haveAnyRunsFailed() bool {
 	if t.IsChildPipeline() {
 		return t.haveAnyChildPipelineRunsFailed()
@@ -372,7 +372,7 @@ func (t ResolvedPipelineTask) haveAnyRunsFailed() bool {
 	return t.haveAnyTaskRunsFailed()
 }
 
-// haveAnyChildPipelineRunsFailed returns true when any of the child (PinP) PipelineRuns have succeeded condition with status set to false
+// haveAnyChildPipelineRunsFailed returns true when any of the child PipelineRuns have succeeded condition with status set to false
 func (t ResolvedPipelineTask) haveAnyChildPipelineRunsFailed() bool {
 	for _, childPipelineRun := range t.ChildPipelineRuns {
 		if childPipelineRun.IsFailure() {
@@ -658,9 +658,9 @@ func ValidateTaskRunSpecs(p *v1.PipelineSpec, pr *v1.PipelineRun) error {
 // If the Pipeline Task is a Custom Task, it retrieves any CustomRuns and updates the ResolvedPipelineTask with this information.
 // It also sets the ResolvedPipelineTask's RunName(s) with the names of CustomRuns that should be or already have been created.
 //
-// If the Pipeline Task is a Pipeline, it retrieves any child (PinP) PipelineRuns, plus the Pipeline spec and updates the
+// If the Pipeline Task is a Pipeline, it retrieves any child PipelineRuns, plus the Pipeline spec and updates the
 // ResolvedPipelineTask with this information. It also sets the ResolvedPipelineTask's ChildPipelineRunName(s) with the names
-// of child (PinP) PipelineRuns that should be or already have been created.
+// of child PipelineRuns that should be or already have been created.
 func ResolvePipelineTask(
 	ctx context.Context,
 	pipelineRun v1.PipelineRun,
@@ -836,7 +836,7 @@ func resolveTask(
 		// If the alpha feature is enabled, and the user has configured pipelineSpec or pipelineRef, it will enter here.
 		// Currently, the controller is not yet adapted, and to avoid a panic, an error message is provided here.
 		// TODO: Adjust the logic here once the feature is supported in the future.
-		return nil, fmt.Errorf("Currently, Task %q does not support PipelineRef, please use PipelineSpec, TaskRef or TaskSpec instead", pipelineTask.Name)
+		return nil, fmt.Errorf("currently, Task %q does not support PipelineRef, please use PipelineSpec, TaskRef or TaskSpec instead", pipelineTask.Name)
 	}
 	rt.TaskSpec.SetDefaults(ctx)
 	return rt, nil
@@ -860,7 +860,7 @@ func GetNamesOfTaskRuns(childRefs []v1.ChildStatusReference, ptName, prName stri
 	return getNewRunNames(ptName, prName, numberOfTaskRuns)
 }
 
-// GetNamesOfChildPipelineRuns should return unique names for child (PinP) `PipelineRuns` if one has not already been
+// GetNamesOfChildPipelineRuns should return unique names for child PipelineRuns if one has not already been
 // defined, and the existing one otherwise.
 func GetNamesOfChildPipelineRuns(childRefs []v1.ChildStatusReference, ptName, prName string, numberOfPipelineRuns int) []string {
 	if pipelineRunNames := getChildPipelineRunNamesFromChildRefs(childRefs, ptName); pipelineRunNames != nil {
@@ -942,7 +942,7 @@ func getRunNamesFromChildRefs(childRefs []v1.ChildStatusReference, ptName string
 	return runNames
 }
 
-// getChildPipelineRunNamesFromChildRefs returns the names of child (PinP) PipelineRuns defined in childRefs that are
+// getChildPipelineRunNamesFromChildRefs returns the names of child PipelineRuns defined in childRefs that are
 // associated with the named Pipeline Task.
 func getChildPipelineRunNamesFromChildRefs(childRefs []v1.ChildStatusReference, ptName string) []string {
 	var childPipelineRunNames []string

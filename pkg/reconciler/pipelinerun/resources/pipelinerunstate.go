@@ -260,7 +260,7 @@ func (state PipelineRunState) GetRunsResults() map[string][]v1beta1.CustomRunRes
 }
 
 // GetChildReferences returns a slice of references, including version, kind, name, and pipeline task name, for all
-// child (PinP) PipelineRuns, TaskRuns and Runs in the state.
+// child PipelineRuns, TaskRuns and Runs in the state.
 func (facts *PipelineRunFacts) GetChildReferences() []v1.ChildStatusReference {
 	var childRefs []v1.ChildStatusReference
 
@@ -523,7 +523,7 @@ func (facts *PipelineRunFacts) IsFinalTaskStarted() bool {
 }
 
 // GetPipelineConditionStatus will return the Condition that the PipelineRun prName should be
-// updated with, based on the status of the child (PinP) PipelineRuns/TaskRuns/CustomRuns in state.
+// updated with, based on the status of the child PipelineRuns/TaskRuns/CustomRuns in state.
 func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, pr *v1.PipelineRun, logger *zap.SugaredLogger, c clock.PassiveClock) *apis.Condition {
 	// We have 4 different states here:
 	// 1. Timed out -> Failed
@@ -599,7 +599,7 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 			reason = v1.PipelineRunReasonCancelled.String()
 			status = corev1.ConditionFalse
 		}
-		logger.Infof("All child (PinP) PipelineRuns/TaskRuns/CustomRuns have finished for PipelineRun %s so it has finished", pr.Name)
+		logger.Infof("All child PipelineRuns/TaskRuns/CustomRuns have finished for PipelineRun %s so it has finished", pr.Name)
 		return &apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  status,
@@ -661,7 +661,7 @@ func (facts *PipelineRunFacts) GetSkippedTasks() []v1.SkippedTask {
 	return skipped
 }
 
-// GetPipelineTaskStatus returns the status of a PipelineTask depending on its child (PinP)
+// GetPipelineTaskStatus returns the status of a PipelineTask depending on its child
 // PipelineRun/TaskRun/CustomRun. The checks are implemented such that the finally tasks
 // are requesting status of the dag tasks.
 func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
@@ -695,9 +695,19 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 		for _, t := range facts.State {
 			if facts.isDAGTask(t.PipelineTask.Name) {
 				// if any of the dag pipeline tasks failed, change the aggregate status to failed and return
-				if !t.IsCustomTask() && t.haveAnyTaskRunsFailed() ||
-					t.IsCustomTask() && t.haveAnyCustomRunsFailed() ||
-					t.IsChildPipeline() && t.haveAnyChildPipelineRunsFailed() {
+				if t.IsChildPipeline() && t.haveAnyChildPipelineRunsFailed() {
+					aggregateStatus = v1.PipelineRunReasonFailed.String()
+					break
+				}
+
+				if t.IsCustomTask() && t.haveAnyCustomRunsFailed() {
+					aggregateStatus = v1.PipelineRunReasonFailed.String()
+					break
+				}
+
+				// if it's not a custom task or a child pipeline it's a task so we only
+				// need to check if any TaskRuns failed
+				if t.haveAnyTaskRunsFailed() {
 					aggregateStatus = v1.PipelineRunReasonFailed.String()
 					break
 				}
