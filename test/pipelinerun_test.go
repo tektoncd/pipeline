@@ -364,7 +364,7 @@ spec:
 						collectedEvents += ", "
 					}
 				}
-				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", td.expectedNumberOfEvents, len(events), collectedEvents)
+				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of received events : %#v", td.expectedNumberOfEvents, len(events), collectedEvents)
 			}
 
 			t.Logf("Successfully finished test %q", td.name)
@@ -775,7 +775,13 @@ func getName(namespace string, suffix int) string {
 // collectMatchingEvents collects list of events under 5 seconds that match
 // 1. matchKinds which is a map of Kind of Object with name of objects
 // 2. reason which is the expected reason of event
-func collectMatchingEvents(ctx context.Context, kubeClient kubernetes.Interface, namespace string, kinds map[string][]string, reason string) ([]*corev1.Event, error) {
+func collectMatchingEvents(
+	ctx context.Context,
+	kubeClient kubernetes.Interface,
+	namespace string,
+	kinds map[string][]string,
+	reason string,
+) ([]*corev1.Event, error) {
 	var events []*corev1.Event
 
 	watchEvents, err := kubeClient.CoreV1().Events(namespace).Watch(ctx, metav1.ListOptions{})
@@ -848,7 +854,7 @@ func checkLabelPropagation(ctx context.Context, t *testing.T, c *clients, namesp
 	}
 	assertLabelsMatch(t, labels, tr.ObjectMeta.Labels)
 
-	// PodName is "" iff a retry happened and pod is deleted
+	// PodName is "" if a retry happened and pod is deleted
 	// This label is added to every Pod by the TaskRun controller
 	if tr.Status.PodName != "" {
 		// Check label propagation to Pods.
