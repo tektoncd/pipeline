@@ -49,7 +49,7 @@ func TestGetWithContextValue(t *testing.T) {
 	ctx := t.Context()
 
 	// Create a cache and inject it into context
-	testCache := newResolverCache(100).withLogger(logger)
+	testCache := newResolverCache(100, defaultExpiration).withLogger(logger)
 	ctx = context.WithValue(ctx, resolverCacheKey{}, testCache)
 
 	// Get cache from context

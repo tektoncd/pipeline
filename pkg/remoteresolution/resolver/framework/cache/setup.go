@@ -47,7 +47,7 @@ func addCacheWithLoggerToCtx(ctx context.Context, _ *rest.Config) context.Contex
 
 func createCacheOnce(ctx context.Context) *resolverCache {
 	cacheInitOnce.Do(func() {
-		sharedCache = newResolverCache(defaultCacheSize)
+		sharedCache = newResolverCache(defaultCacheSize, defaultExpiration)
 	})
 
 	return sharedCache.withLogger(
@@ -71,7 +71,7 @@ func Get(ctx context.Context) *resolverCache {
 // If called after cache is already initialized, it will only update the configuration.
 func InitializeSharedCache(configMap *corev1.ConfigMap) {
 	cacheInitOnce.Do(func() {
-		sharedCache = newResolverCache(defaultCacheSize)
+		sharedCache = newResolverCache(defaultCacheSize, defaultExpiration)
 	})
 
 	sharedCache.initializeFromConfigMap(configMap)

@@ -98,7 +98,7 @@ func TestInitializeFromConfigMap(t *testing.T) {
 			originalTTL := defaultExpiration
 			defer func() { defaultExpiration = originalTTL }()
 
-			cache := newResolverCache(defaultCacheSize)
+			cache := newResolverCache(defaultCacheSize, defaultExpiration)
 			originalCache := cache.cache
 
 			cache.initializeFromConfigMap(tt.configMap)
