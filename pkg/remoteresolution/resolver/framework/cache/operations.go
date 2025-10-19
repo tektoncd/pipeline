@@ -61,6 +61,7 @@ func ShouldUse(
 	// If no task parameter, get default from ConfigMap
 	if cacheMode == "" {
 		conf := resolutionframework.GetResolverConfigFromContext(ctx)
+		// TODO(twoGiants): is this "conf[defaultCacheModeConfigMapKey]" ever set anywhere?
 		if defaultMode, ok := conf[defaultCacheModeConfigMapKey]; ok {
 			cacheMode = defaultMode
 		}
@@ -68,10 +69,9 @@ func ShouldUse(
 
 	// If still no mode, use system default
 	if cacheMode == "" {
-		cacheMode = systemDefaultCacheMode(resolverType)
+		cacheMode = cacheModeAuto
 	}
 
-	// Apply cache mode logic
 	switch cacheMode {
 	case cacheModeAlways:
 		return true
@@ -80,18 +80,13 @@ func ShouldUse(
 	case cacheModeAuto:
 		return resolver.IsImmutable(params)
 	default:
-		// Invalid mode defaults to auto
 		return resolver.IsImmutable(params)
 	}
 }
 
-func systemDefaultCacheMode(string) string {
-	return cacheModeAuto
-}
-
-// ValidateCacheMode returns an error if the cache mode is not "always", "never"
+// Validate returns an error if the cache mode is not "always", "never"
 // or "auto".
-func ValidateCacheMode(cacheMode string) error {
+func Validate(cacheMode string) error {
 	validCacheModes := []string{cacheModeAlways, cacheModeNever, cacheModeAuto}
 	if slices.Contains(validCacheModes, cacheMode) {
 		return nil
@@ -102,7 +97,7 @@ func ValidateCacheMode(cacheMode string) error {
 
 type resolveFn = func() (resolutionframework.ResolvedResource, error)
 
-func Use(
+func GetFromCacheOrResolve(
 	ctx context.Context,
 	params []v1.Param,
 	resolverType string,

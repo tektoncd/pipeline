@@ -95,7 +95,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	}
 
 	if cache.ShouldUse(ctx, r, req.Params, LabelValueClusterResolverType) {
-		return cache.Use(
+		return cache.GetFromCacheOrResolve(
 			ctx,
 			req.Params,
 			LabelValueClusterResolverType,

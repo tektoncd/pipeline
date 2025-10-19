@@ -23,26 +23,20 @@ import (
 	"strconv"
 	"strings"
 
-	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/bundle"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/cluster"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/git"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/http"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/hub"
 	hubresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/hub"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	filteredinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory/filtered"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
-	"knative.dev/pkg/logging"
 	"knative.dev/pkg/signals"
-	"knative.dev/pkg/system"
 )
 
 func main() {
@@ -71,22 +65,6 @@ func main() {
 	// multiply by no of controllers being created
 	cfg.QPS = 5 * cfg.QPS
 	cfg.Burst = 5 * cfg.Burst
-
-	// Initialize shared resolver cache from ConfigMap
-	logger := logging.FromContext(ctx)
-	kubeClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		log.Fatalf("failed to create kube client: %v", err)
-	}
-
-	resolverNS := resolverconfig.ResolversNamespace(system.Namespace())
-	configMap, err := kubeClient.CoreV1().ConfigMaps(resolverNS).Get(ctx, "resolver-cache-config", metav1.GetOptions{})
-	if err != nil {
-		logger.Debugf("Could not load resolver-cache-config ConfigMap: %v. Using default cache configuration.", err)
-	} else {
-		cache.InitializeSharedCache(configMap)
-		logger.Info("Initialized resolver cache from ConfigMap")
-	}
 
 	sharedmain.MainWithConfig(ctx, "controller", cfg,
 		framework.NewController(ctx, &git.Resolver{}),
