@@ -36,6 +36,7 @@ const (
 	defaultConfigMapName = "resolver-cache-config"
 )
 
+// TODO(twoGiants): make a constant
 var (
 	defaultExpiration = 5 * time.Minute
 )
@@ -45,21 +46,23 @@ var (
 type resolverCache struct {
 	cache  *utilcache.LRUExpireCache
 	logger *zap.SugaredLogger
+	ttl    time.Duration
 }
 
-// newResolverCache creates a new ResolverCache with the given expiration time and max size
-func newResolverCache(maxSize int) *resolverCache {
+func newResolverCache(maxSize int, ttl time.Duration) *resolverCache {
 	return &resolverCache{
 		cache: utilcache.NewLRUExpireCache(maxSize),
+		ttl:   ttl,
 	}
 }
 
 // withLogger returns a new ResolverCache instance with the provided logger.
 // This prevents state leak by not storing logger in the global singleton.
 func (c *resolverCache) withLogger(logger *zap.SugaredLogger) *resolverCache {
-	return &resolverCache{logger: logger, cache: c.cache}
+	return &resolverCache{logger: logger, cache: c.cache, ttl: c.ttl}
 }
 
+// TODO(twoGiants): DEPRECATED
 // initializeFromConfigMap initializes the cache with configuration from a ConfigMap.
 // This method should be called once at startup from main() via InitializeSharedCache
 // to prevent recreating the cache and losing cached data.
@@ -88,6 +91,7 @@ func (c *resolverCache) initializeFromConfigMap(configMap *corev1.ConfigMap) {
 	defaultExpiration = ttl
 }
 
+// TODO(twoGiants): DEPRECATED
 // TODO(twoGiants): implement this feature
 // getCacheConfigName returns the name of the cache configuration ConfigMap.
 // This can be overridden via the CONFIG_RESOLVER_CACHE_NAME environment variable.
@@ -129,11 +133,11 @@ func (c *resolverCache) Add(
 	resource resolutionframework.ResolvedResource,
 ) resolutionframework.ResolvedResource {
 	key := generateCacheKey(resolverType, params)
-	c.infow("Adding to cache", "key", key, "expiration", defaultExpiration)
+	c.infow("Adding to cache", "key", key, "expiration", c.ttl)
 
 	annotatedResource := newAnnotatedResource(resource, resolverType, cacheOperationStore)
 
-	c.cache.Add(key, annotatedResource, defaultExpiration)
+	c.cache.Add(key, annotatedResource, c.ttl)
 
 	return annotatedResource
 }

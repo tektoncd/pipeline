@@ -598,7 +598,7 @@ func TestResolveWithInvalidParams(t *testing.T) {
 	}
 }
 
-// TODO(twoGiants): FIX broken test
+// TODO(twoGiants): refactor test
 func TestResolveWithCacheHit(t *testing.T) {
 	// Test that cache hits work correctly
 	ctx, _ := ttesting.SetupFakeContext(t)
@@ -617,8 +617,6 @@ func TestResolveWithCacheHit(t *testing.T) {
 		Identifier: "cached-identifier",
 		Checksum:   []byte{1, 2, 3, 4},
 	}
-
-	// TODO(twoGiants): fix test => this function won't be there anymore
 
 	params := []pipelinev1.Param{
 		{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
