@@ -100,7 +100,7 @@ func (r *Resolver) IsImmutable(params []v1.Param) bool {
 	if strings.Contains(bundleRef, "@sha256:") {
 		return true
 	}
-	// TODO(twoGiants): doesn't look right => write test => should check for two colons
+	// TODO(twoGiants): doesn't look right => fix this & write test
 	// Check for :<tag>@sha256: pattern
 	if strings.Contains(bundleRef, ":") && strings.Contains(bundleRef, "@sha256:") {
 		return true
@@ -127,7 +127,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	}
 
 	if cache.ShouldUse(ctx, r, req.Params, LabelValueBundleResolverType) {
-		return cache.Use(
+		return cache.GetFromCacheOrResolve(
 			ctx,
 			req.Params,
 			LabelValueBundleResolverType,

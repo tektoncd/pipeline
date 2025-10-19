@@ -29,7 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	rrclient "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	rrv1beta1 "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
-	remoteresolutioncache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
+	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -76,7 +76,8 @@ type Reconciler struct {
 	resolutionRequestLister    rrv1beta1.ResolutionRequestLister
 	resolutionRequestClientSet rrclient.Interface
 
-	configStore *framework.ConfigStore
+	configStore      *framework.ConfigStore
+	cacheConfigStore *rrcache.CacheConfigStore
 }
 
 var _ reconciler.LeaderAware = &Reconciler{}
@@ -125,8 +126,8 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 	}
 
 	// Centralized cache parameter validation for all resolvers
-	if cacheMode, exists := paramsMap[remoteresolutioncache.CacheParam]; exists && cacheMode != "" {
-		if err := remoteresolutioncache.ValidateCacheMode(cacheMode); err != nil {
+	if cacheMode, exists := paramsMap[rrcache.CacheParam]; exists && cacheMode != "" {
+		if err := rrcache.Validate(cacheMode); err != nil {
 			return &resolutioncommon.InvalidRequestError{
 				ResolutionRequestKey: key,
 				Message:              err.Error(),

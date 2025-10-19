@@ -211,7 +211,7 @@ func TestValidateCacheMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateCacheMode(tt.cacheMode)
+			err := Validate(tt.cacheMode)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateCacheMode() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -285,12 +285,12 @@ func TestUseCache(t *testing.T) {
 			// If this is a cache hit test, pre-populate the cache
 			if tt.cacheHit {
 				// We need to set up the cache first by calling the function once
-				_, _ = Use(ctx, tt.params, tt.resolverType, resolveFn)
+				_, _ = GetFromCacheOrResolve(ctx, tt.params, tt.resolverType, resolveFn)
 				resolveCalled = false // Reset for actual test
 			}
 
 			// Run the actual test
-			result, err := Use(ctx, tt.params, tt.resolverType, resolveFn)
+			result, err := GetFromCacheOrResolve(ctx, tt.params, tt.resolverType, resolveFn)
 
 			// Verify error handling
 			if tt.resolveErr != nil {

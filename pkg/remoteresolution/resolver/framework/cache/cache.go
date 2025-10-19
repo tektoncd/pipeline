@@ -17,29 +17,19 @@ limitations under the License.
 package cache
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"os"
 	"sort"
-	"strconv"
 	"time"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
 	utilcache "k8s.io/apimachinery/pkg/util/cache"
 )
 
-const (
-	defaultCacheSize     = 1000
-	defaultConfigMapName = "resolver-cache-config"
-)
-
-// TODO(twoGiants): make a constant
-var (
-	defaultExpiration = 5 * time.Minute
-)
+var _ resolutionframework.ConfigWatcher = (*resolverCache)(nil)
 
 // resolverCache is a wrapper around utilcache.LRUExpireCache that provides
 // type-safe methods for caching resolver results.
@@ -56,51 +46,15 @@ func newResolverCache(maxSize int, ttl time.Duration) *resolverCache {
 	}
 }
 
+// GetConfigName returns the name of the cache's configmap.
+func (c *resolverCache) GetConfigName(_ context.Context) string {
+	return getCacheConfigName()
+}
+
 // withLogger returns a new ResolverCache instance with the provided logger.
 // This prevents state leak by not storing logger in the global singleton.
 func (c *resolverCache) withLogger(logger *zap.SugaredLogger) *resolverCache {
 	return &resolverCache{logger: logger, cache: c.cache, ttl: c.ttl}
-}
-
-// TODO(twoGiants): DEPRECATED
-// initializeFromConfigMap initializes the cache with configuration from a ConfigMap.
-// This method should be called once at startup from main() via InitializeSharedCache
-// to prevent recreating the cache and losing cached data.
-func (c *resolverCache) initializeFromConfigMap(configMap *corev1.ConfigMap) {
-	// Set defaults
-	maxSize := defaultCacheSize
-	ttl := defaultExpiration
-
-	if configMap != nil {
-		// Parse max size
-		if maxSizeStr, ok := configMap.Data["max-size"]; ok {
-			if parsed, err := strconv.Atoi(maxSizeStr); err == nil && parsed > 0 {
-				maxSize = parsed
-			}
-		}
-
-		// Parse default TTL
-		if ttlStr, ok := configMap.Data["default-ttl"]; ok {
-			if parsed, err := time.ParseDuration(ttlStr); err == nil && parsed > 0 {
-				ttl = parsed
-			}
-		}
-	}
-
-	c.cache = utilcache.NewLRUExpireCache(maxSize)
-	defaultExpiration = ttl
-}
-
-// TODO(twoGiants): DEPRECATED
-// TODO(twoGiants): implement this feature
-// getCacheConfigName returns the name of the cache configuration ConfigMap.
-// This can be overridden via the CONFIG_RESOLVER_CACHE_NAME environment variable.
-func getCacheConfigName() string {
-	if configMapName := os.Getenv("CONFIG_RESOLVER_CACHE_NAME"); configMapName != "" {
-		return configMapName
-	}
-
-	return defaultConfigMapName
 }
 
 func (c *resolverCache) Get(resolverType string, params []pipelinev1.Param) (resolutionframework.ResolvedResource, bool) {

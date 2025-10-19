@@ -20,7 +20,6 @@ import (
 	"context"
 	"sync"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
@@ -38,15 +37,14 @@ func init() {
 }
 
 func addCacheWithLoggerToCtx(ctx context.Context, _ *rest.Config) context.Context {
-	return context.WithValue(
-		ctx,
-		resolverCacheKey{},
-		createCacheOnce(ctx),
-	)
+	return context.WithValue(ctx, resolverCacheKey{}, createCacheOnce(ctx))
 }
 
 func createCacheOnce(ctx context.Context) *resolverCache {
 	cacheInitOnce.Do(func() {
+		cacheMu.Lock()
+		defer cacheMu.Unlock()
+
 		sharedCache = newResolverCache(defaultCacheSize, defaultExpiration)
 	})
 
@@ -64,15 +62,4 @@ func Get(ctx context.Context) *resolverCache {
 	}
 
 	return createCacheOnce(ctx)
-}
-
-// InitializeSharedCache initializes the shared cache from a ConfigMap.
-// This should be called once at startup from main() BEFORE the injection framework starts.
-// If called after cache is already initialized, it will only update the configuration.
-func InitializeSharedCache(configMap *corev1.ConfigMap) {
-	cacheInitOnce.Do(func() {
-		sharedCache = newResolverCache(defaultCacheSize, defaultExpiration)
-	})
-
-	sharedCache.initializeFromConfigMap(configMap)
 }
