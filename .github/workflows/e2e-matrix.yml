@@ -19,11 +19,12 @@ jobs:
       matrix:
         k8s-name:
         - k8s-oldest             # 1.28
-        - k8s-latest-minus-four  # 1.29
-        - k8s-latest-minus-three # 1.30
-        - k8s-latest-minus-two   # 1.31
-        - k8s-latest-minus-one   # 1.32
-        - k8s-latest             # 1.33
+        - k8s-latest-minus-five  # 1.29
+        - k8s-latest-minus-four  # 1.30
+        - k8s-latest-minus-three # 1.31
+        - k8s-latest-minus-two   # 1.32
+        - k8s-latest-minus-one   # 1.33
+        - k8s-latest             # 1.34
 
         feature-flags:
         - stable
@@ -33,19 +34,25 @@ jobs:
         include:
         - k8s-name: k8s-oldest
           k8s-version: v1.28.x
-        - k8s-name: k8s-latest-minus-four
+        - k8s-name: k8s-latest-minus-five
           k8s-version: v1.29.x
-        - k8s-name: k8s-latest-minus-three
+        - k8s-name: k8s-latest-minus-four
           k8s-version: v1.30.x
-        - k8s-name: k8s-latest-minus-two
+        - k8s-name: k8s-latest-minus-three
           k8s-version: v1.31.x
-        - k8s-name: k8s-latest-minus-one
+        - k8s-name: k8s-latest-minus-two
           k8s-version: v1.32.x
-        - k8s-name: k8s-latest
+        - k8s-name: k8s-latest-minus-one
           k8s-version: v1.33.x
+        - k8s-name: k8s-latest
+          k8s-version: v1.34.x
 
         # Run beta and alpha only on latest and oldest
         exclude:
+        - k8s-name: k8s-latest-minus-five
+          feature-flags: beta
+        - k8s-name: k8s-latest-minus-five
+          feature-flags: alpha
         - k8s-name: k8s-latest-minus-four
           feature-flags: beta
         - k8s-name: k8s-latest-minus-four
