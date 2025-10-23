@@ -10,13 +10,17 @@ defaults:
 jobs:
   e2e-tests:
     concurrency:
-      group: ${{ github.workflow }}-${{ matrix.k8s-name }}-${{ matrix.feature-flags }}-${{ github.event.pull_request.number || github.ref }}
+      group: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.k8s-name }}-${{ matrix.feature-flags }}-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
     name: e2e tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false # Keep running if one leg fails.
       matrix:
+        os:
+        - ubuntu-latest     # amd64
+        - ubuntu-24.04-arm  # arm64
+
         k8s-name:
         - k8s-oldest             # 1.28
         - k8s-latest-minus-five  # 1.29
@@ -69,7 +73,25 @@ jobs:
           feature-flags: beta
         - k8s-name: k8s-latest-minus-one
           feature-flags: alpha
-
+        # Only run latest on arm64
+        - k8s-name: k8s-oldest
+          os: ubuntu-24.04-arm
+        - k8s-name: k8s-latest-minus-five
+          os: ubuntu-24.04-arm
+        - k8s-name: k8s-latest-minus-four
+          os: ubuntu-24.04-arm
+        - k8s-name: k8s-latest-minus-three
+          os: ubuntu-24.04-arm
+        - k8s-name: k8s-latest-minus-two
+          os: ubuntu-24.04-arm
+        - k8s-name: k8s-latest-minus-one
+          os: ubuntu-24.04-arm
+        - k8s-name: k8s-latest
+          feature-flags: alpha
+          os: ubuntu-24.04-arm
+        - k8s-name: k8s-latest
+          feature-flags: beta
+          os: ubuntu-24.04-arm
     env:
       KO_DOCKER_REPO: registry.local:5000/tekton
       CLUSTER_DOMAIN: c${{ github.run_id }}.local
@@ -77,6 +99,7 @@ jobs:
 
     steps:
     - name: Free disk space
+      if: ${{ matrix.os != 'ubuntu-24.04-arm' }}
       run: |
         echo "--- Disk space before cleanup ---"
         df -h
@@ -108,6 +131,10 @@ jobs:
 
     - name: Run tests
       run: |
+        # This is a hack to make sure binary in /bin from the base image are not picked by default
+        # On ubuntu-arm, there is a /bin/go that shadows the one setup-go installs
+        export PATH="$(echo "$PATH" | sed -e 's/^\/bin://'):/bin"
+        export KO_DEFAULTPLATFORMS=linux/$(go env GOARCH)
         ./hack/setup-kind.sh \
           --registry-url $(echo ${KO_DOCKER_REPO} | cut -d'/' -f 1) \
           --cluster-suffix c${{ github.run_id }}.local \
