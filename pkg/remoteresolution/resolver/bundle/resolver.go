@@ -95,14 +95,12 @@ func (r *Resolver) IsImmutable(params []v1.Param) bool {
 	}
 
 	// Checks if the given string looks like an OCI pull spec by digest.
-	// A digest reference must contain @sha256: (or other digest algorithms)
+	// Only SHA-256 digests are considered immutable.
 	// Examples:
 	// - image@sha256:abc123...
 	// - registry.io/image@sha256:abc123...
 	// - registry.io/image:tag@sha256:abc123... (tag is ignored when digest is present)
-	return strings.Contains(bundleRef, "@sha256:") ||
-		strings.Contains(bundleRef, "@sha512:") ||
-		strings.Contains(bundleRef, "@sha384:")
+	return strings.Contains(bundleRef, "@sha256:")
 }
 
 // Resolve uses the given params to resolve the requested file or resource.

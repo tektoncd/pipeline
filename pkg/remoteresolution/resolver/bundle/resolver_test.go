@@ -78,14 +78,14 @@ func TestIsImmutable(t *testing.T) {
 			expected:  true,
 		},
 		{
-			name:      "digest with sha512",
+			name:      "digest with sha512 (not supported)",
 			bundleRef: "myregistry.io/myimage@sha512:1234567890abcdef",
-			expected:  true,
+			expected:  false,
 		},
 		{
-			name:      "digest with sha384",
+			name:      "digest with sha384 (not supported)",
 			bundleRef: "docker.io/library/ubuntu@sha384:fedcba098765",
-			expected:  true,
+			expected:  false,
 		},
 		{
 			name:      "tag with digest",
@@ -340,6 +340,12 @@ func TestResolve_KeyChainError(t *testing.T) {
 				bundleresolution.ConfigKind:           "task",
 				bundleresolution.ConfigServiceAccount: "default",
 			},
+		}, {
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "resolver-cache-config",
+				Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+			},
+			Data: map[string]string{},
 		}},
 	}
 
