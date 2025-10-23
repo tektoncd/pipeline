@@ -36,6 +36,7 @@ const (
 	Windows = "windows"
 	Darwin  = "darwin"
 	FreeBSD = "freebsd"
+	Linux   = "linux"
 )
 
 // Platform describes the platform which the image in the manifest runs on.
@@ -121,7 +122,7 @@ func getCPUVariant() (string, error) {
 		default:
 			variant = Unknown
 		}
-	case FreeBSD:
+	case Linux, FreeBSD:
 		// FreeBSD supports ARMv6 and ARMv7 as well as ARMv4 and ARMv5 (though deprecated)
 		// detecting those variants is currently unimplemented
 		switch runtime.GOARCH {
