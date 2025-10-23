@@ -95,18 +95,14 @@ func (r *Resolver) IsImmutable(params []v1.Param) bool {
 	}
 
 	// Checks if the given string looks like an OCI pull spec by digest.
-	// A digest is typically in the format of @sha256:<hash> or :<tag>@sha256:<hash>
-	// Check for @sha256: pattern
-	if strings.Contains(bundleRef, "@sha256:") {
-		return true
-	}
-	// TODO(twoGiants): doesn't look right => fix this & write test
-	// Check for :<tag>@sha256: pattern
-	if strings.Contains(bundleRef, ":") && strings.Contains(bundleRef, "@sha256:") {
-		return true
-	}
-
-	return false
+	// A digest reference must contain @sha256: (or other digest algorithms)
+	// Examples:
+	// - image@sha256:abc123...
+	// - registry.io/image@sha256:abc123...
+	// - registry.io/image:tag@sha256:abc123... (tag is ignored when digest is present)
+	return strings.Contains(bundleRef, "@sha256:") ||
+		strings.Contains(bundleRef, "@sha512:") ||
+		strings.Contains(bundleRef, "@sha384:")
 }
 
 // Resolve uses the given params to resolve the requested file or resource.
