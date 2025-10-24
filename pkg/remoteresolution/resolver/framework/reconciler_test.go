@@ -35,6 +35,7 @@ import (
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -352,6 +353,13 @@ func TestReconcile(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			d := test.Data{
 				ResolutionRequests: []*v1beta1.ResolutionRequest{tc.inputRequest},
+				ConfigMaps: []*corev1.ConfigMap{{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "resolver-cache-config",
+						Namespace: system.Namespace(),
+					},
+					Data: map[string]string{},
+				}},
 			}
 
 			fakeResolver := &framework.FakeResolver{ForParam: tc.paramMap}

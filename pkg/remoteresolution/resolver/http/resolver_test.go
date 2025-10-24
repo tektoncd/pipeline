@@ -374,6 +374,12 @@ func TestResolverReconcileBasicAuth(t *testing.T) {
 					Data: map[string]string{
 						"enable-http-resolver": "true",
 					},
+				}, {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "resolver-cache-config",
+						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+					},
+					Data: map[string]string{},
 				}},
 				ResolutionRequests: []*v1beta1.ResolutionRequest{request},
 			}

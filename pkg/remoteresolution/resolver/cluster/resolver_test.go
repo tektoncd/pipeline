@@ -449,6 +449,12 @@ func TestResolve(t *testing.T) {
 					Data: map[string]string{
 						"enable-cluster-resolver": "true",
 					},
+				}, {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "resolver-cache-config",
+						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+					},
+					Data: map[string]string{},
 				}},
 				Pipelines:          []*pipelinev1.Pipeline{examplePipeline},
 				ResolutionRequests: []*v1beta1.ResolutionRequest{request},
