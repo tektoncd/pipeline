@@ -117,7 +117,7 @@ func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 	// Filter out the 'cache' parameter and sort remaining params by name for determinism
 	filteredParams := make([]pipelinev1.Param, 0, len(params))
 	for _, p := range params {
-		if p.Name != "cache" {
+		if p.Name != CacheParam {
 			filteredParams = append(filteredParams, p)
 		}
 	}

@@ -72,7 +72,6 @@ func TestGetFallback(t *testing.T) {
 	}
 }
 
-
 func TestCacheSharing(t *testing.T) {
 	// Create two different contexts
 	ctx1 := logtesting.TestContextWithLogger(t)
