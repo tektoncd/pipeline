@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -3855,6 +3856,156 @@ func TestIsNativeSidecarSupport(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsNativeSidecarSupport(tt.serverVersion); got != tt.want {
 				t.Errorf("IsNativeSidecarSupport() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCreateResultsSidecarWithWaitForever(t *testing.T) {
+	tests := []struct {
+		name                    string
+		enableKubernetesSidecar bool
+		wantWaitForeverFlag     bool
+	}{
+		{
+			name:                    "Kubernetes sidecar disabled",
+			enableKubernetesSidecar: false,
+			wantWaitForeverFlag:     false,
+		},
+		{
+			name:                    "Kubernetes sidecar enabled",
+			enableKubernetesSidecar: true,
+			wantWaitForeverFlag:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup test context with feature flags
+			store := config.NewStore(logtesting.TestLogger(t))
+			featureFlags := map[string]string{
+				"results-from": "sidecar-logs",
+			}
+			if tt.enableKubernetesSidecar {
+				featureFlags["enable-kubernetes-sidecar"] = "true"
+			}
+			store.OnConfigChanged(
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data:       featureFlags,
+				},
+			)
+			always := corev1.ContainerRestartPolicyAlways
+			ts := v1.TaskSpec{
+				Results: []v1.TaskResult{{
+					Name: "result1",
+					Type: v1.ResultsTypeString,
+				}},
+				Steps: []v1.Step{{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"cmd"}, // avoid entrypoint lookup.
+				}},
+			}
+
+			// Set up test images
+			testImages := pipeline.Images{
+				EntrypointImage:        "entrypoint-image",
+				ShellImage:             "busybox",
+				SidecarLogResultsImage: "sidecar-log-results-image",
+			}
+
+			kubeclient := fakek8s.NewSimpleClientset(
+				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
+			)
+			fakeDisc, _ := kubeclient.Discovery().(*fakediscovery.FakeDiscovery)
+			fakeDisc.FakedServerVersion = &version.Info{
+				Major: "1",
+				Minor: "29",
+			}
+
+			trs := v1.TaskRunSpec{
+				TaskSpec: &ts,
+			}
+
+			tr := &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "taskrunName",
+					Namespace: "default",
+				},
+				Spec: trs,
+			}
+
+			// No entrypoints should be looked up.
+			entrypointCache := fakeCache{}
+
+			builder := Builder{
+				Images:          testImages,
+				KubeClient:      kubeclient,
+				EntrypointCache: entrypointCache,
+			}
+			got, err := builder.Build(store.ToContext(t.Context()), tr, ts)
+			if err != nil {
+				t.Errorf("Pod build failed: %s", err)
+			}
+
+			// Find the results sidecar container in the appropriate location
+			var resultsSidecar *corev1.Container
+
+			// When Kubernetes sidecar is enabled, the sidecar should be in init containers
+			// When disabled, it should be in regular containers
+			if tt.enableKubernetesSidecar {
+				for i, container := range got.Spec.InitContainers {
+					if strings.HasPrefix(container.Name, "sidecar-"+pipeline.ReservedResultsSidecarName) {
+						resultsSidecar = &got.Spec.InitContainers[i]
+						break
+					}
+				}
+
+				if resultsSidecar == nil {
+					t.Fatalf("Results sidecar not found in init containers")
+				}
+
+				// Check that the sidecar has RestartPolicy Always
+				if resultsSidecar.RestartPolicy == nil || *resultsSidecar.RestartPolicy != always {
+					t.Errorf("Results sidecar does not have RestartPolicy Always")
+				}
+			} else {
+				for i, container := range got.Spec.Containers {
+					if container.Name == pipeline.ReservedResultsSidecarContainerName {
+						resultsSidecar = &got.Spec.Containers[i]
+						break
+					}
+				}
+
+				if resultsSidecar == nil {
+					t.Fatalf("Results sidecar not found in containers")
+				}
+
+				// When Kubernetes sidecar is disabled, the container shouldn't have a RestartPolicy
+				if resultsSidecar.RestartPolicy != nil {
+					t.Errorf("Results sidecar should not have RestartPolicy when Kubernetes sidecar is disabled")
+				}
+			}
+
+			// Check for the kubernetes-sidecar-mode flag
+			hasKubernetesSidecarModeFlag := false
+			for i := range len(resultsSidecar.Command) - 1 {
+				if resultsSidecar.Command[i] == "-kubernetes-sidecar-mode" && resultsSidecar.Command[i+1] == "true" {
+					hasKubernetesSidecarModeFlag = true
+					break
+				}
+			}
+
+			// Only check for the flag when it's expected to be present
+			if tt.wantWaitForeverFlag {
+				if !hasKubernetesSidecarModeFlag {
+					t.Errorf("Results sidecar does not have -kubernetes-sidecar-mode flag set")
+				}
+			} else {
+				if hasKubernetesSidecarModeFlag {
+					t.Errorf("Results sidecar should not have -kubernetes-sidecar-mode flag set")
+				}
 			}
 		})
 	}
