@@ -24,3 +24,8 @@ metadata:
 data:
   # The maximum amount of time the http resolver will wait for a response from the server.
   fetch-timeout: "1m"
+  # Optional: Default cache mode for this resolver. Valid values: "always", "never", "auto" (default: "auto")
+  # "always" - Always cache resolved resources
+  # "never"  - Never cache resolved resources
+  # "auto"   - Cache based on HTTP response (not currently implemented, behaves like "never")
+  # default-cache-mode: "auto"

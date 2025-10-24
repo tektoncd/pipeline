@@ -44,6 +44,23 @@ The resolver cache can be configured globally using the `resolver-cache-config` 
 
 The ConfigMap name can be customized using the `RESOLVER_CACHE_CONFIG_MAP_NAME` environment variable. If not set, it defaults to `resolver-cache-config`.
 
+Additionally, you can set a default cache mode for the cluster resolver by adding the `default-cache-mode` option to the `cluster-resolver-config` ConfigMap. This overrides the system default (`auto`) for this resolver:
+
+| Option Name | Description | Valid Values | Default |
+|-------------|-------------|--------------|---------|
+| `default-cache-mode` | Default caching behavior when `cache` parameter is not specified | `always`, `never`, `auto` | `auto` |
+
+Example:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-resolver-config
+  namespace: tekton-pipelines-resolvers
+data:
+  default-cache-mode: "never"  # Never cache by default (since cluster resources are mutable)
+```
+
 ## Requirements
 
 - A cluster running Tekton Pipeline v0.41.0 or later.

@@ -67,6 +67,23 @@ The resolver cache can be configured globally using the `resolver-cache-config` 
 
 The ConfigMap name can be customized using the `RESOLVER_CACHE_CONFIG_MAP_NAME` environment variable. If not set, it defaults to `resolver-cache-config`.
 
+Additionally, you can set a default cache mode for the bundle resolver by adding the `default-cache-mode` option to the `bundleresolver-config` ConfigMap. This overrides the system default (`auto`) for this resolver:
+
+| Option Name | Description | Valid Values | Default |
+|-------------|-------------|--------------|---------|
+| `default-cache-mode` | Default caching behavior when `cache` parameter is not specified | `always`, `never`, `auto` | `auto` |
+
+Example:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bundleresolver-config
+  namespace: tekton-pipelines-resolvers
+data:
+  default-cache-mode: "always"  # Always cache unless task/pipeline specifies otherwise
+```
+
 ## Usage
 
 ### Task Resolution

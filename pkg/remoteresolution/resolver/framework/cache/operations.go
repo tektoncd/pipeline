@@ -61,7 +61,9 @@ func ShouldUse(
 	// If no task parameter, get default from ConfigMap
 	if cacheMode == "" {
 		conf := resolutionframework.GetResolverConfigFromContext(ctx)
-		// TODO(twoGiants): is this "conf[defaultCacheModeConfigMapKey]" ever set anywhere?
+		// This can be optionally set in individual resolver ConfigMaps (e.g., bundleresolver-config,
+		// git-resolver-config, cluster-resolver-config, http-resolver-config) to override the
+		// system default cache mode for that resolver. Valid values: "always", "never", "auto"
 		if defaultMode, ok := conf[defaultCacheModeConfigMapKey]; ok {
 			cacheMode = defaultMode
 		}
