@@ -111,3 +111,13 @@ func VerifyCustomRunOrRunStatusesNames(t *testing.T, prStatus v1.PipelineRunStat
 	t.Helper()
 	verifyNames(t, prStatus, expectedNames, customRun)
 }
+
+func VerifyChildPipelineRunStatusesCount(t *testing.T, prStatus v1.PipelineRunStatus, expectedCount int) {
+	t.Helper()
+	verifyCount(t, prStatus, expectedCount, pipelineRun)
+}
+
+func VerifyChildPipelineRunStatusesNames(t *testing.T, prStatus v1.PipelineRunStatus, expectedNames ...string) {
+	t.Helper()
+	verifyNames(t, prStatus, expectedNames, pipelineRun)
+}

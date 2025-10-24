@@ -116,6 +116,13 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			logging.FromContext(ctx).Panicf("Couldn't register PipelineRun informer event handler: %w", err)
 		}
 
+		if _, err := pipelineRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1.PipelineRun{}),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		}); err != nil {
+			logging.FromContext(ctx).Panicf("Couldn't register PipelineRun informer event handler: %w", err)
+		}
+
 		if _, err := taskRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1.PipelineRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
