@@ -24,7 +24,7 @@ import (
 	"knative.dev/pkg/configmap"
 )
 
-// resolverConfigKey is the contenxt key associated with configuration
+// resolverConfigKey is the context key associated with configuration
 // for one specific resolver, and is only used if that resolver
 // implements the optional framework.ConfigWatcher interface.
 var resolverConfigKey = struct{}{}

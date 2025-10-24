@@ -44,6 +44,21 @@ for the name, namespace and defaults that the resolver ships with.
 | `default-artifact-hub-pipeline-catalog`| The default artifact hub catalog from where to pull the resource for pipeline kind.  | `tekton-catalog-pipelines`               |
 | `default-kind`              | The default object kind for references.              | `task`, `pipeline`     |
 | `default-type`              | The default hub from where to pull the resource.     | `artifact`, `tekton`   |
+| `default-cache-mode`        | Default caching behavior when `cache` parameter is not specified. | `always`, `never`, `auto` |
+
+Additionally, you can set a default cache mode for the Hub resolver by adding the `default-cache-mode` option to the `hubresolver-config` ConfigMap. This overrides the system default (`auto`) for this resolver:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hubresolver-config
+  namespace: tekton-pipelines-resolvers
+data:
+  default-cache-mode: "auto"  # Cache resources with specific versions
+```
+
+**Note**: The `auto` mode for Hub resolver will cache resources that reference specific versions (e.g., `0.6`) but not version constraints (e.g., `>=0.7.0`).
 
 
 ### Configuring the Hub API endpoint

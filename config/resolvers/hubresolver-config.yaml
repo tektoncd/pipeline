@@ -32,3 +32,8 @@ data:
   default-kind: "task"
   # the default hub source to pull the resource from.
   default-type: "artifact"
+  # Optional: Default cache mode for this resolver. Valid values: "always", "never", "auto" (default: "auto")
+  # "always" - Always cache resolved resources
+  # "never"  - Never cache resolved resources
+  # "auto"   - Cache when resources have immutable references (e.g., specific versions)
+  # default-cache-mode: "auto"
