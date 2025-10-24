@@ -281,12 +281,11 @@ func TestUseCache(t *testing.T) {
 				return &mockResolvedResource{data: []byte("test data")}, nil
 			}
 
-			// TODO(twoGiants): doesn't look right => fix test
-			// If this is a cache hit test, pre-populate the cache
+			// If this is a cache hit test, pre-populate the cache directly
+			// This is cleaner than calling GetFromCacheOrResolve to set up the test
 			if tt.cacheHit {
-				// We need to set up the cache first by calling the function once
-				_, _ = GetFromCacheOrResolve(ctx, tt.params, tt.resolverType, resolveFn)
-				resolveCalled = false // Reset for actual test
+				mockResource := &mockResolvedResource{data: []byte("test data")}
+				Get(ctx).Add(tt.resolverType, tt.params, mockResource)
 			}
 
 			// Run the actual test
