@@ -13,13 +13,16 @@ import (
 )
 
 const (
-	// TODO(twoGiants): add docs for this env var and default config map name
+	// resolverCacheConfigMapNameEnv env var overwrites the cache ConfigMap name
+	// defaults to "resolver-cache-config"
 	resolverCacheConfigMapNameEnv = "RESOLVER_CACHE_CONFIG_MAP_NAME"
-	defaultConfigMapName          = "resolver-cache-config"
-	maxSizeConfigMapKey           = "max-size"
-	ttlConfigMapKey               = "ttl"
-	defaultCacheSize              = 1000
-	defaultExpiration             = 5 * time.Minute
+	// defaultConfigMapName is the default name of the ConfigMap that configures resolver cache settings
+	// the ConfigMap contains max-size and ttl configuration for the shared resolver cache
+	defaultConfigMapName = "resolver-cache-config"
+	maxSizeConfigMapKey  = "max-size"
+	ttlConfigMapKey      = "ttl"
+	defaultCacheSize     = 1000
+	defaultExpiration    = 5 * time.Minute
 )
 
 var (

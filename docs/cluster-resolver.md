@@ -33,6 +33,17 @@ The `cache` parameter controls whether the cluster resolver caches resolved reso
 
 **Note**: The cluster resolver only caches when `cache: always` is explicitly specified. This is because cluster resources (Tasks, Pipelines, etc.) do not have immutable references like Git commit hashes or bundle digests, making automatic caching unreliable.
 
+### Cache Configuration
+
+The resolver cache can be configured globally using the `resolver-cache-config` ConfigMap. This ConfigMap controls the cache size and TTL (time-to-live) for all resolvers.
+
+| Option Name | Description | Default Value | Example Values |
+|-------------|-------------|---------------|----------------|
+| `max-size` | Maximum number of entries in the cache | `1000` | `500`, `2000` |
+| `ttl` | Time-to-live for cache entries | `5m` | `10m`, `1h` |
+
+The ConfigMap name can be customized using the `RESOLVER_CACHE_CONFIG_MAP_NAME` environment variable. If not set, it defaults to `resolver-cache-config`.
+
 ## Requirements
 
 - A cluster running Tekton Pipeline v0.41.0 or later.

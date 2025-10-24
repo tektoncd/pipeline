@@ -56,6 +56,17 @@ The bundle resolver supports caching of resolved resources to improve performanc
 | `never` | Never cache resolved resources. This disables caching completely. |
 | `auto` | Caching will only occur for bundles pulled by digest. (default) |
 
+### Cache Configuration
+
+The resolver cache can be configured globally using the `resolver-cache-config` ConfigMap. This ConfigMap controls the cache size and TTL (time-to-live) for all resolvers.
+
+| Option Name | Description | Default Value | Example Values |
+|-------------|-------------|---------------|----------------|
+| `max-size` | Maximum number of entries in the cache | `1000` | `500`, `2000` |
+| `ttl` | Time-to-live for cache entries | `5m` | `10m`, `1h` |
+
+The ConfigMap name can be customized using the `RESOLVER_CACHE_CONFIG_MAP_NAME` environment variable. If not set, it defaults to `resolver-cache-config`.
+
 ## Usage
 
 ### Task Resolution
