@@ -2212,6 +2212,8 @@ spec:
                         enableStepActions:
                           description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
+                        enableTektonOCIBundles:
+                          type: boolean
                         enableWaitExponentialBackoff:
                           type: boolean
                         enforceNonfalsifiability:
@@ -2627,6 +2629,8 @@ spec:
                                   enableStepActions:
                                     description: EnableStepActions is a no-op flag since StepActions are stable
                                     type: boolean
+                                  enableTektonOCIBundles:
+                                    type: boolean
                                   enableWaitExponentialBackoff:
                                     type: boolean
                                   enforceNonfalsifiability:
@@ -2915,6 +2919,8 @@ spec:
                                           type: boolean
                                         enableStepActions:
                                           description: EnableStepActions is a no-op flag since StepActions are stable
+                                          type: boolean
+                                        enableTektonOCIBundles:
                                           type: boolean
                                         enableWaitExponentialBackoff:
                                           type: boolean
@@ -5151,6 +5157,8 @@ spec:
                           type: boolean
                         enableStepActions:
                           description: EnableStepActions is a no-op flag since StepActions are stable
+                          type: boolean
+                        enableTektonOCIBundles:
                           type: boolean
                         enableWaitExponentialBackoff:
                           type: boolean
