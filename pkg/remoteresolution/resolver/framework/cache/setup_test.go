@@ -72,40 +72,6 @@ func TestGetFallback(t *testing.T) {
 	}
 }
 
-// TODO(twoGiants): add tests for init from config map watcher
-// func TestInitializeSharedCache(t *testing.T) {
-// 	configMap := &corev1.ConfigMap{
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Name:      "test-config",
-// 			Namespace: "test-namespace",
-// 		},
-// 		Data: map[string]string{
-// 			"resolver-cache-size": "500",
-// 		},
-// 	}
-
-// 	// This should not panic
-// 	InitializeSharedCache(configMap)
-
-// 	// Verify we can still get the cache
-// 	ctx := logtesting.TestContextWithLogger(t)
-// 	resolverCache := Get(ctx)
-// 	if resolverCache == nil {
-// 		t.Error("Expected resolver cache after initialization but got nil")
-// 	}
-// }
-
-// func TestInitializeSharedCacheWithNil(t *testing.T) {
-// 	// This should not panic with nil configmap
-// 	InitializeSharedCache(nil)
-
-// 	// Verify we can still get the cache
-// 	ctx := logtesting.TestContextWithLogger(t)
-// 	resolverCache := Get(ctx)
-// 	if resolverCache == nil {
-// 		t.Error("Expected resolver cache after initialization with nil but got nil")
-// 	}
-// }
 
 func TestCacheSharing(t *testing.T) {
 	// Create two different contexts
