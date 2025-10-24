@@ -40,6 +40,21 @@ for the name, namespace and defaults that the resolver ships with.
 | Option Name                 | Description                                          | Example Values         |
 |-----------------------------|------------------------------------------------------|------------------------|
 | `fetch-timeout`              | The maximum time any fetching of URL resolution may take. **Note**: a global maximum timeout of 1 minute is currently enforced on _all_ resolution requests. | `1m`, `2s`, `700ms`                                              |
+| `default-cache-mode`        | Default caching behavior when `cache` parameter is not specified. Valid values: `always`, `never`, `auto` | `auto` |
+
+Additionally, you can set a default cache mode for the HTTP resolver by adding the `default-cache-mode` option to the `http-resolver-config` ConfigMap. This overrides the system default (`auto`) for this resolver:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: http-resolver-config
+  namespace: tekton-pipelines-resolvers
+data:
+  default-cache-mode: "never"  # HTTP URLs are mutable, consider using "never"
+```
+
+**Note**: Since HTTP URLs can change over time (unlike git commit hashes or bundle digests), the `auto` mode for HTTP resolver currently behaves like `never`. Consider explicitly setting `default-cache-mode: "never"` for clarity.
 
 ## Usage
 
