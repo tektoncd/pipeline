@@ -807,8 +807,8 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 	terminateStepsInPod(tr, reason)
 
 	var err error
-	if reason == v1.TaskRunReasonCancelled && (config.FromContextOrDefaults(ctx).FeatureFlags.EnableKeepPodOnCancel) {
-		logger.Infof("Canceling task run %q by entrypoint", tr.Name)
+	if (reason == v1.TaskRunReasonCancelled || reason == v1.TaskRunReasonTimedOut) && (config.FromContextOrDefaults(ctx).FeatureFlags.EnableKeepPodOnCancel) {
+		logger.Infof("Canceling task run %q by entrypoint, Reason: %s", tr.Name, reason)
 		err = podconvert.CancelPod(ctx, c.KubeClientSet, tr.Namespace, tr.Status.PodName)
 	} else {
 		err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete(ctx, tr.Status.PodName, metav1.DeleteOptions{})
