@@ -604,9 +604,9 @@ func TestResolveWithInvalidParams(t *testing.T) {
 	}
 }
 
-// TODO(twoGiants): refactor test
+// TestResolveWithCacheHit verifies that when a resource is already in the cache,
+// the resolver returns the cached resource without calling the underlying resolver
 func TestResolveWithCacheHit(t *testing.T) {
-	// Test that cache hits work correctly
 	ctx, _ := ttesting.SetupFakeContext(t)
 	resolver := &cluster.Resolver{}
 
@@ -614,7 +614,8 @@ func TestResolveWithCacheHit(t *testing.T) {
 		t.Fatalf("failed to initialize resolver: %v", err)
 	}
 
-	// Create a mock cached resource
+	// prepopulate the cache with a mock resource
+	// This simulates a previous resolution that was cached
 	mockResource := &clusterresolution.ResolvedClusterResource{
 		Content:    []byte("cached content"),
 		Spec:       []byte("cached spec"),
@@ -631,31 +632,37 @@ func TestResolveWithCacheHit(t *testing.T) {
 		{Name: "cache", Value: *pipelinev1.NewStructuredValues("always")},
 	}
 
-	cacheInstance := cache.Get(ctx)
+	// add the mock resource to the cache
+	cache.Get(ctx).Add(cluster.LabelValueClusterResolverType, params, mockResource)
 
-	cacheInstance.Add(cluster.LabelValueClusterResolverType, params, mockResource)
+	// create request with same parameters
+	req := &v1beta1.ResolutionRequestSpec{Params: params}
 
-	req := &v1beta1.ResolutionRequestSpec{
-		Params: []pipelinev1.Param{
-			{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
-			{Name: "name", Value: *pipelinev1.NewStructuredValues("test-task")},
-			{Name: "namespace", Value: *pipelinev1.NewStructuredValues("test-ns")},
-			{Name: "cache", Value: *pipelinev1.NewStructuredValues("always")},
-		},
-	}
-
-	// This should hit the cache and return the cached resource
+	// resolve should hit the cache and return the cached resource
 	result, err := resolver.Resolve(ctx, req)
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
 	}
 
-	// Verify annotations indicate it came from cache
+	// verify the result is not nil
+	if result == nil {
+		t.Fatal("Expected result but got nil")
+	}
+
+	// verify cache annotations are present (indicates resource came from cache)
 	annotations := result.Annotations()
 	if annotations["resolution.tekton.dev/cached"] != "true" {
 		t.Error("Expected cached annotation to be true")
 	}
 	if annotations["resolution.tekton.dev/cache-resolver-type"] != "cluster" {
 		t.Error("Expected resolver type to be cluster")
+	}
+	if annotations["resolution.tekton.dev/cache-operation"] != "retrieve" {
+		t.Errorf("Expected cache operation to be 'retrieve', got: %v", annotations["resolution.tekton.dev/cache-operation"])
+	}
+
+	// Verify the returned data matches the cached resource
+	if string(result.Data()) != string(mockResource.Data()) {
+		t.Errorf("Expected data %q, got %q", string(mockResource.Data()), string(result.Data()))
 	}
 }
