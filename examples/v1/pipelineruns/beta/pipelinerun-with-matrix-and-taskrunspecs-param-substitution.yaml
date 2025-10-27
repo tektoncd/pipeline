@@ -8,10 +8,6 @@ spec:
     podTemplate:
       nodeSelector:
         node-type: $(params.node-type)
-  - pipelineTaskName: create-manifest-list
-    podTemplate:
-      nodeSelector:
-        kubernetes.io/arch: amd64
   pipelineSpec:
     tasks:
       - name: build-and-push-manifest
