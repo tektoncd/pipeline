@@ -30,6 +30,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -2848,16 +2849,32 @@ func TestResolvePipelineRun_TransientError(t *testing.T) {
 		TaskRef: &v1.TaskRef{Name: "task"},
 	}
 
-	getTask := getTaskFn(nil, apierrors.NewTimeoutError("some dang ol' timeout", 5))
-	getTaskRun := getTaskRunFn(nil)
-	pr := v1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "pipelinerun",
-		},
+	testCases := []struct {
+		name         string
+		transientErr error
+	}{
+		{"kubeapi timeout error", apierrors.NewTimeoutError("some dang ol' timeout", 5)},
+		{"retryable resolution error", apiserver.ErrCouldntValidateObjectRetryable},
+		{"any knonw-retryable validation error", apiserver.ErrCouldntValidateObjectRetryable},
 	}
-	_, err := ResolvePipelineTask(t.Context(), pr, nopGetPipelineRun, getTask, getTaskRun, nopGetCustomRun, pt, nil)
-	if !resolutioncommon.IsErrTransient(err) {
-		t.Error("Transient error while getting Task did not result in a transient error")
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			getTask := getTaskFn(nil, testCase.transientErr)
+			getTaskRun := getTaskRunFn(nil)
+			pr := v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinerun",
+				},
+			}
+			_, err := ResolvePipelineTask(t.Context(), pr, nopGetPipelineRun, getTask, getTaskRun, nopGetCustomRun, pt, nil)
+
+			// This is really testing is that if the getTask function give ResolvePipelineTask a transient error,
+			// ResolvePipielineTask does not swallow that error
+			if !resolutioncommon.IsErrTransient(err) {
+				t.Error("Transient error while getting Task did not result in a transient error")
+			}
+		})
 	}
 }
 
