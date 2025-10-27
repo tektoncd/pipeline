@@ -54,11 +54,15 @@ type TaskSkipStatus struct {
 // TaskNotFoundError indicates that the resolution failed because a referenced Task couldn't be retrieved
 type TaskNotFoundError struct {
 	Name string
-	Msg  string
+	Err  error
 }
 
 func (e *TaskNotFoundError) Error() string {
-	return fmt.Sprintf("Couldn't retrieve Task %q: %s", e.Name, e.Msg)
+	return fmt.Sprintf("Couldn't retrieve Task %q: %s", e.Name, e.Err.Error())
+}
+
+func (e *TaskNotFoundError) Unwrap() error {
+	return e.Err
 }
 
 // ResolvedPipelineTask contains a PipelineTask and its associated child PipelineRun(s) (Pipelines-in-Pipelines), TaskRun(s) or CustomRuns, if they exist.
@@ -820,7 +824,7 @@ func resolveTask(
 				}
 				return rt, &TaskNotFoundError{
 					Name: name,
-					Msg:  err.Error(),
+					Err:  err,
 				}
 			default:
 				spec := t.Spec

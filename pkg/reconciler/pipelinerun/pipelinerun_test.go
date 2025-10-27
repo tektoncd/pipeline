@@ -8513,7 +8513,7 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 			prt.Test.Fatalf("Expected an error to be returned by Reconcile, got nil instead")
 		}
 		if controller.IsPermanentError(reconcileError) != permanentError {
-			prt.Test.Fatalf("Expected the error to be permanent: %v but got: %v", permanentError, controller.IsPermanentError(reconcileError))
+			prt.Test.Fatalf("Expected the error to be permanent: %v but got: %v: %v", permanentError, controller.IsPermanentError(reconcileError), reconcileError)
 		}
 	} else if ok, _ := controller.IsRequeueKey(reconcileError); ok {
 		// This is normal, it happens for timeouts when we otherwise successfully reconcile.
@@ -9295,6 +9295,93 @@ spec:
 	// Check that the pipeline fails.
 	updatedPipelineRun, _ := prt.reconcileRun("default", "pr", nil, true)
 	th.CheckPipelineRunConditionStatusAndReason(t, updatedPipelineRun.Status, corev1.ConditionFalse, v1.PipelineRunReasonCouldntGetTask.String())
+}
+
+// TestReconcileWithFailingTaskResolver checks that a PipelineRun with a failing Resolver
+// field for a Task creates a ResolutionRequest object for that Resolver's type, and
+// that when the request fails, the PipelineRun fails.
+func TestReconcileWithTaskResolutionDryRunValidaitonErrors(t *testing.T) {
+	pr := parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineSpec:
+    tasks:
+    - name: some-task
+      taskRef:
+        resolver: foobar
+  taskRunTemplate:
+    serviceAccountName: default
+`)
+	remoteTask := parse.MustParseV1Task(t, `
+metadata:
+  name: some-task
+  namespace: default
+`)
+	taskBytes, err := yaml.Marshal(remoteTask)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
+	}
+	for _, testCase := range []struct {
+		name             string
+		apiErr           error
+		isPermanentError bool
+	}{
+		{"leader change", errors.New("etcdserver: leader changed"), false},
+		{"kubeapi timeout", apierrors.NewTimeoutError("roses are red, tulips are long, this dang ol' request done took too long", 5), false},
+		{"kubeapi throttling", apierrors.NewTooManyRequestsError("over nine thousand requests"), false},
+		{"unknown error", errors.New("the tranformogrifier is not tranformogrifying"), false},
+		{"bad request", apierrors.NewBadRequest("you've thrown off the emperors groove"), true},
+		{"actual validation error", apierrors.NewInvalid(schema.GroupKind{Group: "tekton.dev/v1", Kind: "Task"}, "some-invalid-task", field.ErrorList{}), true},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			taskReq := getResolvedResolutionRequest(t, "foobar", taskBytes, "default", "pr-some-task")
+
+			d := test.Data{
+				PipelineRuns: []*v1.PipelineRun{pr},
+				ServiceAccounts: []*corev1.ServiceAccount{{
+					ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.TaskRunTemplate.ServiceAccountName, Namespace: "foo"},
+				}},
+				ConfigMaps:         th.NewAlphaFeatureFlagsConfigMapInSlice(),
+				ResolutionRequests: []*resolutionv1beta1.ResolutionRequest{&taskReq},
+			}
+
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+			clients := prt.TestAssets.Clients
+
+			clients.Pipeline.PrependReactor("create", "tasks", func(action ktesting.Action) (bool, runtime.Object, error) {
+				return true, nil, testCase.apiErr
+			})
+
+			err := prt.TestAssets.Controller.Reconciler.Reconcile(prt.TestAssets.Ctx, "default/pr")
+			if err == nil {
+				t.Errorf("Expected error returned from reconcile after failing to cancel TaskRun but saw none!")
+			}
+
+			if testCase.isPermanentError && !controller.IsPermanentError(err) {
+				t.Errorf("Expected permanent error reconciling PipelineRun but got non-permanent error: %v", err)
+			} else if !testCase.isPermanentError && controller.IsPermanentError(err) {
+				t.Errorf("Expected non-permanent error reconciling PipelineRun but got permanent error: %v", err)
+			}
+
+			// Check that the PipelineRun is still running with correct error message
+			updatedPipelineRun, err := clients.Pipeline.TektonV1().PipelineRuns("default").Get(prt.TestAssets.Ctx, "pr", metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+			}
+
+			// The PipelineRun should not be cancelled since the error was retryable
+			condition := updatedPipelineRun.Status.GetCondition(apis.ConditionSucceeded)
+			if testCase.isPermanentError && condition.IsUnknown() {
+				t.Errorf("Expected PipelineRun to be failed but succeeded condition is %v", condition.Status)
+			}
+			if !testCase.isPermanentError && !condition.IsUnknown() {
+				t.Errorf("Expected PipelineRun to still be running but succeeded condition is %v", condition.Status)
+			}
+		})
+	}
 }
 
 // TestReconcileWithTaskResolver checks that a PipelineRun with a populated Resolver
