@@ -42,6 +42,7 @@ type RequestOptions struct {
 	Bundle          string
 	EntryName       string
 	Kind            string
+	Cache           string
 }
 
 // ResolvedResource wraps the content of a matched entry in a bundle.

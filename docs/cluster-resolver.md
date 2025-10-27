@@ -18,6 +18,48 @@ This Resolver responds to type `cluster`.
 | `kind`      | The kind of resource to fetch.                        | `task`, `pipeline`, `stepaction` |
 | `name`      | The name of the resource to fetch.                    | `some-pipeline`, `some-task`     |
 | `namespace` | The namespace in the cluster containing the resource. | `default`, `other-namespace`     |
+| `cache`     | Optional cache mode for the resolver.                 | `always`, `never`, `auto`        |
+
+### Cache Parameter
+
+The `cache` parameter controls whether the cluster resolver caches resolved resources:
+
+| Cache Mode | Description |
+|------------|-------------|
+| `always`   | Always cache the resolved resource, regardless of whether it has an immutable reference. |
+| `never`    | Never cache the resolved resource. |
+| `auto`     | **Cluster resolver behavior**: Never cache (cluster resources lack immutable references). |
+| (not specified) | **Default behavior**: Never cache (same as `auto` for cluster resolver). |
+
+**Note**: The cluster resolver only caches when `cache: always` is explicitly specified. This is because cluster resources (Tasks, Pipelines, etc.) do not have immutable references like Git commit hashes or bundle digests, making automatic caching unreliable.
+
+### Cache Configuration
+
+The resolver cache can be configured globally using the `resolver-cache-config` ConfigMap. This ConfigMap controls the cache size and TTL (time-to-live) for all resolvers.
+
+| Option Name | Description | Default Value | Example Values |
+|-------------|-------------|---------------|----------------|
+| `max-size` | Maximum number of entries in the cache | `1000` | `500`, `2000` |
+| `ttl` | Time-to-live for cache entries | `5m` | `10m`, `1h` |
+
+The ConfigMap name can be customized using the `RESOLVER_CACHE_CONFIG_MAP_NAME` environment variable. If not set, it defaults to `resolver-cache-config`.
+
+Additionally, you can set a default cache mode for the cluster resolver by adding the `default-cache-mode` option to the `cluster-resolver-config` ConfigMap. This overrides the system default (`auto`) for this resolver:
+
+| Option Name | Description | Valid Values | Default |
+|-------------|-------------|--------------|---------|
+| `default-cache-mode` | Default caching behavior when `cache` parameter is not specified | `always`, `never`, `auto` | `auto` |
+
+Example:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-resolver-config
+  namespace: tekton-pipelines-resolvers
+data:
+  default-cache-mode: "never"  # Never cache by default (since cluster resources are mutable)
+```
 
 ## Requirements
 
@@ -61,6 +103,48 @@ spec:
       value: some-task
     - name: namespace
       value: namespace-containing-task
+```
+
+### Task Resolution with Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: remote-task-reference-cached
+spec:
+  taskRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: task
+    - name: name
+      value: some-task
+    - name: namespace
+      value: namespace-containing-task
+    - name: cache
+      value: always
+```
+
+### Task Resolution without Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: remote-task-reference-no-cache
+spec:
+  taskRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: task
+    - name: name
+      value: some-task
+    - name: namespace
+      value: namespace-containing-task
+    - name: cache
+      value: never
 ```
 
 ### StepAction Resolution

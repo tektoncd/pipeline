@@ -42,6 +42,7 @@ import (
 	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frameworktesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
+	"github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
 	gitresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -665,7 +666,7 @@ func TestResolve(t *testing.T) {
 			d := test.Data{
 				ConfigMaps: []*corev1.ConfigMap{{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      ConfigMapName,
+						Name:      git.ConfigMapName,
 						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
 					},
 					Data: cfg,
@@ -677,6 +678,12 @@ func TestResolve(t *testing.T) {
 					Data: map[string]string{
 						"enable-git-resolver": "true",
 					},
+				}, {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "resolver-cache-config",
+						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+					},
+					Data: map[string]string{},
 				}},
 				ResolutionRequests: []*v1beta1.ResolutionRequest{request},
 			}

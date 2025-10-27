@@ -48,6 +48,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1beta1"
 	resolutionversioned "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/typed/resolution/v1alpha1"
+	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/typed/resolution/v1beta1"
 	apixclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
 	knativetest "knative.dev/pkg/test"
@@ -70,6 +71,7 @@ type clients struct {
 	V1TaskRunClient                  v1.TaskRunInterface
 	V1PipelineRunClient              v1.PipelineRunInterface
 	V1beta1StepActionClient          v1beta1.StepActionInterface
+	V1beta1ResolutionRequestclient   resolutionv1beta1.ResolutionRequestInterface
 }
 
 // newClients instantiates and returns several clientsets required for making requests to the
@@ -117,5 +119,6 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	c.V1TaskRunClient = cs.TektonV1().TaskRuns(namespace)
 	c.V1PipelineRunClient = cs.TektonV1().PipelineRuns(namespace)
 	c.V1beta1StepActionClient = cs.TektonV1beta1().StepActions(namespace)
+	c.V1beta1ResolutionRequestclient = rrcs.ResolutionV1beta1().ResolutionRequests(namespace)
 	return c
 }

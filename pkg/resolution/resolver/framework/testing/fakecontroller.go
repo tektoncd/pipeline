@@ -154,15 +154,28 @@ func setClockOnReconciler(r *framework.Reconciler) {
 
 func ensureConfigurationConfigMapsExist(d *test.Data) {
 	var featureFlagsExists bool
+	var resolverCacheConfigExists bool
 	for _, cm := range d.ConfigMaps {
 		if cm.Name == resolverconfig.GetFeatureFlagsConfigName() {
 			featureFlagsExists = true
+		}
+		if cm.Name == "resolver-cache-config" {
+			resolverCacheConfigExists = true
 		}
 	}
 	if !featureFlagsExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      resolverconfig.GetFeatureFlagsConfigName(),
+				Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+			},
+			Data: map[string]string{},
+		})
+	}
+	if !resolverCacheConfigExists {
+		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "resolver-cache-config",
 				Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
 			},
 			Data: map[string]string{},
