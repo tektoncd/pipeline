@@ -30,7 +30,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/parse"
@@ -41,9 +40,8 @@ import (
 )
 
 const (
-	sleepDuration = 15 * time.Second
-	enabled       = "true"
-	disabled      = "false"
+	enabled  = "true"
+	disabled = "false"
 )
 
 var (
@@ -53,9 +51,6 @@ var (
 		"alpha": alphaFeatureFlags,
 		"beta":  betaFeatureFlags,
 	}
-
-	ignorePipelineRunStatus = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "StartTime", "CompletionTime", "FinallyStartTime", "ChildReferences", "Provenance")
-	ignoreTaskRunStatus     = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime", "Provenance")
 )
 
 // TestPerFeatureFlagOptInAlpha tests the behavior with all alpha Per-feature

@@ -1,4 +1,4 @@
-# Copyright 2022 The Tekton Authors
+# Copyright 2025 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,19 +15,14 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: bundleresolver-config
+  name: resolver-cache-config
   namespace: tekton-pipelines-resolvers
   labels:
     app.kubernetes.io/component: resolvers
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 data:
-  # the default service account name to use for bundle requests.
-  default-service-account: "default"
-  # The default layer kind in the bundle image.
-  default-kind: "task"
-  # Optional: Default cache mode for this resolver. Valid values: "always", "never", "auto" (default: "auto")
-  # "always" - Always cache resolved resources
-  # "never"  - Never cache resolved resources
-  # "auto"   - Only cache bundles with digest references (@sha256:...)
-  # default-cache-mode: "auto"
+  # Maximum number of entries in the resolver cache
+  max-size: "1000"
+  # Time-to-live for cache entries (examples: 5m, 10m, 1h)
+  ttl: "5m"

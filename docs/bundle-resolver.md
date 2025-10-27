@@ -19,6 +19,7 @@ This Resolver responds to type `bundles`.
 | `bundle`         | The bundle url pointing at the image to fetch                                 | `gcr.io/tekton-releases/catalog/upstream/golang-build:0.1` |
 | `name`           | The name of the resource to pull out of the bundle                            | `golang-build`                                             |
 | `kind`           | The resource kind to pull out of the bundle                                   | `task`                                                     |
+| `cache`          | Controls caching behavior for the resolved resource                           | `always`, `never`, `auto`                                  |
 
 ## Requirements
 
@@ -44,6 +45,44 @@ for the name, namespace and defaults that the resolver ships with.
 | `backoff-steps`      | The number of backoffs to attempt.                                | `3`, `7`              |
 | `backoff-cap`        | The maxumum backoff duration. If reached, remaining steps are zeroed.| `10s`, `20s`       |
 | `default-kind`       | The default layer kind in the bundle image.                       | `task`, `pipeline`    |
+
+### Caching Options
+
+The bundle resolver supports caching of resolved resources to improve performance. The caching behavior can be configured using the `cache` option:
+
+| Cache Value | Description |
+|-------------|-------------|
+| `always` | Always cache resolved resources. This is the most aggressive caching strategy and will cache all resolved resources regardless of their source. |
+| `never` | Never cache resolved resources. This disables caching completely. |
+| `auto` | Caching will only occur for bundles pulled by digest. (default) |
+
+### Cache Configuration
+
+The resolver cache can be configured globally using the `resolver-cache-config` ConfigMap. This ConfigMap controls the cache size and TTL (time-to-live) for all resolvers.
+
+| Option Name | Description | Default Value | Example Values |
+|-------------|-------------|---------------|----------------|
+| `max-size` | Maximum number of entries in the cache | `1000` | `500`, `2000` |
+| `ttl` | Time-to-live for cache entries | `5m` | `10m`, `1h` |
+
+The ConfigMap name can be customized using the `RESOLVER_CACHE_CONFIG_MAP_NAME` environment variable. If not set, it defaults to `resolver-cache-config`.
+
+Additionally, you can set a default cache mode for the bundle resolver by adding the `default-cache-mode` option to the `bundleresolver-config` ConfigMap. This overrides the system default (`auto`) for this resolver:
+
+| Option Name | Description | Valid Values | Default |
+|-------------|-------------|--------------|---------|
+| `default-cache-mode` | Default caching behavior when `cache` parameter is not specified | `always`, `never`, `auto` | `auto` |
+
+Example:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bundleresolver-config
+  namespace: tekton-pipelines-resolvers
+data:
+  default-cache-mode: "always"  # Always cache unless task/pipeline specifies otherwise
+```
 
 ## Usage
 

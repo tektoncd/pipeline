@@ -66,3 +66,6 @@ docs/pipeline-api.md.backup
 
 # Ignore generated kind.yaml
 kind.yaml
+
+# Profiling
+cpu.prof
