@@ -385,7 +385,7 @@ spec:
 func applyV1Beta1Controller(t *testing.T) {
 	t.Helper()
 	t.Log("Creating Wait v1beta1.CustomRun Custom Task Controller...")
-	cmd := exec.Command("ko", "apply", "--platform", "linux/amd64,linux/s390x,linux/ppc64le", "-f", "./config/controller.yaml")
+	cmd := exec.Command("ko", "apply", "--platform", "linux/amd64,linux/arm64,linux/s390x,linux/ppc64le", "-f", "./config/controller.yaml")
 	cmd.Dir = betaWaitTaskDir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
