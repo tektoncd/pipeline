@@ -105,6 +105,9 @@ spec:
       # Change to directory with vendor/
       cd ${PROJECT_ROOT}
 
+      # Copy the repository's .ko.yaml as the base configuration
+      cp ${PROJECT_ROOT}/.ko.yaml /workspace/.ko.yaml
+
       COMBINED_BASE_IMAGE_BASE=${CONTAINER_REGISTRY}
       # If the IMAGE_REGISTRY_PATH does not already includes the package, add it
       # Package looks like github.com/<org>/<repo>
@@ -121,17 +124,8 @@ spec:
         mcr.microsoft.com/windows/nanoserver:ltsc2022 \
         ${COMBINED_BASE_IMAGE_BASE}/combined-base-image:latest)
 
-      # NOTE: Make sure this list of images to use the combined base image is in sync with what's in test/presubmit-tests.sh's 'ko_resolve' function.
-      cat <<EOF > /workspace/.ko.yaml
-      # This matches the value configured in .ko.yaml
-      defaultBaseImage: cgr.dev/chainguard/static@sha256:67a1b00e0134e2b3a614c7198a26f7deed9d11b7acad4d52c79c0cfd47a2eae7
-      baseImageOverrides:
-        # Use the combined base image for images that should include Windows support.
-        $(params.package)/cmd/entrypoint: ${COMBINED_BASE_IMAGE}
-        $(params.package)/cmd/nop: ${COMBINED_BASE_IMAGE}
-        $(params.package)/cmd/workingdirinit: ${COMBINED_BASE_IMAGE}
-        $(params.package)/cmd/resolvers: ghcr.io/tektoncd/plumbing/tini-git@sha256:2c18f0b3ed4394e27068b5c70bb55419797e8fc743d8ea9e0c2766001b36b5b4
-      EOF
+      # Replace :latest references with the actual combined base image digest
+      sed -i "s|combined-base-image:latest|${COMBINED_BASE_IMAGE}|g" /workspace/.ko.yaml
 
       cat /workspace/.ko.yaml
 
