@@ -43,6 +43,7 @@ import (
 const (
 	cacheAnnotationKey   = "resolution.tekton.dev/cached"
 	cacheResolverTypeKey = "resolution.tekton.dev/cache-resolver-type"
+	cacheTimestampKey    = "resolution.tekton.dev/cache-timestamp"
 	cacheValueTrue       = "true"
 )
 
@@ -188,6 +189,11 @@ spec:
 	// Verify cache annotations have correct values
 	if resolutionRequest2.Status.Annotations[cacheResolverTypeKey] != "bundles" {
 		t.Errorf("Expected resolver type 'bundles', got '%s'", resolutionRequest2.Status.Annotations[cacheResolverTypeKey])
+	}
+
+	// Verify timestamp annotation is present
+	if timestamp, exists := resolutionRequest2.Status.Annotations[cacheTimestampKey]; !exists || timestamp == "" {
+		t.Errorf("Expected cache timestamp annotation, got: %v", resolutionRequest2.Status.Annotations)
 	}
 
 	// Verify resolver logs show cache behavior
@@ -488,6 +494,11 @@ spec:
 	// Verify cache annotations have correct values
 	if resolutionRequest2.Status.Annotations[cacheResolverTypeKey] != "cluster" {
 		t.Errorf("Expected resolver type 'cluster', got '%s'", resolutionRequest2.Status.Annotations[cacheResolverTypeKey])
+	}
+
+	// Verify timestamp annotation is present
+	if timestamp, exists := resolutionRequest2.Status.Annotations[cacheTimestampKey]; !exists || timestamp == "" {
+		t.Errorf("Expected cache timestamp annotation, got: %v", resolutionRequest2.Status.Annotations)
 	}
 
 	// Test 3: Request with different parameters should not be cached
