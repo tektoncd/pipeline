@@ -507,6 +507,37 @@ func TestCacheConcurrentWrites(t *testing.T) {
 	for range numWriters {
 		<-done
 	}
+
+	// Verify that entries are in the cache and accessible
+	// Cache size is 1000, and we wrote 500 writers × 10 entries = 5000 entries
+	// Due to LRU eviction, only the most recent ~1000 entries should remain
+	// Check a sample of entries from the last 10 writers (which should still be in cache)
+	cachedCount := 0
+	for writerID := numWriters - 10; writerID < numWriters; writerID++ {
+		for j := range 10 { // Check all entries from these writers
+			params := []pipelinev1.Param{
+				{Name: "bundle", Value: pipelinev1.ParamValue{
+					Type:      pipelinev1.ParamTypeString,
+					StringVal: fmt.Sprintf("registry.io/writer%d-entry%d@sha256:%064d", writerID, j, writerID*100+j),
+				}},
+			}
+			cached, ok := cache.Get(resolverType, params)
+			if ok && cached != nil {
+				cachedCount++
+				// Verify the data is correct using Data() method
+				expectedData := fmt.Sprintf("writer-%d-data-%d", writerID, j)
+				if string(cached.Data()) != expectedData {
+					t.Errorf("Expected data '%s' for writer %d entry %d, got '%s'", expectedData, writerID, j, string(cached.Data()))
+				}
+			}
+		}
+	}
+
+	// We expect at least some recent entries to be cached
+	// Due to concurrent access and LRU, we use a conservative threshold (at least 20% of the 100 we checked)
+	if cachedCount < 20 {
+		t.Errorf("Expected at least 20 recent entries to be cached, but only found %d", cachedCount)
+	}
 }
 
 func TestCacheConcurrentReadWrite(t *testing.T) {
@@ -616,4 +647,42 @@ func TestCacheConcurrentEviction(t *testing.T) {
 	}
 
 	// Cache should not panic or deadlock under concurrent eviction pressure
+	// Verify that expected entries were evicted and cache size is maintained
+
+	// The cache should have at most maxSize entries
+	// We'll verify this by checking that older entries were evicted
+	// Since we had 200 writers * 10 entries = 2000 total entries written
+	// and cache size is 50, we expect most early entries to be evicted
+
+	// Check that early entries were evicted (writers 0-49 should be mostly evicted)
+	evictedCount := 0
+	totalChecked := 0
+	for writerID := range 50 { // Check first 50 writers
+		for j := range entriesPerWriter {
+			params := []pipelinev1.Param{
+				{Name: "bundle", Value: pipelinev1.ParamValue{
+					Type:      pipelinev1.ParamTypeString,
+					StringVal: fmt.Sprintf("registry.io/eviction-writer%d-entry%d@sha256:%064d", writerID, j, writerID*100+j),
+				}},
+			}
+			totalChecked++
+			if _, ok := cache.Get(resolverType, params); !ok {
+				evictedCount++
+			}
+		}
+	}
+
+	// We expect most early entries to be evicted (at least 80% of early entries checked)
+	// Using a lower threshold due to concurrent access patterns and timing variations
+	expectedEvicted := int(float64(totalChecked) * 0.8)
+	if evictedCount < expectedEvicted {
+		t.Errorf("Expected at least %d early entries to be evicted, but only %d were evicted out of %d checked", expectedEvicted, evictedCount, totalChecked)
+	}
+
+	// The main goal of this test is to ensure no panics or deadlocks under concurrent eviction,
+	// and that LRU eviction actually occurs (verified above)
+	// With cache size of 50 and 2000 total entries with random access patterns, we've verified:
+	// 1. No crashes or deadlocks
+	// 2. Old entries are evicted
+	t.Logf("Eviction test passed: %d early entries evicted out of %d checked", evictedCount, totalChecked)
 }
