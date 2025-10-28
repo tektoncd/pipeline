@@ -48,6 +48,89 @@ install_pipeline_crd
 export SYSTEM_NAMESPACE=tekton-pipelines
 set +x
 
+function prepull_common_images() {
+  echo ">> Pre-pulling common images on all nodes to reduce flakes from image pulls"
+  # Keep the list minimal and focused on frequently used images in examples.
+  cat <<'EOF' | kubectl apply -f -
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: tekton-prepull-images
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: tekton-prepull-images
+  template:
+    metadata:
+      labels:
+        app: tekton-prepull-images
+    spec:
+      tolerations:
+      - operator: Exists
+      containers:
+      - name: pull-alpine
+        image: mirror.gcr.io/alpine:latest
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-ubuntu
+        image: mirror.gcr.io/ubuntu:latest
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-busybox
+        image: mirror.gcr.io/busybox:latest
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-busybox-sha-2f9af5c
+        image: busybox@sha256:2f9af5cf39068ec3a9e124feceaa11910c511e23a1670dcfdff0bc16793545fb
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-busybox-sha-1303dbf
+        image: busybox@sha256:1303dbf110c57f3edf68d9f5a16c082ec06c4cf7604831669faf2c712260b5a0
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-bash
+        image: mirror.gcr.io/bash:5.1.4@sha256:c523c636b722339f41b6a431b44588ab2f762c5de5ec3bd7964420ff982fb1d9
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-bash-latest
+        image: mirror.gcr.io/bash:latest
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-kaniko
+        image: gcr.io/kaniko-project/executor:v1.8.1
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-skopeo-copy-catalog
+        image: ghcr.io/tektoncd/catalog/upstream/tasks/skopeo-copy:latest
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-skopeo-dogfooding
+        image: gcr.io/tekton-releases/dogfooding/skopeo:latest
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-alpine-curl
+        image: docker.io/alpine/curl:latest
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-spire-agent
+        image: ghcr.io/spiffe/spire-agent:1.1.1
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-spiffe-csi
+        image: ghcr.io/spiffe/spiffe-csi-driver:nightly
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-csi-registrar
+        image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.0.1
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-bitnami-memcached
+        image: docker.io/bitnami/memcached:1.6.9-debian-10-r114
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-bitnami-postgres
+        image: docker.io/bitnami/postgresql:11.11.0-debian-10-r62
+        command: ["/bin/sh","-c","sleep 300"]
+      - name: pull-gitea
+        image: docker.io/gitea/gitea:1.17.1
+        command: ["/bin/sh","-c","sleep 300"]
+      hostNetwork: false
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+  updateStrategy:
+    type: RollingUpdate
+EOF
+
+  # Give the DaemonSet some time to schedule and pull.
+  kubectl rollout status -n kube-system ds/tekton-prepull-images --timeout=2m || true
+}
+
 
 function add_spire() {
   local gate="$1"
@@ -195,6 +278,7 @@ set_enable_artifacts "$ENABLE_ARTIFACTS"
 set_enable_concise_resolver_syntax "$ENABLE_CONCISE_RESOLVER_SYNTAX"
 set_enable_kubernetes_sidecar "$ENABLE_KUBERNETES_SIDECAR"
 set_default_sidecar_log_polling_interval
+prepull_common_images
 run_e2e
 
 success
