@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -36,15 +37,37 @@ var (
 	imagesMappingRE       = getImagesMappingRE()
 )
 
+// semaphore to limit concurrency of example tests; default to 4 in parallel, configurable via TEST_EXAMPLES_PARALLEL
+var examplesSem chan struct{}
+
+func acquireExamplesSlot() func() {
+	if examplesSem == nil {
+		// lazy init with default size
+		size := 4
+		if v, ok := os.LookupEnv("TEST_EXAMPLES_PARALLEL"); ok && v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				size = n
+			}
+		}
+		examplesSem = make(chan struct{}, size)
+	}
+	examplesSem <- struct{}{}
+	return func() { <-examplesSem }
+}
+
 // getCreatedTektonCRD parses output of an external ko invocation provided as
 // input, as is the kind of Tekton CRD to search for (ie. taskrun)
 func getCreatedTektonCRD(input []byte, kind string) (string, error) {
-	re := regexp.MustCompile(kind + `.tekton.dev\/(.+) created`)
+	// Accept both formats:
+	// - "<kind>.tekton.dev/<name> created" (default kubectl create output)
+	// - "<kind>.tekton.dev/<name>" (when using -o name)
+	// Use non-greedy match for name and optional trailing " created".
+	re := regexp.MustCompile(kind + `\.tekton\.dev\/(.+?)(?:\s+created)?`) // e.g., pipelinerun.tekton.dev/foo created
 	submatch := re.FindSubmatch(input)
-	if submatch == nil || len(submatch) < 2 {
-		return "", nil
+	if submatch != nil && len(submatch) >= 2 {
+		return string(submatch[1]), nil
 	}
-	return string(submatch[1]), nil
+	return "", nil
 }
 
 func waitValidatePipelineRunDone(ctx context.Context, t *testing.T, c *clients, pipelineRunName string) {
@@ -101,6 +124,9 @@ type waitFunc func(ctx context.Context, t *testing.T, c *clients, name string)
 
 func exampleTest(path string, waitValidateFunc waitFunc, createFunc createFunc, kind string) func(t *testing.T) {
 	return func(t *testing.T) {
+		// Limit overall parallelism with a semaphore to reduce flakiness under load.
+		release := acquireExamplesSlot()
+		defer release()
 		t.Parallel()
 		ctx := t.Context()
 		ctx, cancel := context.WithCancel(ctx)
@@ -204,7 +230,8 @@ func TestExamples(t *testing.T) {
 }
 
 func testYamls(t *testing.T, baseDir string, createFunc createFunc, filter pathFilter) {
-	t.Parallel()
+	// Do not parallelize the parent test to avoid compounding concurrency; individual
+	// example tests run in parallel but are rate-limited by a semaphore above.
 	for _, path := range getExamplePaths(t, baseDir, filter) {
 		path := path // capture range variable
 		testName := extractTestName(baseDir, path)
