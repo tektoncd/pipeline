@@ -181,17 +181,17 @@ func TestParseCacheConfigMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config, err := parseCacheConfigMap(tt.configMap)
+			config, err := NewConfigFromConfigMap(tt.configMap)
 			if err != nil {
-				t.Fatalf("parseCacheConfigMap() returned error: %v", err)
+				t.Fatalf("NewConfigFromConfigMap() returned error: %v", err)
 			}
 
-			if config.maxSize != tt.expectedMaxSize {
-				t.Errorf("maxSize = %d, want %d", config.maxSize, tt.expectedMaxSize)
+			if config.MaxSize != tt.expectedMaxSize {
+				t.Errorf("MaxSize = %d, want %d", config.MaxSize, tt.expectedMaxSize)
 			}
 
-			if config.ttl != tt.expectedTTL {
-				t.Errorf("ttl = %v, want %v", config.ttl, tt.expectedTTL)
+			if config.TTL != tt.expectedTTL {
+				t.Errorf("TTL = %v, want %v", config.TTL, tt.expectedTTL)
 			}
 		})
 	}
@@ -204,9 +204,9 @@ func TestOnCacheConfigChanged(t *testing.T) {
 	_ = Get(ctx)
 
 	// Test that onCacheConfigChanged updates the shared cache with new config values
-	config := &cacheConfig{
-		maxSize: 500,
-		ttl:     10 * time.Minute,
+	config := &Config{
+		MaxSize: 500,
+		TTL:     10 * time.Minute,
 	}
 
 	// Call onCacheConfigChanged to update the shared cache
@@ -219,21 +219,21 @@ func TestOnCacheConfigChanged(t *testing.T) {
 	}
 
 	// Verify TTL was applied
-	if cache.TTL() != config.ttl {
-		t.Errorf("Expected TTL to be %v, got %v", config.ttl, cache.TTL())
+	if cache.TTL() != config.TTL {
+		t.Errorf("Expected TTL to be %v, got %v", config.TTL, cache.TTL())
 	}
 
 	// Verify MaxSize was applied
-	if cache.MaxSize() != config.maxSize {
-		t.Errorf("Expected MaxSize to be %d, got %d", config.maxSize, cache.MaxSize())
+	if cache.MaxSize() != config.MaxSize {
+		t.Errorf("Expected MaxSize to be %d, got %d", config.MaxSize, cache.MaxSize())
 	}
 }
 
 func TestOnCacheConfigChangedWithInvalidType(t *testing.T) {
 	// First, set up a known good config
-	goodConfig := &cacheConfig{
-		maxSize: defaultCacheSize,
-		ttl:     defaultExpiration,
+	goodConfig := &Config{
+		MaxSize: defaultCacheSize,
+		TTL:     defaultExpiration,
 	}
 	onCacheConfigChanged("test-config", goodConfig)
 
