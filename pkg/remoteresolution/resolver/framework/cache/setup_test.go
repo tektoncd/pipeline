@@ -20,27 +20,11 @@ import (
 	"context"
 	"testing"
 
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 
 	logtesting "knative.dev/pkg/logging/testing"
 )
-
-func TestGet(t *testing.T) {
-	ctx := logtesting.TestContextWithLogger(t)
-
-	// Test getting cache from context
-	resolverCache := Get(ctx)
-	if resolverCache == nil {
-		t.Error("Expected resolver cache but got nil")
-	}
-
-	// Get creates a new wrapper with logger each time
-	// but the underlying cache data is shared
-	resolverCache2 := Get(ctx)
-	if resolverCache2 == nil {
-		t.Error("Expected resolver cache but got nil on second call")
-	}
-}
 
 func TestGetWithContextValue(t *testing.T) {
 	logger := logtesting.TestLogger(t)
@@ -61,17 +45,6 @@ func TestGetWithContextValue(t *testing.T) {
 	}
 }
 
-func TestGetFallback(t *testing.T) {
-	// Create a plain context without any injected cache
-	ctx := logtesting.TestContextWithLogger(t)
-
-	// Should fall back to shared cache
-	resolverCache := Get(ctx)
-	if resolverCache == nil {
-		t.Error("Expected resolver cache but got nil")
-	}
-}
-
 func TestCacheSharing(t *testing.T) {
 	// Create two different contexts
 	ctx1 := logtesting.TestContextWithLogger(t)
@@ -89,10 +62,23 @@ func TestCacheSharing(t *testing.T) {
 		t.Fatal("Expected cache from ctx2")
 	}
 
-	// Both contexts should share the same underlying cache storage
-	// even though they have different logger wrappers
-	// We can verify this by checking they're both non-nil and functional
-	if cache1 == nil || cache2 == nil {
-		t.Error("Cache instances should be available from both contexts")
+	// Verify they share the same underlying cache storage by adding data
+	// to cache1 and checking it appears in cache2
+	testParams := []pipelinev1.Param{
+		{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://example.com"}},
+	}
+	testResource := &mockResolvedResource{data: []byte("test-data")}
+
+	// Add to cache1
+	cache1.Add("test-resolver", testParams, testResource)
+
+	// Verify it exists in cache2 (proving they share the same underlying storage)
+	retrieved, found := cache2.Get("test-resolver", testParams)
+	if !found {
+		t.Fatal("Expected to find resource in cache2 that was added to cache1 - caches are not shared")
+	}
+
+	if string(retrieved.Data()) != string(testResource.Data()) {
+		t.Errorf("Expected data %q, got %q", string(testResource.Data()), string(retrieved.Data()))
 	}
 }

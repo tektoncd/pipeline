@@ -76,8 +76,7 @@ type Reconciler struct {
 	resolutionRequestLister    rrv1beta1.ResolutionRequestLister
 	resolutionRequestClientSet rrclient.Interface
 
-	configStore      *framework.ConfigStore
-	cacheConfigStore *rrcache.CacheConfigStore
+	configStore *framework.ConfigStore
 }
 
 var _ reconciler.LeaderAware = &Reconciler{}

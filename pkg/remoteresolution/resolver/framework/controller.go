@@ -121,8 +121,8 @@ func watchCacheConfigChanges(ctx context.Context, reconciler *Reconciler, cmw co
 		return
 	}
 
-	reconciler.cacheConfigStore = rrcache.NewCacheConfigStore(cacheConfigName, logger)
-	reconciler.cacheConfigStore.WatchConfigs(cmw)
+	cacheConfigStore := rrcache.NewCacheConfigStore(cacheConfigName, logger)
+	cacheConfigStore.WatchConfigs(cmw)
 }
 
 // applyModifiersAndDefaults applies the given modifiers to
