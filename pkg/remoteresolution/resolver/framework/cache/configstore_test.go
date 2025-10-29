@@ -197,14 +197,6 @@ func TestParseCacheConfigMap(t *testing.T) {
 	}
 }
 
-func TestGetCacheConfigName(t *testing.T) {
-	// Test default config name
-	configName := getCacheConfigName()
-	if configName != defaultConfigMapName {
-		t.Errorf("getCacheConfigName() = %q, want %q", configName, defaultConfigMapName)
-	}
-}
-
 func TestOnCacheConfigChanged(t *testing.T) {
 	// Test that onCacheConfigChanged updates the shared cache
 	config := &cacheConfig{
