@@ -34,17 +34,19 @@ var _ resolutionframework.ConfigWatcher = (*resolverCache)(nil)
 // resolverCache is a wrapper around utilcache.LRUExpireCache that provides
 // type-safe methods for caching resolver results.
 type resolverCache struct {
-	cache  *utilcache.LRUExpireCache
-	logger *zap.SugaredLogger
-	ttl    time.Duration
-	clock  Clock
+	cache   *utilcache.LRUExpireCache
+	logger  *zap.SugaredLogger
+	ttl     time.Duration
+	maxSize int
+	clock   Clock
 }
 
 func newResolverCache(maxSize int, ttl time.Duration) *resolverCache {
 	return &resolverCache{
-		cache: utilcache.NewLRUExpireCache(maxSize),
-		ttl:   ttl,
-		clock: realClock{},
+		cache:   utilcache.NewLRUExpireCache(maxSize),
+		ttl:     ttl,
+		maxSize: maxSize,
+		clock:   realClock{},
 	}
 }
 
@@ -56,7 +58,17 @@ func (c *resolverCache) GetConfigName(_ context.Context) string {
 // withLogger returns a new ResolverCache instance with the provided logger.
 // This prevents state leak by not storing logger in the global singleton.
 func (c *resolverCache) withLogger(logger *zap.SugaredLogger) *resolverCache {
-	return &resolverCache{logger: logger, cache: c.cache, ttl: c.ttl, clock: c.clock}
+	return &resolverCache{logger: logger, cache: c.cache, ttl: c.ttl, maxSize: c.maxSize, clock: c.clock}
+}
+
+// TTL returns the time-to-live duration for cache entries.
+func (c *resolverCache) TTL() time.Duration {
+	return c.ttl
+}
+
+// MaxSize returns the maximum number of entries the cache can hold.
+func (c *resolverCache) MaxSize() int {
+	return c.maxSize
 }
 
 // Get retrieves a cached resource by resolver type and parameters, returning
