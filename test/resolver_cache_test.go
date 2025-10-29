@@ -147,15 +147,7 @@ spec:
 
 	// Test 1: First request should have cache annotations (it stores in cache with "always" mode)
 	tr1 := createBundleTaskRunLocal(t, namespace, "test-task-1", "always", repo1, taskName1)
-	_, err := c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create first TaskRun: %s", err)
-	}
-
-	// Wait for completion and verify cache annotations (first request stores in cache with "always" mode)
-	if err := WaitForTaskRunState(ctx, c, tr1.Name, TaskRunSucceed(tr1.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for first TaskRun to finish: %s", err)
-	}
+	createTaskRunAndWait(ctx, t, c, tr1)
 
 	// Add a small delay to ensure ResolutionRequest status is fully updated
 	time.Sleep(2 * time.Second)
@@ -168,33 +160,14 @@ spec:
 
 	// Test 2: Second request with same parameters should be cached
 	tr2 := createBundleTaskRunLocal(t, namespace, "test-task-2", "always", repo1, taskName1)
-	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create second TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr2.Name, TaskRunSucceed(tr2.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for second TaskRun to finish: %s", err)
-	}
+	createTaskRunAndWait(ctx, t, c, tr2)
 
 	// Add a small delay to ensure ResolutionRequest status is fully updated
 	time.Sleep(2 * time.Second)
 
-	// Verify it IS cached
+	// Verify it IS cached and has correct annotations
 	resolutionRequest2 := getResolutionRequest(ctx, t, c, namespace, tr2.Name)
-	if !hasCacheAnnotation(resolutionRequest2.Status.Annotations) {
-		t.Error("Second request should be cached")
-	}
-
-	// Verify cache annotations have correct values
-	if resolutionRequest2.Status.Annotations[cacheResolverTypeKey] != "bundles" {
-		t.Errorf("Expected resolver type 'bundles', got '%s'", resolutionRequest2.Status.Annotations[cacheResolverTypeKey])
-	}
-
-	// Verify timestamp annotation is present
-	if timestamp, exists := resolutionRequest2.Status.Annotations[cacheTimestampKey]; !exists || timestamp == "" {
-		t.Errorf("Expected cache timestamp annotation, got: %v", resolutionRequest2.Status.Annotations)
-	}
+	verifyCacheAnnotations(t, resolutionRequest2.Status.Annotations, "bundles")
 
 	// Verify resolver logs show cache behavior
 	logs := getResolverPodLogs(ctx, t, c)
@@ -214,303 +187,7 @@ spec:
 
 	// Test 3: Request with different parameters should not be cached
 	tr3 := createBundleTaskRunLocal(t, namespace, "test-task-3", "never", repo2, taskName2)
-	_, err = c.V1TaskRunClient.Create(ctx, tr3, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create third TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr3.Name, TaskRunSucceed(tr3.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for third TaskRun to finish: %s", err)
-	}
-
-	resolutionRequest3 := getResolutionRequest(ctx, t, c, namespace, tr3.Name)
-	if hasCacheAnnotation(resolutionRequest3.Status.Annotations) {
-		t.Error("Request with cache=never should not be cached")
-	}
-}
-
-// TestGitResolverCache validates that git resolver caching works correctly
-func TestGitResolverCache(t *testing.T) {
-	ctx := t.Context()
-	c, namespace := setup(ctx, t, cacheGitFeatureFlags)
-
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
-	// Test with commit hash (should cache)
-	tr1 := createGitTaskRun(t, namespace, "test-git-1", "d76b231a02268ef5d6398f134452b51febd7f084")
-	_, err := c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create TaskRun `%s`: %s", tr1.Name, err)
-	}
-
-	// Wait for the first TaskRun to complete
-	if err := WaitForTaskRunState(ctx, c, tr1.Name, TaskRunSucceed(tr1.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for TaskRun to finish: %s", err)
-	}
-
-	// Second request with same commit should be cached
-	tr2 := createGitTaskRun(t, namespace, "test-git-2", "d76b231a02268ef5d6398f134452b51febd7f084")
-	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create TaskRun `%s`: %s", tr2.Name, err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr2.Name, TaskRunSucceed(tr2.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for second Git TaskRun to finish: %s", err)
-	}
-
-	resolutionRequest2 := getResolutionRequest(ctx, t, c, namespace, tr2.Name)
-	if !hasCacheAnnotation(resolutionRequest2.Status.Annotations) {
-		t.Error("Second git request with same commit should be cached")
-	}
-
-	// Verify cache annotations have correct values
-	if resolutionRequest2.Status.Annotations[cacheResolverTypeKey] != "git" {
-		t.Errorf("Expected resolver type 'git', got '%s'", resolutionRequest2.Status.Annotations[cacheResolverTypeKey])
-	}
-
-	// Test with branch name (should not cache in auto mode)
-	tr3 := createGitTaskRun(t, namespace, "test-git-3", "main")
-	_, err = c.V1TaskRunClient.Create(ctx, tr3, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create third Git TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr3.Name, TaskRunSucceed(tr3.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for third Git TaskRun to finish: %s", err)
-	}
-
-	resolutionRequest3 := getResolutionRequest(ctx, t, c, namespace, tr3.Name)
-	if hasCacheAnnotation(resolutionRequest3.Status.Annotations) {
-		t.Error("Git request with branch name should not be cached in auto mode")
-	}
-}
-
-// TestCacheConfiguration validates cache configuration options
-func TestResolverCacheConfiguration(t *testing.T) {
-	ctx := t.Context()
-	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags, cacheGitFeatureFlags)
-
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
-	cache.Get(ctx).Clear()
-
-	// Set up local bundle registry
-	taskName := helpers.ObjectNameForTest(t)
-	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/cachetest-" + helpers.ObjectNameForTest(t)
-
-	// Create a task for the test
-	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  steps:
-  - name: hello
-    image: mirror.gcr.io/alpine
-    script: 'echo Hello from config test'
-`, taskName, namespace))
-
-	// Set up the bundle in the local registry
-	setupBundle(ctx, t, c, namespace, repo, task, nil)
-
-	// Get the digest of the published image
-	digest := getImageDigest(ctx, t, c, namespace, repo)
-	repoWithDigest := repo + "@" + digest
-
-	// Get a commit hash for git tests
-	commitHash := getGitCommitHash(ctx, t, c, namespace, "main")
-
-	testCases := []struct {
-		name        string
-		cacheMode   string
-		shouldCache bool
-		description string
-	}{
-		// Bundle resolver tests
-		{"bundle-always", "always", true, "Bundle resolver should cache with always"},
-		{"bundle-never", "never", false, "Bundle resolver should not cache with never"},
-		{"bundle-auto-no-digest", "auto", false, "Bundle resolver should not cache with auto (no digest)"},
-		{"bundle-auto-with-digest", "auto", true, "Bundle resolver should cache with auto (with digest)"},
-		{"bundle-default-no-digest", "", false, "Bundle resolver should not cache with default (auto with no digest)"},
-		{"bundle-default-with-digest", "", true, "Bundle resolver should cache with default (auto with digest)"},
-
-		// Git resolver tests
-		{"git-always", "always", true, "Git resolver should cache with always"},
-		{"git-never", "never", false, "Git resolver should not cache with never"},
-		{"git-auto-branch", "auto", false, "Git resolver should not cache with auto (branch name)"},
-		{"git-auto-commit", "auto", true, "Git resolver should cache with auto (commit hash)"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			var tr *v1.TaskRun
-
-			switch {
-			case strings.HasPrefix(tc.name, "bundle-"):
-				// Use digest for positive test cases
-				if strings.Contains(tc.name, "with-digest") {
-					tr = createBundleTaskRunLocal(t, namespace, "config-test-"+tc.name, tc.cacheMode, repoWithDigest, taskName)
-				} else {
-					tr = createBundleTaskRunLocal(t, namespace, "config-test-"+tc.name, tc.cacheMode, repo, taskName)
-				}
-			case strings.HasPrefix(tc.name, "git-"):
-				// Use commit hash for positive test cases
-				if strings.Contains(tc.name, "commit") {
-					tr = createGitTaskRunWithCache(t, namespace, "config-test-"+tc.name, commitHash, tc.cacheMode)
-				} else {
-					tr = createGitTaskRunWithCache(t, namespace, "config-test-"+tc.name, "main", tc.cacheMode)
-				}
-			}
-
-			_, err := c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
-			if err != nil {
-				t.Fatalf("Failed to create TaskRun: %s", err)
-			}
-
-			// Wait for ResolutionRequest with annotations to be available (polling with timeout)
-			var resolutionRequest *v1beta1.ResolutionRequest
-			timeout := 30 * time.Second
-			start := time.Now()
-
-			for time.Since(start) < timeout {
-				rr := getResolutionRequest(ctx, t, c, namespace, tr.Name)
-				if rr != nil && rr.Status.Data != "" {
-					resolutionRequest = rr
-					break
-				}
-				time.Sleep(500 * time.Millisecond)
-			}
-
-			if resolutionRequest == nil {
-				t.Fatalf("ResolutionRequest not found within timeout for TaskRun %s", tr.Name)
-			}
-
-			// For cache: never, ResolutionRequest should be created but without cache annotations
-			if tc.cacheMode == "never" {
-				if resolutionRequest == nil {
-					t.Errorf("%s: expected ResolutionRequest but none found", tc.description)
-					return
-				}
-				if hasCacheAnnotation(resolutionRequest.Status.Annotations) {
-					t.Errorf("%s: expected no cache annotations for cache: never", tc.description)
-				}
-				return
-			}
-
-			// For other cache modes, we should have a ResolutionRequest
-			if resolutionRequest == nil {
-				t.Errorf("%s: expected ResolutionRequest but none found", tc.description)
-				return
-			}
-
-			isCached := hasCacheAnnotation(resolutionRequest.Status.Annotations)
-
-			if isCached != tc.shouldCache {
-				t.Errorf("%s: expected cache=%v, got cache=%v", tc.description, tc.shouldCache, isCached)
-			}
-		})
-	}
-}
-
-// TestClusterResolverCache validates that cluster resolver caching works correctly
-func TestClusterResolverCache(t *testing.T) {
-	ctx := t.Context()
-	c, namespace := setup(ctx, t, clusterFeatureFlags)
-
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
-	// Create a Task in the namespace for testing
-	taskName := helpers.ObjectNameForTest(t)
-	exampleTask := parse.MustParseV1Task(t, fmt.Sprintf(`
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  steps:
-  - name: echo
-    image: mirror.gcr.io/ubuntu
-    script: |
-      #!/usr/bin/env bash
-      echo "Hello from cluster resolver cache test"
-`, taskName, namespace))
-
-	_, err := c.V1TaskClient.Create(ctx, exampleTask, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", taskName, err)
-	}
-
-	// Test 1: First request should be cached when cache=always
-	tr1 := createClusterTaskRun(t, namespace, "test-cluster-1", taskName, "always")
-	_, err = c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create first TaskRun: %s", err)
-	}
-
-	// Wait for completion and verify cache annotation is present
-	if err := WaitForTaskRunState(ctx, c, tr1.Name, TaskRunSucceed(tr1.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for first TaskRun to finish: %s", err)
-	}
-
-	// Get the resolved resource and verify it IS cached (because cache=always)
-	resolutionRequest1 := getResolutionRequest(ctx, t, c, namespace, tr1.Name)
-	if !hasCacheAnnotation(resolutionRequest1.Status.Annotations) {
-		t.Error("First request should be cached when cache=always")
-	}
-
-	// Verify cache annotations have correct values for first request
-	if resolutionRequest1.Status.Annotations[cacheResolverTypeKey] != "cluster" {
-		t.Errorf("Expected resolver type 'cluster', got '%s'", resolutionRequest1.Status.Annotations[cacheResolverTypeKey])
-	}
-
-	// Test 2: Second request with same parameters should be cached
-	tr2 := createClusterTaskRun(t, namespace, "test-cluster-2", taskName, "always")
-	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create second TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr2.Name, TaskRunSucceed(tr2.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for second TaskRun to finish: %s", err)
-	}
-
-	// Verify it IS cached
-	resolutionRequest2 := getResolutionRequest(ctx, t, c, namespace, tr2.Name)
-	if !hasCacheAnnotation(resolutionRequest2.Status.Annotations) {
-		t.Error("Second request should be cached")
-	}
-
-	// Verify cache annotations have correct values
-	if resolutionRequest2.Status.Annotations[cacheResolverTypeKey] != "cluster" {
-		t.Errorf("Expected resolver type 'cluster', got '%s'", resolutionRequest2.Status.Annotations[cacheResolverTypeKey])
-	}
-
-	// Verify timestamp annotation is present
-	if timestamp, exists := resolutionRequest2.Status.Annotations[cacheTimestampKey]; !exists || timestamp == "" {
-		t.Errorf("Expected cache timestamp annotation, got: %v", resolutionRequest2.Status.Annotations)
-	}
-
-	// Test 3: Request with different parameters should not be cached
-	tr3 := createClusterTaskRun(t, namespace, "test-cluster-3", taskName, "never")
-	_, err = c.V1TaskRunClient.Create(ctx, tr3, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create third TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr3.Name, TaskRunSucceed(tr3.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for third TaskRun to finish: %s", err)
-	}
+	createTaskRunAndWait(ctx, t, c, tr3)
 
 	resolutionRequest3 := getResolutionRequest(ctx, t, c, namespace, tr3.Name)
 	if hasCacheAnnotation(resolutionRequest3.Status.Annotations) {
@@ -644,277 +321,6 @@ spec:
 `, name, namespace, taskName, namespace, cacheMode))
 }
 
-// TestGitResolverCacheAlwaysMode validates git resolver caching with cache: always
-func TestGitResolverCacheAlwaysMode(t *testing.T) {
-	ctx := t.Context()
-	c, namespace := setup(ctx, t, cacheGitFeatureFlags)
-
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
-	// Test with cache: always and commit hash
-	tr1 := createGitTaskRunWithCache(t, namespace, "test-git-always-1", "d76b231a02268ef5d6398f134452b51febd7f084", "always")
-	_, err := c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create first Git TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr1.Name, TaskRunSucceed(tr1.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for first Git TaskRun to finish: %s", err)
-	}
-
-	// Second request with same parameters should be cached
-	tr2 := createGitTaskRunWithCache(t, namespace, "test-git-always-2", "d76b231a02268ef5d6398f134452b51febd7f084", "always")
-	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create second Git TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr2.Name, TaskRunSucceed(tr2.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for second Git TaskRun to finish: %s", err)
-	}
-
-	resolutionRequest2 := getResolutionRequest(ctx, t, c, namespace, tr2.Name)
-	if !hasCacheAnnotation(resolutionRequest2.Status.Annotations) {
-		t.Error("Second git request with cache: always should be cached")
-	}
-
-	// Verify cache annotations have correct values
-	if resolutionRequest2.Status.Annotations[cacheResolverTypeKey] != "git" {
-		t.Errorf("Expected resolver type 'git', got '%s'", resolutionRequest2.Status.Annotations[cacheResolverTypeKey])
-	}
-
-	// Test with cache: always and branch name (should still cache)
-	tr3 := createGitTaskRunWithCache(t, namespace, "test-git-always-3", "main", "always")
-	_, err = c.V1TaskRunClient.Create(ctx, tr3, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create third Git TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr3.Name, TaskRunSucceed(tr3.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for third Git TaskRun to finish: %s", err)
-	}
-
-	resolutionRequest3 := getResolutionRequest(ctx, t, c, namespace, tr3.Name)
-	if !hasCacheAnnotation(resolutionRequest3.Status.Annotations) {
-		t.Error("Git request with cache: always should be cached even with branch name")
-	}
-}
-
-// TestGitResolverCacheNeverMode validates git resolver caching with cache: never
-func TestGitResolverCacheNeverMode(t *testing.T) {
-	ctx := t.Context()
-	c, namespace := setup(ctx, t, cacheGitFeatureFlags)
-
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
-	// Test with cache: never and commit hash (should not cache)
-	tr1 := createGitTaskRunWithCache(t, namespace, "test-git-never-1", "dd7cc22f2965ff4c9d8855b7161c2ffe94b6153e", "never")
-	_, err := c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create first Git TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr1.Name, TaskRunSucceed(tr1.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for first Git TaskRun to finish: %s", err)
-	}
-
-	// Second request with same parameters should NOT be cached
-	tr2 := createGitTaskRunWithCache(t, namespace, "test-git-never-2", "dd7cc22f2965ff4c9d8855b7161c2ffe94b6153e", "never")
-	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create second Git TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr2.Name, TaskRunSucceed(tr2.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for second Git TaskRun to finish: %s", err)
-	}
-
-	resolutionRequest2 := getResolutionRequest(ctx, t, c, namespace, tr2.Name)
-	if hasCacheAnnotation(resolutionRequest2.Status.Annotations) {
-		t.Error("Git request with cache: never should not be cached")
-	}
-}
-
-// TestGitResolverCacheAutoMode validates git resolver caching with cache: auto
-func TestGitResolverCacheAutoMode(t *testing.T) {
-	ctx := t.Context()
-	c, namespace := setup(ctx, t, cacheGitFeatureFlags)
-
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
-	// Test with cache: auto and commit hash (should cache)
-	tr1 := createGitTaskRunWithCache(t, namespace, "test-git-auto-1", "dd7cc22f2965ff4c9d8855b7161c2ffe94b6153e", "auto")
-	_, err := c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create first Git TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr1.Name, TaskRunSucceed(tr1.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for first Git TaskRun to finish: %s", err)
-	}
-
-	// Second request with same commit should be cached
-	tr2 := createGitTaskRunWithCache(t, namespace, "test-git-auto-2", "dd7cc22f2965ff4c9d8855b7161c2ffe94b6153e", "auto")
-	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create second Git TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr2.Name, TaskRunSucceed(tr2.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for second Git TaskRun to finish: %s", err)
-	}
-
-	resolutionRequest2 := getResolutionRequest(ctx, t, c, namespace, tr2.Name)
-	if !hasCacheAnnotation(resolutionRequest2.Status.Annotations) {
-		t.Error("Git request with cache: auto and commit hash should be cached")
-	}
-
-	// Test with cache: auto and branch name (should not cache)
-	tr3 := createGitTaskRunWithCache(t, namespace, "test-git-auto-3", "main", "auto")
-	_, err = c.V1TaskRunClient.Create(ctx, tr3, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create third Git TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr3.Name, TaskRunSucceed(tr3.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for third Git TaskRun to finish: %s", err)
-	}
-
-	resolutionRequest3 := getResolutionRequest(ctx, t, c, namespace, tr3.Name)
-	if hasCacheAnnotation(resolutionRequest3.Status.Annotations) {
-		t.Error("Git request with cache: auto and branch name should not be cached")
-	}
-}
-
-// TestClusterResolverCacheNeverMode validates cluster resolver caching with cache: never
-func TestClusterResolverCacheNeverMode(t *testing.T) {
-	ctx := t.Context()
-	c, namespace := setup(ctx, t, clusterFeatureFlags)
-
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
-	// Create a Task in the namespace for testing
-	taskName := helpers.ObjectNameForTest(t)
-	exampleTask := parse.MustParseV1Task(t, fmt.Sprintf(`
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  steps:
-  - name: echo
-    image: mirror.gcr.io/ubuntu
-    script: |
-      #!/usr/bin/env bash
-      echo "Hello from cluster resolver cache never test"
-`, taskName, namespace))
-
-	_, err := c.V1TaskClient.Create(ctx, exampleTask, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", taskName, err)
-	}
-
-	// Test with cache: never (should not cache)
-	tr1 := createClusterTaskRun(t, namespace, "test-cluster-never-1", taskName, "never")
-	_, err = c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create first TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr1.Name, TaskRunSucceed(tr1.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for first TaskRun to finish: %s", err)
-	}
-
-	// Second request with same parameters should NOT be cached
-	tr2 := createClusterTaskRun(t, namespace, "test-cluster-never-2", taskName, "never")
-	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create second TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr2.Name, TaskRunSucceed(tr2.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for second TaskRun to finish: %s", err)
-	}
-
-	resolutionRequest2 := getResolutionRequest(ctx, t, c, namespace, tr2.Name)
-	if hasCacheAnnotation(resolutionRequest2.Status.Annotations) {
-		t.Error("Cluster request with cache: never should not be cached")
-	}
-}
-
-// TestClusterResolverCacheAutoMode validates cluster resolver caching with cache: auto
-func TestClusterResolverCacheAutoMode(t *testing.T) {
-	ctx := t.Context()
-	c, namespace := setup(ctx, t, clusterFeatureFlags)
-
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
-	// Create a Task in the namespace for testing
-	taskName := helpers.ObjectNameForTest(t)
-	exampleTask := parse.MustParseV1Task(t, fmt.Sprintf(`
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  steps:
-  - name: echo
-    image: mirror.gcr.io/ubuntu
-    script: |
-      #!/usr/bin/env bash
-      echo "Hello from cluster resolver cache auto test"
-`, taskName, namespace))
-
-	_, err := c.V1TaskClient.Create(ctx, exampleTask, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", taskName, err)
-	}
-
-	// Test with cache: auto (should not cache for cluster resolver)
-	tr1 := createClusterTaskRun(t, namespace, "test-cluster-auto-1", taskName, "auto")
-	_, err = c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create first TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr1.Name, TaskRunSucceed(tr1.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for first TaskRun to finish: %s", err)
-	}
-
-	// Second request with same parameters should NOT be cached
-	tr2 := createClusterTaskRun(t, namespace, "test-cluster-auto-2", taskName, "auto")
-	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create second TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr2.Name, TaskRunSucceed(tr2.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for second TaskRun to finish: %s", err)
-	}
-
-	resolutionRequest2 := getResolutionRequest(ctx, t, c, namespace, tr2.Name)
-	if hasCacheAnnotation(resolutionRequest2.Status.Annotations) {
-		t.Error("Cluster request with cache: auto should not be cached")
-	}
-}
-
 // TestCacheIsolationBetweenResolvers validates that cache keys are unique between resolvers
 func TestResolverCacheIsolation(t *testing.T) {
 	ctx := t.Context()
@@ -949,36 +355,15 @@ spec:
 
 	// Test bundle resolver cache
 	tr1 := createBundleTaskRun(t, namespace, "isolation-bundle-1", "always")
-	_, err = c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create bundle TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr1.Name, TaskRunSucceed(tr1.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for bundle TaskRun to finish: %s", err)
-	}
+	createTaskRunAndWait(ctx, t, c, tr1)
 
 	// Test git resolver cache
 	tr2 := createGitTaskRunWithCache(t, namespace, "isolation-git-1", "dd7cc22f2965ff4c9d8855b7161c2ffe94b6153e", "always")
-	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create git TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr2.Name, TaskRunSucceed(tr2.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for git TaskRun to finish: %s", err)
-	}
+	createTaskRunAndWait(ctx, t, c, tr2)
 
 	// Test cluster resolver cache
 	tr3 := createClusterTaskRun(t, namespace, "isolation-cluster-1", taskName, "always")
-	_, err = c.V1TaskRunClient.Create(ctx, tr3, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create cluster TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr3.Name, TaskRunSucceed(tr3.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for cluster TaskRun to finish: %s", err)
-	}
+	createTaskRunAndWait(ctx, t, c, tr3)
 
 	// Verify each resolver has its own cache entry
 	resolutionRequests, err := c.V1beta1ResolutionRequestclient.List(ctx, metav1.ListOptions{})
@@ -1342,6 +727,38 @@ func hasCacheAnnotation(annotations map[string]string) bool {
 	}
 	cached, exists := annotations[cacheAnnotationKey]
 	return exists && cached == cacheValueTrue
+}
+
+// verifyCacheAnnotations verifies that cache annotations are present and have correct values
+func verifyCacheAnnotations(t *testing.T, annotations map[string]string, expectedResolverType string) {
+	t.Helper()
+
+	if !hasCacheAnnotation(annotations) {
+		t.Error("Expected cache annotations but none found")
+		return
+	}
+
+	if annotations[cacheResolverTypeKey] != expectedResolverType {
+		t.Errorf("Expected resolver type '%s', got '%s'", expectedResolverType, annotations[cacheResolverTypeKey])
+	}
+
+	if timestamp, exists := annotations[cacheTimestampKey]; !exists || timestamp == "" {
+		t.Errorf("Expected cache timestamp annotation, got: %v", annotations)
+	}
+}
+
+// createTaskRunAndWait creates a TaskRun and waits for it to complete successfully
+func createTaskRunAndWait(ctx context.Context, t *testing.T, c *clients, tr *v1.TaskRun) {
+	t.Helper()
+
+	_, err := c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create TaskRun %s: %s", tr.Name, err)
+	}
+
+	if err := WaitForTaskRunState(ctx, c, tr.Name, TaskRunSucceed(tr.Name), "TaskRunSuccess", v1Version); err != nil {
+		t.Fatalf("Error waiting for TaskRun %s to finish: %s", tr.Name, err)
+	}
 }
 
 // getImageDigest gets the digest of an image from the local registry
