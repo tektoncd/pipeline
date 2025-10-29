@@ -481,24 +481,39 @@ func TestCacheConcurrentWrites(t *testing.T) {
 
 	// Launch 500 concurrent writers
 	numWriters := 500
+	entriesPerWriter := 10
 	done := make(chan bool, numWriters)
+
+	// Track all entries written for later verification
+	type entryInfo struct {
+		params       []pipelinev1.Param
+		expectedData string
+	}
+	allEntries := make([]entryInfo, numWriters*entriesPerWriter)
 
 	for i := range numWriters {
 		go func(writerID int) {
 			defer func() { done <- true }()
 
 			// Each writer adds 10 unique entries
-			for j := range 10 {
+			for j := range entriesPerWriter {
 				params := []pipelinev1.Param{
 					{Name: "bundle", Value: pipelinev1.ParamValue{
 						Type:      pipelinev1.ParamTypeString,
 						StringVal: fmt.Sprintf("registry.io/writer%d-entry%d@sha256:%064d", writerID, j, writerID*100+j),
 					}},
 				}
+				expectedData := fmt.Sprintf("writer-%d-data-%d", writerID, j)
 				mockResource := &mockResolvedResource{
-					data: []byte(fmt.Sprintf("writer-%d-data-%d", writerID, j)),
+					data: []byte(expectedData),
 				}
 				cache.Add(resolverType, params, mockResource)
+
+				// Record this entry for verification
+				allEntries[writerID*entriesPerWriter+j] = entryInfo{
+					params:       params,
+					expectedData: expectedData,
+				}
 			}
 		}(i)
 	}
@@ -508,45 +523,39 @@ func TestCacheConcurrentWrites(t *testing.T) {
 		<-done
 	}
 
-	// After all concurrent writes, add some entries synchronously
-	// These are guaranteed to be the most recent entries in the cache
-	numSyncEntries := 20
-	syncEntries := make([][]pipelinev1.Param, numSyncEntries)
-	for i := range numSyncEntries {
-		params := []pipelinev1.Param{
-			{Name: "bundle", Value: pipelinev1.ParamValue{
-				Type:      pipelinev1.ParamTypeString,
-				StringVal: fmt.Sprintf("registry.io/sync-entry%d@sha256:%064d", i, 999000+i),
-			}},
-		}
-		syncEntries[i] = params
-		mockResource := &mockResolvedResource{
-			data: []byte(fmt.Sprintf("sync-data-%d", i)),
-		}
-		cache.Add(resolverType, params, mockResource)
-	}
-
-	// Verify all synchronous entries are retrievable
-	// Since they were written most recently, they should all be in cache
+	// Verify that concurrent writes are retrievable and have correct data
+	// With 5000 entries (500 writers * 10 entries each) and cache size of 1000,
+	// we expect many entries to be evicted due to LRU. We verify that:
+	// 1. Entries that ARE in cache have the correct data
+	// 2. We get a reasonable hit rate
 	cachedCount := 0
-	for i, params := range syncEntries {
-		cached, ok := cache.Get(resolverType, params)
-		if !ok || cached == nil {
-			t.Errorf("Expected cache hit for sync entry %d, but got miss", i)
-		} else {
+	wrongDataCount := 0
+
+	for _, entry := range allEntries {
+		cached, ok := cache.Get(resolverType, entry.params)
+		if ok {
 			cachedCount++
 			// Verify the data is correct
-			expectedData := fmt.Sprintf("sync-data-%d", i)
-			if string(cached.Data()) != expectedData {
-				t.Errorf("Expected data '%s' for sync entry %d, got '%s'", expectedData, i, string(cached.Data()))
+			if string(cached.Data()) != entry.expectedData {
+				wrongDataCount++
+				t.Errorf("Expected data '%s', got '%s'", entry.expectedData, string(cached.Data()))
 			}
 		}
 	}
 
-	// All synchronous entries should be in cache since they were written most recently
-	if cachedCount != numSyncEntries {
-		t.Errorf("Expected all %d synchronous entries to be cached, but only found %d", numSyncEntries, cachedCount)
+	// We should have no entries with wrong data
+	if wrongDataCount > 0 {
+		t.Errorf("Found %d entries with wrong data", wrongDataCount)
 	}
+
+	// We should have some reasonable number of entries cached
+	// With 5000 entries and cache size 1000, we expect close to 1000 entries to be cached
+	// Using a lower bound of 500 to account for concurrent evictions and timing
+	if cachedCount < 500 {
+		t.Errorf("Expected at least 500 entries to be cached, but only found %d out of %d total", cachedCount, len(allEntries))
+	}
+
+	t.Logf("Concurrent write test passed: %d entries cached out of %d written", cachedCount, len(allEntries))
 }
 
 func TestCacheConcurrentReadWrite(t *testing.T) {
@@ -574,8 +583,16 @@ func TestCacheConcurrentReadWrite(t *testing.T) {
 	// Launch 300 readers and 300 writers concurrently
 	numReaders := 300
 	numWriters := 300
+	entriesPerWriter := 5
 	totalGoroutines := numReaders + numWriters
 	done := make(chan bool, totalGoroutines)
+
+	// Track entries written by concurrent writers for later verification
+	type entryInfo struct {
+		params       []pipelinev1.Param
+		expectedData string
+	}
+	writerEntries := make([]entryInfo, numWriters*entriesPerWriter)
 
 	// Start readers
 	for i := range numReaders {
@@ -594,17 +611,24 @@ func TestCacheConcurrentReadWrite(t *testing.T) {
 		go func(writerID int) {
 			defer func() { done <- true }()
 
-			for j := range 5 {
+			for j := range entriesPerWriter {
 				params := []pipelinev1.Param{
 					{Name: "bundle", Value: pipelinev1.ParamValue{
 						Type:      pipelinev1.ParamTypeString,
 						StringVal: fmt.Sprintf("registry.io/concurrent-writer%d-entry%d@sha256:%064d", writerID, j, writerID*10+j),
 					}},
 				}
+				expectedData := fmt.Sprintf("concurrent-writer-%d-data-%d", writerID, j)
 				mockResource := &mockResolvedResource{
-					data: []byte(fmt.Sprintf("concurrent-writer-%d-data-%d", writerID, j)),
+					data: []byte(expectedData),
 				}
 				cache.Add(resolverType, params, mockResource)
+
+				// Record this entry for verification
+				writerEntries[writerID*entriesPerWriter+j] = entryInfo{
+					params:       params,
+					expectedData: expectedData,
+				}
 			}
 		}(i)
 	}
@@ -613,6 +637,40 @@ func TestCacheConcurrentReadWrite(t *testing.T) {
 	for range totalGoroutines {
 		<-done
 	}
+
+	// Verify that concurrent writes are retrievable and have correct data
+	// With 1500 new entries (300 writers * 5 entries each) plus 100 initial entries,
+	// and cache size of 500, we expect some entries to be evicted. We verify that:
+	// 1. Entries that ARE in cache have the correct data
+	// 2. We get a reasonable hit rate for the concurrent writes
+	cachedCount := 0
+	wrongDataCount := 0
+
+	for _, entry := range writerEntries {
+		cached, ok := cache.Get(resolverType, entry.params)
+		if ok {
+			cachedCount++
+			// Verify the data is correct
+			if string(cached.Data()) != entry.expectedData {
+				wrongDataCount++
+				t.Errorf("Expected data '%s', got '%s'", entry.expectedData, string(cached.Data()))
+			}
+		}
+	}
+
+	// We should have no entries with wrong data
+	if wrongDataCount > 0 {
+		t.Errorf("Found %d entries with wrong data", wrongDataCount)
+	}
+
+	// We should have some reasonable number of entries cached
+	// With 1500 concurrent write entries and cache size 500, accounting for initial entries
+	// and concurrent evictions, we expect at least 200 of the writer entries to be cached
+	if cachedCount < 200 {
+		t.Errorf("Expected at least 200 writer entries to be cached, but only found %d out of %d total", cachedCount, len(writerEntries))
+	}
+
+	t.Logf("Concurrent read/write test passed: %d writer entries cached out of %d written", cachedCount, len(writerEntries))
 }
 
 func TestCacheConcurrentEviction(t *testing.T) {

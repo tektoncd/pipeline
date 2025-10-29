@@ -48,9 +48,10 @@ var (
 
 type cacheConfigKey struct{}
 
-type cacheConfig struct {
-	maxSize int
-	ttl     time.Duration
+// Config holds the configuration for the resolver cache
+type Config struct {
+	MaxSize int
+	TTL     time.Duration
 }
 
 type CacheConfigStore struct {
@@ -65,7 +66,7 @@ func NewCacheConfigStore(cacheConfigName string, logger configmap.Logger) *Cache
 			defaultConfigMapName,
 			logger,
 			configmap.Constructors{
-				getCacheConfigName(): parseCacheConfigMap,
+				getCacheConfigName(): NewConfigFromConfigMap,
 			},
 			onCacheConfigChanged,
 		),
@@ -78,13 +79,16 @@ func (store *CacheConfigStore) WatchConfigs(w configmap.Watcher) {
 	})
 }
 
-func (store *CacheConfigStore) GetResolverConfig() cacheConfig {
+func (store *CacheConfigStore) GetResolverConfig() *Config {
 	untypedConf := store.untyped.UntypedLoad(store.cacheConfigName)
-	if cacheConf, ok := untypedConf.(cacheConfig); ok {
+	if cacheConf, ok := untypedConf.(*Config); ok {
 		return cacheConf
 	}
 
-	return cacheConfig{}
+	return &Config{
+		MaxSize: defaultCacheSize,
+		TTL:     defaultExpiration,
+	}
 }
 
 // ToContext returns a new context with the cache's configuration
@@ -103,10 +107,11 @@ func getCacheConfigName() string {
 	return defaultConfigMapName
 }
 
-func parseCacheConfigMap(cm *corev1.ConfigMap) (*cacheConfig, error) {
-	config := &cacheConfig{
-		maxSize: defaultCacheSize,
-		ttl:     defaultExpiration,
+// NewConfigFromConfigMap creates a Config from a ConfigMap
+func NewConfigFromConfigMap(cm *corev1.ConfigMap) (*Config, error) {
+	config := &Config{
+		MaxSize: defaultCacheSize,
+		TTL:     defaultExpiration,
 	}
 
 	if cm == nil {
@@ -115,13 +120,13 @@ func parseCacheConfigMap(cm *corev1.ConfigMap) (*cacheConfig, error) {
 
 	if maxSizeStr, ok := cm.Data[maxSizeConfigMapKey]; ok {
 		if parsed, err := strconv.Atoi(maxSizeStr); err == nil && parsed > 0 {
-			config.maxSize = parsed
+			config.MaxSize = parsed
 		}
 	}
 
 	if ttlStr, ok := cm.Data[ttlConfigMapKey]; ok {
 		if parsed, err := time.ParseDuration(ttlStr); err == nil && parsed > 0 {
-			config.ttl = parsed
+			config.TTL = parsed
 		}
 	}
 
@@ -129,7 +134,7 @@ func parseCacheConfigMap(cm *corev1.ConfigMap) (*cacheConfig, error) {
 }
 
 func onCacheConfigChanged(_ string, value any) {
-	config, ok := value.(*cacheConfig)
+	config, ok := value.(*Config)
 	if !ok {
 		return
 	}
@@ -137,5 +142,5 @@ func onCacheConfigChanged(_ string, value any) {
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
 
-	sharedCache = newResolverCache(config.maxSize, config.ttl)
+	sharedCache = newResolverCache(config.MaxSize, config.TTL)
 }
