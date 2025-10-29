@@ -132,7 +132,7 @@ spec:
 		t.Fatalf("expected at least %d steps, got %d", expectedStepNumber, len(taskrun.Status.Steps))
 	}
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
-	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Running")
+	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Running", "Provenance")
 	lastStepIndex := len(expectedStepState) - 1
 	for i := range lastStepIndex {
 		if d := cmp.Diff(taskrun.Status.Steps[i], expectedStepState[i], ignoreTerminatedFields, ignoreStepFields); d != "" {
@@ -227,7 +227,7 @@ spec:
 	}}
 
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
-	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID")
+	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Provenance")
 	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
 		t.Fatalf("-got, +want: %v", d)
 	}
@@ -481,7 +481,7 @@ spec:
 			}
 
 			ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID", "Message")
-			ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID")
+			ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Provenance")
 			if d := cmp.Diff(taskRunState.Status.Steps, test.expectedStepStatus, ignoreTerminatedFields, ignoreStepFields); d != "" {
 				t.Fatalf("-got, +want: %v", d)
 			}
@@ -596,7 +596,7 @@ spec:
 		Container:         "step-unnamed-0",
 	}}
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
-	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID")
+	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Provenance")
 	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
 		t.Fatalf("-got, +want: %v", d)
 	}

@@ -8,10 +8,6 @@ spec:
     podTemplate:
       nodeSelector:
         node-type: $(params.node-type)
-  - pipelineTaskName: create-manifest-list
-    podTemplate:
-      nodeSelector:
-        kubernetes.io/arch: amd64
   pipelineSpec:
     tasks:
       - name: build-and-push-manifest
@@ -27,6 +23,7 @@ spec:
             - name: node-type
           steps:
             - name: build-and-push
+              displayName: "Build and push"
               image: ubuntu
               script: |
                 echo "building on $(params.node-type)"

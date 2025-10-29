@@ -737,7 +737,8 @@ spec:
 			Status: v1.TaskRunStatus{
 				TaskRunStatusFields: v1.TaskRunStatusFields{
 					Steps: []v1.StepState{{
-						Name: "step1",
+						Name:       "step1",
+						Provenance: &v1.Provenance{},
 					}},
 				},
 			},
@@ -753,6 +754,229 @@ spec:
 		if d := cmp.Diff(tt.want, tt.tr); d != "" {
 			t.Errorf("the taskrun did not match what was expected diff: %s", diff.PrintWantGot(d))
 		}
+	}
+}
+
+func TestGetStepActionsData_Status(t *testing.T) {
+	firstStepAction := parse.MustParseV1beta1StepAction(t, `
+metadata:
+  name: first-stepaction
+  namespace: default
+spec:
+  image: myImage
+`)
+	firstStepActionSource := v1.RefSource{
+		URI:    "ref-source",
+		Digest: map[string]string{"sha256": "abcd123456"},
+	}
+
+	firstStepActionBytes, err := yaml.Marshal(firstStepAction)
+	if err != nil {
+		t.Fatal("failed to marshal StepAction", err)
+	}
+	rr := test.NewResolvedResource(firstStepActionBytes, map[string]string{}, &firstStepActionSource, nil)
+	requester := test.NewRequester(rr, nil, resource.ResolverPayload{})
+
+	tests := []struct {
+		name        string
+		tr          *v1.TaskRun
+		stepActions []*v1beta1.StepAction
+		want        v1.TaskRunStatus
+	}{
+		{
+			name: "inline only",
+			tr: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "mytaskrun",
+					Namespace: "default",
+				},
+				Spec: v1.TaskRunSpec{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Name:  "first-inline",
+								Image: "ubuntu",
+							},
+							{
+								Name:  "second-inline",
+								Image: "ubuntu",
+							},
+						},
+					},
+				},
+			},
+			want: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{
+						{
+							Name:       "first-inline",
+							Provenance: &v1.Provenance{},
+						},
+						{
+							Name:       "second-inline",
+							Provenance: &v1.Provenance{},
+						},
+					},
+				},
+			},
+		}, {
+			name: "StepAction only",
+			tr: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "mytaskrun",
+					Namespace: "default",
+				},
+				Spec: v1.TaskRunSpec{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Name: "first-remote",
+								Ref: &v1.Ref{
+									Name: "first-stepaction",
+									ResolverRef: v1.ResolverRef{
+										Resolver: "foobar",
+									},
+								},
+							},
+							{
+								Name: "second-remote",
+								Ref: &v1.Ref{
+									Name: "second-stepaction",
+								},
+							},
+						},
+					},
+				},
+			},
+			stepActions: []*v1beta1.StepAction{
+				firstStepAction,
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "second-stepaction",
+						Namespace: "default",
+					},
+					Spec: v1beta1.StepActionSpec{
+						Image: "myimage",
+					},
+				},
+			},
+			want: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{
+						{
+							Name: "first-remote",
+							Provenance: &v1.Provenance{
+								RefSource: &v1.RefSource{
+									URI:    "ref-source",
+									Digest: map[string]string{"sha256": "abcd123456"},
+								},
+							},
+						},
+						{
+							Name:       "second-remote",
+							Provenance: &v1.Provenance{},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "mixed inline and StepAction",
+			tr: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "mytaskrun",
+					Namespace: "default",
+				},
+				Spec: v1.TaskRunSpec{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Name:  "first-inline",
+								Image: "ubuntu",
+							},
+							{
+								Name: "second-remote",
+								Ref: &v1.Ref{
+									Name: "first-stepaction",
+									ResolverRef: v1.ResolverRef{
+										Resolver: "foobar",
+									},
+								},
+							},
+							{
+								Name:  "third-inline",
+								Image: "ubuntu",
+							},
+							{
+								Name: "fourth-remote",
+								Ref: &v1.Ref{
+									Name: "second-stepaction",
+								},
+							},
+						},
+					},
+				},
+			},
+			stepActions: []*v1beta1.StepAction{
+				firstStepAction,
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "second-stepaction",
+						Namespace: "default",
+					},
+					Spec: v1beta1.StepActionSpec{
+						Image: "myimage",
+					},
+				},
+			},
+			want: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Steps: []v1.StepState{
+						{
+							Name:       "first-inline",
+							Provenance: &v1.Provenance{},
+						},
+						{
+							Name: "second-remote",
+							Provenance: &v1.Provenance{
+								RefSource: &v1.RefSource{
+									URI:    "ref-source",
+									Digest: map[string]string{"sha256": "abcd123456"},
+								},
+							},
+						},
+						{
+							Name:       "third-inline",
+							Provenance: &v1.Provenance{},
+						},
+						{
+							Name:       "fourth-remote",
+							Provenance: &v1.Provenance{},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+			tektonclient := fake.NewSimpleClientset()
+			for _, sa := range tt.stepActions {
+				if err := tektonclient.Tracker().Add(sa); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			_, err := GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, requester)
+			if err != nil {
+				t.Fatalf("Did not expect an error but got : %s", err)
+			}
+			if d := cmp.Diff(tt.want, tt.tr.Status); d != "" {
+				t.Errorf("the taskrun status did not match what was expected diff: %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 

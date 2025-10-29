@@ -70,6 +70,28 @@ func TestTaskValidate(t *testing.T) {
 		})
 	}
 }
+func TestTaskValidateStepWithDisplayName(t *testing.T) {
+	t.Run("valid task with step display name", func(t *testing.T) {
+		ctx := t.Context()
+		task := &v1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "task"},
+			Spec: v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name:        "my-step",
+					DisplayName: "My Step",
+					Image:       "my-image",
+					Script: `
+					#!/usr/bin/env  bash
+					echo hello`,
+				}},
+			},
+		}
+		err := task.Validate(ctx)
+		if err != nil {
+			t.Errorf("Task.Validate() returned error for valid Task: %v", err)
+		}
+	})
+}
 
 func TestTaskSpecValidatePropagatedParamsAndWorkspaces(t *testing.T) {
 	type fields struct {
@@ -369,6 +391,19 @@ func TestTaskSpecValidate(t *testing.T) {
 				Name:        "foo-workspace",
 				Description: "my great workspace",
 				MountPath:   "some/path",
+			}},
+		},
+	}, {
+		name: "valid step with displayName",
+		fields: fields{
+			Steps: []v1.Step{{
+				Image:       "my-image",
+				DisplayName: "Step with DisplayName",
+				Args:        []string{"arg"},
+			}},
+			Results: []v1.TaskResult{{
+				Name:        "MY-RESULT",
+				Description: "my great result",
 			}},
 		},
 	}, {

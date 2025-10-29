@@ -52,6 +52,7 @@ A `StepAction` definition supports the following fields:
   - [`workingDir`](#declaring-workingdir)
   - [`securityContext`](#declaring-securitycontext)
   - [`volumeMounts`](#declaring-volumemounts)
+  - [`description`](#declaring-description)
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -384,6 +385,22 @@ spec:
   script: ...
 ```
 
+### Declaring description
+
+The `description` field is an optional field that allows you to add a user-facing name to the step that may be used to populate a UI.
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: StepAction
+metadata:
+  name: myStep
+spec:
+  description: my step
+  params: ...
+  volumeMounts: ...
+  image: ...
+  script: ...
+```
 
 ### Referencing a StepAction
 

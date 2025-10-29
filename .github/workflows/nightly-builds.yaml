@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
 
@@ -50,12 +50,12 @@ jobs:
           echo "latest_sha=${latest_sha}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Kind cluster
-        uses: chainguard-dev/actions/setup-kind@v1.4.12
+        uses: chainguard-dev/actions/setup-kind@1b32103f5aa389c31ab0be75a8edc38d7e4750d8 # v1.5.7
         with:
           k8s-version: ${{ env.KUBERNETES_VERSION }}
 
       - name: Set up Tekton
-        uses: tektoncd/actions/setup-tektoncd@main
+        uses: tektoncd/actions/setup-tektoncd@0986bcdfbaf4f83a8a7b19bc2fa360c44ee55929 # main
         with:
           pipeline_version: latest
           setup_registry: "true"
@@ -94,7 +94,7 @@ jobs:
           ' || true
 
       - name: Install tkn CLI
-        uses: tektoncd/actions/setup-tektoncd-cli@main
+        uses: tektoncd/actions/setup-tektoncd-cli@0986bcdfbaf4f83a8a7b19bc2fa360c44ee55929 # main
         with:
           version: latest
 

@@ -950,6 +950,10 @@
       "description": "PipelineRunSpec defines the desired state of PipelineRun",
       "type": "object",
       "properties": {
+        "managedBy": {
+          "description": "ManagedBy indicates which controller is responsible for reconciling this resource. If unset or set to \"tekton.dev/pipeline\", the default Tekton controller will manage this resource. This field is immutable.",
+          "type": "string"
+        },
         "params": {
           "description": "Params is a list of parameter names and values.",
           "type": "array",
@@ -2044,6 +2048,10 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "displayName": {
+          "description": "DisplayName is a user-facing name of the step that may be used to populate a UI.",
+          "type": "string"
+        },
         "env": {
           "description": "List of environment variables to set in the container. Cannot be updated.",
           "type": "array",
@@ -2946,6 +2954,10 @@
         },
         "debug": {
           "$ref": "#/definitions/v1beta1.TaskRunDebug"
+        },
+        "managedBy": {
+          "description": "ManagedBy indicates which controller is responsible for reconciling this resource. If unset or set to \"tekton.dev/pipeline\", the default Tekton controller will manage this resource. This field is immutable.",
+          "type": "string"
         },
         "params": {
           "type": "array",

@@ -47,6 +47,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	taskresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	th "github.com/tektoncd/pipeline/pkg/reconciler/testing"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
@@ -80,6 +81,7 @@ import (
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	logtesting "knative.dev/pkg/logging/testing"
+	"knative.dev/pkg/ptr"
 	"knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
@@ -8511,7 +8513,7 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 			prt.Test.Fatalf("Expected an error to be returned by Reconcile, got nil instead")
 		}
 		if controller.IsPermanentError(reconcileError) != permanentError {
-			prt.Test.Fatalf("Expected the error to be permanent: %v but got: %v", permanentError, controller.IsPermanentError(reconcileError))
+			prt.Test.Fatalf("Expected the error to be permanent: %v but got: %v: %v", permanentError, controller.IsPermanentError(reconcileError), reconcileError)
 		}
 	} else if ok, _ := controller.IsRequeueKey(reconcileError); ok {
 		// This is normal, it happens for timeouts when we otherwise successfully reconcile.
@@ -9293,6 +9295,93 @@ spec:
 	// Check that the pipeline fails.
 	updatedPipelineRun, _ := prt.reconcileRun("default", "pr", nil, true)
 	th.CheckPipelineRunConditionStatusAndReason(t, updatedPipelineRun.Status, corev1.ConditionFalse, v1.PipelineRunReasonCouldntGetTask.String())
+}
+
+// TestReconcileWithFailingTaskResolver checks that a PipelineRun with a failing Resolver
+// field for a Task creates a ResolutionRequest object for that Resolver's type, and
+// that when the request fails, the PipelineRun fails.
+func TestReconcileWithTaskResolutionDryRunValidaitonErrors(t *testing.T) {
+	pr := parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineSpec:
+    tasks:
+    - name: some-task
+      taskRef:
+        resolver: foobar
+  taskRunTemplate:
+    serviceAccountName: default
+`)
+	remoteTask := parse.MustParseV1Task(t, `
+metadata:
+  name: some-task
+  namespace: default
+`)
+	taskBytes, err := yaml.Marshal(remoteTask)
+	if err != nil {
+		t.Fatal("fail to marshal task", err)
+	}
+	for _, testCase := range []struct {
+		name             string
+		apiErr           error
+		isPermanentError bool
+	}{
+		{"leader change", errors.New("etcdserver: leader changed"), false},
+		{"kubeapi timeout", apierrors.NewTimeoutError("roses are red, tulips are long, this dang ol' request done took too long", 5), false},
+		{"kubeapi throttling", apierrors.NewTooManyRequestsError("over nine thousand requests"), false},
+		{"unknown error", errors.New("the tranformogrifier is not tranformogrifying"), false},
+		{"bad request", apierrors.NewBadRequest("you've thrown off the emperors groove"), true},
+		{"actual validation error", apierrors.NewInvalid(schema.GroupKind{Group: "tekton.dev/v1", Kind: "Task"}, "some-invalid-task", field.ErrorList{}), true},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			taskReq := getResolvedResolutionRequest(t, "foobar", taskBytes, "default", "pr-some-task")
+
+			d := test.Data{
+				PipelineRuns: []*v1.PipelineRun{pr},
+				ServiceAccounts: []*corev1.ServiceAccount{{
+					ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.TaskRunTemplate.ServiceAccountName, Namespace: "foo"},
+				}},
+				ConfigMaps:         th.NewAlphaFeatureFlagsConfigMapInSlice(),
+				ResolutionRequests: []*resolutionv1beta1.ResolutionRequest{&taskReq},
+			}
+
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+			clients := prt.TestAssets.Clients
+
+			clients.Pipeline.PrependReactor("create", "tasks", func(action ktesting.Action) (bool, runtime.Object, error) {
+				return true, nil, testCase.apiErr
+			})
+
+			err := prt.TestAssets.Controller.Reconciler.Reconcile(prt.TestAssets.Ctx, "default/pr")
+			if err == nil {
+				t.Errorf("Expected error returned from reconcile after failing to cancel TaskRun but saw none!")
+			}
+
+			if testCase.isPermanentError && !controller.IsPermanentError(err) {
+				t.Errorf("Expected permanent error reconciling PipelineRun but got non-permanent error: %v", err)
+			} else if !testCase.isPermanentError && controller.IsPermanentError(err) {
+				t.Errorf("Expected non-permanent error reconciling PipelineRun but got permanent error: %v", err)
+			}
+
+			// Check that the PipelineRun is still running with correct error message
+			updatedPipelineRun, err := clients.Pipeline.TektonV1().PipelineRuns("default").Get(prt.TestAssets.Ctx, "pr", metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+			}
+
+			// The PipelineRun should not be cancelled since the error was retryable
+			condition := updatedPipelineRun.Status.GetCondition(apis.ConditionSucceeded)
+			if testCase.isPermanentError && condition.IsUnknown() {
+				t.Errorf("Expected PipelineRun to be failed but succeeded condition is %v", condition.Status)
+			}
+			if !testCase.isPermanentError && !condition.IsUnknown() {
+				t.Errorf("Expected PipelineRun to still be running but succeeded condition is %v", condition.Status)
+			}
+		})
+	}
 }
 
 // TestReconcileWithTaskResolver checks that a PipelineRun with a populated Resolver
@@ -18384,5 +18473,94 @@ spec:
 				t.Errorf("expected %d attempts, got %d", tc.expectCalls, callCount)
 			}
 		})
+	}
+}
+
+func TestReconcile_ManagedBy(t *testing.T) {
+	namespace := "foo"
+	prManagedByTektonName := "test-pr-managed-by-tekton"
+	prManagedByOtherName := "test-pr-managed-by-other"
+
+	ps := []*v1.Pipeline{simpleHelloWorldPipeline}
+	ts := []*v1.Task{simpleHelloWorldTask}
+
+	prs := []*v1.PipelineRun{
+		parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: test-pipeline
+  managedBy: "tekton.dev/pipeline"
+`, prManagedByTektonName, namespace)),
+		parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: test-pipeline
+  managedBy: "other-controller"
+`, prManagedByOtherName, namespace)),
+	}
+	// Change ManagedBy to a pointer
+	prs[0].Spec.ManagedBy = ptr.String("tekton.dev/pipeline")
+	prs[1].Spec.ManagedBy = ptr.String("other-controller")
+
+	// This data is filtered and simulates what the informer would pass to the reconciler.
+	// It only contains the PipelineRun that should be reconciled.
+	filteredData := test.Data{
+		PipelineRuns: []*v1.PipelineRun{prs[0]}, // Only the one managed by Tekton
+		Pipelines:    ps,
+		Tasks:        ts,
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
+	}
+
+	// Initialize controller with filtered data for the listers
+	prt := newPipelineRunTest(t, filteredData)
+	defer prt.Cancel()
+
+	// Create clients with all the data for verification
+	ctx, _ := ttesting.SetupFakeContext(t)
+	clients, _ := test.SeedTestData(t, ctx, test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
+	})
+
+	// Verify no TaskRuns were created for the externally managed PipelineRun
+	taskRunsOther := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prManagedByOtherName)
+	if len(taskRunsOther) != 0 {
+		t.Errorf("Expected no TaskRuns for externally managed PipelineRun, but found %d", len(taskRunsOther))
+	}
+
+	// Verify its status is unchanged
+	reconciledOther, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(prt.TestAssets.Ctx, prManagedByOtherName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get externally managed PipelineRun: %v", err)
+	}
+	if len(reconciledOther.Status.Conditions) != 0 {
+		t.Errorf("Expected externally managed PipelineRun to have no conditions, but it did")
+	}
+
+	// 2. Reconcile the PipelineRun managed by "tekton.dev/pipeline"
+	// We expect this one to be processed normally.
+	wantEvents := []string{
+		"Normal Started",
+		"Normal Running Tasks Completed: 0",
+	}
+	reconciledTekton, clients := prt.reconcileRun(namespace, prManagedByTektonName, wantEvents, false)
+
+	// Verify a TaskRun was created for the Tekton-managed PipelineRun
+	taskRunsTekton := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prManagedByTektonName)
+	if len(taskRunsTekton) != 1 {
+		t.Errorf("Expected 1 TaskRun for Tekton-managed PipelineRun, but found %d", len(taskRunsTekton))
+	}
+
+	// Verify its status was updated
+	if !reconciledTekton.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+		t.Errorf("Expected Tekton-managed PipelineRun to be running, but it was not")
 	}
 }

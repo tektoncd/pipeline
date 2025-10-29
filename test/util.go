@@ -54,7 +54,7 @@ var (
 	ignoreObjectMeta      = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion", "UID", "CreationTimestamp", "Generation", "ManagedFields", "Labels", "Annotations", "OwnerReferences")
 	ignoreCondition       = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time", "Message")
 	ignoreConditions      = cmpopts.IgnoreFields(duckv1.Status{}, "Conditions")
-	ignoreStepState       = cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "TerminationReason")
+	ignoreStepState       = cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "TerminationReason", "Provenance")
 	ignoreContainerStates = cmpopts.IgnoreFields(corev1.ContainerState{}, "Terminated")
 	// ignoreSATaskRunSpec ignores the service account in the TaskRunSpec as it may differ across platforms
 	ignoreSATaskRunSpec = cmpopts.IgnoreFields(v1.TaskRunSpec{}, "ServiceAccountName")
@@ -178,7 +178,7 @@ func verifyServiceAccountExistence(ctx context.Context, t *testing.T, namespace 
 	defaultSA := getDefaultSA(ctx, t, kubeClient, namespace)
 	t.Logf("Verify SA %q is created in namespace %q", defaultSA, namespace)
 
-	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
+	if err := wait.PollUntilContextTimeout(ctx, interval, timeout, true, func(context.Context) (bool, error) {
 		_, err := kubeClient.CoreV1().ServiceAccounts(namespace).Get(ctx, defaultSA, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			return false, nil

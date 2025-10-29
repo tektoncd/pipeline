@@ -238,7 +238,7 @@ spec:
 			}
 			var ops cmp.Options
 			ops = append(ops, cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID", "Message"))
-			ops = append(ops, cmpopts.IgnoreFields(v1.StepState{}, "ImageID"))
+			ops = append(ops, cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Provenance"))
 			if d := cmp.Diff(taskrun.Status.Steps, tc.expected, ops); d != "" {
 				t.Fatalf("-got, +want: %v", d)
 			}
@@ -454,7 +454,7 @@ spec:
 			}
 			var ops cmp.Options
 			ops = append(ops, cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID", "Message"))
-			ops = append(ops, cmpopts.IgnoreFields(v1.StepState{}, "ImageID"))
+			ops = append(ops, cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Provenance"))
 			if d := cmp.Diff(taskrun.Status.Steps, tc.expected, ops); d != "" {
 				t.Fatalf("-got, +want: %v", d)
 			}

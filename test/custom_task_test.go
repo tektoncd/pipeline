@@ -385,7 +385,7 @@ spec:
 func applyV1Beta1Controller(t *testing.T) {
 	t.Helper()
 	t.Log("Creating Wait v1beta1.CustomRun Custom Task Controller...")
-	cmd := exec.Command("ko", "apply", "--platform", "linux/amd64,linux/s390x,linux/ppc64le", "-f", "./config/controller.yaml")
+	cmd := exec.Command("ko", "apply", "--platform", "linux/amd64,linux/arm64,linux/s390x,linux/ppc64le", "-f", "./config/controller.yaml")
 	cmd.Dir = betaWaitTaskDir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -416,8 +416,6 @@ func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
 	applyV1Beta1Controller(t)
 	// Cleanup the controller after finishing the test
 	defer cleanUpV1beta1Controller(t)
-
-	featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 
 	for _, tc := range []struct {
 		name                  string
@@ -651,9 +649,6 @@ func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
 								},
 							},
 						},
-						Provenance: &v1.Provenance{
-							FeatureFlags: featureFlags,
-						},
 					},
 				},
 			}
@@ -691,6 +686,10 @@ func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
 				filterCondition,
 				filterCustomRunStatus,
 				filterPipelineRunStatus,
+				// Ignoring Provenance field as it differs from one instance to the other (different flags,
+				// new flags, ...). It can also be modified by another test. In addition, we don't care about its value here.
+				// #9071, #9066
+				ignorePipelineRunProvenance,
 				// ignore serviceaccount field also, because it can be different based on the value in config-defaults
 				ignoreSAPipelineRunSpec,
 			); d != "" {
