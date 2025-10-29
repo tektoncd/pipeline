@@ -204,7 +204,6 @@ func TestExamples(t *testing.T) {
 }
 
 func testYamls(t *testing.T, baseDir string, createFunc createFunc, filter pathFilter) {
-	t.Parallel()
 	for _, path := range getExamplePaths(t, baseDir, filter) {
 		path := path // capture range variable
 		testName := extractTestName(baseDir, path)
