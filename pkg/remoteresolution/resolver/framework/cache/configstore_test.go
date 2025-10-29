@@ -198,7 +198,12 @@ func TestParseCacheConfigMap(t *testing.T) {
 }
 
 func TestOnCacheConfigChanged(t *testing.T) {
-	// Test that onCacheConfigChanged updates the shared cache
+	ctx := logtesting.TestContextWithLogger(t)
+
+	// Ensure cache is initialized first
+	_ = Get(ctx)
+
+	// Test that onCacheConfigChanged updates the shared cache with new config values
 	config := &cacheConfig{
 		maxSize: 500,
 		ttl:     10 * time.Minute,
@@ -207,25 +212,55 @@ func TestOnCacheConfigChanged(t *testing.T) {
 	// Call onCacheConfigChanged to update the shared cache
 	onCacheConfigChanged("test-config", config)
 
-	// Verify the shared cache was updated by checking we can still get it
-	// We can't directly verify the size/ttl without accessing the internal cache,
-	// but we can verify it doesn't panic and returns a valid cache
-	ctx := logtesting.TestContextWithLogger(t)
+	// Verify the shared cache was updated with the correct config values
 	cache := Get(ctx)
 	if cache == nil {
-		t.Error("Expected cache after config change but got nil")
+		t.Fatal("Expected cache after config change but got nil")
+	}
+
+	// Verify TTL was applied
+	if cache.TTL() != config.ttl {
+		t.Errorf("Expected TTL to be %v, got %v", config.ttl, cache.TTL())
+	}
+
+	// Verify MaxSize was applied
+	if cache.MaxSize() != config.maxSize {
+		t.Errorf("Expected MaxSize to be %d, got %d", config.maxSize, cache.MaxSize())
 	}
 }
 
 func TestOnCacheConfigChangedWithInvalidType(t *testing.T) {
+	// First, set up a known good config
+	goodConfig := &cacheConfig{
+		maxSize: defaultCacheSize,
+		ttl:     defaultExpiration,
+	}
+	onCacheConfigChanged("test-config", goodConfig)
+
+	ctx := logtesting.TestContextWithLogger(t)
+	cacheBefore := Get(ctx)
+	if cacheBefore == nil {
+		t.Fatal("Expected cache before invalid config change")
+	}
+	ttlBefore := cacheBefore.TTL()
+	maxSizeBefore := cacheBefore.MaxSize()
+
 	// Test that onCacheConfigChanged handles invalid types gracefully
-	// This should not panic
+	// This should not panic and should preserve the existing cache
 	onCacheConfigChanged("test-config", "invalid-type")
 
-	// Verify we can still get the cache
-	ctx := logtesting.TestContextWithLogger(t)
-	cache := Get(ctx)
-	if cache == nil {
-		t.Error("Expected cache after invalid config change but got nil")
+	// Verify we can still get the cache and it wasn't modified
+	cacheAfter := Get(ctx)
+	if cacheAfter == nil {
+		t.Fatal("Expected cache after invalid config change but got nil")
+	}
+
+	// Verify cache config wasn't changed by invalid input
+	if cacheAfter.TTL() != ttlBefore {
+		t.Errorf("Expected TTL to remain %v after invalid config, got %v", ttlBefore, cacheAfter.TTL())
+	}
+
+	if cacheAfter.MaxSize() != maxSizeBefore {
+		t.Errorf("Expected MaxSize to remain %d after invalid config, got %d", maxSizeBefore, cacheAfter.MaxSize())
 	}
 }
