@@ -111,6 +111,22 @@ jobs:
         echo "--- Disk space after cleanup ---"
         df -h
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
+    - name: Rebase against ${{ github.base_ref}}
+      if: github.event_name == 'pull_request'
+      run: |
+        # The base branch (e.g., 'main') is available via the github context
+        BASE_REF="${{ github.event.pull_request.base.ref }}"
+
+        echo "Starting rebase onto '$GITHUB_BASE_REF'"
+        git fetch origin "$GITHUB_BASE_REF"
+        git rebase "origin/$GITHUB_BASE_REF" || {
+          echo "::warning::Rebase failed due to conflicts. Tests will run against the conflicting state to highlight the issue."
+          # Resetting to HEAD after a failed rebase is optional,
+          # but sometimes prevents unexpected issues in later steps.
+          git rebase --abort
+          exit 0
+        }
+        echo "Rebase successful. Running tests against the merged state."
     - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00  # v6.0.0
       with:
         go-version-file: "go.mod"
