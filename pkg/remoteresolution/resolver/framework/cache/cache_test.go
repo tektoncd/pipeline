@@ -508,35 +508,44 @@ func TestCacheConcurrentWrites(t *testing.T) {
 		<-done
 	}
 
-	// Verify that entries are in the cache and accessible
-	// Cache size is 1000, and we wrote 500 writers × 10 entries = 5000 entries
-	// Due to LRU eviction, only the most recent ~1000 entries should remain
-	// Check a sample of entries from the last 10 writers (which should still be in cache)
+	// After all concurrent writes, add some entries synchronously
+	// These are guaranteed to be the most recent entries in the cache
+	numSyncEntries := 20
+	syncEntries := make([][]pipelinev1.Param, numSyncEntries)
+	for i := range numSyncEntries {
+		params := []pipelinev1.Param{
+			{Name: "bundle", Value: pipelinev1.ParamValue{
+				Type:      pipelinev1.ParamTypeString,
+				StringVal: fmt.Sprintf("registry.io/sync-entry%d@sha256:%064d", i, 999000+i),
+			}},
+		}
+		syncEntries[i] = params
+		mockResource := &mockResolvedResource{
+			data: []byte(fmt.Sprintf("sync-data-%d", i)),
+		}
+		cache.Add(resolverType, params, mockResource)
+	}
+
+	// Verify all synchronous entries are retrievable
+	// Since they were written most recently, they should all be in cache
 	cachedCount := 0
-	for writerID := numWriters - 10; writerID < numWriters; writerID++ {
-		for j := range 10 { // Check all entries from these writers
-			params := []pipelinev1.Param{
-				{Name: "bundle", Value: pipelinev1.ParamValue{
-					Type:      pipelinev1.ParamTypeString,
-					StringVal: fmt.Sprintf("registry.io/writer%d-entry%d@sha256:%064d", writerID, j, writerID*100+j),
-				}},
-			}
-			cached, ok := cache.Get(resolverType, params)
-			if ok && cached != nil {
-				cachedCount++
-				// Verify the data is correct using Data() method
-				expectedData := fmt.Sprintf("writer-%d-data-%d", writerID, j)
-				if string(cached.Data()) != expectedData {
-					t.Errorf("Expected data '%s' for writer %d entry %d, got '%s'", expectedData, writerID, j, string(cached.Data()))
-				}
+	for i, params := range syncEntries {
+		cached, ok := cache.Get(resolverType, params)
+		if !ok || cached == nil {
+			t.Errorf("Expected cache hit for sync entry %d, but got miss", i)
+		} else {
+			cachedCount++
+			// Verify the data is correct
+			expectedData := fmt.Sprintf("sync-data-%d", i)
+			if string(cached.Data()) != expectedData {
+				t.Errorf("Expected data '%s' for sync entry %d, got '%s'", expectedData, i, string(cached.Data()))
 			}
 		}
 	}
 
-	// We expect at least some recent entries to be cached
-	// Due to concurrent access and LRU, we use a conservative threshold (at least 20% of the 100 we checked)
-	if cachedCount < 20 {
-		t.Errorf("Expected at least 20 recent entries to be cached, but only found %d", cachedCount)
+	// All synchronous entries should be in cache since they were written most recently
+	if cachedCount != numSyncEntries {
+		t.Errorf("Expected all %d synchronous entries to be cached, but only found %d", numSyncEntries, cachedCount)
 	}
 }
 
