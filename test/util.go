@@ -95,31 +95,6 @@ func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testi
 	return c, namespace
 }
 
-func setupPinP(t *testing.T) (context.Context, context.CancelFunc, *clients, string) {
-	t.Helper()
-
-	t.Parallel()
-	ctx := t.Context()
-	ctx, cancel := context.WithCancel(ctx)
-	c, namespace := setup(ctx, t)
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-
-	t.Log("Activating alpha feature flags")
-	configMapData := map[string]string{"enable-api-fields": "alpha"}
-	if err := updateConfigMap(
-		ctx,
-		c.KubeClient,
-		system.Namespace(),
-		config.GetFeatureFlagsConfigName(),
-		configMapData,
-	); err != nil {
-		t.Fatal(err)
-	}
-
-	return ctx, cancel, c, namespace
-}
-
 func header(t *testing.T, text string) {
 	t.Helper()
 	left := "### "
@@ -164,17 +139,6 @@ func tearDown(ctx context.Context, t *testing.T, cs *clients, namespace string) 
 	} else {
 		t.Logf("Not deleting namespace %s", namespace)
 	}
-}
-
-// tearDownNoDump prevents dumping Task/Pipeline/PipelineRun/TaskRun yamls to the terminal
-// when a test fails. Useful for investigating issues from terminal logs without the
-// need to scroll over all the deployed resource yamls.
-func tearDownOptDump(ctx context.Context, t *testing.T, c *clients, namespace string, dump bool) {
-	t.Helper()
-	if !dump {
-		c.KubeClient = nil
-	}
-	tearDown(ctx, t, c, namespace)
 }
 
 func initializeLogsAndMetrics(t *testing.T) {

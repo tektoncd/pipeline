@@ -29,12 +29,19 @@ import (
 	th "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	knativetest "knative.dev/pkg/test"
 )
 
-func TestPipelineRun_OneChildPipelineRunFromPipelineSpec(t *testing.T) {
-	ctx, cancel, c, namespace := setupPinP(t)
+func TestPipelineRun_PinP_OneChildPipelineRunFromPipelineSpec(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	defer tearDownOptDump(ctx, t, c, namespace, true)
+	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{
+		"enable-api-fields": "alpha",
+	}))
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
 	// GIVEN
 	t.Logf("Setting up test resources for one child PipelineRun from PipelineSpec in namespace %q", namespace)
@@ -100,10 +107,16 @@ func assertPinP(
 	checkAnnotationPropagationToChildPipelineRun(ctx, t, c, namespace, directParentPrName, actualCpr)
 }
 
-func TestPipelineRun_TwoChildPipelineRunsMixedTasks(t *testing.T) {
-	ctx, cancel, c, namespace := setupPinP(t)
+func TestPipelineRun_PinP_TwoChildPipelineRunsMixedTasks(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	defer tearDownOptDump(ctx, t, c, namespace, true)
+	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{
+		"enable-api-fields": "alpha",
+	}))
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
 	// GIVEN
 	t.Logf("Setting up test resources for two child PipelineRuns (mixed tasks) in namespace %q", namespace)
@@ -124,10 +137,16 @@ func TestPipelineRun_TwoChildPipelineRunsMixedTasks(t *testing.T) {
 	assertEvents(ctx, t, expectedEventsAmount, expectedKinds, c, namespace)
 }
 
-func TestPipelineRun_TwoLevelDeepNestedChildPipelineRuns(t *testing.T) {
-	ctx, cancel, c, namespace := setupPinP(t)
+func TestPipelineRun_PinP_TwoLevelDeepNestedChildPipelineRuns(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	defer tearDownOptDump(ctx, t, c, namespace, true)
+	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{
+		"enable-api-fields": "alpha",
+	}))
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
 	// GIVEN
 	t.Logf("Setting up test resources for two level deep nested child PipelineRuns in namespace %q", namespace)
