@@ -125,7 +125,7 @@ spec:
         ${COMBINED_BASE_IMAGE_BASE}/combined-base-image:latest)
 
       # Replace :latest references with the actual combined base image digest
-      sed -i "s|combined-base-image:latest|${COMBINED_BASE_IMAGE}|g" /workspace/.ko.yaml
+      sed -i "s|ghcr.io/tektoncd/pipeline/github.com/tektoncd/pipeline/combined-base-image:latest|${COMBINED_BASE_IMAGE}|g" /workspace/.ko.yaml
 
       cat /workspace/.ko.yaml
 
