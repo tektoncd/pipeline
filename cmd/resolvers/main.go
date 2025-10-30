@@ -16,6 +16,7 @@ limitations under the License.
 
 package main
 
+// nothing really
 import (
 	"flag"
 	"log"
