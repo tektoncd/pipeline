@@ -1,5 +1,4 @@
 //go:build examples
-// +build examples
 
 /*
 Copyright 2021 The Tekton Authors
