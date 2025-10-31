@@ -8,6 +8,7 @@ package gitea
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -98,6 +99,36 @@ func (c *Client) DeleteRepoBranch(user, repo, branch string) (bool, *Response, e
 		return false, resp, err
 	}
 	return status == 204, resp, nil
+}
+
+type UpdateRepoBranchOption struct {
+	Name string `json:"name"`
+}
+
+func (opt UpdateRepoBranchOption) Validate() error {
+	if len(opt.Name) == 0 {
+		return errors.New("empty Name field")
+	}
+
+	return nil
+}
+
+func (c *Client) UpdateRepoBranch(user, repo, branch string, opt UpdateRepoBranchOption) (sucessful bool, resp *Response, err error) {
+	if err := escapeValidatePathSegments(&user, &repo, &branch); err != nil {
+		return false, nil, err
+	}
+	if err := c.checkServerVersionGreaterThanOrEqual(version1_23_0); err != nil {
+		return false, nil, err
+	}
+	if err := opt.Validate(); err != nil {
+		return false, nil, err
+	}
+	body, err := json.Marshal(&opt)
+	if err != nil {
+		return false, nil, err
+	}
+	status, resp, err := c.getStatusCode("PATCH", fmt.Sprintf("/repos/%s/%s/branches/%s", user, repo, branch), jsonHeader, bytes.NewReader(body))
+	return status == 204, resp, err
 }
 
 // CreateBranchOption options when creating a branch in a repository
