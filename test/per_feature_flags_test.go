@@ -1,5 +1,4 @@
 //go:build featureflags
-// +build featureflags
 
 /*
 Copyright 2023 The Tekton Authors
