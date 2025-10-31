@@ -1,5 +1,4 @@
 //go:build conformance
-// +build conformance
 
 /*
 Copyright 2020 The Tekton Authors
