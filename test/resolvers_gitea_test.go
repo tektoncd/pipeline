@@ -1,5 +1,4 @@
 //go:build e2e && gitea
-// +build e2e,gitea
 
 /*
  Copyright 2025 The Tekton Authors
