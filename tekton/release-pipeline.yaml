@@ -8,6 +8,9 @@ spec:
     - name: package
       description: package to release
       default: github.com/tektoncd/pipeline
+    - name: repoName
+      description: repository name (e.g., pipeline, triggers, etc.)
+      default: pipeline
     - name: gitRevision
       description: the git revision to release
     - name: imageRegistry
@@ -26,7 +29,7 @@ spec:
       description: Version tag (vX.Y.Z for stable, vYYYYMMDD-abc1234 for nightly)
     - name: releaseBucket
       description: bucket where the release is stored. The bucket must be project specific.
-      default: "gs://tekton-releases-nightly/pipeline"  # Will be overridden based on releaseMode
+      default: "tekton-nightly"  # Will be overridden based on releaseMode
     - name: releaseAsLatest
       description: Whether to tag and publish this release as latest
       default: "false"  # Will be overridden based on releaseMode
@@ -42,8 +45,6 @@ spec:
     - name: koExtraArgs
       description: Extra args to be passed to ko
       default: "--preserve-import-paths"
-    - name: serviceAccountPath
-      description: The path to the service account file within the release-secret workspace
     - name: serviceAccountImagesPath
       description: The path to the service account file or credentials within the release-images-secret workspace
     - name: runTests
@@ -53,7 +54,7 @@ spec:
     - name: workarea
       description: The workspace where the repo will be cloned.
     - name: release-secret
-      description: The secret that contains a service account authorized to push to the output bucket
+      description: The secret that contains auth credentials to push to the output bucket
     - name: release-images-secret
       description: The secret that contains a service account authorized to push to the imageRegistry
   results:
@@ -202,15 +203,16 @@ spec:
         - name: release-secret
           workspace: release-images-secret
       timeout: 3h
+
     - name: publish-to-bucket
       runAfter: [publish-images]
       taskRef:
         resolver: bundles
         params:
           - name: bundle
-            value: ghcr.io/tektoncd/catalog/upstream/tasks/gcs-upload:0.3
+            value: ghcr.io/tektoncd/catalog/upstream/tasks/oracle-cloud-storage-upload:0.1
           - name: name
-            value: gcs-upload
+            value: oracle-cloud-storage-upload
           - name: kind
             value: task
       workspaces:
@@ -220,12 +222,17 @@ spec:
           workspace: workarea
           subPath: bucket
       params:
-        - name: location
-          value: $(params.releaseBucket)/previous/$(params.versionTag)
         - name: path
           value: $(params.versionTag)
-        - name: serviceAccountPath
-          value: $(params.serviceAccountPath)
+        - name: bucketName
+          value: $(params.releaseBucket)
+        - name: objectPrefix
+          value: $(params.repoName)/previous/$(params.versionTag)/
+        - name: replaceExistingFiles
+          value: "true"
+        - name: recursive
+          value: "true"
+
     - name: publish-to-bucket-latest
       runAfter: [publish-images]
       when:
@@ -236,9 +243,9 @@ spec:
         resolver: bundles
         params:
           - name: bundle
-            value: ghcr.io/tektoncd/catalog/upstream/tasks/gcs-upload:0.3
+            value: ghcr.io/tektoncd/catalog/upstream/tasks/oracle-cloud-storage-upload:0.1
           - name: name
-            value: gcs-upload
+            value: oracle-cloud-storage-upload
           - name: kind
             value: task
       workspaces:
@@ -248,14 +255,19 @@ spec:
           workspace: workarea
           subPath: bucket
       params:
-        - name: location
-          value: $(params.releaseBucket)/latest
         - name: path
           value: $(params.versionTag)
-        - name: serviceAccountPath
-          value: $(params.serviceAccountPath)
+        - name: bucketName
+          value: $(params.releaseBucket)
+        - name: objectPrefix
+          value: $(params.repoName)/latest/
+        - name: replaceExistingFiles
+          value: "true"
+        - name: recursive
+          value: "true"
         - name: deleteExtraFiles
-          value: "true" # Uses rsync to copy content into latest
+          value: "true"  # Uses sync to copy content into latest
+
     - name: report-bucket
       runAfter: [publish-to-bucket]
       params:
@@ -263,10 +275,13 @@ spec:
           value: $(params.releaseBucket)
         - name: versionTag
           value: $(params.versionTag)
+        - name: repoName
+          value: $(params.repoName)
       taskSpec:
         params:
           - name: releaseBucket
           - name: versionTag
+          - name: repoName
         results:
           - name: release
             description: The full URL of the release file in the bucket
@@ -280,9 +295,12 @@ spec:
                 value: $(params.releaseBucket)
               - name: VERSION_TAG
                 value: $(params.versionTag)
+              - name: REPO_NAME
+                value: $(params.repoName)
             script: |
-              BASE_URL=$(echo "${RELEASE_BUCKET}/previous/${VERSION_TAG}")
-              # If the bucket is in the gs:// return the corresponding public https URL
-              BASE_URL=$(echo ${BASE_URL} | sed 's,gs://,https://storage.googleapis.com/,g')
+              # Oracle Cloud Storage: Construct public URL
+              # Format: https://infra.tekton.dev/<releaseBucket>/<repoName>/previous/<versionTag>
+              BASE_URL="https://infra.tekton.dev/${RELEASE_BUCKET}/${REPO_NAME}/previous/${VERSION_TAG}"
+
               echo "${BASE_URL}/release.yaml" > $(results.release.path)
               echo "${BASE_URL}/release.notag.yaml" > $(results.release-no-tag.path)
