@@ -1,6 +1,6 @@
 name: Tekton Nightly Build
 
-on:
+"on":
   schedule:
     # Run at 03:00 UTC daily
     - cron: "0 3 * * *"
@@ -11,16 +11,17 @@ on:
         required: false
         default: 'v1.33.0'
       nightly_bucket:
-        description: 'Nightly bucket for builds'
+        description: 'Oracle Cloud bucket name for builds'
         required: false
-        default: 'gs://tekton-releases-nightly/pipeline'
+        default: 'tekton-nightly'
         type: string
 
 env:
   KUBERNETES_VERSION: ${{ inputs.kubernetes_version || 'v1.33.0' }}
   REGISTRY: ghcr.io
   PACKAGE: github.com/${{ github.repository }}
-  BUCKET: ${{ inputs.nightly_bucket || 'gs://tekton-releases-nightly/pipeline' }}
+  BUCKET: ${{ inputs.nightly_bucket || 'tekton-nightly' }}
+  REPO_NAME: ${{ github.event.repository.name }}
   IMAGE_REGISTRY_PATH: ${{ github.repository }}
   IMAGE_REGISTRY_USER: tekton-robot
 
@@ -36,7 +37,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
         with:
           fetch-depth: 0
 
@@ -49,13 +50,13 @@ jobs:
           echo "latest_sha=${latest_sha}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Kind cluster
-        uses: chainguard-dev/actions/setup-kind@6f4f4de7549514e7b659741b30f6476f245600dd # v1.5.3
+        uses: chainguard-dev/actions/setup-kind@1b32103f5aa389c31ab0be75a8edc38d7e4750d8  # v1.5.7
         with:
           node_image: kindest/node:${{ env.KUBERNETES_VERSION }}
           cluster_name: tekton-nightly
 
       - name: Set up Tekton
-        uses: tektoncd/actions/setup-tektoncd@0986bcdfbaf4f83a8a7b19bc2fa360c44ee55929 # main
+        uses: tektoncd/actions/setup-tektoncd@0986bcdfbaf4f83a8a7b19bc2fa360c44ee55929  # main
         with:
           pipeline_version: latest
           setup_registry: "true"
@@ -65,27 +66,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GHCR_TOKEN || github.token }}
         run: |
-          # Create Git authentication secret with proper Tekton annotations
+          # Create Git authentication secret as basic-auth type for Git resolver
           kubectl create secret generic git-resolver-secret \
-            --from-literal=token="${GITHUB_TOKEN}" \
+            --type=kubernetes.io/basic-auth \
+            --from-literal=username=git \
+            --from-literal=password="${GITHUB_TOKEN}" \
             -n tekton-pipelines-resolvers || true
 
           kubectl annotate secret git-resolver-secret \
             tekton.dev/git-0=github.com \
-            -n tekton-pipelines-resolvers || true
+            -n tekton-pipelines-resolvers --overwrite || true
 
-          kubectl create secret generic git-resolver-secret \
-            --from-literal=token="${GITHUB_TOKEN}" \
-            -n default || true
-
-          kubectl annotate secret git-resolver-secret \
-            tekton.dev/git-0=github.com \
-            -n default || true
-
-          kubectl patch configmap git-resolver-config -n tekton-pipelines-resolvers --patch='
+          # Configure Git resolver to use the secret
+          kubectl patch configmap git-resolver-config -n tekton-pipelines-resolvers --type=merge --patch='
           data:
-            api-token-secret-name: "git-resolver-secret"
-            api-token-secret-key: "token"
+            default-url: "https://github.com"
+            fetch-timeout: "1m"
+            scm-type: "github"
+            server-url: "https://api.github.com"
+            api-secret-name: "git-resolver-secret"
+            api-secret-key: "password"
+            api-secret-namespace: "tekton-pipelines-resolvers"
           ' || true
 
           kubectl patch configmap feature-flags -n tekton-pipelines --patch='
@@ -94,7 +95,7 @@ jobs:
           ' || true
 
       - name: Install tkn CLI
-        uses: tektoncd/actions/setup-tektoncd-cli@0986bcdfbaf4f83a8a7b19bc2fa360c44ee55929 # main
+        uses: tektoncd/actions/setup-tektoncd-cli@0986bcdfbaf4f83a8a7b19bc2fa360c44ee55929  # main
         with:
           version: latest
 
@@ -104,15 +105,29 @@ jobs:
 
       - name: Create secrets, service account and PVC template
         env:
-          GCS_SERVICE_ACCOUNT_KEY: ${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}
+          OCI_API_KEY: ${{ secrets.OCI_API_KEY }}
+          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+          OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+          OCI_REGION: ${{ secrets.OCI_REGION }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN || github.token }}
           IMAGE_REGISTRY_USER: ${{ env.IMAGE_REGISTRY_USER }}
         run: |
-          # Create GCS service account secret for release bucket access
-          echo "${GCS_SERVICE_ACCOUNT_KEY}" > /tmp/gcs-key.json
+          # Create Oracle Cloud credentials secret for release bucket access
+          echo "${OCI_API_KEY}" > /tmp/oci_api_key.pem
+          echo "${OCI_FINGERPRINT}" > /tmp/fingerprint
+          echo "${OCI_TENANCY_OCID}" > /tmp/tenancy_ocid
+          echo "${OCI_USER_OCID}" > /tmp/user_ocid
+          echo "${OCI_REGION}" > /tmp/region
+
           kubectl create secret generic release-secret \
-            --from-file=release.json=/tmp/gcs-key.json
-          rm -f /tmp/gcs-key.json
+            --from-file=oci_api_key.pem=/tmp/oci_api_key.pem \
+            --from-file=fingerprint=/tmp/fingerprint \
+            --from-file=tenancy_ocid=/tmp/tenancy_ocid \
+            --from-file=user_ocid=/tmp/user_ocid \
+            --from-file=region=/tmp/region
+
+          rm -f /tmp/oci_api_key.pem /tmp/fingerprint /tmp/tenancy_ocid /tmp/user_ocid /tmp/region
 
           # Create a Kubernetes secret for GHCR authentication.
           # This version creates the secret with a custom key name `docker-config.json`
@@ -143,6 +158,7 @@ jobs:
           PIPELINE_RUN=$(tkn pipeline start pipeline-release \
             --serviceaccount=release-right-meow \
             --param package="${{ env.PACKAGE }}" \
+            --param repoName="${{ env.REPO_NAME }}" \
             --param gitRevision="${{ steps.version.outputs.latest_sha }}" \
             --param versionTag="${{ steps.version.outputs.version_tag }}" \
             --param releaseBucket="${{ env.BUCKET }}" \
@@ -153,7 +169,6 @@ jobs:
             --param buildPlatforms="linux/amd64,linux/arm64,linux/s390x,linux/ppc64le" \
             --param publishPlatforms="linux/amd64,linux/arm64,linux/s390x,linux/ppc64le,windows/amd64" \
             --param koExtraArgs="" \
-            --param serviceAccountPath=release.json \
             --param serviceAccountImagesPath=docker-config.json \
             --param releaseAsLatest="true" \
             --param runTests="false" \
