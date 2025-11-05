@@ -56,7 +56,7 @@ jobs:
           k8s-version: ${{ env.KUBERNETES_VERSION }}
 
       - name: Set up Tekton
-        uses: tektoncd/actions/setup-tektoncd@0986bcdfbaf4f83a8a7b19bc2fa360c44ee55929  # main
+        uses: tektoncd/actions/setup-tektoncd@dd92514472167b361de1c95fd31fc2ef83c282ec  # main
         with:
           pipeline_version: latest
           setup_registry: "true"
@@ -66,38 +66,33 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GHCR_TOKEN || github.token }}
         run: |
-          # Create Git authentication secret as basic-auth type for Git resolver
+          # Create Git authentication secret with proper Tekton annotations
           kubectl create secret generic git-resolver-secret \
-            --type=kubernetes.io/basic-auth \
-            --from-literal=username=git \
-            --from-literal=password="${GITHUB_TOKEN}" \
+            --from-literal=token="${GITHUB_TOKEN}" \
             -n tekton-pipelines-resolvers || true
 
           kubectl annotate secret git-resolver-secret \
             tekton.dev/git-0=github.com \
-            -n tekton-pipelines-resolvers --overwrite || true
+            -n tekton-pipelines-resolvers || true
 
-          # Configure Git resolver to use the secret
-          kubectl patch configmap git-resolver-config -n tekton-pipelines-resolvers --type=merge --patch='
+          kubectl create secret generic git-resolver-secret \
+            --from-literal=token="${GITHUB_TOKEN}" \
+            -n default || true
+
+          kubectl annotate secret git-resolver-secret \
+            tekton.dev/git-0=github.com \
+            -n default || true
+
+          kubectl patch configmap git-resolver-config -n tekton-pipelines-resolvers --patch='
           data:
-            default-url: "https://github.com"
-            fetch-timeout: "1m"
-            scm-type: "github"
-            server-url: "https://api.github.com"
-            api-secret-name: "git-resolver-secret"
-            api-secret-key: "password"
-            api-secret-namespace: "tekton-pipelines-resolvers"
+            api-token-secret-name: "git-resolver-secret"
+            api-token-secret-key: "token"
           ' || true
 
           kubectl patch configmap feature-flags -n tekton-pipelines --patch='
           data:
             enable-cel-in-whenexpression: "true"
           ' || true
-
-      - name: Install tkn CLI
-        uses: tektoncd/actions/setup-tektoncd-cli@0986bcdfbaf4f83a8a7b19bc2fa360c44ee55929  # main
-        with:
-          version: latest
 
       - name: Apply Build Pipeline Definition
         run: |
