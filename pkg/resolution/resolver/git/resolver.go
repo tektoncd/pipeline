@@ -142,8 +142,7 @@ func ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
 		return errors.New(disabledError)
 	}
 
-	_, err := PopulateDefaultParams(ctx, params)
-	if err != nil {
+	if _, err := PopulateDefaultParams(ctx, params); err != nil {
 		return err
 	}
 	return nil
@@ -159,14 +158,22 @@ func validateRepoURL(url string) bool {
 }
 
 type GitResolver struct {
-	Params     map[string]string
+	KubeClient kubernetes.Interface
 	Logger     *zap.SugaredLogger
 	Cache      *cache.LRUExpireCache
 	TTL        time.Duration
-	KubeClient kubernetes.Interface
+	Params     map[string]string
+
+	// Function variables for mocking in tests
+	ResolveGitCloneFunc func(ctx context.Context) (framework.ResolvedResource, error)
+	ResolveAPIGitFunc   func(ctx context.Context, clientFunc func(string, string, string, ...factory.ClientOptionFunc) (*scm.Client, error)) (framework.ResolvedResource, error)
 }
 
+// ResolveGitClone resolves a git resource using git clone.
 func (g *GitResolver) ResolveGitClone(ctx context.Context) (framework.ResolvedResource, error) {
+	if g.ResolveGitCloneFunc != nil {
+		return g.ResolveGitCloneFunc(ctx)
+	}
 	conf, err := GetScmConfigForParamConfigKey(ctx, g.Params)
 	if err != nil {
 		return nil, err
@@ -239,6 +246,72 @@ func (g *GitResolver) ResolveGitClone(ctx context.Context) (framework.ResolvedRe
 		Content:  fileContents,
 		URL:      repo.url,
 		Path:     path,
+	}, nil
+}
+
+// ResolveAPIGit resolves a git resource using the SCM API.
+func (g *GitResolver) ResolveAPIGit(ctx context.Context, clientFunc func(string, string, string, ...factory.ClientOptionFunc) (*scm.Client, error)) (framework.ResolvedResource, error) {
+	if g.ResolveAPIGitFunc != nil {
+		return g.ResolveAPIGitFunc(ctx, clientFunc)
+	}
+	// If we got here, the "repo" param was specified, so use the API approach
+	scmType, serverURL, err := getSCMTypeAndServerURL(ctx, g.Params)
+	if err != nil {
+		return nil, err
+	}
+	secretRef := &secretCacheKey{
+		name: g.Params[TokenParam],
+		key:  g.Params[TokenKeyParam],
+	}
+	if secretRef.name != "" {
+		if secretRef.key == "" {
+			secretRef.key = DefaultTokenKeyParam
+		}
+		secretRef.ns = common.RequestNamespace(ctx)
+	} else {
+		secretRef = nil
+	}
+	apiToken, err := g.getAPIToken(ctx, secretRef, APISecretNameKey)
+	if err != nil {
+		return nil, err
+	}
+	scmClient, err := clientFunc(scmType, serverURL, string(apiToken))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create SCM client: %w", err)
+	}
+
+	orgRepo := fmt.Sprintf("%s/%s", g.Params[OrgParam], g.Params[RepoParam])
+	path := g.Params[PathParam]
+	ref := g.Params[RevisionParam]
+
+	// fetch the actual content from a file in the repo
+	content, _, err := scmClient.Contents.Find(ctx, orgRepo, path, ref)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't fetch resource content: %w", err)
+	}
+	if content == nil || len(content.Data) == 0 {
+		return nil, fmt.Errorf("no content for resource in %s %s", orgRepo, path)
+	}
+
+	// find the actual git commit sha by the ref
+	commit, _, err := scmClient.Git.FindCommit(ctx, orgRepo, ref)
+	if err != nil || commit == nil {
+		return nil, fmt.Errorf("couldn't fetch the commit sha for the ref %s in the repo: %w", ref, err)
+	}
+
+	// fetch the repository URL
+	repo, _, err := scmClient.Repositories.Find(ctx, orgRepo)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't fetch repository: %w", err)
+	}
+
+	return &resolvedGitResource{
+		Content:  content.Data,
+		Revision: commit.Sha,
+		Org:      g.Params[OrgParam],
+		Repo:     g.Params[RepoParam],
+		Path:     content.Path,
+		URL:      repo.Clone,
 	}, nil
 }
 
@@ -391,68 +464,6 @@ type secretCacheKey struct {
 	ns   string
 	name string
 	key  string
-}
-
-func (g *GitResolver) ResolveAPIGit(ctx context.Context, clientFunc func(string, string, string, ...factory.ClientOptionFunc) (*scm.Client, error)) (framework.ResolvedResource, error) {
-	// If we got here, the "repo" param was specified, so use the API approach
-	scmType, serverURL, err := getSCMTypeAndServerURL(ctx, g.Params)
-	if err != nil {
-		return nil, err
-	}
-	secretRef := &secretCacheKey{
-		name: g.Params[TokenParam],
-		key:  g.Params[TokenKeyParam],
-	}
-	if secretRef.name != "" {
-		if secretRef.key == "" {
-			secretRef.key = DefaultTokenKeyParam
-		}
-		secretRef.ns = common.RequestNamespace(ctx)
-	} else {
-		secretRef = nil
-	}
-	apiToken, err := g.getAPIToken(ctx, secretRef, APISecretNameKey)
-	if err != nil {
-		return nil, err
-	}
-	scmClient, err := clientFunc(scmType, serverURL, string(apiToken))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create SCM client: %w", err)
-	}
-
-	orgRepo := fmt.Sprintf("%s/%s", g.Params[OrgParam], g.Params[RepoParam])
-	path := g.Params[PathParam]
-	ref := g.Params[RevisionParam]
-
-	// fetch the actual content from a file in the repo
-	content, _, err := scmClient.Contents.Find(ctx, orgRepo, path, ref)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't fetch resource content: %w", err)
-	}
-	if content == nil || len(content.Data) == 0 {
-		return nil, fmt.Errorf("no content for resource in %s %s", orgRepo, path)
-	}
-
-	// find the actual git commit sha by the ref
-	commit, _, err := scmClient.Git.FindCommit(ctx, orgRepo, ref)
-	if err != nil || commit == nil {
-		return nil, fmt.Errorf("couldn't fetch the commit sha for the ref %s in the repo: %w", ref, err)
-	}
-
-	// fetch the repository URL
-	repo, _, err := scmClient.Repositories.Find(ctx, orgRepo)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't fetch repository: %w", err)
-	}
-
-	return &resolvedGitResource{
-		Content:  content.Data,
-		Revision: commit.Sha,
-		Org:      g.Params[OrgParam],
-		Repo:     g.Params[RepoParam],
-		Path:     content.Path,
-		URL:      repo.Clone,
-	}, nil
 }
 
 func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey, key string) ([]byte, error) {

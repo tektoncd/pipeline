@@ -45,7 +45,6 @@ for the name, namespace and defaults that the resolver ships with.
 | `default-kind`              | The default object kind for references.              | `task`, `pipeline`     |
 | `default-type`              | The default hub from where to pull the resource.     | `artifact`, `tekton`   |
 
-
 ### Configuring the Hub API endpoint
 
 The Hub Resolver supports to resolve resources from the [Artifact Hub](https://artifacthub.io/) and the [Tekton Hub](https://hub.tekton.dev/),

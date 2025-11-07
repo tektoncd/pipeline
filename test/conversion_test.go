@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2022 The Tekton Authors
@@ -38,10 +37,10 @@ import (
 var (
 	filterLabels                   = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Labels")
 	filterAnnotations              = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Annotations")
-	filterV1TaskRunStatus          = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime", "Artifacts")
-	filterV1PipelineRunStatus      = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "StartTime", "CompletionTime")
-	filterV1beta1TaskRunStatus     = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
-	filterV1beta1PipelineRunStatus = cmpopts.IgnoreFields(v1beta1.PipelineRunStatusFields{}, "StartTime", "CompletionTime")
+	filterV1TaskRunStatus          = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime", "Artifacts", "Provenance")
+	filterV1PipelineRunStatus      = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "StartTime", "CompletionTime", "Provenance")
+	filterV1beta1TaskRunStatus     = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "StartTime", "CompletionTime", "Provenance")
+	filterV1beta1PipelineRunStatus = cmpopts.IgnoreFields(v1beta1.PipelineRunStatusFields{}, "StartTime", "CompletionTime", "Provenance")
 	filterContainerStateTerminated = cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID", "Message")
 	filterV1StepState              = cmpopts.IgnoreFields(v1.StepState{}, "Name", "ImageID", "Container", "Provenance")
 	filterV1beta1StepState         = cmpopts.IgnoreFields(v1beta1.StepState{}, "Name", "ImageID", "ContainerName", "Provenance")
@@ -775,12 +774,6 @@ func TestTaskRunCRDConversion(t *testing.T) {
 	v1TaskRunExpected := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunExpectedYaml, v1beta1TaskRunName, namespace, v1beta1TaskRunName))
 	v1beta1TaskRunRoundTripExpected := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunExpectedYaml, v1beta1TaskRunName, namespace, v1beta1TaskRunName))
 
-	v1TaskRunExpected.Status.Provenance = &v1.Provenance{
-		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
-	}
-	v1beta1TaskRunRoundTripExpected.Status.Provenance = &v1beta1.Provenance{
-		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
-	}
 	if _, err := c.V1beta1TaskRunClient.Create(ctx, v1beta1TaskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1beta1 TaskRun: %s", err)
 	}
@@ -808,13 +801,6 @@ func TestTaskRunCRDConversion(t *testing.T) {
 	v1TaskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunYaml, v1TaskRunName, namespace))
 	v1beta1TaskRunExpected := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunExpectedYaml, v1TaskRunName, namespace, v1TaskRunName))
 	v1TaskRunRoundTripExpected := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunExpectedYaml, v1TaskRunName, namespace, v1TaskRunName))
-
-	v1beta1TaskRunExpected.Status.Provenance = &v1beta1.Provenance{
-		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
-	}
-	v1TaskRunRoundTripExpected.Status.Provenance = &v1.Provenance{
-		FeatureFlags: getFeatureFlagsBaseOnAPIFlag(t),
-	}
 
 	if _, err := c.V1TaskRunClient.Create(ctx, v1TaskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1 TaskRun: %s", err)

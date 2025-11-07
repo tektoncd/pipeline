@@ -26,3 +26,8 @@ data:
   default-service-account: "default"
   # The default layer kind in the bundle image.
   default-kind: "task"
+  # Optional: Default cache mode for this resolver. Valid values: "always", "never", "auto" (default: "auto")
+  # "always" - Always cache resolved resources
+  # "never"  - Never cache resolved resources
+  # "auto"   - Only cache bundles with digest references (@sha256:...)
+  # default-cache-mode: "auto"

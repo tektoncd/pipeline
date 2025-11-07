@@ -30,3 +30,8 @@ data:
   allowed-namespaces: ""
   # An optional comma-separated list of namespaces which the resolver is blocked from accessing. Defaults to empty, meaning all namespaces are allowed.
   blocked-namespaces: ""
+  # Optional: Default cache mode for this resolver. Valid values: "always", "never", "auto" (default: "auto")
+  # "always" - Always cache resolved resources
+  # "never"  - Never cache resolved resources (recommended for cluster resolver since resources are mutable)
+  # "auto"   - Never cache for cluster resolver (same as "never")
+  # default-cache-mode: "auto"

@@ -26,6 +26,7 @@ This Resolver responds to type `git`.
 | `pathInRepo`  | Where to find the file in the repo.                                                                                                                                        | `task/golang-build/0.3/golang-build.yaml`                   |
 | `serverURL`   | An optional server URL (that includes the https:// prefix) to connect for API operations                                                                                   | `https:/github.mycompany.com`                               |
 | `scmType`     | An optional SCM type to use for API operations                                                                                                                             | `github`, `gitlab`, `gitea`                                 |
+| `cache`       | Controls caching behavior for the resolved resource                                                                                                                         | `always`, `never`, `auto`                                   |
 
 ## Requirements
 
@@ -54,6 +55,44 @@ for the name, namespace and defaults that the resolver ships with.
 | `api-token-secret-key`       | The key within the token secret containing the actual secret. Required if using the authenticated API with `org` and `repo`.                                  | `oauth`, `token`                                                 |
 | `api-token-secret-namespace` | The namespace containing the token secret, if not `default`.                                                                                                  | `other-namespace`                                                |
 | `default-org`                | The default organization to look for repositories under when using the authenticated API, if not specified in the resolver parameters. Optional.              | `tektoncd`, `kubernetes`                                         |
+
+### Caching Options
+
+The git resolver supports caching of resolved resources to improve performance. The caching behavior can be configured using the `cache` option:
+
+| Cache Value | Description |
+|-------------|-------------|
+| `always` | Always cache resolved resources. This is the most aggressive caching strategy and will cache all resolved resources regardless of their source. |
+| `never` | Never cache resolved resources. This disables caching completely. |
+| `auto` | Caching will only occur when revision is a commit hash. (default) |
+
+### Cache Configuration
+
+The resolver cache can be configured globally using the `resolver-cache-config` ConfigMap. This ConfigMap controls the cache size and TTL (time-to-live) for all resolvers.
+
+| Option Name | Description | Default Value | Example Values |
+|-------------|-------------|---------------|----------------|
+| `max-size` | Maximum number of entries in the cache | `1000` | `500`, `2000` |
+| `ttl` | Time-to-live for cache entries | `5m` | `10m`, `1h` |
+
+The ConfigMap name can be customized using the `RESOLVER_CACHE_CONFIG_MAP_NAME` environment variable. If not set, it defaults to `resolver-cache-config`.
+
+Additionally, you can set a default cache mode for the git resolver by adding the `default-cache-mode` option to the `git-resolver-config` ConfigMap. This overrides the system default (`auto`) for this resolver:
+
+| Option Name | Description | Valid Values | Default |
+|-------------|-------------|--------------|---------|
+| `default-cache-mode` | Default caching behavior when `cache` parameter is not specified | `always`, `never`, `auto` | `auto` |
+
+Example:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: git-resolver-config
+  namespace: tekton-pipelines-resolvers
+data:
+  default-cache-mode: "always"  # Always cache unless task/pipeline specifies otherwise
+```
 
 ## Usage
 

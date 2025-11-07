@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2020 The Tekton Authors
@@ -220,7 +219,8 @@ func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string,
 	}
 
 	// Create a configmap to contain the tarball which we will mount in the pod.
-	cmName := namespace + "uploadimage-cm"
+	// Use a unique name based on the repository to avoid conflicts
+	cmName := namespace + "-" + strings.ReplaceAll(strings.ReplaceAll(ref.String(), "/", "-"), ":", "-") + "-uploadimage-cm"
 	if _, err = c.KubeClient.CoreV1().ConfigMaps(namespace).Create(ctx, &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: cmName},
 		BinaryData: map[string][]byte{

@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	rrclient "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	rrv1beta1 "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
+	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -121,6 +122,16 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 	paramsMap := make(map[string]string)
 	for _, p := range rr.Spec.Params {
 		paramsMap[p.Name] = p.Value.StringVal
+	}
+
+	// Centralized cache parameter validation for all resolvers
+	if cacheMode, exists := paramsMap[rrcache.CacheParam]; exists && cacheMode != "" {
+		if err := rrcache.Validate(cacheMode); err != nil {
+			return &resolutioncommon.InvalidRequestError{
+				ResolutionRequestKey: key,
+				Message:              err.Error(),
+			}
+		}
 	}
 
 	timeoutDuration := defaultMaximumResolutionDuration

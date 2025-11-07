@@ -441,6 +441,22 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 				sc := &sidecarContainers[i]
 				always := corev1.ContainerRestartPolicyAlways
 				sc.RestartPolicy = &always
+
+				// For the results sidecar specifically, ensure it has the kubernetes-sidecar-mode flag
+				// to prevent it from exiting and restarting
+				if sc.Name == pipeline.ReservedResultsSidecarName {
+					kubernetesSidecarModeFound := false
+					for j, arg := range sc.Command {
+						if arg == "-kubernetes-sidecar-mode" && j+1 < len(sc.Command) {
+							kubernetesSidecarModeFound = true
+							break
+						}
+					}
+					if !kubernetesSidecarModeFound {
+						sc.Command = append(sc.Command, "-kubernetes-sidecar-mode", "true")
+					}
+				}
+
 				sc.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", sidecarPrefix, sc.Name))
 				mergedPodInitContainers = append(mergedPodInitContainers, *sc)
 			}
@@ -659,6 +675,13 @@ func createResultsSidecar(taskSpec v1.TaskSpec, image string, securityContext Se
 	if len(stepResultsBytes) > 0 {
 		command = append(command, "-step-results", string(stepResultsBytes))
 	}
+
+	// When using Kubernetes native sidecar support, add the kubernetes-sidecar-mode flag
+	// to prevent the sidecar from exiting after processing results
+	if config.FromContextOrDefaults(context.Background()).FeatureFlags.EnableKubernetesSidecar {
+		command = append(command, "-kubernetes-sidecar-mode", "true")
+	}
+
 	sidecar := v1.Sidecar{
 		Name:    pipeline.ReservedResultsSidecarName,
 		Image:   image,
