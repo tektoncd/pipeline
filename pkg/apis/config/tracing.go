@@ -34,7 +34,7 @@ const (
 	tracingCredentialsSecretKey = "credentialsSecret"
 
 	// DefaultEndpoint is the default destination for sending traces
-	DefaultEndpoint = "http://jaeger-collector.jaeger.svc.cluster.local:14268/api/traces"
+	DefaultEndpoint = "http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces"
 )
 
 // DefaultTracing holds all the default configurations for tracing
