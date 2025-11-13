@@ -115,6 +115,16 @@ jobs:
       with:
         go-version-file: "go.mod"
     - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
+    - uses: imjasonh/setup-crane@31b88efe9de28ae0ffa220711af4b60be9435f6e # v0.4
+
+    - name: Cache ko base images
+      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.2.0
+      with:
+        path: ~/.ko/img
+        key: ko-base-images-${{ hashFiles('.ko.yaml') }}
+
+    - name: Download ko base images
+      run: ./hack/cache-ko-base-images.sh
 
     - name: Install Dependencies
       working-directory: ./
