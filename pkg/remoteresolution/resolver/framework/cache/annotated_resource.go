@@ -17,8 +17,6 @@ limitations under the License.
 package cache
 
 import (
-	"time"
-
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
@@ -46,23 +44,23 @@ type annotatedResource struct {
 	annotations map[string]string
 }
 
-// newAnnotatedResource creates a new annotatedResource with cache annotations
-func newAnnotatedResource(resource resolutionframework.ResolvedResource, resolverType, operation string, clock Clock) *annotatedResource {
+func newAnnotatedResource(
+	resource resolutionframework.ResolvedResource,
+	resolverType,
+	operation string,
+	timestamp string,
+) *annotatedResource {
 	// Create a new map to avoid concurrent map writes when the same resource
 	// is being annotated from multiple goroutines
 	existingAnnotations := resource.Annotations()
 	annotations := make(map[string]string)
 
-	// Copy existing annotations to new map
-	if existingAnnotations != nil {
-		for k, v := range existingAnnotations {
-			annotations[k] = v
-		}
+	for k, v := range existingAnnotations {
+		annotations[k] = v
 	}
 
-	// Add cache annotations
 	annotations[cacheAnnotationKey] = cacheValueTrue
-	annotations[cacheTimestampKey] = clock.Now().Format(time.RFC3339)
+	annotations[cacheTimestampKey] = timestamp
 	annotations[cacheResolverTypeKey] = resolverType
 	annotations[cacheOperationKey] = operation
 

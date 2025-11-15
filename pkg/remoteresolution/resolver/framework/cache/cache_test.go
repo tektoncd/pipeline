@@ -22,6 +22,7 @@ import (
 	"time"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"go.uber.org/zap/zaptest"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 
@@ -245,36 +246,32 @@ func TestGenerateCacheKey_AllParamTypes(t *testing.T) {
 }
 
 func TestCacheTTLExpiration(t *testing.T) {
-	// Use short TTL for fast test execution (10ms)
-	ttl := 10 * time.Millisecond
-	cache := newResolverCache(100, ttl)
-
+	// GIVEN
 	resolverType := "bundle"
+	fc := fakeClock{time.Now()}
+	ttl := 5 * time.Minute
+	mockResource := &mockResolvedResource{data: []byte("test data")}
 	params := []pipelinev1.Param{
-		{Name: "bundle", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "registry.io/repo@sha256:abcdef"}},
+		{Name: resolverType, Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "registry.io/repo@sha256:abcdef"}},
 	}
 
-	// Create a mock resource using the existing mockResolvedResource type
-	mockResource := &mockResolvedResource{
-		data: []byte("test data"),
-	}
-
-	// Add to cache
+	// WHEN
+	cache := newResolverCacheWithClock(100, ttl, &fc).withLogger(zaptest.NewLogger(t).Sugar())
 	cache.Add(resolverType, params, mockResource)
+	_, ok := cache.Get(resolverType, params)
 
-	// Verify it's immediately retrievable
-	if cached, ok := cache.Get(resolverType, params); !ok {
-		t.Error("Expected cache hit immediately after adding, but got cache miss")
-	} else if cached == nil {
-		t.Error("Expected non-nil cached resource immediately after adding")
+	// THEN: Verify it's immediately retrievable.
+	if !ok {
+		t.Fatal("Expected cache hit immediately after adding, but got cache miss")
 	}
 
-	// Wait for TTL to expire with minimal delay
-	time.Sleep(ttl + 5*time.Millisecond)
+	// WHEN
+	fc.Advance(ttl + time.Second)
+	cached, ok := cache.Get(resolverType, params)
 
-	// Verify entry is no longer in cache after TTL expiration
-	if cached, ok := cache.Get(resolverType, params); ok {
-		t.Errorf("Expected cache miss after TTL expiration, but got cache hit with resource: %v", cached)
+	// THEN: Verify entry is no longer in cache after TTL expiration
+	if ok {
+		t.Fatalf("Expected cache miss after TTL expiration, but got cache hit with resource: %v", cached)
 	}
 }
 
