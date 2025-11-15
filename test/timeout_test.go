@@ -308,7 +308,7 @@ spec:
 
 	for _, step := range tr.Status.Steps {
 		if step.Terminated == nil {
-			t.Errorf("TaskRun %s step %s does not have a terminated state but should", taskRun.Name, step.Name)
+			t.Fatalf("TaskRun %s step %s does not have a terminated state but should", taskRun.Name, step.Name)
 		}
 		if d := cmp.Diff(step.Terminated.Reason, v1.TaskRunReasonTimedOut.String()); d != "" {
 			t.Fatalf("-got, +want: %v", d)
