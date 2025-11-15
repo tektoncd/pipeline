@@ -43,34 +43,23 @@ func (m *mockResolvedResource) RefSource() *v1.RefSource {
 }
 
 func TestNewAnnotatedResource(t *testing.T) {
-	// Create mock resource with existing annotations to test preservation
-	mockAnnotations := map[string]string{
-		"existing-key": "existing-value",
-	}
-
+	// GIVEN
 	mockResource := &mockResolvedResource{
 		data:        []byte("test data"),
-		annotations: mockAnnotations,
-		refSource: &v1.RefSource{
-			URI: "test-uri",
-		},
+		annotations: map[string]string{"existing-key": "existing-value"},
+		refSource:   &v1.RefSource{URI: "test-uri"},
 	}
-
-	// Create fake clock with fixed time for deterministic testing
-	fixedTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
-	fc := &fakeClock{now: fixedTime}
-
+	expectedTimestamp := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC).Format(time.RFC3339)
 	resolverType := "bundles"
 
-	// Create annotated resource
-	annotated := newAnnotatedResource(mockResource, resolverType, cacheOperationStore, fc)
+	// WHEN
+	annotated := newAnnotatedResource(mockResource, resolverType, cacheOperationStore, expectedTimestamp)
 
-	// Verify data is preserved
+	// THEN
 	if string(annotated.Data()) != "test data" {
 		t.Errorf("Expected data 'test data', got '%s'", string(annotated.Data()))
 	}
 
-	// Verify annotations are added
 	annotations := annotated.Annotations()
 	if annotations[cacheAnnotationKey] != "true" {
 		t.Errorf("Expected cache annotation to be 'true', got '%s'", annotations[cacheAnnotationKey])
@@ -80,30 +69,22 @@ func TestNewAnnotatedResource(t *testing.T) {
 		t.Errorf("Expected resolver type '%s', got '%s'", resolverType, annotations[cacheResolverTypeKey])
 	}
 
-	// Verify timestamp is as expected
-	expectedTimestamp := fixedTime.Format(time.RFC3339)
-	timestamp := annotations[cacheTimestampKey]
-	if timestamp != expectedTimestamp {
-		t.Errorf("Expected cache timestamp to be %s, got %s", expectedTimestamp, timestamp)
+	if annotations[cacheTimestampKey] != expectedTimestamp {
+		t.Errorf("Expected cache timestamp to be %s, got %s", expectedTimestamp, annotations[cacheTimestampKey])
 	}
 
-	// Verify timestamp is valid RFC3339 format
-	_, err := time.Parse(time.RFC3339, timestamp)
-	if err != nil {
+	if _, err := time.Parse(time.RFC3339, annotations[cacheTimestampKey]); err != nil {
 		t.Errorf("Expected valid RFC3339 timestamp, got error: %v", err)
 	}
 
-	// Verify cache operation is set
 	if annotations[cacheOperationKey] != cacheOperationStore {
 		t.Errorf("Expected cache operation '%s', got '%s'", cacheOperationStore, annotations[cacheOperationKey])
 	}
 
-	// Verify existing annotations are preserved
 	if annotations["existing-key"] != "existing-value" {
 		t.Errorf("Expected existing annotation to be preserved, got '%s'", annotations["existing-key"])
 	}
 
-	// Verify RefSource is preserved
 	if annotated.RefSource().URI != "test-uri" {
 		t.Errorf("Expected RefSource URI 'test-uri', got '%s'", annotated.RefSource().URI)
 	}
