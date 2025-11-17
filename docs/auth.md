@@ -230,6 +230,80 @@ Note: Github deprecated basic authentication with username and password. You can
    kubectl apply --filename secret.yaml serviceaccount.yaml run.yaml
    ```
 
+#### Using multiple credentials for different repositories on the same host
+
+When you need to access multiple repositories on the same Git server (e.g., `github.com/org/repo1` and `github.com/org/repo2`) with different credentials, you must include the full repository path in the annotation URL:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: repo1-credentials
+  annotations:
+    tekton.dev/git-0: https://github.com/org/repo1  # Full path including repo
+type: kubernetes.io/basic-auth
+stringData:
+  username: <repo1-username>
+  password: <repo1-token>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: repo2-credentials
+  annotations:
+    tekton.dev/git-0: https://github.com/org/repo2  # Full path including repo
+type: kubernetes.io/basic-auth
+stringData:
+  username: <repo2-username>
+  password: <repo2-token>
+```
+
+When the annotation URL includes a path (e.g., `github.com/org/repo1`), Tekton sets `useHttpPath = true` in the Git configuration, which instructs Git to match credentials based on the full repository URL rather than just the hostname.
+
+You can also mix repo-specific credentials (with path) and host-wide credentials (without path). The host-wide credential will be used as a fallback for any repository on that host that doesn't have a specific credential:
+
+```yaml
+# Repo-specific credential for a private repository
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-specific-repo-secret
+  annotations:
+    tekton.dev/git-0: https://github.com/secret-org/private-repo
+type: kubernetes.io/basic-auth
+stringData:
+  username: <specific-repo-username>
+  password: <specific-repo-token>
+---
+# Host-wide credential for all other repositories on github.com
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-org-wide-secret
+  annotations:
+    tekton.dev/git-0: https://github.com  # No path = works for all repos
+type: kubernetes.io/basic-auth
+stringData:
+  username: <org-username>
+  password: <org-token>
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: build-bot
+secrets:
+  - name: github-specific-repo-secret
+  - name: github-org-wide-secret
+```
+
+**How it works:**
+- When cloning `github.com/secret-org/private-repo`, Git uses the repo-specific credential
+- When cloning any other repository on `github.com`, Git uses the host-wide credential as a fallback
+
+**Note:** The order of secrets in the ServiceAccount does not affect credential matching. Tekton automatically orders credentials in the `.git-credentials` file to ensure proper fallback behavior (host-wide credentials first, then repo-specific credentials).
+
+For a complete example, see [`git-basic-auth-multiple-repos.yaml`](../examples/v1/taskruns/no-ci/git-basic-auth-multiple-repos.yaml).
+
 ### Configuring `ssh-auth` authentication for Git
 
 This section describes how to configure an `ssh-auth` type `Secret` for use with Git. In the example below,
@@ -508,6 +582,36 @@ https://user1:pass1@url1.com
 https://user2:pass2@url2.com
 ...
 ```
+
+**Note:** If the annotation URL includes a path (e.g., `https://github.com/org/repo`), Tekton adds `useHttpPath = true` to the credential configuration:
+
+```
+=== ~/.gitconfig ===
+[credential]
+    helper = store
+[credential "https://github.com/org/repo1"]
+    username = "user1"
+    useHttpPath = true
+[credential "https://github.com/org/repo2"]
+    username = "user2"
+    useHttpPath = true
+...
+```
+
+This enables Git to match credentials based on the full repository URL, allowing different credentials for different repositories on the same host.
+
+**Credential ordering in `.git-credentials`:** When mixing host-wide and repo-specific credentials, Tekton automatically orders entries in `.git-credentials` to ensure proper fallback behavior:
+
+```
+=== ~/.git-credentials ===
+https://orguser:orgtoken@github.com           <-- Host-wide credentials FIRST
+https://user1:token1@github.com/org/repo1     <-- Repo-specific credentials LAST
+https://user2:token2@github.com/org/repo2
+```
+
+This ordering ensures that:
+1. When Git queries with a full path (for repo-specific credentials with `useHttpPath=true`), the host-wide entry doesn't match (wrong path), and the correct repo-specific entry is used.
+2. When Git queries without a path (for other repositories), the host-wide entry matches first and is used as a fallback.
 
 ### `ssh-auth` for Git
 
