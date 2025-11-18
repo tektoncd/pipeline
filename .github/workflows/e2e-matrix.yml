@@ -8,12 +8,106 @@ defaults:
     shell: bash
 
 jobs:
+  e2e-tests-stable:
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.k8s-name }}-${{ matrix.feature-flags }}-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    name: e2e stable tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false # Keep running if one leg fails.
+      matrix:
+        os:
+        - ubuntu-latest     # amd64
+        - ubuntu-24.04-arm  # arm64
+        k8s-name:
+        - k8s-latest             # 1.34
+        feature-flags:
+        - stable
+        include:
+        - k8s-name: k8s-latest
+          k8s-version: v1.34.x
+    env:
+      KO_DOCKER_REPO: registry.local:5000/tekton
+      CLUSTER_DOMAIN: c${{ github.run_id }}.local
+      ARTIFACTS: ${{ github.workspace }}/artifacts
+
+    steps:
+    - name: Free disk space
+      if: ${{ matrix.os != 'ubuntu-24.04-arm' }}
+      run: |
+        echo "--- Disk space before cleanup ---"
+        df -h
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        sudo docker image prune -a -f
+        echo "--- Disk space after cleanup ---"
+        df -h
+    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
+    - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00  # v6.0.0
+      with:
+        go-version-file: "go.mod"
+    - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
+
+    - name: Install Dependencies
+      working-directory: ./
+      run: |
+        echo '::group:: install go-junit-report'
+        go install github.com/jstemmer/go-junit-report@v0.9.1
+        echo '::endgroup::'
+
+        echo '::group:: created required folders'
+        mkdir -p "${ARTIFACTS}"
+        echo '::endgroup::'
+
+        echo "${GOPATH}/bin" >> "$GITHUB_PATH"
+
+    - name: Run tests
+      run: |
+        # This is a hack to make sure binary in /bin from the base image are not picked by default
+        # On ubuntu-arm, there is a /bin/go that shadows the one setup-go installs
+        export PATH="$(echo "$PATH" | sed -e 's/^\/bin://'):/bin"
+        export KO_DEFAULTPLATFORMS=linux/$(go env GOARCH)
+        ./hack/setup-kind.sh \
+          --registry-url $(echo ${KO_DOCKER_REPO} | cut -d'/' -f 1) \
+          --cluster-suffix c${{ github.run_id }}.local \
+          --nodes 3 \
+          --k8s-version ${{ matrix.k8s-version }} \
+          --e2e-script ./test/e2e-tests.sh \
+          --e2e-env ./test/e2e-tests-kind-${{ matrix.feature-flags }}.env
+
+    - name: Upload test results
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      with:
+        name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}
+        path: ${{ env.ARTIFACTS }}
+
+    - uses: chainguard-dev/actions/kind-diag@1b32103f5aa389c31ab0be75a8edc38d7e4750d8 # v1.5.7
+      if: ${{ failure() }}
+      with:
+        artifact-name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}-logs
+
+    - name: Dump Artifacts
+      if: ${{ failure() }}
+      run: |
+        if [[ -d ${{ env.ARTIFACTS }} ]]; then
+          cd ${{ env.ARTIFACTS }}
+          for x in $(find . -type f); do
+            echo "::group:: artifact $x"
+            cat $x
+            echo '::endgroup::'
+          done
+        fi
+
   e2e-tests:
     concurrency:
       group: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.k8s-name }}-${{ matrix.feature-flags }}-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
     name: e2e tests
     runs-on: ${{ matrix.os }}
+    needs: [ e2e-tests-stable ]
     strategy:
       fail-fast: false # Keep running if one leg fails.
       matrix:
@@ -92,6 +186,13 @@ jobs:
         - k8s-name: k8s-latest
           feature-flags: beta
           os: ubuntu-24.04-arm
+        # stable already ran
+        - k8s-name: k8s-latest
+          feature-flags: stable
+          os: ubuntu-24.04-arm
+        - k8s-name: k8s-latest
+          feature-flags: stable
+          os: ubuntu-latest
     env:
       KO_DOCKER_REPO: registry.local:5000/tekton
       CLUSTER_DOMAIN: c${{ github.run_id }}.local
@@ -146,13 +247,13 @@ jobs:
     - name: Upload test results
       uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
       with:
-        name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}
+        name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}
         path: ${{ env.ARTIFACTS }}
 
     - uses: chainguard-dev/actions/kind-diag@1b32103f5aa389c31ab0be75a8edc38d7e4750d8 # v1.5.7
       if: ${{ failure() }}
       with:
-        artifact-name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-logs
+        artifact-name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}-logs
 
     - name: Dump Artifacts
       if: ${{ failure() }}
