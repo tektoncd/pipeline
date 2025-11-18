@@ -4502,7 +4502,7 @@ func Test_validateMatrix(t *testing.T) {
 			}},
 		}},
 	}, {
-		name: "invalid matrix emitting stings results consumed using array indexing by another pipelineTask",
+		name: "invalid matrix emitting strings results consumed using array indexing by another pipelineTask",
 		tasks: PipelineTaskList{{
 			Name:    "matrix-emitting-results",
 			TaskRef: &TaskRef{Name: "taskwithresult"},
@@ -4626,7 +4626,7 @@ func Test_validateMatrix(t *testing.T) {
 		}},
 		wantErrs: apis.ErrInvalidValue("Matrixed PipelineTasks emitting results must have an underlying type string, but result array-result has type array in pipelineTask", ""),
 	}, {
-		name: "invalid matrix emitting stings results consumed using array indexing by another pipelineTask (embedded TaskSpec)",
+		name: "invalid matrix emitting strings results consumed using array indexing by another pipelineTask (embedded TaskSpec)",
 		tasks: PipelineTaskList{{
 			Name: "matrix-emitting-results-embedded",
 			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
