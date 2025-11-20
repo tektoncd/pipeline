@@ -55,24 +55,24 @@ func initImageNames() map[int]string {
 	switch getTestArch() {
 	case "s390x":
 		return map[int]string{
-			busyboxImage:   "busybox@sha256:2f9af5cf39068ec3a9e124feceaa11910c511e23a1670dcfdff0bc16793545fb",
-			registryImage:  "ibmcom/registry:2.6.2.5",
+			busyboxImage:   "mirror.gcr.io/busybox@sha256:2f9af5cf39068ec3a9e124feceaa11910c511e23a1670dcfdff0bc16793545fb",
+			registryImage:  "mirror.gcr.io/ibmcom/registry:2.6.2.5",
 			kanikoImage:    "gcr.io/kaniko-project/executor:s390x-9ed158c1f63a059cde4fd5f8b95af51d452d9aa7",
-			dockerizeImage: "ibmcom/dockerize-s390x",
+			dockerizeImage: "mirror.gcr.io/ibmcom/dockerize-s390x",
 		}
 	case "ppc64le":
 		return map[int]string{
-			busyboxImage:   "busybox@sha256:2f9af5cf39068ec3a9e124feceaa11910c511e23a1670dcfdff0bc16793545fb",
-			registryImage:  "ppc64le/registry:2",
-			kanikoImage:    "ibmcom/kaniko-project-executor-ppc64le:v0.17.1",
-			dockerizeImage: "ibmcom/dockerize-ppc64le",
+			busyboxImage:   "mirror.gcr.io/busybox@sha256:2f9af5cf39068ec3a9e124feceaa11910c511e23a1670dcfdff0bc16793545fb",
+			registryImage:  "mirror.gcr.io/ppc64le/registry:2",
+			kanikoImage:    "mirror.gcr.io/ibmcom/kaniko-project-executor-ppc64le:v0.17.1",
+			dockerizeImage: "mirror.gcr.io/ibmcom/dockerize-ppc64le",
 		}
 	default:
 		return map[int]string{
-			busyboxImage:   "busybox@sha256:2f9af5cf39068ec3a9e124feceaa11910c511e23a1670dcfdff0bc16793545fb",
-			registryImage:  "registry",
+			busyboxImage:   "mirror.gcr.io/busybox@sha256:2f9af5cf39068ec3a9e124feceaa11910c511e23a1670dcfdff0bc16793545fb",
+			registryImage:  "mirror.gcr.io/library/registry",
 			kanikoImage:    "gcr.io/kaniko-project/executor:v1.3.0",
-			dockerizeImage: "jwilder/dockerize",
+			dockerizeImage: "mirror.gcr.io/jwilder/dockerize",
 		}
 	}
 }
