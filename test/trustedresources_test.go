@@ -42,7 +42,7 @@ var unsignedV1beta1Task = &v1beta1.Task{
 	},
 	Spec: v1beta1.TaskSpec{
 		Steps: []v1beta1.Step{{
-			Image: "ubuntu",
+			Image: "mirror.gcr.io/ubuntu",
 			Name:  "echo",
 		}},
 	},
