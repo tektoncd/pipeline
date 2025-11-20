@@ -2,7 +2,7 @@ name: Tekton Extra end-to-end tests
 
 on:
   repository_dispatch:
-    types: [e2e-extras]
+    types: [e2e-extras-command]
 
 permissions:
   contents: read
