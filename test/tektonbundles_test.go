@@ -248,7 +248,7 @@ func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string,
 			}},
 			InitContainers: []corev1.Container{{
 				Name:    "untar",
-				Image:   "busybox",
+				Image:   "mirror.gcr.io/busybox",
 				Command: []string{"/bin/sh", "-c"},
 				Args:    []string{"mkdir -p /var/image && tar xvf /var/cm/image.tar -C /var/image"},
 				VolumeMounts: []corev1.VolumeMount{{

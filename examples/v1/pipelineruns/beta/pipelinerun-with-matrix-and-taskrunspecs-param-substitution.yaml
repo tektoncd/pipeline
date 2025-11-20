@@ -24,7 +24,7 @@ spec:
           steps:
             - name: build-and-push
               displayName: "Build and push"
-              image: ubuntu
+              image: mirror.gcr.io/ubuntu
               script: |
                 echo "building on $(params.node-type)"
                 echo "testmanifest-$(params.node-type)" | tee $(results.manifest.path)
@@ -35,6 +35,6 @@ spec:
         taskSpec:
           steps:
             - name: echo-manifests
-              image: ubuntu
+              image: mirror.gcr.io/ubuntu
               args: ["$(params.manifest[*])"]
               script: echo "$@"
