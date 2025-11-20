@@ -5,7 +5,7 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: docker@sha256:0752ca4e936da012c173c119217c0f9599b3b191c1557e53206d5d06d2627580
+    - image: mirror.gcr.io/library/docker@sha256:0752ca4e936da012c173c119217c0f9599b3b191c1557e53206d5d06d2627580
       name: client
       env:
       # Connect to the sidecar over TCP, with TLS.
@@ -40,7 +40,7 @@ spec:
         name: dind-certs
 
     sidecars:
-    - image: docker@sha256:74e78208fc18da48ddf8b569abe21563730845c312130bd0f0b059746a7e10f5
+    - image: mirror.gcr.io/library/docker@sha256:0752ca4e936da012c173c119217c0f9599b3b191c1557e53206d5d06d2627580
       name: server
       args:
         - --storage-driver=vfs

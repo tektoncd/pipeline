@@ -8,10 +8,6 @@ spec:
     podTemplate:
       nodeSelector:
         node-type: $(params.node-type)
-  - pipelineTaskName: create-manifest-list
-    podTemplate:
-      nodeSelector:
-        kubernetes.io/arch: amd64
   pipelineSpec:
     tasks:
       - name: build-and-push-manifest
@@ -27,7 +23,8 @@ spec:
             - name: node-type
           steps:
             - name: build-and-push
-              image: ubuntu
+              displayName: "Build and push"
+              image: mirror.gcr.io/ubuntu
               script: |
                 echo "building on $(params.node-type)"
                 echo "testmanifest-$(params.node-type)" | tee $(results.manifest.path)
@@ -38,6 +35,6 @@ spec:
         taskSpec:
           steps:
             - name: echo-manifests
-              image: ubuntu
+              image: mirror.gcr.io/ubuntu
               args: ["$(params.manifest[*])"]
               script: echo "$@"
