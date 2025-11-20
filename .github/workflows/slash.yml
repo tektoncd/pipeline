@@ -37,7 +37,7 @@ jobs:
               "permission": "write",
               "issue_type": "pull-request",
               "repository": "tektoncd/pipeline"
-            }
+            },
             {
               "command": "e2e-extras",
               "permission": "write",
