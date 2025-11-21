@@ -21,8 +21,8 @@ spec:
     script: |
       #!/bin/sh
       echo "- Pipeline task timeout: 60s (defined in pipeline spec)"
-      echo "- TaskRunSpecs override: 20s (defined in pipelinerun spec)"
-      echo "- Actual task duration: 10s (within 20s override timeout)"
+      echo "- TaskRunSpecs override: 40s (defined in pipelinerun spec)"
+      echo "- Actual task duration: 10s (within 40s override timeout)"
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
@@ -50,4 +50,4 @@ spec:
     name: taskrun-timeout-override
   taskRunSpecs:
   - pipelineTaskName: long-running-task
-    timeout: "20s"      # 20s timeout (can't actually test with a timeout lesser than  10s else the task fails)
+    timeout: "40s"      # 40s timeout (accounts for image pull time + 10s sleep)
