@@ -84,6 +84,5 @@ func (c *Client) CreateGPGKey(opt CreateGPGKeyOption) (*GPGKey, *Response, error
 
 // DeleteGPGKey delete GPG key with key id
 func (c *Client) DeleteGPGKey(keyID int64) (*Response, error) {
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/user/gpg_keys/%d", keyID), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/user/gpg_keys/%d", keyID), nil, nil)
 }
