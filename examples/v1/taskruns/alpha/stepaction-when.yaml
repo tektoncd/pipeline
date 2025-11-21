@@ -15,7 +15,7 @@ kind: StepAction
 metadata:
   name: step-action-when
 spec:
-  image: alpine
+  image: mirror.gcr.io/alpine
   script: |
     echo "I am a Step Action!!!"
 ---
@@ -40,7 +40,7 @@ spec:
             operator: in
             values: ["true"]
       - name: should-skip
-        image: bash:latest
+        image: mirror.gcr.io/bash
         script: |
           #!/usr/bin/env bash
           echo skipskipskip
@@ -49,19 +49,19 @@ spec:
             operator: in
             values: ["true"]
       - name: should-continue
-        image: bash:latest
+        image: mirror.gcr.io/bash
         script: |
           #!/usr/bin/env bash
           echo blabalbaba
       - name: produce-step
-        image: alpine
+        image: mirror.gcr.io/alpine
         results:
           - name: result2
             type: string
         script: |
           echo -n "foo" | tee $(step.results.result2.path)
       - name: run-based-on-step-results
-        image: alpine
+        image: mirror.gcr.io/alpine
         script: |
           echo "wooooooo"
         when:
