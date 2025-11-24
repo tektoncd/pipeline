@@ -6,6 +6,7 @@ permissions:
 on:
   pull_request:
     branches: ["main"]
+  merge_group:
   push:
     branches: ["main"]
   # run at least once every 2 months to prevent the coverage artifact from expiring

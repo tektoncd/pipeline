@@ -1,7 +1,14 @@
 name: Tekton Integration
 # Adapted from https://github.com/mattmoor/mink/blob/master/.github/workflows/minkind.yaml
 
-on: [workflow_call]
+on:
+  workflow_call:
+    inputs:
+      minimal:
+        description: 'Run minimal matrix (aka only one job)'
+        required: false
+        type: boolean
+        default: false
 
 defaults:
   run:
@@ -36,7 +43,7 @@ jobs:
         - k8s-name: k8s-latest
           k8s-version: v1.34.x
 
-        # Limit arm64: only run k8s-latest on arm64 (alpha and beta), skip oldest on arm64
+        # Limit arm64: only run k8s-latest on arm64 (stable), skip oldest on arm64
         exclude:
         - k8s-name: k8s-oldest
           os: ubuntu-24.04-arm
@@ -53,7 +60,9 @@ jobs:
 
     steps:
     - name: Free disk space
-      if: ${{ matrix.os != 'ubuntu-24.04-arm' }}
+      if: |
+        matrix.os != 'ubuntu-24.04-arm' &&
+        (!inputs.minimal || (matrix.os == 'ubuntu-latest' && matrix.k8s-name == 'k8s-latest' && matrix.feature-flags == 'stable'))
       run: |
         echo "--- Disk space before cleanup ---"
         df -h
@@ -65,12 +74,16 @@ jobs:
         echo "--- Disk space after cleanup ---"
         df -h
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
+      if: ${{ !inputs.minimal || (matrix.os == 'ubuntu-latest' && matrix.k8s-name == 'k8s-latest' && matrix.feature-flags == 'stable') }}
     - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
+      if: ${{ !inputs.minimal || (matrix.os == 'ubuntu-latest' && matrix.k8s-name == 'k8s-latest' && matrix.feature-flags == 'stable') }}
       with:
         go-version-file: "go.mod"
     - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
+      if: ${{ !inputs.minimal || (matrix.os == 'ubuntu-latest' && matrix.k8s-name == 'k8s-latest' && matrix.feature-flags == 'stable') }}
 
     - name: Install Dependencies
+      if: ${{ !inputs.minimal || (matrix.os == 'ubuntu-latest' && matrix.k8s-name == 'k8s-latest' && matrix.feature-flags == 'stable') }}
       working-directory: ./
       run: |
         echo '::group:: install go-junit-report'
@@ -84,6 +97,7 @@ jobs:
         echo "${GOPATH}/bin" >> "$GITHUB_PATH"
 
     - name: Run tests
+      if: ${{ !inputs.minimal || (matrix.os == 'ubuntu-latest' && matrix.k8s-name == 'k8s-latest' && matrix.feature-flags == 'stable') }}
       run: |
         # This is a hack to make sure binary in /bin from the base image are not picked by default
         # On ubuntu-arm, there is a /bin/go that shadows the one setup-go installs
@@ -98,6 +112,7 @@ jobs:
           --e2e-env ./test/e2e-tests-kind-${{ matrix.feature-flags }}.env
 
     - name: Upload test results
+      if: ${{ !inputs.minimal || (matrix.os == 'ubuntu-latest' && matrix.k8s-name == 'k8s-latest' && matrix.feature-flags == 'stable') }}
       uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
       with:
         name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}
