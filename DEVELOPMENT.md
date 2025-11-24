@@ -292,6 +292,60 @@ as follows.
 
 ---
 
+## Pull Request Merge Queue
+
+This repository uses GitHub's merge queue to ensure the `main` branch remains stable and free from integration conflicts. The merge queue automatically validates that approved pull requests can be merged cleanly with the latest version of `main` before allowing them to land.
+
+### How It Works
+
+When your pull request is approved and all required checks pass:
+
+1. **Add to Queue**: An approver adds your PR to the merge queue (either manually or automatically based on labels/approvals)
+2. **Temporary Merge**: GitHub creates a temporary branch (`gh-readonly-queue/main/pr-{number}-{sha}`) that merges your PR with the latest `main`
+3. **Validation**: Required CI checks run on this merged state to verify compatibility
+4. **Automatic Merge**: If all checks pass, your PR is automatically merged to `main`
+5. **Failure Handling**: If checks fail on the merged state, your PR is removed from the queue and you'll need to rebase/fix conflicts
+
+### CI Behavior in Merge Queue
+
+To keep the merge queue fast and efficient, the CI matrix is optimized differently for merge queue builds versus regular PR builds:
+
+**Regular Pull Request Builds:**
+- Full e2e test matrix: 18 configurations
+  - 2 architectures (amd64, arm64)
+  - 2 Kubernetes versions (1.28, 1.34)
+  - 3 feature flag sets (stable, beta, alpha)
+- Comprehensive validation before approval
+
+**Merge Queue Builds:**
+- Minimal e2e test matrix: 1 configuration
+  - Single architecture: ubuntu-latest (amd64)
+  - Latest Kubernetes: 1.34
+  - Stable feature flags only
+- Faster validation focused on integration conflicts
+- Full matrix already validated during PR review
+
+This optimization significantly reduces merge queue time while maintaining safety, since your PR has already passed the full 18-configuration test matrix during review.
+
+### What You Need to Know
+
+- **PR reviews unchanged**: Continue developing and testing PRs as usual - all checks must pass before your PR can enter the queue
+- **Automatic process**: Once approved, the merge queue handles merging automatically
+- **Stay up-to-date**: Keep your PR rebased on `main` to minimize queue failures
+- **Queue failures**: If your PR fails in the queue, check for:
+  - Merge conflicts with recent changes to `main`
+  - Integration issues with other recently merged PRs
+  - Flaky tests (less common with minimal matrix)
+
+### Benefits
+
+- **Never break main**: Changes are only merged if they work with the latest code
+- **No merge conflicts**: Incompatible changes are detected before landing
+- **Reduced CI load**: Optimized test matrix for queue builds saves resources
+- **Higher velocity**: Automated merging eliminates manual merge bottlenecks
+
+---
+
 ## Building and deploying
 
 ### Setup a Kubernetes cluster
