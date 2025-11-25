@@ -70,3 +70,12 @@ updates:
       all:
         patterns:
           - "*"
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+    - "ok-to-test"
+    - "dependencies"
+    - "release-note-none"
+    - "kind/misc"
