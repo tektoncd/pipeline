@@ -30,3 +30,5 @@ data:
   enable-git-resolver: "true"
   # Setting this flag to "true" enables remote resolution of tasks and pipelines from other namespaces within the cluster.
   enable-cluster-resolver: "true"
+  # Setting this flag to "true" enables remote resolution of tasks and pipelines from HTTP URLs.
+  enable-http-resolver: "true"
