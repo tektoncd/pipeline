@@ -79,3 +79,7 @@ updates:
     - "dependencies"
     - "release-note-none"
     - "kind/misc"
+    groups:
+      all:
+        patterns:
+          - "*"
