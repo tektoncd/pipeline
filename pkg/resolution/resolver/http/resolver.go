@@ -16,6 +16,8 @@ package http
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/sha512"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -56,6 +58,15 @@ const (
 
 	// default key in the HTTP password secret
 	defaultBasicAuthSecretKey = "password"
+
+	// digestParam is the parameter name for the digest of the content
+	digestParam = "digest"
+
+	// sha512Algo is the prefix name for the sha512sum value
+	sha512Algo = "sha512"
+
+	// sha256Algo is the prefix name for the sha256sum value
+	sha256Algo = "sha256"
 )
 
 // Resolver implements a framework.Resolver that can fetch files from an HTTP URL
@@ -206,6 +217,52 @@ func makeHttpClient(ctx context.Context) (*http.Client, error) {
 	}, nil
 }
 
+// compareSHA compares two hexadecimal SHA strings in constant time.
+func compareSHA(expectedSHA string, computedSHA []byte) error {
+	expectedBytes, err := hex.DecodeString(expectedSHA)
+	if err != nil {
+		return fmt.Errorf("error decoding expected SHA string: %w", err)
+	}
+
+	match := subtle.ConstantTimeCompare(expectedBytes, computedSHA)
+	if match != 1 {
+		return fmt.Errorf("SHA mismatch, expected %s, got %s", expectedSHA, hex.EncodeToString(computedSHA))
+	}
+
+	return nil
+}
+
+func validateDigest(digest string, body []byte, logger *zap.SugaredLogger) error {
+	digestValues := strings.SplitN(digest, ":", 2)
+	if len(digestValues) != 2 {
+		return fmt.Errorf("invalid digest format: %s", digest)
+	}
+	digestAlgo := digestValues[0]
+	if digestAlgo != sha512Algo && digestAlgo != sha256Algo {
+		return fmt.Errorf("invalid digest algorithm: %s", digestAlgo)
+	}
+
+	digestValue := digestValues[1]
+
+	logger.Infof("Validating %s with value %s to the content", digestAlgo, digestValue)
+	switch digestAlgo {
+	case sha512Algo:
+		sha512Hash := sha512.Sum512(body)
+		if len(digestValue) != 128 {
+			return fmt.Errorf("invalid sha512 digest value, expected length: 128, got: %d", len(digestValue))
+		}
+		return compareSHA(digestValue, sha512Hash[:])
+	case sha256Algo:
+		sha256Hash := sha256.Sum256(body)
+		if len(digestValue) != 64 {
+			return fmt.Errorf("invalid sha256 digest value, expected length: 64, got: %d", len(digestValue))
+		}
+		return compareSHA(digestValue, sha256Hash[:])
+	}
+
+	return nil
+}
+
 func FetchHttpResource(ctx context.Context, params map[string]string, kubeclient kubernetes.Interface, logger *zap.SugaredLogger) (framework.ResolvedResource, error) {
 	var targetURL string
 	var ok bool
@@ -246,6 +303,14 @@ func FetchHttpResource(ctx context.Context, params map[string]string, kubeclient
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+
+	digest, ok := params[digestParam]
+	if ok {
+		err = validateDigest(digest, body, logger)
+		if err != nil {
+			return nil, fmt.Errorf("error validating digest: %w", err)
+		}
 	}
 
 	return &resolvedHttpResource{
