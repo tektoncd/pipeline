@@ -19,6 +19,7 @@ package http
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -26,6 +27,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -42,6 +44,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/logging"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing"
 )
@@ -522,5 +525,128 @@ func checkExpectedErr(t *testing.T, expectedErr, actualErr error) {
 	}
 	if d := cmp.Diff(expectedErr.Error(), actualErr.Error()); d != "" {
 		t.Fatalf("expected err '%v' but got '%v'", expectedErr, actualErr)
+	}
+}
+
+func TestCompareSHA(t *testing.T) {
+	tests := []struct {
+		name        string
+		expectedSHA string
+		computedSHA []byte
+		expectedErr string
+	}{
+		{
+			name:        "valid/match",
+			expectedSHA: "666f6f", // hex for "foo"
+			computedSHA: []byte("foo"),
+		},
+		{
+			name:        "valid/mismatch",
+			expectedSHA: "666f6f", // hex for "foo"
+			computedSHA: []byte("bar"),
+			expectedErr: "SHA mismatch, expected 666f6f, got 626172",
+		},
+		{
+			name:        "invalid/expected hex",
+			expectedSHA: "not-hex",
+			computedSHA: []byte("foo"),
+			expectedErr: "error decoding expected SHA string",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := compareSHA(tc.expectedSHA, tc.computedSHA)
+			if tc.expectedErr != "" {
+				if err == nil {
+					t.Fatalf("expected error '%v' but got nil", tc.expectedErr)
+				}
+				re := regexp.MustCompile(tc.expectedErr)
+				if !re.MatchString(err.Error()) {
+					t.Fatalf("expected error to match '%v' but got '%v'", tc.expectedErr, err)
+				}
+			} else if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestValidateDigest(t *testing.T) {
+	ctx, _ := ttesting.SetupFakeContext(t)
+	logger := logging.FromContext(ctx)
+	content := []byte("some content")
+
+	// Calculate valid hashes
+	s256 := sha256.Sum256(content)
+	hex256 := hex.EncodeToString(s256[:])
+
+	s512 := sha512.Sum512(content)
+	hex512 := hex.EncodeToString(s512[:])
+
+	tests := []struct {
+		name        string
+		digest      string
+		expectedErr string
+	}{
+		{
+			name:   "valid/sha256",
+			digest: "sha256:" + hex256,
+		},
+		{
+			name:   "valid/sha512",
+			digest: "sha512:" + hex512,
+		},
+		{
+			name:        "invalid/format_no_separator",
+			digest:      "sha256" + hex256,
+			expectedErr: "invalid digest format",
+		},
+		{
+			name:        "invalid/format_empty",
+			digest:      "",
+			expectedErr: "invalid digest format",
+		},
+		{
+			name:        "invalid/algorithm",
+			digest:      "sha1:" + hex256,
+			expectedErr: "invalid digest algorithm: sha1",
+		},
+		{
+			name:        "invalid/mismatch_sha256",
+			digest:      "sha256:deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+			expectedErr: "SHA mismatch",
+		},
+		{
+			name:        "invalid/mismatch_sha512",
+			digest:      "sha512:deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+			expectedErr: "SHA mismatch",
+		},
+		{
+			name:        "invalid/length_sha256",
+			digest:      "sha256:deadbeef",
+			expectedErr: "invalid sha256 digest value, expected length: 64, got: 8",
+		},
+		{
+			name:        "invalid/length_sha512",
+			digest:      "sha512:deadbeef",
+			expectedErr: "invalid sha512 digest value, expected length: 128, got: 8",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateDigest(tc.digest, content, logger)
+			if tc.expectedErr != "" {
+				if err == nil {
+					t.Fatalf("expected error '%v' but got nil", tc.expectedErr)
+				}
+				if !strings.Contains(err.Error(), tc.expectedErr) {
+					t.Fatalf("expected error to contain '%v' but got '%v'", tc.expectedErr, err)
+				}
+			} else if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
 	}
 }
