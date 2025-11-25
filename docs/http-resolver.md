@@ -12,12 +12,26 @@ This resolver responds to type `http`.
 
 ## Parameters
 
-| Param Name                 | Description                                                                                                                                                                | Example Value                                                                                   |   |
-|----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|---|
-| `url`                      | The URL to fetch from                                                                                                                                                      | <https://raw.githubusercontent.com/tektoncd-catalog/git-clone/main/task/git-clone/git-clone.yaml> |   |
-| `http-username`            | An optional username when fetching a task with credentials (need to be used in conjunction with `http-password-secret`)                                                    | `git`                                                                                           |   |
-| `http-password-secret`     | An optional secret in the PipelineRun namespace with a reference to a password when fetching a task with credentials (need to be used in conjunction with `http-username`) | `http-password`                                                                                 |   |
-| `http-password-secret-key` | An optional key in the `http-password-secret` to be used when fetching a task with credentials                                                                             | Default: `password`                                                                             |   |
+| Param Name                 | Description                                                                                                                                                                        | Example Value                                                                                     |     |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | --- |
+| `url`                      | The URL to fetch from                                                                                                                                                              | <https://raw.githubusercontent.com/tektoncd-catalog/git-clone/main/task/git-clone/git-clone.yaml> |     |
+| `http-username`            | An optional username when fetching a task with credentials (need to be used in conjunction with `http-password-secret`)                                                            | `git`                                                                                             |     |
+| `http-password-secret`     | An optional secret in the PipelineRun namespace with a reference to a password when fetching a task with credentials (need to be used in conjunction with `http-username`)         | `http-password`                                                                                   |     |
+| `http-password-secret-key` | An optional key in the `http-password-secret` to be used when fetching a task with credentials                                                                                     | Default: `password`                                                                               |     |
+| `digest`                   | An optional digest to verify the integrity of the fetched content. The value must be in the format `<algorithm>:<hash>`, where the supported algorithms are `sha256` and `sha512`. | `sha256:f37cdd0e86...`                                                                            |     |
+
+You can calculate the hash of your Tekton resource using the following command:
+
+```
+# Calculate sha256 digest
+curl -sL https://raw.githubusercontent.com/owner/private-repo/main/task/task.yaml | sha256sum
+
+# Calculate sha512 digest
+curl -sL https://raw.githubusercontent.com/owner/private-repo/main/task/task.yaml | sha512sum
+
+
+`sha265sum` and `sha512sum` are available on all major Linux distributions and macOS
+```
 
 A valid URL must be provided. Only HTTP or HTTPS URLs are supported.
 
@@ -92,6 +106,23 @@ spec:
     params:
     - name: url
       value: https://raw.githubusercontent.com/tektoncd/catalog/main/pipeline/build-push-gke-deploy/0.1/build-push-gke-deploy.yaml
+```
+
+### Pipeline Resolution with Digest
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: http-demo
+spec:
+  pipelineRef:
+    resolver: http
+    params:
+      - name: url
+        value: https://raw.githubusercontent.com/tektoncd/catalog/main/pipeline/build-push-gke-deploy/0.1/build-push-gke-deploy.yaml
+      - name: digest
+        value: sha256:e1a86b942e85ce5558fc737a3b4a82d7425ca392741d20afa3b7fb426e96c66b
 ```
 
 ---
