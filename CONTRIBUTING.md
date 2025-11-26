@@ -31,7 +31,28 @@ Additionally, please read the following resources specific to Tekton Pipelines:
 - [Tekton Pipelines roadmap](roadmap.md)
 - [Tekton Pipelines API compatibility policy](api_compatibility_policy.md)
 
-For support in contributing to specific areas, contact the relevant [Tekton Pipelines Topical Owner(s)](topical-ownership.md). 
+For support in contributing to specific areas, contact the relevant [Tekton Pipelines Topical Owner(s)](topical-ownership.md).
+
+## Slash Commands
+
+The project includes GitHub slash commands to automate common workflows:
+
+### `/cherry-pick`
+
+Automatically cherry-picks a merged PR to one or more target branches.
+
+**Usage**: `/cherry-pick <target-branch> [<target-branch2> ...]`
+
+**Examples**:
+- `/cherry-pick release-v0.47.x`
+- `/cherry-pick release-v0.47.x release-v1.3.x`
+
+**Requirements**:
+- PR must be merged
+- User must have write permissions
+- Target branch(es) must exist
+
+The command creates a new PR with the cherry-picked changes for each target branch.
 
 ## Contributing to Tekton documentation
 
