@@ -41,7 +41,7 @@ jobs:
         # should be true. Skipping output on an empty set of changes eliminates the false positive
         if [[ -n "${CHANGED_FILES}" ]]; then
           echo "non-docs=$(echo \"${CHANGED_FILES}\" | grep -qv '**\.md' && echo 'true' )" | tee -a $GITHUB_OUTPUT
-          echo "yaml=$(echo \"${CHANGED_FILES}\" | grep -q '**\.ya\?ml' && echo 'true' )" | tee -a $GITHUB_OUTPUT
+          echo "yaml=$(echo \"${CHANGED_FILES}\" | grep -v '^\.github/workflows/' | grep -q '**\.ya\?ml' && echo 'true' )" | tee -a $GITHUB_OUTPUT
         fi
 
   build:
