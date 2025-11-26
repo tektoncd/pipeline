@@ -1,0 +1,241 @@
+# Cherry Pick Command Workflow
+#
+# This workflow is triggered by the /cherry-pick slash command from the slash.yml workflow.
+# It automatically cherry-picks merged PRs to the specified target branches.
+#
+# Usage: Comment `/cherry-pick <target-branch> [<target-branch> ...]` on a merged pull request
+# Example: `/cherry-pick release-v0.47.x`
+# Example: `/cherry-pick release-v0.47.x release-v1.3.x`
+#
+# Security Notes:
+# - Only users with "write" permission can trigger this command (enforced in slash.yml)
+# - Works safely with PRs from forks because it only cherry-picks already-merged commits
+# - Uses CHATOPS_TOKEN to create PRs and push to branches
+# - The action creates a new branch from the target branch, not from the fork
+
+name: Cherry Pick Command
+
+on:
+  repository_dispatch:
+    types: [cherry-pick-command]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      branches: ${{ steps.parse-args.outputs.branches }}
+      error: ${{ steps.parse-args.outputs.error }}
+      message: ${{ steps.parse-args.outputs.message }}
+    steps:
+      - name: Add reaction to trigger comment
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+        with:
+          token: ${{ secrets.CHATOPS_TOKEN }}
+          repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+          comment-id: ${{ github.event.client_payload.github.payload.comment.id }}
+          reactions: "+1"
+
+      - name: Get target branches from command args
+        id: parse-args
+        run: |
+          # Parse all unnamed arguments from the slash command
+          ARGS_JSON='${{ toJson(github.event.client_payload.slash_command.args.unnamed) }}'
+
+          # Extract branch names from the JSON object, filtering out "all" field if present
+          # The unnamed args come as {arg1: "branch1", arg2: "branch2", ...}
+          BRANCHES=$(echo "$ARGS_JSON" | jq -r '[to_entries[] | select(.key | startswith("arg")) | .value | select(. != null and . != "")] | @json')
+
+          echo "Parsed branches: $BRANCHES"
+
+          if [ "$BRANCHES" = "[]" ] || [ -z "$BRANCHES" ]; then
+            echo "error=true" >> $GITHUB_OUTPUT
+            echo "message=Missing target branch(es). Usage: /cherry-pick <target-branch> [<target-branch2> ...]" >> $GITHUB_OUTPUT
+          else
+            echo "branches=$BRANCHES" >> $GITHUB_OUTPUT
+            echo "error=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment on error
+        if: steps.parse-args.outputs.error == 'true'
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+        with:
+          token: ${{ secrets.CHATOPS_TOKEN }}
+          repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+          issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+          body: |
+            ❌ **Cherry-pick failed**: ${{ steps.parse-args.outputs.message }}
+
+            **Usage**: `/cherry-pick <target-branch> [<target-branch2> ...]`
+            **Examples**:
+            - `/cherry-pick release-v1.0`
+            - `/cherry-pick release-v1.0 release-v1.1 release-v2.0`
+
+  cherry-pick:
+    needs: prepare
+    if: needs.prepare.outputs.error == 'false'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJson(needs.prepare.outputs.branches) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          token: ${{ secrets.CHATOPS_TOKEN }}
+          fetch-depth: 0
+
+      - name: Perform cherry-pick
+        id: cherry-pick
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.CHATOPS_TOKEN }}
+          TARGET_BRANCH: ${{ matrix.branch }}
+          PR_NUMBER: ${{ github.event.client_payload.pull_request.number }}
+        run: |
+          set +e  # Don't exit on error, we want to capture it
+
+          # Capture all output
+          OUTPUT_FILE=$(mktemp)
+
+          {
+            echo "🤖 Starting cherry-pick process..."
+
+            git config user.name "Tekton Bot"
+            git config user.email "tekton-bot@users.noreply.github.com"
+
+            # Get PR information
+            echo "Fetching PR #$PR_NUMBER information..."
+            PR_DATA=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json state,mergeCommit,mergedAt)
+
+            # Check if PR is merged
+            PR_STATE=$(echo "$PR_DATA" | jq -r '.state')
+            MERGED_AT=$(echo "$PR_DATA" | jq -r '.mergedAt')
+            if [ "$PR_STATE" != "MERGED" ] || [ "$MERGED_AT" = "null" ]; then
+              echo "❌ ERROR: PR #$PR_NUMBER is not merged yet (state: $PR_STATE). Cherry-pick requires merged PRs."
+              exit 1
+            fi
+
+            MERGE_COMMIT=$(echo "$PR_DATA" | jq -r '.mergeCommit.oid')
+            echo "Found merge commit: $MERGE_COMMIT"
+
+            # Fetch target branch
+            echo "Fetching target branch: $TARGET_BRANCH..."
+            if ! git fetch origin "$TARGET_BRANCH" 2>&1; then
+              echo "❌ ERROR: Target branch '$TARGET_BRANCH' does not exist or cannot be fetched."
+              exit 1
+            fi
+
+            # Check if a cherry-pick PR already exists
+            CHERRY_PICK_BRANCH="cherry-pick-$PR_NUMBER-to-$TARGET_BRANCH"
+            echo "Checking for existing cherry-pick PR..."
+            EXISTING_PR=$(gh pr list \
+              --repo ${{ github.repository }} \
+              --head "$CHERRY_PICK_BRANCH" \
+              --base "$TARGET_BRANCH" \
+              --json number,url \
+              --jq '.[0] | select(. != null)')
+
+            if [ -n "$EXISTING_PR" ]; then
+              PR_URL=$(echo "$EXISTING_PR" | jq -r '.url')
+              PR_NUM=$(echo "$EXISTING_PR" | jq -r '.number')
+              echo "ℹ️  Cherry-pick PR already exists: #$PR_NUM"
+              echo "URL: $PR_URL"
+              echo "existing_pr_url=$PR_URL" >> $GITHUB_OUTPUT
+              echo "existing_pr_number=$PR_NUM" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            # Create new branch for cherry-pick
+            echo "Creating cherry-pick branch: $CHERRY_PICK_BRANCH..."
+            git checkout -b "$CHERRY_PICK_BRANCH" "origin/$TARGET_BRANCH"
+
+            # Perform cherry-pick
+            echo "Cherry-picking commit $MERGE_COMMIT..."
+            if ! git cherry-pick -m 1 "$MERGE_COMMIT" 2>&1; then
+              echo "❌ ERROR: Cherry-pick failed due to conflicts or other errors."
+              git cherry-pick --abort 2>/dev/null || true
+              exit 1
+            fi
+
+            # Push the new branch
+            echo "Pushing cherry-pick branch..."
+            git push origin "$CHERRY_PICK_BRANCH"
+
+            # Create pull request
+            echo "Creating pull request..."
+            gh pr create \
+              --repo ${{ github.repository }} \
+              --base "$TARGET_BRANCH" \
+              --head "$CHERRY_PICK_BRANCH" \
+              --title "Cherry-pick #$PR_NUMBER to $TARGET_BRANCH" \
+              --body "Automatic cherry-pick of #$PR_NUMBER to \`$TARGET_BRANCH\`"
+
+            echo "✅ Cherry-pick completed successfully!"
+          } 2>&1 | tee "$OUTPUT_FILE"
+
+          EXIT_CODE=${PIPESTATUS[0]}
+
+          # Save output for use in comments
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "output<<$EOF" >> $GITHUB_OUTPUT
+          cat "$OUTPUT_FILE" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
+
+          rm -f "$OUTPUT_FILE"
+          exit $EXIT_CODE
+
+      - name: Comment on existing PR
+        if: steps.cherry-pick.outcome == 'success' && steps.cherry-pick.outputs.existing_pr_url != ''
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+        with:
+          token: ${{ secrets.CHATOPS_TOKEN }}
+          repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+          issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+          body: |
+            ℹ️ **Cherry-pick to `${{ matrix.branch }}` already exists!**
+
+            A pull request for this cherry-pick already exists: #${{ steps.cherry-pick.outputs.existing_pr_number }}
+
+            **PR**: ${{ steps.cherry-pick.outputs.existing_pr_url }}
+
+      - name: Comment on success
+        if: steps.cherry-pick.outcome == 'success' && steps.cherry-pick.outputs.existing_pr_url == ''
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+        with:
+          token: ${{ secrets.CHATOPS_TOKEN }}
+          repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+          issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+          body: |
+            ✅ **Cherry-pick to `${{ matrix.branch }}` successful!**
+
+            A new pull request has been created to cherry-pick this change to `${{ matrix.branch }}`.
+
+            Please review and merge the cherry-pick PR.
+
+      - name: Comment on failure
+        if: steps.cherry-pick.outcome == 'failure'
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+        with:
+          token: ${{ secrets.CHATOPS_TOKEN }}
+          repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+          issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+          body: |
+            ❌ **Cherry-pick to `${{ matrix.branch }}` failed!**
+
+            The automatic cherry-pick to `${{ matrix.branch }}` failed.
+
+            **Output:**
+            ```
+            ${{ steps.cherry-pick.outputs.output }}
+            ```
+
+            **Next steps:**
+            - Check the [action logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for complete details
+            - If the PR is not merged, merge it first and try again
+            - If there are conflicts, you'll need to manually cherry-pick this PR
