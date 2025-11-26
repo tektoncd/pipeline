@@ -15,7 +15,37 @@ defaults:
     shell: bash
 
 jobs:
+  generate-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+    - id: set-matrix
+      run: |
+        if [[ "${{ inputs.minimal }}" == "true" ]]; then
+          # Minimal set: only one job
+          matrix='{"include":[{"os":"ubuntu-latest","k8s-name":"k8s-latest","k8s-version":"v1.34.x","feature-flags":"stable"}]}'
+        else
+          # Full matrix:
+          # - amd64: all combinations (2 k8s versions x 3 feature flags = 6 jobs)
+          # - arm64: only k8s-latest with stable (1 job)
+          # Total: 7 jobs
+          matrix='{
+            "include": [
+              {"os": "ubuntu-latest", "k8s-name": "k8s-oldest", "k8s-version": "v1.28.x", "feature-flags": "stable"},
+              {"os": "ubuntu-latest", "k8s-name": "k8s-oldest", "k8s-version": "v1.28.x", "feature-flags": "beta"},
+              {"os": "ubuntu-latest", "k8s-name": "k8s-oldest", "k8s-version": "v1.28.x", "feature-flags": "alpha"},
+              {"os": "ubuntu-latest", "k8s-name": "k8s-latest", "k8s-version": "v1.34.x", "feature-flags": "stable"},
+              {"os": "ubuntu-latest", "k8s-name": "k8s-latest", "k8s-version": "v1.34.x", "feature-flags": "beta"},
+              {"os": "ubuntu-latest", "k8s-name": "k8s-latest", "k8s-version": "v1.34.x", "feature-flags": "alpha"},
+              {"os": "ubuntu-24.04-arm", "k8s-name": "k8s-latest", "k8s-version": "v1.34.x", "feature-flags": "stable"}
+            ]
+          }'
+        fi
+        echo "matrix=$(echo $matrix | jq -c .)" >> $GITHUB_OUTPUT
+
   e2e-tests:
+    needs: generate-matrix
     concurrency:
       group: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.k8s-name }}-${{ matrix.feature-flags }}-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
@@ -23,36 +53,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false # Keep running if one leg fails.
-      matrix:
-        os:
-        - ubuntu-latest     # amd64
-        - ubuntu-24.04-arm  # arm64
-
-        k8s-name:
-        - k8s-oldest             # 1.28
-        - k8s-latest             # 1.34
-
-        feature-flags:
-        - stable
-        - beta
-        - alpha
-
-        include:
-        - k8s-name: k8s-oldest
-          k8s-version: v1.28.x
-        - k8s-name: k8s-latest
-          k8s-version: v1.34.x
-
-        # Limit arm64: only run k8s-latest on arm64 (stable), skip oldest on arm64
-        exclude:
-        - k8s-name: k8s-oldest
-          os: ubuntu-24.04-arm
-        - k8s-name: k8s-latest
-          os: ubuntu-24.04-arm
-          feature-flags: beta
-        - k8s-name: k8s-latest
-          os: ubuntu-24.04-arm
-          feature-flags: alpha
+      matrix: ${{ fromJSON(needs.generate-matrix.outputs.matrix) }}
     env:
       KO_DOCKER_REPO: registry.local:5000/tekton
       CLUSTER_DOMAIN: c${{ github.run_id }}.local
@@ -61,9 +62,7 @@ jobs:
 
     steps:
     - name: Free disk space
-      if: |
-        matrix.os != 'ubuntu-24.04-arm' &&
-        (!inputs.minimal || (matrix.os == 'ubuntu-latest' && matrix.k8s-name == 'k8s-latest' && matrix.feature-flags == 'stable'))
+      if: matrix.os != 'ubuntu-24.04-arm'
       run: |
         echo "--- Disk space before cleanup ---"
         df -h
@@ -75,9 +74,7 @@ jobs:
         echo "--- Disk space after cleanup ---"
         df -h
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-      if: ${{ !inputs.minimal || (matrix.os == 'ubuntu-latest' && matrix.k8s-name == 'k8s-latest' && matrix.feature-flags == 'stable') }}
     - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
-      if: ${{ !inputs.minimal || (matrix.os == 'ubuntu-latest' && matrix.k8s-name == 'k8s-latest' && matrix.feature-flags == 'stable') }}
       with:
         go-version-file: "go.mod"
     - name: Cache ko build cache
@@ -88,10 +85,8 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-${{ runner.arch }}-ko-
     - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
-      if: ${{ !inputs.minimal || (matrix.os == 'ubuntu-latest' && matrix.k8s-name == 'k8s-latest' && matrix.feature-flags == 'stable') }}
 
     - name: Install Dependencies
-      if: ${{ !inputs.minimal || (matrix.os == 'ubuntu-latest' && matrix.k8s-name == 'k8s-latest' && matrix.feature-flags == 'stable') }}
       working-directory: ./
       run: |
         echo '::group:: install go-junit-report'
@@ -105,7 +100,6 @@ jobs:
         echo "${GOPATH}/bin" >> "$GITHUB_PATH"
 
     - name: Run tests
-      if: ${{ !inputs.minimal || (matrix.os == 'ubuntu-latest' && matrix.k8s-name == 'k8s-latest' && matrix.feature-flags == 'stable') }}
       run: |
         # This is a hack to make sure binary in /bin from the base image are not picked by default
         # On ubuntu-arm, there is a /bin/go that shadows the one setup-go installs
@@ -120,7 +114,6 @@ jobs:
           --e2e-env ./test/e2e-tests-kind-${{ matrix.feature-flags }}.env
 
     - name: Upload test results
-      if: ${{ !inputs.minimal || (matrix.os == 'ubuntu-latest' && matrix.k8s-name == 'k8s-latest' && matrix.feature-flags == 'stable') }}
       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}
