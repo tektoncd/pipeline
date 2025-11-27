@@ -60,7 +60,7 @@ jobs:
         GITHUB_PULL_URL: ${{ github.event.client_payload.github.payload.issue.pull_request.url }}
 
     - name: Create comment
-      if: ${{ failure() && steps.landStack.outcome == 'failure' }}
+      if: ${{ failure() }}
       uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
       with:
         token: ${{ secrets.CHATOPS_TOKEN }}

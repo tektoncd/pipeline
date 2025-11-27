@@ -18,14 +18,6 @@ package cache
 
 import "time"
 
-// Clock is an interface for getting the current time.
-// This allows for testing without relying on actual time for timestamp generation.
-// Note: The underlying k8s LRUExpireCache uses real time for TTL expiration checks,
-// so we cannot use a fake clock to control cache expiration in tests.
-type Clock interface {
-	Now() time.Time
-}
-
 // realClock implements Clock using the actual system time.
 type realClock struct{}
 

@@ -23,11 +23,6 @@ jobs:
 
         k8s-name:
         - k8s-oldest             # 1.28
-        - k8s-latest-minus-five  # 1.29
-        - k8s-latest-minus-four  # 1.30
-        - k8s-latest-minus-three # 1.31
-        - k8s-latest-minus-two   # 1.32
-        - k8s-latest-minus-one   # 1.33
         - k8s-latest             # 1.34
 
         feature-flags:
@@ -38,60 +33,19 @@ jobs:
         include:
         - k8s-name: k8s-oldest
           k8s-version: v1.28.x
-        - k8s-name: k8s-latest-minus-five
-          k8s-version: v1.29.x
-        - k8s-name: k8s-latest-minus-four
-          k8s-version: v1.30.x
-        - k8s-name: k8s-latest-minus-three
-          k8s-version: v1.31.x
-        - k8s-name: k8s-latest-minus-two
-          k8s-version: v1.32.x
-        - k8s-name: k8s-latest-minus-one
-          k8s-version: v1.33.x
         - k8s-name: k8s-latest
           k8s-version: v1.34.x
 
-        # Run beta and alpha only on latest and oldest
+        # Limit arm64: only run k8s-latest on arm64 (alpha and beta), skip oldest on arm64
         exclude:
-        - k8s-name: k8s-latest-minus-five
-          feature-flags: beta
-        - k8s-name: k8s-latest-minus-five
-          feature-flags: alpha
-        - k8s-name: k8s-latest-minus-four
-          feature-flags: beta
-        - k8s-name: k8s-latest-minus-four
-          feature-flags: alpha
-        - k8s-name: k8s-latest-minus-three
-          feature-flags: beta
-        - k8s-name: k8s-latest-minus-three
-          feature-flags: alpha
-        - k8s-name: k8s-latest-minus-two
-          feature-flags: beta
-        - k8s-name: k8s-latest-minus-two
-          feature-flags: alpha
-        - k8s-name: k8s-latest-minus-one
-          feature-flags: beta
-        - k8s-name: k8s-latest-minus-one
-          feature-flags: alpha
-        # Only run latest on arm64
         - k8s-name: k8s-oldest
           os: ubuntu-24.04-arm
-        - k8s-name: k8s-latest-minus-five
-          os: ubuntu-24.04-arm
-        - k8s-name: k8s-latest-minus-four
-          os: ubuntu-24.04-arm
-        - k8s-name: k8s-latest-minus-three
-          os: ubuntu-24.04-arm
-        - k8s-name: k8s-latest-minus-two
-          os: ubuntu-24.04-arm
-        - k8s-name: k8s-latest-minus-one
-          os: ubuntu-24.04-arm
         - k8s-name: k8s-latest
-          feature-flags: alpha
           os: ubuntu-24.04-arm
-        - k8s-name: k8s-latest
           feature-flags: beta
+        - k8s-name: k8s-latest
           os: ubuntu-24.04-arm
+          feature-flags: alpha
     env:
       KO_DOCKER_REPO: registry.local:5000/tekton
       CLUSTER_DOMAIN: c${{ github.run_id }}.local
@@ -111,7 +65,7 @@ jobs:
         echo "--- Disk space after cleanup ---"
         df -h
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
-    - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00  # v6.0.0
+    - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
     - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
@@ -146,13 +100,13 @@ jobs:
     - name: Upload test results
       uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
       with:
-        name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}
+        name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}
         path: ${{ env.ARTIFACTS }}
 
-    - uses: chainguard-dev/actions/kind-diag@1b32103f5aa389c31ab0be75a8edc38d7e4750d8 # v1.5.7
+    - uses: chainguard-dev/actions/kind-diag@3e8a2a226fad9e1ecbf2d359b8a7697554a4ac6d # v1.5.10
       if: ${{ failure() }}
       with:
-        artifact-name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-logs
+        artifact-name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}-logs
 
     - name: Dump Artifacts
       if: ${{ failure() }}
