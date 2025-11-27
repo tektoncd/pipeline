@@ -184,6 +184,11 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
 	if tr.HasTimedOut(ctx, c.Clock) {
+		// Before failing the TaskRun, ensure step statuses are populated from the pod
+		// This prevents a race condition where the timeout occurs before pod status is fetched
+		if err := c.updateStepStatusesFromPod(ctx, tr); err != nil {
+			logger.Warnf("Failed to update step statuses from pod before timeout: %v", err)
+		}
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout(ctx))
 		err := c.failTaskRun(ctx, tr, v1.TaskRunReasonTimedOut, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
@@ -818,6 +823,37 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 		return err
 	}
 
+	return nil
+}
+
+// updateStepStatusesFromPod fetches the pod and updates step statuses in the TaskRun
+// This is called before failing a TaskRun to ensure step statuses are populated
+func (c *Reconciler) updateStepStatusesFromPod(ctx context.Context, tr *v1.TaskRun) error {
+	logger := logging.FromContext(ctx)
+
+	// If there's no pod yet, nothing to update
+	if tr.Status.PodName == "" {
+		return nil
+	}
+
+	// Fetch the pod
+	pod, err := c.podLister.Pods(tr.Namespace).Get(tr.Status.PodName)
+	if k8serrors.IsNotFound(err) {
+		// Pod doesn't exist yet, nothing to update
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	// Update step statuses from pod using the existing MakeTaskRunStatus function
+	// This ensures consistency with the normal reconciliation path
+	status, err := podconvert.MakeTaskRunStatus(ctx, logger, *tr, pod, c.KubeClientSet, tr.Status.TaskSpec)
+	if err != nil {
+		return err
+	}
+
+	// Only update the Steps field to avoid overwriting other status fields
+	tr.Status.Steps = status.Steps
 	return nil
 }
 
