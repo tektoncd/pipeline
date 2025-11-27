@@ -366,6 +366,9 @@ spec:
                       description: HostNetwork specifies whether the pod may use the node network namespace
                       type: boolean
                     hostUsers:
+                      description: |-
+                        HostUsers allows you to isolate the user running inside the container from the one in the host
+                        More info: https://kubernetes.io/docs/tasks/configure-pod-container/user-namespaces
                       type: boolean
                     imagePullSecrets:
                       description: ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified
@@ -2575,6 +2578,9 @@ spec:
                       description: HostNetwork specifies whether the pod may use the node network namespace
                       type: boolean
                     hostUsers:
+                      description: |-
+                        HostUsers allows you to isolate the user running inside the container from the one in the host
+                        More info: https://kubernetes.io/docs/tasks/configure-pod-container/user-namespaces
                       type: boolean
                     imagePullSecrets:
                       description: ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified
