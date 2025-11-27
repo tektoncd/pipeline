@@ -1345,6 +1345,9 @@ spec:
     name: test-task
 status:
   podName: the-pod
+  taskSpec:
+    steps:
+    - image: foo
 `)
 	taskRun.Status.StartTime = &metav1.Time{Time: startTime}
 	d := test.Data{
