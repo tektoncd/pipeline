@@ -96,6 +96,7 @@
           "type": "boolean"
         },
         "hostUsers": {
+          "description": "HostUsers allows you to isolate the user running inside the container from the one in the host More info: https://kubernetes.io/docs/tasks/configure-pod-container/user-namespaces",
           "type": "boolean"
         },
         "imagePullSecrets": {
