@@ -56,36 +56,10 @@ func ApplyParameters(ctx context.Context, p *v1.PipelineSpec, pr *v1.PipelineRun
 	arrayReplacements := map[string][]string{}
 	objectReplacements := map[string]map[string]string{}
 
-	// Set all the default stringReplacements
-	for _, p := range p.Params {
-		if p.Default != nil {
-			switch p.Default.Type {
-			case v1.ParamTypeArray:
-				for _, pattern := range paramPatterns {
-					for i := range len(p.Default.ArrayVal) {
-						stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Default.ArrayVal[i]
-					}
-					arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ArrayVal
-				}
-			case v1.ParamTypeObject:
-				for _, pattern := range paramPatterns {
-					objectReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ObjectVal
-				}
-				for k, v := range p.Default.ObjectVal {
-					stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
-				}
-			case v1.ParamTypeString:
-				fallthrough
-			default:
-				for _, pattern := range paramPatterns {
-					stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.StringVal
-				}
-			}
-		}
-	}
-	// Set and overwrite params with the ones from the PipelineRun
+	// First, get the params from the PipelineRun as they take precedence
 	prStrings, prArrays, prObjects := paramsFromPipelineRun(ctx, pr)
 
+	// Build initial replacements from PipelineRun params
 	for k, v := range prStrings {
 		stringReplacements[k] = v
 	}
@@ -94,6 +68,70 @@ func ApplyParameters(ctx context.Context, p *v1.PipelineSpec, pr *v1.PipelineRun
 	}
 	for k, v := range prObjects {
 		objectReplacements[k] = v
+	}
+
+	// Resolve default values for params that weren't provided in the PipelineRun.
+	// We need to iteratively resolve param references in defaults to handle cases where
+	// a param's default value references another param (e.g., default: $(params.fallback-param))
+	maxIterations := len(p.Params) // Prevent infinite loops
+	for range maxIterations {
+		changed := false
+		for _, param := range p.Params {
+			if param.Default != nil {
+				// Skip if this param was already provided in the PipelineRun
+				paramProvided := false
+				for _, pattern := range paramPatterns {
+					if _, exists := stringReplacements[fmt.Sprintf(pattern, param.Name)]; exists {
+						paramProvided = true
+						break
+					}
+					if _, exists := arrayReplacements[fmt.Sprintf(pattern, param.Name)]; exists {
+						paramProvided = true
+						break
+					}
+					if _, exists := objectReplacements[fmt.Sprintf(pattern, param.Name)]; exists {
+						paramProvided = true
+						break
+					}
+				}
+				if paramProvided {
+					continue
+				}
+
+				switch param.Default.Type {
+				case v1.ParamTypeArray:
+					for _, pattern := range paramPatterns {
+						for i := range len(param.Default.ArrayVal) {
+							stringReplacements[fmt.Sprintf(pattern+"[%d]", param.Name, i)] = param.Default.ArrayVal[i]
+						}
+						arrayReplacements[fmt.Sprintf(pattern, param.Name)] = param.Default.ArrayVal
+					}
+				case v1.ParamTypeObject:
+					for _, pattern := range paramPatterns {
+						objectReplacements[fmt.Sprintf(pattern, param.Name)] = param.Default.ObjectVal
+					}
+					for k, v := range param.Default.ObjectVal {
+						stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, param.Name, k)] = v
+					}
+				case v1.ParamTypeString:
+					fallthrough
+				default:
+					// Apply substitution to the default value itself to resolve any param references
+					resolvedDefault := substitution.ApplyReplacements(param.Default.StringVal, stringReplacements)
+					// Check if the value changed
+					if resolvedDefault != param.Default.StringVal {
+						changed = true
+					}
+					for _, pattern := range paramPatterns {
+						stringReplacements[fmt.Sprintf(pattern, param.Name)] = resolvedDefault
+					}
+				}
+			}
+		}
+		// If no changes were made in this iteration, we're done
+		if !changed {
+			break
+		}
 	}
 
 	return ApplyReplacements(p, stringReplacements, arrayReplacements, objectReplacements)
