@@ -230,6 +230,13 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 							Format:      "",
 						},
 					},
+					"hostUsers": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HostUsers allows you to isolate the user running inside the container from the one in the host More info: https://kubernetes.io/docs/tasks/configure-pod-container/user-namespaces",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"automountServiceAccountToken": {
 						SchemaProps: spec.SchemaProps{
 							Description: "AutomountServiceAccountToken indicates whether pods running as this service account should have an API token automatically mounted.",
