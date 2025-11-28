@@ -1036,6 +1036,29 @@ spec:
 			"Normal Started",
 			"Warning Failed [User error] PipelineRun foo/pipeline-invalid-final-graph's Pipeline DAG is invalid for finally clause: task final-task-1 is already present in Graph, can't add it again: duplicate pipeline task",
 		},
+	}, {
+		name: "invalid-pipeline-with-missing-param-reference",
+		pipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pipeline-missing-param-ref
+  namespace: foo
+spec:
+  pipelineSpec:
+    params:
+      - name: existing-param
+        type: string
+        default: "$(params.nonexistent-param)"
+    tasks:
+      - name: some-task
+        taskRef:
+          name: a-task-that-exists
+`),
+		reason:         v1.PipelineRunReasonFailedValidation.String(),
+		permanentError: true,
+		wantEvents: []string{
+			"Normal Started",
+			`Warning Failed \[User error\] Failed to apply parameters to Pipeline foo/pipeline-missing-param-ref: parameter resolution failed: param ".*" references undefined param "params\.nonexistent-param"`,
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			d := test.Data{

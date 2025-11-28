@@ -17,7 +17,6 @@ limitations under the License.
 package resources
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -38,6 +37,8 @@ const (
 	objectElementResultsParseNumber = 5
 	// objectIndividualVariablePattern is the reference pattern for object individual keys params.<object_param_name>.<key_name>
 	objectIndividualVariablePattern = "params.%s.%s"
+	// maxParamReferenceDepth limits recursive parameter resolution to prevent stack overflow attacks
+	maxParamReferenceDepth = 10
 )
 
 var paramPatterns = []string{
@@ -47,59 +48,87 @@ var paramPatterns = []string{
 }
 
 // ApplyParameters applies the params from a PipelineRun.Params to a PipelineSpec.
-func ApplyParameters(ctx context.Context, p *v1.PipelineSpec, pr *v1.PipelineRun) *v1.PipelineSpec {
-	// This assumes that the PipelineRun inputs have been validated against what the Pipeline requests.
+//
+// It resolves parameter defaults that reference other parameters using recursive resolution
+// with caching. The algorithm supports dependency chains up to 10 levels deep, handles
+// parameters in any declaration order, and detects circular dependencies.
+//
+// Example - Container image build pipeline:
+//
+//	# PipelineRun provides:
+//	params:
+//	  - name: repo
+//	    value: "my-app"
+//
+//	# PipelineSpec defaults (unresolved references):
+//	params:
+//	  - name: registry
+//	    default: "gcr.io/my-project"
+//	  - name: tag
+//	    default: "v1.0"
+//	  - name: image-name
+//	    default: "$(params.registry)/$(params.repo):$(params.tag)"
+//	  - name: build-args
+//	    type: array
+//	    default: ["IMAGE=$(params.image-name)", "VERSION=$(params.tag)"]
+//
+//	# After ApplyParameters resolves to:
+//	  repo: "my-app"                                    # from PipelineRun
+//	  registry: "gcr.io/my-project"                     # from default
+//	  tag: "v1.0"                                       # from default
+//	  image-name: "gcr.io/my-project/my-app:v1.0"       # resolved recursively
+//	  build-args: ["IMAGE=gcr.io/my-project/my-app:v1.0", "VERSION=v1.0"]  # resolved from strings
+//
+// The function uses a 6-phase approach:
+//  1. Extract params from PipelineRun (already resolved values)
+//  2. Build unresolved maps for defaults (by type: string, array, object)
+//  3. Recursively resolve string params with dependency tracking (max depth: 10)
+//  4. Resolve array params with substitution
+//  5. Resolve object params with substitution
+//  6. Apply all replacements to PipelineSpec
+func ApplyParameters(p *v1.PipelineSpec, pr *v1.PipelineRun) (*v1.PipelineSpec, error) {
+	// ===== Phase 1: Get params from PipelineRun =====
+	resolvedStringParams, resolvedArrayParams, resolvedObjectParams := paramsFromPipelineRun(pr)
 
-	// stringReplacements is used for standard single-string stringReplacements,
-	// while arrayReplacements/objectReplacements contains arrays/objects that need to be further processed.
-	stringReplacements := map[string]string{}
-	arrayReplacements := map[string][]string{}
-	objectReplacements := map[string]map[string]string{}
+	// ===== Phase 2: Build unresolved maps for defaults =====
+	unresolvedStringParams := buildUnresolvedStringParamDefaults(p.Params, resolvedStringParams)
+	unresolvedArrayParams := buildUnresolvedArrayParamDefaults(p.Params, resolvedArrayParams)
+	unresolvedObjectParams := buildUnresolvedObjectParamDefaults(p.Params, resolvedObjectParams)
 
-	// Set all the default stringReplacements
-	for _, p := range p.Params {
-		if p.Default != nil {
-			switch p.Default.Type {
-			case v1.ParamTypeArray:
-				for _, pattern := range paramPatterns {
-					for i := range len(p.Default.ArrayVal) {
-						stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Default.ArrayVal[i]
-					}
-					arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ArrayVal
-				}
-			case v1.ParamTypeObject:
-				for _, pattern := range paramPatterns {
-					objectReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ObjectVal
-				}
-				for k, v := range p.Default.ObjectVal {
-					stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
-				}
-			case v1.ParamTypeString:
-				fallthrough
-			default:
-				for _, pattern := range paramPatterns {
-					stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.StringVal
-				}
-			}
+	// ===== Phase 3: Recursively resolve string params =====
+	visiting := map[string]bool{}
+	for paramKey, paramValue := range unresolvedStringParams {
+		if _, exist := resolvedStringParams[paramKey]; exist {
+			continue
+		}
+
+		if err := resolveStringParamRecursively(
+			paramKey,
+			paramValue,
+			resolvedStringParams,
+			unresolvedStringParams,
+			visiting,
+			0,
+		); err != nil {
+			return nil, err
 		}
 	}
-	// Set and overwrite params with the ones from the PipelineRun
-	prStrings, prArrays, prObjects := paramsFromPipelineRun(ctx, pr)
 
-	for k, v := range prStrings {
-		stringReplacements[k] = v
-	}
-	for k, v := range prArrays {
-		arrayReplacements[k] = v
-	}
-	for k, v := range prObjects {
-		objectReplacements[k] = v
+	// ===== Phase 4: Resolve array params =====
+	for paramKey, paramValue := range unresolvedArrayParams {
+		resolveArrayParam(paramKey, paramValue, resolvedStringParams, resolvedArrayParams)
 	}
 
-	return ApplyReplacements(p, stringReplacements, arrayReplacements, objectReplacements)
+	// ===== Phase 5: Resolve object params =====
+	for paramKey, paramValue := range unresolvedObjectParams {
+		resolveObjectParam(paramKey, paramValue, resolvedStringParams, resolvedObjectParams)
+	}
+
+	// ===== Phase 6: Apply all replacements to PipelineSpec =====
+	return ApplyReplacements(p, resolvedStringParams, resolvedArrayParams, resolvedObjectParams), nil
 }
 
-func paramsFromPipelineRun(ctx context.Context, pr *v1.PipelineRun) (map[string]string, map[string][]string, map[string]map[string]string) {
+func paramsFromPipelineRun(pr *v1.PipelineRun) (map[string]string, map[string][]string, map[string]map[string]string) {
 	// stringReplacements is used for standard single-string stringReplacements,
 	// while arrayReplacements/objectReplacements contains arrays/objects that need to be further processed.
 	stringReplacements := map[string]string{}
@@ -132,6 +161,220 @@ func paramsFromPipelineRun(ctx context.Context, pr *v1.PipelineRun) (map[string]
 	}
 
 	return stringReplacements, arrayReplacements, objectReplacements
+}
+
+// buildUnresolvedStringParamDefaults builds a map of parameter defaults that haven't been provided by the PipelineRun.
+// It filters for string-type parameters only and excludes those already present in resolvedStringParams.
+func buildUnresolvedStringParamDefaults(params []v1.ParamSpec, resolvedStringParams map[string]string) map[string]string {
+	result := map[string]string{}
+
+	for _, param := range params {
+		if param.Type != v1.ParamTypeString && param.Type != "" {
+			continue
+		}
+
+		if param.Default == nil {
+			continue
+		}
+
+		if paramExists(param.Name, resolvedStringParams) {
+			continue
+		}
+
+		addPatternEntry(param.Name, param.Default.StringVal, result)
+	}
+
+	return result
+}
+
+type paramValue interface {
+	string | []string | map[string]string
+}
+
+func paramExists[T paramValue](paramName string, bucket map[string]T) bool {
+	for _, pattern := range paramPatterns {
+		key := fmt.Sprintf(pattern, paramName)
+		if _, exists := bucket[key]; exists {
+			return true
+		}
+	}
+	return false
+}
+
+func addPatternEntry[T paramValue](key string, value T, bucket map[string]T) {
+	for _, pattern := range paramPatterns {
+		patternKey := fmt.Sprintf(pattern, key)
+		bucket[patternKey] = value
+	}
+}
+
+// buildUnresolvedArrayParamDefaults builds a map of parameter defaults that haven't been provided by the PipelineRun.
+// It filters for array-type parameters only and excludes those already present in resolvedArrayParams.
+func buildUnresolvedArrayParamDefaults(params []v1.ParamSpec, resolvedArrayParams map[string][]string) map[string][]string {
+	result := map[string][]string{}
+
+	for _, param := range params {
+		if param.Type != v1.ParamTypeArray {
+			continue
+		}
+
+		if param.Default == nil {
+			continue
+		}
+
+		if paramExists(param.Name, resolvedArrayParams) {
+			continue
+		}
+
+		addPatternEntry(param.Name, param.Default.ArrayVal, result)
+	}
+
+	return result
+}
+
+// buildUnresolvedObjectParamDefaults builds a map of parameter defaults that haven't been provided by the PipelineRun.
+// It filters for object-type parameters only and excludes those already present in resolvedObjectParams.
+func buildUnresolvedObjectParamDefaults(params []v1.ParamSpec, resolvedObjectParams map[string]map[string]string) map[string]map[string]string {
+	result := map[string]map[string]string{}
+
+	for _, param := range params {
+		if param.Type != v1.ParamTypeObject {
+			continue
+		}
+
+		if param.Default == nil {
+			continue
+		}
+
+		if paramExists(param.Name, resolvedObjectParams) {
+			continue
+		}
+
+		addPatternEntry(param.Name, param.Default.ObjectVal, result)
+	}
+
+	return result
+}
+
+// resolveStringParamRecursively resolves a string parameter by recursively resolving any $(params.*) references.
+// It handles dependency chains of any depth and detects circular dependencies.
+//
+// Example: If registry="docker.io", image-url="$(params.registry)/app" resolves to "docker.io/app".
+// For chains like base="docker.io" → registry="$(params.base)/org" → url="$(params.registry)/app",
+// it recursively resolves base first, then registry, then url, resulting in "docker.io/org/app".
+//
+// Returns error if circular dependency or undefined parameter reference is detected.
+func resolveStringParamRecursively(
+	paramKey string,
+	paramValue string,
+	resolvedStringParams,
+	unresolvedStringParams map[string]string,
+	visiting map[string]bool,
+	depth uint,
+) error {
+	// Circular dependency check
+	if visiting[paramKey] {
+		return fmt.Errorf("parameter resolution failed: circular dependency detected in param %q", paramKey)
+	}
+	visiting[paramKey] = true
+	defer delete(visiting, paramKey)
+
+	// Protection against stack overflow attack
+	if depth > maxParamReferenceDepth {
+		return fmt.Errorf("parameter resolution failed: maximum recursion depth (%d) exceeded for param %q", maxParamReferenceDepth, paramKey)
+	}
+
+	paramRefsFromParamValue := extractParamReferences(paramValue)
+
+	// If value has no references it is already resolved and needs no
+	// substitution, store it as resolved
+	if len(paramRefsFromParamValue) == 0 {
+		resolvedStringParams[paramKey] = paramValue
+		return nil
+	}
+
+	// Resolve each reference
+	for _, paramRef := range paramRefsFromParamValue {
+		if _, exist := resolvedStringParams[paramRef]; exist {
+			continue
+		}
+
+		// Non-existing parameter reference check
+		unresolvedValue, exist := unresolvedStringParams[paramRef]
+		if !exist {
+			return fmt.Errorf("parameter resolution failed: param %q references undefined param %q", paramKey, paramRef)
+		}
+
+		if err := resolveStringParamRecursively(
+			paramRef,
+			unresolvedValue,
+			resolvedStringParams,
+			unresolvedStringParams,
+			visiting,
+			depth+1,
+		); err != nil {
+			return err
+		}
+	}
+
+	// Substitute references (executes after recursion resolves all dependencies)
+	// e.g., resolvedStringParams["params.image-url"] = "$(params.registry)/app" becomes "docker.io/app"
+	resolvedStringParams[paramKey] = substitution.ApplyReplacements(paramValue, resolvedStringParams)
+
+	return nil
+}
+
+// extractParamReferences extracts all $(params.*) variable references from a parameter value string.
+// Example: "$(params.registry)/app:$(params.tag)" → ["params.registry", "params.tag"]
+func extractParamReferences(paramValue string) []string {
+	param := v1.Param{Value: *v1.NewStructuredValues(paramValue)}
+	result, ok := param.GetVarSubstitutionExpressions()
+	if !ok {
+		return []string{}
+	}
+	return result
+}
+
+// resolveArrayParam resolves an array parameter by applying string parameter substitutions to each element and adds
+// indexed access to enable references like $(params.tags[0]) in other parameters.
+//
+// Example: If registry="docker.io", tags=["$(params.registry)/app:v1", "alpine"] resolves to:
+//   - resolvedArrayParam["params.tags"] = ["docker.io/app:v1", "alpine"]
+//   - resolvedStringParams["params.tags[0]"] = "docker.io/app:v1"
+//   - resolvedStringParams["params.tags[1]"] = "alpine"
+func resolveArrayParam(paramKey string, paramValue []string, resolvedStringParams map[string]string, resolvedArrayParam map[string][]string) {
+	resolvedValues := make([]string, len(paramValue))
+	for key, value := range paramValue {
+		resolvedValues[key] = substitution.ApplyReplacements(value, resolvedStringParams)
+	}
+	resolvedArrayParam[paramKey] = resolvedValues
+
+	// Add indexed access to enable references like $(params.tags[0]) in other params
+	for i, value := range resolvedValues {
+		key := fmt.Sprintf("%s[%d]", paramKey, i)
+		resolvedStringParams[key] = value
+	}
+}
+
+// resolveObjectParam resolves an object parameter by applying string parameter substitutions to each value and adds
+// keyed access to enable references like $(params.config.host) in other parameters.
+//
+// Example: If registry="docker.io", config={"host": "$(params.registry)", "port": "5000"} resolves to:
+//   - resolvedObjectParams["params.config"] = {"host": "docker.io", "port": "5000"}
+//   - resolvedStringParams["params.config.host"] = "docker.io"
+//   - resolvedStringParams["params.config.port"] = "5000"
+func resolveObjectParam(paramKey string, paramValue map[string]string, resolvedStringParams map[string]string, resolvedObjectParams map[string]map[string]string) {
+	resolvedValues := make(map[string]string, len(paramValue))
+	for key, value := range paramValue {
+		resolvedValues[key] = substitution.ApplyReplacements(value, resolvedStringParams)
+	}
+	resolvedObjectParams[paramKey] = resolvedValues
+
+	// Add keyed access to enable references like $(params.config.host) in other params
+	for key, value := range resolvedValues {
+		stringsKey := fmt.Sprintf("%s.%s", paramKey, key)
+		resolvedStringParams[stringsKey] = value
+	}
 }
 
 // GetContextReplacements returns the pipelineRun context which can be used to replace context variables in the specifications
@@ -469,7 +712,6 @@ func PropagateArtifacts(rpt *ResolvedPipelineTask, runStates PipelineRunState) e
 // and omitted from the returned slice. A nil slice is returned if no results are passed in or all
 // results are invalid.
 func ApplyTaskResultsToPipelineResults(
-	_ context.Context,
 	results []v1.PipelineResult,
 	taskRunResults map[string][]v1.TaskRunResult,
 	customTaskResults map[string][]v1beta1.CustomRunResult,
@@ -617,7 +859,7 @@ func runResultValue(taskName string, resultName string, runResults map[string][]
 
 // ApplyParametersToWorkspaceBindings applies parameters from PipelineSpec and  PipelineRun to the WorkspaceBindings in a PipelineRun. It replaces
 // placeholders in various binding types with values from provided parameters.
-func ApplyParametersToWorkspaceBindings(ctx context.Context, pr *v1.PipelineRun) {
-	parameters, _, _ := paramsFromPipelineRun(ctx, pr)
+func ApplyParametersToWorkspaceBindings(pr *v1.PipelineRun) {
+	parameters, _, _ := paramsFromPipelineRun(pr)
 	pr.Spec.Workspaces = workspace.ReplaceWorkspaceBindingsVars(pr.Spec.Workspaces, parameters)
 }
