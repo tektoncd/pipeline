@@ -33,11 +33,9 @@ spec:
               value:
                 - linux
                 - mac
-                - windows
             - name: browser
               value:
                 - chrome
-                - safari
                 - firefox
         taskRef:
           name: platform-browsers
@@ -48,7 +46,6 @@ spec:
               value:
                 - linux
                 - mac
-                - windows
         params:
           - name: browser
             value: chrome
