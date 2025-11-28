@@ -5,7 +5,7 @@ metadata:
 spec:
   steps:
   - name: sleep-long
-    image: alpine:latest
+    image: mirror.gcr.io/alpine
     script: |
       #!/bin/sh
       sleep 10
@@ -17,7 +17,7 @@ metadata:
 spec:
   steps:
   - name: verify-completion
-    image: alpine:latest
+    image: mirror.gcr.io/alpine
     script: |
       #!/bin/sh
       echo "- Pipeline task timeout: 60s (defined in pipeline spec)"
