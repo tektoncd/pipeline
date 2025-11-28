@@ -577,7 +577,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		return controller.NewPermanentError(err)
 	}
 
-	resources.ApplyParametersToWorkspaceBindings(ctx, pr)
+	resources.ApplyParametersToWorkspaceBindings(pr)
 	// Make a deep copy of the Pipeline and its Tasks before value substitution.
 	// This is used to find referenced pipeline-level params at each PipelineTask when validate param enum subset requirement
 	originalPipeline := pipelineSpec.DeepCopy()
@@ -585,7 +585,14 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	originalTasks = append(originalTasks, originalPipeline.Finally...)
 
 	// Apply parameter substitution from the PipelineRun
-	pipelineSpec = resources.ApplyParameters(ctx, pipelineSpec, pr)
+	pipelineSpec, err = resources.ApplyParameters(pipelineSpec, pr)
+	if err != nil {
+		logger.Errorf("Failed to apply parameters to pipeline %q: %v", pipelineMeta.Name, err)
+		pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(),
+			"Failed to apply parameters to Pipeline %s/%s: %s",
+			pr.Namespace, pipelineMeta.Name, pipelineErrors.WrapUserError(err))
+		return controller.NewPermanentError(err)
+	}
 	pipelineSpec = resources.ApplyContexts(pipelineSpec, pipelineMeta.Name, pr)
 	pipelineSpec = resources.ApplyWorkspaces(pipelineSpec, pr)
 	// Update pipelinespec of pipelinerun's status field
@@ -853,7 +860,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 
 	if after.Status == corev1.ConditionTrue || after.Status == corev1.ConditionFalse {
 		pr.Status.Results, err = resources.ApplyTaskResultsToPipelineResults(
-			ctx,
 			pipelineSpec.Results,
 			pipelineRunFacts.State.GetTaskRunsResults(),
 			pipelineRunFacts.State.GetRunsResults(),
