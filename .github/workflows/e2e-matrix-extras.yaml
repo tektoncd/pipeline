@@ -32,7 +32,7 @@ jobs:
           const pr = await github.rest.pulls.get({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            pull_number: context.issue.number
+            pull_number: ${{ github.event.client_payload.github.payload.issue.number }}
           });
           core.setOutput('sha', pr.data.head.sha);
 
@@ -63,7 +63,7 @@ jobs:
     needs: [run-if-requested]
     if: ${{ needs.run-if-requested.result == 'success' }}
     concurrency:
-      group: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.k8s-name }}-${{ matrix.feature-flags }}-${{ github.event.issue.number }}
+      group: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.k8s-name }}-${{ matrix.feature-flags }}-${{ github.event.client_payload.github.payload.issue.number }}
       cancel-in-progress: true
     name: e2e tests (extras)
     runs-on: ${{ matrix.os }}
