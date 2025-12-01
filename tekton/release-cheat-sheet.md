@@ -58,6 +58,7 @@ the pipelines repo, a terminal window and a text editor.
     TEKTON_OLD_VERSION= # Example: v0.68.0
     TEKTON_RELEASE_NAME="Oriental Longhair Omnibot" # Name of the release
     TEKTON_PACKAGE=tektoncd/pipeline
+    TEKTON_REPO_NAME=pipeline
     EOF
     . ./release.env
     ```
@@ -89,17 +90,16 @@ the pipelines repo, a terminal window and a text editor.
 
    ```bash
     tkn --context dogfooding pipeline start pipeline-release \
-      --serviceaccount=release-right-meow \
       --param package=github.com/tektoncd/pipeline \
+      --param repoName="${TEKTON_REPO_NAME}" \
       --param gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
       --param imageRegistry=ghcr.io \
       --param imageRegistryPath=tektoncd/pipeline \
       --param imageRegistryRegions="" \
       --param imageRegistryUser=tekton-robot \
-      --param serviceAccountPath=release.json \
       --param serviceAccountImagesPath=credentials \
       --param versionTag="${TEKTON_VERSION}" \
-      --param releaseBucket=gs://tekton-releases/pipeline \
+      --param releaseBucket=tekton-releases \
       --param koExtraArgs="" \
       --workspace name=release-secret,secret=release-secret \
       --workspace name=release-images-secret,secret=ghcr-creds \
@@ -122,8 +122,8 @@ the pipelines repo, a terminal window and a text editor.
 
     NAME                    VALUE
     ∙ commit-sha            ff6d7abebde12460aecd061ab0f6fd21053ba8a7
-    ∙ release-file           https://storage.googleapis.com/tekton-releases-nightly/pipeline/previous/v20210223-xyzxyz/release.yaml
-    ∙ release-file-no-tag    https://storage.googleapis.com/tekton-releases-nightly/pipeline/previous/v20210223-xyzxyz/release.notag.yaml
+    ∙ release-file           https://infra.tekton.dev/tekton-releases/pipeline/previous/v0.13.0/release.yaml
+    ∙ release-file-no-tag    https://infra.tekton.dev/tekton-releases/pipeline/previous/v0.13.0/release.notag.yaml
 
     (...)
     ```
@@ -136,29 +136,42 @@ the pipelines repo, a terminal window and a text editor.
     1. Find the Rekor UUID for the release
 
     ```bash
-    RELEASE_FILE=https://storage.googleapis.com/tekton-releases/pipeline/previous/${TEKTON_VERSION}/release.yaml
-    CONTROLLER_IMAGE_SHA=$(curl $RELEASE_FILE | egrep 'ghcr.io.*controller' | cut -d'@' -f2)
+    RELEASE_FILE=https://infra.tekton.dev/tekton-releases/triggers/previous/${VERSION_TAG}/release.yaml
+    CONTROLLER_IMAGE_SHA=$(curl -L $RELEASE_FILE | sed -n 's/"//g;s/.*ghcr\.io.*controller.*@//p;')
     REKOR_UUID=$(rekor-cli search --sha $CONTROLLER_IMAGE_SHA | grep -v Found | head -1)
     echo -e "CONTROLLER_IMAGE_SHA: ${CONTROLLER_IMAGE_SHA}\nREKOR_UUID: ${REKOR_UUID}"
     ```
 
     1. Execute the Draft Release Pipeline.
 
-    ```bash
-    tkn --context dogfooding pipeline start \
-      --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
-      --workspace name=credentials,secret=release-secret \
-      -p package="tektoncd/pipeline" \
-      -p git-revision="$TEKTON_RELEASE_GIT_SHA" \
-      -p release-tag="${TEKTON_VERSION}" \
-      -p previous-release-tag="${TEKTON_OLD_VERSION}" \
-      -p release-name="${TEKTON_RELEASE_NAME}" \
-      -p bucket="gs://tekton-releases/pipeline" \
-      -p rekor-uuid="$REKOR_UUID" \
-      release-draft
-    ```
+        Create a pod template file:
 
-    1. Watch logs of create-draft-release
+        ```shell
+        cat <<EOF > tekton/pod-template.yaml
+        securityContext:
+          fsGroup: 65532
+          runAsUser: 65532
+          runAsNonRoot: true
+        EOF
+        ```
+        ```shell
+
+        tkn pipeline start \
+          --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
+          --workspace name=credentials,secret=oci-release-secret \
+          --pod-template pod-template.yaml \
+          -p package="${TEKTON_PACKAGE}" \
+          -p git-revision="$TEKTON_RELEASE_GIT_SHA" \
+          -p release-tag="${TEKTON_VERSION}" \
+          -p previous-release-tag="${TEKTON_OLD_VERSION}" \
+          -p release-name="${TEKTON_RELEASE_NAME}" \
+          -p repo-name="${TEKTON_REPO_NAME}" \
+          -p bucket="tekton-releases" \
+          -p rekor-uuid="$REKOR_UUID" \
+          release-draft-oci
+        ```
+
+    1. Watch logs of resulting pipeline run on pipeline `release-draft-oci`
 
     1. On successful completion, a URL will be logged. Visit that URL and look through the release notes.
       1. Manually add upgrade and deprecation notices based on the generated release notes
@@ -195,12 +208,12 @@ the pipelines repo, a terminal window and a text editor.
 
     ```bash
     # Test latest
-    kubectl --context my-dev-cluster apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+    kubectl --context my-dev-cluster apply --filename https://infra.tekton.dev/tekton-releases/pipeline/latest/release.yaml
     ```
 
     ```bash
     # Test backport
-    kubectl --context my-dev-cluster apply --filename https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.11.2/release.yaml
+    kubectl --context my-dev-cluster apply --filename https://infra.tekton.dev/tekton-releases/pipeline/previous/v0.11.2/release.yaml
     ```
 
 1. Announce the release in Slack channels #general, #announcements and #pipelines.
@@ -219,15 +232,22 @@ Congratulations, you're done!
 1. Configure `kubectl` to connect to
    [the dogfooding cluster](https://github.com/tektoncd/plumbing/blob/main/docs/dogfooding.md):
 
+   The dogfooding cluster is currently an OKE cluster in oracle cloud. we need the Oracle Cloud CLI client. Install oracle cloud cli (https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm) 
+
     ```bash
-    gcloud container clusters get-credentials dogfooding --zone us-central1-a --project tekton-releases
+    oci ce cluster create-kubeconfig --cluster-id <CLUSTER-OCID> --file $HOME/.kube/config --region <CLUSTER-REGION> --token-version 2.0.0  --kube-endpoint PUBLIC_ENDPOINT
     ```
 
 1. Give [the context](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
    a short memorable name such as `dogfooding`:
 
    ```bash
-   kubectl config rename-context gke_tekton-releases_us-central1-a_dogfooding dogfooding
+   kubectl config current-context
+   ```
+   get the context name and replace with current_context_name
+
+   ```bash
+   kubectl config rename-context <current_context_name> dogfooding
    ```
 
 1. **Important: Switch `kubectl` back to your own cluster by default.**
