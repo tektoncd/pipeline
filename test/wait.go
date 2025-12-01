@@ -61,7 +61,7 @@ import (
 
 const (
 	interval       = 1 * time.Second
-	timeout        = 10 * time.Minute
+	timeout        = 15 * time.Minute
 	v1Version      = "v1"
 	v1beta1Version = "v1beta1"
 )
