@@ -96,20 +96,22 @@ spec:
           - name: url
             value: https://github.com/tektoncd/plumbing
           - name: revision
-            value: aeed19e5a36f335ebfdc4b96fa78d1ce5bb4f7b8
+            value: 8d3152d3d39982ce1768325b373d321efaa83031
           - name: pathInRepo
-            value: tekton/resources/release/base/prerelease_checks.yaml
+            value: tekton/resources/release/base/prerelease_checks_oci.yaml
       params:
         - name: package
           value: $(params.package)
         - name: versionTag
           value: $(params.versionTag)
         - name: releaseBucket
-          value: $(params.releaseBucket)
+          value: $(params.releaseBucket)/$(params.repoName)
       workspaces:
         - name: source-to-release
           workspace: workarea
           subPath: git
+        - name: oci-credentials
+          workspace: release-secret
 
     - name: unit-tests
       runAfter: [precheck]
@@ -210,7 +212,7 @@ spec:
         resolver: bundles
         params:
           - name: bundle
-            value: ghcr.io/tektoncd/catalog/upstream/tasks/oracle-cloud-storage-upload:0.1
+            value: ghcr.io/tektoncd/catalog/upstream/tasks/oracle-cloud-storage-upload:0.2
           - name: name
             value: oracle-cloud-storage-upload
           - name: kind
@@ -243,7 +245,7 @@ spec:
         resolver: bundles
         params:
           - name: bundle
-            value: ghcr.io/tektoncd/catalog/upstream/tasks/oracle-cloud-storage-upload:0.1
+            value: ghcr.io/tektoncd/catalog/upstream/tasks/oracle-cloud-storage-upload:0.2
           - name: name
             value: oracle-cloud-storage-upload
           - name: kind
