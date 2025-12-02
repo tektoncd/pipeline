@@ -61,5 +61,6 @@ jobs:
         uses: fgrosse/go-coverage-report@8c1d1a09864211d258937b1b1a5b849f7e4f2682 # v1.2.0
         continue-on-error: true # This may fail if artifact on main branch does not exist (first run or expired)
         with:
+          token: ${{ secrets.CHATOPS_TOKEN }}
           coverage-artifact-name: "code-coverage"
           coverage-file-name: "coverage.txt"
