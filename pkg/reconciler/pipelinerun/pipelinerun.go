@@ -25,7 +25,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -275,22 +274,39 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 	}
 
 	if pr.Status.StartTime != nil {
-		// Compute the time since the task started.
+		// Compute the time since the pipeline started.
 		elapsed := c.Clock.Since(pr.Status.StartTime.Time)
 		// Snooze this resource until the appropriate timeout has elapsed.
-		// but if the timeout has been disabled by setting timeout to 0, we
-		// do not want to subtract from 0, because a negative wait time will
-		// result in the requeue happening essentially immediately
 		timeout := pr.PipelineTimeout(ctx)
 		taskTimeout := pr.TasksTimeout()
-		waitTime := timeout - elapsed
+
+		// If the main pipeline timeout is NoTimeoutDuration (0), it means no timeout is configured.
+		// This can happen in two ways:
+		// 1. User explicitly set pr.Spec.Timeouts.Pipeline to 0 (wants no timeout)
+		// 2. User didn't set pr.Spec.Timeouts.Pipeline (nil) AND default-timeout-minutes config is "0"
+		// In these cases, check if there are specific task or finally timeouts to enforce.
+		// If not, don't requeue - the reconciler will be triggered by watch events.
 		if timeout == config.NoTimeoutDuration {
-			waitTime = time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute
+			// Check if we have a specific task timeout to wait for
+			if pr.Status.FinallyStartTime == nil && taskTimeout != nil && taskTimeout.Duration != config.NoTimeoutDuration {
+				waitTime := taskTimeout.Duration - elapsed
+				return controller.NewRequeueAfter(waitTime)
+			}
+			// Check if we have a finally timeout to wait for
+			if pr.Status.FinallyStartTime != nil && pr.FinallyTimeout() != nil && pr.FinallyTimeout().Duration != config.NoTimeoutDuration {
+				waitTime := pr.FinallyTimeout().Duration - c.Clock.Since(pr.Status.FinallyStartTime.Time)
+				return controller.NewRequeueAfter(waitTime)
+			}
+			// No timeout configured anywhere, don't requeue
+			return nil
 		}
+
+		// Pipeline timeout is set, calculate wait time based on the most restrictive timeout
+		waitTime := timeout - elapsed
 		if pr.Status.FinallyStartTime == nil && taskTimeout != nil {
-			waitTime = pr.TasksTimeout().Duration - elapsed
+			waitTime = taskTimeout.Duration - elapsed
 			if taskTimeout.Duration == config.NoTimeoutDuration {
-				waitTime = time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute
+				waitTime = timeout - elapsed
 			}
 		} else if pr.Status.FinallyStartTime != nil && pr.FinallyTimeout() != nil &&
 			pr.FinallyTimeout().Duration != config.NoTimeoutDuration {
