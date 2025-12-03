@@ -72,14 +72,15 @@ the pipelines repo, a terminal window and a text editor.
 1. Create a workspace template file:
 
    ```bash
-   cat <<EOF > workspace-template.yaml
-   spec:
-     accessModes:
-     - ReadWriteOnce
-     resources:
-       requests:
-         storage: 1Gi
-   EOF
+   WORKSPACE_TEMPLATE=$(mktemp /tmp/workspace-template.XXXXXX.yaml)
+   cat <<'EOF' > $WORKSPACE_TEMPLATE
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+EOF
    ```
 
 1. Execute the release pipeline (takes ~45 mins).
@@ -101,9 +102,9 @@ the pipelines repo, a terminal window and a text editor.
       --param versionTag="${TEKTON_VERSION}" \
       --param releaseBucket=tekton-releases \
       --param koExtraArgs="" \
-      --workspace name=release-secret,secret=release-secret \
+      --workspace name=release-secret,secret=oci-release-secret \
       --workspace name=release-images-secret,secret=ghcr-creds \
-      --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
+      --workspace name=workarea,volumeClaimTemplateFile="${WORKSPACE_TEMPLATE}" \
       --tasks-timeout 2h \
       --pipeline-timeout 3h
    ```
@@ -136,7 +137,7 @@ the pipelines repo, a terminal window and a text editor.
     1. Find the Rekor UUID for the release
 
     ```bash
-    RELEASE_FILE=https://infra.tekton.dev/tekton-releases/triggers/previous/${VERSION_TAG}/release.yaml
+    RELEASE_FILE=https://infra.tekton.dev/tekton-releases/pipeline/previous/${TEKTON_VERSION}/release.yaml
     CONTROLLER_IMAGE_SHA=$(curl -L $RELEASE_FILE | sed -n 's/"//g;s/.*ghcr\.io.*controller.*@//p;')
     REKOR_UUID=$(rekor-cli search --sha $CONTROLLER_IMAGE_SHA | grep -v Found | head -1)
     echo -e "CONTROLLER_IMAGE_SHA: ${CONTROLLER_IMAGE_SHA}\nREKOR_UUID: ${REKOR_UUID}"
@@ -147,19 +148,20 @@ the pipelines repo, a terminal window and a text editor.
         Create a pod template file:
 
         ```shell
-        cat <<EOF > tekton/pod-template.yaml
-        securityContext:
-          fsGroup: 65532
-          runAsUser: 65532
-          runAsNonRoot: true
-        EOF
+        POD_TEMPLATE=$(mktemp /tmp/pod-template.XXXXXX.yaml)
+        cat <<'EOF' > $POD_TEMPLATE
+securityContext:
+  fsGroup: 65532
+  runAsUser: 65532
+  runAsNonRoot: true
+EOF
         ```
-        ```shell
 
+        ```shell
         tkn pipeline start \
-          --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
+          --workspace name=shared,volumeClaimTemplateFile="${WORKSPACE_TEMPLATE}" \
           --workspace name=credentials,secret=oci-release-secret \
-          --pod-template pod-template.yaml \
+          --pod-template "${POD_TEMPLATE}" \
           -p package="${TEKTON_PACKAGE}" \
           -p git-revision="$TEKTON_RELEASE_GIT_SHA" \
           -p release-tag="${TEKTON_VERSION}" \
@@ -220,7 +222,7 @@ the pipelines repo, a terminal window and a text editor.
 Optional: Add a photo of this release's "purr programmer" (someone's cat).
 
 1. Update [the catalog repo](https://github.com/tektoncd/catalog) test infrastructure
-to use the new release by updating the `RELEASE_YAML` link in [e2e-tests.sh](https://github.com/tektoncd/catalog/blob/main/test/e2e-tests.sh).
+to use the new release by updating the test matrix in the `[ci.yaml](https://github.com/tektoncd/catalog/blob/main/.github/workflows/ci.yaml)`.
 
 1. Update [the plumbing repo](https://github.com/tektoncd/plumbing/blob/d244554a42d7b6a5f1180c58c513eeecc9febcde/tekton/cd/pipeline/overlays/oci-ci-cd/kustomization.yaml#L4) to deploy the latest version to the dogfooging cluster on OCI.
 
