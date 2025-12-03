@@ -96,7 +96,7 @@ jobs:
       ARTIFACTS: ${{ github.workspace }}/artifacts
     steps:
     - name: Report tests check
-      uses: actions/github-script@60a0d83039c74a4aee5e5cbf49f72e2045aa4292 # v7.0.1
+      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
       id: check-run
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -153,7 +153,7 @@ jobs:
 
     - name: Report tests check
       if: success() || failure()
-      uses: actions/github-script@60a0d83039c74a4aee5e5cbf49f72e2045aa4292 # v7.0.1
+      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
