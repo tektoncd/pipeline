@@ -146,56 +146,7 @@ Command to create a kubeconfig in your local could be obtained from console navi
 
 1. [Setup a context to connect to the dogfooding cluster](./release-cheat-sheet.md#setup-dogfooding-context) 
 
-1. When executing release pipelines, some tasks require `oci cli` commands. The CLI requires credentials which should be created as a Kubernetes secret and mounted to the respective task's workspace. For example refer the precheck definition.
-```
-    - name: precheck
-      runAfter: [git-clone]
-      taskRef:
-        resolver: git
-        params:
-          - name: url
-            value: https://github.com/tektoncd/plumbing
-          - name: revision
-            value: 8d3152d3d39982ce1768325b373d321efaa83031
-          - name: pathInRepo
-            value: tekton/resources/release/base/prerelease_checks_oci.yaml
-      params:
-        - name: package
-          value: $(params.package)
-        - name: versionTag
-          value: $(params.versionTag)
-        - name: releaseBucket
-          value: $(params.releaseBucket)/$(params.repoName)
-      workspaces:
-        - name: source-to-release
-          workspace: workarea
-          subPath: git
-        - name: oci-credentials
-          workspace: release-secret
-```
-Sample secret template for reference:
-```
-apiVersion: v1
-kind: Secret
-metadata:
-  name: oci-credentials
-type: Opaque
-stringData:
-  # REQUIRED: OCI API Private Key (PEM format)
-  oci_api_key.pem: |
-    -----BEGIN RSA PRIVATE KEY-----
-    YOUR_ACTUAL_PRIVATE_KEY_CONTENT_HERE
-    -----END RSA PRIVATE KEY-----
-
-  # REQUIRED: API Key Fingerprint
-  fingerprint: "YOUR_API_KEY_FINGERPRINT_HERE"
-
-  # OPTIONAL: These can be provided as task parameters instead
-  tenancy_ocid: "ocid1.tenancy.oc1..example_tenancy_id"
-  user_ocid: "ocid1.user.oc1..example_user_id"
-  region: "us-ashburn-1"
-  namespace: "your-namespace-here"  # Will be auto-detected if not provided
-```
+1. NOTE: When executing release pipelines, some tasks require OCI CLI commands which need credentials. The OCI credentials secret is already deployed to the dogfooding cluster via terraform and is mounted as a workspace to tasks that require it (such as the precheck task). Release managers do not need to create this secret manually. This is stated here for troubleshooting purposes.
 
 ### Setup post processing
 
