@@ -41,6 +41,12 @@ Further documentation available:
 
 ## Release
 
+### v1.7
+- **Latest Release**: [v1.7.0][v1.7-0] (2025-12-03) ([docs][v1.7-0-docs], [examples][v1.7-0-examples])
+- **Initial Release**: [v1.7.0][v1.7-0] (2025-12-03)
+- **End of Life**: 2025-12-31
+- **Patch Releases**: [v1.7.0][v1.7-0]
+
 ### v1.6 (LTS)
 - **Latest Release**: [v1.6.0][v1.6-0] (2025-10-31) ([docs][v1.6-0-docs], [examples][v1.6-0-examples])
 - **Initial Release**: [v1.6.0][v1.6-0] (2025-10-31)
@@ -310,6 +316,8 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [release-notes-standards]:
     https://github.com/tektoncd/community/blob/main/standards.md#release-notes
 
+[v1.7-0]: https://github.com/tektoncd/pipeline/releases/tag/v1.7.0
+[v1.6-0]: https://github.com/tektoncd/pipeline/releases/tag/v1.6.0
 [v1.5-0]: https://github.com/tektoncd/pipeline/releases/tag/v1.5.0
 [v1.4-0]: https://github.com/tektoncd/pipeline/releases/tag/v1.4.0
 [v1.3-2]: https://github.com/tektoncd/pipeline/releases/tag/v1.3.2
@@ -411,6 +419,8 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [v0-37-5]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.5
 [v0-37-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.0
 
+[v1.7-0-docs]: https://github.com/tektoncd/pipeline/tree/v1.7.0/docs#tekton-pipelines
+[v1.6-0-docs]: https://github.com/tektoncd/pipeline/tree/v1.6.0/docs#tekton-pipelines
 [v1.5-0-docs]: https://github.com/tektoncd/pipeline/tree/v1.5.0/docs#tekton-pipelines
 [v1.4-0-docs]: https://github.com/tektoncd/pipeline/tree/v1.4.0/docs#tekton-pipelines
 [v1.3-2-docs]: https://github.com/tektoncd/pipeline/tree/v1.3.2/docs#tekton-pipelines
@@ -455,6 +465,8 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [v0-38-4-docs]: https://github.com/tektoncd/pipeline/tree/v0.38.4/docs#tekton-pipelines
 [v0-37-5-docs]: https://github.com/tektoncd/pipeline/tree/v0.37.5/docs#tekton-pipelines
 
+[v1.7-0-examples]: https://github.com/tektoncd/pipeline/tree/v1.7.0/examples#examples
+[v1.6-0-examples]: https://github.com/tektoncd/pipeline/tree/v1.6.0/examples#examples
 [v1.5-0-examples]: https://github.com/tektoncd/pipeline/tree/v1.5.0/examples#examples
 [v1.4-0-examples]: https://github.com/tektoncd/pipeline/tree/v1.4.0/examples#examples
 [v1.3-2-examples]: https://github.com/tektoncd/pipeline/tree/v1.3.2/examples#examples
