@@ -945,6 +945,24 @@ func TestOnlySelectPodTemplateFieldsArePropagatedToAffinityAssistant(t *testing.
 	}
 }
 
+func TestServiceAccountIsPropagatedToAffinityAssistant(t *testing.T) {
+	prWithServiceAccount := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun-with-sa",
+		},
+		Spec: v1.PipelineRunSpec{
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				ServiceAccountName: "test-service-account",
+			},
+		},
+	}
+
+	sts := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", prWithServiceAccount, []corev1.PersistentVolumeClaim{}, []string{}, containerConfigWithoutSecurityContext, nil)
+	if sts.Spec.Template.Spec.ServiceAccountName != "test-service-account" {
+		t.Fatalf("expected ServiceAccountName %q in StatefulSet, got %q", "test-service-account", sts.Spec.Template.Spec.ServiceAccountName)
+	}
+}
+
 func TestThatTheAffinityAssistantIsWithoutNodeSelectorAndTolerations(t *testing.T) {
 	prWithoutCustomPodTemplate := &v1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
