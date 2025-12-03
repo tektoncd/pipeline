@@ -26,7 +26,7 @@ jobs:
       run: 'cat $GITHUB_EVENT_PATH || true'
     - name: Set PR variables
       id: pr
-      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
       with:
         script: |
           const pr = await github.rest.pulls.get({
@@ -96,7 +96,7 @@ jobs:
       ARTIFACTS: ${{ github.workspace }}/artifacts
     steps:
     - name: Report tests check
-      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
       id: check-run
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -153,7 +153,7 @@ jobs:
 
     - name: Report tests check
       if: success() || failure()
-      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
