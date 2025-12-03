@@ -69,34 +69,6 @@ func TestPipelineRunExcessiveReconciliation(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	// This test modifies global config-defaults ConfigMap, so it must not run in parallel
-	// to avoid affecting other tests. We don't call t.Parallel() to ensure serialization.
-
-	tektonNamespace := getTektonNamespace()
-
-	// Get the original default-timeout-minutes value for restoration
-	configDefaults, err := c.KubeClient.CoreV1().ConfigMaps(tektonNamespace).Get(ctx, "config-defaults", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Failed to get config-defaults ConfigMap: %v", err)
-	}
-	originalTimeoutMinutes := configDefaults.Data["default-timeout-minutes"]
-
-	// Update config to set timeout to 0
-	if err := updateConfigMap(ctx, c.KubeClient, tektonNamespace, "config-defaults", map[string]string{
-		"default-timeout-minutes": "0",
-	}); err != nil {
-		t.Fatalf("Failed to update config-defaults ConfigMap: %v", err)
-	}
-
-	// Restore original value on cleanup - fetch fresh copy to avoid conflicts
-	defer func() {
-		if err := updateConfigMap(ctx, c.KubeClient, tektonNamespace, "config-defaults", map[string]string{
-			"default-timeout-minutes": originalTimeoutMinutes,
-		}); err != nil {
-			t.Logf("Warning: Failed to restore config-defaults ConfigMap: %v", err)
-		}
-	}()
-
 	pipelineRunName := helpers.ObjectNameForTest(t)
 
 	// Create a ConfigMap that will be mounted by the Task
@@ -114,6 +86,10 @@ metadata:
   name: %s
   namespace: %s
 spec:
+  # Set timeout to 0 to disable timeout and trigger the excessive reconciliation bug
+  # Without the fix, this causes hundreds or thousands of reconciliations
+  timeouts:
+    pipeline: "0s"
   pipelineSpec:
     tasks:
     - name: event-generating-task
