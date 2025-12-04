@@ -174,7 +174,7 @@ function run_e2e() {
   # and they cause a lot of noise in the logs, making it harder to debug integration
   # test failures.
   if [ "${RUN_YAML_TESTS}" == "true" ]; then
-    go_test_e2e -mod=readonly -parallel=6 -tags=examples -timeout=${E2E_GO_TEST_TIMEOUT} ./test/
+    go_test_e2e -mod=readonly -parallel=2 -tags=examples -timeout=${E2E_GO_TEST_TIMEOUT} ./test/
   fi
 
   if [ "${RUN_FEATUREFLAG_TESTS}" == "true" ]; then
