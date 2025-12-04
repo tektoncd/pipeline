@@ -111,7 +111,7 @@ jobs:
 
             # Get PR information
             echo "Fetching PR #$PR_NUMBER information..."
-            PR_DATA=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json state,mergeCommit,mergedAt)
+            PR_DATA=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json state,mergeCommit,mergedAt,title,body)
 
             # Check if PR is merged
             PR_STATE=$(echo "$PR_DATA" | jq -r '.state')
@@ -122,7 +122,10 @@ jobs:
             fi
 
             MERGE_COMMIT=$(echo "$PR_DATA" | jq -r '.mergeCommit.oid')
+            PR_TITLE=$(echo "$PR_DATA" | jq -r '.title')
+            PR_BODY=$(echo "$PR_DATA" | jq -r '.body')
             echo "Found merge commit: $MERGE_COMMIT"
+            echo "PR title: $PR_TITLE"
 
             # Fetch target branch
             echo "Fetching target branch: $TARGET_BRANCH..."
@@ -169,12 +172,23 @@ jobs:
 
             # Create pull request
             echo "Creating pull request..."
+
+            # Prepare PR body file
+            {
+              echo "This is a cherry-pick of #$PR_NUMBER"
+              echo ""
+              echo "---"
+              echo ""
+              echo "$PR_BODY"
+            } > /tmp/pr-body.md
+
+            # Create pull request with original PR content
             gh pr create \
               --repo ${{ github.repository }} \
               --base "$TARGET_BRANCH" \
               --head "$CHERRY_PICK_BRANCH" \
-              --title "Cherry-pick #$PR_NUMBER to $TARGET_BRANCH" \
-              --body "Automatic cherry-pick of #$PR_NUMBER to \`$TARGET_BRANCH\`"
+              --title "[cherry-pick: $TARGET_BRANCH] $PR_TITLE" \
+              --body-file /tmp/pr-body.md
 
             echo "✅ Cherry-pick completed successfully!"
           } 2>&1 | tee "$OUTPUT_FILE"
