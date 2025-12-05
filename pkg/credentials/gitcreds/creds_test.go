@@ -66,6 +66,7 @@ func TestBasicFlagHandling(t *testing.T) {
 	helper = store
 [credential "https://github.com"]
 	username = bar
+	useHttpPath = true
 `
 	if string(b) != expectedGitConfig {
 		t.Errorf("got: %v, wanted: %v", string(b), expectedGitConfig)
@@ -130,8 +131,10 @@ func TestBasicFlagHandlingTwice(t *testing.T) {
 	helper = store
 [credential "https://github.com"]
 	username = asdf
+	useHttpPath = true
 [credential "https://gitlab.com"]
 	username = bleh
+	useHttpPath = true
 `
 	if string(b) != expectedGitConfig {
 		t.Errorf("got: %v, wanted: %v", string(b), expectedGitConfig)
@@ -144,6 +147,84 @@ func TestBasicFlagHandlingTwice(t *testing.T) {
 
 	expectedGitCredentials := `https://asdf:blah@github.com
 https://bleh:belch@gitlab.com
+`
+	if string(b) != expectedGitCredentials {
+		t.Errorf("got: %v, wanted: %v", string(b), expectedGitCredentials)
+	}
+}
+
+// TestBasicFlagHandlingMultipleReposSameHost tests the scenario where multiple
+// repositories on the same host (e.g., github.com) require different credentials.
+// This test verifies that useHttpPath=true is set, which enables path-based credential matching.
+func TestBasicFlagHandlingMultipleReposSameHost(t *testing.T) {
+	credmatcher.VolumePath = t.TempDir()
+
+	// Setup credentials for repo1
+	repo1Dir := credmatcher.VolumeName("repo1-creds")
+	if err := os.MkdirAll(repo1Dir, os.ModePerm); err != nil {
+		t.Fatalf("os.MkdirAll(%s) = %v", repo1Dir, err)
+	}
+	if err := os.WriteFile(filepath.Join(repo1Dir, corev1.BasicAuthUsernameKey), []byte("user1"), 0o777); err != nil {
+		t.Fatalf("os.WriteFile(username) = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(repo1Dir, corev1.BasicAuthPasswordKey), []byte("token1"), 0o777); err != nil {
+		t.Fatalf("os.WriteFile(password) = %v", err)
+	}
+
+	// Setup credentials for repo2
+	repo2Dir := credmatcher.VolumeName("repo2-creds")
+	if err := os.MkdirAll(repo2Dir, os.ModePerm); err != nil {
+		t.Fatalf("os.MkdirAll(%s) = %v", repo2Dir, err)
+	}
+	if err := os.WriteFile(filepath.Join(repo2Dir, corev1.BasicAuthUsernameKey), []byte("user2"), 0o777); err != nil {
+		t.Fatalf("os.WriteFile(username) = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(repo2Dir, corev1.BasicAuthPasswordKey), []byte("token2"), 0o777); err != nil {
+		t.Fatalf("os.WriteFile(password) = %v", err)
+	}
+
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	AddFlags(fs)
+	err := fs.Parse([]string{
+		"-basic-git=repo1-creds=https://github.com/org/repo1",
+		"-basic-git=repo2-creds=https://github.com/org/repo2",
+	})
+	if err != nil {
+		t.Fatalf("flag.CommandLine.Parse() = %v", err)
+	}
+
+	t.Setenv("HOME", credmatcher.VolumePath)
+	if err := NewBuilder().Write(credmatcher.VolumePath); err != nil {
+		t.Fatalf("Write() = %v", err)
+	}
+
+	b, err := os.ReadFile(filepath.Join(credmatcher.VolumePath, ".gitconfig"))
+	if err != nil {
+		t.Fatalf("os.ReadFile(.gitconfig) = %v", err)
+	}
+
+	// Verify that useHttpPath=true is set for both repo-specific credential contexts
+	expectedGitConfig := `[credential]
+	helper = store
+[credential "https://github.com/org/repo1"]
+	username = user1
+	useHttpPath = true
+[credential "https://github.com/org/repo2"]
+	username = user2
+	useHttpPath = true
+`
+	if string(b) != expectedGitConfig {
+		t.Errorf("got: %v, wanted: %v", string(b), expectedGitConfig)
+	}
+
+	b, err = os.ReadFile(filepath.Join(credmatcher.VolumePath, ".git-credentials"))
+	if err != nil {
+		t.Fatalf("os.ReadFile(.git-credentials) = %v", err)
+	}
+
+	// Verify both credentials are present in the credentials file
+	expectedGitCredentials := `https://user1:token1@github.com/org/repo1
+https://user2:token2@github.com/org/repo2
 `
 	if string(b) != expectedGitCredentials {
 		t.Errorf("got: %v, wanted: %v", string(b), expectedGitCredentials)
@@ -499,6 +580,7 @@ func TestBasicBackslashInUsername(t *testing.T) {
 	helper = store
 [credential "https://github.com"]
 	username = foo\\bar\\banana
+	useHttpPath = true
 `
 	if string(b) != expectedGitConfig {
 		t.Errorf("got: %v, wanted: %v", string(b), expectedGitConfig)
