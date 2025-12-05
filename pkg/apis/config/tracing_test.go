@@ -35,7 +35,7 @@ func TestNewTracingFromConfigMap(t *testing.T) {
 			name: "empty",
 			want: &config.Tracing{
 				Enabled:  false,
-				Endpoint: "http://jaeger-collector.jaeger.svc.cluster.local:14268/api/traces",
+				Endpoint: "http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces",
 			},
 			fileName: "config-tracing-empty",
 		},
