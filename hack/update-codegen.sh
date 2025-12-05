@@ -99,3 +99,6 @@ ${REPO_ROOT_DIR}/hack/update-openapigen.sh
 
 # Make sure the CRD's structural OpenAPI schema are up-to-date
 ${REPO_ROOT_DIR}/hack/update-schemas.sh
+
+# Make sure the dependabot configuration is up-to-date
+${REPO_ROOT_DIR}/hack/generate-dependabot.sh
