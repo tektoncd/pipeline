@@ -87,6 +87,7 @@ func TestPodBuild(t *testing.T) {
 	automountServiceAccountToken := false
 	dnsPolicy := corev1.DNSNone
 	enableServiceLinks := false
+	hostUsers := false
 	priorityClassName := "system-cluster-critical"
 	taskRunName := "taskrun-name"
 
@@ -321,6 +322,7 @@ func TestPodBuild(t *testing.T) {
 					},
 					EnableServiceLinks: &enableServiceLinks,
 					PriorityClassName:  &priorityClassName,
+					HostUsers:          &hostUsers,
 				},
 			},
 			want: &corev1.PodSpec{
@@ -370,6 +372,7 @@ func TestPodBuild(t *testing.T) {
 				EnableServiceLinks:    &enableServiceLinks,
 				PriorityClassName:     priorityClassName,
 				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+				HostUsers:             &hostUsers,
 			},
 		},
 		{
