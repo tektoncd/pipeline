@@ -35,6 +35,9 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
+// @test:execution=serial
+// @test:reason=modifies enable-step-actions feature flag in feature-flags ConfigMap
+// @test:tags=whenexpressions,featureflags,stateful
 func TestWhenExpressionsInStep(t *testing.T) {
 	tests := []struct {
 		desc         string
@@ -245,6 +248,9 @@ spec:
 	}
 }
 
+// @test:execution=serial
+// @test:reason=modifies enable-cel-in-whenexpression feature flag in feature-flags ConfigMap
+// @test:tags=cel,whenexpressions,featureflags,stateful
 func TestWhenExpressionsCELInStep(t *testing.T) {
 	tests := []struct {
 		desc         string

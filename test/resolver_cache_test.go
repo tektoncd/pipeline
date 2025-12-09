@@ -86,6 +86,7 @@ func getResolverPodLogs(ctx context.Context, t *testing.T, c *clients) string {
 }
 
 // TestBundleResolverCache validates that bundle resolver caching works correctly
+// @test:execution=parallel
 func TestBundleResolverCache(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)
@@ -294,6 +295,7 @@ spec:
 }
 
 // TestCacheIsolationBetweenResolvers validates that cache keys are unique between resolvers
+// @test:execution=parallel
 func TestResolverCacheIsolation(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags, cacheGitFeatureFlags, clusterFeatureFlags)
@@ -374,6 +376,7 @@ spec:
 }
 
 // TestCacheConfigurationComprehensive validates all cache configuration modes across resolvers
+// @test:execution=parallel
 func TestResolverCacheComprehensive(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags, cacheGitFeatureFlags, clusterFeatureFlags)
@@ -469,6 +472,7 @@ spec:
 }
 
 // TestCacheErrorHandling validates cache error handling scenarios
+// @test:execution=parallel
 func TestResolverCacheErrorHandling(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)
@@ -515,6 +519,7 @@ func TestResolverCacheErrorHandling(t *testing.T) {
 }
 
 // TestCacheTTLExpiration validates cache TTL behavior
+// @test:execution=parallel
 func TestResolverCacheTTL(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)
@@ -558,6 +563,7 @@ func TestResolverCacheTTL(t *testing.T) {
 }
 
 // TestCacheStressTest validates cache behavior under stress conditions
+// @test:execution=parallel
 func TestResolverCacheStress(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)
@@ -609,6 +615,7 @@ func TestResolverCacheStress(t *testing.T) {
 }
 
 // TestResolverCacheInvalidParams validates centralized cache parameter validation
+// @test:execution=parallel
 func TestResolverCacheInvalidParams(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)

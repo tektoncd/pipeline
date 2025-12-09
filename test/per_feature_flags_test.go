@@ -55,6 +55,10 @@ var (
 // TestPerFeatureFlagOptInAlpha tests the behavior with all alpha Per-feature
 // flags enabled. It first turns ON all per-feature flags by default and turns
 // OFF one feature flag at a time to mock opt-in alpha test env.
+//
+// @test:execution=serial
+// @test:reason=modifies enable-api-fields and multiple feature flags in feature-flags ConfigMap
+// @test:tags=featureflags,alpha,stateful
 func TestPerFeatureFlagOptInAlpha(t *testing.T) {
 	configMapData := createExpectedConfigMap(t, true)
 	for _, alphaFlag := range alphaFeatureFlags {
@@ -67,6 +71,10 @@ func TestPerFeatureFlagOptInAlpha(t *testing.T) {
 // TestFeatureFlagOptInBeta tests the behavior with all beta feature
 // flags enabled. It first turns ON all beta feature flags by default and
 // turns ON one alpha feature flag at a time to mock opt-in beta test env.
+//
+// @test:execution=serial
+// @test:reason=modifies enable-api-fields and multiple feature flags in feature-flags ConfigMap
+// @test:tags=featureflags,beta,stateful
 func TestFeatureFlagOptInBeta(t *testing.T) {
 	configMapData := createExpectedConfigMap(t, false)
 	for _, betaFlag := range betaFeatureFlags {
@@ -82,6 +90,10 @@ func TestFeatureFlagOptInBeta(t *testing.T) {
 // TestPerFeatureFlagOptInStable tests all Per-feature flags while opting in
 // stable features. It turns OFF all per-feature flags by default and turns
 // OFF one feature flag at a time to mock opt-in stable feature test env.
+//
+// @test:execution=serial
+// @test:reason=modifies enable-api-fields and multiple feature flags in feature-flags ConfigMap
+// @test:tags=featureflags,stable,stateful
 func TestPerFeatureFlagOptInStable(t *testing.T) {
 	configMapData := createExpectedConfigMap(t, false)
 	for _, betaFlag := range betaFeatureFlags {

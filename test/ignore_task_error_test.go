@@ -32,6 +32,7 @@ import (
 	knativetest "knative.dev/pkg/test"
 )
 
+// @test:execution=parallel
 func TestFailingPipelineTaskOnContinue(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)

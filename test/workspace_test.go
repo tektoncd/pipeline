@@ -32,6 +32,7 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
+// @test:execution=parallel
 func TestWorkspaceReadOnlyDisallowsWrite(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -109,6 +110,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestWorkspacePipelineRunDuplicateWorkspaceEntriesInvalid(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -179,6 +181,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestWorkspacePipelineRunMissingWorkspaceInvalid(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -249,6 +252,7 @@ spec:
 // TestWorkspaceVolumeNameMatchesVolumeVariableReplacement checks that a workspace's
 // randomized volume name matches the workspaces.<name>.volume variable injected into
 // a user's task specs.
+// @test:execution=parallel
 func TestWorkspaceVolumeNameMatchesVolumeVariableReplacement(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)

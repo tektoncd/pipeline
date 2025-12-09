@@ -33,6 +33,7 @@ import (
 )
 
 // TestStepOutput verifies that step output streams can be copied to local files and task results.
+// @test:execution=parallel
 func TestStepOutput(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
@@ -111,6 +112,7 @@ func TestStepOutput(t *testing.T) {
 
 // TestStepOutputWithWorkspace verifies that step output streams can be copied to local files and task results
 // when a workspace is defined for the task.
+// @test:execution=parallel
 func TestStepOutputWithWorkspace(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
