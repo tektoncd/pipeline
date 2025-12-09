@@ -2929,13 +2929,25 @@ status:
 			clients := testAssets.Clients
 
 			err = c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun))
-			if err == nil {
-				t.Errorf("expected error when reconciling completed TaskRun : %v", err)
-			}
-			if isRequeueError, requeueDuration := controller.IsRequeueKey(err); !isRequeueError {
-				t.Errorf("Expected requeue error, but got: %s", err.Error())
-			} else if requeueDuration < 0 {
-				t.Errorf("Expected a positive requeue duration but got %s", requeueDuration.String())
+
+			// When timeout is explicitly disabled (set to 0), we should NOT requeue
+			// This prevents excessive reconciliation (issue #8495)
+			taskTimeout := tc.taskRun.GetTimeout(testAssets.Ctx)
+			if taskTimeout == config.NoTimeoutDuration {
+				// Timeout is disabled - should not requeue
+				if err != nil {
+					t.Errorf("expected no error when timeout is disabled, but got: %v", err)
+				}
+			} else {
+				// Timeout is enabled - should requeue
+				if err == nil {
+					t.Errorf("expected error when timeout is enabled, but got nil")
+				}
+				if isRequeueError, requeueDuration := controller.IsRequeueKey(err); !isRequeueError {
+					t.Errorf("Expected requeue error, but got: %v", err)
+				} else if requeueDuration < 0 {
+					t.Errorf("Expected a positive requeue duration but got %s", requeueDuration.String())
+				}
 			}
 			_, err = clients.Pipeline.TektonV1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
 			if err != nil {
