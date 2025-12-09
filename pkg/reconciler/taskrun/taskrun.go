@@ -237,10 +237,16 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 		elapsed := c.Clock.Since(tr.Status.StartTime.Time)
 		// Snooze this resource until the timeout has elapsed.
 		timeout := tr.GetTimeout(ctx)
-		waitTime := timeout - elapsed
+		// If timeout is NoTimeoutDuration (0), it means no timeout is configured.
+		// This can happen in two ways:
+		// 1. User explicitly set tr.Spec.Timeout.Duration to 0 (wants no timeout)
+		// 2. User didn't set tr.Spec.Timeout (nil) AND default-timeout-minutes config is "0"
+		// In both cases, we should not requeue based on timeout. The reconciler will
+		// still be triggered appropriately by pod watch events when the TaskRun changes.
 		if timeout == config.NoTimeoutDuration {
-			waitTime = time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute
+			return nil
 		}
+		waitTime := timeout - elapsed
 		return controller.NewRequeueAfter(waitTime)
 	}
 	return nil
