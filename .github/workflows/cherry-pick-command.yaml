@@ -19,6 +19,11 @@ on:
   repository_dispatch:
     types: [cherry-pick-command]
 
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
 jobs:
   cherry-pick:
     name: Cherry Pick Actions
