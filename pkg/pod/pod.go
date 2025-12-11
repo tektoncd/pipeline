@@ -509,6 +509,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 			AutomountServiceAccountToken: podTemplate.AutomountServiceAccountToken,
 			SchedulerName:                podTemplate.SchedulerName,
 			HostNetwork:                  podTemplate.HostNetwork,
+			HostUsers:                    podTemplate.HostUsers,
 			DNSPolicy:                    dnsPolicy,
 			DNSConfig:                    podTemplate.DNSConfig,
 			EnableServiceLinks:           podTemplate.EnableServiceLinks,
