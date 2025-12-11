@@ -132,6 +132,18 @@ type Template struct {
 	// +optional
 	HostNetwork bool `json:"hostNetwork,omitempty"`
 
+	// HostUsers indicates whether the pod will use the host's user namespace.
+	// Optional: Default to true.
+	// If set to true or not present, the pod will be run in the host user namespace, useful
+	// for when the pod needs a feature only available to the host user namespace, such as
+	// loading a kernel module with CAP_SYS_MODULE.
+	// When set to false, a new userns is created for the pod. Setting false is useful for
+	// mitigating container breakout vulnerabilities even allowing users to run their
+	// containers as root without actually having root privileges on the host.
+	// This field is alpha-level and is only honored by servers that enable the UserNamespacesSupport feature.
+	// +optional
+	HostUsers *bool `json:"hostUsers,omitempty"`
+
 	// TopologySpreadConstraints controls how Pods are spread across your cluster among
 	// failure-domains such as regions, zones, nodes, and other user-defined topology domains.
 	// +optional
@@ -228,6 +240,9 @@ func MergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
 		}
 		if !tpl.HostNetwork && defaultTpl.HostNetwork {
 			tpl.HostNetwork = true
+		}
+		if tpl.HostUsers == nil {
+			tpl.HostUsers = defaultTpl.HostUsers
 		}
 		if tpl.TopologySpreadConstraints == nil {
 			tpl.TopologySpreadConstraints = defaultTpl.TopologySpreadConstraints
