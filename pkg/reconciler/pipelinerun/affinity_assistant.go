@@ -382,13 +382,13 @@ func affinityAssistantStatefulSet(aaBehavior aa.AffinityAssistantBehavior, name 
 					Labels: getStatefulSetLabels(pr, name),
 				},
 				Spec: corev1.PodSpec{
-					Containers: containers,
-
-					Tolerations:       tpl.Tolerations,
-					NodeSelector:      tpl.NodeSelector,
-					ImagePullSecrets:  tpl.ImagePullSecrets,
-					SecurityContext:   tpl.SecurityContext,
-					PriorityClassName: priorityClassName,
+					Containers:         containers,
+					ServiceAccountName: pr.Spec.TaskRunTemplate.ServiceAccountName,
+					Tolerations:        tpl.Tolerations,
+					NodeSelector:       tpl.NodeSelector,
+					ImagePullSecrets:   tpl.ImagePullSecrets,
+					SecurityContext:    tpl.SecurityContext,
+					PriorityClassName:  priorityClassName,
 
 					Affinity: getAssistantAffinityMergedWithPodTemplateAffinity(pr, aaBehavior),
 					Volumes:  volumes,
