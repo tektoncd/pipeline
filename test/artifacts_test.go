@@ -39,6 +39,9 @@ var (
 	}
 )
 
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
+// @test:tags=artifacts,featureflags,stateful
 func TestSurfaceArtifacts(t *testing.T) {
 	tests := []struct {
 		desc                   string
@@ -127,6 +130,9 @@ spec:
 	}
 }
 
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
+// @test:tags=artifacts,terminationmessage,featureflags,stateful
 func TestSurfaceArtifactsThroughTerminationMessageScriptProducesArtifacts(t *testing.T) {
 	featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 	checkFlagsEnabled := requireAllGates(requireEnableStepArtifactsGate)
@@ -199,6 +205,9 @@ spec:
 	}
 }
 
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
+// @test:tags=artifacts,consume,featureflags,stateful
 func TestConsumeArtifacts(t *testing.T) {
 	tests := []struct {
 		desc                   string
@@ -293,6 +302,9 @@ spec:
 	}
 }
 
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
+// @test:tags=artifacts,results,featureflags,stateful
 func TestStepProduceResultsAndArtifacts(t *testing.T) {
 	tests := []struct {
 		desc                   string

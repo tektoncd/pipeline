@@ -39,6 +39,7 @@ import (
 // TestPipelineRunTimeout is an integration test that will
 // verify that pipelinerun timeout works and leads to the correct TaskRun statuses
 // and pod deletions.
+// @test:execution=parallel
 func TestPipelineRunTimeout(t *testing.T) {
 	t.Parallel()
 	// cancel the context after we have waited a suitable buffer beyond the given deadline.
@@ -158,6 +159,7 @@ spec:
 }
 
 // TestStepTimeout is an integration test that will verify a Step can be timed out.
+// @test:execution=parallel
 func TestStepTimeout(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
@@ -220,6 +222,7 @@ spec:
 }
 
 // TestStepTimeoutWithWS is an integration test that will verify a Step can be timed out.
+// @test:execution=parallel
 func TestStepTimeoutWithWS(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
@@ -259,6 +262,7 @@ spec:
 }
 
 // TestTaskRunTimeout is an integration test that will verify a TaskRun can be timed out.
+// @test:execution=parallel
 func TestTaskRunTimeout(t *testing.T) {
 	t.Parallel()
 	timeout := 1 * time.Second
@@ -316,6 +320,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestPipelineTaskTimeout(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithTimeout(t.Context(), timeout+2*time.Minute)
@@ -436,6 +441,7 @@ spec:
 // TestPipelineRunTasksTimeout is an integration test that will
 // verify that pipelinerun tasksTimeout works and leads to the correct PipelineRun and TaskRun statuses
 // and pod deletions.
+// @test:execution=parallel
 func TestPipelineRunTasksTimeout(t *testing.T) {
 	t.Parallel()
 	// cancel the context after we have waited a suitable buffer beyond the given deadline.
@@ -561,6 +567,7 @@ spec:
 }
 
 // TestPipelineRunTimeoutWithCompletedTaskRuns tests the case where a PipelineRun is timeout and has completed TaskRuns.
+// @test:execution=parallel
 func TestPipelineRunTimeoutWithCompletedTaskRuns(t *testing.T) {
 	t.Parallel()
 	// cancel the context after we have waited a suitable buffer beyond the given deadline.

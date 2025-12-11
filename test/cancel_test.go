@@ -36,6 +36,7 @@ import (
 )
 
 // TestTaskRunPipelineRunCancel cancels a PipelineRun and verifies TaskRun statuses and Pod deletions.
+// @test:execution=parallel
 func TestTaskRunPipelineRunCancel(t *testing.T) {
 	// We run the test twice, once with a PipelineTask configured to retry
 	// on failure, to ensure that cancelling the PipelineRun doesn't cause
@@ -185,6 +186,7 @@ spec:
 }
 
 // TestCancelActivePipelineRunWithCompletedTaskRuns cancels a PipelineRun with completed TaskRuns and verifies TaskRun statuses.
+// @test:execution=parallel
 func TestCancelActivePipelineRunWithCompletedTaskRuns(t *testing.T) {
 	specStatus := v1.PipelineRunSpecStatusCancelled
 	t.Run("status="+specStatus, func(t *testing.T) {

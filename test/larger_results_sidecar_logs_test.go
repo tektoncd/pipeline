@@ -44,6 +44,9 @@ var (
 	}
 )
 
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
+// @test:tags=results,sidecar,featureflags,stateful
 func TestLargerResultsSidecarLogs(t *testing.T) {
 	expectedFeatureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 	previousResultExtractionMethod := expectedFeatureFlags.ResultExtractionMethod

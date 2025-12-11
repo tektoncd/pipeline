@@ -41,6 +41,7 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
+// @test:execution=parallel
 func TestGitResolver_HTTPAuth(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, gitFeatureFlags)
@@ -94,6 +95,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestGitResolver_API(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, gitFeatureFlags)
@@ -156,6 +158,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestGitResolver_API_Identifier(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, gitFeatureFlags)
