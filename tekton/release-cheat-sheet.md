@@ -74,13 +74,13 @@ the pipelines repo, a terminal window and a text editor.
    ```bash
    WORKSPACE_TEMPLATE=$(mktemp /tmp/workspace-template.XXXXXX.yaml)
    cat <<'EOF' > $WORKSPACE_TEMPLATE
-spec:
-  accessModes:
-  - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-EOF
+   spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 1Gi
+   EOF
    ```
 
 1. Execute the release pipeline (takes ~45 mins).
@@ -150,11 +150,11 @@ EOF
         ```shell
         POD_TEMPLATE=$(mktemp /tmp/pod-template.XXXXXX.yaml)
         cat <<'EOF' > $POD_TEMPLATE
-securityContext:
-  fsGroup: 65532
-  runAsUser: 65532
-  runAsNonRoot: true
-EOF
+        securityContext:
+          fsGroup: 65532
+          runAsUser: 65532
+          runAsNonRoot: true
+        EOF
         ```
 
         ```shell
