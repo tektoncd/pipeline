@@ -97,7 +97,13 @@ type Reconciler struct {
 	tracerProvider           trace.TracerProvider
 }
 
-const ImagePullBackOff = "ImagePullBackOff"
+const (
+	ImagePullBackOff           = "ImagePullBackOff"
+	InvalidImageName           = "InvalidImageName"           // Invalid image reference
+	CreateContainerConfigError = "CreateContainerConfigError" // Missing ConfigMap/Secret, invalid env vars, etc.
+	CreateContainerError       = "CreateContainerError"       // Other container creation failures
+	ErrImagePull               = "ErrImagePull"               // Initial image pull failure
+)
 
 var (
 	// Check that our Reconciler implements taskrunreconciler.Interface
@@ -105,8 +111,11 @@ var (
 
 	// Pod failure reasons that trigger failure of the TaskRun
 	podFailureReasons = map[string]struct{}{
-		ImagePullBackOff:   {},
-		"InvalidImageName": {},
+		ImagePullBackOff:           {},
+		InvalidImageName:           {},
+		CreateContainerConfigError: {},
+		CreateContainerError:       {},
+		ErrImagePull:               {}, // Initial image pull failure
 	}
 )
 
@@ -251,6 +260,7 @@ func (c *Reconciler) checkPodFailed(ctx context.Context, tr *v1.TaskRun) (bool, 
 	for _, step := range tr.Status.Steps {
 		if step.Waiting != nil {
 			if _, found := podFailureReasons[step.Waiting.Reason]; found {
+				// Handle ImagePullBackOff with timeout grace period
 				if step.Waiting.Reason == ImagePullBackOff {
 					imagePullBackOffTimeOut := config.FromContextOrDefaults(ctx).Defaults.DefaultImagePullBackOffTimeout
 					// only attempt to recover from the imagePullBackOff if specified
@@ -270,16 +280,35 @@ func (c *Reconciler) checkPodFailed(ctx context.Context, tr *v1.TaskRun) (bool, 
 							}
 						}
 					}
+					// ImagePullBackOff timeout exceeded or not configured
+					message := fmt.Sprintf(`the step %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, step.Name, tr.Name, step.ImageID, step.Waiting.Message)
+					return true, v1.TaskRunReasonImagePullFailed, message
 				}
-				image := step.ImageID
-				message := fmt.Sprintf(`the step %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, step.Name, tr.Name, image, step.Waiting.Message)
-				return true, v1.TaskRunReasonImagePullFailed, message
+
+				// Handle CreateContainerConfigError (missing ConfigMap/Secret, invalid env vars, etc.)
+				if step.Waiting.Reason == CreateContainerConfigError {
+					message := fmt.Sprintf(`the step %q in TaskRun %q failed to start. The pod errored with the message: "%s."`, step.Name, tr.Name, step.Waiting.Message)
+					return true, v1.TaskRunReasonCreateContainerConfigError, message
+				}
+
+				// Handle InvalidImageName (unrecoverable error)
+				// Note: ErrImagePull is not handled here as it's a transient state that Kubernetes
+				// will automatically retry before transitioning to ImagePullBackOff
+				if step.Waiting.Reason == InvalidImageName {
+					message := fmt.Sprintf(`the step %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, step.Name, tr.Name, step.ImageID, step.Waiting.Message)
+					return true, v1.TaskRunReasonImagePullFailed, message
+				}
+
+				// Handle CreateContainerError and other generic failures
+				message := fmt.Sprintf(`the step %q in TaskRun %q failed to start. The pod errored with the message: "%s."`, step.Name, tr.Name, step.Waiting.Message)
+				return true, v1.TaskRunReasonPodCreationFailed, message
 			}
 		}
 	}
 	for _, sidecar := range tr.Status.Sidecars {
 		if sidecar.Waiting != nil {
 			if _, found := podFailureReasons[sidecar.Waiting.Reason]; found {
+				// Handle ImagePullBackOff with timeout grace period
 				if sidecar.Waiting.Reason == ImagePullBackOff {
 					imagePullBackOffTimeOut := config.FromContextOrDefaults(ctx).Defaults.DefaultImagePullBackOffTimeout
 					// only attempt to recover from the imagePullBackOff if specified
@@ -299,10 +328,28 @@ func (c *Reconciler) checkPodFailed(ctx context.Context, tr *v1.TaskRun) (bool, 
 							}
 						}
 					}
+					// ImagePullBackOff timeout exceeded or not configured
+					message := fmt.Sprintf(`the sidecar %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, sidecar.Name, tr.Name, sidecar.ImageID, sidecar.Waiting.Message)
+					return true, v1.TaskRunReasonImagePullFailed, message
 				}
-				image := sidecar.ImageID
-				message := fmt.Sprintf(`the sidecar %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, sidecar.Name, tr.Name, image, sidecar.Waiting.Message)
-				return true, v1.TaskRunReasonImagePullFailed, message
+
+				// Handle CreateContainerConfigError (missing ConfigMap/Secret, invalid env vars, etc.)
+				if sidecar.Waiting.Reason == CreateContainerConfigError {
+					message := fmt.Sprintf(`the sidecar %q in TaskRun %q failed to start. The pod errored with the message: "%s."`, sidecar.Name, tr.Name, sidecar.Waiting.Message)
+					return true, v1.TaskRunReasonCreateContainerConfigError, message
+				}
+
+				// Handle InvalidImageName (unrecoverable error)
+				// Note: ErrImagePull is not handled here as it's a transient state that Kubernetes
+				// will automatically retry before transitioning to ImagePullBackOff
+				if sidecar.Waiting.Reason == InvalidImageName {
+					message := fmt.Sprintf(`the sidecar %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, sidecar.Name, tr.Name, sidecar.ImageID, sidecar.Waiting.Message)
+					return true, v1.TaskRunReasonImagePullFailed, message
+				}
+
+				// Handle CreateContainerError and other generic failures
+				message := fmt.Sprintf(`the sidecar %q in TaskRun %q failed to start. The pod errored with the message: "%s."`, sidecar.Name, tr.Name, sidecar.Waiting.Message)
+				return true, v1.TaskRunReasonPodCreationFailed, message
 			}
 		}
 	}
