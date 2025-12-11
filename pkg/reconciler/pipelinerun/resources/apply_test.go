@@ -1791,6 +1791,84 @@ func TestApplyParameters(t *testing.T) {
 				}},
 			},
 		},
+		{
+			name: "parameter default value inherited from another parameter",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "fallback-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("pipeline fallback value")},
+					{Name: "param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(params.fallback-param)")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-param", Value: *v1.NewStructuredValues("$(params.param)")},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "fallback-param", Value: *v1.NewStructuredValues("override fallback param value")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "fallback-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("pipeline fallback value")},
+					{Name: "param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(params.fallback-param)")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-param", Value: *v1.NewStructuredValues("override fallback param value")},
+					},
+				}},
+			},
+		},
+		{
+			name: "parameter default value inherited from another parameter - no override",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "fallback-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("pipeline fallback value")},
+					{Name: "param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(params.fallback-param)")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-param", Value: *v1.NewStructuredValues("$(params.param)")},
+					},
+				}},
+			},
+			params: v1.Params{},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "fallback-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("pipeline fallback value")},
+					{Name: "param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(params.fallback-param)")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-param", Value: *v1.NewStructuredValues("pipeline fallback value")},
+					},
+				}},
+			},
+		},
+		{
+			name: "parameter default value inherited from another parameter - override param",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "fallback-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("pipeline fallback value")},
+					{Name: "param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(params.fallback-param)")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-param", Value: *v1.NewStructuredValues("$(params.param)")},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "param", Value: *v1.NewStructuredValues("override param value")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "fallback-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("pipeline fallback value")},
+					{Name: "param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(params.fallback-param)")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-param", Value: *v1.NewStructuredValues("override param value")},
+					},
+				}},
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
