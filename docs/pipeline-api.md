@@ -1755,6 +1755,9 @@ IncludeParamsList
 <tbody><tr><td><p>&#34;continue&#34;</p></td>
 <td><p>Continue indicates continue executing the rest of the steps irrespective of the container exit code</p>
 </td>
+</tr><tr><td><p>&#34;continueAndFail&#34;</p></td>
+<td><p>ContinueAndFail indicates continue executing the rest of the steps irrespective of the container exit code and exit after all steps are completed with the first possible non-zero exit code of the step that has this OnErrorType</p>
+</td>
 </tr><tr><td><p>&#34;stopAndFail&#34;</p></td>
 <td><p>StopAndFail indicates exit the taskRun if the container exits with non-zero exit code</p>
 </td>
@@ -4637,7 +4640,7 @@ OnErrorType
 </td>
 <td>
 <p>OnError defines the exiting behavior of a container on error
-can be set to [ continue | stopAndFail ]</p>
+can be set to [ continue | stopAndFail | continueAndFail ]</p>
 </td>
 </tr>
 <tr>
