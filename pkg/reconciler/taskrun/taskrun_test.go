@@ -2717,6 +2717,21 @@ func TestReconcilePodFailures(t *testing.T) {
 		message:                 "Invalid image \"whatever\"",
 		failure:                 "step",
 		imagePullBackOffTimeout: "5h",
+	}, {
+		desc:    "create container config error step - missing configmap",
+		reason:  "CreateContainerConfigError",
+		message: "configmap \"config-for-testing-configmaps\" not found",
+		failure: "step",
+	}, {
+		desc:    "create container config error sidecar - missing secret",
+		reason:  "CreateContainerConfigError",
+		message: "secret \"secret-for-testing\" not found",
+		failure: "sidecar",
+	}, {
+		desc:    "create container error step",
+		reason:  "CreateContainerError",
+		message: "failed to create container",
+		failure: "step",
 	}} {
 		t.Run(tc.desc, func(t *testing.T) {
 			taskRun := parse.MustParseV1TaskRun(t, `
@@ -2772,16 +2787,32 @@ status:
 				stepNumber = 1
 			}
 
+			var expectedReason, expectedMessage, wantFailedEvent string
+			switch tc.reason {
+			case "CreateContainerConfigError":
+				expectedReason = "CreateContainerConfigError"
+				expectedMessage = fmt.Sprintf(`the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to start. The pod errored with the message: "%s."`, tc.failure, stepNumber, tc.message)
+				wantFailedEvent = fmt.Sprintf(`Warning Failed the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to start. The pod errored with the message: "%s.`, tc.failure, stepNumber, tc.message)
+			case "CreateContainerError":
+				expectedReason = "PodCreationFailed"
+				expectedMessage = fmt.Sprintf(`the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to start. The pod errored with the message: "%s."`, tc.failure, stepNumber, tc.message)
+				wantFailedEvent = fmt.Sprintf(`Warning Failed the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to start. The pod errored with the message: "%s.`, tc.failure, stepNumber, tc.message)
+			case "InvalidImageName", "ImagePullBackOff": // Image pull errors
+				expectedReason = "TaskRunImagePullFailed"
+				expectedMessage = fmt.Sprintf(`the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever". The pod errored with the message: "%s."`, tc.failure, stepNumber, tc.message)
+				wantFailedEvent = fmt.Sprintf(`Warning Failed the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever". The pod errored with the message: "%s.`, tc.failure, stepNumber, tc.message)
+			}
+
 			expectedStatus := &apis.Condition{
 				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
-				Reason:  "TaskRunImagePullFailed",
-				Message: fmt.Sprintf(`the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever". The pod errored with the message: "%s."`, tc.failure, stepNumber, tc.message),
+				Reason:  expectedReason,
+				Message: expectedMessage,
 			}
 
 			wantEvents := []string{
 				"Normal Started ",
-				fmt.Sprintf(`Warning Failed the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever". The pod errored with the message: "%s.`, tc.failure, stepNumber, tc.message),
+				wantFailedEvent,
 			}
 
 			d := test.Data{
