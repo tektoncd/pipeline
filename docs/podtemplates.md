@@ -117,12 +117,16 @@ Pod templates support fields listed in the table below.
                 pulling a container image</a>.</td>
 		</tr>
 		<tr>
-			<td><code>hostNetwork</code></td>
-			<td><b>Default:</b> <code>false</code>. Determines whether to use the host network namespace.</td>
-		</tr>
-		<tr>
-			<td><code>hostAliases</code></td>
-			<td>Adds entries to a Pod's `/etc/hosts` to provide Pod-level overrides of hostnames. For further info see [Kubernetes' docs for this field](https://kubernetes.io/docs/tasks/network/customize-hosts-file-for-pods/).</td>
+            <td><code>hostNetwork</code></td>
+            <td><b>Default:</b> <code>false</code>. Determines whether to use the host network namespace.</td>
+        </tr>
+        <tr>
+            <td><code>hostUsers</code></td>
+            <td><b>Default:</b> <code>true</code>. Determines whether to use the host's user namespace. When set to <code>false</code>, a new user namespace is created for the pod, providing better security isolation. This is useful for mitigating container breakout vulnerabilities. This field is alpha-level and requires the <code>UserNamespacesSupport</code> feature gate to be enabled on the Kubernetes cluster (available in Kubernetes 1.25+).</td>
+        </tr>
+        <tr>
+            <td><code>hostAliases</code></td>
+            <td>Adds entries to a Pod's `/etc/hosts` to provide Pod-level overrides of hostnames. For further info see [Kubernetes' docs for this field](https://kubernetes.io/docs/tasks/network/customize-hosts-file-for-pods/).</td>
 		</tr>
         <tr>
             <td><code>topologySpreadConstraints</code></td>
