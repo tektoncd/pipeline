@@ -341,6 +341,31 @@ func (pt PipelineTask) validateRefOrSpec(ctx context.Context) (errs *apis.FieldE
 	return errs
 }
 
+// isValidAPIVersion validates the format of an apiVersion string.
+// Valid formats are "group/version" where group contains at least one dot.
+// For custom tasks, apiVersion must always be in the "group/version" format.
+func isValidAPIVersion(apiVersion string) bool {
+	parts := strings.Split(apiVersion, "/")
+	// For custom tasks, apiVersion must be in group/version format (2 parts)
+	if len(parts) != 2 {
+		return false
+	}
+
+	group := parts[0]
+	version := parts[1]
+	// Group and version should not be empty
+	if group == "" || version == "" {
+		return false
+	}
+	// Group should contain at least one dot (e.g., tekton.dev)
+	// This is a common pattern for Kubernetes API groups
+	if !strings.Contains(group, ".") {
+		return false
+	}
+
+	return true
+}
+
 // validateCustomTask validates custom task specifications - checking kind and fail if not yet supported features specified
 func (pt PipelineTask) validateCustomTask() (errs *apis.FieldError) {
 	if pt.TaskRef != nil && pt.TaskRef.Kind == "" {
@@ -354,6 +379,17 @@ func (pt PipelineTask) validateCustomTask() (errs *apis.FieldError) {
 	}
 	if pt.TaskSpec != nil && pt.TaskSpec.APIVersion == "" {
 		errs = errs.Also(apis.ErrInvalidValue("custom task spec must specify apiVersion", "taskSpec.apiVersion"))
+	}
+	// Validate apiVersion format for custom tasks
+	if pt.TaskRef != nil && pt.TaskRef.APIVersion != "" {
+		if !isValidAPIVersion(pt.TaskRef.APIVersion) {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid apiVersion format %q, must be in the format \"group/version\"", pt.TaskRef.APIVersion), "taskRef.apiVersion"))
+		}
+	}
+	if pt.TaskSpec != nil && pt.TaskSpec.APIVersion != "" {
+		if !isValidAPIVersion(pt.TaskSpec.APIVersion) {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid apiVersion format %q, must be in the format \"group/version\"", pt.TaskSpec.APIVersion), "taskSpec.apiVersion"))
+		}
 	}
 	return errs
 }
