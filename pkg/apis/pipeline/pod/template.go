@@ -82,6 +82,11 @@ type Template struct {
 	// +optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty" protobuf:"bytes,2,opt,name=runtimeClassName"`
 
+	// HostUsers allows you to isolate the user running inside the container from the one in the host
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/user-namespaces
+	// +optional
+	HostUsers *bool `json:"hostUsers,omitempty" protobuf:"bytes,2,opt,name=hostUsers"`
+
 	// AutomountServiceAccountToken indicates whether pods running as this
 	// service account should have an API token automatically mounted.
 	// +optional
@@ -201,6 +206,9 @@ func MergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
 		tpl.Volumes = mergeByName(defaultTpl.Volumes, tpl.Volumes)
 		if tpl.RuntimeClassName == nil {
 			tpl.RuntimeClassName = defaultTpl.RuntimeClassName
+		}
+		if tpl.HostUsers == nil {
+			tpl.HostUsers = defaultTpl.HostUsers
 		}
 		if tpl.AutomountServiceAccountToken == nil {
 			tpl.AutomountServiceAccountToken = defaultTpl.AutomountServiceAccountToken
