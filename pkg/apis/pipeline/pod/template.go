@@ -112,7 +112,7 @@ type Template struct {
 	// If not specified, the pod priority will be default or zero if there is no
 	// default.
 	// +optional
-	PriorityClassName *string `json:"priorityClassName,omitempty" protobuf:"bytes,7,opt,name=priorityClassName"`
+	PriorityClassName *string `json:"priorityClassName,omitempty" protobuf:"bytes,8,opt,name=priorityClassName"`
 	// SchedulerName specifies the scheduler to be used to dispatch the Pod
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty"`
