@@ -1,11 +1,3 @@
-> [!IMPORTANT]
-> **Migrate Images from *gcr.io* to *ghcr.io*.**
->
-> To reduce costs, we've migrated all our new and old Tekton releases to the free tier on [ghcr.io/tektoncd](https://github.com/orgs/tektoncd/packages?repo_name=pipeline). <br />
-> Read more [here](https://tekton.dev/blog/2025/04/03/migration-to-github-container-registry/).
-
----
-
 # ![pipe](./pipe.png) Tekton Pipelines
 
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
