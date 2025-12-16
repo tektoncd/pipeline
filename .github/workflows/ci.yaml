@@ -37,11 +37,26 @@ jobs:
 
         echo -e "Changed files:\n${CHANGED_FILES}"
 
-        # If no files are changed at all, then `grep -v` will match even though no change outputs
-        # should be true. Skipping output on an empty set of changes eliminates the false positive
+        # If there are no changed files, non-docs and yaml are not set and remain false by default.
+        # This ensures that jobs depending on these outputs do not run when there are no changes.
         if [[ -n "${CHANGED_FILES}" ]]; then
-          NON_DOCS=$(echo "${CHANGED_FILES}" | grep -Eqv '\.md$' && echo 'true' || echo 'false')
-          YAML=$(echo "${CHANGED_FILES}" | grep -Eq '\.ya?ml$' && echo 'true' || echo 'false')
+          NON_DOCS='false'
+          YAML='false'
+
+          while read -r file; do
+            if [[ "$file" != *.md ]]; then
+              NON_DOCS='true'
+              break
+            fi
+          done <<< "${CHANGED_FILES}"
+
+          while read -r file; do
+            if [[ "$file" == *.yaml || "$file" == *.yml ]]; then
+              YAML='true'
+              break
+            fi
+          done <<< "${CHANGED_FILES}"
+
           echo "non-docs=${NON_DOCS}" | tee -a $GITHUB_OUTPUT
           echo "yaml=${YAML}" | tee -a $GITHUB_OUTPUT
         fi
