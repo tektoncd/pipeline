@@ -79,6 +79,8 @@ jobs:
     needs: [changes]
     steps:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+      with:
+        fetch-depth: 0
     - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
@@ -95,8 +97,7 @@ jobs:
       if: ${{ needs.changes.outputs.non-docs == 'true' }}
       with:
         version: v2.1.6
-        only-new-issues: true
-        args: --timeout=10m
+        args: --new-from-merge-base=origin/${{ github.base_ref }} --timeout=10m
     - name: yamllint
       if: ${{ needs.changes.outputs.yaml == 'true' }}
       run: |
