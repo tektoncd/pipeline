@@ -146,10 +146,6 @@ func initializeLogsAndMetrics(t *testing.T) {
 		flag.Parse()
 		flag.Set("alsologtostderr", "true")
 		logging.InitializeLogger()
-
-		// if knativetest.Flags.EmitMetrics {
-		logging.InitializeMetricExporter(t.Name())
-		//}
 	})
 }
 
