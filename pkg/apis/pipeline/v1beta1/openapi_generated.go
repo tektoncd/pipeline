@@ -1789,6 +1789,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunList(ref common.ReferenceCallba
 						},
 					},
 				},
+				Required: []string{"items"},
 			},
 		},
 		Dependencies: []string{

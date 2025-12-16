@@ -1250,6 +1250,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunList(ref common.ReferenceCallback) c
 						},
 					},
 				},
+				Required: []string{"items"},
 			},
 		},
 		Dependencies: []string{
