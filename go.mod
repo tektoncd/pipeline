@@ -26,7 +26,7 @@ require (
 	golang.org/x/oauth2 v0.31.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	k8s.io/api v0.32.8
-	k8s.io/apimachinery v0.33.3
+	k8s.io/apimachinery v0.33.7
 	k8s.io/client-go v0.32.8
 	k8s.io/code-generator v0.32.9
 	k8s.io/klog v1.0.0
