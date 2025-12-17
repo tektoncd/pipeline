@@ -40,6 +40,7 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
+// @test:execution=parallel
 func TestTaskRunFailure(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -163,6 +164,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestTaskRunStatus(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -240,6 +242,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestTaskRunStepsTerminationReasons(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t)
@@ -514,6 +517,7 @@ func cancelTaskRun(t *testing.T, ctx context.Context, taskRunName string, c *cli
 	return nil
 }
 
+// @test:execution=parallel
 func TestTaskRunRetryFailure(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -604,6 +608,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestTaskRunResolveDefaultParameterSubstitutionOnStepAction(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)

@@ -31,6 +31,7 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
+// @test:execution=parallel
 func TestWorkingDirCreated(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -104,6 +105,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestWorkingDirIgnoredNonSlashWorkspace(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
