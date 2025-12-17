@@ -30,6 +30,7 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
+// @test:execution=parallel
 func TestTaskResultsFromFailedTasks(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)

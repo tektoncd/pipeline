@@ -30,6 +30,7 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
+// @test:execution=parallel
 func TestPipelineRunWithServiceAccounts(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -192,6 +193,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestPipelineRunWithServiceAccountNameAndTaskRunSpec(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)

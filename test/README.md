@@ -458,3 +458,100 @@ go test -v -count=1 -tags=featureflags -timeout=60m ./test -run ^TestPerFeatureF
 
 Flags that could be set in featureflags tests are exactly the same as [flags in end to end tests](#flags).
 Just note that the build tags should be `-tags=featureflags`.
+
+## Test Categorization: Parallel vs Serial Execution
+
+The e2e test suite implements a categorization system that allows tests to run in parallel or serial mode,
+optimizing test execution time while ensuring safety for tests that modify shared cluster state.
+
+### Overview
+
+Tests are categorized using comment annotations in the source code:
+- **Parallel tests**: Safe to run concurrently, don't modify shared cluster state
+- **Serial tests**: Must run sequentially because they modify ConfigMaps in `system.Namespace()`
+
+The test runner (`TestMain` in `init_test.go`) parses these annotations and orchestrates test execution accordingly.
+
+### Annotation Format
+
+Tests use structured Go comments to declare their execution mode:
+
+```go
+// @test:execution=parallel
+func TestMyParallelTest(t *testing.T) {
+    // Test implementation
+}
+
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
+// @test:tags=artifacts,featureflags,stateful
+func TestMySerialTest(t *testing.T) {
+    // Test implementation
+}
+```
+
+**Annotation fields:**
+- `@test:execution` - Required: either `parallel` or `serial`
+- `@test:reason` - Recommended for serial tests: explains why serial execution is needed
+- `@test:tags` - Optional: comma-separated tags for categorization and filtering
+
+### Running Tests by Category
+
+Use the `-category` flag to control which tests run:
+
+```shell
+# Run only parallel tests (fast, safe for concurrent execution)
+go test -tags=e2e -category=parallel -timeout=20m ./test
+
+# Run only serial tests (slower, sequential execution)
+go test -tags=e2e -category=serial -timeout=20m ./test
+
+# Run all tests with proper ordering (serial → parallel → unknown)
+go test -tags=e2e -category=all -timeout=30m ./test
+
+# Show test categorization without running tests
+go test -tags=e2e -show-tests ./test
+```
+
+### Execution Order
+
+When running with `-category=all`, tests execute in this order:
+1. **Serial tests** run first, sequentially, with fail-fast behavior
+2. **Parallel tests** run next, concurrently
+3. **Unknown tests** (unannotated) run last
+
+This ensures that tests modifying shared state complete before parallel execution begins.
+
+### When to Mark Tests as Serial
+
+A test MUST be marked `serial` if it:
+- Modifies ConfigMaps in `system.Namespace()` (typically `tekton-pipelines`)
+- Changes feature flags in the `feature-flags` ConfigMap
+- Modifies any other shared cluster-wide configuration
+
+Common examples:
+- Tests changing `enable-api-fields`, `results-from`, `coschedule` feature flags
+- Tests modifying `trusted-resources-verification-no-match-policy`
+- Any test calling `updateConfigMap(ctx, c.KubeClient, system.Namespace(), ...)`
+
+### When to Mark Tests as Parallel
+
+A test can be marked `parallel` if it:
+- Only creates/modifies resources in its own test namespace
+- Doesn't modify `system.Namespace()` ConfigMaps
+- Can safely run concurrently with other tests
+
+This includes most conformance tests, resolver tests, workspace tests, etc.
+
+### Implementation Details
+
+The categorization system is implemented via:
+
+1. **TestMain** (`init_test.go`): Parses annotations from source files using Go's AST parser,
+   categorizes tests, and routes execution based on the `-category` flag.
+
+2. **Annotation Parser**: Scans `*_test.go` files, extracts `@test:*` comments, and builds
+   a manifest of test metadata.
+
+3. **Test Filtering**: Uses `flag.Set("test.run", pattern)` to filter which tests execute
+   in each run.

@@ -38,6 +38,8 @@ var (
 	ignoreTaskRunProvenance = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "Provenance")
 )
 
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
 func TestStepResultsStepActions(t *testing.T) {
 	featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 	previousResultExtractionMethod := featureFlags.ResultExtractionMethod
