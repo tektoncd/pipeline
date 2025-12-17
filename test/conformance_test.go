@@ -40,6 +40,7 @@ type conditionFn func(name string) ConditionAccessorFn
 // TestTaskRun examines the conformance of Tekton pipeline @HEAD. It does not
 // searve as part of the OSS conformance test suite but aims to keep the
 // devel conformant and to prevent regressions.
+// @test:execution=parallel
 func TestTaskRun(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)

@@ -31,6 +31,7 @@ import (
 	knativetest "knative.dev/pkg/test"
 )
 
+// @test:execution=parallel
 func TestPipelineRun_PinP_OneChildPipelineRunFromPipelineSpec(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
@@ -106,6 +107,7 @@ func assertPinP(
 	checkAnnotationPropagationToChildPipelineRun(ctx, t, c, namespace, directParentPrName, actualCpr)
 }
 
+// @test:execution=parallel
 func TestPipelineRun_PinP_TwoChildPipelineRunsMixedTasks(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
@@ -136,6 +138,7 @@ func TestPipelineRun_PinP_TwoChildPipelineRunsMixedTasks(t *testing.T) {
 	assertEvents(ctx, t, expectedEventsAmount, expectedKinds, c, namespace)
 }
 
+// @test:execution=parallel
 func TestPipelineRun_PinP_TwoLevelDeepNestedChildPipelineRuns(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()

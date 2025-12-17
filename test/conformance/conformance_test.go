@@ -59,6 +59,7 @@ const (
 // TestTaskRunConditions examines population of Conditions
 // fields. It creates the a TaskRun with minimal specifications and checks the
 // required Condition Status and Type.
+// @test:execution=parallel
 func TestTaskRunConditions(t *testing.T) {
 	t.Parallel()
 
@@ -93,6 +94,7 @@ spec:
 // TestPipelineRunConditions examines population of Conditions
 // fields. It creates the a PipelineRun with minimal specifications and checks the
 // required Condition Status and Type.
+// @test:execution=parallel
 func TestPipelineRunConditions(t *testing.T) {
 	t.Parallel()
 
@@ -133,6 +135,7 @@ const (
 	ExpectRunToFail      = true
 )
 
+// @test:execution=parallel
 func TestStepScript(t *testing.T) {
 	t.Parallel()
 	expectedSteps := map[string]string{
@@ -244,6 +247,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestStepEnv(t *testing.T) {
 	t.Parallel()
 	envVarName := "FOO"
@@ -294,6 +298,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestStepWorkingDir(t *testing.T) {
 	t.Parallel()
 	defaultWorkingDir := "/workspace"
@@ -354,6 +359,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestStepStateImageID(t *testing.T) {
 	t.Parallel()
 	// Step images can be specified by digest.
@@ -392,6 +398,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestStepStateName(t *testing.T) {
 	t.Parallel()
 	stepName := "step-foo"
@@ -431,6 +438,7 @@ spec:
 }
 
 // Examines the ContainerStateTerminated ExitCode, StartedAt, FinishtedAt and Reason
+// @test:execution=parallel
 func TestStepStateContainerStateTerminated(t *testing.T) {
 	t.Parallel()
 	successInputYAML := fmt.Sprintf(`
@@ -538,6 +546,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestSidecarName(t *testing.T) {
 	sidecarName := "hello-sidecar"
 	inputYAML := fmt.Sprintf(`
@@ -584,6 +593,7 @@ spec:
 // our own shared volume. For vendor services, please feel free to override the shared workspace
 // supported in your sidecar. Otherwise there are no existing v1 conformance `REQUIRED` fields that
 // are going to be used for verifying Sidecar functionality.
+// @test:execution=parallel
 func TestSidecarScriptSuccess(t *testing.T) {
 	succeedInputYAML := fmt.Sprintf(`
 apiVersion: tekton.dev/v1
@@ -630,6 +640,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestSidecarScriptFailure(t *testing.T) {
 	failInputYAML := fmt.Sprintf(`
 apiVersion: tekton.dev/v1
@@ -676,6 +687,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestSidecarArgAndCommand(t *testing.T) {
 	failInputYAML := fmt.Sprintf(`
 apiVersion: tekton.dev/v1
@@ -728,6 +740,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestStringTaskParam(t *testing.T) {
 	stringParam := "foo-string"
 
@@ -772,6 +785,7 @@ spec:
 
 }
 
+// @test:execution=parallel
 func TestArrayTaskParam(t *testing.T) {
 	var arrayParam0, arrayParam1 = "foo", "bar"
 
@@ -825,6 +839,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestTaskParamDefaults(t *testing.T) {
 	stringParam := "string-foo"
 	arrayParam := []string{"array-foo", "array-bar"}
@@ -926,6 +941,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestTaskParamDescription(t *testing.T) {
 	inputYAML := fmt.Sprintf(`
 apiVersion: tekton.dev/v1
@@ -969,6 +985,7 @@ spec:
 
 // The goal of the Taskrun Workspace test is to verify if different Steps in the TaskRun could
 // pass data among each other.
+// @test:execution=parallel
 func TestTaskRunWorkspace(t *testing.T) {
 	inputYAML := fmt.Sprintf(`
 apiVersion: tekton.dev/v1
@@ -1030,6 +1047,7 @@ spec:
 // TaskRun level. It creates a TaskRun with Timeout and wait in the Step of the
 // inline Task for the time length longer than the specified Timeout.
 // The TaskRun is expected to fail with the Reason `TaskRunTimeout`.
+// @test:execution=parallel
 func TestTaskRunTimeout(t *testing.T) {
 	expectedFailedStatus := true
 	inputYAML := fmt.Sprintf(`
@@ -1063,6 +1081,7 @@ spec:
 // TestConditions examines population of Conditions
 // fields. It creates the a TaskRun with minimal specifications and checks the
 // required Condition Status and Type.
+// @test:execution=parallel
 func TestConditions(t *testing.T) {
 	inputYAML := fmt.Sprintf(`
 apiVersion: tekton.dev/v1
@@ -1095,6 +1114,7 @@ spec:
 // TestPipelineTaskParams examines the PipelineTask
 // Params functionality by creating a Pipeline that performs addition in its
 // Task for validation.
+// @test:execution=parallel
 func TestPipelineTaskParams(t *testing.T) {
 	var op0, op1 = 10, 1
 	expectedParams := v1.Params{{
@@ -1153,6 +1173,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestPipelineResult(t *testing.T) {
 	inputYAML := fmt.Sprintf(`
 apiVersion: tekton.dev/v1
@@ -1214,6 +1235,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestPipelineWorkspace(t *testing.T) {
 	inputYAML := fmt.Sprintf(`
 apiVersion: tekton.dev/v1
@@ -1306,6 +1328,7 @@ spec:
 	// TODO add more tests for WorkSpace Declaration test for PipelineTask Workspace in a separate test
 }
 
+// @test:execution=parallel
 func TestPipelineTaskTimeout(t *testing.T) {
 	expectedFailedStatus := true
 	inputYAML := fmt.Sprintf(`
@@ -1344,6 +1367,7 @@ spec:
 // PipelineRun level. It creates a TaskRun with Timeout and wait in the Step of the
 // inline Task for the time length longer than the specified Timeout.
 // The TaskRun is expected to fail with the Reason `TaskRunTimeout`.
+// @test:execution=parallel
 func TestPipelineRunTimeout(t *testing.T) {
 	expectedFailedStatus := true
 	inputYAML := fmt.Sprintf(`
@@ -1381,6 +1405,7 @@ spec:
 
 // ** there is no feasible way as in v1 conformance policy to test finally without
 // dependencies: results, param functionality
+// @test:execution=parallel
 func TestPipelineRunTaskFinally(t *testing.T) {
 	var inputOp0, inputOp1 = 3, 1
 	inputYAML := fmt.Sprintf(`
@@ -1469,6 +1494,7 @@ spec:
 // TestPipelineRunConditions examines population of Conditions
 // fields. It creates the a PipelineRun with minimal specifications and checks the
 // required Condition Status and Type.
+// @test:execution=parallel
 func TestPipelineRunConditions(t *testing.T) {
 	inputYAML := fmt.Sprintf(`
 apiVersion: tekton.dev/v1
@@ -1501,6 +1527,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestPipelineRunChildReferences(t *testing.T) {
 	prName := helpers.ObjectNameForTest(t)
 	pt0, pt1 := "pipeline-task-0", "pipeline-task-1"

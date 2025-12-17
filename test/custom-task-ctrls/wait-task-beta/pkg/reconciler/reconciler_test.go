@@ -329,6 +329,7 @@ status:
 `
 )
 
+// @test:execution=parallel
 func TestReconcile(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

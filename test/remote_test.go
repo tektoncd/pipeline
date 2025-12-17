@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+// @test:execution=parallel
 func TestCreateImage(t *testing.T) {
 	// Set up a fake registry to push an image to.
 	s := httptest.NewServer(registry.New())

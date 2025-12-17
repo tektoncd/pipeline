@@ -656,6 +656,7 @@ status:
 
 // TestCRDConversionStrategy tests if webhook conversion strategy is
 // set to versioned CRDs.
+// @test:execution=parallel
 func TestCRDConversionStrategy(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -694,6 +695,7 @@ func TestCRDConversionStrategy(t *testing.T) {
 // requests it by v1Clients to compare with v1 if the conversion has been correctly
 // executed by the webhook for roundtrip. And then it creates the v1 Task CRD using v1Clients
 // and requests it by v1beta1Clients to compare with v1beta1.
+// @test:execution=parallel
 func TestTaskCRDConversion(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -758,6 +760,7 @@ func TestTaskCRDConversion(t *testing.T) {
 // and requests it by v1Clients to compare with v1 if the conversion has been correctly
 // executed by the webhook for roundtrip. And then it creates the v1 TaskRun CRD using
 // v1Clients and requests it by v1beta1Clients to compare with v1beta1.
+// @test:execution=parallel
 func TestTaskRunCRDConversion(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -830,6 +833,7 @@ func TestTaskRunCRDConversion(t *testing.T) {
 // requests it by v1Clients to compare with v1 if the conversion has been correctly executed
 // by the webhook for roundtrip. And then it creates the v1 Pipeline CRD using v1Clients
 // and requests it by v1beta1Clients to compare with v1beta1.
+// @test:execution=parallel
 func TestPipelineCRDConversion(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -894,6 +898,7 @@ func TestPipelineCRDConversion(t *testing.T) {
 // requests it by v1Clients to compare with v1 if the conversion has been correctly executed by
 // the webhook for roundtrip. And then it creates the v1 PipelineRun CRD using v1Clients
 // and requests it by v1beta1Clients to compare with v1beta1.
+// @test:execution=parallel
 func TestPipelineRunCRDConversion(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()

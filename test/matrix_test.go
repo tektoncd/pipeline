@@ -39,6 +39,7 @@ import (
 // TestPipelineRunMatrixed is an integration test that verifies that a Matrixed PipelineRun
 // succeeds with both `matrix params` and `matrix include params`. It also tests array indexing
 // and whole array replacements by consuming results produced by other PipelineTasks.
+// @test:execution=parallel
 func TestPipelineRunMatrixed(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
@@ -579,6 +580,7 @@ spec:
 // TestPipelineRunMatrixedFailed is an integration test with a Matrixed PipelineRun
 // that contains an unsuccessful TaskRun. This test verifies that the taskRun will fail,
 // which will cause the entire PipelineRun to fail.
+// @test:execution=parallel
 func TestPipelineRunMatrixedFailed(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()

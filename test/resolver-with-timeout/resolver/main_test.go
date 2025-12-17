@@ -31,6 +31,7 @@ import (
 	_ "knative.dev/pkg/system/testing"
 )
 
+// @test:execution=parallel
 func TestResolver(t *testing.T) {
 	ctx, _ := ttesting.SetupFakeContext(t)
 
@@ -66,6 +67,7 @@ func TestResolver(t *testing.T) {
 	frtesting.RunResolverReconcileTest(ctx, t, d, r, request, expectedStatus, nil)
 }
 
+// @test:execution=parallel
 func TestResolver_Timeout(t *testing.T) {
 	ctx, _ := ttesting.SetupFakeContext(t)
 	r := &resolver{
