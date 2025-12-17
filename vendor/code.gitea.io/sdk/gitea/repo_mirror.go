@@ -43,3 +43,34 @@ func (c *Client) PushMirrors(user, repo string, opt CreatePushMirrorOption) (*Pu
 	resp, err := c.getParsedResponse("POST", fmt.Sprintf("/repos/%s/%s/push_mirrors", user, repo), jsonHeader, bytes.NewReader(body), &pm)
 	return pm, resp, err
 }
+
+// ListPushMirrors gets all push mirrors of a repository
+func (c *Client) ListPushMirrors(user, repo string, opt ListOptions) ([]*PushMirrorResponse, *Response, error) {
+	if err := escapeValidatePathSegments(&user, &repo); err != nil {
+		return nil, nil, err
+	}
+	opt.setDefaults()
+	pms := make([]*PushMirrorResponse, 0, opt.PageSize)
+	resp, err := c.getParsedResponse("GET",
+		fmt.Sprintf("/repos/%s/%s/push_mirrors?%s", user, repo, opt.getURLQuery().Encode()),
+		nil, nil, &pms)
+	return pms, resp, err
+}
+
+// GetPushMirrorByRemoteName get a push mirror of the repository by remote name
+func (c *Client) GetPushMirrorByRemoteName(user, repo, remoteName string) (*PushMirrorResponse, *Response, error) {
+	if err := escapeValidatePathSegments(&user, &repo, &remoteName); err != nil {
+		return nil, nil, err
+	}
+	pm := new(PushMirrorResponse)
+	resp, err := c.getParsedResponse("GET", fmt.Sprintf("/repos/%s/%s/push_mirrors/%s", user, repo, remoteName), nil, nil, &pm)
+	return pm, resp, err
+}
+
+// DeletePushMirror deletes a push mirror from a repository by remote name
+func (c *Client) DeletePushMirror(user, repo, remoteName string) (*Response, error) {
+	if err := escapeValidatePathSegments(&user, &repo, &remoteName); err != nil {
+		return nil, err
+	}
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/push_mirrors/%s", user, repo, remoteName), nil, nil)
+}
