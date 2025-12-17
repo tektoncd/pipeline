@@ -42,6 +42,7 @@ var (
 // TestTaskRunPipelineRunStatus is an integration test that will
 // verify a very simple "hello world" TaskRun and PipelineRun failure
 // execution lead to the correct TaskRun status.
+// @test:execution=parallel
 func TestTaskRunPipelineRunStatus(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -118,6 +119,7 @@ spec:
 // [Expectation]: PipelineRun status should contain the provenance about the remote pipeline
 // i.e. refSource info, and the child TaskRun status should contain the provnenace
 // about the remote task i.e. refSource info .
+// @test:execution=parallel
 func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
