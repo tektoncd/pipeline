@@ -130,7 +130,7 @@ spec:
       cat /workspace/.ko.yaml
 
   - name: run-ko
-    image: ghcr.io/tektoncd/plumbing/ko@sha256:d95b8e80ddea355c33a1598df3272214eb71f5f523df4955daf168d71fc0fcb5
+    image: ghcr.io/tektoncd/plumbing/ko@sha256:09d734062d040c77687867b484a664f2fd1355216068ad99f4e9775764b4345c
     env:
     - name: KO_DOCKER_REPO
       value: $(params.imageRegistry)/$(params.imageRegistryPath)
@@ -197,7 +197,7 @@ spec:
       sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/release.notags.yaml
 
   - name: koparse
-    image: ghcr.io/tektoncd/plumbing/koparse@sha256:71f041a28d278f6f4a37cdab5a3534e935a512e104e7f2fb280eda3971342b3c
+    image: ghcr.io/tektoncd/plumbing/koparse@sha256:5b01e9e5795df430d533743729fe2c84a67c25c4fbc23a697c2c06c4f2925fa7
     script: |
       set -ex
 
