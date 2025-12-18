@@ -91,11 +91,14 @@ ${REPO_ROOT_DIR}/vendor/knative.dev/pkg/hack/generate-knative.sh "injection" \
 # Make sure our dependencies are up-to-date
 ${REPO_ROOT_DIR}/hack/update-deps.sh
 
+# Make sure the CRD's structural OpenAPI schema are up-to-date.
+# This is run before update-openapigen.sh to ensure that the source code
+# modifications (comment simplification) made by this script are fully restored
+# before generating the final OpenAPI/Swagger specs.
+${REPO_ROOT_DIR}/hack/update-schemas.sh
+
 # Make sure the OpenAPI specification and Swagger file are up-to-date
 ${REPO_ROOT_DIR}/hack/update-openapigen.sh
 
 # Make sure the generated API reference docs are up-to-date
 # ${REPO_ROOT_DIR}/hack/update-reference-docs.sh
-
-# Make sure the CRD's structural OpenAPI schema are up-to-date
-${REPO_ROOT_DIR}/hack/update-schemas.sh
