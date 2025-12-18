@@ -53,7 +53,8 @@ var (
 	breakpointOnFailure = flag.Bool("breakpoint_on_failure", false, "If specified, expect steps to not skip on failure")
 	debugBeforeStep     = flag.Bool("debug_before_step", false, "If specified, wait for a debugger to attach before executing the step")
 	onError             = flag.String("on_error", "", "Set to \"continue\" to ignore an error and continue when a container terminates with a non-zero exit code."+
-		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps.")
+		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps."+
+		" Set to \"continueAndFail\" to declare a failure with a step error after having executed the rest of the steps.")
 	stepMetadataDir        = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
 	resultExtractionMethod = flag.String("result_from", entrypoint.ResultExtractionMethodTerminationMessage, "The method using which to extract results from tasks. Default is using the termination message.")
 )
