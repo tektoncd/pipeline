@@ -1439,3 +1439,236 @@ func validateStatefulSetSpec(t *testing.T, ctx context.Context, c Reconciler, ex
 		t.Errorf("unexpected error when retrieving StatefulSet which expects nil: %v", err)
 	}
 }
+
+// TestAffinityAssistantServiceAccountInheritance tests that affinity assistant pods
+// inherit the serviceAccountName from the PipelineRun's TaskRunTemplate by default.
+func TestAffinityAssistantServiceAccountInheritance(t *testing.T) {
+	prWithServiceAccount := &v1.PipelineRun{
+		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun-with-sa",
+		},
+		Spec: v1.PipelineRunSpec{
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				ServiceAccountName: "my-service-account",
+			},
+		},
+	}
+
+	sts := affinityAssistantStatefulSet(
+		aa.AffinityAssistantPerWorkspace,
+		"test-assistant",
+		prWithServiceAccount,
+		[]corev1.PersistentVolumeClaim{},
+		[]string{},
+		containerConfigWithoutSecurityContext,
+		nil,
+	)
+
+	expectedSA := "my-service-account"
+	if sts.Spec.Template.Spec.ServiceAccountName != expectedSA {
+		t.Errorf("expected ServiceAccountName to be %q, got %q", expectedSA, sts.Spec.Template.Spec.ServiceAccountName)
+	}
+}
+
+// TestAffinityAssistantServiceAccountTemplateOverride tests that an explicit
+// ServiceAccountName in the AffinityAssistantTemplate takes precedence over
+// the PipelineRun's TaskRunTemplate ServiceAccountName.
+func TestAffinityAssistantServiceAccountTemplateOverride(t *testing.T) {
+	prWithServiceAccount := &v1.PipelineRun{
+		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun-with-sa",
+		},
+		Spec: v1.PipelineRunSpec{
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				ServiceAccountName: "pipeline-sa",
+				PodTemplate: &pod.Template{
+					NodeSelector: map[string]string{"disktype": "ssd"},
+				},
+			},
+		},
+	}
+
+	// Default template with explicit ServiceAccountName override
+	defaultAATemplate := &pod.AffinityAssistantTemplate{
+		ServiceAccountName: "affinity-assistant-sa",
+	}
+
+	sts := affinityAssistantStatefulSet(
+		aa.AffinityAssistantPerWorkspace,
+		"test-assistant",
+		prWithServiceAccount,
+		[]corev1.PersistentVolumeClaim{},
+		[]string{},
+		containerConfigWithoutSecurityContext,
+		defaultAATemplate,
+	)
+
+	expectedSA := "affinity-assistant-sa"
+	if sts.Spec.Template.Spec.ServiceAccountName != expectedSA {
+		t.Errorf("expected ServiceAccountName to be %q (from AA template), got %q", expectedSA, sts.Spec.Template.Spec.ServiceAccountName)
+	}
+}
+
+// TestAffinityAssistantServiceAccountBackwardCompatibility tests that when no
+// ServiceAccountName is specified anywhere, the affinity assistant pod defaults
+// to an empty string (which makes Kubernetes use the "default" ServiceAccount).
+// This ensures backward compatibility with existing PipelineRuns.
+func TestAffinityAssistantServiceAccountBackwardCompatibility(t *testing.T) {
+	prWithoutServiceAccount := &v1.PipelineRun{
+		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun-no-sa",
+		},
+		Spec: v1.PipelineRunSpec{
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				// No ServiceAccountName specified
+			},
+		},
+	}
+
+	sts := affinityAssistantStatefulSet(
+		aa.AffinityAssistantPerWorkspace,
+		"test-assistant",
+		prWithoutServiceAccount,
+		[]corev1.PersistentVolumeClaim{},
+		[]string{},
+		containerConfigWithoutSecurityContext,
+		nil,
+	)
+
+	expectedSA := "" // Empty string means Kubernetes will default to "default" SA
+	if sts.Spec.Template.Spec.ServiceAccountName != expectedSA {
+		t.Errorf("expected ServiceAccountName to be empty (backward compatible), got %q", sts.Spec.Template.Spec.ServiceAccountName)
+	}
+}
+
+// TestAffinityAssistantServiceAccountClusterWideDefault tests that a cluster-wide
+// default ServiceAccountName from the AffinityAssistantTemplate is applied when
+// the PipelineRun doesn't specify a ServiceAccountName.
+func TestAffinityAssistantServiceAccountClusterWideDefault(t *testing.T) {
+	prWithoutServiceAccount := &v1.PipelineRun{
+		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun-no-sa",
+		},
+		Spec: v1.PipelineRunSpec{
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				// No ServiceAccountName specified
+			},
+		},
+	}
+
+	// Cluster-wide default AA template
+	defaultAATemplate := &pod.AffinityAssistantTemplate{
+		ServiceAccountName: "cluster-default-aa-sa",
+	}
+
+	sts := affinityAssistantStatefulSet(
+		aa.AffinityAssistantPerWorkspace,
+		"test-assistant",
+		prWithoutServiceAccount,
+		[]corev1.PersistentVolumeClaim{},
+		[]string{},
+		containerConfigWithoutSecurityContext,
+		defaultAATemplate,
+	)
+
+	expectedSA := "cluster-default-aa-sa"
+	if sts.Spec.Template.Spec.ServiceAccountName != expectedSA {
+		t.Errorf("expected ServiceAccountName to be %q (from cluster default), got %q", expectedSA, sts.Spec.Template.Spec.ServiceAccountName)
+	}
+}
+
+// TestAffinityAssistantServiceAccountPriorityOrder tests the complete 3-tier
+// priority system: AA template override > PipelineRun SA > cluster default > empty
+func TestAffinityAssistantServiceAccountPriorityOrder(t *testing.T) {
+	tests := []struct {
+		name             string
+		pipelineRunSA    string
+		aaTemplateSA     string
+		clusterDefaultSA string
+		expectedSA       string
+		description      string
+	}{
+		{
+			name:             "AA template takes highest priority",
+			pipelineRunSA:    "pipeline-sa",
+			aaTemplateSA:     "aa-override-sa",
+			clusterDefaultSA: "cluster-default-sa",
+			expectedSA:       "aa-override-sa",
+			description:      "When AA template has SA, it overrides everything",
+		},
+		{
+			name:             "PipelineRun SA when no AA template override",
+			pipelineRunSA:    "pipeline-sa",
+			aaTemplateSA:     "",
+			clusterDefaultSA: "cluster-default-sa",
+			expectedSA:       "pipeline-sa",
+			description:      "When no AA template SA, inherit from PipelineRun",
+		},
+		{
+			name:             "Cluster default when neither PR nor AA template have SA",
+			pipelineRunSA:    "",
+			aaTemplateSA:     "",
+			clusterDefaultSA: "cluster-default-sa",
+			expectedSA:       "cluster-default-sa",
+			description:      "When no PR or AA template SA, use cluster default",
+		},
+		{
+			name:             "Empty when nothing specified",
+			pipelineRunSA:    "",
+			aaTemplateSA:     "",
+			clusterDefaultSA: "",
+			expectedSA:       "",
+			description:      "When nothing specified, empty (K8s defaults to 'default')",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := &v1.PipelineRun{
+				TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-pr",
+				},
+				Spec: v1.PipelineRunSpec{
+					TaskRunTemplate: v1.PipelineTaskRunTemplate{
+						ServiceAccountName: tc.pipelineRunSA,
+					},
+				},
+			}
+
+			var defaultAATemplate *pod.AffinityAssistantTemplate
+			// Set default template only when we have explicit values to set
+			if tc.aaTemplateSA != "" {
+				// AA template has explicit override
+				defaultAATemplate = &pod.AffinityAssistantTemplate{
+					ServiceAccountName: tc.aaTemplateSA,
+				}
+			} else if tc.clusterDefaultSA != "" && tc.pipelineRunSA == "" {
+				// Cluster default, but only when PR doesn't have SA
+				// (simulates cluster-wide default template)
+				defaultAATemplate = &pod.AffinityAssistantTemplate{
+					ServiceAccountName: tc.clusterDefaultSA,
+				}
+			}
+
+			sts := affinityAssistantStatefulSet(
+				aa.AffinityAssistantPerWorkspace,
+				"test-assistant",
+				pr,
+				[]corev1.PersistentVolumeClaim{},
+				[]string{},
+				containerConfigWithoutSecurityContext,
+				defaultAATemplate,
+			)
+
+			if sts.Spec.Template.Spec.ServiceAccountName != tc.expectedSA {
+				t.Errorf("%s: expected ServiceAccountName to be %q, got %q",
+					tc.description, tc.expectedSA, sts.Spec.Template.Spec.ServiceAccountName)
+			}
+		})
+	}
+}

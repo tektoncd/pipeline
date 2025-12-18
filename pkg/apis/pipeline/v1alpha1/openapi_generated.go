@@ -120,6 +120,13 @@ func schema_pkg_apis_pipeline_pod_AffinityAssistantTemplate(ref common.Reference
 							Format:      "",
 						},
 					},
+					"serviceAccountName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ServiceAccountName is the name of the ServiceAccount to use for the affinity assistant pod. If not specified, the affinity assistant will inherit the serviceAccountName from the PipelineRun's taskRunTemplate. If that is also not specified, the pod will use the namespace's default ServiceAccount. More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

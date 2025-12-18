@@ -694,6 +694,10 @@ set for the target [`namespace`](https://kubernetes.io/docs/concepts/overview/wo
 
 For more information, see [`ServiceAccount`](auth.md).
 
+**Note**: When using [Affinity Assistants](affinityassistants.md), the Affinity Assistant pods automatically inherit
+the `serviceAccountName` specified here, ensuring proper permissions in security-restricted environments like OpenShift.
+See [Affinity Assistant ServiceAccount Configuration](affinityassistants.md#serviceaccount-configuration) for details.
+
 [`Custom tasks`](pipelines.md#using-custom-tasks) may or may not use a service account name.
 Consult the documentation of the custom task that you are using to determine whether it supports a service account name.
 

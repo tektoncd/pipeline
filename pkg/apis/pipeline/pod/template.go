@@ -266,6 +266,9 @@ func MergeAAPodTemplateWithDefault(tpl, defaultTpl *AAPodTemplate) *AAPodTemplat
 		if tpl.PriorityClassName == nil {
 			tpl.PriorityClassName = defaultTpl.PriorityClassName
 		}
+		if tpl.ServiceAccountName == "" {
+			tpl.ServiceAccountName = defaultTpl.ServiceAccountName
+		}
 
 		return tpl
 	}
