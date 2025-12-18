@@ -2846,8 +2846,8 @@ status:
 				}
 				// the error message includes the error if the pod is not found
 				if tc.podNotFound {
-					expectedStatus.Message = fmt.Sprintf(`the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever" and the pod with error: "%s."`, tc.failure, stepNumber, tc.message)
-					wantEvents[1] = fmt.Sprintf(`Warning Failed the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever" and the pod with error: "%s.`, tc.failure, stepNumber, tc.message)
+					expectedStatus.Message = fmt.Sprintf(`the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever". Failed to get pod with error: "%s."`, tc.failure, stepNumber, tc.message)
+					wantEvents[1] = fmt.Sprintf(`Warning Failed the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever". Failed to get pod with error: "%s.`, tc.failure, stepNumber, tc.message)
 				}
 				condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
 				if d := cmp.Diff(expectedStatus, condition, ignoreLastTransitionTime); d != "" {
@@ -2857,6 +2857,132 @@ status:
 				if err != nil {
 					t.Error(err.Error())
 				}
+			}
+		})
+	}
+}
+
+func TestReconcileContainerFailures(t *testing.T) {
+	testCases := []struct {
+		name           string
+		reason         string
+		message        string
+		containerType  string
+		expectedReason v1.TaskRunReason
+	}{{
+		name:           "CreateContainerConfigError for step - missing configmap",
+		reason:         "CreateContainerConfigError",
+		message:        "configmap \"config-for-testing\" not found",
+		containerType:  "step",
+		expectedReason: "CreateContainerConfigError",
+	}, {
+		name:           "CreateContainerConfigError for sidecar - missing secret",
+		reason:         "CreateContainerConfigError",
+		message:        "secret \"secret-for-testing\" not found",
+		containerType:  "sidecar",
+		expectedReason: "CreateContainerConfigError",
+	}, {
+		name:           "CreateContainerError for step",
+		reason:         "CreateContainerError",
+		message:        "failed to create container",
+		containerType:  "step",
+		expectedReason: "PodCreationFailed",
+	}, {
+		name:           "CreateContainerError for sidecar",
+		reason:         "CreateContainerError",
+		message:        "failed to create container",
+		containerType:  "sidecar",
+		expectedReason: "PodCreationFailed",
+	}, {
+		name:           "InvalidImageName for step",
+		reason:         "InvalidImageName",
+		message:        "invalid image reference",
+		containerType:  "step",
+		expectedReason: "TaskRunImagePullFailed",
+	}, {
+		name:           "InvalidImageName for sidecar",
+		reason:         "InvalidImageName",
+		message:        "invalid image reference",
+		containerType:  "sidecar",
+		expectedReason: "TaskRunImagePullFailed",
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-container-failure
+  namespace: foo
+spec:
+  taskSpec:
+    sidecars:
+    - image: busybox
+    steps:
+    - image: alpine
+status:
+  podName: "test-pod"
+  sidecars:
+  - container: sidecar-busybox
+    name: busybox
+    imageID: docker.io/library/busybox:latest
+  steps:
+  - container: step-alpine
+    name: alpine
+    imageID: docker.io/library/alpine:latest
+`)
+
+			// Set the waiting state based on container type
+			if tc.containerType == "step" {
+				taskRun.Status.Steps[0].Waiting = &corev1.ContainerStateWaiting{
+					Reason:  tc.reason,
+					Message: tc.message,
+				}
+			} else {
+				taskRun.Status.Sidecars[0].Waiting = &corev1.ContainerStateWaiting{
+					Reason:  tc.reason,
+					Message: tc.message,
+				}
+			}
+
+			d := test.Data{
+				TaskRuns: []*v1.TaskRun{taskRun},
+			}
+
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+
+			// Reconcile the TaskRun
+			if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+				t.Fatalf("Unexpected error reconciling TaskRun: %v", err)
+			}
+
+			// Verify the TaskRun failed with the expected reason
+			reconciledTr, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(
+				testAssets.Ctx, taskRun.Name, metav1.GetOptions{},
+			)
+			if err != nil {
+				t.Fatalf("Failed to get reconciled TaskRun: %v", err)
+			}
+
+			condition := reconciledTr.Status.GetCondition(apis.ConditionSucceeded)
+			if condition == nil {
+				t.Fatal("TaskRun should have a Succeeded condition")
+			}
+
+			if condition.Status != corev1.ConditionFalse {
+				t.Errorf("Expected TaskRun to fail, but status is: %v", condition.Status)
+			}
+
+			if condition.Reason != string(tc.expectedReason) {
+				t.Errorf("Expected reason %q, got %q", tc.expectedReason, condition.Reason)
+			}
+
+			if !strings.Contains(condition.Message, tc.message) {
+				t.Errorf("Expected message to contain %q, got: %q", tc.message, condition.Message)
+			}
+
+			if !strings.Contains(condition.Message, tc.containerType) {
+				t.Errorf("Expected message to mention container type %q, got: %q", tc.containerType, condition.Message)
 			}
 		})
 	}
