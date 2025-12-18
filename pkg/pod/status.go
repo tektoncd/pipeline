@@ -827,28 +827,43 @@ func IsPodExceedingNodeResources(pod *corev1.Pod) bool {
 	return false
 }
 
-// isPodHitConfigError returns true if the Pod's status undicates there are config error raised
-func isPodHitConfigError(pod *corev1.Pod) bool {
+// hasContainerWaitingReason checks if any container (init or regular) is waiting with a reason
+// that matches the provided predicate function
+func hasContainerWaitingReason(pod *corev1.Pod, predicate func(corev1.ContainerStateWaiting) bool) bool {
+	// Check init containers first
+	for _, containerStatus := range pod.Status.InitContainerStatuses {
+		if containerStatus.State.Waiting != nil && predicate(*containerStatus.State.Waiting) {
+			return true
+		}
+	}
+	// Check regular containers
 	for _, containerStatus := range pod.Status.ContainerStatuses {
-		if containerStatus.State.Waiting != nil && containerStatus.State.Waiting.Reason == ReasonCreateContainerConfigError {
-			// for subPath directory creation errors, we want to allow recovery
-			if strings.Contains(containerStatus.State.Waiting.Message, "failed to create subPath directory") {
-				return false
-			}
+		if containerStatus.State.Waiting != nil && predicate(*containerStatus.State.Waiting) {
 			return true
 		}
 	}
 	return false
 }
 
+// isPodHitConfigError returns true if the Pod's status indicates there are config error raised
+func isPodHitConfigError(pod *corev1.Pod) bool {
+	return hasContainerWaitingReason(pod, func(waiting corev1.ContainerStateWaiting) bool {
+		if waiting.Reason != ReasonCreateContainerConfigError {
+			return false
+		}
+		// for subPath directory creation errors, we want to allow recovery
+		if strings.Contains(waiting.Message, "failed to create subPath directory") {
+			return false
+		}
+		return true
+	})
+}
+
 // isPullImageError returns true if the Pod's status indicates there are any error when pulling image
 func isPullImageError(pod *corev1.Pod) bool {
-	for _, containerStatus := range pod.Status.ContainerStatuses {
-		if containerStatus.State.Waiting != nil && isImageErrorReason(containerStatus.State.Waiting.Reason) {
-			return true
-		}
-	}
-	return false
+	return hasContainerWaitingReason(pod, func(waiting corev1.ContainerStateWaiting) bool {
+		return isImageErrorReason(waiting.Reason)
+	})
 }
 
 func isImageErrorReason(reason string) bool {
