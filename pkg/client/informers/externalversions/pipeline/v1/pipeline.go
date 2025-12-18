@@ -62,13 +62,25 @@ func NewFilteredPipelineInformer(client versioned.Interface, namespace string, r
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TektonV1().Pipelines(namespace).List(context.TODO(), options)
+				return client.TektonV1().Pipelines(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TektonV1().Pipelines(namespace).Watch(context.TODO(), options)
+				return client.TektonV1().Pipelines(namespace).Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.TektonV1().Pipelines(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.TektonV1().Pipelines(namespace).Watch(ctx, options)
 			},
 		},
 		&apispipelinev1.Pipeline{},
