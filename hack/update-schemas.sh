@@ -24,6 +24,20 @@ GOFLAGS=""
 CRD_PATH=$(dirname "${0}")/../config/300-crds
 API_PATH=$(dirname "${0}")/../pkg/apis
 
+# Simplify comments for v1beta1 to reduce CRD size
+echo "Simplifying comments for v1beta1..."
+MODIFIED_FILES=$(mktemp)
+go run hack/simplify_comments.go pkg/apis/pipeline/v1beta1 > "$MODIFIED_FILES"
+
+restore_comments() {
+  echo "Restoring comments for v1beta1..."
+  if [ -s "$MODIFIED_FILES" ]; then
+    xargs git checkout < "$MODIFIED_FILES"
+  fi
+  rm -f "$MODIFIED_FILES"
+}
+trap restore_comments EXIT
+
 # collect all existing crds into the FILES array using the recommended
 # mapfile: https://www.shellcheck.net/wiki/SC2207
 mapfile -d '' FILES < <(find "$CRD_PATH" -type f -name '*.yaml' -print0)

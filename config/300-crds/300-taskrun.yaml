@@ -31,10 +31,7 @@ spec:
       schema:
         openAPIV3Schema:
           description: |-
-            TaskRun represents a single execution of a Task. TaskRuns are how the steps
-            specified in a Task are executed; they specify the parameters and resources
-            used to run the steps in a Task.
-
+            TaskRun
             Deprecated: Please use v1.TaskRun instead.
           type: object
           properties:
@@ -56,11 +53,11 @@ spec:
             metadata:
               type: object
             spec:
-              description: TaskRunSpec defines the desired state of TaskRun
+              description: Spec
               type: object
               properties:
                 computeResources:
-                  description: Compute resources to use for this TaskRun
+                  description: ComputeResources
                   type: object
                   properties:
                     claims:
@@ -119,35 +116,30 @@ spec:
                           - type: string
                         x-kubernetes-int-or-string: true
                 debug:
-                  description: TaskRunDebug defines the breakpoint config for a particular TaskRun
+                  description: Debug
                   type: object
                   properties:
                     breakpoints:
-                      description: TaskBreakpoints defines the breakpoint config for a particular Task
+                      description: Breakpoints
                       type: object
                       properties:
                         beforeSteps:
+                          description: BeforeSteps
                           type: array
                           items:
                             type: string
                           x-kubernetes-list-type: atomic
                         onFailure:
-                          description: |-
-                            if enabled, pause TaskRun on failure of a step
-                            failed step will not exit
+                          description: OnFailure
                           type: string
                 managedBy:
-                  description: |-
-                    ManagedBy indicates which controller is responsible for reconciling
-                    this resource. If unset or set to "tekton.dev/pipeline", the default
-                    Tekton controller will manage this resource.
-                    This field is immutable.
+                  description: ManagedBy
                   type: string
                 params:
-                  description: Params is a list of Param
+                  description: Params
                   type: array
                   items:
-                    description: Param declares an ParamValues to use for the parameter called name.
+                    description: Param
                     type: object
                     required:
                       - name
@@ -156,10 +148,11 @@ spec:
                       name:
                         type: string
                       value:
+                        description: Value
                         x-kubernetes-preserve-unknown-fields: true
                   x-kubernetes-list-type: atomic
                 podTemplate:
-                  description: PodTemplate holds pod specific configuration
+                  description: PodTemplate
                   type: object
                   properties:
                     affinity:
@@ -656,48 +649,41 @@ spec:
                         See Pod.spec.volumes (API version: v1)
                       x-kubernetes-preserve-unknown-fields: true
                 resources:
-                  description: 'Deprecated: Unused, preserved only for backwards compatibility'
+                  description: |-
+                    Resources
+                    Deprecated: Unused, preserved only for backwards compatibility
                   type: object
                   properties:
                     inputs:
-                      description: Inputs holds the inputs resources this task was invoked with
+                      description: Inputs
                       type: array
                       items:
                         description: |-
-                          TaskResourceBinding points to the PipelineResource that
-                          will be used for the Task input or output called Name.
-
+                          TaskResourceBinding
                           Deprecated: Unused, preserved only for backwards compatibility
                         type: object
                         properties:
                           name:
-                            description: Name is the name of the PipelineResource in the Pipeline's declaration
+                            description: Name
                             type: string
                           paths:
-                            description: |-
-                              Paths will probably be removed in #1284, and then PipelineResourceBinding can be used instead.
-                              The optional Path field corresponds to a path on disk at which the Resource can be found
-                              (used when providing the resource via mounted volume, overriding the default logic to fetch the Resource).
+                            description: Paths
                             type: array
                             items:
                               type: string
                             x-kubernetes-list-type: atomic
                           resourceRef:
-                            description: |-
-                              ResourceRef is a reference to the instance of the actual PipelineResource
-                              that should be used
+                            description: ResourceRef
                             type: object
                             properties:
                               apiVersion:
-                                description: API version of the referent
+                                description: APIVersion
                                 type: string
                               name:
-                                description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                                description: Name
                                 type: string
                           resourceSpec:
-                            description: |-
-                              ResourceSpec is specification of a resource that should be created and
-                              consumed by the task
+                            description: ResourceSpec
                             type: object
                             required:
                               - params
@@ -757,44 +743,35 @@ spec:
                                 type: string
                       x-kubernetes-list-type: atomic
                     outputs:
-                      description: Outputs holds the inputs resources this task was invoked with
+                      description: Outputs
                       type: array
                       items:
                         description: |-
-                          TaskResourceBinding points to the PipelineResource that
-                          will be used for the Task input or output called Name.
-
+                          TaskResourceBinding
                           Deprecated: Unused, preserved only for backwards compatibility
                         type: object
                         properties:
                           name:
-                            description: Name is the name of the PipelineResource in the Pipeline's declaration
+                            description: Name
                             type: string
                           paths:
-                            description: |-
-                              Paths will probably be removed in #1284, and then PipelineResourceBinding can be used instead.
-                              The optional Path field corresponds to a path on disk at which the Resource can be found
-                              (used when providing the resource via mounted volume, overriding the default logic to fetch the Resource).
+                            description: Paths
                             type: array
                             items:
                               type: string
                             x-kubernetes-list-type: atomic
                           resourceRef:
-                            description: |-
-                              ResourceRef is a reference to the instance of the actual PipelineResource
-                              that should be used
+                            description: ResourceRef
                             type: object
                             properties:
                               apiVersion:
-                                description: API version of the referent
+                                description: APIVersion
                                 type: string
                               name:
-                                description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                                description: Name
                                 type: string
                           resourceSpec:
-                            description: |-
-                              ResourceSpec is specification of a resource that should be created and
-                              consumed by the task
+                            description: ResourceSpec
                             type: object
                             required:
                               - params
@@ -854,29 +831,26 @@ spec:
                                 type: string
                       x-kubernetes-list-type: atomic
                 retries:
-                  description: Retries represents how many times this TaskRun should be retried in the event of Task failure.
+                  description: Retries
                   type: integer
                 serviceAccountName:
+                  description: ServiceAccountName
                   type: string
                 sidecarOverrides:
-                  description: |-
-                    Overrides to apply to Sidecars in this TaskRun.
-                    If a field is specified in both a Sidecar and a SidecarOverride,
-                    the value from the SidecarOverride will be used.
-                    This field is only supported when the alpha feature gate is enabled.
+                  description: SidecarOverrides
                   type: array
                   items:
-                    description: TaskRunSidecarOverride is used to override the values of a Sidecar in the corresponding Task.
+                    description: TaskRunSidecarOverride
                     type: object
                     required:
                       - name
                       - resources
                     properties:
                       name:
-                        description: The name of the Sidecar to override.
+                        description: Name
                         type: string
                       resources:
-                        description: The resource requirements to apply to the Sidecar.
+                        description: Resources
                         type: object
                         properties:
                           claims:
@@ -936,30 +910,26 @@ spec:
                               x-kubernetes-int-or-string: true
                   x-kubernetes-list-type: atomic
                 status:
-                  description: Used for cancelling a TaskRun (and maybe more later on)
+                  description: Status
                   type: string
                 statusMessage:
-                  description: Status message for cancellation.
+                  description: StatusMessage
                   type: string
                 stepOverrides:
-                  description: |-
-                    Overrides to apply to Steps in this TaskRun.
-                    If a field is specified in both a Step and a StepOverride,
-                    the value from the StepOverride will be used.
-                    This field is only supported when the alpha feature gate is enabled.
+                  description: StepOverrides
                   type: array
                   items:
-                    description: TaskRunStepOverride is used to override the values of a Step in the corresponding Task.
+                    description: TaskRunStepOverride
                     type: object
                     required:
                       - name
                       - resources
                     properties:
                       name:
-                        description: The name of the Step to override.
+                        description: Name
                         type: string
                       resources:
-                        description: The resource requirements to apply to the Step.
+                        description: Resources
                         type: object
                         properties:
                           claims:
@@ -1019,39 +989,28 @@ spec:
                               x-kubernetes-int-or-string: true
                   x-kubernetes-list-type: atomic
                 taskRef:
-                  description: no more than one of the TaskRef and TaskSpec may be specified.
+                  description: TaskRef
                   type: object
                   properties:
                     apiVersion:
-                      description: |-
-                        API version of the referent
-                        Note: A Task with non-empty APIVersion and Kind is considered a Custom Task
+                      description: APIVersion
                       type: string
                     bundle:
                       description: |-
-                        Bundle url reference to a Tekton Bundle.
-
                         Deprecated: Please use ResolverRef with the bundles resolver instead.
-                        The field is staying there for go client backward compatibility, but is not used/allowed anymore.
+                        Bundle
                       type: string
                     kind:
-                      description: |-
-                        TaskKind indicates the Kind of the Task:
-                        1. Namespaced Task when Kind is set to "Task". If Kind is "", it defaults to "Task".
-                        2. Custom Task when Kind is non-empty and APIVersion is non-empty
+                      description: Kind
                       type: string
                     name:
-                      description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                      description: Name
                       type: string
                     params:
-                      description: |-
-                        Params contains the parameters used to identify the
-                        referenced Tekton resource. Example entries might include
-                        "repo" or "path" but the set of params ultimately depends on
-                        the chosen resolver.
+                      description: Params
                       type: array
                       items:
-                        description: Param declares an ParamValues to use for the parameter called name.
+                        description: Param
                         type: object
                         required:
                           - name
@@ -1060,35 +1019,29 @@ spec:
                           name:
                             type: string
                           value:
+                            description: Value
                             x-kubernetes-preserve-unknown-fields: true
                       x-kubernetes-list-type: atomic
                     resolver:
-                      description: |-
-                        Resolver is the name of the resolver that should perform
-                        resolution of the referenced Tekton resource, such as "git".
+                      description: Resolver
                       type: string
                 taskSpec:
-                  description: |-
-                    Specifying TaskSpec can be disabled by setting
-                    `disable-inline-spec` feature flag.
-                    See Task.spec (API version: tekton.dev/v1beta1)
+                  description: TaskSpec
                   x-kubernetes-preserve-unknown-fields: true
                 timeout:
-                  description: |-
-                    Time after which one retry attempt times out. Defaults to 1 hour.
-                    Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+                  description: Timeout
                   type: string
                 workspaces:
-                  description: Workspaces is a list of WorkspaceBindings from volumes to workspaces.
+                  description: Workspaces
                   type: array
                   items:
-                    description: WorkspaceBinding maps a Task's declared workspace to a Volume.
+                    description: WorkspaceBinding
                     type: object
                     required:
                       - name
                     properties:
                       configMap:
-                        description: ConfigMap represents a configMap that should populate this workspace.
+                        description: ConfigMap
                         type: object
                         properties:
                           defaultMode:
@@ -1154,7 +1107,7 @@ spec:
                             type: boolean
                         x-kubernetes-map-type: atomic
                       csi:
-                        description: CSI (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
+                        description: CSI
                         type: object
                         required:
                           - driver
@@ -1202,10 +1155,7 @@ spec:
                             additionalProperties:
                               type: string
                       emptyDir:
-                        description: |-
-                          EmptyDir represents a temporary directory that shares a Task's lifetime.
-                          More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir
-                          Either this OR PersistentVolumeClaim can be used.
+                        description: EmptyDir
                         type: object
                         properties:
                           medium:
@@ -1229,12 +1179,10 @@ spec:
                               - type: string
                             x-kubernetes-int-or-string: true
                       name:
-                        description: Name is the name of the workspace populated by the volume.
+                        description: Name
                         type: string
                       persistentVolumeClaim:
-                        description: |-
-                          PersistentVolumeClaimVolumeSource represents a reference to a
-                          PersistentVolumeClaim in the same namespace. Either this OR EmptyDir can be used.
+                        description: PersistentVolumeClaim
                         type: object
                         required:
                           - claimName
@@ -1250,7 +1198,7 @@ spec:
                               Default false.
                             type: boolean
                       projected:
-                        description: Projected represents a projected volume that should populate this workspace.
+                        description: Projected
                         type: object
                         properties:
                           defaultMode:
@@ -1565,7 +1513,7 @@ spec:
                                       type: string
                             x-kubernetes-list-type: atomic
                       secret:
-                        description: Secret represents a secret that should populate this workspace.
+                        description: Secret
                         type: object
                         properties:
                           defaultMode:
@@ -1626,19 +1574,14 @@ spec:
                               More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
                             type: string
                       subPath:
-                        description: |-
-                          SubPath is optionally a directory on the volume which should be used
-                          for this binding (i.e. the volume will be mounted at this sub directory).
+                        description: SubPath
                         type: string
                       volumeClaimTemplate:
-                        description: |-
-                          VolumeClaimTemplate is a template for a claim that will be created in the same namespace.
-                          The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.
-                          See PersistentVolumeClaim (API version: v1)
+                        description: VolumeClaimTemplate
                         x-kubernetes-preserve-unknown-fields: true
                   x-kubernetes-list-type: atomic
             status:
-              description: TaskRunStatus defines the observed state of TaskRun
+              description: Status
               type: object
               required:
                 - podName
@@ -1654,44 +1597,40 @@ spec:
                     type: string
                 cloudEvents:
                   description: |-
-                    CloudEvents describe the state of each cloud event requested via a
-                    CloudEventResource.
-
                     Deprecated: Removed in v0.44.0.
+                    CloudEvents
                   type: array
                   items:
-                    description: |-
-                      CloudEventDelivery is the target of a cloud event along with the state of
-                      delivery.
+                    description: CloudEventDelivery
                     type: object
                     properties:
                       status:
-                        description: CloudEventDeliveryState reports the state of a cloud event to be sent.
+                        description: CloudEventDeliveryState
                         type: object
                         required:
                           - message
                           - retryCount
                         properties:
                           condition:
-                            description: Current status
+                            description: Condition
                             type: string
                           message:
-                            description: Error is the text of error (if any)
+                            description: Error
                             type: string
                           retryCount:
-                            description: RetryCount is the number of attempts of sending the cloud event
+                            description: RetryCount
                             type: integer
                             format: int32
                           sentAt:
-                            description: SentAt is the time at which the last attempt to send the event was made
+                            description: SentAt
                             type: string
                             format: date-time
                       target:
-                        description: Target points to an addressable
+                        description: Target
                         type: string
                   x-kubernetes-list-type: atomic
                 completionTime:
-                  description: CompletionTime is the time the build completed.
+                  description: CompletionTime
                   type: string
                   format: date-time
                 conditions:
@@ -1736,36 +1675,31 @@ spec:
                   type: integer
                   format: int64
                 podName:
-                  description: PodName is the name of the pod responsible for executing this task's steps.
+                  description: PodName
                   type: string
                 provenance:
-                  description: Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).
+                  description: Provenance
                   type: object
                   properties:
                     configSource:
-                      description: 'Deprecated: Use RefSource instead'
+                      description: |-
+                        ConfigSource
+                        Deprecated: Use RefSource instead
                       type: object
                       properties:
                         digest:
-                          description: |-
-                            Digest is a collection of cryptographic digests for the contents of the artifact specified by URI.
-                            Example: {"sha1": "f99d13e554ffcb696dee719fa85b695cb5b0f428"}
+                          description: Digest
                           type: object
                           additionalProperties:
                             type: string
                         entryPoint:
-                          description: |-
-                            EntryPoint identifies the entry point into the build. This is often a path to a
-                            build definition file and/or a target label within that file.
-                            Example: "task/git-clone/0.10/git-clone.yaml"
+                          description: EntryPoint
                           type: string
                         uri:
-                          description: |-
-                            URI indicates the identity of the source of the build definition.
-                            Example: "https://github.com/tektoncd/catalog"
+                          description: URI
                           type: string
                     featureFlags:
-                      description: FeatureFlags identifies the feature flags that were used during the task/pipeline run
+                      description: FeatureFlags
                       type: object
                       properties:
                         awaitSidecarReadiness:
@@ -1822,31 +1756,23 @@ spec:
                             fail: fail the taskrun or pipelines run if no matching verification policies found
                           type: string
                     refSource:
-                      description: RefSource identifies the source where a remote task/pipeline came from.
+                      description: RefSource
                       type: object
                       properties:
                         digest:
-                          description: |-
-                            Digest is a collection of cryptographic digests for the contents of the artifact specified by URI.
-                            Example: {"sha1": "f99d13e554ffcb696dee719fa85b695cb5b0f428"}
+                          description: Digest
                           type: object
                           additionalProperties:
                             type: string
                         entryPoint:
-                          description: |-
-                            EntryPoint identifies the entry point into the build. This is often a path to a
-                            build definition file and/or a target label within that file.
-                            Example: "task/git-clone/0.10/git-clone.yaml"
+                          description: EntryPoint
                           type: string
                         uri:
-                          description: |-
-                            URI indicates the identity of the source of the build definition.
-                            Example: "https://github.com/tektoncd/catalog"
+                          description: URI
                           type: string
                 resourcesResult:
                   description: |-
-                    Results from Resources built during the TaskRun.
-                    This is tomb-stoned along with the removal of pipelineResources
+                    ResourcesResult
                     Deprecated: this field is not populated and is preserved only for backwards compatibility
                   type: array
                   items:
@@ -1877,18 +1803,13 @@ spec:
                         type: string
                   x-kubernetes-list-type: atomic
                 retriesStatus:
-                  description: |-
-                    RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
-                    All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
-                    See TaskRun.status (API version: tekton.dev/v1beta1)
+                  description: RetriesStatus
                   x-kubernetes-preserve-unknown-fields: true
                 sidecars:
-                  description: |-
-                    The list has one entry per sidecar in the manifest. Each entry is
-                    represents the imageid of the corresponding sidecar.
+                  description: Sidecars
                   type: array
                   items:
-                    description: SidecarState reports the results of running a sidecar in a Task.
+                    description: SidecarState
                     type: object
                     properties:
                       container:
@@ -1948,19 +1869,19 @@ spec:
                             type: string
                   x-kubernetes-list-type: atomic
                 spanContext:
-                  description: SpanContext contains tracing span context fields
+                  description: SpanContext
                   type: object
                   additionalProperties:
                     type: string
                 startTime:
-                  description: StartTime is the time the build is actually started.
+                  description: StartTime
                   type: string
                   format: date-time
                 steps:
-                  description: Steps describes the state of each build step container.
+                  description: Steps
                   type: array
                   items:
-                    description: StepState reports the results of running a step in a Task.
+                    description: StepState
                     type: object
                     properties:
                       container:
@@ -1970,22 +1891,20 @@ spec:
                       inputs:
                         type: array
                         items:
-                          description: |-
-                            Artifact represents an artifact within a system, potentially containing multiple values
-                            associated with it.
+                          description: Artifact
                           type: object
                           properties:
                             buildOutput:
-                              description: Indicate if the artifact is a build output or a by-product
+                              description: BuildOutput
                               type: boolean
                             name:
-                              description: The artifact's identifying category name
+                              description: Name
                               type: string
                             values:
-                              description: A collection of values related to the artifact
+                              description: Values
                               type: array
                               items:
-                                description: ArtifactValue represents a specific value or data element within an Artifact.
+                                description: ArtifactValue
                                 type: object
                                 properties:
                                   digest:
@@ -1999,22 +1918,20 @@ spec:
                       outputs:
                         type: array
                         items:
-                          description: |-
-                            Artifact represents an artifact within a system, potentially containing multiple values
-                            associated with it.
+                          description: Artifact
                           type: object
                           properties:
                             buildOutput:
-                              description: Indicate if the artifact is a build output or a by-product
+                              description: BuildOutput
                               type: boolean
                             name:
-                              description: The artifact's identifying category name
+                              description: Name
                               type: string
                             values:
-                              description: A collection of values related to the artifact
+                              description: Values
                               type: array
                               items:
-                                description: ArtifactValue represents a specific value or data element within an Artifact.
+                                description: ArtifactValue
                                 type: object
                                 properties:
                                   digest:
@@ -2024,37 +1941,28 @@ spec:
                                   uri:
                                     type: string
                       provenance:
-                        description: |-
-                          Provenance contains metadata about resources used in the TaskRun/PipelineRun
-                          such as the source from where a remote build definition was fetched.
-                          This field aims to carry minimum amoumt of metadata in *Run status so that
-                          Tekton Chains can capture them in the provenance.
+                        description: Provenance
                         type: object
                         properties:
                           configSource:
-                            description: 'Deprecated: Use RefSource instead'
+                            description: |-
+                              ConfigSource
+                              Deprecated: Use RefSource instead
                             type: object
                             properties:
                               digest:
-                                description: |-
-                                  Digest is a collection of cryptographic digests for the contents of the artifact specified by URI.
-                                  Example: {"sha1": "f99d13e554ffcb696dee719fa85b695cb5b0f428"}
+                                description: Digest
                                 type: object
                                 additionalProperties:
                                   type: string
                               entryPoint:
-                                description: |-
-                                  EntryPoint identifies the entry point into the build. This is often a path to a
-                                  build definition file and/or a target label within that file.
-                                  Example: "task/git-clone/0.10/git-clone.yaml"
+                                description: EntryPoint
                                 type: string
                               uri:
-                                description: |-
-                                  URI indicates the identity of the source of the build definition.
-                                  Example: "https://github.com/tektoncd/catalog"
+                                description: URI
                                 type: string
                           featureFlags:
-                            description: FeatureFlags identifies the feature flags that were used during the task/pipeline run
+                            description: FeatureFlags
                             type: object
                             properties:
                               awaitSidecarReadiness:
@@ -2111,46 +2019,37 @@ spec:
                                   fail: fail the taskrun or pipelines run if no matching verification policies found
                                 type: string
                           refSource:
-                            description: RefSource identifies the source where a remote task/pipeline came from.
+                            description: RefSource
                             type: object
                             properties:
                               digest:
-                                description: |-
-                                  Digest is a collection of cryptographic digests for the contents of the artifact specified by URI.
-                                  Example: {"sha1": "f99d13e554ffcb696dee719fa85b695cb5b0f428"}
+                                description: Digest
                                 type: object
                                 additionalProperties:
                                   type: string
                               entryPoint:
-                                description: |-
-                                  EntryPoint identifies the entry point into the build. This is often a path to a
-                                  build definition file and/or a target label within that file.
-                                  Example: "task/git-clone/0.10/git-clone.yaml"
+                                description: EntryPoint
                                 type: string
                               uri:
-                                description: |-
-                                  URI indicates the identity of the source of the build definition.
-                                  Example: "https://github.com/tektoncd/catalog"
+                                description: URI
                                 type: string
                       results:
                         type: array
                         items:
-                          description: TaskRunResult used to describe the results of a task
+                          description: TaskRunResult
                           type: object
                           required:
                             - name
                             - value
                           properties:
                             name:
-                              description: Name the given name
+                              description: Name
                               type: string
                             type:
-                              description: |-
-                                Type is the user-specified type of the result. The possible type
-                                is currently "string" and will support "array" in following work.
+                              description: Type
                               type: string
                             value:
-                              description: Value the given value of the result
+                              description: Value
                               x-kubernetes-preserve-unknown-fields: true
                       running:
                         description: Details about a running container
@@ -2203,31 +2102,27 @@ spec:
                             type: string
                   x-kubernetes-list-type: atomic
                 taskResults:
-                  description: TaskRunResults are the list of results written out by the task's containers
+                  description: TaskRunResults
                   type: array
                   items:
-                    description: TaskRunResult used to describe the results of a task
+                    description: TaskRunResult
                     type: object
                     required:
                       - name
                       - value
                     properties:
                       name:
-                        description: Name the given name
+                        description: Name
                         type: string
                       type:
-                        description: |-
-                          Type is the user-specified type of the result. The possible type
-                          is currently "string" and will support "array" in following work.
+                        description: Type
                         type: string
                       value:
-                        description: Value the given value of the result
+                        description: Value
                         x-kubernetes-preserve-unknown-fields: true
                   x-kubernetes-list-type: atomic
                 taskSpec:
-                  description: |-
-                    TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.
-                    See Task.spec (API version tekton.dev/v1beta1)
+                  description: TaskSpec
                   x-kubernetes-preserve-unknown-fields: true
       additionalPrinterColumns:
         - name: Succeeded
