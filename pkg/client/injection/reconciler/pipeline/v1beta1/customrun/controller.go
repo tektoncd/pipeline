@@ -133,6 +133,14 @@ func NewImpl(ctx context.Context, r Interface, optionsFns ...controller.OptionsF
 		if opts.PromoteFunc != nil {
 			promoteFunc = opts.PromoteFunc
 		}
+		if opts.UseServerSideApplyForFinalizers {
+			if opts.FinalizerFieldManager == "" {
+				logger.Fatal("FinalizerFieldManager must be provided when UseServerSideApplyForFinalizers is enabled")
+			}
+			rec.useServerSideApplyForFinalizers = true
+			rec.finalizerFieldManager = opts.FinalizerFieldManager
+			rec.forceApplyFinalizers = opts.ForceApplyFinalizers
+		}
 	}
 
 	rec.Recorder = createRecorder(ctx, agentName)
