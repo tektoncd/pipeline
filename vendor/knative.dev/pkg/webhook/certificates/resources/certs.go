@@ -102,15 +102,15 @@ func createCert(template, parent *x509.Certificate, pub, parentPriv interface{})
 ) {
 	certDER, err := x509.CreateCertificate(rand.Reader, template, parent, pub, parentPriv)
 	if err != nil {
-		return
+		return cert, certPEM, err
 	}
 	cert, err = x509.ParseCertificate(certDER)
 	if err != nil {
-		return
+		return cert, certPEM, err
 	}
 	b := pem.Block{Type: "CERTIFICATE", Bytes: certDER}
 	certPEM = pem.EncodeToMemory(&b)
-	return
+	return cert, certPEM, err
 }
 
 func createCA(ctx context.Context, name, namespace string, notAfter time.Time) (*ecdsa.PrivateKey, *x509.Certificate, []byte, error) {

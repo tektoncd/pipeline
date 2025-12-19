@@ -78,6 +78,149 @@ func main() {
 There is also a config map validation admission controller built in under
 `knative.dev/pkg/webhook/configmaps`.
 
+## TLS Configuration
+
+The webhook server supports configuring TLS parameters through the `webhook.Options` struct. This allows you to control the TLS version, cipher suites, and elliptic curve preferences for enhanced security.
+
+### Available TLS Options
+
+```go
+type Options struct {
+    // ... other fields ...
+
+    // TLSMinVersion contains the minimum TLS version that is acceptable.
+    // Default is TLS 1.3 if not specified.
+    // Supported values: tls.VersionTLS12, tls.VersionTLS13
+    TLSMinVersion uint16
+
+    // TLSMaxVersion contains the maximum TLS version that is acceptable.
+    // If not set (0), the maximum version supported by the implementation will be used.
+    // Useful for enforcing Modern profile (TLS 1.3 only) by setting both
+    // TLSMinVersion and TLSMaxVersion to tls.VersionTLS13.
+    TLSMaxVersion uint16
+
+    // TLSCipherSuites specifies the list of enabled cipher suites.
+    // If empty, a default list of secure cipher suites will be used.
+    // Note: Cipher suites are not configurable in TLS 1.3; they are
+    // determined by the implementation.
+    TLSCipherSuites []uint16
+
+    // TLSCurvePreferences specifies the elliptic curves that will be used
+    // in an ECDHE handshake. If empty, the default curves will be used.
+    TLSCurvePreferences []tls.CurveID
+}
+```
+
+### Environment Variable Configuration
+
+You can also configure the minimum TLS version via the `WEBHOOK_TLS_MIN_VERSION` environment variable:
+
+```yaml
+env:
+  - name: WEBHOOK_TLS_MIN_VERSION
+    value: "1.3"  # or "1.2"
+```
+
+### Usage Examples
+
+#### Example 1: Default Configuration (Recommended)
+
+By default, the webhook uses TLS 1.3 as the minimum version with secure defaults:
+
+```go
+ctx := webhook.WithOptions(signals.NewContext(), webhook.Options{
+    ServiceName: "webhook",
+    Port:        8443,
+    SecretName:  "webhook-certs",
+    // TLS defaults: MinVersion=1.3, secure cipher suites and curves
+})
+```
+
+#### Example 2: Modern Profile (TLS 1.3 Only)
+
+To enforce TLS 1.3 only (highest security profile):
+
+```go
+ctx := webhook.WithOptions(signals.NewContext(), webhook.Options{
+    ServiceName:   "webhook",
+    Port:          8443,
+    SecretName:    "webhook-certs",
+    TLSMinVersion: tls.VersionTLS13,
+    TLSMaxVersion: tls.VersionTLS13,  // Enforce TLS 1.3 only
+})
+```
+
+#### Example 3: Intermediate Profile (TLS 1.2+)
+
+For broader compatibility while maintaining security:
+
+```go
+ctx := webhook.WithOptions(signals.NewContext(), webhook.Options{
+    ServiceName:   "webhook",
+    Port:          8443,
+    SecretName:    "webhook-certs",
+    TLSMinVersion: tls.VersionTLS12,
+})
+```
+
+#### Example 4: Custom Cipher Suites
+
+To specify custom cipher suites (for TLS 1.2):
+
+```go
+ctx := webhook.WithOptions(signals.NewContext(), webhook.Options{
+    ServiceName:   "webhook",
+    Port:          8443,
+    SecretName:    "webhook-certs",
+    TLSMinVersion: tls.VersionTLS12,
+    TLSCipherSuites: []uint16{
+        tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+        tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+        tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+        tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+    },
+})
+```
+
+#### Example 5: Custom Elliptic Curves
+
+To specify elliptic curve preferences:
+
+```go
+ctx := webhook.WithOptions(signals.NewContext(), webhook.Options{
+    ServiceName:   "webhook",
+    Port:          8443,
+    SecretName:    "webhook-certs",
+    TLSCurvePreferences: []tls.CurveID{
+        tls.X25519,    // Preferred
+        tls.CurveP256,
+        tls.CurveP384,
+    },
+})
+```
+
+#### Example 6: Complete Custom Configuration
+
+For full control over TLS parameters:
+
+```go
+ctx := webhook.WithOptions(signals.NewContext(), webhook.Options{
+    ServiceName:   "webhook",
+    Port:          8443,
+    SecretName:    "webhook-certs",
+    TLSMinVersion: tls.VersionTLS12,
+    TLSMaxVersion: tls.VersionTLS13,
+    TLSCipherSuites: []uint16{
+        tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+        tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+    },
+    TLSCurvePreferences: []tls.CurveID{
+        tls.X25519,
+        tls.CurveP256,
+    },
+})
+```
+
 ## Writing new Admission Controllers
 
 To implement your own admission controller akin to the resource defaulting and

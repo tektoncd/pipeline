@@ -28,6 +28,7 @@ import (
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -46,9 +47,6 @@ import (
 )
 
 const (
-	falseString = "false"
-	trueString  = "true"
-
 	// DefaultResyncPeriod is the default duration that is used when no
 	// resync period is associated with a controllers initialization context.
 	DefaultResyncPeriod = 10 * time.Hour
@@ -202,7 +200,7 @@ type Impl struct {
 	// never processing the same item simultaneously in two different workers.
 	// The slow queue is used for global resync and other background processes
 	// which are not required to complete at the highest priority.
-	workQueue *twoLaneQueue
+	workQueue *twoLaneRateLimitingQueue
 
 	// Concurrency - The number of workers to use when processing the controller's workqueue.
 	Concurrency int
@@ -214,9 +212,6 @@ type Impl struct {
 	// the expense of slightly greater verbosity.
 	logger *zap.SugaredLogger
 
-	// StatsReporter is used to send common controller metrics.
-	statsReporter StatsReporter
-
 	// Tracker allows reconcilers to associate a reference with particular key,
 	// such that when the reference changes the key is queued for reconciliation.
 	Tracker tracker.Interface
@@ -227,7 +222,6 @@ type Impl struct {
 type ControllerOptions struct {
 	WorkQueueName string
 	Logger        *zap.SugaredLogger
-	Reporter      StatsReporter
 	RateLimiter   workqueue.TypedRateLimiter[any]
 	Concurrency   int
 }
@@ -238,19 +232,15 @@ func NewContext(ctx context.Context, r Reconciler, options ControllerOptions) *I
 	if options.RateLimiter == nil {
 		options.RateLimiter = workqueue.DefaultTypedControllerRateLimiter[any]()
 	}
-	if options.Reporter == nil {
-		options.Reporter = MustNewStatsReporter(options.WorkQueueName, options.Logger)
-	}
 	if options.Concurrency == 0 {
 		options.Concurrency = DefaultThreadsPerController
 	}
 	i := &Impl{
-		Name:          options.WorkQueueName,
-		Reconciler:    r,
-		workQueue:     newTwoLaneWorkQueue(options.WorkQueueName, options.RateLimiter),
-		logger:        options.Logger,
-		statsReporter: options.Reporter,
-		Concurrency:   options.Concurrency,
+		Name:        options.WorkQueueName,
+		Reconciler:  r,
+		workQueue:   newTwoLaneWorkQueue(options.WorkQueueName, options.RateLimiter),
+		logger:      options.Logger,
+		Concurrency: options.Concurrency,
 	}
 
 	if t := GetTracker(ctx); t != nil {
@@ -281,11 +271,11 @@ func (c *Impl) EnqueueAfter(obj interface{}, after time.Duration) {
 // EnqueueSlowKey takes a resource, converts it into a namespace/name string,
 // and enqueues that key in the slow lane.
 func (c *Impl) EnqueueSlowKey(key types.NamespacedName) {
-	c.workQueue.SlowLane().Add(key)
+	c.workQueue.AddSlow(key)
 
 	if logger := c.logger.Desugar(); logger.Core().Enabled(zapcore.DebugLevel) {
 		logger.Debug(fmt.Sprintf("Adding to the slow queue %s (depth(total/slow): %d/%d)",
-			safeKey(key), c.workQueue.Len(), c.workQueue.SlowLane().Len()),
+			safeKey(key), c.workQueue.Len(), c.workQueue.SlowLen()),
 			zap.String(logkey.Key, key.String()))
 	}
 }
@@ -481,7 +471,7 @@ func (c *Impl) RunContext(ctx context.Context, threadiness int) error {
 	}
 
 	// Launch workers to process resources that get enqueued to our workqueue.
-	c.logger.Info("Starting controller and workers")
+	c.logger.Infow("Starting controller and workers", zap.Int("threadiness", threadiness))
 	for range threadiness {
 		sg.Add(1)
 		go func() {
@@ -511,17 +501,9 @@ func (c *Impl) processNextWorkItem() bool {
 	c.logger.Debugf("Processing from queue %s (depth: %d)", safeKey(key), c.workQueue.Len())
 
 	startTime := time.Now()
-	// Send the metrics for the current queue depth
-	c.statsReporter.ReportQueueDepth(int64(c.workQueue.Len()))
 
 	var err error
 	defer func() {
-		status := trueString
-		if err != nil {
-			status = falseString
-		}
-		c.statsReporter.ReportReconcile(time.Since(startTime), status, key)
-
 		// We call Done here so the workqueue knows we have finished
 		// processing this item. We also must remember to call Forget if
 		// reconcile succeeds. If a transient error occurs, we do not call
@@ -551,23 +533,31 @@ func (c *Impl) processNextWorkItem() bool {
 }
 
 func (c *Impl) handleErr(logger *zap.SugaredLogger, err error, key types.NamespacedName, startTime time.Time) {
-	if IsSkipKey(err) {
+	// Check if we should skip this key or if the queue is shutting down.
+	// We check shutdown here since controller Run might have exited by now
+	// (since while this item was being processed, queue.Len==0).
+	if IsSkipKey(err) || c.workQueue.ShuttingDown() {
 		c.workQueue.Forget(key)
 		return
 	}
+
 	if ok, delay := IsRequeueKey(err); ok {
 		c.workQueue.AddAfter(key, delay)
 		logger.Debugf("Requeuing key %s (by request) after %v (depth: %d)", safeKey(key), delay, c.workQueue.Len())
 		return
 	}
 
+	// Conflict errors are expected, requeue to retry
+	if apierrors.IsConflict(err) {
+		logger.Debugw("Reconcile conflict", zap.Duration("duration", time.Since(startTime)))
+		c.workQueue.AddRateLimited(key)
+		return
+	}
+
 	logger.Errorw("Reconcile error", zap.Duration("duration", time.Since(startTime)), zap.Error(err))
 
 	// Re-queue the key if it's a transient error.
-	// We want to check that the queue is shutting down here
-	// since controller Run might have exited by now (since while this item was
-	// being processed, queue.Len==0).
-	if !IsPermanentError(err) && !c.workQueue.ShuttingDown() {
+	if !IsPermanentError(err) {
 		c.workQueue.AddRateLimited(key)
 		logger.Debugf("Requeuing key %s due to non-permanent error (depth: %d)", safeKey(key), c.workQueue.Len())
 		return

@@ -54,7 +54,7 @@ func (g *reconcilerControllerStubGenerator) Namers(c *generator.Context) namer.N
 
 func (g *reconcilerControllerStubGenerator) Imports(c *generator.Context) (imports []string) {
 	imports = append(imports, g.imports.ImportLines()...)
-	return
+	return imports
 }
 
 func (g *reconcilerControllerStubGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {

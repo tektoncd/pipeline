@@ -73,7 +73,7 @@ func (g *fakeInformerGenerator) Namers(c *generator.Context) namer.NameSystems {
 
 func (g *fakeInformerGenerator) Imports(c *generator.Context) (imports []string) {
 	imports = append(imports, g.imports.ImportLines()...)
-	return
+	return imports
 }
 
 func (g *fakeInformerGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {

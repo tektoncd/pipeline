@@ -26,6 +26,9 @@ import (
 	"github.com/gobuffalo/flect"
 	"go.uber.org/zap"
 	"gomodules.xyz/jsonpatch/v2"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
 	admissionv1 "k8s.io/api/admission/v1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -142,6 +145,10 @@ func (ac *reconciler) Path() string {
 
 // Admit implements AdmissionController
 func (ac *reconciler) Admit(ctx context.Context, request *admissionv1.AdmissionRequest) *admissionv1.AdmissionResponse {
+	// otelhttp middleware creates the labeler
+	labeler, _ := otelhttp.LabelerFromContext(ctx)
+	labeler.Add(webhook.WebhookTypeAttr.With(webhook.WebhookTypeDefaulting))
+
 	if ac.withContext != nil {
 		ctx = ac.withContext(ctx)
 	}
@@ -225,6 +232,7 @@ func (ac *reconciler) reconcileMutatingWebhook(ctx context.Context, caCert []byt
 			return fmt.Errorf("failed to fetch namespace: %w", err)
 		}
 		nsRef := *metav1.NewControllerRef(ns, corev1.SchemeGroupVersion.WithKind("Namespace"))
+		nsRef.Controller = ptr.Bool(false)
 		current.OwnerReferences = []metav1.OwnerReference{nsRef}
 	}
 
