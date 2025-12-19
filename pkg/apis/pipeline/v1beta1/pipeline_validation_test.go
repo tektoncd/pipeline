@@ -168,6 +168,56 @@ func TestPipeline_Validate_Success(t *testing.T) {
 			},
 		},
 	}, {
+		name: "param with different type of values with matrix and invalid result ref",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name: "echo-result",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Results: []TaskResult{{
+							Name: "output",
+							Type: ResultsTypeString,
+						}},
+						Steps: []Step{{
+							Name:   "emit-a-result",
+							Image:  "mirror.gcr.io/bash",
+							Script: "#!/usr/bin/env bash\necho -n \"some data\" | tee $(results.output.path)",
+						}},
+					}},
+				}, {
+					Name: "consume-result",
+					Matrix: &Matrix{
+						Params: Params{{
+							Name: "version", Value: ParamValue{ArrayVal: []string{"1", "2"}},
+						}},
+					},
+					Params: Params{
+						{
+							Name: "bad-input",
+							Value: ParamValue{
+								Type:      ParamTypeString,
+								StringVal: "$(tasks)-$(tasks.echo-result.results.output)",
+							},
+						},
+					},
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Params: []ParamSpec{{
+							Name: "bad-input",
+							Type: ParamTypeString,
+						}},
+						Steps: []Step{{
+							Name:   "consume-the-result",
+							Image:  "mirror.gcr.io/bash",
+							Script: "#!/usr/bin/env bash\necho -n \"input: $(params.bad-input)\"",
+						}},
+					}},
+				}},
+			},
+		},
+	}, {
 		name: "valid pipeline with pipeline task and final task referencing artifacts in task params with enable-artifacts flag true",
 		p: &Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
