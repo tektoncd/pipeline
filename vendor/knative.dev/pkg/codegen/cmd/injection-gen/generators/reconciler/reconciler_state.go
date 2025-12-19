@@ -48,7 +48,7 @@ func (g *reconcilerStateGenerator) Namers(c *generator.Context) namer.NameSystem
 
 func (g *reconcilerStateGenerator) Imports(c *generator.Context) (imports []string) {
 	imports = append(imports, g.imports.ImportLines()...)
-	return
+	return imports
 }
 
 func (g *reconcilerStateGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {

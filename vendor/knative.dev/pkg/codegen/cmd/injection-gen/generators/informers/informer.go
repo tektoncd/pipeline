@@ -73,7 +73,7 @@ func (g *injectionGenerator) Namers(c *generator.Context) namer.NameSystems {
 
 func (g *injectionGenerator) Imports(c *generator.Context) (imports []string) {
 	imports = append(imports, g.imports.ImportLines()...)
-	return
+	return imports
 }
 
 func (g *injectionGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {

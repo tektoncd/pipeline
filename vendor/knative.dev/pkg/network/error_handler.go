@@ -17,6 +17,8 @@ limitations under the License.
 package network
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"os"
 
@@ -29,6 +31,10 @@ import (
 // Deprecated: Use handler.Error instead.
 func ErrorHandler(logger *zap.SugaredLogger) func(http.ResponseWriter, *http.Request, error) {
 	return func(w http.ResponseWriter, req *http.Request, err error) {
+		if errors.Is(err, context.Canceled) {
+			logger.Debugw("request context canceled", zap.Error(err))
+			return
+		}
 		ss := readSockStat(logger)
 		logger.Errorw("error reverse proxying request; sockstat: "+ss, zap.Error(err))
 		http.Error(w, err.Error(), http.StatusBadGateway)

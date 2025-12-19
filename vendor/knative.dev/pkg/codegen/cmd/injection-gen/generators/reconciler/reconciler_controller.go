@@ -58,7 +58,7 @@ func (g *reconcilerControllerGenerator) Namers(c *generator.Context) namer.NameS
 
 func (g *reconcilerControllerGenerator) Imports(c *generator.Context) (imports []string) {
 	imports = append(imports, g.imports.ImportLines()...)
-	return
+	return imports
 }
 
 func (g *reconcilerControllerGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {
@@ -302,6 +302,14 @@ func NewImpl(ctx {{.contextContext|raw}}, r Interface{{if .hasClass}}, classValu
 		}
 		if opts.PromoteFunc != nil {
 			promoteFunc = opts.PromoteFunc
+		}
+		if opts.UseServerSideApplyForFinalizers {
+			if opts.FinalizerFieldManager == "" {
+				logger.Fatal("FinalizerFieldManager must be provided when UseServerSideApplyForFinalizers is enabled")
+			}
+			rec.useServerSideApplyForFinalizers = true
+			rec.finalizerFieldManager = opts.FinalizerFieldManager
+			rec.forceApplyFinalizers = opts.ForceApplyFinalizers
 		}
 	}
 

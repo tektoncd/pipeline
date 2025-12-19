@@ -16,15 +16,20 @@ limitations under the License.
 
 package controller
 
-import "k8s.io/client-go/util/workqueue"
+import (
+	"time"
+
+	"k8s.io/client-go/util/workqueue"
+	"k8s.io/utils/clock"
+)
 
 // twoLaneQueue is a rate limited queue that wraps around two queues
 // -- fast queue (anonymously aliased), whose contents are processed with priority.
 // -- slow queue (slowLane queue), whose contents are processed if fast queue has no items.
 // All the default methods operate on the fast queue, unless noted otherwise.
 type twoLaneQueue struct {
-	workqueue.TypedRateLimitingInterface[any]
-	slowLane workqueue.TypedRateLimitingInterface[any]
+	fastLane workqueue.TypedInterface[any]
+	slowLane workqueue.TypedInterface[any]
 	// consumerQueue is necessary to ensure that we're not reconciling
 	// the same object at the exact same time (e.g. if it had been enqueued
 	// in both fast and slow and is the only object there).
@@ -32,35 +37,94 @@ type twoLaneQueue struct {
 
 	name string
 
-	fastChan chan interface{}
-	slowChan chan interface{}
+	fastChan chan any
+	slowChan chan any
+
+	metrics *queueMetrics
 }
 
+type twoLaneRateLimitingQueue struct {
+	q *twoLaneQueue
+	workqueue.TypedRateLimitingInterface[any]
+}
+
+var _ workqueue.TypedInterface[any] = (*twoLaneQueue)(nil)
+
 // Creates a new twoLaneQueue.
-func newTwoLaneWorkQueue(name string, rl workqueue.TypedRateLimiter[any]) *twoLaneQueue {
+func newTwoLaneWorkQueue(name string, rl workqueue.TypedRateLimiter[any]) *twoLaneRateLimitingQueue {
+	mp := globalMetricsProvider
+
 	tlq := &twoLaneQueue{
-		TypedRateLimitingInterface: workqueue.NewNamedRateLimitingQueue(
-			rl,
-			name+"-fast",
-		),
-		slowLane: workqueue.NewNamedRateLimitingQueue(
-			rl,
-			name+"-slow",
-		),
-		consumerQueue: workqueue.NewNamed(name + "-consumer"),
 		name:          name,
-		fastChan:      make(chan interface{}),
-		slowChan:      make(chan interface{}),
+		fastLane:      workqueue.NewTyped[any](),
+		slowLane:      workqueue.NewTyped[any](),
+		consumerQueue: workqueue.NewTyped[any](),
+		fastChan:      make(chan any),
+		slowChan:      make(chan any),
 	}
+
+	tlq.metrics = createMetrics(tlq, mp, name)
+
 	// Run consumer thread.
 	go tlq.runConsumer()
 	// Run producer threads.
-	go process(tlq.TypedRateLimitingInterface, tlq.fastChan)
+	go process(tlq.fastLane, tlq.fastChan)
 	go process(tlq.slowLane, tlq.slowChan)
-	return tlq
+
+	q := &twoLaneRateLimitingQueue{
+		q: tlq,
+		TypedRateLimitingInterface: workqueue.NewTypedRateLimitingQueueWithConfig(
+			rl,
+			workqueue.TypedRateLimitingQueueConfig[any]{
+				DelayingQueue: workqueue.NewTypedDelayingQueueWithConfig(
+					workqueue.TypedDelayingQueueConfig[any]{
+						Name:            name, // Name needs to be set for retry metrics
+						Queue:           tlq,
+						MetricsProvider: mp,
+					},
+				),
+			},
+		),
+	}
+	return q
 }
 
-func process(q workqueue.TypedInterface[any], ch chan interface{}) {
+func createMetrics(q *twoLaneQueue, mp workqueue.MetricsProvider, name string) *queueMetrics {
+	if mp == noopProvider {
+		return nil
+	}
+
+	m := &queueMetrics{
+		clock:                   clock.RealClock{},
+		depth:                   mp.NewDepthMetric(name),
+		adds:                    mp.NewAddsMetric(name),
+		latency:                 mp.NewLatencyMetric(name),
+		workDuration:            mp.NewWorkDurationMetric(name),
+		unfinishedWorkSeconds:   mp.NewUnfinishedWorkSecondsMetric(name),
+		longestRunningProcessor: mp.NewUnfinishedWorkSecondsMetric(name),
+		addTimes:                make(map[any]time.Time),
+		processingStartTimes:    make(map[any]time.Time),
+	}
+
+	go updateUnfinishedWorkLoop(q)
+
+	return m
+}
+
+func updateUnfinishedWorkLoop(q *twoLaneQueue) {
+	t := time.NewTicker(time.Second)
+	defer t.Stop()
+
+	for range t.C {
+		if q.ShuttingDown() {
+			return
+		}
+
+		q.metrics.updateUnfinishedWork()
+	}
+}
+
+func process(q workqueue.TypedInterface[any], ch chan any) {
 	// Sender closes the channel
 	defer close(ch)
 	for {
@@ -125,32 +189,56 @@ func (tlq *twoLaneQueue) runConsumer() {
 // Shutdown implements workqueue.Interface.
 // Shutdown shuts down both queues.
 func (tlq *twoLaneQueue) ShutDown() {
-	tlq.TypedRateLimitingInterface.ShutDown()
+	tlq.fastLane.ShutDown()
 	tlq.slowLane.ShutDown()
 }
 
 // Done implements workqueue.Interface.
 // Done marks the item as completed in all the queues.
-// NB: this will just re-enqueue the object on the queue that
-// didn't originate the object.
-func (tlq *twoLaneQueue) Done(i interface{}) {
-	tlq.consumerQueue.Done(i)
+// NB: this will just re-enqueue the object on the queue that didn't originate the object.
+func (tlq *twoLaneQueue) Done(item any) {
+	tlq.consumerQueue.Done(item)
+	tlq.metrics.done(item)
+}
+
+func (tlq *twoLaneQueue) Add(item any) {
+	tlq.metrics.add(item)
+	tlq.fastLane.Add(item)
+}
+
+func (q *twoLaneRateLimitingQueue) AddSlow(item any) {
+	q.q.metrics.add(item)
+	q.q.slowLane.Add(item)
+}
+
+func (q *twoLaneRateLimitingQueue) SlowLen() int {
+	return q.q.slowLane.Len()
+}
+
+func (q *twoLaneRateLimitingQueue) slowLane() workqueue.TypedInterface[any] {
+	return q.q.slowLane
 }
 
 // Get implements workqueue.Interface.
 // It gets the item from fast lane if it has anything, alternatively
 // the slow lane.
-func (tlq *twoLaneQueue) Get() (interface{}, bool) {
-	return tlq.consumerQueue.Get()
+func (tlq *twoLaneQueue) Get() (any, bool) {
+	item, shutdown := tlq.consumerQueue.Get()
+	tlq.metrics.get(item)
+	return item, shutdown
 }
 
 // Len returns the sum of lengths.
 // NB: actual _number_ of unique object might be less than this sum.
 func (tlq *twoLaneQueue) Len() int {
-	return tlq.TypedRateLimitingInterface.Len() + tlq.slowLane.Len() + tlq.consumerQueue.Len()
+	return tlq.fastLane.Len() + tlq.slowLane.Len() + tlq.consumerQueue.Len()
 }
 
-// SlowLane gives direct access to the slow queue.
-func (tlq *twoLaneQueue) SlowLane() workqueue.TypedRateLimitingInterface[any] {
-	return tlq.slowLane
+func (tlq *twoLaneQueue) ShutDownWithDrain() {
+	tlq.fastLane.ShutDownWithDrain()
+	tlq.slowLane.ShutDownWithDrain()
+}
+
+func (tlq *twoLaneQueue) ShuttingDown() bool {
+	return tlq.fastLane.ShuttingDown() || tlq.slowLane.ShuttingDown()
 }

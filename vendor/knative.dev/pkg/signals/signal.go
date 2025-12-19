@@ -56,7 +56,7 @@ type signalContext struct {
 
 // Deadline implements context.Context
 func (scc *signalContext) Deadline() (deadline time.Time, ok bool) {
-	return
+	return deadline, ok
 }
 
 // Done implements context.Context

@@ -54,7 +54,7 @@ func (g *filteredFactoryGenerator) Namers(c *generator.Context) namer.NameSystem
 
 func (g *filteredFactoryGenerator) Imports(c *generator.Context) (imports []string) {
 	imports = append(imports, g.imports.ImportLines()...)
-	return
+	return imports
 }
 
 func (g *filteredFactoryGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {

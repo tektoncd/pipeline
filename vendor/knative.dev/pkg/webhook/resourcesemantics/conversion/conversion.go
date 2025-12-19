@@ -21,8 +21,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/zap"
-
 	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,6 +32,7 @@ import (
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/logging/logkey"
+	"knative.dev/pkg/webhook"
 )
 
 // Convert implements webhook.ConversionController
@@ -80,6 +81,12 @@ func (r *reconciler) convert(
 	if err != nil {
 		return ret, err
 	}
+
+	// otelhttp middleware creates the labeler
+	labeler, _ := otelhttp.LabelerFromContext(ctx)
+	labeler.Add(
+		webhook.KindAttr.With(inGVK.Kind),
+	)
 
 	inGK := inGVK.GroupKind()
 	conv, ok := r.kinds[inGK]
