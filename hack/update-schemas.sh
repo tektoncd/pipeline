@@ -78,4 +78,21 @@ for file in "${FILES[@]}"; do
   rm -rf "$TEMP_DIR"
 done
 
+# Validate that the generated CRDs are smaller than 256KB
+MAX_SIZE=262144 # 256KB
+FAILED=0
+for file in "${FILES[@]}"; do
+  # Calculate JSON size using yq to simulate the size of the applied configuration
+  SIZE=$(yq -o=json -I=0 . "$file" | wc -c | tr -d ' ')
+  echo "Verified $file JSON size: $SIZE bytes"
+  if [ "$SIZE" -gt "$MAX_SIZE" ]; then
+    echo "ERROR: $file JSON size ($SIZE bytes) exceeds the limit of $MAX_SIZE bytes (256KB)."
+    FAILED=1
+  fi
+done
+
+if [ "$FAILED" -eq 1 ]; then
+  exit 1
+fi
+
 GOFLAGS="${OLDGOFLAGS}"
