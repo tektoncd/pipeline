@@ -28,6 +28,12 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/contrib/instrumentation/runtime"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/trace"
+
+	"github.com/go-logr/zapr"
 	"go.uber.org/automaxprocs/maxprocs" // automatically set GOMAXPROCS based on cgroups
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -39,16 +45,25 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
+	k8stoolmetrics "k8s.io/client-go/tools/metrics"
+	"k8s.io/client-go/util/workqueue"
+	"k8s.io/klog/v2"
 
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	"knative.dev/pkg/configmap"
 	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/leaderelection"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/logging/logkey"
-	"knative.dev/pkg/metrics"
-	"knative.dev/pkg/profiling"
+	"knative.dev/pkg/observability"
+	o11yconfigmap "knative.dev/pkg/observability/configmap"
+	"knative.dev/pkg/observability/metrics"
+	k8smetrics "knative.dev/pkg/observability/metrics/k8s"
+	"knative.dev/pkg/observability/resource"
+	k8sruntime "knative.dev/pkg/observability/runtime/k8s"
+	"knative.dev/pkg/observability/tracing"
 	"knative.dev/pkg/reconciler"
 	"knative.dev/pkg/signals"
 	"knative.dev/pkg/system"
@@ -108,19 +123,21 @@ func GetLeaderElectionConfig(ctx context.Context) (*leaderelection.Config, error
 // 1. provided context,
 // 2. reading from the API server,
 // 3. defaults (if not found).
-func GetObservabilityConfig(ctx context.Context) (*metrics.ObservabilityConfig, error) {
-	if cfg := metrics.GetObservabilityConfig(ctx); cfg != nil {
+func GetObservabilityConfig(ctx context.Context) (*observability.Config, error) {
+	if cfg := observability.GetConfig(ctx); cfg != nil {
 		return cfg, nil
 	}
 
-	observabilityConfigMap, err := kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(ctx, metrics.ConfigMapName(), metav1.GetOptions{})
+	client := kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace())
+	cm, err := client.Get(ctx, o11yconfigmap.Name(), metav1.GetOptions{})
+
 	if apierrors.IsNotFound(err) {
-		return metrics.NewObservabilityConfigFromConfigMap(nil)
-	}
-	if err != nil {
+		return observability.DefaultConfig(), nil
+	} else if err != nil {
 		return nil, err
 	}
-	return metrics.NewObservabilityConfigFromConfigMap(observabilityConfigMap)
+
+	return o11yconfigmap.Parse(cm)
 }
 
 // EnableInjectionOrDie enables Knative Injection and starts the informers.
@@ -229,8 +246,6 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 	log.Printf("Registering %d informers", len(injection.Default.GetInformers()))
 	log.Printf("Registering %d controllers", len(ctors))
 
-	metrics.MemStatsOrDie(ctx)
-
 	// Respect user provided settings, but if omitted customize the default behavior.
 	if cfg.QPS == 0 {
 		// Adjust our client's rate limits based on the number of controllers we are running.
@@ -243,14 +258,15 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 	ctx, startInformers := injection.EnableInjectionOrDie(ctx, cfg)
 
 	logger, atomicLevel := SetupLoggerOrDie(ctx, component)
-	defer flush(logger)
+	defer logger.Sync()
 	ctx = logging.WithLogger(ctx, logger)
+
+	klog.SetLogger(zapr.NewLogger(logger.Desugar()))
 
 	// Override client-go's warning handler to give us nicely printed warnings.
 	rest.SetDefaultWarningHandler(&logging.WarningHandler{Logger: logger})
 
-	profilingHandler := profiling.NewHandler(logger, false)
-	profilingServer := profiling.NewServer(profilingHandler)
+	pprof := k8sruntime.NewProfilingServer(logger.Named("pprof"))
 
 	CheckK8sClientMinimumVersionOrDie(ctx, logger)
 	cmw := SetupConfigMapWatchOrDie(ctx, logger)
@@ -267,35 +283,38 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 			leaderElectionConfig.GetComponentConfig(component))
 	}
 
-	SetupObservabilityOrDie(ctx, component, logger, profilingHandler)
+	mp, tp := SetupObservabilityOrDie(ctx, component, logger, pprof)
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if err := mp.Shutdown(ctx); err != nil {
+			logger.Errorw("Error flushing metrics", zap.Error(err))
+		}
+		if err := tp.Shutdown(ctx); err != nil {
+			logger.Errorw("Error flushing traces", zap.Error(err))
+		}
+	}()
 
 	controllers, webhooks := ControllersAndWebhooksFromCtors(ctx, cmw, ctors...)
 	WatchLoggingConfigOrDie(ctx, cmw, logger, atomicLevel, component)
-	WatchObservabilityConfigOrDie(ctx, cmw, profilingHandler, logger, component)
+	WatchObservabilityConfigOrDie(ctx, cmw, pprof, logger, component)
 
 	eg, egCtx := errgroup.WithContext(ctx)
-	eg.Go(profilingServer.ListenAndServe)
+	eg.Go(pprof.ListenAndServe)
 
 	// Many of the webhooks rely on configuration, e.g. configurable defaults, feature flags.
 	// So make sure that we have synchronized our configuration state before launching the
 	// webhooks, so that things are properly initialized.
-	logger.Info("Starting configuration manager...")
+	logger.Info("Starting configmap watcher...")
 	if err := cmw.Start(ctx.Done()); err != nil {
-		logger.Fatalw("Failed to start configuration manager", zap.Error(err))
+		logger.Fatalw("Failed to start configmap watcher", zap.Error(err))
 	}
 
 	// If we have one or more admission controllers, then start the webhook
 	// and pass them in.
 	var wh *webhook.Webhook
 	if len(webhooks) > 0 {
-		// Register webhook metrics
-		opts := webhook.GetOptions(ctx)
-		if opts != nil {
-			webhook.RegisterMetrics(opts.StatsReporterOptions...)
-		} else {
-			webhook.RegisterMetrics()
-		}
-
 		wh, err = webhook.New(ctx, webhooks)
 		if err != nil {
 			logger.Fatalw("Failed to create webhook", zap.Error(err))
@@ -328,7 +347,8 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 	// returns an error.
 	<-egCtx.Done()
 
-	profilingServer.Shutdown(context.Background())
+	pprof.Shutdown(context.Background())
+
 	// Don't forward ErrServerClosed as that indicates we're already shutting down.
 	if err := eg.Wait(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		logger.Errorw("Error while running server", zap.Error(err))
@@ -346,11 +366,6 @@ func healthProbesDisabled(ctx context.Context) bool {
 	return ctx.Value(healthProbesDisabledKey{}) != nil
 }
 
-func flush(logger *zap.SugaredLogger) {
-	logger.Sync()
-	metrics.FlushExporter()
-}
-
 // SetupLoggerOrDie sets up the logger using the config from the given context
 // and returns a logger and atomic level, or dies by calling log.Fatalf.
 func SetupLoggerOrDie(ctx context.Context, component string) (*zap.SugaredLogger, zap.AtomicLevel) {
@@ -360,10 +375,7 @@ func SetupLoggerOrDie(ctx context.Context, component string) (*zap.SugaredLogger
 	}
 	l, level := logging.NewLoggerFromConfig(loggingConfig, component)
 
-	// If PodName is injected into the env vars, set it on the logger.
-	// This is needed for HA components to distinguish logs from different
-	// pods.
-	if pn := os.Getenv("POD_NAME"); pn != "" {
+	if pn := system.PodName(); pn != "" {
 		l = l.With(zap.String(logkey.Pod, pn))
 	}
 
@@ -372,14 +384,75 @@ func SetupLoggerOrDie(ctx context.Context, component string) (*zap.SugaredLogger
 
 // SetupObservabilityOrDie sets up the observability using the config from the given context
 // or dies by calling log.Fatalf.
-func SetupObservabilityOrDie(ctx context.Context, component string, logger *zap.SugaredLogger, profilingHandler *profiling.Handler) {
-	observabilityConfig, err := GetObservabilityConfig(ctx)
+func SetupObservabilityOrDie(
+	ctx context.Context,
+	component string,
+	logger *zap.SugaredLogger,
+	pprof *k8sruntime.ProfilingServer,
+) (*metrics.MeterProvider, *tracing.TracerProvider) {
+	cfg, err := GetObservabilityConfig(ctx)
 	if err != nil {
 		logger.Fatal("Error loading observability configuration: ", err)
 	}
-	observabilityConfigMap := observabilityConfig.GetConfigMap()
-	metrics.ConfigMapWatcher(ctx, component, SecretFetcher(ctx), logger)(&observabilityConfigMap)
-	profilingHandler.UpdateFromConfigMap(&observabilityConfigMap)
+
+	pprof.UpdateFromConfig(cfg.Runtime)
+
+	resource := resource.Default(component)
+
+	meterProvider, err := metrics.NewMeterProvider(
+		ctx,
+		cfg.Metrics,
+		metric.WithView(OTelViews(ctx)...),
+		metric.WithResource(resource),
+	)
+	if err != nil {
+		logger.Fatalw("Failed to setup meter provider", zap.Error(err))
+	}
+
+	otel.SetMeterProvider(meterProvider)
+
+	workQueueMetrics, err := k8smetrics.NewWorkqueueMetricsProvider(
+		k8smetrics.WithMeterProvider(meterProvider),
+	)
+	if err != nil {
+		logger.Fatalw("Failed to setup k8s workqueue metrics", zap.Error(err))
+	}
+
+	workqueue.SetProvider(workQueueMetrics)
+	controller.SetMetricsProvider(workQueueMetrics)
+
+	clientMetrics, err := k8smetrics.NewClientMetricProvider(
+		k8smetrics.WithMeterProvider(meterProvider),
+	)
+	if err != nil {
+		logger.Fatalw("Failed to setup k8s client go metrics", zap.Error(err))
+	}
+
+	k8stoolmetrics.Register(k8stoolmetrics.RegisterOpts{
+		RequestLatency: clientMetrics.RequestLatencyMetric(),
+		RequestResult:  clientMetrics.RequestResultMetric(),
+	})
+
+	err = runtime.Start(
+		runtime.WithMinimumReadMemStatsInterval(cfg.Runtime.ExportInterval),
+	)
+	if err != nil {
+		logger.Fatalw("Failed to start runtime metrics", zap.Error(err))
+	}
+
+	tracerProvider, err := tracing.NewTracerProvider(
+		ctx,
+		cfg.Tracing,
+		trace.WithResource(resource),
+	)
+	if err != nil {
+		logger.Fatalw("Failed to setup trace provider", zap.Error(err))
+	}
+
+	otel.SetTextMapPropagator(tracing.DefaultTextMapPropagator())
+	otel.SetTracerProvider(tracerProvider)
+
+	return meterProvider, tracerProvider
 }
 
 // CheckK8sClientMinimumVersionOrDie checks that the hosting Kubernetes cluster
@@ -424,30 +497,24 @@ func WatchLoggingConfigOrDie(ctx context.Context, cmw *cminformer.InformedWatche
 // WatchObservabilityConfigOrDie establishes a watch of the observability config
 // or dies by calling log.Fatalw. Note, if the config does not exist, it will be
 // defaulted and this method will not die.
-func WatchObservabilityConfigOrDie(ctx context.Context, cmw *cminformer.InformedWatcher, profilingHandler *profiling.Handler, logger *zap.SugaredLogger, component string) {
-	if _, err := kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(ctx, metrics.ConfigMapName(),
-		metav1.GetOptions{}); err == nil {
-		cmw.Watch(metrics.ConfigMapName(),
-			metrics.ConfigMapWatcher(ctx, component, SecretFetcher(ctx), logger),
-			profilingHandler.UpdateFromConfigMap)
-	} else if !apierrors.IsNotFound(err) {
-		logger.Fatalw("Error reading ConfigMap "+metrics.ConfigMapName(), zap.Error(err))
-	}
-}
+func WatchObservabilityConfigOrDie(
+	ctx context.Context,
+	cmw *cminformer.InformedWatcher,
+	pprof *k8sruntime.ProfilingServer,
+	logger *zap.SugaredLogger,
+	component string,
+) {
+	cmName := o11yconfigmap.Name()
+	client := kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace())
 
-// SecretFetcher provides a helper function to fetch individual Kubernetes
-// Secrets (for example, a key for client-side TLS). Note that this is not
-// intended for high-volume usage; the current use is when establishing a
-// metrics client connection in WatchObservabilityConfigOrDie.
-func SecretFetcher(ctx context.Context) metrics.SecretFetcher {
-	// NOTE: Do not use secrets.Get(ctx) here to get a SecretLister, as it will register
-	// a *global* SecretInformer and require cluster-level `secrets.list` permission,
-	// even if you scope down the Lister to a given namespace after requesting it. Instead,
-	// we package up a function from kubeclient.
-	// TODO(evankanderson): If this direct request to the apiserver on each TLS connection
-	// to the opencensus agent is too much load, switch to a cached Secret.
-	return func(name string) (*corev1.Secret, error) {
-		return kubeclient.Get(ctx).CoreV1().Secrets(system.Namespace()).Get(ctx, name, metav1.GetOptions{})
+	observers := []configmap.Observer{
+		pprof.UpdateFromConfigMap,
+	}
+
+	if _, err := client.Get(ctx, cmName, metav1.GetOptions{}); err == nil {
+		cmw.Watch(cmName, observers...)
+	} else if !apierrors.IsNotFound(err) {
+		logger.Fatalw("Error reading ConfigMap "+cmName, zap.Error(err))
 	}
 }
 
@@ -456,13 +523,13 @@ func SecretFetcher(ctx context.Context) metrics.SecretFetcher {
 func ControllersAndWebhooksFromCtors(ctx context.Context,
 	cmw *cminformer.InformedWatcher,
 	ctors ...injection.ControllerConstructor,
-) ([]*controller.Impl, []interface{}) {
+) ([]*controller.Impl, []any) {
 	// Check whether the context has been infused with a leader elector builder.
 	// If it has, then every reconciler we plan to start MUST implement LeaderAware.
 	leEnabled := leaderelection.HasLeaderElection(ctx)
 
 	controllers := make([]*controller.Impl, 0, len(ctors))
-	webhooks := make([]interface{}, 0)
+	webhooks := make([]any, 0)
 	for _, cf := range ctors {
 		ctrl := cf(ctx, cmw)
 		controllers = append(controllers, ctrl)
