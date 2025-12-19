@@ -201,6 +201,7 @@ func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []b
 			return fmt.Errorf("failed to fetch namespace: %w", err)
 		}
 		nsRef := *metav1.NewControllerRef(ns, corev1.SchemeGroupVersion.WithKind("Namespace"))
+		nsRef.Controller = ptr.Bool(false)
 		current.OwnerReferences = []metav1.OwnerReference{nsRef}
 	}
 
