@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: route-land
-      uses: peter-evans/slash-command-dispatch@5c11dc7efead556e3bdabf664302212f79eb26fa # v5.0.1
+      uses: peter-evans/slash-command-dispatch@9bdcd7914ec1b75590b790b844aa3b8eee7c683a # v5.0.2
       with:
         token: ${{ secrets.CHATOPS_TOKEN }}
         config: >
