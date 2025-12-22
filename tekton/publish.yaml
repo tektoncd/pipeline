@@ -92,7 +92,7 @@ spec:
       cp ${DOCKER_CONFIG} /workspace/docker-config.json
 
   - name: create-ko-yaml
-    image: cgr.dev/chainguard/go:latest-dev@sha256:2f71c4d2c68eb401c9311611663d2d12a0632fb29895bbccf3c840d79a4d0f9f
+    image: cgr.dev/chainguard/go:latest-dev@sha256:0cd498638bbca4f98fb7ab77bb7c86c4a5a8f816cf8b38e13f93d68a676071d9
     script: |
       #!/bin/sh
       set -ex
