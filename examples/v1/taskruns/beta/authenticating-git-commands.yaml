@@ -149,6 +149,25 @@ spec:
           # When disable-home-env-overwrite is "true", creds-init credentials
           # will be copied to /root/.ssh by the entrypoint. We just need to
           # overwrite the known_hosts file with that of our test git server.
+
+          # Wait for credentials to be fully copied by the entrypoint.
+          # With native sidecars, there can be a timing race where the script
+          # starts executing before the entrypoint finishes copying credentials.
+          # We need both the private key AND the SSH config file that tells SSH to use it.
+          timeout=30
+          elapsed=0
+          while [ ! -f /root/.ssh/id_ssh-key-for-git ] || [ ! -f /root/.ssh/config ]; do
+            if [ $elapsed -ge $timeout ]; then
+              echo "ERROR: Timed out waiting for credentials to be copied to /root/.ssh/"
+              echo "Expected files: id_ssh-key-for-git and config"
+              echo "Contents of /root/.ssh/:"
+              ls -la /root/.ssh/ || echo "Directory does not exist"
+              exit 1
+            fi
+            sleep 1
+            elapsed=$((elapsed + 1))
+          done
+
           cp /messages/known_hosts /root/.ssh/known_hosts
         fi
 
