@@ -59,12 +59,15 @@ func getTektonNamespace() string {
 // With the fix, reconciliations should stay well below 20 (typically around 10 or less).
 //
 // This test validates the fix by counting actual reconciliations from controller logs.
+//
+// @test:execution=parallel
 func TestPipelineRunExcessiveReconciliation(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	c, namespace := setup(ctx, t)
+	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
