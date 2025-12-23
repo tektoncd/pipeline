@@ -106,6 +106,46 @@ significantly. We do not recommend using the affinity assistant in clusters larg
 node in the cluster must have an appropriate label matching `topologyKey`. If some or all nodes
 are missing the specified `topologyKey` label, it can lead to unintended behavior.
 
+## ServiceAccount Configuration
+
+By default, Affinity Assistant pods inherit the `serviceAccountName` from the PipelineRun's
+`spec.taskRunTemplate.serviceAccountName`. This ensures the Affinity Assistant has the same
+permissions as TaskRun pods, which is particularly important in security-restricted environments
+like OpenShift with Security Context Constraints (SCC).
+
+### Default Behavior
+
+When you specify a ServiceAccount in your PipelineRun, the Affinity Assistant automatically inherits it:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: example-pipelinerun
+spec:
+  taskRunTemplate:
+    serviceAccountName: my-service-account  # Affinity Assistant inherits this
+  pipelineSpec:
+    # ... pipeline definition
+```
+
+### Overriding ServiceAccount
+
+You can override the ServiceAccount for Affinity Assistant pods using the cluster-wide default configuration:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-affinity-assistant-pod-template: |
+    serviceAccountName: affinity-assistant-sa
+    nodeSelector:
+      disktype: ssd
+```
+
 **Note:** Any time during the execution of a `pipelineRun`, if the node with a placeholder Affinity Assistant pod and
 the `taskRun` pods sharing a `workspace` is `cordoned` or disabled for scheduling anything new (`tainted`), the
 `pipelineRun` controller deletes the placeholder pod. The `taskRun` pods on a `cordoned` node continues running

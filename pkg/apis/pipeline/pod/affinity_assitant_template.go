@@ -55,6 +55,14 @@ type AffinityAssistantTemplate struct {
 	// default.
 	// +optional
 	PriorityClassName *string `json:"priorityClassName,omitempty"`
+
+	// ServiceAccountName is the name of the ServiceAccount to use for the affinity assistant pod.
+	// If not specified, the affinity assistant will inherit the serviceAccountName from the
+	// PipelineRun's taskRunTemplate. If that is also not specified, the pod will use the
+	// namespace's default ServiceAccount.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // Equals checks if this Template is identical to the given Template.
