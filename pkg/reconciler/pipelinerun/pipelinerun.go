@@ -295,7 +295,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 				if timeout != config.NoTimeoutDuration {
 					waitTime := timeout - elapsed
 					if finallyWaitTime < waitTime {
-						waitTime = finallyWaitTime
+						return controller.NewRequeueAfter(finallyWaitTime)
 					}
 					return controller.NewRequeueAfter(waitTime)
 				}
