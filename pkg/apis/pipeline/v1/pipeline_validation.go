@@ -163,7 +163,7 @@ func (l PipelineTaskList) validateUsageOfDeclaredPipelineTaskParameters(ctx cont
 }
 
 // ValidateName checks whether the PipelineTask's name is a valid DNS label
-func (pt PipelineTask) ValidateName() *apis.FieldError {
+func (pt *PipelineTask) ValidateName() *apis.FieldError {
 	if err := validation.IsDNS1123Label(pt.Name); len(err) > 0 {
 		return &apis.FieldError{
 			Message: fmt.Sprintf("invalid value %q", pt.Name),
@@ -177,7 +177,7 @@ func (pt PipelineTask) ValidateName() *apis.FieldError {
 
 // Validate classifies whether a task is a custom task or a regular task(dag/final)
 // calls the validation routine based on the type of the task
-func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
+func (pt *PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(pt.validateRefOrSpec(ctx))
 
 	errs = errs.Also(pt.validateEnabledInlineSpec(ctx))
@@ -209,7 +209,7 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 }
 
 // ValidateOnError validates the OnError field of a PipelineTask
-func (pt PipelineTask) ValidateOnError(ctx context.Context) (errs *apis.FieldError) {
+func (pt *PipelineTask) ValidateOnError(ctx context.Context) (errs *apis.FieldError) {
 	if pt.OnError != "" && !isParamRefs(string(pt.OnError)) {
 		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "OnError", config.BetaAPIFields))
 		if pt.OnError != PipelineTaskContinue && pt.OnError != PipelineTaskStopAndFail {
@@ -234,7 +234,7 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 	return errs
 }
 
-func (pt PipelineTask) validateEmbeddedOrType() (errs *apis.FieldError) {
+func (pt *PipelineTask) validateEmbeddedOrType() (errs *apis.FieldError) {
 	// Reject cases where APIVersion and/or Kind are specified alongside an embedded Task.
 	// We determine if this is an embedded Task by checking of TaskSpec.TaskSpec.Steps has items.
 	if pt.TaskSpec != nil && len(pt.TaskSpec.TaskSpec.Steps) > 0 {
@@ -283,7 +283,7 @@ func (pt *PipelineTask) validateWorkspaces(workspaceNames sets.String) (errs *ap
 
 // validateEnabledInlineSpec validates that pipelineSpec or taskSpec is allowed by checking
 // disable-inline-spec field
-func (pt PipelineTask) validateEnabledInlineSpec(ctx context.Context) (errs *apis.FieldError) {
+func (pt *PipelineTask) validateEnabledInlineSpec(ctx context.Context) (errs *apis.FieldError) {
 	if pt.TaskSpec != nil {
 		if slices.Contains(strings.Split(
 			config.FromContextOrDefaults(ctx).FeatureFlags.DisableInlineSpec, ","), "pipeline") {
@@ -300,7 +300,7 @@ func (pt PipelineTask) validateEnabledInlineSpec(ctx context.Context) (errs *api
 }
 
 // validateRefOrSpec validates at least one of taskRef or taskSpec or pipelineRef or pipelineSpec is specified
-func (pt PipelineTask) validateRefOrSpec(ctx context.Context) (errs *apis.FieldError) {
+func (pt *PipelineTask) validateRefOrSpec(ctx context.Context) (errs *apis.FieldError) {
 	// collect all the specified specifications
 	nonNilFields := []string{}
 	if pt.TaskRef != nil {
@@ -337,7 +337,7 @@ func (pt PipelineTask) validateRefOrSpec(ctx context.Context) (errs *apis.FieldE
 }
 
 // validateCustomTask validates custom task specifications - checking kind and fail if not yet supported features specified
-func (pt PipelineTask) validateCustomTask() (errs *apis.FieldError) {
+func (pt *PipelineTask) validateCustomTask() (errs *apis.FieldError) {
 	if pt.TaskRef != nil && pt.TaskRef.Kind == "" {
 		errs = errs.Also(apis.ErrInvalidValue("custom task ref must specify kind", "taskRef.kind"))
 	}
@@ -354,7 +354,7 @@ func (pt PipelineTask) validateCustomTask() (errs *apis.FieldError) {
 }
 
 // validateTask validates a pipeline task or a final task for taskRef and taskSpec
-func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError) {
+func (pt *PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError) {
 	// Validate TaskSpec if it's present
 	if pt.TaskSpec != nil {
 		errs = errs.Also(pt.TaskSpec.Validate(ctx).ViaField(taskSpec))
