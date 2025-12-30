@@ -1,0 +1,1876 @@
+{
+  "$id": "https://tekton.dev/schemas/v1/pipelinerun.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "PipelineRun represents a single execution of a Pipeline. PipelineRuns are how\nthe graph of Tasks declared in a Pipeline are executed; they specify inputs\nto Pipelines such as parameter values and capture operational aspects of the\nTasks execution such as service account and tolerations. Creating a\nPipelineRun creates TaskRuns for Tasks in the referenced Pipeline.",
+  "properties": {
+    "apiVersion": {
+      "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+      "type": "string"
+    },
+    "kind": {
+      "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "spec": {
+      "description": "PipelineRunSpec defines the desired state of PipelineRun",
+      "properties": {
+        "managedBy": {
+          "description": "ManagedBy indicates which controller is responsible for reconciling\nthis resource. If unset or set to \"tekton.dev/pipeline\", the default\nTekton controller will manage this resource.\nThis field is immutable.",
+          "type": "string"
+        },
+        "params": {
+          "description": "Params is a list of parameter names and values.",
+          "items": {
+            "description": "Param declares an ParamValues to use for the parameter called name.",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "value": {}
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "pipelineRef": {
+          "description": "PipelineRef can be used to refer to a specific instance of a Pipeline.",
+          "properties": {
+            "apiVersion": {
+              "description": "API version of the referent",
+              "type": "string"
+            },
+            "name": {
+              "description": "Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names",
+              "type": "string"
+            },
+            "params": {
+              "description": "Params contains the parameters used to identify the\nreferenced Tekton resource. Example entries might include\n\"repo\" or \"path\" but the set of params ultimately depends on\nthe chosen resolver.",
+              "items": {
+                "description": "Param declares an ParamValues to use for the parameter called name.",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "value": {}
+                },
+                "required": [
+                  "name",
+                  "value"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "resolver": {
+              "description": "Resolver is the name of the resolver that should perform\nresolution of the referenced Tekton resource, such as \"git\".",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "pipelineSpec": {
+          "description": "Specifying PipelineSpec can be disabled by setting\n`disable-inline-spec` feature flag.\nSee Pipeline.spec (API version: tekton.dev/v1)"
+        },
+        "status": {
+          "description": "Used for cancelling a pipelinerun (and maybe more later on)",
+          "type": "string"
+        },
+        "taskRunSpecs": {
+          "description": "TaskRunSpecs holds a set of runtime specs",
+          "items": {
+            "description": "PipelineTaskRunSpec  can be used to configure specific\nspecs for a concrete Task",
+            "properties": {
+              "computeResources": {
+                "description": "Compute resources to use for this TaskRun",
+                "properties": {
+                  "claims": {
+                    "description": "Claims lists the names of resources, defined in spec.resourceClaims,\nthat are used by this container.\n\nThis is an alpha field and requires enabling the\nDynamicResourceAllocation feature gate.\n\nThis field is immutable. It can only be set for containers.",
+                    "items": {
+                      "description": "ResourceClaim references one entry in PodSpec.ResourceClaims.",
+                      "properties": {
+                        "name": {
+                          "description": "Name must match the name of one entry in pod.spec.resourceClaims of\nthe Pod where this field is used. It makes that resource available\ninside a container.",
+                          "type": "string"
+                        },
+                        "request": {
+                          "description": "Request is the name chosen for a request in the referenced claim.\nIf empty, everything from the claim is made available, otherwise\nonly the result of this request.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "limits": {
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
+                    },
+                    "description": "Limits describes the maximum amount of compute resources allowed.\nMore info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+                    "type": "object"
+                  },
+                  "requests": {
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
+                    },
+                    "description": "Requests describes the minimum amount of compute resources required.\nIf Requests is omitted for a container, it defaults to Limits if that is explicitly specified,\notherwise to an implementation-defined value. Requests cannot exceed Limits.\nMore info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              },
+              "metadata": {
+                "description": "PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask",
+                "properties": {
+                  "annotations": {
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "labels": {
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              },
+              "pipelineTaskName": {
+                "type": "string"
+              },
+              "podTemplate": {
+                "description": "PodTemplate holds pod specific configuration",
+                "properties": {
+                  "affinity": {
+                    "description": "If specified, the pod's scheduling constraints.\nSee Pod.spec.affinity (API version: v1)"
+                  },
+                  "automountServiceAccountToken": {
+                    "description": "AutomountServiceAccountToken indicates whether pods running as this\nservice account should have an API token automatically mounted.",
+                    "type": "boolean"
+                  },
+                  "dnsConfig": {
+                    "description": "Specifies the DNS parameters of a pod.\nParameters specified here will be merged to the generated DNS\nconfiguration based on DNSPolicy.",
+                    "properties": {
+                      "nameservers": {
+                        "description": "A list of DNS name server IP addresses.\nThis will be appended to the base nameservers generated from DNSPolicy.\nDuplicated nameservers will be removed.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "options": {
+                        "description": "A list of DNS resolver options.\nThis will be merged with the base options generated from DNSPolicy.\nDuplicated entries will be removed. Resolution options given in Options\nwill override those that appear in the base DNSPolicy.",
+                        "items": {
+                          "description": "PodDNSConfigOption defines DNS resolver options of a pod.",
+                          "properties": {
+                            "name": {
+                              "description": "Name is this DNS resolver option's name.\nRequired.",
+                              "type": "string"
+                            },
+                            "value": {
+                              "description": "Value is this DNS resolver option's value.",
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      "searches": {
+                        "description": "A list of DNS search domains for host-name lookup.\nThis will be appended to the base search paths generated from DNSPolicy.\nDuplicated search paths will be removed.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "dnsPolicy": {
+                    "description": "Set DNS policy for the pod. Defaults to \"ClusterFirst\". Valid values are\n'ClusterFirst', 'Default' or 'None'. DNS parameters given in DNSConfig\nwill be merged with the policy selected with DNSPolicy.",
+                    "type": "string"
+                  },
+                  "enableServiceLinks": {
+                    "description": "EnableServiceLinks indicates whether information about services should be injected into pod's\nenvironment variables, matching the syntax of Docker links.\nOptional: Defaults to true.",
+                    "type": "boolean"
+                  },
+                  "env": {
+                    "description": "List of environment variables that can be provided to the containers belonging to the pod.",
+                    "items": {
+                      "description": "EnvVar represents an environment variable present in a Container.",
+                      "properties": {
+                        "name": {
+                          "description": "Name of the environment variable. Must be a C_IDENTIFIER.",
+                          "type": "string"
+                        },
+                        "value": {
+                          "description": "Variable references $(VAR_NAME) are expanded\nusing the previously defined environment variables in the container and\nany service environment variables. If a variable cannot be resolved,\nthe reference in the input string will be unchanged. Double $$ are reduced\nto a single $, which allows for escaping the $(VAR_NAME) syntax: i.e.\n\"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\".\nEscaped references will never be expanded, regardless of whether the variable\nexists or not.\nDefaults to \"\".",
+                          "type": "string"
+                        },
+                        "valueFrom": {
+                          "description": "Source for the environment variable's value. Cannot be used if value is not empty.",
+                          "properties": {
+                            "configMapKeyRef": {
+                              "description": "Selects a key of a ConfigMap.",
+                              "properties": {
+                                "key": {
+                                  "description": "The key to select.",
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "default": "",
+                                  "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                                  "type": "string"
+                                },
+                                "optional": {
+                                  "description": "Specify whether the ConfigMap or its key must be defined",
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "key"
+                              ],
+                              "type": "object"
+                            },
+                            "fieldRef": {
+                              "description": "Selects a field of the pod: supports metadata.name, metadata.namespace, `metadata.labels['\u003cKEY\u003e']`, `metadata.annotations['\u003cKEY\u003e']`,\nspec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.",
+                              "properties": {
+                                "apiVersion": {
+                                  "description": "Version of the schema the FieldPath is written in terms of, defaults to \"v1\".",
+                                  "type": "string"
+                                },
+                                "fieldPath": {
+                                  "description": "Path of the field to select in the specified API version.",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "fieldPath"
+                              ],
+                              "type": "object"
+                            },
+                            "resourceFieldRef": {
+                              "description": "Selects a resource of the container: only resources limits and requests\n(limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.",
+                              "properties": {
+                                "containerName": {
+                                  "description": "Container name: required for volumes, optional for env vars",
+                                  "type": "string"
+                                },
+                                "divisor": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "type": "string"
+                                    }
+                                  ],
+                                  "description": "Specifies the output format of the exposed resources, defaults to \"1\"",
+                                  "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
+                                },
+                                "resource": {
+                                  "description": "Required: resource to select",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "resource"
+                              ],
+                              "type": "object"
+                            },
+                            "secretKeyRef": {
+                              "description": "Selects a key of a secret in the pod's namespace",
+                              "properties": {
+                                "key": {
+                                  "description": "The key of the secret to select from.  Must be a valid secret key.",
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "default": "",
+                                  "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                                  "type": "string"
+                                },
+                                "optional": {
+                                  "description": "Specify whether the Secret or its key must be defined",
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "key"
+                              ],
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "hostAliases": {
+                    "description": "HostAliases is an optional list of hosts and IPs that will be injected into the pod's hosts\nfile if specified. This is only valid for non-hostNetwork pods.",
+                    "items": {
+                      "description": "HostAlias holds the mapping between IP and hostnames that will be injected as an entry in the\npod's hosts file.",
+                      "properties": {
+                        "hostnames": {
+                          "description": "Hostnames for the above IP address.",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "ip": {
+                          "description": "IP address of the host file entry.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ip"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "hostNetwork": {
+                    "description": "HostNetwork specifies whether the pod may use the node network namespace",
+                    "type": "boolean"
+                  },
+                  "hostUsers": {
+                    "description": "HostUsers indicates whether the pod will use the host's user namespace.\nOptional: Default to true.\nIf set to true or not present, the pod will be run in the host user namespace, useful\nfor when the pod needs a feature only available to the host user namespace, such as\nloading a kernel module with CAP_SYS_MODULE.\nWhen set to false, a new user namespace is created for the pod. Setting false\nis useful to mitigating container breakout vulnerabilities such as allowing\ncontainers to run as root without their user having root privileges on the host.\nThis field depends on the kubernetes feature gate UserNamespacesSupport being enabled.",
+                    "type": "boolean"
+                  },
+                  "imagePullSecrets": {
+                    "description": "ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified",
+                    "items": {
+                      "description": "LocalObjectReference contains enough information to let you locate the\nreferenced object inside the same namespace.",
+                      "properties": {
+                        "name": {
+                          "default": "",
+                          "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "nodeSelector": {
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "description": "NodeSelector is a selector which must be true for the pod to fit on a node.\nSelector which must match a node's labels for the pod to be scheduled on that node.\nMore info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
+                    "type": "object"
+                  },
+                  "priorityClassName": {
+                    "description": "If specified, indicates the pod's priority. \"system-node-critical\" and\n\"system-cluster-critical\" are two special keywords which indicate the\nhighest priorities with the former being the highest priority. Any other\nname must be defined by creating a PriorityClass object with that name.\nIf not specified, the pod priority will be default or zero if there is no\ndefault.",
+                    "type": "string"
+                  },
+                  "runtimeClassName": {
+                    "description": "RuntimeClassName refers to a RuntimeClass object in the node.k8s.io\ngroup, which should be used to run this pod. If no RuntimeClass resource\nmatches the named class, the pod will not be run. If unset or empty, the\n\"legacy\" RuntimeClass will be used, which is an implicit class with an\nempty definition that uses the default runtime handler.\nMore info: https://git.k8s.io/enhancements/keps/sig-node/runtime-class.md\nThis is a beta feature as of Kubernetes v1.14.",
+                    "type": "string"
+                  },
+                  "schedulerName": {
+                    "description": "SchedulerName specifies the scheduler to be used to dispatch the Pod",
+                    "type": "string"
+                  },
+                  "securityContext": {
+                    "description": "SecurityContext holds pod-level security attributes and common container settings.\nOptional: Defaults to empty.  See type description for default values of each field.\nSee Pod.spec.securityContext (API version: v1)"
+                  },
+                  "tolerations": {
+                    "description": "If specified, the pod's tolerations.",
+                    "items": {
+                      "description": "The pod this Toleration is attached to tolerates any taint that matches\nthe triple \u003ckey,value,effect\u003e using the matching operator \u003coperator\u003e.",
+                      "properties": {
+                        "effect": {
+                          "description": "Effect indicates the taint effect to match. Empty means match all taint effects.\nWhen specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.",
+                          "type": "string"
+                        },
+                        "key": {
+                          "description": "Key is the taint key that the toleration applies to. Empty means match all taint keys.\nIf the key is empty, operator must be Exists; this combination means to match all values and all keys.",
+                          "type": "string"
+                        },
+                        "operator": {
+                          "description": "Operator represents a key's relationship to the value.\nValid operators are Exists and Equal. Defaults to Equal.\nExists is equivalent to wildcard for value, so that a pod can\ntolerate all taints of a particular category.",
+                          "type": "string"
+                        },
+                        "tolerationSeconds": {
+                          "description": "TolerationSeconds represents the period of time the toleration (which must be\nof effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,\nit is not set, which means tolerate the taint forever (do not evict). Zero and\nnegative values will be treated as 0 (evict immediately) by the system.",
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "value": {
+                          "description": "Value is the taint value the toleration matches to.\nIf the operator is Exists, the value should be empty, otherwise just a regular string.",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "topologySpreadConstraints": {
+                    "description": "TopologySpreadConstraints controls how Pods are spread across your cluster among\nfailure-domains such as regions, zones, nodes, and other user-defined topology domains.",
+                    "items": {
+                      "description": "TopologySpreadConstraint specifies how to spread matching pods among the given topology.",
+                      "properties": {
+                        "labelSelector": {
+                          "description": "LabelSelector is used to find matching pods.\nPods that match this label selector are counted to determine the number of pods\nin their corresponding topology domain.",
+                          "properties": {
+                            "matchExpressions": {
+                              "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
+                              "items": {
+                                "description": "A label selector requirement is a selector that contains values, a key, and an operator that\nrelates the key and values.",
+                                "properties": {
+                                  "key": {
+                                    "description": "key is the label key that the selector applies to.",
+                                    "type": "string"
+                                  },
+                                  "operator": {
+                                    "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and DoesNotExist.",
+                                    "type": "string"
+                                  },
+                                  "values": {
+                                    "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or DoesNotExist,\nthe values array must be empty. This array is replaced during a strategic\nmerge patch.",
+                                    "items": {
+                                      "type": "string"
+                                    },
+                                    "type": "array"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "operator"
+                                ],
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            "matchLabels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels\nmap is equivalent to an element of matchExpressions, whose key field is \"key\", the\noperator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "matchLabelKeys": {
+                          "description": "MatchLabelKeys is a set of pod label keys to select the pods over which\nspreading will be calculated. The keys are used to lookup values from the\nincoming pod labels, those key-value labels are ANDed with labelSelector\nto select the group of existing pods over which spreading will be calculated\nfor the incoming pod. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector.\nMatchLabelKeys cannot be set when LabelSelector isn't set.\nKeys that don't exist in the incoming pod labels will\nbe ignored. A null or empty list means only match against labelSelector.\n\nThis is a beta field and requires the MatchLabelKeysInPodTopologySpread feature gate to be enabled (enabled by default).",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "maxSkew": {
+                          "description": "MaxSkew describes the degree to which pods may be unevenly distributed.\nWhen `whenUnsatisfiable=DoNotSchedule`, it is the maximum permitted difference\nbetween the number of matching pods in the target topology and the global minimum.\nThe global minimum is the minimum number of matching pods in an eligible domain\nor zero if the number of eligible domains is less than MinDomains.\nFor example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same\nlabelSelector spread as 2/2/1:\nIn this case, the global minimum is 1.\n| zone1 | zone2 | zone3 |\n|  P P  |  P P  |   P   |\n- if MaxSkew is 1, incoming pod can only be scheduled to zone3 to become 2/2/2;\nscheduling it onto zone1(zone2) would make the ActualSkew(3-1) on zone1(zone2)\nviolate MaxSkew(1).\n- if MaxSkew is 2, incoming pod can be scheduled onto any zone.\nWhen `whenUnsatisfiable=ScheduleAnyway`, it is used to give higher precedence\nto topologies that satisfy it.\nIt's a required field. Default value is 1 and 0 is not allowed.",
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "minDomains": {
+                          "description": "MinDomains indicates a minimum number of eligible domains.\nWhen the number of eligible domains with matching topology keys is less than minDomains,\nPod Topology Spread treats \"global minimum\" as 0, and then the calculation of Skew is performed.\nAnd when the number of eligible domains with matching topology keys equals or greater than minDomains,\nthis value has no effect on scheduling.\nAs a result, when the number of eligible domains is less than minDomains,\nscheduler won't schedule more than maxSkew Pods to those domains.\nIf value is nil, the constraint behaves as if MinDomains is equal to 1.\nValid values are integers greater than 0.\nWhen value is not nil, WhenUnsatisfiable must be DoNotSchedule.\n\nFor example, in a 3-zone cluster, MaxSkew is set to 2, MinDomains is set to 5 and pods with the same\nlabelSelector spread as 2/2/2:\n| zone1 | zone2 | zone3 |\n|  P P  |  P P  |  P P  |\nThe number of domains is less than 5(MinDomains), so \"global minimum\" is treated as 0.\nIn this situation, new pod with the same labelSelector cannot be scheduled,\nbecause computed skew will be 3(3 - 0) if new Pod is scheduled to any of the three zones,\nit will violate MaxSkew.",
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "nodeAffinityPolicy": {
+                          "description": "NodeAffinityPolicy indicates how we will treat Pod's nodeAffinity/nodeSelector\nwhen calculating pod topology spread skew. Options are:\n- Honor: only nodes matching nodeAffinity/nodeSelector are included in the calculations.\n- Ignore: nodeAffinity/nodeSelector are ignored. All nodes are included in the calculations.\n\nIf this value is nil, the behavior is equivalent to the Honor policy.\nThis is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.",
+                          "type": "string"
+                        },
+                        "nodeTaintsPolicy": {
+                          "description": "NodeTaintsPolicy indicates how we will treat node taints when calculating\npod topology spread skew. Options are:\n- Honor: nodes without taints, along with tainted nodes for which the incoming pod\nhas a toleration, are included.\n- Ignore: node taints are ignored. All nodes are included.\n\nIf this value is nil, the behavior is equivalent to the Ignore policy.\nThis is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.",
+                          "type": "string"
+                        },
+                        "topologyKey": {
+                          "description": "TopologyKey is the key of node labels. Nodes that have a label with this key\nand identical values are considered to be in the same topology.\nWe consider each \u003ckey, value\u003e as a \"bucket\", and try to put balanced number\nof pods into each bucket.\nWe define a domain as a particular instance of a topology.\nAlso, we define an eligible domain as a domain whose nodes meet the requirements of\nnodeAffinityPolicy and nodeTaintsPolicy.\ne.g. If TopologyKey is \"kubernetes.io/hostname\", each Node is a domain of that topology.\nAnd, if TopologyKey is \"topology.kubernetes.io/zone\", each zone is a domain of that topology.\nIt's a required field.",
+                          "type": "string"
+                        },
+                        "whenUnsatisfiable": {
+                          "description": "WhenUnsatisfiable indicates how to deal with a pod if it doesn't satisfy\nthe spread constraint.\n- DoNotSchedule (default) tells the scheduler not to schedule it.\n- ScheduleAnyway tells the scheduler to schedule the pod in any location,\n  but giving higher precedence to topologies that would help reduce the\n  skew.\nA constraint is considered \"Unsatisfiable\" for an incoming pod\nif and only if every possible node assignment for that pod would violate\n\"MaxSkew\" on some topology.\nFor example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same\nlabelSelector spread as 3/1/1:\n| zone1 | zone2 | zone3 |\n| P P P |   P   |   P   |\nIf WhenUnsatisfiable is set to DoNotSchedule, incoming pod can only be scheduled\nto zone2(zone3) to become 3/2/1(3/1/2) as ActualSkew(2-1) on zone2(zone3) satisfies\nMaxSkew(1). In other words, the cluster can still be imbalanced, but scheduler\nwon't make it *more* imbalanced.\nIt's a required field.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "maxSkew",
+                        "topologyKey",
+                        "whenUnsatisfiable"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "volumes": {
+                    "description": "List of volumes that can be mounted by containers belonging to the pod.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes\nSee Pod.spec.volumes (API version: v1)"
+                  }
+                },
+                "type": "object"
+              },
+              "serviceAccountName": {
+                "type": "string"
+              },
+              "sidecarSpecs": {
+                "items": {
+                  "description": "TaskRunSidecarSpec is used to override the values of a Sidecar in the corresponding Task.",
+                  "properties": {
+                    "computeResources": {
+                      "description": "The resource requirements to apply to the Sidecar.",
+                      "properties": {
+                        "claims": {
+                          "description": "Claims lists the names of resources, defined in spec.resourceClaims,\nthat are used by this container.\n\nThis is an alpha field and requires enabling the\nDynamicResourceAllocation feature gate.\n\nThis field is immutable. It can only be set for containers.",
+                          "items": {
+                            "description": "ResourceClaim references one entry in PodSpec.ResourceClaims.",
+                            "properties": {
+                              "name": {
+                                "description": "Name must match the name of one entry in pod.spec.resourceClaims of\nthe Pod where this field is used. It makes that resource available\ninside a container.",
+                                "type": "string"
+                              },
+                              "request": {
+                                "description": "Request is the name chosen for a request in the referenced claim.\nIf empty, everything from the claim is made available, otherwise\nonly the result of this request.",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "limits": {
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ],
+                            "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
+                          },
+                          "description": "Limits describes the maximum amount of compute resources allowed.\nMore info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+                          "type": "object"
+                        },
+                        "requests": {
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ],
+                            "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
+                          },
+                          "description": "Requests describes the minimum amount of compute resources required.\nIf Requests is omitted for a container, it defaults to Limits if that is explicitly specified,\notherwise to an implementation-defined value. Requests cannot exceed Limits.\nMore info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "name": {
+                      "description": "The name of the Sidecar to override.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "computeResources",
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "stepSpecs": {
+                "items": {
+                  "description": "TaskRunStepSpec is used to override the values of a Step in the corresponding Task.",
+                  "properties": {
+                    "computeResources": {
+                      "description": "The resource requirements to apply to the Step.",
+                      "properties": {
+                        "claims": {
+                          "description": "Claims lists the names of resources, defined in spec.resourceClaims,\nthat are used by this container.\n\nThis is an alpha field and requires enabling the\nDynamicResourceAllocation feature gate.\n\nThis field is immutable. It can only be set for containers.",
+                          "items": {
+                            "description": "ResourceClaim references one entry in PodSpec.ResourceClaims.",
+                            "properties": {
+                              "name": {
+                                "description": "Name must match the name of one entry in pod.spec.resourceClaims of\nthe Pod where this field is used. It makes that resource available\ninside a container.",
+                                "type": "string"
+                              },
+                              "request": {
+                                "description": "Request is the name chosen for a request in the referenced claim.\nIf empty, everything from the claim is made available, otherwise\nonly the result of this request.",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "limits": {
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ],
+                            "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
+                          },
+                          "description": "Limits describes the maximum amount of compute resources allowed.\nMore info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+                          "type": "object"
+                        },
+                        "requests": {
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ],
+                            "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
+                          },
+                          "description": "Requests describes the minimum amount of compute resources required.\nIf Requests is omitted for a container, it defaults to Limits if that is explicitly specified,\notherwise to an implementation-defined value. Requests cannot exceed Limits.\nMore info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "name": {
+                      "description": "The name of the Step to override.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "computeResources",
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "timeout": {
+                "description": "Duration after which the TaskRun times out. Overrides the timeout specified\non the Task's spec if specified. Takes lower precedence to PipelineRun's\n`spec.timeouts.tasks`\nRefer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "taskRunTemplate": {
+          "description": "TaskRunTemplate represent template of taskrun",
+          "properties": {
+            "podTemplate": {
+              "description": "PodTemplate holds pod specific configuration",
+              "properties": {
+                "affinity": {
+                  "description": "If specified, the pod's scheduling constraints.\nSee Pod.spec.affinity (API version: v1)"
+                },
+                "automountServiceAccountToken": {
+                  "description": "AutomountServiceAccountToken indicates whether pods running as this\nservice account should have an API token automatically mounted.",
+                  "type": "boolean"
+                },
+                "dnsConfig": {
+                  "description": "Specifies the DNS parameters of a pod.\nParameters specified here will be merged to the generated DNS\nconfiguration based on DNSPolicy.",
+                  "properties": {
+                    "nameservers": {
+                      "description": "A list of DNS name server IP addresses.\nThis will be appended to the base nameservers generated from DNSPolicy.\nDuplicated nameservers will be removed.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "options": {
+                      "description": "A list of DNS resolver options.\nThis will be merged with the base options generated from DNSPolicy.\nDuplicated entries will be removed. Resolution options given in Options\nwill override those that appear in the base DNSPolicy.",
+                      "items": {
+                        "description": "PodDNSConfigOption defines DNS resolver options of a pod.",
+                        "properties": {
+                          "name": {
+                            "description": "Name is this DNS resolver option's name.\nRequired.",
+                            "type": "string"
+                          },
+                          "value": {
+                            "description": "Value is this DNS resolver option's value.",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "searches": {
+                      "description": "A list of DNS search domains for host-name lookup.\nThis will be appended to the base search paths generated from DNSPolicy.\nDuplicated search paths will be removed.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "dnsPolicy": {
+                  "description": "Set DNS policy for the pod. Defaults to \"ClusterFirst\". Valid values are\n'ClusterFirst', 'Default' or 'None'. DNS parameters given in DNSConfig\nwill be merged with the policy selected with DNSPolicy.",
+                  "type": "string"
+                },
+                "enableServiceLinks": {
+                  "description": "EnableServiceLinks indicates whether information about services should be injected into pod's\nenvironment variables, matching the syntax of Docker links.\nOptional: Defaults to true.",
+                  "type": "boolean"
+                },
+                "env": {
+                  "description": "List of environment variables that can be provided to the containers belonging to the pod.",
+                  "items": {
+                    "description": "EnvVar represents an environment variable present in a Container.",
+                    "properties": {
+                      "name": {
+                        "description": "Name of the environment variable. Must be a C_IDENTIFIER.",
+                        "type": "string"
+                      },
+                      "value": {
+                        "description": "Variable references $(VAR_NAME) are expanded\nusing the previously defined environment variables in the container and\nany service environment variables. If a variable cannot be resolved,\nthe reference in the input string will be unchanged. Double $$ are reduced\nto a single $, which allows for escaping the $(VAR_NAME) syntax: i.e.\n\"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\".\nEscaped references will never be expanded, regardless of whether the variable\nexists or not.\nDefaults to \"\".",
+                        "type": "string"
+                      },
+                      "valueFrom": {
+                        "description": "Source for the environment variable's value. Cannot be used if value is not empty.",
+                        "properties": {
+                          "configMapKeyRef": {
+                            "description": "Selects a key of a ConfigMap.",
+                            "properties": {
+                              "key": {
+                                "description": "The key to select.",
+                                "type": "string"
+                              },
+                              "name": {
+                                "default": "",
+                                "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                                "type": "string"
+                              },
+                              "optional": {
+                                "description": "Specify whether the ConfigMap or its key must be defined",
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "key"
+                            ],
+                            "type": "object"
+                          },
+                          "fieldRef": {
+                            "description": "Selects a field of the pod: supports metadata.name, metadata.namespace, `metadata.labels['\u003cKEY\u003e']`, `metadata.annotations['\u003cKEY\u003e']`,\nspec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.",
+                            "properties": {
+                              "apiVersion": {
+                                "description": "Version of the schema the FieldPath is written in terms of, defaults to \"v1\".",
+                                "type": "string"
+                              },
+                              "fieldPath": {
+                                "description": "Path of the field to select in the specified API version.",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "fieldPath"
+                            ],
+                            "type": "object"
+                          },
+                          "resourceFieldRef": {
+                            "description": "Selects a resource of the container: only resources limits and requests\n(limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.",
+                            "properties": {
+                              "containerName": {
+                                "description": "Container name: required for volumes, optional for env vars",
+                                "type": "string"
+                              },
+                              "divisor": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "type": "string"
+                                  }
+                                ],
+                                "description": "Specifies the output format of the exposed resources, defaults to \"1\"",
+                                "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
+                              },
+                              "resource": {
+                                "description": "Required: resource to select",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "resource"
+                            ],
+                            "type": "object"
+                          },
+                          "secretKeyRef": {
+                            "description": "Selects a key of a secret in the pod's namespace",
+                            "properties": {
+                              "key": {
+                                "description": "The key of the secret to select from.  Must be a valid secret key.",
+                                "type": "string"
+                              },
+                              "name": {
+                                "default": "",
+                                "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                                "type": "string"
+                              },
+                              "optional": {
+                                "description": "Specify whether the Secret or its key must be defined",
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "key"
+                            ],
+                            "type": "object"
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "hostAliases": {
+                  "description": "HostAliases is an optional list of hosts and IPs that will be injected into the pod's hosts\nfile if specified. This is only valid for non-hostNetwork pods.",
+                  "items": {
+                    "description": "HostAlias holds the mapping between IP and hostnames that will be injected as an entry in the\npod's hosts file.",
+                    "properties": {
+                      "hostnames": {
+                        "description": "Hostnames for the above IP address.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "ip": {
+                        "description": "IP address of the host file entry.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "ip"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "hostNetwork": {
+                  "description": "HostNetwork specifies whether the pod may use the node network namespace",
+                  "type": "boolean"
+                },
+                "hostUsers": {
+                  "description": "HostUsers indicates whether the pod will use the host's user namespace.\nOptional: Default to true.\nIf set to true or not present, the pod will be run in the host user namespace, useful\nfor when the pod needs a feature only available to the host user namespace, such as\nloading a kernel module with CAP_SYS_MODULE.\nWhen set to false, a new user namespace is created for the pod. Setting false\nis useful to mitigating container breakout vulnerabilities such as allowing\ncontainers to run as root without their user having root privileges on the host.\nThis field depends on the kubernetes feature gate UserNamespacesSupport being enabled.",
+                  "type": "boolean"
+                },
+                "imagePullSecrets": {
+                  "description": "ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified",
+                  "items": {
+                    "description": "LocalObjectReference contains enough information to let you locate the\nreferenced object inside the same namespace.",
+                    "properties": {
+                      "name": {
+                        "default": "",
+                        "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "nodeSelector": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "NodeSelector is a selector which must be true for the pod to fit on a node.\nSelector which must match a node's labels for the pod to be scheduled on that node.\nMore info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
+                  "type": "object"
+                },
+                "priorityClassName": {
+                  "description": "If specified, indicates the pod's priority. \"system-node-critical\" and\n\"system-cluster-critical\" are two special keywords which indicate the\nhighest priorities with the former being the highest priority. Any other\nname must be defined by creating a PriorityClass object with that name.\nIf not specified, the pod priority will be default or zero if there is no\ndefault.",
+                  "type": "string"
+                },
+                "runtimeClassName": {
+                  "description": "RuntimeClassName refers to a RuntimeClass object in the node.k8s.io\ngroup, which should be used to run this pod. If no RuntimeClass resource\nmatches the named class, the pod will not be run. If unset or empty, the\n\"legacy\" RuntimeClass will be used, which is an implicit class with an\nempty definition that uses the default runtime handler.\nMore info: https://git.k8s.io/enhancements/keps/sig-node/runtime-class.md\nThis is a beta feature as of Kubernetes v1.14.",
+                  "type": "string"
+                },
+                "schedulerName": {
+                  "description": "SchedulerName specifies the scheduler to be used to dispatch the Pod",
+                  "type": "string"
+                },
+                "securityContext": {
+                  "description": "SecurityContext holds pod-level security attributes and common container settings.\nOptional: Defaults to empty.  See type description for default values of each field.\nSee Pod.spec.securityContext (API version: v1)"
+                },
+                "tolerations": {
+                  "description": "If specified, the pod's tolerations.",
+                  "items": {
+                    "description": "The pod this Toleration is attached to tolerates any taint that matches\nthe triple \u003ckey,value,effect\u003e using the matching operator \u003coperator\u003e.",
+                    "properties": {
+                      "effect": {
+                        "description": "Effect indicates the taint effect to match. Empty means match all taint effects.\nWhen specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.",
+                        "type": "string"
+                      },
+                      "key": {
+                        "description": "Key is the taint key that the toleration applies to. Empty means match all taint keys.\nIf the key is empty, operator must be Exists; this combination means to match all values and all keys.",
+                        "type": "string"
+                      },
+                      "operator": {
+                        "description": "Operator represents a key's relationship to the value.\nValid operators are Exists and Equal. Defaults to Equal.\nExists is equivalent to wildcard for value, so that a pod can\ntolerate all taints of a particular category.",
+                        "type": "string"
+                      },
+                      "tolerationSeconds": {
+                        "description": "TolerationSeconds represents the period of time the toleration (which must be\nof effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,\nit is not set, which means tolerate the taint forever (do not evict). Zero and\nnegative values will be treated as 0 (evict immediately) by the system.",
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      "value": {
+                        "description": "Value is the taint value the toleration matches to.\nIf the operator is Exists, the value should be empty, otherwise just a regular string.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "topologySpreadConstraints": {
+                  "description": "TopologySpreadConstraints controls how Pods are spread across your cluster among\nfailure-domains such as regions, zones, nodes, and other user-defined topology domains.",
+                  "items": {
+                    "description": "TopologySpreadConstraint specifies how to spread matching pods among the given topology.",
+                    "properties": {
+                      "labelSelector": {
+                        "description": "LabelSelector is used to find matching pods.\nPods that match this label selector are counted to determine the number of pods\nin their corresponding topology domain.",
+                        "properties": {
+                          "matchExpressions": {
+                            "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
+                            "items": {
+                              "description": "A label selector requirement is a selector that contains values, a key, and an operator that\nrelates the key and values.",
+                              "properties": {
+                                "key": {
+                                  "description": "key is the label key that the selector applies to.",
+                                  "type": "string"
+                                },
+                                "operator": {
+                                  "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and DoesNotExist.",
+                                  "type": "string"
+                                },
+                                "values": {
+                                  "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or DoesNotExist,\nthe values array must be empty. This array is replaced during a strategic\nmerge patch.",
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                }
+                              },
+                              "required": [
+                                "key",
+                                "operator"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "matchLabels": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels\nmap is equivalent to an element of matchExpressions, whose key field is \"key\", the\noperator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
+                            "type": "object"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "matchLabelKeys": {
+                        "description": "MatchLabelKeys is a set of pod label keys to select the pods over which\nspreading will be calculated. The keys are used to lookup values from the\nincoming pod labels, those key-value labels are ANDed with labelSelector\nto select the group of existing pods over which spreading will be calculated\nfor the incoming pod. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector.\nMatchLabelKeys cannot be set when LabelSelector isn't set.\nKeys that don't exist in the incoming pod labels will\nbe ignored. A null or empty list means only match against labelSelector.\n\nThis is a beta field and requires the MatchLabelKeysInPodTopologySpread feature gate to be enabled (enabled by default).",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "maxSkew": {
+                        "description": "MaxSkew describes the degree to which pods may be unevenly distributed.\nWhen `whenUnsatisfiable=DoNotSchedule`, it is the maximum permitted difference\nbetween the number of matching pods in the target topology and the global minimum.\nThe global minimum is the minimum number of matching pods in an eligible domain\nor zero if the number of eligible domains is less than MinDomains.\nFor example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same\nlabelSelector spread as 2/2/1:\nIn this case, the global minimum is 1.\n| zone1 | zone2 | zone3 |\n|  P P  |  P P  |   P   |\n- if MaxSkew is 1, incoming pod can only be scheduled to zone3 to become 2/2/2;\nscheduling it onto zone1(zone2) would make the ActualSkew(3-1) on zone1(zone2)\nviolate MaxSkew(1).\n- if MaxSkew is 2, incoming pod can be scheduled onto any zone.\nWhen `whenUnsatisfiable=ScheduleAnyway`, it is used to give higher precedence\nto topologies that satisfy it.\nIt's a required field. Default value is 1 and 0 is not allowed.",
+                        "format": "int32",
+                        "type": "integer"
+                      },
+                      "minDomains": {
+                        "description": "MinDomains indicates a minimum number of eligible domains.\nWhen the number of eligible domains with matching topology keys is less than minDomains,\nPod Topology Spread treats \"global minimum\" as 0, and then the calculation of Skew is performed.\nAnd when the number of eligible domains with matching topology keys equals or greater than minDomains,\nthis value has no effect on scheduling.\nAs a result, when the number of eligible domains is less than minDomains,\nscheduler won't schedule more than maxSkew Pods to those domains.\nIf value is nil, the constraint behaves as if MinDomains is equal to 1.\nValid values are integers greater than 0.\nWhen value is not nil, WhenUnsatisfiable must be DoNotSchedule.\n\nFor example, in a 3-zone cluster, MaxSkew is set to 2, MinDomains is set to 5 and pods with the same\nlabelSelector spread as 2/2/2:\n| zone1 | zone2 | zone3 |\n|  P P  |  P P  |  P P  |\nThe number of domains is less than 5(MinDomains), so \"global minimum\" is treated as 0.\nIn this situation, new pod with the same labelSelector cannot be scheduled,\nbecause computed skew will be 3(3 - 0) if new Pod is scheduled to any of the three zones,\nit will violate MaxSkew.",
+                        "format": "int32",
+                        "type": "integer"
+                      },
+                      "nodeAffinityPolicy": {
+                        "description": "NodeAffinityPolicy indicates how we will treat Pod's nodeAffinity/nodeSelector\nwhen calculating pod topology spread skew. Options are:\n- Honor: only nodes matching nodeAffinity/nodeSelector are included in the calculations.\n- Ignore: nodeAffinity/nodeSelector are ignored. All nodes are included in the calculations.\n\nIf this value is nil, the behavior is equivalent to the Honor policy.\nThis is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.",
+                        "type": "string"
+                      },
+                      "nodeTaintsPolicy": {
+                        "description": "NodeTaintsPolicy indicates how we will treat node taints when calculating\npod topology spread skew. Options are:\n- Honor: nodes without taints, along with tainted nodes for which the incoming pod\nhas a toleration, are included.\n- Ignore: node taints are ignored. All nodes are included.\n\nIf this value is nil, the behavior is equivalent to the Ignore policy.\nThis is a beta-level feature default enabled by the NodeInclusionPolicyInPodTopologySpread feature flag.",
+                        "type": "string"
+                      },
+                      "topologyKey": {
+                        "description": "TopologyKey is the key of node labels. Nodes that have a label with this key\nand identical values are considered to be in the same topology.\nWe consider each \u003ckey, value\u003e as a \"bucket\", and try to put balanced number\nof pods into each bucket.\nWe define a domain as a particular instance of a topology.\nAlso, we define an eligible domain as a domain whose nodes meet the requirements of\nnodeAffinityPolicy and nodeTaintsPolicy.\ne.g. If TopologyKey is \"kubernetes.io/hostname\", each Node is a domain of that topology.\nAnd, if TopologyKey is \"topology.kubernetes.io/zone\", each zone is a domain of that topology.\nIt's a required field.",
+                        "type": "string"
+                      },
+                      "whenUnsatisfiable": {
+                        "description": "WhenUnsatisfiable indicates how to deal with a pod if it doesn't satisfy\nthe spread constraint.\n- DoNotSchedule (default) tells the scheduler not to schedule it.\n- ScheduleAnyway tells the scheduler to schedule the pod in any location,\n  but giving higher precedence to topologies that would help reduce the\n  skew.\nA constraint is considered \"Unsatisfiable\" for an incoming pod\nif and only if every possible node assignment for that pod would violate\n\"MaxSkew\" on some topology.\nFor example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same\nlabelSelector spread as 3/1/1:\n| zone1 | zone2 | zone3 |\n| P P P |   P   |   P   |\nIf WhenUnsatisfiable is set to DoNotSchedule, incoming pod can only be scheduled\nto zone2(zone3) to become 3/2/1(3/1/2) as ActualSkew(2-1) on zone2(zone3) satisfies\nMaxSkew(1). In other words, the cluster can still be imbalanced, but scheduler\nwon't make it *more* imbalanced.\nIt's a required field.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "maxSkew",
+                      "topologyKey",
+                      "whenUnsatisfiable"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "volumes": {
+                  "description": "List of volumes that can be mounted by containers belonging to the pod.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes\nSee Pod.spec.volumes (API version: v1)"
+                }
+              },
+              "type": "object"
+            },
+            "serviceAccountName": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "timeouts": {
+          "description": "Time after which the Pipeline times out.\nCurrently three keys are accepted in the map\npipeline, tasks and finally\nwith Timeouts.pipeline \u003e= Timeouts.tasks + Timeouts.finally",
+          "properties": {
+            "finally": {
+              "description": "Finally sets the maximum allowed duration of this pipeline's finally",
+              "type": "string"
+            },
+            "pipeline": {
+              "description": "Pipeline sets the maximum allowed duration for execution of the entire pipeline. The sum of individual timeouts for tasks and finally must not exceed this value.",
+              "type": "string"
+            },
+            "tasks": {
+              "description": "Tasks sets the maximum allowed duration of this pipeline's tasks",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "workspaces": {
+          "description": "Workspaces holds a set of workspace bindings that must match names\nwith those declared in the pipeline.",
+          "items": {
+            "description": "WorkspaceBinding maps a Task's declared workspace to a Volume.",
+            "properties": {
+              "configMap": {
+                "description": "ConfigMap represents a configMap that should populate this workspace.",
+                "properties": {
+                  "defaultMode": {
+                    "description": "defaultMode is optional: mode bits used to set permissions on created files by default.\nMust be an octal value between 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values for mode bits.\nDefaults to 0644.\nDirectories within the path are not affected by this setting.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "items": {
+                    "description": "items if unspecified, each key-value pair in the Data field of the referenced\nConfigMap will be projected into the volume as a file whose name is the\nkey and content is the value. If specified, the listed keys will be\nprojected into the specified paths, and unlisted keys will not be\npresent. If a key is specified which is not present in the ConfigMap,\nthe volume setup will error unless it is marked optional. Paths must be\nrelative and may not contain the '..' path or start with '..'.",
+                    "items": {
+                      "description": "Maps a string key to a path within a volume.",
+                      "properties": {
+                        "key": {
+                          "description": "key is the key to project.",
+                          "type": "string"
+                        },
+                        "mode": {
+                          "description": "mode is Optional: mode bits used to set permissions on this file.\nMust be an octal value between 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values for mode bits.\nIf not specified, the volume defaultMode will be used.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "path": {
+                          "description": "path is the relative path of the file to map the key to.\nMay not be an absolute path.\nMay not contain the path element '..'.\nMay not start with the string '..'.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "path"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "name": {
+                    "default": "",
+                    "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                    "type": "string"
+                  },
+                  "optional": {
+                    "description": "optional specify whether the ConfigMap or its keys must be defined",
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "csi": {
+                "description": "CSI (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.",
+                "properties": {
+                  "driver": {
+                    "description": "driver is the name of the CSI driver that handles this volume.\nConsult with your admin for the correct name as registered in the cluster.",
+                    "type": "string"
+                  },
+                  "fsType": {
+                    "description": "fsType to mount. Ex. \"ext4\", \"xfs\", \"ntfs\".\nIf not provided, the empty value is passed to the associated CSI driver\nwhich will determine the default filesystem to apply.",
+                    "type": "string"
+                  },
+                  "nodePublishSecretRef": {
+                    "description": "nodePublishSecretRef is a reference to the secret object containing\nsensitive information to pass to the CSI driver to complete the CSI\nNodePublishVolume and NodeUnpublishVolume calls.\nThis field is optional, and  may be empty if no secret is required. If the\nsecret object contains more than one secret, all secret references are passed.",
+                    "properties": {
+                      "name": {
+                        "default": "",
+                        "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "readOnly": {
+                    "description": "readOnly specifies a read-only configuration for the volume.\nDefaults to false (read/write).",
+                    "type": "boolean"
+                  },
+                  "volumeAttributes": {
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "description": "volumeAttributes stores driver-specific properties that are passed to the CSI\ndriver. Consult your driver's documentation for supported values.",
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "driver"
+                ],
+                "type": "object"
+              },
+              "emptyDir": {
+                "description": "EmptyDir represents a temporary directory that shares a Task's lifetime.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir\nEither this OR PersistentVolumeClaim can be used.",
+                "properties": {
+                  "medium": {
+                    "description": "medium represents what type of storage medium should back this directory.\nThe default is \"\" which means to use the node's default medium.\nMust be an empty string (default) or Memory.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir",
+                    "type": "string"
+                  },
+                  "sizeLimit": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ],
+                    "description": "sizeLimit is the total amount of local storage required for this EmptyDir volume.\nThe size limit is also applicable for memory medium.\nThe maximum usage on memory medium EmptyDir would be the minimum value between\nthe SizeLimit specified here and the sum of memory limits of all containers in a pod.\nThe default is nil which means that the limit is undefined.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir",
+                    "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
+                  }
+                },
+                "type": "object"
+              },
+              "name": {
+                "description": "Name is the name of the workspace populated by the volume.",
+                "type": "string"
+              },
+              "persistentVolumeClaim": {
+                "description": "PersistentVolumeClaimVolumeSource represents a reference to a\nPersistentVolumeClaim in the same namespace. Either this OR EmptyDir can be used.",
+                "properties": {
+                  "claimName": {
+                    "description": "claimName is the name of a PersistentVolumeClaim in the same namespace as the pod using this volume.\nMore info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims",
+                    "type": "string"
+                  },
+                  "readOnly": {
+                    "description": "readOnly Will force the ReadOnly setting in VolumeMounts.\nDefault false.",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "claimName"
+                ],
+                "type": "object"
+              },
+              "projected": {
+                "description": "Projected represents a projected volume that should populate this workspace.",
+                "properties": {
+                  "defaultMode": {
+                    "description": "defaultMode are the mode bits used to set permissions on created files by default.\nMust be an octal value between 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values for mode bits.\nDirectories within the path are not affected by this setting.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "sources": {
+                    "description": "sources is the list of volume projections. Each entry in this list\nhandles one source.",
+                    "items": {
+                      "description": "Projection that may be projected along with other supported volume types.\nExactly one of these fields must be set.",
+                      "properties": {
+                        "clusterTrustBundle": {
+                          "description": "ClusterTrustBundle allows a pod to access the `.spec.trustBundle` field\nof ClusterTrustBundle objects in an auto-updating file.\n\nAlpha, gated by the ClusterTrustBundleProjection feature gate.\n\nClusterTrustBundle objects can either be selected by name, or by the\ncombination of signer name and a label selector.\n\nKubelet performs aggressive normalization of the PEM contents written\ninto the pod filesystem.  Esoteric PEM features such as inter-block\ncomments and block headers are stripped.  Certificates are deduplicated.\nThe ordering of certificates within the file is arbitrary, and Kubelet\nmay change the order over time.",
+                          "properties": {
+                            "labelSelector": {
+                              "description": "Select all ClusterTrustBundles that match this label selector.  Only has\neffect if signerName is set.  Mutually-exclusive with name.  If unset,\ninterpreted as \"match nothing\".  If set but empty, interpreted as \"match\neverything\".",
+                              "properties": {
+                                "matchExpressions": {
+                                  "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
+                                  "items": {
+                                    "description": "A label selector requirement is a selector that contains values, a key, and an operator that\nrelates the key and values.",
+                                    "properties": {
+                                      "key": {
+                                        "description": "key is the label key that the selector applies to.",
+                                        "type": "string"
+                                      },
+                                      "operator": {
+                                        "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and DoesNotExist.",
+                                        "type": "string"
+                                      },
+                                      "values": {
+                                        "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or DoesNotExist,\nthe values array must be empty. This array is replaced during a strategic\nmerge patch.",
+                                        "items": {
+                                          "type": "string"
+                                        },
+                                        "type": "array"
+                                      }
+                                    },
+                                    "required": [
+                                      "key",
+                                      "operator"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  "type": "array"
+                                },
+                                "matchLabels": {
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  },
+                                  "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels\nmap is equivalent to an element of matchExpressions, whose key field is \"key\", the\noperator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
+                                  "type": "object"
+                                }
+                              },
+                              "type": "object"
+                            },
+                            "name": {
+                              "description": "Select a single ClusterTrustBundle by object name.  Mutually-exclusive\nwith signerName and labelSelector.",
+                              "type": "string"
+                            },
+                            "optional": {
+                              "description": "If true, don't block pod startup if the referenced ClusterTrustBundle(s)\naren't available.  If using name, then the named ClusterTrustBundle is\nallowed not to exist.  If using signerName, then the combination of\nsignerName and labelSelector is allowed to match zero\nClusterTrustBundles.",
+                              "type": "boolean"
+                            },
+                            "path": {
+                              "description": "Relative path from the volume root to write the bundle.",
+                              "type": "string"
+                            },
+                            "signerName": {
+                              "description": "Select all ClusterTrustBundles that match this signer name.\nMutually-exclusive with name.  The contents of all selected\nClusterTrustBundles will be unified and deduplicated.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "path"
+                          ],
+                          "type": "object"
+                        },
+                        "configMap": {
+                          "description": "configMap information about the configMap data to project",
+                          "properties": {
+                            "items": {
+                              "description": "items if unspecified, each key-value pair in the Data field of the referenced\nConfigMap will be projected into the volume as a file whose name is the\nkey and content is the value. If specified, the listed keys will be\nprojected into the specified paths, and unlisted keys will not be\npresent. If a key is specified which is not present in the ConfigMap,\nthe volume setup will error unless it is marked optional. Paths must be\nrelative and may not contain the '..' path or start with '..'.",
+                              "items": {
+                                "description": "Maps a string key to a path within a volume.",
+                                "properties": {
+                                  "key": {
+                                    "description": "key is the key to project.",
+                                    "type": "string"
+                                  },
+                                  "mode": {
+                                    "description": "mode is Optional: mode bits used to set permissions on this file.\nMust be an octal value between 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values for mode bits.\nIf not specified, the volume defaultMode will be used.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "path": {
+                                    "description": "path is the relative path of the file to map the key to.\nMay not be an absolute path.\nMay not contain the path element '..'.\nMay not start with the string '..'.",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "path"
+                                ],
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            "name": {
+                              "default": "",
+                              "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                              "type": "string"
+                            },
+                            "optional": {
+                              "description": "optional specify whether the ConfigMap or its keys must be defined",
+                              "type": "boolean"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "downwardAPI": {
+                          "description": "downwardAPI information about the downwardAPI data to project",
+                          "properties": {
+                            "items": {
+                              "description": "Items is a list of DownwardAPIVolume file",
+                              "items": {
+                                "description": "DownwardAPIVolumeFile represents information to create the file containing the pod field",
+                                "properties": {
+                                  "fieldRef": {
+                                    "description": "Required: Selects a field of the pod: only annotations, labels, name, namespace and uid are supported.",
+                                    "properties": {
+                                      "apiVersion": {
+                                        "description": "Version of the schema the FieldPath is written in terms of, defaults to \"v1\".",
+                                        "type": "string"
+                                      },
+                                      "fieldPath": {
+                                        "description": "Path of the field to select in the specified API version.",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "fieldPath"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  "mode": {
+                                    "description": "Optional: mode bits used to set permissions on this file, must be an octal value\nbetween 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values for mode bits.\nIf not specified, the volume defaultMode will be used.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "path": {
+                                    "description": "Required: Path is  the relative path name of the file to be created. Must not be absolute or contain the '..' path. Must be utf-8 encoded. The first item of the relative path must not start with '..'",
+                                    "type": "string"
+                                  },
+                                  "resourceFieldRef": {
+                                    "description": "Selects a resource of the container: only resources limits and requests\n(limits.cpu, limits.memory, requests.cpu and requests.memory) are currently supported.",
+                                    "properties": {
+                                      "containerName": {
+                                        "description": "Container name: required for volumes, optional for env vars",
+                                        "type": "string"
+                                      },
+                                      "divisor": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer"
+                                          },
+                                          {
+                                            "type": "string"
+                                          }
+                                        ],
+                                        "description": "Specifies the output format of the exposed resources, defaults to \"1\"",
+                                        "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
+                                      },
+                                      "resource": {
+                                        "description": "Required: resource to select",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "resource"
+                                    ],
+                                    "type": "object"
+                                  }
+                                },
+                                "required": [
+                                  "path"
+                                ],
+                                "type": "object"
+                              },
+                              "type": "array"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "secret": {
+                          "description": "secret information about the secret data to project",
+                          "properties": {
+                            "items": {
+                              "description": "items if unspecified, each key-value pair in the Data field of the referenced\nSecret will be projected into the volume as a file whose name is the\nkey and content is the value. If specified, the listed keys will be\nprojected into the specified paths, and unlisted keys will not be\npresent. If a key is specified which is not present in the Secret,\nthe volume setup will error unless it is marked optional. Paths must be\nrelative and may not contain the '..' path or start with '..'.",
+                              "items": {
+                                "description": "Maps a string key to a path within a volume.",
+                                "properties": {
+                                  "key": {
+                                    "description": "key is the key to project.",
+                                    "type": "string"
+                                  },
+                                  "mode": {
+                                    "description": "mode is Optional: mode bits used to set permissions on this file.\nMust be an octal value between 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values for mode bits.\nIf not specified, the volume defaultMode will be used.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "path": {
+                                    "description": "path is the relative path of the file to map the key to.\nMay not be an absolute path.\nMay not contain the path element '..'.\nMay not start with the string '..'.",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "path"
+                                ],
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            "name": {
+                              "default": "",
+                              "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                              "type": "string"
+                            },
+                            "optional": {
+                              "description": "optional field specify whether the Secret or its key must be defined",
+                              "type": "boolean"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "serviceAccountToken": {
+                          "description": "serviceAccountToken is information about the serviceAccountToken data to project",
+                          "properties": {
+                            "audience": {
+                              "description": "audience is the intended audience of the token. A recipient of a token\nmust identify itself with an identifier specified in the audience of the\ntoken, and otherwise should reject the token. The audience defaults to the\nidentifier of the apiserver.",
+                              "type": "string"
+                            },
+                            "expirationSeconds": {
+                              "description": "expirationSeconds is the requested duration of validity of the service\naccount token. As the token approaches expiration, the kubelet volume\nplugin will proactively rotate the service account token. The kubelet will\nstart trying to rotate the token if the token is older than 80 percent of\nits time to live or if the token is older than 24 hours.Defaults to 1 hour\nand must be at least 10 minutes.",
+                              "format": "int64",
+                              "type": "integer"
+                            },
+                            "path": {
+                              "description": "path is the path relative to the mount point of the file to project the\ntoken into.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "path"
+                          ],
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "secret": {
+                "description": "Secret represents a secret that should populate this workspace.",
+                "properties": {
+                  "defaultMode": {
+                    "description": "defaultMode is Optional: mode bits used to set permissions on created files by default.\nMust be an octal value between 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values\nfor mode bits. Defaults to 0644.\nDirectories within the path are not affected by this setting.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "items": {
+                    "description": "items If unspecified, each key-value pair in the Data field of the referenced\nSecret will be projected into the volume as a file whose name is the\nkey and content is the value. If specified, the listed keys will be\nprojected into the specified paths, and unlisted keys will not be\npresent. If a key is specified which is not present in the Secret,\nthe volume setup will error unless it is marked optional. Paths must be\nrelative and may not contain the '..' path or start with '..'.",
+                    "items": {
+                      "description": "Maps a string key to a path within a volume.",
+                      "properties": {
+                        "key": {
+                          "description": "key is the key to project.",
+                          "type": "string"
+                        },
+                        "mode": {
+                          "description": "mode is Optional: mode bits used to set permissions on this file.\nMust be an octal value between 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values for mode bits.\nIf not specified, the volume defaultMode will be used.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "path": {
+                          "description": "path is the relative path of the file to map the key to.\nMay not be an absolute path.\nMay not contain the path element '..'.\nMay not start with the string '..'.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "path"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "optional": {
+                    "description": "optional field specify whether the Secret or its keys must be defined",
+                    "type": "boolean"
+                  },
+                  "secretName": {
+                    "description": "secretName is the name of the secret in the pod's namespace to use.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#secret",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "subPath": {
+                "description": "SubPath is optionally a directory on the volume which should be used\nfor this binding (i.e. the volume will be mounted at this sub directory).",
+                "type": "string"
+              },
+              "volumeClaimTemplate": {
+                "description": "VolumeClaimTemplate is a template for a claim that will be created in the same namespace.\nThe PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.\nSee PersistentVolumeClaim (API version: v1)"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "status": {
+      "description": "PipelineRunStatus defines the observed state of PipelineRun",
+      "properties": {
+        "annotations": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Annotations is additional Status fields for the Resource to save some\nadditional State as well as convey more information to the user. This is\nroughly akin to Annotations on any k8s resource, just the reconciler conveying\nricher information outwards.",
+          "type": "object"
+        },
+        "childReferences": {
+          "description": "list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun.",
+          "items": {
+            "description": "ChildStatusReference is used to point to the statuses of individual TaskRuns and Runs within this PipelineRun.",
+            "properties": {
+              "apiVersion": {
+                "type": "string"
+              },
+              "displayName": {
+                "description": "DisplayName is a user-facing name of the pipelineTask that may be\nused to populate a UI.",
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "name": {
+                "description": "Name is the name of the TaskRun or Run this is referencing.",
+                "type": "string"
+              },
+              "pipelineTaskName": {
+                "description": "PipelineTaskName is the name of the PipelineTask this is referencing.",
+                "type": "string"
+              },
+              "whenExpressions": {
+                "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
+                "items": {
+                  "description": "WhenExpression allows a PipelineTask to declare expressions to be evaluated before the Task is run\nto determine whether the Task should be executed or skipped",
+                  "properties": {
+                    "cel": {
+                      "description": "CEL is a string of Common Language Expression, which can be used to conditionally execute\nthe task based on the result of the expression evaluation\nMore info about CEL syntax: https://github.com/google/cel-spec/blob/master/doc/langdef.md",
+                      "type": "string"
+                    },
+                    "input": {
+                      "description": "Input is the string for guard checking which can be a static input or an output from a parent Task",
+                      "type": "string"
+                    },
+                    "operator": {
+                      "description": "Operator that represents an Input's relationship to the values",
+                      "type": "string"
+                    },
+                    "values": {
+                      "description": "Values is an array of strings, which is compared against the input, for guard checking\nIt must be non-empty",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "completionTime": {
+          "description": "CompletionTime is the time the PipelineRun completed.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "items": {
+            "description": "Condition defines a readiness condition for a Knative resource.\nSee: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties",
+            "properties": {
+              "lastTransitionTime": {
+                "description": "LastTransitionTime is the last time the condition transitioned from one status to another.\nWe use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic\ndifferences (all other things held constant).",
+                "type": "string"
+              },
+              "message": {
+                "description": "A human readable message indicating details about the transition.",
+                "type": "string"
+              },
+              "reason": {
+                "description": "The reason for the condition's last transition.",
+                "type": "string"
+              },
+              "severity": {
+                "description": "Severity with which to treat failures of this type of condition.\nWhen this is not specified, it defaults to Error.",
+                "type": "string"
+              },
+              "status": {
+                "description": "Status of the condition, one of True, False, Unknown.",
+                "type": "string"
+              },
+              "type": {
+                "description": "Type of condition.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "type"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "finallyStartTime": {
+          "description": "FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Service that\nwas last processed by the controller.",
+          "format": "int64",
+          "type": "integer"
+        },
+        "pipelineSpec": {
+          "description": "PipelineSpec contains the exact spec used to instantiate the run.\nSee Pipeline.spec (API version: tekton.dev/v1)"
+        },
+        "provenance": {
+          "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
+          "properties": {
+            "featureFlags": {
+              "description": "FeatureFlags identifies the feature flags that were used during the task/pipeline run",
+              "properties": {
+                "awaitSidecarReadiness": {
+                  "type": "boolean"
+                },
+                "coschedule": {
+                  "type": "string"
+                },
+                "disableCredsInit": {
+                  "type": "boolean"
+                },
+                "disableInlineSpec": {
+                  "type": "string"
+                },
+                "enableAPIFields": {
+                  "type": "string"
+                },
+                "enableArtifacts": {
+                  "type": "boolean"
+                },
+                "enableCELInWhenExpression": {
+                  "type": "boolean"
+                },
+                "enableConciseResolverSyntax": {
+                  "type": "boolean"
+                },
+                "enableKeepPodOnCancel": {
+                  "type": "boolean"
+                },
+                "enableKubernetesSidecar": {
+                  "type": "boolean"
+                },
+                "enableParamEnum": {
+                  "type": "boolean"
+                },
+                "enableProvenanceInStatus": {
+                  "type": "boolean"
+                },
+                "enableStepActions": {
+                  "description": "EnableStepActions is a no-op flag since StepActions are stable",
+                  "type": "boolean"
+                },
+                "enableWaitExponentialBackoff": {
+                  "type": "boolean"
+                },
+                "enforceNonfalsifiability": {
+                  "type": "string"
+                },
+                "maxResultSize": {
+                  "type": "integer"
+                },
+                "requireGitSSHSecretKnownHosts": {
+                  "type": "boolean"
+                },
+                "resultExtractionMethod": {
+                  "type": "string"
+                },
+                "runningInEnvWithInjectedSidecars": {
+                  "type": "boolean"
+                },
+                "sendCloudEventsForRuns": {
+                  "type": "boolean"
+                },
+                "setSecurityContext": {
+                  "type": "boolean"
+                },
+                "setSecurityContextReadOnlyRootFilesystem": {
+                  "type": "boolean"
+                },
+                "verificationNoMatchPolicy": {
+                  "description": "VerificationNoMatchPolicy is the feature flag for \"trusted-resources-verification-no-match-policy\"\nVerificationNoMatchPolicy can be set to \"ignore\", \"warn\" and \"fail\" values.\nignore: skip trusted resources verification when no matching verification policies found\nwarn: skip trusted resources verification when no matching verification policies found and log a warning\nfail: fail the taskrun or pipelines run if no matching verification policies found",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "refSource": {
+              "description": "RefSource identifies the source where a remote task/pipeline came from.",
+              "properties": {
+                "digest": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Digest is a collection of cryptographic digests for the contents of the artifact specified by URI.\nExample: {\"sha1\": \"f99d13e554ffcb696dee719fa85b695cb5b0f428\"}",
+                  "type": "object"
+                },
+                "entryPoint": {
+                  "description": "EntryPoint identifies the entry point into the build. This is often a path to a\nbuild definition file and/or a target label within that file.\nExample: \"task/git-clone/0.10/git-clone.yaml\"",
+                  "type": "string"
+                },
+                "uri": {
+                  "description": "URI indicates the identity of the source of the build definition.\nExample: \"https://github.com/tektoncd/catalog\"",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "results": {
+          "description": "Results are the list of results written out by the pipeline task's containers",
+          "items": {
+            "description": "PipelineRunResult used to describe the results of a pipeline",
+            "properties": {
+              "name": {
+                "description": "Name is the result's name as declared by the Pipeline",
+                "type": "string"
+              },
+              "value": {
+                "description": "Value is the result returned from the execution of this PipelineRun"
+              }
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "skippedTasks": {
+          "description": "list of tasks that were skipped due to when expressions evaluating to false",
+          "items": {
+            "description": "SkippedTask is used to describe the Tasks that were skipped due to their When Expressions\nevaluating to False. This is a struct because we are looking into including more details\nabout the When Expressions that caused this Task to be skipped.",
+            "properties": {
+              "name": {
+                "description": "Name is the Pipeline Task name",
+                "type": "string"
+              },
+              "reason": {
+                "description": "Reason is the cause of the PipelineTask being skipped.",
+                "type": "string"
+              },
+              "whenExpressions": {
+                "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
+                "items": {
+                  "description": "WhenExpression allows a PipelineTask to declare expressions to be evaluated before the Task is run\nto determine whether the Task should be executed or skipped",
+                  "properties": {
+                    "cel": {
+                      "description": "CEL is a string of Common Language Expression, which can be used to conditionally execute\nthe task based on the result of the expression evaluation\nMore info about CEL syntax: https://github.com/google/cel-spec/blob/master/doc/langdef.md",
+                      "type": "string"
+                    },
+                    "input": {
+                      "description": "Input is the string for guard checking which can be a static input or an output from a parent Task",
+                      "type": "string"
+                    },
+                    "operator": {
+                      "description": "Operator that represents an Input's relationship to the values",
+                      "type": "string"
+                    },
+                    "values": {
+                      "description": "Values is an array of strings, which is compared against the input, for guard checking\nIt must be non-empty",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "name",
+              "reason"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "spanContext": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "SpanContext contains tracing span context fields",
+          "type": "object"
+        },
+        "startTime": {
+          "description": "StartTime is the time the PipelineRun is actually started.",
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "title": "Tekton PipelineRun v1",
+  "type": "object"
+}

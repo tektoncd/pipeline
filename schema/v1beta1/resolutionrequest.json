@@ -1,0 +1,119 @@
+{
+  "$id": "https://tekton.dev/schemas/v1beta1/resolutionrequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "ResolutionRequest is an object for requesting the content of\na Tekton resource like a pipeline.yaml.",
+  "properties": {
+    "apiVersion": {
+      "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+      "type": "string"
+    },
+    "kind": {
+      "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "spec": {
+      "description": "Spec holds the information for the request part of the resource request.",
+      "properties": {
+        "params": {
+          "description": "Parameters are the runtime attributes passed to\nthe resolver to help it figure out how to resolve the\nresource being requested. For example: repo URL, commit SHA,\npath to file, the kind of authentication to leverage, etc.",
+          "items": {
+            "description": "Param declares an ParamValues to use for the parameter called name.",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "value": {}
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "url": {
+          "description": "URL is the runtime url passed to the resolver\nto help it figure out how to resolver the resource being\nrequested.\nThis is currently at an ALPHA stability level and subject to\nalpha API compatibility policies.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "status": {
+      "description": "Status communicates the state of the request and, ultimately,\nthe content of the resolved resource.",
+      "properties": {
+        "annotations": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Annotations is additional Status fields for the Resource to save some\nadditional State as well as convey more information to the user. This is\nroughly akin to Annotations on any k8s resource, just the reconciler conveying\nricher information outwards.",
+          "type": "object"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "items": {
+            "description": "Condition defines a readiness condition for a Knative resource.\nSee: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties",
+            "properties": {
+              "lastTransitionTime": {
+                "description": "LastTransitionTime is the last time the condition transitioned from one status to another.\nWe use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic\ndifferences (all other things held constant).",
+                "type": "string"
+              },
+              "message": {
+                "description": "A human readable message indicating details about the transition.",
+                "type": "string"
+              },
+              "reason": {
+                "description": "The reason for the condition's last transition.",
+                "type": "string"
+              },
+              "severity": {
+                "description": "Severity with which to treat failures of this type of condition.\nWhen this is not specified, it defaults to Error.",
+                "type": "string"
+              },
+              "status": {
+                "description": "Status of the condition, one of True, False, Unknown.",
+                "type": "string"
+              },
+              "type": {
+                "description": "Type of condition.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "type"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "data": {
+          "description": "Data is a string representation of the resolved content\nof the requested resource in-lined into the ResolutionRequest\nobject.",
+          "type": "string"
+        },
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Service that\nwas last processed by the controller.",
+          "format": "int64",
+          "type": "integer"
+        },
+        "refSource": {
+          "description": "RefSource is the source reference of the remote data that records the url, digest\nand the entrypoint."
+        },
+        "source": {
+          "description": "Deprecated: Use RefSource instead"
+        }
+      },
+      "required": [
+        "data",
+        "refSource",
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  "title": "Tekton ResolutionRequest v1beta1",
+  "type": "object"
+}
