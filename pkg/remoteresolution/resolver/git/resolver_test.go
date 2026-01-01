@@ -215,6 +215,50 @@ func TestValidateParams_Failure(t *testing.T) {
 		})
 	}
 }
+func TestResolver_IsImmutable(t *testing.T) {
+	tests := []struct {
+		name     string
+		revision string
+		want     bool
+	}{
+		{
+			name:     "valid SHA-1 format",
+			revision: "0123456789abcdef0123456789abcdef01234567",
+			want:     true,
+		},
+		{
+			name:     "valid SHA-256 format",
+			revision: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			want:     true,
+		},
+		{
+			name:     "between SHA-1 and SHA-256 - 50 chars",
+			revision: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1",
+			want:     false,
+		},
+		{
+			name:     "empty string",
+			revision: "",
+			want:     false,
+		},
+	}
+	resolver := &Resolver{}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params := []pipelinev1.Param{
+				{
+					Name:  gitresolution.RevisionParam,
+					Value: *pipelinev1.NewStructuredValues(tt.revision),
+				},
+			}
+
+			got := resolver.IsImmutable(params)
+			if got != tt.want {
+				t.Errorf("IsImmutable() = %v, want %v for revision %q", got, tt.want, tt.revision)
+			}
+		})
+	}
+}
 
 func TestGetResolutionTimeoutDefault(t *testing.T) {
 	resolver := Resolver{}

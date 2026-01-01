@@ -22,7 +22,7 @@ This Resolver responds to type `git`.
 | `tokenKey`    | An optional key in the token secret name in the `PipelineRun` namespace to fetch the token from. Defaults to `token`.                                                      | `token`                                                     |
 | `gitToken`       | An optional secret name in the `PipelineRun` namespace to fetch the token from when doing opration with the `git clone`. When empty it will use anonymous cloning. | `secret-gitauth-token` |
 | `gitTokenKey` | An optional key in the token secret name in the `PipelineRun` namespace to fetch the token from when using the `git clone`. Defaults to `token`.                                                      | `token`                                                     |
-| `revision`    | Git revision to checkout a file from. This can be commit SHA, branch or tag.                                                                                               | `aeb957601cf41c012be462827053a21a420befca` `main` `v0.38.2` |
+| `revision`    | Git revision to checkout a file from. This can be commit SHA (SHA-1 or SHA-256), branch or tag.                                                                                               | `aeb957601cf41c012be462827053a21a420befca` `main` `v0.38.2` |
 | `pathInRepo`  | Where to find the file in the repo.                                                                                                                                        | `task/golang-build/0.3/golang-build.yaml`                   |
 | `serverURL`   | An optional server URL (that includes the https:// prefix) to connect for API operations                                                                                   | `https:/github.mycompany.com`                               |
 | `scmType`     | An optional SCM type to use for API operations                                                                                                                             | `github`, `gitlab`, `gitea`                                 |
@@ -386,7 +386,7 @@ spec:
   - If users choose to use anonymous cloning, the url is just user-provided value for the `url` param in the [SPDX download format](https://spdx.github.io/spdx-spec/package-information/#77-package-download-location-field).
   - If scm api is used, it would be the clone URL of the repo fetched from scm repository service in the [SPDX download format](https://spdx.github.io/spdx-spec/package-information/#77-package-download-location-field).
 - `digest`
-  - The algorithm name is fixed "sha1", but subject to be changed to "sha256" once Git eventually uses SHA256 at some point later. See <https://git-scm.com/docs/hash-function-transition> for more details.
+  - The Git resolver supports both SHA-1 and SHA-256 commit hashes for revision validation. See <https://git-scm.com/docs/hash-function-transition> for more details.
   - The value is the actual commit sha at the moment of resolving the resource even if a user provides a tag/branch name for the param `revision`.
 - `entrypoint`: the user-provided value for the `path` param.
 
