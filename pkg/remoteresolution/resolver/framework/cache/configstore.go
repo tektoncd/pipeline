@@ -55,8 +55,8 @@ type Config struct {
 }
 
 type CacheConfigStore struct {
-	untyped         *configmap.UntypedStore
 	cacheConfigName string
+	untyped         *configmap.UntypedStore
 }
 
 func NewCacheConfigStore(cacheConfigName string, logger configmap.Logger) *CacheConfigStore {
