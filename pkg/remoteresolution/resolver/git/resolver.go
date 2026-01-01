@@ -112,7 +112,7 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 }
 
 // IsImmutable implements ImmutabilityChecker.IsImmutable
-// Returns true if the revision parameter is a commit SHA (40-character hex string)
+// Returns true if the revision parameter is a commit SHA (40-character SHA-1 or 64-character SHA-256 hex string)
 func (r *Resolver) IsImmutable(params []v1.Param) bool {
 	var revision string
 	for _, param := range params {
@@ -124,7 +124,7 @@ func (r *Resolver) IsImmutable(params []v1.Param) bool {
 
 	// Checks if the given string looks like a git commit SHA.
 	// A valid commit SHA is exactly 40 characters of hexadecimal.
-	if len(revision) != 40 {
+	if len(revision) != 40 && len(revision) != 64 {
 		return false
 	}
 	for _, r := range revision {
