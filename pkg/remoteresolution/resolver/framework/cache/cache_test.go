@@ -670,6 +670,183 @@ func TestCacheConcurrentReadWrite(t *testing.T) {
 	t.Logf("Concurrent read/write test passed: %d writer entries cached out of %d written", cachedCount, len(writerEntries))
 }
 
+func TestCacheRemove(t *testing.T) {
+	cache := newResolverCache(100, 1*time.Hour)
+	resolverType := "bundle"
+
+	params := []pipelinev1.Param{
+		{Name: "bundle", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "registry.io/repo@sha256:abc123"}},
+	}
+	mockResource := &mockResolvedResource{data: []byte("test data")}
+
+	// Add entry to cache
+	cache.Add(resolverType, params, mockResource)
+
+	// Verify it's in cache
+	if _, ok := cache.Get(resolverType, params); !ok {
+		t.Fatal("Expected cache hit after adding, but got cache miss")
+	}
+
+	// Remove the entry
+	cache.Remove(resolverType, params)
+
+	// Verify it's no longer in cache
+	if _, ok := cache.Get(resolverType, params); ok {
+		t.Fatal("Expected cache miss after Remove(), but got cache hit")
+	}
+}
+
+func TestCacheRemoveNonExistent(t *testing.T) {
+	cache := newResolverCache(100, 1*time.Hour)
+	resolverType := "bundle"
+
+	params := []pipelinev1.Param{
+		{Name: "bundle", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "registry.io/repo@sha256:nonexistent"}},
+	}
+
+	// Remove should not panic even if entry doesn't exist
+	cache.Remove(resolverType, params)
+
+	// Verify cache is still functional
+	if _, ok := cache.Get(resolverType, params); ok {
+		t.Fatal("Expected cache miss for non-existent entry")
+	}
+}
+
+func TestCacheClear(t *testing.T) {
+	cache := newResolverCache(100, 1*time.Hour)
+	resolverType := "bundle"
+
+	// Add multiple entries
+	entries := []struct {
+		params []pipelinev1.Param
+		data   string
+	}{
+		{
+			params: []pipelinev1.Param{
+				{Name: "bundle", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "registry.io/repo1@sha256:aaa"}},
+			},
+			data: "data1",
+		},
+		{
+			params: []pipelinev1.Param{
+				{Name: "bundle", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "registry.io/repo2@sha256:bbb"}},
+			},
+			data: "data2",
+		},
+		{
+			params: []pipelinev1.Param{
+				{Name: "bundle", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "registry.io/repo3@sha256:ccc"}},
+			},
+			data: "data3",
+		},
+	}
+
+	for _, entry := range entries {
+		cache.Add(resolverType, entry.params, &mockResolvedResource{data: []byte(entry.data)})
+	}
+
+	// Verify all entries are in cache
+	for _, entry := range entries {
+		if _, ok := cache.Get(resolverType, entry.params); !ok {
+			t.Fatalf("Expected cache hit for entry with data %s", entry.data)
+		}
+	}
+
+	// Clear the cache
+	cache.Clear()
+
+	// Verify all entries are gone
+	for _, entry := range entries {
+		if _, ok := cache.Get(resolverType, entry.params); ok {
+			t.Errorf("Expected cache miss after Clear() for entry with data %s", entry.data)
+		}
+	}
+}
+
+func TestCacheClearEmpty(t *testing.T) {
+	cache := newResolverCache(100, 1*time.Hour)
+
+	// Clear should not panic on empty cache
+	cache.Clear()
+
+	// Verify cache is still functional after clearing empty cache
+	resolverType := "bundle"
+	params := []pipelinev1.Param{
+		{Name: "bundle", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "registry.io/repo@sha256:abc"}},
+	}
+	mockResource := &mockResolvedResource{data: []byte("test")}
+
+	cache.Add(resolverType, params, mockResource)
+	if _, ok := cache.Get(resolverType, params); !ok {
+		t.Fatal("Cache should be functional after clearing empty cache")
+	}
+}
+
+func TestCacheGetConfigName(t *testing.T) {
+	cache := newResolverCache(100, 1*time.Hour)
+	ctx := t.Context()
+
+	configName := cache.GetConfigName(ctx)
+
+	// Should return the default config name or the env var override
+	if configName == "" {
+		t.Error("GetConfigName() should not return empty string")
+	}
+}
+
+func TestCacheRetrieveAnnotations(t *testing.T) {
+	fc := fakeClock{time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)}
+	cache := newResolverCacheWithClock(100, 1*time.Hour, &fc)
+	resolverType := "bundle"
+
+	params := []pipelinev1.Param{
+		{Name: "bundle", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "registry.io/repo@sha256:abc123"}},
+	}
+	mockResource := &mockResolvedResource{
+		data:        []byte("test data"),
+		annotations: map[string]string{"original-key": "original-value"},
+	}
+
+	// Add entry to cache (this annotates with "store" operation)
+	cache.Add(resolverType, params, mockResource)
+
+	// Advance clock to get different timestamp on retrieve
+	fc.Advance(1 * time.Minute)
+
+	// Retrieve the entry (this should annotate with "retrieve" operation)
+	retrieved, ok := cache.Get(resolverType, params)
+	if !ok {
+		t.Fatal("Expected cache hit")
+	}
+
+	annotations := retrieved.Annotations()
+
+	// Verify cache annotation
+	if annotations["resolution.tekton.dev/cached"] != "true" {
+		t.Errorf("Expected cached annotation to be 'true', got '%s'", annotations["resolution.tekton.dev/cached"])
+	}
+
+	// Verify operation is "retrieve"
+	if annotations["resolution.tekton.dev/cache-operation"] != "retrieve" {
+		t.Errorf("Expected cache-operation to be 'retrieve', got '%s'", annotations["resolution.tekton.dev/cache-operation"])
+	}
+
+	// Verify resolver type
+	if annotations["resolution.tekton.dev/cache-resolver-type"] != resolverType {
+		t.Errorf("Expected cache-resolver-type to be '%s', got '%s'", resolverType, annotations["resolution.tekton.dev/cache-resolver-type"])
+	}
+
+	// Verify timestamp is present and valid RFC3339
+	timestamp := annotations["resolution.tekton.dev/cache-timestamp"]
+	if timestamp == "" {
+		t.Error("Expected cache-timestamp annotation to be present")
+	}
+	if _, err := time.Parse(time.RFC3339, timestamp); err != nil {
+		t.Errorf("Expected valid RFC3339 timestamp, got error: %v", err)
+	}
+}
+
 func TestCacheConcurrentEviction(t *testing.T) {
 	// Test that LRU eviction works correctly under concurrent load
 	maxSize := 50

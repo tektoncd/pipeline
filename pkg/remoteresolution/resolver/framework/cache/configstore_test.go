@@ -17,6 +17,7 @@ limitations under the License.
 package cache
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -262,5 +263,108 @@ func TestOnCacheConfigChangedWithInvalidType(t *testing.T) {
 
 	if cacheAfter.MaxSize() != maxSizeBefore {
 		t.Errorf("Expected MaxSize to remain %d after invalid config, got %d", maxSizeBefore, cacheAfter.MaxSize())
+	}
+}
+
+func TestGetCacheConfigName(t *testing.T) {
+	// Save and restore env var
+	originalValue := os.Getenv(resolverCacheConfigMapNameEnv)
+	defer func() {
+		if originalValue == "" {
+			os.Unsetenv(resolverCacheConfigMapNameEnv)
+		} else {
+			os.Setenv(resolverCacheConfigMapNameEnv, originalValue)
+		}
+	}()
+
+	// Ensure env var is unset for default test
+	os.Unsetenv(resolverCacheConfigMapNameEnv)
+
+	// Test default config name
+	configName := getCacheConfigName()
+	if configName != defaultConfigMapName {
+		t.Errorf("Expected default config name '%s', got '%s'", defaultConfigMapName, configName)
+	}
+}
+
+func TestGetCacheConfigNameWithEnvVar(t *testing.T) {
+	// Save and restore env var
+	originalValue := os.Getenv(resolverCacheConfigMapNameEnv)
+	defer func() {
+		if originalValue == "" {
+			os.Unsetenv(resolverCacheConfigMapNameEnv)
+		} else {
+			os.Setenv(resolverCacheConfigMapNameEnv, originalValue)
+		}
+	}()
+
+	// Set custom config name via env var
+	customName := "custom-cache-config"
+	os.Setenv(resolverCacheConfigMapNameEnv, customName)
+
+	configName := getCacheConfigName()
+	if configName != customName {
+		t.Errorf("Expected custom config name '%s', got '%s'", customName, configName)
+	}
+}
+
+func TestCacheConfigStoreToContext(t *testing.T) {
+	logger := logtesting.TestLogger(t)
+	store := NewCacheConfigStore(getCacheConfigName(), logger)
+
+	ctx := t.Context()
+	ctxWithConfig := store.ToContext(ctx)
+
+	// Verify context contains the config
+	configValue := ctxWithConfig.Value(cacheConfigKey{})
+	if configValue == nil {
+		t.Fatal("Expected config in context but got nil")
+	}
+
+	config, ok := configValue.(*Config)
+	if !ok {
+		t.Fatal("Expected *Config type in context")
+	}
+
+	// Verify default values
+	if config.MaxSize != defaultCacheSize {
+		t.Errorf("Expected default MaxSize %d, got %d", defaultCacheSize, config.MaxSize)
+	}
+	if config.TTL != defaultExpiration {
+		t.Errorf("Expected default TTL %v, got %v", defaultExpiration, config.TTL)
+	}
+}
+
+func TestCacheConfigStoreGetResolverConfig(t *testing.T) {
+	logger := logtesting.TestLogger(t)
+	store := NewCacheConfigStore(getCacheConfigName(), logger)
+
+	config := store.GetResolverConfig()
+	if config == nil {
+		t.Fatal("Expected config but got nil")
+	}
+
+	// Should return default values when no config is loaded
+	if config.MaxSize != defaultCacheSize {
+		t.Errorf("Expected default MaxSize %d, got %d", defaultCacheSize, config.MaxSize)
+	}
+	if config.TTL != defaultExpiration {
+		t.Errorf("Expected default TTL %v, got %v", defaultExpiration, config.TTL)
+	}
+}
+
+func TestNewCacheConfigStore(t *testing.T) {
+	logger := logtesting.TestLogger(t)
+	configName := "test-config"
+
+	store := NewCacheConfigStore(configName, logger)
+	if store == nil {
+		t.Fatal("Expected store but got nil")
+	}
+	if store.cacheConfigName != configName {
+		t.Errorf("Expected config name '%s', got '%s'", configName, store.cacheConfigName)
+	}
+	if store.untyped == nil {
+		t.Error("Expected untyped store to be initialized")
 	}
 }
