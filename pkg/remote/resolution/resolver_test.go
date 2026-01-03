@@ -273,37 +273,46 @@ func TestResolvedRequest_AnnotationPropagation(t *testing.T) {
 		resourceBytes       []byte
 		resolverAnnotations map[string]string
 		expectedAnnotations map[string]string
-	}{{
-		name:          "Task with cache annotations",
-		resourceBytes: taskBytes,
-		resolverAnnotations: map[string]string{
-			"resolution.tekton.dev/cached":              "true",
-			"resolution.tekton.dev/cache-timestamp":     "2025-01-01T00:00:00Z",
-			"resolution.tekton.dev/cache-operation":     "store",
-			"resolution.tekton.dev/cache-resolver-type": "bundles",
+	}{
+		{
+			name:          "Task with cache annotations",
+			resourceBytes: taskBytes,
+			resolverAnnotations: map[string]string{
+				"resolution.tekton.dev/cached":              "true",
+				"resolution.tekton.dev/cache-timestamp":     "2025-01-01T00:00:00Z",
+				"resolution.tekton.dev/cache-operation":     "store",
+				"resolution.tekton.dev/cache-resolver-type": "bundles",
+			},
+			expectedAnnotations: map[string]string{
+				"resolution.tekton.dev/cached":              "true",
+				"resolution.tekton.dev/cache-timestamp":     "2025-01-01T00:00:00Z",
+				"resolution.tekton.dev/cache-operation":     "store",
+				"resolution.tekton.dev/cache-resolver-type": "bundles",
+			},
 		},
-		expectedAnnotations: map[string]string{
-			"resolution.tekton.dev/cached":              "true",
-			"resolution.tekton.dev/cache-timestamp":     "2025-01-01T00:00:00Z",
-			"resolution.tekton.dev/cache-operation":     "store",
-			"resolution.tekton.dev/cache-resolver-type": "bundles",
+		{
+			name:          "Pipeline with cache annotations",
+			resourceBytes: pipelineBytes,
+			resolverAnnotations: map[string]string{
+				"resolution.tekton.dev/cached":              "true",
+				"resolution.tekton.dev/cache-timestamp":     "2025-01-01T00:00:00Z",
+				"resolution.tekton.dev/cache-operation":     "retrieve",
+				"resolution.tekton.dev/cache-resolver-type": "git",
+			},
+			expectedAnnotations: map[string]string{
+				"resolution.tekton.dev/cached":              "true",
+				"resolution.tekton.dev/cache-timestamp":     "2025-01-01T00:00:00Z",
+				"resolution.tekton.dev/cache-operation":     "retrieve",
+				"resolution.tekton.dev/cache-resolver-type": "git",
+			},
 		},
-	}, {
-		name:          "Pipeline with cache annotations",
-		resourceBytes: pipelineBytes,
-		resolverAnnotations: map[string]string{
-			"resolution.tekton.dev/cached":              "true",
-			"resolution.tekton.dev/cache-timestamp":     "2025-01-01T00:00:00Z",
-			"resolution.tekton.dev/cache-operation":     "retrieve",
-			"resolution.tekton.dev/cache-resolver-type": "git",
+		{
+			name:                "Pipeline without any annotations",
+			resourceBytes:       pipelineBytes,
+			resolverAnnotations: nil,
+			expectedAnnotations: nil,
 		},
-		expectedAnnotations: map[string]string{
-			"resolution.tekton.dev/cached":              "true",
-			"resolution.tekton.dev/cache-timestamp":     "2025-01-01T00:00:00Z",
-			"resolution.tekton.dev/cache-operation":     "retrieve",
-			"resolution.tekton.dev/cache-resolver-type": "git",
-		},
-	}} {
+	} {
 		t.Run(tc.name, func(t *testing.T) {
 			resolved := resolution.NewResolvedResource(tc.resourceBytes, tc.resolverAnnotations, nil, nil)
 
