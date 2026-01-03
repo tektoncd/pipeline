@@ -95,6 +95,7 @@ func buildRequest(resolverName string, owner kmeta.OwnerRefable, name string, na
 	return req, nil
 }
 
+// ResolvedRequest decodes a resolved resource into a runtime.Object and propagates resolver annotations to it.
 func ResolvedRequest(resolved resolutioncommon.ResolvedResource, decoder runtime.Decoder, err error) (runtime.Object, *v1.RefSource, error) {
 	if errors.Is(err, resolutioncommon.ErrRequestInProgress) {
 		return nil, nil, remote.ErrRequestInProgress
