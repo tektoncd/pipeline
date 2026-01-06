@@ -936,7 +936,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 		},
 		ChildPipelineRunNames: []string{"createdchildpipeline"},
 		ResolvedPipeline: ResolvedPipeline{
-			PipelineSpec: p.Spec.Tasks[21].PipelineSpec,
+			PipelineSpec: pts[21].PipelineSpec,
 		},
 	}
 	runningTask := ResolvedPipelineTask{
@@ -967,7 +967,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 		ChildPipelineRunNames: []string{"runningchildpipeline"},
 		ChildPipelineRuns:     []*v1.PipelineRun{newPipelineRun(prs[0])},
 		ResolvedPipeline: ResolvedPipeline{
-			PipelineSpec: p.Spec.Tasks[21].PipelineSpec,
+			PipelineSpec: pts[21].PipelineSpec,
 		},
 	}
 	successfulTask := ResolvedPipelineTask{
@@ -998,7 +998,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 		ChildPipelineRunNames: []string{"successfulchildpipeline"},
 		ChildPipelineRuns:     []*v1.PipelineRun{makePipelineRunSucceeded(prs[0])},
 		ResolvedPipeline: ResolvedPipeline{
-			PipelineSpec: p.Spec.Tasks[21].PipelineSpec,
+			PipelineSpec: pts[21].PipelineSpec,
 		},
 	}
 	failedTask := ResolvedPipelineTask{
@@ -1029,7 +1029,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 		ChildPipelineRunNames: []string{"failedchildpipeline"},
 		ChildPipelineRuns:     []*v1.PipelineRun{makePipelineRunFailed(prs[0])},
 		ResolvedPipeline: ResolvedPipeline{
-			PipelineSpec: p.Spec.Tasks[21].PipelineSpec,
+			PipelineSpec: pts[21].PipelineSpec,
 		},
 	}
 	tcs := []struct {
@@ -1345,7 +1345,7 @@ func TestDAGExecutionQueueSequentialChildPipelines(t *testing.T) {
 				},
 				ChildPipelineRunNames: []string{"pip-child-1"},
 				ResolvedPipeline: ResolvedPipeline{
-					PipelineSpec: p.Spec.Tasks[21].PipelineSpec,
+					PipelineSpec: pts[21].PipelineSpec,
 				},
 			}
 
@@ -1356,9 +1356,9 @@ func TestDAGExecutionQueueSequentialChildPipelines(t *testing.T) {
 					RunAfter:     []string{"pip-child-1"},
 				},
 				ChildPipelineRunNames: []string{"pip-child-2"},
-				ResolvedPipeline: ResolvedPipeline{
-					PipelineSpec: p.Spec.Tasks[22].PipelineSpec,
-				},
+		ResolvedPipeline: ResolvedPipeline{
+			PipelineSpec: pts[22].PipelineSpec,
+		},
 			}
 
 			if tc.firstChildPipelineRun != nil {
@@ -1885,7 +1885,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 	// Of the 4, 1 passed, 1 cancelled, 2 failed
 	// 1 runAfter the passed one, currently running
 	// 1 runAfter the failed one, which is marked as incomplete
-	var taskMultipleFailuresSkipRunning = PipelineRunState{{
+	var tasksWithOneFailureSkipRunning = PipelineRunState{{
 		TaskRunNames: []string{"task0taskrun"},
 		PipelineTask: &testhelpers.PipelineTasks[5],
 		TaskRuns:     []*v1.TaskRun{makeSucceeded(testhelpers.ExampleTaskRuns[0])},
@@ -2035,7 +2035,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		expectedSkipped:    0,
 	}, {
 		name:              "task not started with passed parent; one failed",
-		state:             taskNotRunningWithSuccessfulParentsOneFailed,
+		state:             taskNotRunningWithSuccesfulParentsOneFailed,
 		expectedReason:    v1.PipelineRunReasonFailed.String(),
 		expectedStatus:    corev1.ConditionFalse,
 		expectedSucceeded: 1,

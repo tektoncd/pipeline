@@ -30,6 +30,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	testhelpers "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -66,7 +67,7 @@ func nopGetPipelineRun(string) (*v1.PipelineRun, error) {
 
 func getTaskFn(vr *trustedresources.VerificationResult, err error) resources.GetTask {
 	return func(_ context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
-		return task, nil, vr, err
+		return testhelpers.ExampleTask, nil, vr, err
 	}
 }
 
@@ -2877,7 +2878,7 @@ func TestResolvePipelineRun_PipelineTaskHasPipelineRef(t *testing.T) {
 	if err == nil {
 		t.Errorf("Error getting tasks for fake pipeline %s, expected an error but got nil.", testhelpers.ExamplePipeline.ObjectMeta.Name)
 	}
-	if !strings.Contains(err.Error(), "does not support PipelineRef or PipelineSpec") {
+	if !strings.Contains(err.Error(), "does not support PipelineRef") {
 		t.Errorf("Error getting tasks for fake pipeline %s: expected contains keyword but got %s", testhelpers.ExamplePipeline.ObjectMeta.Name, err)
 	}
 }
@@ -2982,8 +2983,13 @@ func TestResolvePipelineRun_TransientError(t *testing.T) {
 		TaskRef: &v1.TaskRef{Name: "task"},
 	}
 
-	getTask := func(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
-		return testhelpers.ExampleTask, nil, nil, apierrors.NewTimeoutError("some dang ol' timeout", 5)
+	testCases := []struct {
+		name         string
+		transientErr error
+	}{
+		{"kubeapi timeout error", apierrors.NewTimeoutError("some dang ol' timeout", 5)},
+		{"retryable resolution error", apiserver.ErrCouldntValidateObjectRetryable},
+		{"any known-retryable validation error", apiserver.ErrCouldntValidateObjectRetryable},
 	}
 
 	for _, testCase := range testCases {
@@ -3223,9 +3229,6 @@ func TestResolvePipeline_WhenExpressions(t *testing.T) {
 		When:    []v1.WhenExpression{ptwe1},
 	}
 
-	getTask := func(_ context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
-		return testhelpers.ExampleTask, nil, nil, nil
-	}
 	pr := v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pipelinerun",
