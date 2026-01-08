@@ -40,6 +40,12 @@ type GetDeletedKeyResponse struct {
 	DeletedKey
 }
 
+// GetKeyAttestationResponse contains the response from method Client.GetKeyAttestation.
+type GetKeyAttestationResponse struct {
+	// A KeyBundle consisting of a WebKey plus its attributes.
+	KeyBundle
+}
+
 // GetKeyResponse contains the response from method Client.GetKey.
 type GetKeyResponse struct {
 	// A KeyBundle consisting of a WebKey plus its attributes.
