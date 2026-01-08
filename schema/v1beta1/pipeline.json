@@ -1,0 +1,815 @@
+{
+  "$id": "https://tekton.dev/schemas/v1beta1/pipeline.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Pipeline\nDeprecated: Please use v1.Pipeline instead.",
+  "properties": {
+    "apiVersion": {
+      "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+      "type": "string"
+    },
+    "kind": {
+      "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "spec": {
+      "description": "Spec",
+      "properties": {
+        "description": {
+          "description": "Description",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "DisplayName",
+          "type": "string"
+        },
+        "finally": {
+          "description": "Finally",
+          "items": {
+            "description": "PipelineTask",
+            "properties": {
+              "description": {
+                "description": "Description",
+                "type": "string"
+              },
+              "displayName": {
+                "description": "DisplayName",
+                "type": "string"
+              },
+              "matrix": {
+                "description": "Matrix",
+                "properties": {
+                  "include": {
+                    "description": "Include",
+                    "items": {
+                      "description": "IncludeParams",
+                      "properties": {
+                        "name": {
+                          "description": "Name",
+                          "type": "string"
+                        },
+                        "params": {
+                          "description": "Params",
+                          "items": {
+                            "description": "Param",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "description": "Value"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "value"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "params": {
+                    "description": "Params",
+                    "items": {
+                      "description": "Param",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "description": "Value"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "value"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "name": {
+                "description": "Name",
+                "type": "string"
+              },
+              "onError": {
+                "description": "OnError",
+                "type": "string"
+              },
+              "params": {
+                "description": "Params",
+                "items": {
+                  "description": "Param",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "description": "Value"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "pipelineRef": {
+                "description": "PipelineRef",
+                "properties": {
+                  "apiVersion": {
+                    "description": "APIVersion",
+                    "type": "string"
+                  },
+                  "bundle": {
+                    "description": "Deprecated: Please use ResolverRef with the bundles resolver instead.\nBundle",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Name",
+                    "type": "string"
+                  },
+                  "params": {
+                    "description": "Params",
+                    "items": {
+                      "description": "Param",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "description": "Value"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "value"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "resolver": {
+                    "description": "Resolver",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "pipelineSpec": {
+                "description": "PipelineSpec"
+              },
+              "resources": {
+                "description": "Resources\nDeprecated: Unused, preserved only for backwards compatibility",
+                "properties": {
+                  "inputs": {
+                    "description": "Inputs",
+                    "items": {
+                      "description": "PipelineTaskInputResource\nDeprecated: Unused, preserved only for backwards compatibility",
+                      "properties": {
+                        "from": {
+                          "description": "From",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "name": {
+                          "description": "Name",
+                          "type": "string"
+                        },
+                        "resource": {
+                          "description": "Resource",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "resource"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "outputs": {
+                    "description": "Outputs",
+                    "items": {
+                      "description": "PipelineTaskOutputResource\nDeprecated: Unused, preserved only for backwards compatibility",
+                      "properties": {
+                        "name": {
+                          "description": "Name",
+                          "type": "string"
+                        },
+                        "resource": {
+                          "description": "Resource",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "resource"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "retries": {
+                "description": "Retries",
+                "type": "integer"
+              },
+              "runAfter": {
+                "description": "RunAfter",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "taskRef": {
+                "description": "TaskRef",
+                "properties": {
+                  "apiVersion": {
+                    "description": "APIVersion",
+                    "type": "string"
+                  },
+                  "bundle": {
+                    "description": "Deprecated: Please use ResolverRef with the bundles resolver instead.\nBundle",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "description": "Kind",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Name",
+                    "type": "string"
+                  },
+                  "params": {
+                    "description": "Params",
+                    "items": {
+                      "description": "Param",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "description": "Value"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "value"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "resolver": {
+                    "description": "Resolver",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "taskSpec": {
+                "description": "TaskSpec"
+              },
+              "timeout": {
+                "description": "Timeout",
+                "type": "string"
+              },
+              "when": {
+                "description": "WhenExpressions",
+                "items": {
+                  "description": "WhenExpression",
+                  "properties": {
+                    "cel": {
+                      "description": "CEL",
+                      "type": "string"
+                    },
+                    "input": {
+                      "description": "Input",
+                      "type": "string"
+                    },
+                    "operator": {
+                      "description": "Operator",
+                      "type": "string"
+                    },
+                    "values": {
+                      "description": "Values",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "workspaces": {
+                "description": "Workspaces",
+                "items": {
+                  "description": "WorkspacePipelineTaskBinding",
+                  "properties": {
+                    "name": {
+                      "description": "Name",
+                      "type": "string"
+                    },
+                    "subPath": {
+                      "description": "SubPath",
+                      "type": "string"
+                    },
+                    "workspace": {
+                      "description": "Workspace",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "params": {
+          "description": "Params",
+          "items": {
+            "description": "ParamSpec",
+            "properties": {
+              "default": {
+                "description": "Default"
+              },
+              "description": {
+                "description": "Description",
+                "type": "string"
+              },
+              "enum": {
+                "description": "Enum",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "name": {
+                "description": "Name",
+                "type": "string"
+              },
+              "properties": {
+                "additionalProperties": {
+                  "description": "PropertySpec",
+                  "properties": {
+                    "type": {
+                      "description": "ParamType",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "description": "Properties",
+                "type": "object"
+              },
+              "type": {
+                "description": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "resources": {
+          "description": "Resources\nDeprecated: Unused, preserved only for backwards compatibility",
+          "items": {
+            "description": "PipelineDeclaredResource\nDeprecated: Unused, preserved only for backwards compatibility",
+            "properties": {
+              "name": {
+                "description": "Name",
+                "type": "string"
+              },
+              "optional": {
+                "description": "Optional",
+                "type": "boolean"
+              },
+              "type": {
+                "description": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "type"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "results": {
+          "description": "Results",
+          "items": {
+            "description": "PipelineResult",
+            "properties": {
+              "description": {
+                "description": "Description",
+                "type": "string"
+              },
+              "name": {
+                "description": "Name",
+                "type": "string"
+              },
+              "type": {
+                "description": "Type",
+                "type": "string"
+              },
+              "value": {
+                "description": "Value"
+              }
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "tasks": {
+          "description": "Tasks",
+          "items": {
+            "description": "PipelineTask",
+            "properties": {
+              "description": {
+                "description": "Description",
+                "type": "string"
+              },
+              "displayName": {
+                "description": "DisplayName",
+                "type": "string"
+              },
+              "matrix": {
+                "description": "Matrix",
+                "properties": {
+                  "include": {
+                    "description": "Include",
+                    "items": {
+                      "description": "IncludeParams",
+                      "properties": {
+                        "name": {
+                          "description": "Name",
+                          "type": "string"
+                        },
+                        "params": {
+                          "description": "Params",
+                          "items": {
+                            "description": "Param",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "description": "Value"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "value"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "params": {
+                    "description": "Params",
+                    "items": {
+                      "description": "Param",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "description": "Value"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "value"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "name": {
+                "description": "Name",
+                "type": "string"
+              },
+              "onError": {
+                "description": "OnError",
+                "type": "string"
+              },
+              "params": {
+                "description": "Params",
+                "items": {
+                  "description": "Param",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "description": "Value"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "pipelineRef": {
+                "description": "PipelineRef",
+                "properties": {
+                  "apiVersion": {
+                    "description": "APIVersion",
+                    "type": "string"
+                  },
+                  "bundle": {
+                    "description": "Deprecated: Please use ResolverRef with the bundles resolver instead.\nBundle",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Name",
+                    "type": "string"
+                  },
+                  "params": {
+                    "description": "Params",
+                    "items": {
+                      "description": "Param",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "description": "Value"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "value"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "resolver": {
+                    "description": "Resolver",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "pipelineSpec": {
+                "description": "PipelineSpec"
+              },
+              "resources": {
+                "description": "Resources\nDeprecated: Unused, preserved only for backwards compatibility",
+                "properties": {
+                  "inputs": {
+                    "description": "Inputs",
+                    "items": {
+                      "description": "PipelineTaskInputResource\nDeprecated: Unused, preserved only for backwards compatibility",
+                      "properties": {
+                        "from": {
+                          "description": "From",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "name": {
+                          "description": "Name",
+                          "type": "string"
+                        },
+                        "resource": {
+                          "description": "Resource",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "resource"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "outputs": {
+                    "description": "Outputs",
+                    "items": {
+                      "description": "PipelineTaskOutputResource\nDeprecated: Unused, preserved only for backwards compatibility",
+                      "properties": {
+                        "name": {
+                          "description": "Name",
+                          "type": "string"
+                        },
+                        "resource": {
+                          "description": "Resource",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "resource"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "retries": {
+                "description": "Retries",
+                "type": "integer"
+              },
+              "runAfter": {
+                "description": "RunAfter",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "taskRef": {
+                "description": "TaskRef",
+                "properties": {
+                  "apiVersion": {
+                    "description": "APIVersion",
+                    "type": "string"
+                  },
+                  "bundle": {
+                    "description": "Deprecated: Please use ResolverRef with the bundles resolver instead.\nBundle",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "description": "Kind",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Name",
+                    "type": "string"
+                  },
+                  "params": {
+                    "description": "Params",
+                    "items": {
+                      "description": "Param",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "description": "Value"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "value"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "resolver": {
+                    "description": "Resolver",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "taskSpec": {
+                "description": "TaskSpec"
+              },
+              "timeout": {
+                "description": "Timeout",
+                "type": "string"
+              },
+              "when": {
+                "description": "WhenExpressions",
+                "items": {
+                  "description": "WhenExpression",
+                  "properties": {
+                    "cel": {
+                      "description": "CEL",
+                      "type": "string"
+                    },
+                    "input": {
+                      "description": "Input",
+                      "type": "string"
+                    },
+                    "operator": {
+                      "description": "Operator",
+                      "type": "string"
+                    },
+                    "values": {
+                      "description": "Values",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "workspaces": {
+                "description": "Workspaces",
+                "items": {
+                  "description": "WorkspacePipelineTaskBinding",
+                  "properties": {
+                    "name": {
+                      "description": "Name",
+                      "type": "string"
+                    },
+                    "subPath": {
+                      "description": "SubPath",
+                      "type": "string"
+                    },
+                    "workspace": {
+                      "description": "Workspace",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "workspaces": {
+          "description": "Workspaces",
+          "items": {
+            "description": "PipelineWorkspaceDeclaration",
+            "properties": {
+              "description": {
+                "description": "Description",
+                "type": "string"
+              },
+              "name": {
+                "description": "Name",
+                "type": "string"
+              },
+              "optional": {
+                "description": "Optional",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "title": "Tekton Pipeline v1beta1",
+  "type": "object"
+}
