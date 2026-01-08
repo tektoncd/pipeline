@@ -439,7 +439,7 @@ func TestInitializeTaskRunConditions(t *testing.T) {
 			Namespace: "test-ns",
 		},
 	}
-	tr.Status.InitializeConditions()
+	tr.Status.InitializeConditions(testClock)
 
 	if tr.Status.StartTime.IsZero() {
 		t.Fatalf("TaskRun StartTime not initialized correctly")
@@ -458,7 +458,7 @@ func TestInitializeTaskRunConditions(t *testing.T) {
 		Message: "hello",
 	})
 
-	tr.Status.InitializeConditions()
+	tr.Status.InitializeConditions(testClock)
 
 	newCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
 	if newCondition.Reason != "not just started" {
