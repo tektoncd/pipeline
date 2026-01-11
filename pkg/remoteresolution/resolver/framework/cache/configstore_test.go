@@ -27,7 +27,7 @@ import (
 	logtesting "knative.dev/pkg/logging/testing"
 )
 
-func TestParseCacheConfigMap(t *testing.T) {
+func TestOnCacheConfigMapChanged(t *testing.T) {
 	tests := []struct {
 		name            string
 		configMap       *corev1.ConfigMap
@@ -199,38 +199,6 @@ func TestParseCacheConfigMap(t *testing.T) {
 				t.Errorf("TTL = %v, want %v", cache.TTL(), tt.expectedTTL)
 			}
 		})
-	}
-}
-
-func TestOnCacheConfigChanged(t *testing.T) {
-	ctx := logtesting.TestContextWithLogger(t)
-
-	// Ensure cache is initialized first
-	_ = Get(ctx)
-
-	// Test that onCacheConfigChanged updates the shared cache with new config values
-	config := map[string]string{
-		"max-size": "500",
-		"ttl":      "10m",
-	}
-
-	// Call onCacheConfigChanged to update the shared cache
-	onCacheConfigChanged("test-config", config)
-
-	// Verify the shared cache was updated with the correct config values
-	cache := Get(ctx)
-	if cache == nil {
-		t.Fatal("Expected cache after config change but got nil")
-	}
-
-	// Verify TTL was applied
-	if cache.TTL() != 10*time.Minute {
-		t.Errorf("Expected TTL to be %v, got %v", 10*time.Minute, cache.TTL())
-	}
-
-	// Verify MaxSize was applied
-	if cache.MaxSize() != 500 {
-		t.Errorf("Expected MaxSize to be %d, got %d", 500, cache.MaxSize())
 	}
 }
 
