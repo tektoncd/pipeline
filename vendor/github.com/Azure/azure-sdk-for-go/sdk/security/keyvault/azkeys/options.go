@@ -34,6 +34,11 @@ type GetDeletedKeyOptions struct {
 	// placeholder for future optional parameters
 }
 
+// GetKeyAttestationOptions contains the optional parameters for the Client.GetKeyAttestation method.
+type GetKeyAttestationOptions struct {
+	// placeholder for future optional parameters
+}
+
 // GetKeyOptions contains the optional parameters for the Client.GetKey method.
 type GetKeyOptions struct {
 	// placeholder for future optional parameters
