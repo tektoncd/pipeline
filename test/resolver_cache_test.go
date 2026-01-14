@@ -21,29 +21,29 @@ package test
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
-	"time"
 
 	"sync"
 
-	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/bundle"
 	"github.com/tektoncd/pipeline/test/parse"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/system"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
 
 const (
-	cacheAnnotationKey   = "resolution.tekton.dev/cached"
-	cacheResolverTypeKey = "resolution.tekton.dev/cache-resolver-type"
-	cacheTimestampKey    = "resolution.tekton.dev/cache-timestamp"
-	cacheValueTrue       = "true"
+	cacheAnnotationKey     = "resolution.tekton.dev/cached"
+	cacheResolverTypeKey   = "resolution.tekton.dev/cache-resolver-type"
+	cacheTimestampKey      = "resolution.tekton.dev/cache-timestamp"
+	cacheOperationKey      = "resolution.tekton.dev/cache-operation"
+	cacheValueTrue         = "true"
+	cacheOperationStore    = "store"
+	cacheOperationRetrieve = "retrieve"
 )
 
 var cacheResolverFeatureFlags = requireAllGates(map[string]string{
@@ -56,147 +56,239 @@ var cacheGitFeatureFlags = requireAllGates(map[string]string{
 	"enable-api-fields":   "beta",
 })
 
-// getResolverPodLogs gets logs from the tekton-resolvers pod
-func getResolverPodLogs(ctx context.Context, t *testing.T, c *clients) string {
-	t.Helper()
-
-	resolverNamespace := resolverconfig.ResolversNamespace(system.Namespace())
-
-	// List pods in the resolver namespace
-	pods, err := c.KubeClient.CoreV1().Pods(resolverNamespace).List(ctx, metav1.ListOptions{
-		LabelSelector: "app.kubernetes.io/name=resolvers",
-	})
-	if err != nil {
-		t.Fatalf("Failed to list resolver pods in namespace %s: %v", resolverNamespace, err)
-	}
-
-	if len(pods.Items) == 0 {
-		t.Fatalf("No resolver pods found in namespace %s", resolverNamespace)
-	}
-
-	// Get logs from the first resolver pod
-	pod := pods.Items[0]
-	req := c.KubeClient.CoreV1().Pods(resolverNamespace).GetLogs(pod.Name, &corev1.PodLogOptions{})
-	logs, err := req.DoRaw(ctx)
-	if err != nil {
-		t.Fatalf("Failed to get logs from resolver pod %s: %v", pod.Name, err)
-	}
-
-	return string(logs)
-}
-
 // TestBundleResolverCache validates that bundle resolver caching works correctly
 // @test:execution=parallel
 func TestBundleResolverCache(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)
-
-	t.Parallel()
-
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	cache.Get(ctx).Clear()
+	// GIVEN
+	task := newHelloWorldTask(t, helpers.ObjectNameForTest(t), namespace)
+	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/test-" + task.Name
+	taskRun1 := newBundleTaskRun(t, namespace, "cache-task-run-1", "always", repo, task.Name)
+	taskRun2 := newBundleTaskRun(t, namespace, "cache-task-run-2", "always", repo, task.Name)
+	expectedStoreAnnotations := newCacheAnnotationMap(cacheOperationStore)
+	expectedRetrieveAnnotations := newCacheAnnotationMap(cacheOperationRetrieve)
+	setupBundle(ctx, t, c, namespace, repo, task, nil)
 
-	// Set up local bundle registry with different repositories for each task
-	taskName1 := helpers.ObjectNameForTest(t) + "-1"
-	taskName2 := helpers.ObjectNameForTest(t) + "-2"
-	taskName3 := helpers.ObjectNameForTest(t) + "-3"
-	repo1 := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/cachetest-" + helpers.ObjectNameForTest(t) + "-1"
-	repo2 := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/cachetest-" + helpers.ObjectNameForTest(t) + "-2"
-	repo3 := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/cachetest-" + helpers.ObjectNameForTest(t) + "-3"
+	// WHEN
+	// First request should have cache annotations (it stores in cache with "always" mode)
+	// Second request with same parameters should be cached
+	createTaskRunAndWait(ctx, t, c, taskRun1)
+	createTaskRunAndWait(ctx, t, c, taskRun2)
+	actualTr1 := fetchTaskRunByName(ctx, t, c, taskRun1.Name)
+	actualTr2 := fetchTaskRunByName(ctx, t, c, taskRun2.Name)
 
-	// Create different tasks for each test to ensure unique cache keys
-	task1 := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  steps:
-  - name: hello
-    image: mirror.gcr.io/alpine
-    script: 'echo Hello from cache test 1'
-`, taskName1, namespace))
+	// THEN
+	assertCacheAnnotations(t, actualTr1.GetAnnotations(), expectedStoreAnnotations)
+	assertCacheAnnotations(t, actualTr2.GetAnnotations(), expectedRetrieveAnnotations)
+}
 
-	task2 := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  steps:
-  - name: hello
-    image: mirror.gcr.io/alpine
-    script: 'echo Hello from cache test 2'
-`, taskName2, namespace))
+func TestBundleResolverCacheSemiParallel(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
-	task3 := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  steps:
-  - name: hello
-    image: mirror.gcr.io/alpine
-    script: 'echo Hello from cache test 3'
-`, taskName3, namespace))
+	// GIVEN
+	task := newHelloWorldTask(t, helpers.ObjectNameForTest(t), namespace)
+	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/test-" + task.Name
+	firstTaskRun := newBundleTaskRun(t, namespace, "first-sq-tr", "always", repo, task.Name)
+	parallelTaskRuns := newBundleTaskRuns(t, namespace, repo, task.Name, 20, "parallel")
+	expectedStoreAnnotations := newCacheAnnotationMap(cacheOperationStore)
+	expectedRetrieveAnnotations := newCacheAnnotationMap(cacheOperationRetrieve)
+	setupBundle(ctx, t, c, namespace, repo, task, nil)
 
-	// Set up the bundles in the local registry
-	setupBundle(ctx, t, c, namespace, repo1, task1, nil)
-	setupBundle(ctx, t, c, namespace, repo2, task2, nil)
-	setupBundle(ctx, t, c, namespace, repo3, task3, nil)
+	// WHEN
+	createTaskRunAndWait(ctx, t, c, firstTaskRun)
+	actualTr1 := fetchTaskRunByName(ctx, t, c, firstTaskRun.Name)
 
-	// Test 1: First request should have cache annotations (it stores in cache with "always" mode)
-	tr1 := createBundleTaskRunLocal(t, namespace, "test-task-1", "always", repo1, taskName1)
-	createTaskRunAndWait(ctx, t, c, tr1)
+	createTaskRunsInParallelAndWait(ctx, t, c, parallelTaskRuns)
+	actualParallelTrs := fetchTaskRunsByName(ctx, t, c, parallelTaskRuns)
 
-	// Add a small delay to ensure ResolutionRequest status is fully updated
-	time.Sleep(2 * time.Second)
-
-	// Get the resolved resource and verify it's cached (first request stores in cache with "always" mode)
-	resolutionRequest1 := getResolutionRequest(ctx, t, c, namespace, tr1.Name)
-	if !hasCacheAnnotation(resolutionRequest1.Status.Annotations) {
-		t.Errorf("First request should have cache annotations when using cache=always mode. Annotations: %v", resolutionRequest1.Status.Annotations)
-	}
-
-	// Test 2: Second request with same parameters should be cached
-	tr2 := createBundleTaskRunLocal(t, namespace, "test-task-2", "always", repo1, taskName1)
-	createTaskRunAndWait(ctx, t, c, tr2)
-
-	// Add a small delay to ensure ResolutionRequest status is fully updated
-	time.Sleep(2 * time.Second)
-
-	// Verify it IS cached and has correct annotations
-	resolutionRequest2 := getResolutionRequest(ctx, t, c, namespace, tr2.Name)
-	verifyCacheAnnotations(t, resolutionRequest2.Status.Annotations, "bundles")
-
-	// Verify resolver logs show cache behavior
-	logs := getResolverPodLogs(ctx, t, c)
-
-	// Check for cache miss on first request (should see "Cache miss" followed by "Adding to cache")
-	if !strings.Contains(logs, "Cache miss") {
-		t.Error("Expected to find 'Cache miss' in resolver logs for first request")
-	}
-	if !strings.Contains(logs, "Adding to cache") {
-		t.Error("Expected to find 'Adding to cache' in resolver logs for first request")
-	}
-
-	// Check for cache hit on second request
-	if !strings.Contains(logs, "Cache hit") {
-		t.Error("Expected to find 'Cache hit' in resolver logs for second request")
-	}
-
-	// Test 3: Request with different parameters should not be cached
-	tr3 := createBundleTaskRunLocal(t, namespace, "test-task-3", "never", repo2, taskName2)
-	createTaskRunAndWait(ctx, t, c, tr3)
-
-	resolutionRequest3 := getResolutionRequest(ctx, t, c, namespace, tr3.Name)
-	if hasCacheAnnotation(resolutionRequest3.Status.Annotations) {
-		t.Error("Request with cache=never should not be cached")
+	// THEN
+	assertCacheAnnotations(t, actualTr1.GetAnnotations(), expectedStoreAnnotations)
+	for _, actualParallelTr := range actualParallelTrs {
+		assertCacheAnnotations(t, actualParallelTr.GetAnnotations(), expectedRetrieveAnnotations)
 	}
 }
 
-// Helper functions
-func createBundleTaskRun(t *testing.T, namespace, name, cacheMode string) *v1.TaskRun {
+func TestBundleResolverCacheAllParallel(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	// GIVEN
+	storeCount := 0
+	retrieveCount := 0
+	task := newHelloWorldTask(t, helpers.ObjectNameForTest(t), namespace)
+	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/test-" + task.Name
+	taskRunCount := 10
+	parallelTaskRuns := newBundleTaskRuns(t, namespace, repo, task.Name, taskRunCount, "parallel")
+	expectedAnnotations := map[string]string{
+		cacheAnnotationKey:   cacheValueTrue,
+		cacheResolverTypeKey: bundle.LabelValueBundleResolverType,
+	}
+	setupBundle(ctx, t, c, namespace, repo, task, nil)
+
+	// WHEN
+	createTaskRunsInParallelAndWait(ctx, t, c, parallelTaskRuns)
+	actualParallelTrs := fetchTaskRunsByName(ctx, t, c, parallelTaskRuns)
+
+	// THEN
+	for _, actualParallelTr := range actualParallelTrs {
+		annotations := actualParallelTr.GetAnnotations()
+		if annotations[cacheOperationKey] == cacheOperationStore {
+			storeCount++
+		}
+
+		if annotations[cacheOperationKey] == cacheOperationRetrieve {
+			retrieveCount++
+		}
+
+		assertCacheAnnotations(t, actualParallelTr.GetAnnotations(), expectedAnnotations)
+	}
+	t.Logf("For %d TaskRuns cache store=%d and cache retrieve=%d", taskRunCount, storeCount, retrieveCount)
+
+	if storeCount >= retrieveCount {
+		t.Fatalf("Expected retrieve > store operations, got store=%d, retrieve=%d", storeCount, retrieveCount)
+	}
+}
+
+func newHelloWorldTask(t *testing.T, taskName string, namespace string) *v1beta1.Task {
+	result := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - name: hello
+    image: mirror.gcr.io/alpine
+    script: 'echo "Hello World!"'
+`, taskName, namespace))
+	return result
+}
+
+func newBundleTaskRun(t *testing.T, namespace, taskRunName, cacheMode, repo, taskName string) *v1.TaskRun {
+	t.Helper()
+	return parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: %s
+    - name: name
+      value: %s
+    - name: kind
+      value: task
+    - name: cache
+      value: %s
+`, taskRunName, namespace, repo, taskName, cacheMode))
+}
+
+func newCacheAnnotationMap(operation string) map[string]string {
+	result := map[string]string{
+		cacheAnnotationKey:   cacheValueTrue,
+		cacheResolverTypeKey: bundle.LabelValueBundleResolverType,
+		cacheOperationKey:    operation,
+	}
+	return result
+}
+
+func createTaskRunAndWait(ctx context.Context, t *testing.T, c *clients, tr *v1.TaskRun) {
+	t.Helper()
+
+	_, err := c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create TaskRun %s: %s", tr.Name, err)
+	}
+
+	if err := WaitForTaskRunState(ctx, c, tr.Name, TaskRunSucceed(tr.Name), "TaskRunSuccess", v1Version); err != nil {
+		t.Fatalf("Error waiting for TaskRun %s to finish: %s", tr.Name, err)
+	}
+}
+
+func fetchTaskRunByName(ctx context.Context, t *testing.T, c *clients, taskRunName string) *v1.TaskRun {
+	t.Helper()
+
+	result, err := c.V1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Could not fetch actual TaskRun %s: %s", taskRunName, err)
+	}
+
+	return result
+}
+
+func assertCacheAnnotations(t *testing.T, actual, expected map[string]string) {
+	t.Helper()
+
+	assertAnnotationsMatch(t, expected, actual)
+
+	// in e2e tests timestamp can only be tested for existence
+	if _, exist := actual[cacheTimestampKey]; !exist {
+		t.Errorf("Expected cache timestamp annotation, got: %v", actual[cacheTimestampKey])
+	}
+}
+
+func newBundleTaskRuns(t *testing.T, namespace string, repo string, taskName string, count int, prefix string) []*v1.TaskRun {
+	t.Helper()
+
+	result := make([]*v1.TaskRun, count)
+	for i := 0; i < len(result); i++ {
+		result[i] = newBundleTaskRun(t, namespace, fmt.Sprintf("%s-%d", prefix, i), "always", repo, taskName)
+	}
+	return result
+}
+
+func createTaskRunsInParallelAndWait(ctx context.Context, t *testing.T, c *clients, taskRuns []*v1.TaskRun) {
+	t.Helper()
+
+	var wg sync.WaitGroup
+	startSignal := make(chan struct{})
+	for _, tr := range taskRuns {
+		wg.Add(1)
+
+		go func(tr *v1.TaskRun, begin <-chan struct{}) {
+			defer wg.Done()
+
+			<-begin
+			createTaskRunAndWait(ctx, t, c, tr)
+		}(tr, startSignal)
+	}
+	close(startSignal)
+	wg.Wait()
+}
+
+func fetchTaskRunsByName(ctx context.Context, t *testing.T, c *clients, taskRuns []*v1.TaskRun) []*v1.TaskRun {
+	t.Helper()
+
+	var result []*v1.TaskRun
+	for _, parallelTaskRun := range taskRuns {
+		actual := fetchTaskRunByName(ctx, t, c, parallelTaskRun.Name)
+		result = append(result, actual)
+	}
+	return result
+}
+
+func hasCacheAnnotation(annotations map[string]string) bool {
+	if annotations == nil {
+		return false
+	}
+	cached, exists := annotations[cacheAnnotationKey]
+	return exists && cached == cacheValueTrue
+}
+
+func newGitCloneBundleTaskRun(t *testing.T, namespace, name, cacheMode string) *v1.TaskRun {
 	t.Helper()
 	return parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 metadata:
@@ -221,27 +313,6 @@ spec:
     - name: cache
       value: %s
 `, name, namespace, cacheMode))
-}
-
-func createBundleTaskRunLocal(t *testing.T, namespace, name, cacheMode, repo, taskName string) *v1.TaskRun {
-	t.Helper()
-	return parse.MustParseV1TaskRun(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  taskRef:
-    resolver: bundles
-    params:
-    - name: bundle
-      value: %s
-    - name: name
-      value: %s
-    - name: kind
-      value: task
-    - name: cache
-      value: %s
-`, name, namespace, repo, taskName, cacheMode))
 }
 
 func createGitTaskRunWithCache(t *testing.T, namespace, name, revision, cacheMode string) *v1.TaskRun {
@@ -328,7 +399,7 @@ spec:
 	}
 
 	// Test bundle resolver cache
-	tr1 := createBundleTaskRun(t, namespace, "isolation-bundle-1", "always")
+	tr1 := newGitCloneBundleTaskRun(t, namespace, "isolation-bundle-1", "always")
 	createTaskRunAndWait(ctx, t, c, tr1)
 
 	// Test git resolver cache
@@ -440,7 +511,7 @@ spec:
 
 			switch tc.resolver {
 			case "bundle":
-				tr = createBundleTaskRun(t, namespace, "config-test-"+tc.name, tc.cacheMode)
+				tr = newGitCloneBundleTaskRun(t, namespace, "config-test-"+tc.name, tc.cacheMode)
 			case "git":
 				// Use commit hash for auto mode, branch for others
 				revision := "dd7cc22f2965ff4c9d8855b7161c2ffe94b6153e"
@@ -483,7 +554,7 @@ func TestResolverCacheErrorHandling(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	// Test with invalid cache mode (should fail with error due to centralized validation)
-	tr1 := createBundleTaskRun(t, namespace, "error-test-invalid", "invalid")
+	tr1 := newGitCloneBundleTaskRun(t, namespace, "error-test-invalid", "invalid")
 	_, err := c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create TaskRun with invalid cache mode: %s", err)
@@ -501,7 +572,7 @@ func TestResolverCacheErrorHandling(t *testing.T) {
 	}
 
 	// Test with empty cache parameter (should default to auto)
-	tr2 := createBundleTaskRun(t, namespace, "error-test-empty", "")
+	tr2 := newGitCloneBundleTaskRun(t, namespace, "error-test-empty", "")
 	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create TaskRun with empty cache mode: %s", err)
@@ -530,7 +601,7 @@ func TestResolverCacheTTL(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	// First request to populate cache
-	tr1 := createBundleTaskRun(t, namespace, "ttl-test-1", "always")
+	tr1 := newGitCloneBundleTaskRun(t, namespace, "ttl-test-1", "always")
 	_, err := c.V1TaskRunClient.Create(ctx, tr1, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create first TaskRun: %s", err)
@@ -541,7 +612,7 @@ func TestResolverCacheTTL(t *testing.T) {
 	}
 
 	// Second request should hit cache
-	tr2 := createBundleTaskRun(t, namespace, "ttl-test-2", "always")
+	tr2 := newGitCloneBundleTaskRun(t, namespace, "ttl-test-2", "always")
 	_, err = c.V1TaskRunClient.Create(ctx, tr2, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create second TaskRun: %s", err)
@@ -583,7 +654,7 @@ func TestResolverCacheStress(t *testing.T) {
 		go func(index int) {
 			defer wg.Done()
 
-			tr := createBundleTaskRun(t, namespace, fmt.Sprintf("stress-test-%d", index), "always")
+			tr := newGitCloneBundleTaskRun(t, namespace, fmt.Sprintf("stress-test-%d", index), "always")
 			_, err := c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
 			if err != nil {
 				errors <- fmt.Errorf("Failed to create TaskRun %d: %w", index, err)
@@ -649,7 +720,7 @@ spec:
 	setupBundle(ctx, t, c, namespace, repo, task, nil)
 
 	// Test with malformed cache parameter (should fail due to centralized validation)
-	tr := createBundleTaskRunLocal(t, namespace, "invalid-params-test", "malformed-cache-value", repo, taskName)
+	tr := newBundleTaskRun(t, namespace, "invalid-params-test", "malformed-cache-value", repo, taskName)
 	_, err = c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Failed to create TaskRun with malformed cache parameter: %s", err)
@@ -670,7 +741,7 @@ spec:
 }
 
 // getResolutionRequest gets the ResolutionRequest for a TaskRun
-func getResolutionRequest(ctx context.Context, t *testing.T, c *clients, namespace, taskRunName string) *v1beta1.ResolutionRequest {
+func getResolutionRequest(ctx context.Context, t *testing.T, c *clients, namespace, taskRunName string) *resolutionv1beta1.ResolutionRequest {
 	t.Helper()
 
 	// List all ResolutionRequests in the namespace
@@ -680,7 +751,7 @@ func getResolutionRequest(ctx context.Context, t *testing.T, c *clients, namespa
 	}
 
 	// Find the ResolutionRequest that has this TaskRun as an owner
-	var mostRecent *v1beta1.ResolutionRequest
+	var mostRecent *resolutionv1beta1.ResolutionRequest
 	for _, rr := range resolutionRequests.Items {
 		// Check if this ResolutionRequest is owned by our TaskRun
 		for _, ownerRef := range rr.OwnerReferences {
@@ -698,44 +769,4 @@ func getResolutionRequest(ctx context.Context, t *testing.T, c *clients, namespa
 	}
 
 	return mostRecent
-}
-
-func hasCacheAnnotation(annotations map[string]string) bool {
-	if annotations == nil {
-		return false
-	}
-	cached, exists := annotations[cacheAnnotationKey]
-	return exists && cached == cacheValueTrue
-}
-
-// verifyCacheAnnotations verifies that cache annotations are present and have correct values
-func verifyCacheAnnotations(t *testing.T, annotations map[string]string, expectedResolverType string) {
-	t.Helper()
-
-	if !hasCacheAnnotation(annotations) {
-		t.Error("Expected cache annotations but none found")
-		return
-	}
-
-	if annotations[cacheResolverTypeKey] != expectedResolverType {
-		t.Errorf("Expected resolver type '%s', got '%s'", expectedResolverType, annotations[cacheResolverTypeKey])
-	}
-
-	if timestamp, exists := annotations[cacheTimestampKey]; !exists || timestamp == "" {
-		t.Errorf("Expected cache timestamp annotation, got: %v", annotations)
-	}
-}
-
-// createTaskRunAndWait creates a TaskRun and waits for it to complete successfully
-func createTaskRunAndWait(ctx context.Context, t *testing.T, c *clients, tr *v1.TaskRun) {
-	t.Helper()
-
-	_, err := c.V1TaskRunClient.Create(ctx, tr, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create TaskRun %s: %s", tr.Name, err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, tr.Name, TaskRunSucceed(tr.Name), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for TaskRun %s to finish: %s", tr.Name, err)
-	}
 }
