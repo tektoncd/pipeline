@@ -10,16 +10,19 @@
 - Type parameters
 - Item expiration and automatic deletion
 - Automatic expiration time extension on each `Get` call
-- `Loader` interface that may be used to load/lazily initialize missing cache
-- Thread Safe
-items
-- Event handlers (insertion and eviction)
+- `Loader` interface that may be used to load/lazily initialize missing cache items
+- Thread safety
+- Event handlers (insertion, update, and eviction)
 - Metrics
 
 ## Installation
 ```
 go get github.com/jellydator/ttlcache/v3
 ```
+
+## Status
+The `ttlcache` package is stable and used by [Jellydator](https://jellydator.com/), 
+as well as thousands of other projects and organizations in production.
 
 ## Usage
 The main type of `ttlcache` is `Cache`. It represents a single 
@@ -100,7 +103,7 @@ func main() {
 }
 ```
 
-To subscribe to insertion and eviction events, `cache.OnInsertion()` and 
+To subscribe to insertion, update and eviction events, `cache.OnInsertion()`, `cache.OnUpdate()` and 
 `cache.OnEviction()` methods should be used:
 ```go
 func main() {
@@ -110,6 +113,9 @@ func main() {
 	)
 
 	cache.OnInsertion(func(ctx context.Context, item *ttlcache.Item[string, string]) {
+		fmt.Println(item.Value(), item.ExpiresAt())
+	})
+	cache.OnUpdate(func(ctx context.Context, item *ttlcache.Item[string, string]) {
 		fmt.Println(item.Value(), item.ExpiresAt())
 	})
 	cache.OnEviction(func(ctx context.Context, reason ttlcache.EvictionReason, item *ttlcache.Item[string, string]) {
@@ -141,3 +147,34 @@ func main() {
 	item := cache.Get("key from file")
 }
 ```
+
+To restrict the cache's capacity based on criteria beyond the number
+of items it can hold, the `ttlcache.WithMaxCost` option allows for
+implementing custom strategies. The following example shows how to limit
+memory usage for cached entries to ~5KiB.
+```go
+import (
+    "github.com/jellydator/ttlcache"
+)
+
+func main() {
+    cache := ttlcache.New[string, string](
+        ttlcache.WithMaxCost[string, string](5120, func(item ttlcache.CostItem[string, string]) uint64 {
+            // Note: The below line doesn't include memory used by internal
+            // structures or string metadata for the key and the value.
+            return len(item.Key) + len(item.Value)
+        }), 
+    )
+
+    cache.Set("first", "value1", ttlcache.DefaultTTL)
+}
+```
+
+## Examples & Tutorials
+
+See the [example](https://github.com/jellydator/ttlcache/tree/v3/examples) 
+directory for applications demonstrating how to use `ttlcache`.
+
+If you want to learn and follow along as these example applications are 
+built, check out the tutorials below:
+- [Speeding Up HTTP Endpoints with Response Caching in Go](https://jellydator.com/blog/speeding-up-http-endpoints-with-response-caching-in-go/)
