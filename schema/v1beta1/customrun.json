@@ -1,0 +1,698 @@
+{
+  "$id": "https://tekton.dev/schemas/v1beta1/customrun.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "CustomRun represents a single execution of a Custom Task.",
+  "properties": {
+    "apiVersion": {
+      "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+      "type": "string"
+    },
+    "kind": {
+      "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "spec": {
+      "description": "CustomRunSpec defines the desired state of CustomRun",
+      "properties": {
+        "customRef": {
+          "description": "TaskRef can be used to refer to a specific instance of a task.",
+          "properties": {
+            "apiVersion": {
+              "description": "API version of the referent\nNote: A Task with non-empty APIVersion and Kind is considered a Custom Task",
+              "type": "string"
+            },
+            "bundle": {
+              "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.\nThe field is staying there for go client backward compatibility, but is not used/allowed anymore.",
+              "type": "string"
+            },
+            "kind": {
+              "description": "TaskKind indicates the Kind of the Task:\n1. Namespaced Task when Kind is set to \"Task\". If Kind is \"\", it defaults to \"Task\".\n2. Custom Task when Kind is non-empty and APIVersion is non-empty",
+              "type": "string"
+            },
+            "name": {
+              "description": "Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names",
+              "type": "string"
+            },
+            "params": {
+              "description": "Params contains the parameters used to identify the\nreferenced Tekton resource. Example entries might include\n\"repo\" or \"path\" but the set of params ultimately depends on\nthe chosen resolver.",
+              "items": {
+                "description": "Param declares an ParamValues to use for the parameter called name.",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "value": {}
+                },
+                "required": [
+                  "name",
+                  "value"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "resolver": {
+              "description": "Resolver is the name of the resolver that should perform\nresolution of the referenced Tekton resource, such as \"git\".",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "customSpec": {
+          "description": "Spec is a specification of a custom task",
+          "properties": {
+            "apiVersion": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "metadata": {
+              "description": "PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask",
+              "properties": {
+                "annotations": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "labels": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "spec": {
+              "description": "Spec is a specification of a custom task",
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "params": {
+          "description": "Params is a list of Param",
+          "items": {
+            "description": "Param declares an ParamValues to use for the parameter called name.",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "value": {}
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "retries": {
+          "description": "Used for propagating retries count to custom tasks",
+          "type": "integer"
+        },
+        "serviceAccountName": {
+          "type": "string"
+        },
+        "status": {
+          "description": "Used for cancelling a customrun (and maybe more later on)",
+          "type": "string"
+        },
+        "statusMessage": {
+          "description": "Status message for cancellation.",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Time after which the custom-task times out.\nRefer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "type": "string"
+        },
+        "workspaces": {
+          "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
+          "items": {
+            "description": "WorkspaceBinding maps a Task's declared workspace to a Volume.",
+            "properties": {
+              "configMap": {
+                "description": "ConfigMap represents a configMap that should populate this workspace.",
+                "properties": {
+                  "defaultMode": {
+                    "description": "defaultMode is optional: mode bits used to set permissions on created files by default.\nMust be an octal value between 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values for mode bits.\nDefaults to 0644.\nDirectories within the path are not affected by this setting.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "items": {
+                    "description": "items if unspecified, each key-value pair in the Data field of the referenced\nConfigMap will be projected into the volume as a file whose name is the\nkey and content is the value. If specified, the listed keys will be\nprojected into the specified paths, and unlisted keys will not be\npresent. If a key is specified which is not present in the ConfigMap,\nthe volume setup will error unless it is marked optional. Paths must be\nrelative and may not contain the '..' path or start with '..'.",
+                    "items": {
+                      "description": "Maps a string key to a path within a volume.",
+                      "properties": {
+                        "key": {
+                          "description": "key is the key to project.",
+                          "type": "string"
+                        },
+                        "mode": {
+                          "description": "mode is Optional: mode bits used to set permissions on this file.\nMust be an octal value between 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values for mode bits.\nIf not specified, the volume defaultMode will be used.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "path": {
+                          "description": "path is the relative path of the file to map the key to.\nMay not be an absolute path.\nMay not contain the path element '..'.\nMay not start with the string '..'.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "path"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "name": {
+                    "default": "",
+                    "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                    "type": "string"
+                  },
+                  "optional": {
+                    "description": "optional specify whether the ConfigMap or its keys must be defined",
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "csi": {
+                "description": "CSI (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.",
+                "properties": {
+                  "driver": {
+                    "description": "driver is the name of the CSI driver that handles this volume.\nConsult with your admin for the correct name as registered in the cluster.",
+                    "type": "string"
+                  },
+                  "fsType": {
+                    "description": "fsType to mount. Ex. \"ext4\", \"xfs\", \"ntfs\".\nIf not provided, the empty value is passed to the associated CSI driver\nwhich will determine the default filesystem to apply.",
+                    "type": "string"
+                  },
+                  "nodePublishSecretRef": {
+                    "description": "nodePublishSecretRef is a reference to the secret object containing\nsensitive information to pass to the CSI driver to complete the CSI\nNodePublishVolume and NodeUnpublishVolume calls.\nThis field is optional, and  may be empty if no secret is required. If the\nsecret object contains more than one secret, all secret references are passed.",
+                    "properties": {
+                      "name": {
+                        "default": "",
+                        "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "readOnly": {
+                    "description": "readOnly specifies a read-only configuration for the volume.\nDefaults to false (read/write).",
+                    "type": "boolean"
+                  },
+                  "volumeAttributes": {
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "description": "volumeAttributes stores driver-specific properties that are passed to the CSI\ndriver. Consult your driver's documentation for supported values.",
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "driver"
+                ],
+                "type": "object"
+              },
+              "emptyDir": {
+                "description": "EmptyDir represents a temporary directory that shares a Task's lifetime.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir\nEither this OR PersistentVolumeClaim can be used.",
+                "properties": {
+                  "medium": {
+                    "description": "medium represents what type of storage medium should back this directory.\nThe default is \"\" which means to use the node's default medium.\nMust be an empty string (default) or Memory.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir",
+                    "type": "string"
+                  },
+                  "sizeLimit": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ],
+                    "description": "sizeLimit is the total amount of local storage required for this EmptyDir volume.\nThe size limit is also applicable for memory medium.\nThe maximum usage on memory medium EmptyDir would be the minimum value between\nthe SizeLimit specified here and the sum of memory limits of all containers in a pod.\nThe default is nil which means that the limit is undefined.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir",
+                    "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
+                  }
+                },
+                "type": "object"
+              },
+              "name": {
+                "description": "Name is the name of the workspace populated by the volume.",
+                "type": "string"
+              },
+              "persistentVolumeClaim": {
+                "description": "PersistentVolumeClaimVolumeSource represents a reference to a\nPersistentVolumeClaim in the same namespace. Either this OR EmptyDir can be used.",
+                "properties": {
+                  "claimName": {
+                    "description": "claimName is the name of a PersistentVolumeClaim in the same namespace as the pod using this volume.\nMore info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims",
+                    "type": "string"
+                  },
+                  "readOnly": {
+                    "description": "readOnly Will force the ReadOnly setting in VolumeMounts.\nDefault false.",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "claimName"
+                ],
+                "type": "object"
+              },
+              "projected": {
+                "description": "Projected represents a projected volume that should populate this workspace.",
+                "properties": {
+                  "defaultMode": {
+                    "description": "defaultMode are the mode bits used to set permissions on created files by default.\nMust be an octal value between 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values for mode bits.\nDirectories within the path are not affected by this setting.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "sources": {
+                    "description": "sources is the list of volume projections. Each entry in this list\nhandles one source.",
+                    "items": {
+                      "description": "Projection that may be projected along with other supported volume types.\nExactly one of these fields must be set.",
+                      "properties": {
+                        "clusterTrustBundle": {
+                          "description": "ClusterTrustBundle allows a pod to access the `.spec.trustBundle` field\nof ClusterTrustBundle objects in an auto-updating file.\n\nAlpha, gated by the ClusterTrustBundleProjection feature gate.\n\nClusterTrustBundle objects can either be selected by name, or by the\ncombination of signer name and a label selector.\n\nKubelet performs aggressive normalization of the PEM contents written\ninto the pod filesystem.  Esoteric PEM features such as inter-block\ncomments and block headers are stripped.  Certificates are deduplicated.\nThe ordering of certificates within the file is arbitrary, and Kubelet\nmay change the order over time.",
+                          "properties": {
+                            "labelSelector": {
+                              "description": "Select all ClusterTrustBundles that match this label selector.  Only has\neffect if signerName is set.  Mutually-exclusive with name.  If unset,\ninterpreted as \"match nothing\".  If set but empty, interpreted as \"match\neverything\".",
+                              "properties": {
+                                "matchExpressions": {
+                                  "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
+                                  "items": {
+                                    "description": "A label selector requirement is a selector that contains values, a key, and an operator that\nrelates the key and values.",
+                                    "properties": {
+                                      "key": {
+                                        "description": "key is the label key that the selector applies to.",
+                                        "type": "string"
+                                      },
+                                      "operator": {
+                                        "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and DoesNotExist.",
+                                        "type": "string"
+                                      },
+                                      "values": {
+                                        "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or DoesNotExist,\nthe values array must be empty. This array is replaced during a strategic\nmerge patch.",
+                                        "items": {
+                                          "type": "string"
+                                        },
+                                        "type": "array"
+                                      }
+                                    },
+                                    "required": [
+                                      "key",
+                                      "operator"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  "type": "array"
+                                },
+                                "matchLabels": {
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  },
+                                  "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels\nmap is equivalent to an element of matchExpressions, whose key field is \"key\", the\noperator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
+                                  "type": "object"
+                                }
+                              },
+                              "type": "object"
+                            },
+                            "name": {
+                              "description": "Select a single ClusterTrustBundle by object name.  Mutually-exclusive\nwith signerName and labelSelector.",
+                              "type": "string"
+                            },
+                            "optional": {
+                              "description": "If true, don't block pod startup if the referenced ClusterTrustBundle(s)\naren't available.  If using name, then the named ClusterTrustBundle is\nallowed not to exist.  If using signerName, then the combination of\nsignerName and labelSelector is allowed to match zero\nClusterTrustBundles.",
+                              "type": "boolean"
+                            },
+                            "path": {
+                              "description": "Relative path from the volume root to write the bundle.",
+                              "type": "string"
+                            },
+                            "signerName": {
+                              "description": "Select all ClusterTrustBundles that match this signer name.\nMutually-exclusive with name.  The contents of all selected\nClusterTrustBundles will be unified and deduplicated.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "path"
+                          ],
+                          "type": "object"
+                        },
+                        "configMap": {
+                          "description": "configMap information about the configMap data to project",
+                          "properties": {
+                            "items": {
+                              "description": "items if unspecified, each key-value pair in the Data field of the referenced\nConfigMap will be projected into the volume as a file whose name is the\nkey and content is the value. If specified, the listed keys will be\nprojected into the specified paths, and unlisted keys will not be\npresent. If a key is specified which is not present in the ConfigMap,\nthe volume setup will error unless it is marked optional. Paths must be\nrelative and may not contain the '..' path or start with '..'.",
+                              "items": {
+                                "description": "Maps a string key to a path within a volume.",
+                                "properties": {
+                                  "key": {
+                                    "description": "key is the key to project.",
+                                    "type": "string"
+                                  },
+                                  "mode": {
+                                    "description": "mode is Optional: mode bits used to set permissions on this file.\nMust be an octal value between 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values for mode bits.\nIf not specified, the volume defaultMode will be used.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "path": {
+                                    "description": "path is the relative path of the file to map the key to.\nMay not be an absolute path.\nMay not contain the path element '..'.\nMay not start with the string '..'.",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "path"
+                                ],
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            "name": {
+                              "default": "",
+                              "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                              "type": "string"
+                            },
+                            "optional": {
+                              "description": "optional specify whether the ConfigMap or its keys must be defined",
+                              "type": "boolean"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "downwardAPI": {
+                          "description": "downwardAPI information about the downwardAPI data to project",
+                          "properties": {
+                            "items": {
+                              "description": "Items is a list of DownwardAPIVolume file",
+                              "items": {
+                                "description": "DownwardAPIVolumeFile represents information to create the file containing the pod field",
+                                "properties": {
+                                  "fieldRef": {
+                                    "description": "Required: Selects a field of the pod: only annotations, labels, name, namespace and uid are supported.",
+                                    "properties": {
+                                      "apiVersion": {
+                                        "description": "Version of the schema the FieldPath is written in terms of, defaults to \"v1\".",
+                                        "type": "string"
+                                      },
+                                      "fieldPath": {
+                                        "description": "Path of the field to select in the specified API version.",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "fieldPath"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  "mode": {
+                                    "description": "Optional: mode bits used to set permissions on this file, must be an octal value\nbetween 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values for mode bits.\nIf not specified, the volume defaultMode will be used.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "path": {
+                                    "description": "Required: Path is  the relative path name of the file to be created. Must not be absolute or contain the '..' path. Must be utf-8 encoded. The first item of the relative path must not start with '..'",
+                                    "type": "string"
+                                  },
+                                  "resourceFieldRef": {
+                                    "description": "Selects a resource of the container: only resources limits and requests\n(limits.cpu, limits.memory, requests.cpu and requests.memory) are currently supported.",
+                                    "properties": {
+                                      "containerName": {
+                                        "description": "Container name: required for volumes, optional for env vars",
+                                        "type": "string"
+                                      },
+                                      "divisor": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer"
+                                          },
+                                          {
+                                            "type": "string"
+                                          }
+                                        ],
+                                        "description": "Specifies the output format of the exposed resources, defaults to \"1\"",
+                                        "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"
+                                      },
+                                      "resource": {
+                                        "description": "Required: resource to select",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "resource"
+                                    ],
+                                    "type": "object"
+                                  }
+                                },
+                                "required": [
+                                  "path"
+                                ],
+                                "type": "object"
+                              },
+                              "type": "array"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "secret": {
+                          "description": "secret information about the secret data to project",
+                          "properties": {
+                            "items": {
+                              "description": "items if unspecified, each key-value pair in the Data field of the referenced\nSecret will be projected into the volume as a file whose name is the\nkey and content is the value. If specified, the listed keys will be\nprojected into the specified paths, and unlisted keys will not be\npresent. If a key is specified which is not present in the Secret,\nthe volume setup will error unless it is marked optional. Paths must be\nrelative and may not contain the '..' path or start with '..'.",
+                              "items": {
+                                "description": "Maps a string key to a path within a volume.",
+                                "properties": {
+                                  "key": {
+                                    "description": "key is the key to project.",
+                                    "type": "string"
+                                  },
+                                  "mode": {
+                                    "description": "mode is Optional: mode bits used to set permissions on this file.\nMust be an octal value between 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values for mode bits.\nIf not specified, the volume defaultMode will be used.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "path": {
+                                    "description": "path is the relative path of the file to map the key to.\nMay not be an absolute path.\nMay not contain the path element '..'.\nMay not start with the string '..'.",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "path"
+                                ],
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            "name": {
+                              "default": "",
+                              "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                              "type": "string"
+                            },
+                            "optional": {
+                              "description": "optional field specify whether the Secret or its key must be defined",
+                              "type": "boolean"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "serviceAccountToken": {
+                          "description": "serviceAccountToken is information about the serviceAccountToken data to project",
+                          "properties": {
+                            "audience": {
+                              "description": "audience is the intended audience of the token. A recipient of a token\nmust identify itself with an identifier specified in the audience of the\ntoken, and otherwise should reject the token. The audience defaults to the\nidentifier of the apiserver.",
+                              "type": "string"
+                            },
+                            "expirationSeconds": {
+                              "description": "expirationSeconds is the requested duration of validity of the service\naccount token. As the token approaches expiration, the kubelet volume\nplugin will proactively rotate the service account token. The kubelet will\nstart trying to rotate the token if the token is older than 80 percent of\nits time to live or if the token is older than 24 hours.Defaults to 1 hour\nand must be at least 10 minutes.",
+                              "format": "int64",
+                              "type": "integer"
+                            },
+                            "path": {
+                              "description": "path is the path relative to the mount point of the file to project the\ntoken into.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "path"
+                          ],
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "secret": {
+                "description": "Secret represents a secret that should populate this workspace.",
+                "properties": {
+                  "defaultMode": {
+                    "description": "defaultMode is Optional: mode bits used to set permissions on created files by default.\nMust be an octal value between 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values\nfor mode bits. Defaults to 0644.\nDirectories within the path are not affected by this setting.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "items": {
+                    "description": "items If unspecified, each key-value pair in the Data field of the referenced\nSecret will be projected into the volume as a file whose name is the\nkey and content is the value. If specified, the listed keys will be\nprojected into the specified paths, and unlisted keys will not be\npresent. If a key is specified which is not present in the Secret,\nthe volume setup will error unless it is marked optional. Paths must be\nrelative and may not contain the '..' path or start with '..'.",
+                    "items": {
+                      "description": "Maps a string key to a path within a volume.",
+                      "properties": {
+                        "key": {
+                          "description": "key is the key to project.",
+                          "type": "string"
+                        },
+                        "mode": {
+                          "description": "mode is Optional: mode bits used to set permissions on this file.\nMust be an octal value between 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values for mode bits.\nIf not specified, the volume defaultMode will be used.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup, and the result can be other mode bits set.",
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "path": {
+                          "description": "path is the relative path of the file to map the key to.\nMay not be an absolute path.\nMay not contain the path element '..'.\nMay not start with the string '..'.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "path"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "optional": {
+                    "description": "optional field specify whether the Secret or its keys must be defined",
+                    "type": "boolean"
+                  },
+                  "secretName": {
+                    "description": "secretName is the name of the secret in the pod's namespace to use.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#secret",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "subPath": {
+                "description": "SubPath is optionally a directory on the volume which should be used\nfor this binding (i.e. the volume will be mounted at this sub directory).",
+                "type": "string"
+              },
+              "volumeClaimTemplate": {
+                "description": "VolumeClaimTemplate is a template for a claim that will be created in the same namespace.\nThe PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.\nSee PersistentVolumeClaim (API version: v1)"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "status": {
+      "description": "CustomRunStatus defines the observed state of CustomRun",
+      "properties": {
+        "annotations": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Annotations is additional Status fields for the Resource to save some\nadditional State as well as convey more information to the user. This is\nroughly akin to Annotations on any k8s resource, just the reconciler conveying\nricher information outwards.",
+          "type": "object"
+        },
+        "completionTime": {
+          "description": "CompletionTime is the time the build completed.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "items": {
+            "description": "Condition defines a readiness condition for a Knative resource.\nSee: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties",
+            "properties": {
+              "lastTransitionTime": {
+                "description": "LastTransitionTime is the last time the condition transitioned from one status to another.\nWe use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic\ndifferences (all other things held constant).",
+                "type": "string"
+              },
+              "message": {
+                "description": "A human readable message indicating details about the transition.",
+                "type": "string"
+              },
+              "reason": {
+                "description": "The reason for the condition's last transition.",
+                "type": "string"
+              },
+              "severity": {
+                "description": "Severity with which to treat failures of this type of condition.\nWhen this is not specified, it defaults to Error.",
+                "type": "string"
+              },
+              "status": {
+                "description": "Status of the condition, one of True, False, Unknown.",
+                "type": "string"
+              },
+              "type": {
+                "description": "Type of condition.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "type"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "extraFields": {
+          "description": "ExtraFields holds arbitrary fields provided by the custom task\ncontroller."
+        },
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Service that\nwas last processed by the controller.",
+          "format": "int64",
+          "type": "integer"
+        },
+        "results": {
+          "description": "Results reports any output result values to be consumed by later\ntasks in a pipeline.",
+          "items": {
+            "description": "CustomRunResult used to describe the results of a task",
+            "properties": {
+              "name": {
+                "description": "Name the given name",
+                "type": "string"
+              },
+              "value": {
+                "description": "Value the given value of the result",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "retriesStatus": {
+          "description": "RetriesStatus contains the history of CustomRunStatus, in case of a retry.\nSee CustomRun.status (API version: tekton.dev/v1beta1)"
+        },
+        "startTime": {
+          "description": "StartTime is the time the build is actually started.",
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "title": "Tekton CustomRun v1beta1",
+  "type": "object"
+}
