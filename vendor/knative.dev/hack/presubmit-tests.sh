@@ -141,7 +141,7 @@ function __build_test_runner_for_module() {
   # Don't merge these two lines, or return code will always be 0.
   # Get all build tags in go code (ignore /vendor, /hack and /third_party)
   local tags
-  tags="$(go run knative.dev/toolbox/go-ls-tags@latest --joiner=,)"
+  tags="$(go_run knative.dev/toolbox/go-ls-tags@latest --joiner=,)"
   local go_pkg_dirs
   go_pkg_dirs="$(go list -tags "${tags}" ./...)" || return $?
   if [[ -z "${go_pkg_dirs}" ]]; then
