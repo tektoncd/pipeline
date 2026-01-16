@@ -45,6 +45,7 @@ import (
 //	                     pipeline-task-3
 //	                            |
 //	                     pipeline-task-4
+//
 // @test:execution=parallel
 func TestDAGPipelineRun(t *testing.T) {
 	ctx := t.Context()
