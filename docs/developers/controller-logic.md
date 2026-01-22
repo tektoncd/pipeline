@@ -51,6 +51,11 @@ The Knative [docs on dependency injection](https://github.com/knative/pkg/tree/m
 for generated reconcilers and webhooks, as well as the concept of ["informers"](https://github.com/knative/pkg/tree/main/injection#consuming-informers),
 which notify the reconcilers about other objects in the cluster.
 
+> **Note on Informer Cache Transforms**: Tekton applies [cache transform functions](../tekton-controller-performance-configuration.md#informer-cache-transform-memory-optimization)
+> to reduce memory usage. Objects retrieved from the informer cache (via listers) may have certain fields stripped,
+> such as `managedFields`, `status.taskSpec`, `status.steps`, etc. This only affects completed objects and cached data—the
+> full objects remain in etcd. If you need access to stripped fields, use the Kubernetes API client directly instead of the lister.
+
 #### Example: How does the TaskRun reconciler work?
 
 Please read ["Generated reconciler responsibilities"](https://github.com/knative/pkg/tree/main/injection#generated-reconciler-responsibilities)
