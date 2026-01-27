@@ -36,6 +36,11 @@ import (
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/signals"
+
+	// Import the transform package to register the memory-optimized informer factory.
+	// This factory applies a cache transform that strips unnecessary fields from
+	// PipelineRuns and TaskRuns to reduce memory usage. See issue #7691.
+	_ "github.com/tektoncd/pipeline/pkg/informer/transform"
 )
 
 const (
