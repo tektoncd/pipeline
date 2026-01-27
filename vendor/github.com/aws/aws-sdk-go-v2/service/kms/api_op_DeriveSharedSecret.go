@@ -13,7 +13,7 @@ import (
 
 // Derives a shared secret using a key agreement algorithm.
 //
-// You must use an asymmetric NIST-recommended elliptic curve (ECC) or SM2 (China
+// You must use an asymmetric NIST-standard elliptic curve (ECC) or SM2 (China
 // Regions only) KMS key pair with a KeyUsage value of KEY_AGREEMENT to call
 // DeriveSharedSecret.
 //
@@ -30,7 +30,7 @@ import (
 //   - Alice calls CreateKeyto create an asymmetric KMS key pair with a KeyUsage value of
 //     KEY_AGREEMENT .
 //
-// The asymmetric KMS key must use a NIST-recommended elliptic curve (ECC) or SM2
+// The asymmetric KMS key must use a NIST-standard elliptic curve (ECC) or SM2
 //
 //	(China Regions only) key spec.
 //
@@ -38,7 +38,7 @@ import (
 //
 // Bob can call CreateKeyto create an asymmetric KMS key pair or generate a key pair
 //
-//	outside of KMS. Bob's key pair must use the same NIST-recommended elliptic curve
+//	outside of KMS. Bob's key pair must use the same NIST-standard elliptic curve
 //	(ECC) or SM2 (China Regions ony) curve as Alice.
 //
 //	- Alice and Bob exchange their public keys through an insecure communication
@@ -62,9 +62,9 @@ import (
 //	to calculate the same raw secret using his private key and Alice's public key.
 //
 // To derive a shared secret you must provide a key agreement algorithm, the
-// private key of the caller's asymmetric NIST-recommended elliptic curve or SM2
+// private key of the caller's asymmetric NIST-standard elliptic curve or SM2
 // (China Regions only) KMS key pair, and the public key from your peer's
-// NIST-recommended elliptic curve or SM2 (China Regions only) key pair. The public
+// NIST-standard elliptic curve or SM2 (China Regions only) key pair. The public
 // key can be from another asymmetric KMS key pair or from a key pair generated
 // outside of KMS, but both key pairs must be on the same elliptic curve.
 //
@@ -91,7 +91,7 @@ import (
 // [Key states of KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html
 // [kms:DeriveSharedSecret]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
 // [Elliptic Curve Cryptography Cofactor Diffie-Hellman Primitive]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar3.pdf#page=60
-// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
+// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/accessing-kms.html#programming-eventual-consistency
 // [NIST recommendations for key derivation]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Cr2.pdf
 func (c *Client) DeriveSharedSecret(ctx context.Context, params *DeriveSharedSecretInput, optFns ...func(*Options)) (*DeriveSharedSecretOutput, error) {
 	if params == nil {
@@ -116,10 +116,10 @@ type DeriveSharedSecretInput struct {
 	// This member is required.
 	KeyAgreementAlgorithm types.KeyAgreementAlgorithmSpec
 
-	// Identifies an asymmetric NIST-recommended ECC or SM2 (China Regions only) KMS
-	// key. KMS uses the private key in the specified key pair to derive the shared
-	// secret. The key usage of the KMS key must be KEY_AGREEMENT . To find the
-	// KeyUsage of a KMS key, use the DescribeKey operation.
+	// Identifies an asymmetric NIST-standard ECC or SM2 (China Regions only) KMS key.
+	// KMS uses the private key in the specified key pair to derive the shared secret.
+	// The key usage of the KMS key must be KEY_AGREEMENT . To find the KeyUsage of a
+	// KMS key, use the DescribeKeyoperation.
 	//
 	// To specify a KMS key, use its key ID, key ARN, alias name, or alias ARN. When
 	// using an alias name, prefix it with "alias/" . To specify a KMS key in a
@@ -142,8 +142,8 @@ type DeriveSharedSecretInput struct {
 	// This member is required.
 	KeyId *string
 
-	// Specifies the public key in your peer's NIST-recommended elliptic curve (ECC)
-	// or SM2 (China Regions only) key pair.
+	// Specifies the public key in your peer's NIST-standard elliptic curve (ECC) or
+	// SM2 (China Regions only) key pair.
 	//
 	// The public key must be a DER-encoded X.509 public key, also known as
 	// SubjectPublicKeyInfo (SPKI), as defined in [RFC 5280].
@@ -166,10 +166,10 @@ type DeriveSharedSecretInput struct {
 
 	// Checks if your request will succeed. DryRun is an optional parameter.
 	//
-	// To learn more about how to use this parameter, see [Testing your KMS API calls] in the Key Management
+	// To learn more about how to use this parameter, see [Testing your permissions] in the Key Management
 	// Service Developer Guide.
 	//
-	// [Testing your KMS API calls]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-dryrun.html
+	// [Testing your permissions]: https://docs.aws.amazon.com/kms/latest/developerguide/testing-permissions.html
 	DryRun *bool
 
 	// A list of grant tokens.
@@ -179,33 +179,36 @@ type DeriveSharedSecretInput struct {
 	// and [Using a grant token]in the Key Management Service Developer Guide.
 	//
 	// [Grant token]: https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#grant_token
-	// [Using a grant token]: https://docs.aws.amazon.com/kms/latest/developerguide/grant-manage.html#using-grant-token
+	// [Using a grant token]: https://docs.aws.amazon.com/kms/latest/developerguide/using-grant-token.html
 	GrantTokens []string
 
-	// A signed [attestation document] from an Amazon Web Services Nitro enclave and the encryption
-	// algorithm to use with the enclave's public key. The only valid encryption
-	// algorithm is RSAES_OAEP_SHA_256 .
+	// A signed [attestation document] from an Amazon Web Services Nitro enclave or NitroTPM, and the
+	// encryption algorithm to use with the public key in the attestation document. The
+	// only valid encryption algorithm is RSAES_OAEP_SHA_256 .
 	//
 	// This parameter only supports attestation documents for Amazon Web Services
-	// Nitro Enclaves. To call DeriveSharedSecret for an Amazon Web Services Nitro
-	// Enclaves, use the [Amazon Web Services Nitro Enclaves SDK]to generate the attestation document and then use the
-	// Recipient parameter from any Amazon Web Services SDK to provide the attestation
-	// document for the enclave.
+	// Nitro Enclaves or Amazon Web Services NitroTPM. To call DeriveSharedSecret
+	// generate an attestation document use either [Amazon Web Services Nitro Enclaves SDK]for an Amazon Web Services Nitro
+	// Enclaves or [Amazon Web Services NitroTPM tools]for Amazon Web Services NitroTPM. Then use the Recipient parameter
+	// from any Amazon Web Services SDK to provide the attestation document for the
+	// attested environment.
 	//
 	// When you use this parameter, instead of returning a plaintext copy of the
 	// shared secret, KMS encrypts the plaintext shared secret under the public key in
 	// the attestation document, and returns the resulting ciphertext in the
 	// CiphertextForRecipient field in the response. This ciphertext can be decrypted
-	// only with the private key in the enclave. The CiphertextBlob field in the
-	// response contains the encrypted shared secret derived from the KMS key specified
-	// by the KeyId parameter and public key specified by the PublicKey parameter. The
-	// SharedSecret field in the response is null or empty.
+	// only with the private key in the attested environment. The CiphertextBlob field
+	// in the response contains the encrypted shared secret derived from the KMS key
+	// specified by the KeyId parameter and public key specified by the PublicKey
+	// parameter. The SharedSecret field in the response is null or empty.
 	//
 	// For information about the interaction between KMS and Amazon Web Services Nitro
-	// Enclaves, see [How Amazon Web Services Nitro Enclaves uses KMS]in the Key Management Service Developer Guide.
+	// Enclaves or Amazon Web Services NitroTPM, see [Cryptographic attestation support in KMS]in the Key Management Service
+	// Developer Guide.
 	//
+	// [Cryptographic attestation support in KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/cryptographic-attestation.html
+	// [Amazon Web Services NitroTPM tools]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/attestation-get-doc.html
 	// [attestation document]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nitro-enclave-how.html#term-attestdoc
-	// [How Amazon Web Services Nitro Enclaves uses KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html
 	// [Amazon Web Services Nitro Enclaves SDK]: https://docs.aws.amazon.com/enclaves/latest/user/developing-applications.html#sdk
 	Recipient *types.RecipientInfo
 
@@ -214,15 +217,17 @@ type DeriveSharedSecretInput struct {
 
 type DeriveSharedSecretOutput struct {
 
-	// The plaintext shared secret encrypted with the public key in the attestation
-	// document.
+	// The plaintext shared secret encrypted with the public key from the attestation
+	// document. This ciphertext can be decrypted only by using a private key from the
+	// attested environment.
 	//
 	// This field is included in the response only when the Recipient parameter in the
 	// request includes a valid attestation document from an Amazon Web Services Nitro
-	// enclave. For information about the interaction between KMS and Amazon Web
-	// Services Nitro Enclaves, see [How Amazon Web Services Nitro Enclaves uses KMS]in the Key Management Service Developer Guide.
+	// enclave or NitroTPM. For information about the interaction between KMS and
+	// Amazon Web Services Nitro Enclaves or Amazon Web Services NitroTPM, see [Cryptographic attestation support in KMS]in the
+	// Key Management Service Developer Guide.
 	//
-	// [How Amazon Web Services Nitro Enclaves uses KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html
+	// [Cryptographic attestation support in KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/cryptographic-attestation.html
 	CiphertextForRecipient []byte
 
 	// Identifies the key agreement algorithm used to derive the shared secret.
@@ -343,16 +348,13 @@ func (c *Client) addOperationDeriveSharedSecretMiddlewares(stack *middleware.Sta
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
