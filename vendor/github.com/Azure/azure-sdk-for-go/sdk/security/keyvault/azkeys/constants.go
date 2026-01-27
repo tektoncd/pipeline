@@ -56,11 +56,20 @@ const (
 	EncryptionAlgorithmA256GCM EncryptionAlgorithm = "A256GCM"
 	// EncryptionAlgorithmA256KW - 256-bit AES key wrap.
 	EncryptionAlgorithmA256KW EncryptionAlgorithm = "A256KW"
-	// EncryptionAlgorithmRSA15 - RSAES-PKCS1-V1_5 key encryption, as described in https://tools.ietf.org/html/rfc3447.
+	// EncryptionAlgorithmCKMAESKEYWRAP - CKM AES key wrap.
+	EncryptionAlgorithmCKMAESKEYWRAP EncryptionAlgorithm = "CKM_AES_KEY_WRAP"
+	// EncryptionAlgorithmCKMAESKEYWRAPPAD - CKM AES key wrap with padding.
+	EncryptionAlgorithmCKMAESKEYWRAPPAD EncryptionAlgorithm = "CKM_AES_KEY_WRAP_PAD"
+	// EncryptionAlgorithmRSA15 - [Not recommended] RSAES-PKCS1-V1_5 key encryption, as described in https://tools.ietf.org/html/rfc3447.
+	// Microsoft recommends using RSA_OAEP_256 or stronger algorithms for enhanced security. Microsoft does *not* recommend RSA_1_5,
+	// which is included solely for backwards compatibility. Cryptographic standards no longer consider RSA with the PKCS#1 v1.5
+	// padding scheme secure for encryption.
 	EncryptionAlgorithmRSA15 EncryptionAlgorithm = "RSA1_5"
-	// EncryptionAlgorithmRSAOAEP - RSAES using Optimal Asymmetric Encryption Padding (OAEP), as described in https://tools.ietf.org/html/rfc3447,
-	// with the default parameters specified by RFC 3447 in Section A.2.1. Those default parameters are using a hash function
-	// of SHA-1 and a mask generation function of MGF1 with SHA-1.
+	// EncryptionAlgorithmRSAOAEP - [Not recommended] RSAES using Optimal Asymmetric Encryption Padding (OAEP), as described in
+	// https://tools.ietf.org/html/rfc3447, with the default parameters specified by RFC 3447 in Section A.2.1. Those default
+	// parameters are using a hash function of SHA-1 and a mask generation function of MGF1 with SHA-1. Microsoft recommends using
+	// RSA_OAEP_256 or stronger algorithms for enhanced security. Microsoft does *not* recommend RSA_OAEP, which is included solely
+	// for backwards compatibility. RSA_OAEP utilizes SHA1, which has known collision problems.
 	EncryptionAlgorithmRSAOAEP EncryptionAlgorithm = "RSA-OAEP"
 	// EncryptionAlgorithmRSAOAEP256 - RSAES using Optimal Asymmetric Encryption Padding with a hash function of SHA-256 and a
 	// mask generation function of MGF1 with SHA-256.
@@ -82,6 +91,8 @@ func PossibleEncryptionAlgorithmValues() []EncryptionAlgorithm {
 		EncryptionAlgorithmA256CBCPAD,
 		EncryptionAlgorithmA256GCM,
 		EncryptionAlgorithmA256KW,
+		EncryptionAlgorithmCKMAESKEYWRAP,
+		EncryptionAlgorithmCKMAESKEYWRAPPAD,
 		EncryptionAlgorithmRSA15,
 		EncryptionAlgorithmRSAOAEP,
 		EncryptionAlgorithmRSAOAEP256,
@@ -204,6 +215,12 @@ const (
 	SignatureAlgorithmES384 SignatureAlgorithm = "ES384"
 	// SignatureAlgorithmES512 - ECDSA using P-521 and SHA-512, as described in https://tools.ietf.org/html/rfc7518
 	SignatureAlgorithmES512 SignatureAlgorithm = "ES512"
+	// SignatureAlgorithmHS256 - HMAC using SHA-256, as described in https://tools.ietf.org/html/rfc7518
+	SignatureAlgorithmHS256 SignatureAlgorithm = "HS256"
+	// SignatureAlgorithmHS384 - HMAC using SHA-384, as described in https://tools.ietf.org/html/rfc7518
+	SignatureAlgorithmHS384 SignatureAlgorithm = "HS384"
+	// SignatureAlgorithmHS512 - HMAC using SHA-512, as described in https://tools.ietf.org/html/rfc7518
+	SignatureAlgorithmHS512 SignatureAlgorithm = "HS512"
 	// SignatureAlgorithmPS256 - RSASSA-PSS using SHA-256 and MGF1 with SHA-256, as described in https://tools.ietf.org/html/rfc7518
 	SignatureAlgorithmPS256 SignatureAlgorithm = "PS256"
 	// SignatureAlgorithmPS384 - RSASSA-PSS using SHA-384 and MGF1 with SHA-384, as described in https://tools.ietf.org/html/rfc7518
@@ -225,6 +242,9 @@ func PossibleSignatureAlgorithmValues() []SignatureAlgorithm {
 		SignatureAlgorithmES256K,
 		SignatureAlgorithmES384,
 		SignatureAlgorithmES512,
+		SignatureAlgorithmHS256,
+		SignatureAlgorithmHS384,
+		SignatureAlgorithmHS512,
 		SignatureAlgorithmPS256,
 		SignatureAlgorithmPS384,
 		SignatureAlgorithmPS512,
