@@ -110,7 +110,10 @@ type basicEntry struct {
 }
 
 func (be *basicEntry) configBlurb(u string) string {
-	return fmt.Sprintf("[credential %q]\n	username = %s\n", u, be.escapedUsername())
+	// IMPORTANT: Git credential contexts with useHttpPath=true are required
+	// for repository-specific credentials on the same host to work correctly.
+	// Without this, Git only matches by host and uses the first credential found.
+	return fmt.Sprintf("[credential %q]\n	username = %s\n	useHttpPath = true\n", u, be.escapedUsername())
 }
 
 func (be *basicEntry) escapedUsername() string {
