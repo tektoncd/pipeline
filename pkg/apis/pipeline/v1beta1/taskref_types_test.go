@@ -45,7 +45,7 @@ func TestTaskRef_IsCustomTask(t *testing.T) {
 		name: "not a custom task - kind is not set",
 		tr: &v1beta1.TaskRef{
 			Name:       "foo",
-			APIVersion: "example/v0",
+			APIVersion: "example.dev/v0",
 		},
 		want: false,
 	}, {
@@ -53,14 +53,14 @@ func TestTaskRef_IsCustomTask(t *testing.T) {
 		tr: &v1beta1.TaskRef{
 			Name:       "foo",
 			Kind:       "Example",
-			APIVersion: "example/v0",
+			APIVersion: "example.dev/v0",
 		},
 		want: true,
 	}, {
 		name: "custom task without name",
 		tr: &v1beta1.TaskRef{
 			Kind:       "Example",
-			APIVersion: "example/v0",
+			APIVersion: "example.dev/v0",
 		},
 		want: true,
 	},
