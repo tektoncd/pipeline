@@ -151,11 +151,20 @@ jobs:
     needs: [build]
     name: Multi-arch build
     runs-on: ubuntu-latest
+    env:
+      KOCACHE: /tmp/ko-cache
     steps:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
     - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
       with:
         go-version-file: "go.mod"
+    - name: Cache ko build cache
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684  # v4.2.3
+      with:
+        path: /tmp/ko-cache
+        key: ${{ runner.os }}-${{ runner.arch }}-ko-${{ hashFiles('go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-ko-
     - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
     - name: ko-resolve
       run: |
