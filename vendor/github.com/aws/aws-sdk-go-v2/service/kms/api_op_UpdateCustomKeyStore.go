@@ -19,9 +19,9 @@ import (
 // does not return any property values. To verify the updated property values, use
 // the DescribeCustomKeyStoresoperation.
 //
-// This operation is part of the [custom key stores] feature in KMS, which combines the convenience
-// and extensive integration of KMS with the isolation and control of a key store
-// that you own and manage.
+// This operation is part of the custom key stores feature in KMS, which combines
+// the convenience and extensive integration of KMS with the isolation and control
+// of a key store that you own and manage.
 //
 // When updating the properties of an external key store, verify that the updated
 // settings connect your key store, via the external key store proxy, to the same
@@ -95,9 +95,8 @@ import (
 // Eventual consistency: The KMS API follows an eventual consistency model. For
 // more information, see [KMS eventual consistency].
 //
-// [custom key stores]: https://docs.aws.amazon.com/kms/latest/developerguide/custom-key-store-overview.html
 // [kms:UpdateCustomKeyStore]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
-// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
+// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/accessing-kms.html#programming-eventual-consistency
 func (c *Client) UpdateCustomKeyStore(ctx context.Context, params *UpdateCustomKeyStoreInput, optFns ...func(*Options)) (*UpdateCustomKeyStoreOutput, error) {
 	if params == nil {
 		params = &UpdateCustomKeyStoreInput{}
@@ -231,6 +230,14 @@ type UpdateCustomKeyStoreInput struct {
 	// To change this value, the external key store must be disconnected.
 	XksProxyVpcEndpointServiceName *string
 
+	// Changes the Amazon Web Services account ID that KMS uses to identify the Amazon
+	// VPC endpoint service for your external key store proxy (XKS proxy). This
+	// parameter is optional. If not specified, the current Amazon Web Services account
+	// ID for the VPC endpoint service will not be updated.
+	//
+	// To change this value, the external key store must be disconnected.
+	XksProxyVpcEndpointServiceOwner *string
+
 	noSmithyDocumentSerde
 }
 
@@ -329,16 +336,13 @@ func (c *Client) addOperationUpdateCustomKeyStoreMiddlewares(stack *middleware.S
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
