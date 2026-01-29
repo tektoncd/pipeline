@@ -128,8 +128,7 @@ func (c *Client) ResetIssueTime(owner, repo string, index int64) (*Response, err
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/issues/%d/times", owner, repo, index), jsonHeader, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/issues/%d/times", owner, repo, index), jsonHeader, nil)
 }
 
 // DeleteTime delete a specific tracked time by id of a single issue for a given repository
@@ -137,6 +136,5 @@ func (c *Client) DeleteTime(owner, repo string, index, timeID int64) (*Response,
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/issues/%d/times/%d", owner, repo, index, timeID), jsonHeader, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/issues/%d/times/%d", owner, repo, index, timeID), jsonHeader, nil)
 }

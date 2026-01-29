@@ -88,6 +88,6 @@ func (c *Client) DeleteOauth2(oauth2id int64) (*Response, error) {
 	if err := c.checkServerVersionGreaterThanOrEqual(version1_12_0); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/user/applications/oauth2/%d", oauth2id), nil, nil)
+	resp, err := c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/user/applications/oauth2/%d", oauth2id), nil, nil)
 	return resp, err
 }

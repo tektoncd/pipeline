@@ -123,8 +123,7 @@ func (c *Client) DeleteTag(user, repo, tag string) (*Response, error) {
 	if err := c.checkServerVersionGreaterThanOrEqual(version1_14_0); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE",
+	return c.doRequestWithStatusHandle("DELETE",
 		fmt.Sprintf("/repos/%s/%s/tags/%s", user, repo, tag),
 		nil, nil)
-	return resp, err
 }

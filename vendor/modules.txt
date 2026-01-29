@@ -41,8 +41,8 @@ cloud.google.com/go/kms/internal
 cloud.google.com/go/longrunning
 cloud.google.com/go/longrunning/autogen
 cloud.google.com/go/longrunning/autogen/longrunningpb
-# code.gitea.io/sdk/gitea v0.21.0
-## explicit; go 1.23
+# code.gitea.io/sdk/gitea v0.22.1
+## explicit; go 1.23.0
 code.gitea.io/sdk/gitea
 # contrib.go.opencensus.io/exporter/ocagent v0.7.1-0.20200907061046-05415f1de66d
 ## explicit; go 1.13
@@ -53,8 +53,8 @@ contrib.go.opencensus.io/exporter/prometheus
 # fortio.org/safecast v1.2.0
 ## explicit; go 1.20
 fortio.org/safecast
-# github.com/42wim/httpsig v1.2.2
-## explicit; go 1.18
+# github.com/42wim/httpsig v1.2.3
+## explicit; go 1.23.0
 github.com/42wim/httpsig
 # github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
 ## explicit
