@@ -88,6 +88,7 @@ func TestPodBuild(t *testing.T) {
 	dnsPolicy := corev1.DNSNone
 	enableServiceLinks := false
 	priorityClassName := "system-cluster-critical"
+	hostUsers := false
 	taskRunName := "taskrun-name"
 
 	for _, c := range []struct {
@@ -1379,6 +1380,57 @@ _EOF_
 				}),
 				Containers: []corev1.Container{{
 					Name:    "step-use-my-hostNetwork",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/run/0/status",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+						Name:      "tekton-creds-init-home-0",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+				}},
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
+		},
+		{
+			desc: "using hostUsers false",
+			ts: v1.TaskSpec{
+				Steps: []v1.Step{
+					{
+						Name:    "use-my-hostUsers",
+						Image:   "image",
+						Command: []string{"cmd"}, // avoid entrypoint lookup.
+					},
+				},
+			},
+			trs: v1.TaskRunSpec{
+				PodTemplate: &pod.Template{
+					HostUsers: &hostUsers,
+				},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1.Step{{Name: "use-my-hostUsers"}}, SecurityContextConfig{SetSecurityContext: false, SetReadOnlyRootFilesystem: false}, false /* windows */)},
+				HostUsers:      &hostUsers,
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				Containers: []corev1.Container{{
+					Name:    "step-use-my-hostUsers",
 					Image:   "image",
 					Command: []string{"/tekton/bin/entrypoint"},
 					Args: []string{

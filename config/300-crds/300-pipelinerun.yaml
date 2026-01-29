@@ -337,6 +337,18 @@ spec:
                     hostNetwork:
                       description: HostNetwork specifies whether the pod may use the node network namespace
                       type: boolean
+                    hostUsers:
+                      description: |-
+                        HostUsers indicates whether the pod will use the host's user namespace.
+                        Optional: Default to true.
+                        If set to true or not present, the pod will be run in the host user namespace, useful
+                        for when the pod needs a feature only available to the host user namespace, such as
+                        loading a kernel module with CAP_SYS_MODULE.
+                        When set to false, a new user namespace is created for the pod. Setting false
+                        is useful to mitigating container breakout vulnerabilities such as allowing
+                        containers to run as root without their user having root privileges on the host.
+                        This field depends on the kubernetes feature gate UserNamespacesSupport being enabled.
+                      type: boolean
                     imagePullSecrets:
                       description: ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified
                       type: array
@@ -1145,6 +1157,18 @@ spec:
                             x-kubernetes-list-type: atomic
                           hostNetwork:
                             description: HostNetwork specifies whether the pod may use the node network namespace
+                            type: boolean
+                          hostUsers:
+                            description: |-
+                              HostUsers indicates whether the pod will use the host's user namespace.
+                              Optional: Default to true.
+                              If set to true or not present, the pod will be run in the host user namespace, useful
+                              for when the pod needs a feature only available to the host user namespace, such as
+                              loading a kernel module with CAP_SYS_MODULE.
+                              When set to false, a new user namespace is created for the pod. Setting false
+                              is useful to mitigating container breakout vulnerabilities such as allowing
+                              containers to run as root without their user having root privileges on the host.
+                              This field depends on the kubernetes feature gate UserNamespacesSupport being enabled.
                             type: boolean
                           imagePullSecrets:
                             description: ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified
@@ -3496,6 +3520,18 @@ spec:
                           hostNetwork:
                             description: HostNetwork specifies whether the pod may use the node network namespace
                             type: boolean
+                          hostUsers:
+                            description: |-
+                              HostUsers indicates whether the pod will use the host's user namespace.
+                              Optional: Default to true.
+                              If set to true or not present, the pod will be run in the host user namespace, useful
+                              for when the pod needs a feature only available to the host user namespace, such as
+                              loading a kernel module with CAP_SYS_MODULE.
+                              When set to false, a new user namespace is created for the pod. Setting false
+                              is useful to mitigating container breakout vulnerabilities such as allowing
+                              containers to run as root without their user having root privileges on the host.
+                              This field depends on the kubernetes feature gate UserNamespacesSupport being enabled.
+                            type: boolean
                           imagePullSecrets:
                             description: ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified
                             type: array
@@ -4138,6 +4174,18 @@ spec:
                           x-kubernetes-list-type: atomic
                         hostNetwork:
                           description: HostNetwork specifies whether the pod may use the node network namespace
+                          type: boolean
+                        hostUsers:
+                          description: |-
+                            HostUsers indicates whether the pod will use the host's user namespace.
+                            Optional: Default to true.
+                            If set to true or not present, the pod will be run in the host user namespace, useful
+                            for when the pod needs a feature only available to the host user namespace, such as
+                            loading a kernel module with CAP_SYS_MODULE.
+                            When set to false, a new user namespace is created for the pod. Setting false
+                            is useful to mitigating container breakout vulnerabilities such as allowing
+                            containers to run as root without their user having root privileges on the host.
+                            This field depends on the kubernetes feature gate UserNamespacesSupport being enabled.
                           type: boolean
                         imagePullSecrets:
                           description: ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified
