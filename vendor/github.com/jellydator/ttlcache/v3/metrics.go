@@ -6,6 +6,9 @@ type Metrics struct {
 	// Insertions specifies how many items were inserted.
 	Insertions uint64
 
+	// Updates specifies how many items were updated.
+	Updates uint64
+
 	// Hits specifies how many items were successfully retrieved
 	// from the cache.
 	// Retrievals made with a loader function are not tracked.

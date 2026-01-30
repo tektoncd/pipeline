@@ -51,15 +51,15 @@ import (
 //
 // GenerateDataKeyPair also supports [Amazon Web Services Nitro Enclaves], which provide an isolated compute
 // environment in Amazon EC2. To call GenerateDataKeyPair for an Amazon Web
-// Services Nitro enclave, use the [Amazon Web Services Nitro Enclaves SDK]or any Amazon Web Services SDK. Use the
-// Recipient parameter to provide the attestation document for the enclave.
-// GenerateDataKeyPair returns the public data key and a copy of the private data
-// key encrypted under the specified KMS key, as usual. But instead of a plaintext
-// copy of the private data key ( PrivateKeyPlaintext ), the response includes a
-// copy of the private data key encrypted under the public key from the attestation
-// document ( CiphertextForRecipient ). For information about the interaction
-// between KMS and Amazon Web Services Nitro Enclaves, see [How Amazon Web Services Nitro Enclaves uses KMS]in the Key Management
-// Service Developer Guide..
+// Services Nitro enclave or NitroTPM, use the [Amazon Web Services Nitro Enclaves SDK]or any Amazon Web Services SDK. Use
+// the Recipient parameter to provide the attestation document for the attested
+// environment. GenerateDataKeyPair returns the public data key and a copy of the
+// private data key encrypted under the specified KMS key, as usual. But instead of
+// a plaintext copy of the private data key ( PrivateKeyPlaintext ), the response
+// includes a copy of the private data key encrypted under the public key from the
+// attestation document ( CiphertextForRecipient ). For information about the
+// interaction between KMS and Amazon Web Services Nitro Enclaves or Amazon Web
+// Services NitroTPM, see [Cryptographic attestation support in KMS]in the Key Management Service Developer Guide.
 //
 // You can use an optional encryption context to add additional security to the
 // encryption operation. If you specify an EncryptionContext , you must specify the
@@ -92,14 +92,14 @@ import (
 // Eventual consistency: The KMS API follows an eventual consistency model. For
 // more information, see [KMS eventual consistency].
 //
+// [Cryptographic attestation support in KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/cryptographic-attestation.html
 // [Key states of KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html
 // [RFC 5280]: https://tools.ietf.org/html/rfc5280
-// [Encryption Context]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#encrypt_context
+// [Encryption Context]: https://docs.aws.amazon.com/kms/latest/developerguide/encrypt_context.html
 // [Amazon Web Services Nitro Enclaves]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nitro-enclave.html
 // [RFC 5958]: https://tools.ietf.org/html/rfc5958
-// [How Amazon Web Services Nitro Enclaves uses KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html
 // [kms:GenerateDataKeyPair]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
-// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
+// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/accessing-kms.html#programming-eventual-consistency
 // [Amazon Web Services Nitro Enclaves SDK]: https://docs.aws.amazon.com/enclaves/latest/user/developing-applications.html#sdk
 func (c *Client) GenerateDataKeyPair(ctx context.Context, params *GenerateDataKeyPairInput, optFns ...func(*Options)) (*GenerateDataKeyPairOutput, error) {
 	if params == nil {
@@ -146,20 +146,21 @@ type GenerateDataKeyPairInput struct {
 	// Determines the type of data key pair that is generated.
 	//
 	// The KMS rule that restricts the use of asymmetric RSA and SM2 KMS keys to
-	// encrypt and decrypt or to sign and verify (but not both), and the rule that
-	// permits you to use ECC KMS keys only to sign and verify, are not effective on
-	// data key pairs, which are used outside of KMS. The SM2 key spec is only
-	// available in China Regions.
+	// encrypt and decrypt or to sign and verify (but not both), the rule that permits
+	// you to use ECC KMS keys only to sign and verify, and the rule that permits you
+	// to use ML-DSA key pairs to sign and verify only are not effective on data key
+	// pairs, which are used outside of KMS. The SM2 key spec is only available in
+	// China Regions.
 	//
 	// This member is required.
 	KeyPairSpec types.DataKeyPairSpec
 
 	// Checks if your request will succeed. DryRun is an optional parameter.
 	//
-	// To learn more about how to use this parameter, see [Testing your KMS API calls] in the Key Management
+	// To learn more about how to use this parameter, see [Testing your permissions] in the Key Management
 	// Service Developer Guide.
 	//
-	// [Testing your KMS API calls]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-dryrun.html
+	// [Testing your permissions]: https://docs.aws.amazon.com/kms/latest/developerguide/testing-permissions.html
 	DryRun *bool
 
 	// Specifies the encryption context that will be used when encrypting the private
@@ -178,7 +179,7 @@ type GenerateDataKeyPairInput struct {
 	//
 	// For more information, see [Encryption context] in the Key Management Service Developer Guide.
 	//
-	// [Encryption context]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#encrypt_context
+	// [Encryption context]: https://docs.aws.amazon.com/kms/latest/developerguide/encrypt_context.html
 	EncryptionContext map[string]string
 
 	// A list of grant tokens.
@@ -188,33 +189,36 @@ type GenerateDataKeyPairInput struct {
 	// and [Using a grant token]in the Key Management Service Developer Guide.
 	//
 	// [Grant token]: https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#grant_token
-	// [Using a grant token]: https://docs.aws.amazon.com/kms/latest/developerguide/grant-manage.html#using-grant-token
+	// [Using a grant token]: https://docs.aws.amazon.com/kms/latest/developerguide/using-grant-token.html
 	GrantTokens []string
 
-	// A signed [attestation document] from an Amazon Web Services Nitro enclave and the encryption
-	// algorithm to use with the enclave's public key. The only valid encryption
-	// algorithm is RSAES_OAEP_SHA_256 .
+	// A signed [attestation document] from an Amazon Web Services Nitro enclave or NitroTPM, and the
+	// encryption algorithm to use with the public key in the attestation document. The
+	// only valid encryption algorithm is RSAES_OAEP_SHA_256 .
 	//
 	// This parameter only supports attestation documents for Amazon Web Services
-	// Nitro Enclaves. To call DeriveSharedSecret for an Amazon Web Services Nitro
-	// Enclaves, use the [Amazon Web Services Nitro Enclaves SDK]to generate the attestation document and then use the
-	// Recipient parameter from any Amazon Web Services SDK to provide the attestation
-	// document for the enclave.
+	// Nitro Enclaves or Amazon Web Services NitroTPM. To call GenerateDataKeyPair
+	// generate an attestation document use either [Amazon Web Services Nitro Enclaves SDK]for an Amazon Web Services Nitro
+	// Enclaves or [Amazon Web Services NitroTPM tools]for Amazon Web Services NitroTPM. Then use the Recipient parameter
+	// from any Amazon Web Services SDK to provide the attestation document for the
+	// attested environment.
 	//
 	// When you use this parameter, instead of returning a plaintext copy of the
 	// private data key, KMS encrypts the plaintext private data key under the public
 	// key in the attestation document, and returns the resulting ciphertext in the
 	// CiphertextForRecipient field in the response. This ciphertext can be decrypted
-	// only with the private key in the enclave. The CiphertextBlob field in the
-	// response contains a copy of the private data key encrypted under the KMS key
-	// specified by the KeyId parameter. The PrivateKeyPlaintext field in the response
-	// is null or empty.
+	// only with the private key in the attested environment. The CiphertextBlob field
+	// in the response contains a copy of the private data key encrypted under the KMS
+	// key specified by the KeyId parameter. The PrivateKeyPlaintext field in the
+	// response is null or empty.
 	//
 	// For information about the interaction between KMS and Amazon Web Services Nitro
-	// Enclaves, see [How Amazon Web Services Nitro Enclaves uses KMS]in the Key Management Service Developer Guide.
+	// Enclaves or Amazon Web Services NitroTPM, see [Cryptographic attestation support in KMS]in the Key Management Service
+	// Developer Guide.
 	//
+	// [Cryptographic attestation support in KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/cryptographic-attestation.html
+	// [Amazon Web Services NitroTPM tools]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/attestation-get-doc.html
 	// [attestation document]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nitro-enclave-how.html#term-attestdoc
-	// [How Amazon Web Services Nitro Enclaves uses KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html
 	// [Amazon Web Services Nitro Enclaves SDK]: https://docs.aws.amazon.com/enclaves/latest/user/developing-applications.html#sdk
 	Recipient *types.RecipientInfo
 
@@ -223,22 +227,26 @@ type GenerateDataKeyPairInput struct {
 
 type GenerateDataKeyPairOutput struct {
 
-	// The plaintext private data key encrypted with the public key from the Nitro
-	// enclave. This ciphertext can be decrypted only by using a private key in the
-	// Nitro enclave.
+	// The plaintext private data key encrypted with the public key from the
+	// attestation document. This ciphertext can be decrypted only by using a private
+	// key from the attested environment.
 	//
 	// This field is included in the response only when the Recipient parameter in the
 	// request includes a valid attestation document from an Amazon Web Services Nitro
-	// enclave. For information about the interaction between KMS and Amazon Web
-	// Services Nitro Enclaves, see [How Amazon Web Services Nitro Enclaves uses KMS]in the Key Management Service Developer Guide.
+	// enclave or NitroTPM. For information about the interaction between KMS and
+	// Amazon Web Services Nitro Enclaves or Amazon Web Services NitroTPM, see [Cryptographic attestation support in KMS]in the
+	// Key Management Service Developer Guide.
 	//
-	// [How Amazon Web Services Nitro Enclaves uses KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html
+	// [Cryptographic attestation support in KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/cryptographic-attestation.html
 	CiphertextForRecipient []byte
 
 	// The Amazon Resource Name ([key ARN] ) of the KMS key that encrypted the private key.
 	//
 	// [key ARN]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#key-id-key-ARN
 	KeyId *string
+
+	// The identifier of the key material used to encrypt the private key.
+	KeyMaterialId *string
 
 	// The type of data key pair that was generated.
 	KeyPairSpec types.DataKeyPairSpec
@@ -354,16 +362,13 @@ func (c *Client) addOperationGenerateDataKeyPairMiddlewares(stack *middleware.St
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

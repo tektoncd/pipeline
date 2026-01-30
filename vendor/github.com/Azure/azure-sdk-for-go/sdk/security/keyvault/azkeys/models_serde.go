@@ -441,9 +441,61 @@ func (j *JSONWebKey) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type KeyAttestation.
+func (k KeyAttestation) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populateByteArray(objectMap, "certificatePemFile", k.CertificatePEMFile, func() any {
+		return runtime.EncodeByteArray(k.CertificatePEMFile, runtime.Base64URLFormat)
+	})
+	populateByteArray(objectMap, "privateKeyAttestation", k.PrivateKeyAttestation, func() any {
+		return runtime.EncodeByteArray(k.PrivateKeyAttestation, runtime.Base64URLFormat)
+	})
+	populateByteArray(objectMap, "publicKeyAttestation", k.PublicKeyAttestation, func() any {
+		return runtime.EncodeByteArray(k.PublicKeyAttestation, runtime.Base64URLFormat)
+	})
+	populate(objectMap, "version", k.Version)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type KeyAttestation.
+func (k *KeyAttestation) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", k, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "certificatePemFile":
+			if val != nil && string(val) != "null" {
+				err = runtime.DecodeByteArray(string(val), &k.CertificatePEMFile, runtime.Base64URLFormat)
+			}
+			delete(rawMsg, key)
+		case "privateKeyAttestation":
+			if val != nil && string(val) != "null" {
+				err = runtime.DecodeByteArray(string(val), &k.PrivateKeyAttestation, runtime.Base64URLFormat)
+			}
+			delete(rawMsg, key)
+		case "publicKeyAttestation":
+			if val != nil && string(val) != "null" {
+				err = runtime.DecodeByteArray(string(val), &k.PublicKeyAttestation, runtime.Base64URLFormat)
+			}
+			delete(rawMsg, key)
+		case "version":
+			err = unpopulate(val, "Version", &k.Version)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", k, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type KeyAttributes.
 func (k KeyAttributes) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
+	populate(objectMap, "attestation", k.Attestation)
 	populateTimeUnix(objectMap, "created", k.Created)
 	populate(objectMap, "enabled", k.Enabled)
 	populateTimeUnix(objectMap, "exp", k.Expires)
@@ -465,6 +517,9 @@ func (k *KeyAttributes) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "attestation":
+			err = unpopulate(val, "Attestation", &k.Attestation)
+			delete(rawMsg, key)
 		case "created":
 			err = unpopulateTimeUnix(val, "Created", &k.Created)
 			delete(rawMsg, key)
