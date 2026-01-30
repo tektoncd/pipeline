@@ -73,6 +73,7 @@ type KeyManagementCallOptions struct {
 	AsymmetricDecrypt             []gax.CallOption
 	MacSign                       []gax.CallOption
 	MacVerify                     []gax.CallOption
+	Decapsulate                   []gax.CallOption
 	GenerateRandomBytes           []gax.CallOption
 	GetLocation                   []gax.CallOption
 	ListLocations                 []gax.CallOption
@@ -91,6 +92,7 @@ func defaultKeyManagementGRPCClientOptions() []option.ClientOption {
 		internaloption.WithDefaultAudience("https://cloudkms.googleapis.com/"),
 		internaloption.WithDefaultScopes(DefaultAuthScopes()...),
 		internaloption.EnableJwtWithScope(),
+		internaloption.AllowHardBoundTokens("MTLS_S2A"),
 		internaloption.EnableNewAuthLibrary(),
 		option.WithGRPCDialOption(grpc.WithDefaultCallOptions(
 			grpc.MaxCallRecvMsgSize(math.MaxInt32))),
@@ -406,6 +408,7 @@ func defaultKeyManagementCallOptions() *KeyManagementCallOptions {
 				})
 			}),
 		},
+		Decapsulate: []gax.CallOption{},
 		GenerateRandomBytes: []gax.CallOption{
 			gax.WithTimeout(60000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
@@ -714,6 +717,7 @@ func defaultKeyManagementRESTCallOptions() *KeyManagementCallOptions {
 					http.StatusGatewayTimeout)
 			}),
 		},
+		Decapsulate: []gax.CallOption{},
 		GenerateRandomBytes: []gax.CallOption{
 			gax.WithTimeout(60000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
@@ -767,6 +771,7 @@ type internalKeyManagementClient interface {
 	AsymmetricDecrypt(context.Context, *kmspb.AsymmetricDecryptRequest, ...gax.CallOption) (*kmspb.AsymmetricDecryptResponse, error)
 	MacSign(context.Context, *kmspb.MacSignRequest, ...gax.CallOption) (*kmspb.MacSignResponse, error)
 	MacVerify(context.Context, *kmspb.MacVerifyRequest, ...gax.CallOption) (*kmspb.MacVerifyResponse, error)
+	Decapsulate(context.Context, *kmspb.DecapsulateRequest, ...gax.CallOption) (*kmspb.DecapsulateResponse, error)
 	GenerateRandomBytes(context.Context, *kmspb.GenerateRandomBytesRequest, ...gax.CallOption) (*kmspb.GenerateRandomBytesResponse, error)
 	GetLocation(context.Context, *locationpb.GetLocationRequest, ...gax.CallOption) (*locationpb.Location, error)
 	ListLocations(context.Context, *locationpb.ListLocationsRequest, ...gax.CallOption) *LocationIterator
@@ -1061,6 +1066,15 @@ func (c *KeyManagementClient) MacVerify(ctx context.Context, req *kmspb.MacVerif
 	return c.internalClient.MacVerify(ctx, req, opts...)
 }
 
+// Decapsulate decapsulates data that was encapsulated with a public key retrieved from
+// GetPublicKey
+// corresponding to a CryptoKeyVersion
+// with CryptoKey.purpose
+// KEY_ENCAPSULATION.
+func (c *KeyManagementClient) Decapsulate(ctx context.Context, req *kmspb.DecapsulateRequest, opts ...gax.CallOption) (*kmspb.DecapsulateResponse, error) {
+	return c.internalClient.Decapsulate(ctx, req, opts...)
+}
+
 // GenerateRandomBytes generate random bytes using the Cloud KMS randomness source in the provided
 // location.
 func (c *KeyManagementClient) GenerateRandomBytes(ctx context.Context, req *kmspb.GenerateRandomBytesRequest, opts ...gax.CallOption) (*kmspb.GenerateRandomBytesResponse, error) {
@@ -1196,7 +1210,7 @@ func (c *keyManagementGRPCClient) Connection() *grpc.ClientConn {
 // use by Google-written clients.
 func (c *keyManagementGRPCClient) setGoogleClientInfo(keyval ...string) {
 	kv := append([]string{"gl-go", gax.GoVersion}, keyval...)
-	kv = append(kv, "gapic", getVersionClient(), "gax", gax.Version, "grpc", grpc.Version)
+	kv = append(kv, "gapic", getVersionClient(), "gax", gax.Version, "grpc", grpc.Version, "pb", protoVersion)
 	c.xGoogHeaders = []string{
 		"x-goog-api-client", gax.XGoogHeader(kv...),
 	}
@@ -1278,7 +1292,7 @@ func defaultKeyManagementRESTClientOptions() []option.ClientOption {
 // use by Google-written clients.
 func (c *keyManagementRESTClient) setGoogleClientInfo(keyval ...string) {
 	kv := append([]string{"gl-go", gax.GoVersion}, keyval...)
-	kv = append(kv, "gapic", getVersionClient(), "gax", gax.Version, "rest", "UNKNOWN")
+	kv = append(kv, "gapic", getVersionClient(), "gax", gax.Version, "rest", "UNKNOWN", "pb", protoVersion)
 	c.xGoogHeaders = []string{
 		"x-goog-api-client", gax.XGoogHeader(kv...),
 	}
@@ -1888,6 +1902,24 @@ func (c *keyManagementGRPCClient) MacVerify(ctx context.Context, req *kmspb.MacV
 	err := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
 		var err error
 		resp, err = executeRPC(ctx, c.keyManagementClient.MacVerify, req, settings.GRPC, c.logger, "MacVerify")
+		return err
+	}, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *keyManagementGRPCClient) Decapsulate(ctx context.Context, req *kmspb.DecapsulateRequest, opts ...gax.CallOption) (*kmspb.DecapsulateResponse, error) {
+	hds := []string{"x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName()))}
+
+	hds = append(c.xGoogHeaders, hds...)
+	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
+	opts = append((*c.CallOptions).Decapsulate[0:len((*c.CallOptions).Decapsulate):len((*c.CallOptions).Decapsulate)], opts...)
+	var resp *kmspb.DecapsulateResponse
+	err := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
+		var err error
+		resp, err = executeRPC(ctx, c.keyManagementClient.Decapsulate, req, settings.GRPC, c.logger, "Decapsulate")
 		return err
 	}, opts...)
 	if err != nil {
@@ -3764,6 +3796,66 @@ func (c *keyManagementRESTClient) MacVerify(ctx context.Context, req *kmspb.MacV
 		httpReq.Header = headers
 
 		buf, err := executeHTTPRequest(ctx, c.httpClient, httpReq, c.logger, jsonReq, "MacVerify")
+		if err != nil {
+			return err
+		}
+
+		if err := unm.Unmarshal(buf, resp); err != nil {
+			return err
+		}
+
+		return nil
+	}, opts...)
+	if e != nil {
+		return nil, e
+	}
+	return resp, nil
+}
+
+// Decapsulate decapsulates data that was encapsulated with a public key retrieved from
+// GetPublicKey
+// corresponding to a CryptoKeyVersion
+// with CryptoKey.purpose
+// KEY_ENCAPSULATION.
+func (c *keyManagementRESTClient) Decapsulate(ctx context.Context, req *kmspb.DecapsulateRequest, opts ...gax.CallOption) (*kmspb.DecapsulateResponse, error) {
+	m := protojson.MarshalOptions{AllowPartial: true, UseEnumNumbers: true}
+	jsonReq, err := m.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	baseUrl, err := url.Parse(c.endpoint)
+	if err != nil {
+		return nil, err
+	}
+	baseUrl.Path += fmt.Sprintf("/v1/%v:decapsulate", req.GetName())
+
+	params := url.Values{}
+	params.Add("$alt", "json;enum-encoding=int")
+
+	baseUrl.RawQuery = params.Encode()
+
+	// Build HTTP headers from client and context metadata.
+	hds := []string{"x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName()))}
+
+	hds = append(c.xGoogHeaders, hds...)
+	hds = append(hds, "Content-Type", "application/json")
+	headers := gax.BuildHeaders(ctx, hds...)
+	opts = append((*c.CallOptions).Decapsulate[0:len((*c.CallOptions).Decapsulate):len((*c.CallOptions).Decapsulate)], opts...)
+	unm := protojson.UnmarshalOptions{AllowPartial: true, DiscardUnknown: true}
+	resp := &kmspb.DecapsulateResponse{}
+	e := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
+		if settings.Path != "" {
+			baseUrl.Path = settings.Path
+		}
+		httpReq, err := http.NewRequest("POST", baseUrl.String(), bytes.NewReader(jsonReq))
+		if err != nil {
+			return err
+		}
+		httpReq = httpReq.WithContext(ctx)
+		httpReq.Header = headers
+
+		buf, err := executeHTTPRequest(ctx, c.httpClient, httpReq, c.logger, jsonReq, "Decapsulate")
 		if err != nil {
 			return err
 		}
