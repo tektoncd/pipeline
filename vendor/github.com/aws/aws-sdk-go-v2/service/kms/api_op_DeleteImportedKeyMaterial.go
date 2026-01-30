@@ -19,6 +19,15 @@ import (
 // not change the KMS key's state. Otherwise, it changes the KMS key's state to
 // PendingImport .
 //
+// Considerations for multi-Region symmetric encryption keys
+//
+//   - When you delete the key material of a primary Region key that is in
+//     PENDING_ROTATION or PENDING_MULTI_REGION_IMPORT_AND_ROTATION state, you'll
+//     also be deleting the key materials for the replica Region keys.
+//
+//   - If you delete any key material of a replica Region key, the primary Region
+//     key and other replica Region keys remain unchanged.
+//
 // The KMS key that you use for this operation must be in a compatible key state.
 // For details, see [Key states of KMS keys]in the Key Management Service Developer Guide.
 //
@@ -31,6 +40,8 @@ import (
 //
 // # GetParametersForImport
 //
+// # ListKeyRotations
+//
 // # ImportKeyMaterial
 //
 // Eventual consistency: The KMS API follows an eventual consistency model. For
@@ -39,7 +50,7 @@ import (
 // [Key states of KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html
 // [kms:DeleteImportedKeyMaterial]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
 // [Importing Key Material]: https://docs.aws.amazon.com/kms/latest/developerguide/importing-keys.html
-// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
+// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/accessing-kms.html#programming-eventual-consistency
 func (c *Client) DeleteImportedKeyMaterial(ctx context.Context, params *DeleteImportedKeyMaterialInput, optFns ...func(*Options)) (*DeleteImportedKeyMaterialOutput, error) {
 	if params == nil {
 		params = &DeleteImportedKeyMaterialInput{}
@@ -74,10 +85,27 @@ type DeleteImportedKeyMaterialInput struct {
 	// This member is required.
 	KeyId *string
 
+	// Identifies the imported key material you are deleting.
+	//
+	// If no KeyMaterialId is specified, KMS deletes the current key material.
+	//
+	// To get the list of key material IDs associated with a KMS key, use ListKeyRotations.
+	KeyMaterialId *string
+
 	noSmithyDocumentSerde
 }
 
 type DeleteImportedKeyMaterialOutput struct {
+
+	// The Amazon Resource Name ([key ARN] ) of the KMS key from which the key material was
+	// deleted.
+	//
+	// [key ARN]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#key-id-key-ARN
+	KeyId *string
+
+	// Identifies the deleted key material.
+	KeyMaterialId *string
+
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
 
@@ -172,16 +200,13 @@ func (c *Client) addOperationDeleteImportedKeyMaterialMiddlewares(stack *middlew
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

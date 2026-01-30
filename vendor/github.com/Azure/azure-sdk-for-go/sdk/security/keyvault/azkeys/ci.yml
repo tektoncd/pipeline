@@ -28,6 +28,7 @@ extends:
     ServiceDirectory: 'security/keyvault/azkeys'
     RunLiveTests: true
     UsePipelineProxy: false
+    PersistOidcToken: true
 
     # Due to the high cost of Managed HSMs, we only want to test using them weekly.
     ${{ if contains(variables['Build.DefinitionName'], 'weekly') }}:
