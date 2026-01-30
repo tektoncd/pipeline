@@ -1,6 +1,8 @@
 name: ci
 
-on: [pull_request]
+on:
+  pull_request: {}
+  merge_group: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull-request.number || github.ref }}
@@ -174,3 +176,5 @@ jobs:
   e2e-tests:
     needs: [build]
     uses: ./.github/workflows/e2e-matrix.yml
+    with:
+      minimal: ${{ github.event_name == 'merge_group' }}

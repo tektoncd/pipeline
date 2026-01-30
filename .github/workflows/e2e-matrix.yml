@@ -1,14 +1,51 @@
 name: Tekton Integration
 # Adapted from https://github.com/mattmoor/mink/blob/master/.github/workflows/minkind.yaml
 
-on: [workflow_call]
+on:
+  workflow_call:
+    inputs:
+      minimal:
+        description: 'Run minimal matrix (aka only one job)'
+        required: false
+        type: boolean
+        default: false
 
 defaults:
   run:
     shell: bash
 
 jobs:
+  generate-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+    - id: set-matrix
+      run: |
+        if [[ "${{ inputs.minimal }}" == "true" ]]; then
+          # Minimal set: only one job
+          matrix='{"include":[{"os":"ubuntu-latest","k8s-name":"k8s-latest","k8s-version":"v1.34.x","feature-flags":"stable"}]}'
+        else
+          # Full matrix:
+          # - amd64: all combinations (2 k8s versions x 3 feature flags = 6 jobs)
+          # - arm64: only k8s-latest with stable (1 job)
+          # Total: 7 jobs
+          matrix='{
+            "include": [
+              {"os": "ubuntu-latest", "k8s-name": "k8s-oldest", "k8s-version": "v1.28.x", "feature-flags": "stable"},
+              {"os": "ubuntu-latest", "k8s-name": "k8s-oldest", "k8s-version": "v1.28.x", "feature-flags": "beta"},
+              {"os": "ubuntu-latest", "k8s-name": "k8s-oldest", "k8s-version": "v1.28.x", "feature-flags": "alpha"},
+              {"os": "ubuntu-latest", "k8s-name": "k8s-latest", "k8s-version": "v1.34.x", "feature-flags": "stable"},
+              {"os": "ubuntu-latest", "k8s-name": "k8s-latest", "k8s-version": "v1.34.x", "feature-flags": "beta"},
+              {"os": "ubuntu-latest", "k8s-name": "k8s-latest", "k8s-version": "v1.34.x", "feature-flags": "alpha"},
+              {"os": "ubuntu-24.04-arm", "k8s-name": "k8s-latest", "k8s-version": "v1.34.x", "feature-flags": "stable"}
+            ]
+          }'
+        fi
+        echo "matrix=$(echo $matrix | jq -c .)" >> $GITHUB_OUTPUT
+
   e2e-tests:
+    needs: generate-matrix
     concurrency:
       group: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.k8s-name }}-${{ matrix.feature-flags }}-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
@@ -16,36 +53,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false # Keep running if one leg fails.
-      matrix:
-        os:
-        - ubuntu-latest     # amd64
-        - ubuntu-24.04-arm  # arm64
-
-        k8s-name:
-        - k8s-oldest             # 1.28
-        - k8s-latest             # 1.34
-
-        feature-flags:
-        - stable
-        - beta
-        - alpha
-
-        include:
-        - k8s-name: k8s-oldest
-          k8s-version: v1.28.x
-        - k8s-name: k8s-latest
-          k8s-version: v1.34.x
-
-        # Limit arm64: only run k8s-latest on arm64 (alpha and beta), skip oldest on arm64
-        exclude:
-        - k8s-name: k8s-oldest
-          os: ubuntu-24.04-arm
-        - k8s-name: k8s-latest
-          os: ubuntu-24.04-arm
-          feature-flags: beta
-        - k8s-name: k8s-latest
-          os: ubuntu-24.04-arm
-          feature-flags: alpha
+      matrix: ${{ fromJSON(needs.generate-matrix.outputs.matrix) }}
     env:
       KO_DOCKER_REPO: registry.local:5000/tekton
       CLUSTER_DOMAIN: c${{ github.run_id }}.local
@@ -54,7 +62,7 @@ jobs:
 
     steps:
     - name: Free disk space
-      if: ${{ matrix.os != 'ubuntu-24.04-arm' }}
+      if: matrix.os != 'ubuntu-24.04-arm'
       run: |
         echo "--- Disk space before cleanup ---"
         df -h
