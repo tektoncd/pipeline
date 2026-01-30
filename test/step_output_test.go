@@ -51,7 +51,7 @@ func TestStepOutput(t *testing.T) {
 			TaskSpec: &v1.TaskSpec{
 				Steps: []v1.Step{{
 					Name:  "echo",
-					Image: "busybox",
+					Image: "mirror.gcr.io/busybox",
 					VolumeMounts: []corev1.VolumeMount{{
 						Name:      "data",
 						MountPath: "/data",
@@ -62,7 +62,7 @@ func TestStepOutput(t *testing.T) {
 					},
 				}, {
 					Name:  "cat",
-					Image: "busybox",
+					Image: "mirror.gcr.io/busybox",
 					VolumeMounts: []corev1.VolumeMount{{
 						Name:      "data",
 						MountPath: "/data",
@@ -133,14 +133,14 @@ func TestStepOutputWithWorkspace(t *testing.T) {
 			TaskSpec: &v1.TaskSpec{
 				Steps: []v1.Step{{
 					Name:   "echo",
-					Image:  "busybox",
+					Image:  "mirror.gcr.io/busybox",
 					Script: "echo -n " + wantResultValue,
 					StdoutConfig: &v1.StepOutputConfig{
 						Path: "/data/step-echo-stdout",
 					},
 				}, {
 					Name:   "cat",
-					Image:  "busybox",
+					Image:  "mirror.gcr.io/busybox",
 					Script: "cat /data/step-echo-stdout",
 					StdoutConfig: &v1.StepOutputConfig{
 						Path: fmt.Sprintf("$(results.%s.path)", wantResultName),

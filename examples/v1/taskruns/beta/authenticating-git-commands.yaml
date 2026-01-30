@@ -67,7 +67,7 @@ spec:
       mountPath: /messages
     sidecars:
     - name: server
-      image: docker.io/alpine/git:v2.26.2
+      image: mirror.gcr.io/alpine/git:v2.26.2
       securityContext:
         runAsUser: 0
       script: |
@@ -107,7 +107,7 @@ spec:
     - name: setup
       # This Step is only necessary as part of the test, it's not something you'll
       # ever need in a real-world scenario involving an external git repo.
-      image: docker.io/alpine/git:v2.26.2
+      image: mirror.gcr.io/alpine/git:v2.26.2
       securityContext:
         runAsUser: 0
       script: |
@@ -123,7 +123,7 @@ spec:
           sleep 1
         done
     - name: git-clone-and-push
-      image: docker.io/alpine/git:v2.26.2
+      image: mirror.gcr.io/alpine/git:v2.26.2
       securityContext:
         runAsUser: 0
       workingDir: /root
