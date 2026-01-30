@@ -588,7 +588,7 @@ function report_go_test() {
   logfile="${logfile/.xml/.jsonl}"
   echo "Running go test with args: ${go_test_args[*]}"
   local gotest_retcode=0
-  go_run gotest.tools/gotestsum@v1.11.0 \
+  go_run gotest.tools/gotestsum@v1.13.0 \
     --format "${GO_TEST_VERBOSITY:-testname}" \
     --junitfile "${xml}" \
     --junitfile-testsuite-name relative \
@@ -681,7 +681,7 @@ function start_knative_eventing_extension() {
 # Parameters: $1 - tool package for go run.
 #             $2..$n - parameters passed to the tool.
 function go_run() {
-  local package
+  local package gotoolchain
   package="$1"
   if [[ "$package" != *@* ]]; then
     abort 'Package for "go_run" needs to have @version'
@@ -696,6 +696,11 @@ function go_run() {
     GORUN_PATH="$(mktemp -t -d -u gopath.XXXXXXXX)"
   fi
   export GORUN_PATH
+  gotoolchain="$(go env GOTOOLCHAIN)"
+  if [[ "$package" == knative.dev/toolbox/* ]]; then
+    gotoolchain=auto
+  fi
+  GOTOOLCHAIN="${gotoolchain}" \
   GOPATH="${GORUN_PATH}" \
   GOFLAGS='' \
     go run "$package" "$@"

@@ -120,9 +120,11 @@ func (cfg *Metrics) Equals(other *Metrics) bool {
 
 	return other.TaskrunLevel == cfg.TaskrunLevel &&
 		other.PipelinerunLevel == cfg.PipelinerunLevel &&
+		other.RunningPipelinerunLevel == cfg.RunningPipelinerunLevel &&
 		other.DurationTaskrunType == cfg.DurationTaskrunType &&
 		other.DurationPipelinerunType == cfg.DurationPipelinerunType &&
-		other.CountWithReason == cfg.CountWithReason
+		other.CountWithReason == cfg.CountWithReason &&
+		other.ThrottleWithNamespace == cfg.ThrottleWithNamespace
 }
 
 // newMetricsFromMap returns a Config given a map corresponding to a ConfigMap

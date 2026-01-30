@@ -28,6 +28,22 @@ type Options struct {
 	// overrides a default finalizer name assigned by the generator if needed.
 	FinalizerName string
 
+	// UseServerSideApplyForFinalizers enables server-side apply for finalizer management.
+	// When enabled, this reconciler will use server-side apply instead of merge patch
+	// to manage its finalizer, reducing conflicts when multiple controllers manage
+	// different finalizers on the same resource.
+	UseServerSideApplyForFinalizers bool
+
+	// FinalizerFieldManager specifies the field manager name for server-side apply
+	// finalizer operations. This is required when UseServerSideApplyForFinalizers
+	// is true and should be unique to avoid conflicts with other controllers.
+	FinalizerFieldManager string
+
+	// ForceApplyFinalizers configures whether to use the Force option when applying
+	// finalizers via server-side apply. This can resolve conflicts but should be
+	// used carefully as it can override other field managers.
+	ForceApplyFinalizers bool
+
 	// AgentName is the name of the agent this reconciler uses. This overrides
 	// the default controller's agent name.
 	AgentName string
