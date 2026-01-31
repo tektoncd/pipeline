@@ -17,15 +17,17 @@ limitations under the License.
 package cache
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
+	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logtesting "knative.dev/pkg/logging/testing"
 )
 
-func TestParseCacheConfigMap(t *testing.T) {
+func TestOnCacheConfigMapChanged(t *testing.T) {
 	tests := []struct {
 		name            string
 		configMap       *corev1.ConfigMap
@@ -181,59 +183,30 @@ func TestParseCacheConfigMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config, err := NewConfigFromConfigMap(tt.configMap)
+			data, err := resolutionframework.DataFromConfigMap(tt.configMap)
 			if err != nil {
-				t.Fatalf("NewConfigFromConfigMap() returned error: %v", err)
+				t.Fatalf("DataFromConfigMap() returned error: %v", err)
 			}
 
-			if config.MaxSize != tt.expectedMaxSize {
-				t.Errorf("MaxSize = %d, want %d", config.MaxSize, tt.expectedMaxSize)
+			onCacheConfigChanged("test-config", data)
+			cache := Get(logtesting.TestContextWithLogger(t))
+
+			if cache.MaxSize() != tt.expectedMaxSize {
+				t.Errorf("MaxSize = %d, want %d", cache.MaxSize(), tt.expectedMaxSize)
 			}
 
-			if config.TTL != tt.expectedTTL {
-				t.Errorf("TTL = %v, want %v", config.TTL, tt.expectedTTL)
+			if cache.TTL() != tt.expectedTTL {
+				t.Errorf("TTL = %v, want %v", cache.TTL(), tt.expectedTTL)
 			}
 		})
 	}
 }
 
-func TestOnCacheConfigChanged(t *testing.T) {
-	ctx := logtesting.TestContextWithLogger(t)
-
-	// Ensure cache is initialized first
-	_ = Get(ctx)
-
-	// Test that onCacheConfigChanged updates the shared cache with new config values
-	config := &Config{
-		MaxSize: 500,
-		TTL:     10 * time.Minute,
-	}
-
-	// Call onCacheConfigChanged to update the shared cache
-	onCacheConfigChanged("test-config", config)
-
-	// Verify the shared cache was updated with the correct config values
-	cache := Get(ctx)
-	if cache == nil {
-		t.Fatal("Expected cache after config change but got nil")
-	}
-
-	// Verify TTL was applied
-	if cache.TTL() != config.TTL {
-		t.Errorf("Expected TTL to be %v, got %v", config.TTL, cache.TTL())
-	}
-
-	// Verify MaxSize was applied
-	if cache.MaxSize() != config.MaxSize {
-		t.Errorf("Expected MaxSize to be %d, got %d", config.MaxSize, cache.MaxSize())
-	}
-}
-
 func TestOnCacheConfigChangedWithInvalidType(t *testing.T) {
 	// First, set up a known good config
-	goodConfig := &Config{
-		MaxSize: defaultCacheSize,
-		TTL:     defaultExpiration,
+	goodConfig := map[string]string{
+		"max-size": strconv.Itoa(defaultCacheSize),
+		"ttl":      defaultExpiration.String(),
 	}
 	onCacheConfigChanged("test-config", goodConfig)
 
