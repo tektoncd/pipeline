@@ -392,6 +392,16 @@ func applyV1Beta1Controller(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create Wait Custom Task Controller: %s, Output: %s", err, out)
 	}
+
+	// Wait for the controller deployment to be ready before running tests.
+	// This prevents race conditions where tests create CustomRuns before the
+	// controller is ready to reconcile them.
+	t.Log("Waiting for Wait Custom Task Controller deployment to be ready...")
+	cmd = exec.CommandContext(context.Background(), "kubectl", "rollout", "status", "deployment/wait-task-controller", "-n", "wait-task-beta", "--timeout=60s")
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Failed to wait for Wait Custom Task Controller deployment: %s, Output: %s", err, out)
+	}
 }
 
 func cleanUpV1beta1Controller(t *testing.T) {
