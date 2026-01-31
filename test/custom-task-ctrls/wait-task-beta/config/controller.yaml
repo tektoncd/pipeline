@@ -265,6 +265,10 @@ spec:
           value: config-logging
         - name: METRICS_DOMAIN
           value: wait.testing.tekton.dev/wait-task
+        # Allow running on older Kubernetes versions for testing.
+        # The newer knative.dev/pkg requires k8s 1.31+ by default.
+        - name: KUBERNETES_MIN_VERSION
+          value: "1.28.0"
       volumes:
         - name: config-logging
           configMap:
