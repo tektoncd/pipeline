@@ -34,6 +34,7 @@ ENABLE_PARAM_ENUM=${ENABLE_PARAM_ENUM:="false"}
 ENABLE_ARTIFACTS=${ENABLE_ARTIFACTS:="false"}
 ENABLE_CONCISE_RESOLVER_SYNTAX=${ENABLE_CONCISE_RESOLVER_SYNTAX:="false"}
 ENABLE_KUBERNETES_SIDECAR=${ENABLE_KUBERNETES_SIDECAR:="false"}
+ENABLE_DEFAULT_RESULTS=${ENABLE_DEFAULT_RESULTS:="false"}
 
 # Script entry point.
 
@@ -162,6 +163,18 @@ function set_default_sidecar_log_polling_interval() {
   with_retries kubectl patch configmap config-defaults -n tekton-pipelines -p "$jsonpatch"
 }
 
+function set_enable_default_results() {
+  local method="$1"
+  if [ "$method" != "false" ] && [ "$method" != "true" ]; then
+    printf "Invalid value for enable-default-results %s\n" ${method}
+    exit 255
+  fi
+  printf "Setting enable-default-results to %s\n", ${method}
+  jsonpatch=$(printf "{\"data\": {\"enable-default-results\": \"%s\"}}" $1)
+  echo "feature-flags ConfigMap patch: ${jsonpatch}"
+  with_retries kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+}
+
 function run_e2e() {
   # Run the integration tests
   header "Running Go e2e tests"
@@ -174,7 +187,17 @@ function run_e2e() {
   # and they cause a lot of noise in the logs, making it harder to debug integration
   # test failures.
   if [ "${RUN_YAML_TESTS}" == "true" ]; then
+    # enable-default-results is an alpha feature; enable it for alpha example runs
+    # so that examples under examples/v1/pipelineruns/alpha/ and examples/v1/taskruns/alpha/
+    # that rely on default results are actually executed.
+    if [ "${PIPELINE_FEATURE_GATE}" == "alpha" ]; then
+      set_enable_default_results "true"
+    fi
     go_test_e2e -mod=readonly -parallel=2 -tags=examples -timeout=${E2E_GO_TEST_TIMEOUT} ./test/
+    # restore enable-default-results to its configured value after example runs
+    if [ "${PIPELINE_FEATURE_GATE}" == "alpha" ]; then
+      set_enable_default_results "${ENABLE_DEFAULT_RESULTS}"
+    fi
   fi
 
   if [ "${RUN_FEATUREFLAG_TESTS}" == "true" ]; then
@@ -195,6 +218,7 @@ set_enable_artifacts "$ENABLE_ARTIFACTS"
 set_enable_concise_resolver_syntax "$ENABLE_CONCISE_RESOLVER_SYNTAX"
 set_enable_kubernetes_sidecar "$ENABLE_KUBERNETES_SIDECAR"
 set_default_sidecar_log_polling_interval
+set_enable_default_results "$ENABLE_DEFAULT_RESULTS"
 run_e2e
 
 success
