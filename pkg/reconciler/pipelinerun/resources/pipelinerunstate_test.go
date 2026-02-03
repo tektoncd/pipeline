@@ -3747,6 +3747,96 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 	}
 }
 
+func TestPipelineRunState_GetTaskResultDefaults(t *testing.T) {
+	state := PipelineRunState{{
+		TaskRunNames: []string{"task-with-defaults"},
+		PipelineTask: &v1.PipelineTask{
+			Name: "task-with-defaults-1",
+		},
+		ResolvedTask: &resources.ResolvedTask{
+			TaskSpec: &v1.TaskSpec{
+				Results: []v1.TaskResult{{
+					Name:    "result-with-default",
+					Type:    v1.ResultsTypeString,
+					Default: v1.NewStructuredValues("default-value"),
+				}, {
+					Name: "result-without-default",
+					Type: v1.ResultsTypeString,
+				}, {
+					Name:    "array-result-with-default",
+					Type:    v1.ResultsTypeArray,
+					Default: v1.NewStructuredValues("val1", "val2"),
+				}},
+			},
+		},
+	}, {
+		TaskRunNames: []string{"task-without-defaults"},
+		PipelineTask: &v1.PipelineTask{
+			Name: "task-without-defaults-1",
+		},
+		ResolvedTask: &resources.ResolvedTask{
+			TaskSpec: &v1.TaskSpec{
+				Results: []v1.TaskResult{{
+					Name: "result-no-default",
+					Type: v1.ResultsTypeString,
+				}},
+			},
+		},
+	}, {
+		TaskRunNames: []string{"task-nil-resolved-task"},
+		PipelineTask: &v1.PipelineTask{
+			Name: "task-nil-resolved-task-1",
+		},
+		ResolvedTask: nil,
+	}, {
+		CustomTask:     true,
+		CustomRunNames: []string{"custom-task-run"},
+		PipelineTask: &v1.PipelineTask{
+			Name: "custom-task-1",
+		},
+	}, {
+		// A matrixed task that never ran: the string default is repeated once per
+		// combination, and the unsupported array default is omitted.
+		PipelineTask: &v1.PipelineTask{
+			Name: "matrixed-task-with-defaults-1",
+			Matrix: &v1.Matrix{
+				Params: v1.Params{{
+					Name:  "platform",
+					Value: *v1.NewStructuredValues("linux", "mac", "windows"),
+				}},
+			},
+		},
+		ResolvedTask: &resources.ResolvedTask{
+			TaskSpec: &v1.TaskSpec{
+				Results: []v1.TaskResult{{
+					Name:    "result-with-default",
+					Type:    v1.ResultsTypeString,
+					Default: v1.NewStructuredValues("default-value"),
+				}, {
+					Name:    "array-result-with-default",
+					Type:    v1.ResultsTypeArray,
+					Default: v1.NewStructuredValues("val1", "val2"),
+				}},
+			},
+		},
+	}}
+
+	expectedDefaults := map[string]map[string]*v1.ResultValue{
+		"task-with-defaults-1": {
+			"result-with-default":       v1.NewStructuredValues("default-value"),
+			"array-result-with-default": v1.NewStructuredValues("val1", "val2"),
+		},
+		"matrixed-task-with-defaults-1": {
+			"result-with-default": v1.NewStructuredValues("default-value", "default-value", "default-value"),
+		},
+	}
+
+	actualDefaults := state.GetTaskResultDefaults()
+	if d := cmp.Diff(expectedDefaults, actualDefaults); d != "" {
+		t.Errorf("Didn't get expected task result defaults map: %s", diff.PrintWantGot(d))
+	}
+}
+
 func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 	testCases := []struct {
 		name              string
