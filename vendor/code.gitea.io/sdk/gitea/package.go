@@ -78,8 +78,7 @@ func (c *Client) DeletePackage(owner, packageType, name, version string) (*Respo
 	if err := escapeValidatePathSegments(&owner, &packageType, &name, &version); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/packages/%s/%s/%s/%s", owner, packageType, name, version), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/packages/%s/%s/%s/%s", owner, packageType, name, version), nil, nil)
 }
 
 // ListPackageFiles lists the files within a package
@@ -90,4 +89,30 @@ func (c *Client) ListPackageFiles(owner, packageType, name, version string) ([]*
 	packageFiles := make([]*PackageFile, 0)
 	resp, err := c.getParsedResponse("GET", fmt.Sprintf("/packages/%s/%s/%s/%s/files", owner, packageType, name, version), nil, nil, &packageFiles)
 	return packageFiles, resp, err
+}
+
+// GetLatestPackage gets the details of the latest version of a package
+func (c *Client) GetLatestPackage(owner, packageType, name string) (*Package, *Response, error) {
+	if err := escapeValidatePathSegments(&owner, &packageType, &name); err != nil {
+		return nil, nil, err
+	}
+	foundPackage := new(Package)
+	resp, err := c.getParsedResponse("GET", fmt.Sprintf("/packages/%s/%s/%s/-/latest", owner, packageType, name), nil, nil, foundPackage)
+	return foundPackage, resp, err
+}
+
+// LinkPackage links a package to a repository
+func (c *Client) LinkPackage(owner, packageType, name, repoName string) (*Response, error) {
+	if err := escapeValidatePathSegments(&owner, &packageType, &name, &repoName); err != nil {
+		return nil, err
+	}
+	return c.doRequestWithStatusHandle("POST", fmt.Sprintf("/packages/%s/%s/%s/-/link/%s", owner, packageType, name, repoName), nil, nil)
+}
+
+// UnlinkPackage unlinks a package from a repository
+func (c *Client) UnlinkPackage(owner, packageType, name string) (*Response, error) {
+	if err := escapeValidatePathSegments(&owner, &packageType, &name); err != nil {
+		return nil, err
+	}
+	return c.doRequestWithStatusHandle("POST", fmt.Sprintf("/packages/%s/%s/%s/-/unlink", owner, packageType, name), nil, nil)
 }
