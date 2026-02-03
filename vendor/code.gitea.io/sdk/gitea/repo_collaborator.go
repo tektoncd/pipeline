@@ -122,8 +122,7 @@ func (c *Client) AddCollaborator(user, repo, collaborator string, opt AddCollabo
 	if err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("PUT", fmt.Sprintf("/repos/%s/%s/collaborators/%s", user, repo, collaborator), jsonHeader, bytes.NewReader(body))
-	return resp, err
+	return c.doRequestWithStatusHandle("PUT", fmt.Sprintf("/repos/%s/%s/collaborators/%s", user, repo, collaborator), jsonHeader, bytes.NewReader(body))
 }
 
 // DeleteCollaborator remove a collaborator from a repository
@@ -131,9 +130,8 @@ func (c *Client) DeleteCollaborator(user, repo, collaborator string) (*Response,
 	if err := escapeValidatePathSegments(&user, &repo, &collaborator); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE",
+	return c.doRequestWithStatusHandle("DELETE",
 		fmt.Sprintf("/repos/%s/%s/collaborators/%s", user, repo, collaborator), nil, nil)
-	return resp, err
 }
 
 // GetReviewers return all users that can be requested to review in this repo

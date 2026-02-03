@@ -55,15 +55,15 @@ type MigrateRepoOption struct {
 func (opt *MigrateRepoOption) Validate(c *Client) error {
 	// check user options
 	if len(opt.CloneAddr) == 0 {
-		return fmt.Errorf("CloneAddr required")
+		return fmt.Errorf("clone addr required")
 	}
 	if len(opt.RepoName) == 0 {
-		return fmt.Errorf("RepoName required")
+		return fmt.Errorf("repo name required")
 	} else if len(opt.RepoName) > 100 {
-		return fmt.Errorf("RepoName to long")
+		return fmt.Errorf("repo name too long")
 	}
 	if len(opt.Description) > 2048 {
-		return fmt.Errorf("Description to long")
+		return fmt.Errorf("description too long")
 	}
 	switch opt.Service {
 	case GitServiceGithub:

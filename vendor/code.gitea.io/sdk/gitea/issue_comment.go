@@ -149,6 +149,54 @@ func (c *Client) DeleteIssueComment(owner, repo string, commentID int64) (*Respo
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/issues/comments/%d", owner, repo, commentID), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/issues/comments/%d", owner, repo, commentID), nil, nil)
+}
+
+// ListIssueCommentAttachments lists all attachments for a comment
+func (c *Client) ListIssueCommentAttachments(owner, repo string, commentID int64) ([]*Attachment, *Response, error) {
+	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
+		return nil, nil, err
+	}
+	attachments := make([]*Attachment, 0, 10)
+	resp, err := c.getParsedResponse("GET",
+		fmt.Sprintf("/repos/%s/%s/issues/comments/%d/assets", owner, repo, commentID),
+		nil, nil, &attachments)
+	return attachments, resp, err
+}
+
+// GetIssueCommentAttachment gets a comment attachment
+func (c *Client) GetIssueCommentAttachment(owner, repo string, commentID, attachmentID int64) (*Attachment, *Response, error) {
+	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
+		return nil, nil, err
+	}
+	attachment := new(Attachment)
+	resp, err := c.getParsedResponse("GET",
+		fmt.Sprintf("/repos/%s/%s/issues/comments/%d/assets/%d", owner, repo, commentID, attachmentID),
+		nil, nil, &attachment)
+	return attachment, resp, err
+}
+
+// EditIssueCommentAttachment updates a comment attachment
+func (c *Client) EditIssueCommentAttachment(owner, repo string, commentID, attachmentID int64, form EditAttachmentOptions) (*Attachment, *Response, error) {
+	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
+		return nil, nil, err
+	}
+	body, err := json.Marshal(&form)
+	if err != nil {
+		return nil, nil, err
+	}
+	attachment := new(Attachment)
+	resp, err := c.getParsedResponse("PATCH",
+		fmt.Sprintf("/repos/%s/%s/issues/comments/%d/assets/%d", owner, repo, commentID, attachmentID),
+		jsonHeader, bytes.NewReader(body), attachment)
+	return attachment, resp, err
+}
+
+// DeleteIssueCommentAttachment deletes a comment attachment
+func (c *Client) DeleteIssueCommentAttachment(owner, repo string, commentID, attachmentID int64) (*Response, error) {
+	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
+		return nil, err
+	}
+	return c.doRequestWithStatusHandle("DELETE",
+		fmt.Sprintf("/repos/%s/%s/issues/comments/%d/assets/%d", owner, repo, commentID, attachmentID), nil, nil)
 }

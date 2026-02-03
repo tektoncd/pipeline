@@ -67,9 +67,19 @@ func (c *Client) ListRepoTrackedTimes(owner, repo string, opt ListTrackedTimesOp
 }
 
 // GetMyTrackedTimes list tracked times of the current user
+//
+// Deprecated: Use ListMyTrackedTimes instead, which supports pagination and filtering.
 func (c *Client) GetMyTrackedTimes() ([]*TrackedTime, *Response, error) {
-	times := make([]*TrackedTime, 0, 10)
-	resp, err := c.getParsedResponse("GET", "/user/times", jsonHeader, nil, &times)
+	return c.ListMyTrackedTimes(ListTrackedTimesOptions{})
+}
+
+// ListMyTrackedTimes list tracked times of the current user with pagination and filtering
+func (c *Client) ListMyTrackedTimes(opt ListTrackedTimesOptions) ([]*TrackedTime, *Response, error) {
+	link, _ := url.Parse("/user/times")
+	opt.setDefaults()
+	link.RawQuery = opt.QueryEncode()
+	times := make([]*TrackedTime, 0, opt.PageSize)
+	resp, err := c.getParsedResponse("GET", link.String(), jsonHeader, nil, &times)
 	return times, resp, err
 }
 
@@ -128,8 +138,7 @@ func (c *Client) ResetIssueTime(owner, repo string, index int64) (*Response, err
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/issues/%d/times", owner, repo, index), jsonHeader, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/issues/%d/times", owner, repo, index), jsonHeader, nil)
 }
 
 // DeleteTime delete a specific tracked time by id of a single issue for a given repository
@@ -137,6 +146,5 @@ func (c *Client) DeleteTime(owner, repo string, index, timeID int64) (*Response,
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/issues/%d/times/%d", owner, repo, index, timeID), jsonHeader, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/issues/%d/times/%d", owner, repo, index, timeID), jsonHeader, nil)
 }

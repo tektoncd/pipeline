@@ -14,13 +14,63 @@ import (
 // AdminListUsersOptions options for listing admin users
 type AdminListUsersOptions struct {
 	ListOptions
+	SourceID        int64
+	LoginName       string
+	Query           string
+	Sort            string // "name", "created", "updated", "id"
+	Order           string // "asc", "desc"
+	Visibility      string
+	IsActive        *bool
+	IsAdmin         *bool
+	IsRestricted    *bool
+	Is2FAEnabled    *bool
+	IsProhibitLogin *bool
+}
+
+// QueryEncode turns options into querystring argument
+func (opt *AdminListUsersOptions) QueryEncode() string {
+	query := opt.getURLQuery()
+	if opt.SourceID > 0 {
+		query.Add("source_id", fmt.Sprintf("%d", opt.SourceID))
+	}
+	if opt.LoginName != "" {
+		query.Add("login_name", opt.LoginName)
+	}
+	if opt.Query != "" {
+		query.Add("q", opt.Query)
+	}
+	if opt.Sort != "" {
+		query.Add("sort", opt.Sort)
+	}
+	if opt.Order != "" {
+		query.Add("order", opt.Order)
+	}
+	if opt.Visibility != "" {
+		query.Add("visibility", opt.Visibility)
+	}
+	if opt.IsActive != nil {
+		query.Add("is_active", fmt.Sprintf("%t", *opt.IsActive))
+	}
+	if opt.IsAdmin != nil {
+		query.Add("is_admin", fmt.Sprintf("%t", *opt.IsAdmin))
+	}
+	if opt.IsRestricted != nil {
+		query.Add("is_restricted", fmt.Sprintf("%t", *opt.IsRestricted))
+	}
+	if opt.Is2FAEnabled != nil {
+		query.Add("is_2fa_enabled", fmt.Sprintf("%t", *opt.Is2FAEnabled))
+	}
+	if opt.IsProhibitLogin != nil {
+		query.Add("is_prohibit_login", fmt.Sprintf("%t", *opt.IsProhibitLogin))
+	}
+	return query.Encode()
 }
 
 // AdminListUsers lists all users
 func (c *Client) AdminListUsers(opt AdminListUsersOptions) ([]*User, *Response, error) {
 	opt.setDefaults()
 	users := make([]*User, 0, opt.PageSize)
-	resp, err := c.getParsedResponse("GET", fmt.Sprintf("/admin/users?%s", opt.getURLQuery().Encode()), nil, nil, &users)
+	resp, err := c.getParsedResponse("GET", fmt.Sprintf("/admin/users?%s", opt.QueryEncode()), nil, nil, &users)
 	return users, resp, err
 }
 
@@ -93,8 +143,7 @@ func (c *Client) AdminEditUser(user string, opt EditUserOption) (*Response, erro
 	if err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("PATCH", fmt.Sprintf("/admin/users/%s", user), jsonHeader, bytes.NewReader(body))
-	return resp, err
+	return c.doRequestWithStatusHandle("PATCH", fmt.Sprintf("/admin/users/%s", user), jsonHeader, bytes.NewReader(body))
 }
 
 // AdminDeleteUser delete one user according name
@@ -102,8 +151,7 @@ func (c *Client) AdminDeleteUser(user string) (*Response, error) {
 	if err := escapeValidatePathSegments(&user); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/admin/users/%s", user), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/admin/users/%s", user), nil, nil)
 }
 
 // AdminCreateUserPublicKey adds a public key for the user
@@ -125,6 +173,24 @@ func (c *Client) AdminDeleteUserPublicKey(user string, keyID int) (*Response, er
 	if err := escapeValidatePathSegments(&user); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/admin/users/%s/keys/%d", user, keyID), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/admin/users/%s/keys/%d", user, keyID), nil, nil)
+}
+
+// RenameUserOption options for renaming a user
+type RenameUserOption struct {
+	NewUsername string `json:"new_username"`
+}
+
+// AdminRenameUser renames a user
+func (c *Client) AdminRenameUser(username string, opt RenameUserOption) (*Response, error) {
+	if err := escapeValidatePathSegments(&username); err != nil {
+		return nil, err
+	}
+	body, err := json.Marshal(&opt)
+	if err != nil {
+		return nil, err
+	}
+	return c.doRequestWithStatusHandle("POST",
+		fmt.Sprintf("/admin/users/%s/rename", username),
+		jsonHeader, bytes.NewReader(body))
 }

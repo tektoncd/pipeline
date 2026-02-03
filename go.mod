@@ -37,7 +37,7 @@ require (
 )
 
 require (
-	code.gitea.io/sdk/gitea v0.21.0
+	code.gitea.io/sdk/gitea v0.23.2
 	github.com/go-jose/go-jose/v3 v3.0.4
 	github.com/goccy/kpoward v0.1.0
 	github.com/google/cel-go v0.27.0
@@ -63,7 +63,7 @@ require (
 	cloud.google.com/go/kms v1.23.2 // indirect
 	cloud.google.com/go/longrunning v0.6.7 // indirect
 	fortio.org/safecast v1.2.0 // indirect
-	github.com/42wim/httpsig v1.2.2 // indirect
+	github.com/42wim/httpsig v1.2.3 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.20.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2 // indirect
