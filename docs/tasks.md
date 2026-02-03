@@ -25,6 +25,7 @@ weight: 201
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Emitting `Results`](#emitting-results)
     - [Larger `Results` using sidecar logs](#larger-results-using-sidecar-logs)
+    - [Default Value](#default-value)
   - [Specifying `Volumes`](#specifying-volumes)
   - [Specifying a `Step` template](#specifying-a-step-template)
   - [Specifying `Sidecars`](#specifying-sidecars)
@@ -1058,6 +1059,90 @@ leading to bad user experience.
 
 Refer to the detailed instructions listed in [additional config](additional-configs.md#enabling-larger-results-using-sidecar-logs)
 to learn how to enable this feature.
+
+#### Default Value
+
+This is an alpha feature guarded behind its own feature flag.  The `enable-default-results` feature flag must be set to
+`true` to use default values for results.
+
+Result declarations (within Tasks and Pipelines) can include default values that are used if the Result is not produced.
+This allows you to specify defaults for `string`, `array`, and `object` results.
+
+##### `string` type
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: task-with-default-string-result
+spec:
+  results:
+  - name: branch
+    type: string
+    default: main
+```
+
+##### `array` type
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: task-with-default-array-result
+spec:
+  results:
+  - name: tags
+    type: array
+    default:
+    - latest
+    - v2.0
+    - v1.0
+```
+
+##### `object` type
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: task-with-default-object-result
+spec:
+  results:
+  - name: image
+    type: object
+    properties:
+      url:
+        type: string
+      digest:
+        type: string
+    default:
+      url: cr.io/foo/bar
+      digest: sha256:abc123
+```
+
+For a more detailed example showing how default results are defined, see the [pipelinerun-with-default-results.yaml](../examples/v1/pipelineruns/alpha/pipelinerun-with-default-results.yaml).
+
+**Note:** If a Task does not specify a default value for a particular `Result` and fails to emit that `Result`, the
+following `Task` will be marked as Failed, as described in [TEP-0048](https://github.com/tektoncd/community/blob/main/teps/0048-task-results-without-results.md).
+Below is an example where the `taskRun` fails because one of the results was not produced:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: test-tr-
+spec:
+  taskSpec:
+    results:
+      - name: result1
+        description: will be produced
+      - name: result2
+        description: will not be produced
+    steps:
+      - name: failing-step
+        image: busybox
+        script: "echo -n 123 | tee $(results.result1.path)"
+```
 
 ### Specifying Volumes
 
