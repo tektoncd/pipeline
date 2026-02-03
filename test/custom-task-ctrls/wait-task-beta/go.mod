@@ -5,8 +5,8 @@ go 1.24.0
 require (
 	github.com/google/go-cmp v0.7.0
 	github.com/tektoncd/pipeline v1.7.0
-	k8s.io/api v0.32.8
-	k8s.io/apimachinery v0.32.9
+	k8s.io/api v0.32.11
+	k8s.io/apimachinery v0.32.11
 	k8s.io/client-go v0.32.8
 	k8s.io/utils v0.0.0-20241210054802-24370beab758
 	knative.dev/pkg v0.0.0-20250415155312-ed3e2158b883
