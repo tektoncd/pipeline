@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
@@ -39,7 +40,8 @@ func (tr TaskResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 	case tr.Type != ResultsTypeString:
 		errs = errs.Also(apis.ErrInvalidValue(tr.Type, "type", "type must be string"))
 	}
-	return errs.Also(tr.validateValue(ctx))
+	errs = errs.Also(tr.validateValue(ctx))
+	return errs.Also(tr.validateDefault(ctx))
 }
 
 // validateObjectResult validates the object result and check if the Properties is missing
@@ -104,5 +106,51 @@ func (tr TaskResult) validateValue(ctx context.Context) (errs *apis.FieldError) 
 			})
 		}
 	}
+	return errs
+}
+
+// validateDefault validates the default value of the TaskResult.
+// It ensures that the default value type matches the result type.
+func (tr TaskResult) validateDefault(ctx context.Context) (errs *apis.FieldError) {
+	if tr.Default == nil {
+		return nil
+	}
+
+	// Check if the feature flag is enabled
+	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableDefaultResults {
+		return apis.ErrGeneric(fmt.Sprintf("feature flag %q must be set to true to use default values for results", config.EnableDefaultResults), "").ViaFieldKey("results", tr.Name).ViaField("default")
+	}
+
+	// Determine the expected type based on the result type
+	expectedType := ParamTypeString
+	if tr.Type == ResultsTypeArray {
+		expectedType = ParamTypeArray
+	} else if tr.Type == ResultsTypeObject {
+		expectedType = ParamTypeObject
+	}
+
+	// Validate that the default type matches the result type
+	if tr.Default.Type != expectedType {
+		return &apis.FieldError{
+			Message: fmt.Sprintf(
+				"Invalid default type. Result type is %q but default type is %q", tr.Type, tr.Default.Type),
+			Paths: []string{
+				tr.Name + ".default",
+			},
+		}
+	}
+
+	// For object results, validate that default object keys match the properties schema
+	if tr.Type == ResultsTypeObject && tr.Properties != nil {
+		for key := range tr.Default.ObjectVal {
+			if _, ok := tr.Properties[key]; !ok {
+				errs = errs.Also(&apis.FieldError{
+					Message: fmt.Sprintf("default object key %q is not defined in properties", key),
+					Paths:   []string{tr.Name + ".default"},
+				})
+			}
+		}
+	}
+
 	return errs
 }

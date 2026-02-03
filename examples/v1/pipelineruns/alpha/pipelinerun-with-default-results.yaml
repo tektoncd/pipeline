@@ -1,0 +1,111 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipeline-default-results-
+spec:
+  pipelineSpec:
+    results:
+      - name: string-result
+        description: String result from task1 (default since task1 fails to produce it)
+        value: $(tasks.task1.results.string-result)
+      - name: array-results
+        type: array
+        description: Array results from task2 (default since task2 fails to produce it)
+        value: $(tasks.task2.results.array-results[*])
+    tasks:
+      - name: task1
+        taskSpec:
+          results:
+            - name: string-result
+              description: String result with default value
+              default: "default-string-from-task1"
+          steps:
+            - name: step-that-fails
+              image: bash:latest
+              onError: continue
+              script: |
+                #!/usr/bin/env bash
+                echo "This step fails, so the default string result will be used"
+                exit 1
+                # This won't execute; default result "default-string-from-task1" is used instead
+                echo -n "actual-string-value" | tee $(results.string-result.path)
+      - name: task2
+        runAfter:
+          - task1
+        params:
+          - name: input-string
+            value: $(tasks.task1.results.string-result)
+        taskSpec:
+          params:
+            - name: input-string
+              description: String result consumed from task1
+          results:
+            - name: array-results
+              type: array
+              description: Array result with default value
+              default:
+                - "default-1"
+                - "default-2"
+                - "default-3"
+          steps:
+            - name: step-that-fails
+              image: bash:latest
+              onError: continue
+              script: |
+                #!/usr/bin/env bash
+                echo "Consumed task1 result: $(params.input-string)"
+                echo "This step fails, so the default array result will be used"
+                exit 1
+                # This won't execute; default result ["default-1","default-2","default-3"] is used instead
+                echo -n '["actual-1","actual-2"]' | tee $(results.array-results.path)
+      # task3 is skipped because its when expression evaluates to false.
+      # Its result has a default value that the finally task can use.
+      - name: task3
+        when:
+          - input: "false"
+            operator: in
+            values: ["true"]
+        taskSpec:
+          results:
+            - name: skipped-task-result
+              description: Result with default, produced only when task3 runs
+              default: "default-from-skipped-task3"
+          steps:
+            - name: produce-result
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                echo -n "actual-value-from-task3" | tee $(results.skipped-task-result.path)
+    finally:
+      # finally-task-1 consumes a result from task1 which fails to produce it.
+      # The default result value "default-string-from-task1" is used instead.
+      - name: finally-task-1
+        params:
+          - name: task1-result
+            value: $(tasks.task1.results.string-result)
+        taskSpec:
+          params:
+            - name: task1-result
+              description: Result from task1, falls back to default when task1 fails
+          steps:
+            - name: use-default-result
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                echo "finally-task-1 received task1 result (or its default): $(params.task1-result)"
+      # finally-task-2 consumes a result from task3 which is skipped (when expression is false).
+      # The default result value "default-from-skipped-task3" is used instead.
+      - name: finally-task-2
+        params:
+          - name: task3-result
+            value: $(tasks.task3.results.skipped-task-result)
+        taskSpec:
+          params:
+            - name: task3-result
+              description: Result from task3, falls back to default when task3 is skipped
+          steps:
+            - name: use-default-result
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                echo "finally-task-2 received task3 result (or its default): $(params.task3-result)"
