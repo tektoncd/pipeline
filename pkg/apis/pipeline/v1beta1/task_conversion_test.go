@@ -355,6 +355,23 @@ spec:
 	stepActionTaskResultV1beta1 := parse.MustParseV1beta1Task(t, stepActionTaskResultYAML)
 	stepActionTaskResultV1 := parse.MustParseV1Task(t, stepActionTaskResultYAML)
 
+	taskResultWithDefaultYAML := `
+metadata:
+  name: foo
+  namespace: bar
+spec:
+  results:
+    - name: my-result
+      type: string
+      default: "fallback-value"
+  steps:
+    - name: produce
+      image: bash:latest
+      script: echo -n "hello" | tee $(results.my-result.path)
+`
+	taskResultWithDefaultV1beta1 := parse.MustParseV1beta1Task(t, taskResultWithDefaultYAML)
+	taskResultWithDefaultV1 := parse.MustParseV1Task(t, taskResultWithDefaultYAML)
+
 	remoteStepActionTaskV1beta1 := parse.MustParseV1beta1Task(t, remoteStepActionTaskYAML)
 	remoteStepActionTaskV1 := parse.MustParseV1Task(t, remoteStepActionTaskYAML)
 
@@ -406,6 +423,10 @@ spec:
 		name:        "value in task result",
 		v1beta1Task: stepActionTaskResultV1beta1,
 		v1Task:      stepActionTaskResultV1,
+	}, {
+		name:        "default value in task result",
+		v1beta1Task: taskResultWithDefaultV1beta1,
+		v1Task:      taskResultWithDefaultV1,
 	}, {
 		name:        "remote step action in task",
 		v1beta1Task: remoteStepActionTaskV1beta1,

@@ -5013,6 +5013,12 @@ func schema_pkg_apis_pipeline_v1beta1_TaskResult(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"default": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Default is the value a result takes if no actual value is produced by the task. If default is set, a task may be executed without producing the result and the default value will be used instead.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamValue"),
+						},
+					},
 					"value": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Value the expression used to retrieve the value of the result from an underlying Step.",

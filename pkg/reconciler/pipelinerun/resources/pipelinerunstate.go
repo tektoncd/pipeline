@@ -76,6 +76,10 @@ type PipelineRunFacts struct {
 	// the case of failing at the validation is during CheckMissingResultReferences method
 	// Tasks in ValidationFailedTask is added in method runNextSchedulableTask
 	ValidationFailedTask []*ResolvedPipelineTask
+
+	// EnableDefaultResults indicates whether the enable-default-results feature flag is on.
+	// When true, tasks that do not produce a declared result use the result's declared Default value.
+	EnableDefaultResults bool
 }
 
 // PipelineRunTimeoutsState records information about start times and timeouts for the PipelineRun, so that the PipelineRunFacts
@@ -224,6 +228,34 @@ func (state PipelineRunState) GetTaskRunsArtifacts() map[string]*v1.Artifacts {
 	return results
 }
 
+// GetTaskResultDefaults returns a map of task result defaults from the resolved tasks.
+// The map is keyed by pipeline task name, and the value is a map of result name to default value.
+// This is used to populate pipeline results when a task result is not initialized but has a default defined.
+func (state PipelineRunState) GetTaskResultDefaults() map[string]map[string]*v1.ResultValue {
+	defaults := make(map[string]map[string]*v1.ResultValue)
+	for _, rpt := range state {
+		if rpt.IsChildPipeline() {
+			continue
+		}
+		if rpt.IsCustomTask() {
+			continue
+		}
+		if rpt.ResolvedTask == nil || rpt.ResolvedTask.TaskSpec == nil {
+			continue
+		}
+		taskDefaults := make(map[string]*v1.ResultValue)
+		for _, result := range rpt.ResolvedTask.TaskSpec.Results {
+			if result.Default != nil {
+				taskDefaults[result.Name] = result.Default
+			}
+		}
+		if len(taskDefaults) > 0 {
+			defaults[rpt.PipelineTask.Name] = taskDefaults
+		}
+	}
+	return defaults
+}
+
 // ConvertResultsMapToTaskRunResults converts the map of results from Matrixed PipelineTasks to a list
 // of TaskRunResults to standard the format
 func ConvertResultsMapToTaskRunResults(resultsMap map[string][]string) []v1.TaskRunResult {
@@ -266,13 +298,13 @@ func (state PipelineRunState) GetRunsResults() map[string][]v1beta1.CustomRunRes
 
 // GetChildReferences returns a slice of references, including version, kind, name, and pipeline task name, for all
 // child PipelineRuns, TaskRuns and Runs in the state.
-func (facts *PipelineRunFacts) GetChildReferences() []v1.ChildStatusReference {
+func (facts *PipelineRunFacts) GetChildReferences(ctx context.Context) []v1.ChildStatusReference {
 	var childRefs []v1.ChildStatusReference
 
 	for _, rpt := range facts.State {
 		// try to replace the parameters of the reference result of when expression in the TaskRun that has ended
 		if rpt.isDone(facts) {
-			resolvedResultRefs, _, err := ResolveResultRefs(facts.State, PipelineRunState{rpt})
+			resolvedResultRefs, _, err := ResolveResultRefs(facts.EnableDefaultResults, facts.State, PipelineRunState{rpt})
 			if err == nil {
 				ApplyTaskResults(facts.State, resolvedResultRefs)
 			}
@@ -643,21 +675,22 @@ func (facts *PipelineRunFacts) GetSkippedTasks() []v1.SkippedTask {
 	var skipped []v1.SkippedTask
 	for _, rpt := range facts.State {
 		if rpt.Skip(facts).IsSkipped {
+			skipStatus := rpt.Skip(facts)
 			skippedTask := v1.SkippedTask{
 				Name:            rpt.PipelineTask.Name,
-				Reason:          rpt.Skip(facts).SkippingReason,
+				Reason:          skipStatus.SkippingReason,
 				WhenExpressions: rpt.PipelineTask.When,
 			}
 			skipped = append(skipped, skippedTask)
 		}
-		if rpt.IsFinallySkipped(facts).IsSkipped {
+		if finallySkipStatus := rpt.IsFinallySkipped(facts); finallySkipStatus.IsSkipped {
 			skippedTask := v1.SkippedTask{
 				Name:   rpt.PipelineTask.Name,
-				Reason: rpt.IsFinallySkipped(facts).SkippingReason,
+				Reason: finallySkipStatus.SkippingReason,
 			}
 			// include the when expressions only when the finally task was skipped because
 			// its when expressions evaluated to false (not because results variables were missing)
-			if rpt.IsFinallySkipped(facts).SkippingReason == v1.WhenExpressionsSkip {
+			if finallySkipStatus.SkippingReason == v1.WhenExpressionsSkip {
 				skippedTask.WhenExpressions = rpt.PipelineTask.When
 			}
 			skipped = append(skipped, skippedTask)

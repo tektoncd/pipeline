@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -3590,6 +3591,68 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 	}
 }
 
+func TestPipelineRunState_GetTaskResultDefaults(t *testing.T) {
+	state := PipelineRunState{{
+		TaskRunNames: []string{"task-with-defaults"},
+		PipelineTask: &v1.PipelineTask{
+			Name: "task-with-defaults-1",
+		},
+		ResolvedTask: &resources.ResolvedTask{
+			TaskSpec: &v1.TaskSpec{
+				Results: []v1.TaskResult{{
+					Name:    "result-with-default",
+					Type:    v1.ResultsTypeString,
+					Default: v1.NewStructuredValues("default-value"),
+				}, {
+					Name: "result-without-default",
+					Type: v1.ResultsTypeString,
+				}, {
+					Name:    "array-result-with-default",
+					Type:    v1.ResultsTypeArray,
+					Default: v1.NewStructuredValues("val1", "val2"),
+				}},
+			},
+		},
+	}, {
+		TaskRunNames: []string{"task-without-defaults"},
+		PipelineTask: &v1.PipelineTask{
+			Name: "task-without-defaults-1",
+		},
+		ResolvedTask: &resources.ResolvedTask{
+			TaskSpec: &v1.TaskSpec{
+				Results: []v1.TaskResult{{
+					Name: "result-no-default",
+					Type: v1.ResultsTypeString,
+				}},
+			},
+		},
+	}, {
+		TaskRunNames: []string{"task-nil-resolved-task"},
+		PipelineTask: &v1.PipelineTask{
+			Name: "task-nil-resolved-task-1",
+		},
+		ResolvedTask: nil,
+	}, {
+		CustomTask:     true,
+		CustomRunNames: []string{"custom-task-run"},
+		PipelineTask: &v1.PipelineTask{
+			Name: "custom-task-1",
+		},
+	}}
+
+	expectedDefaults := map[string]map[string]*v1.ResultValue{
+		"task-with-defaults-1": {
+			"result-with-default":       v1.NewStructuredValues("default-value"),
+			"array-result-with-default": v1.NewStructuredValues("val1", "val2"),
+		},
+	}
+
+	actualDefaults := state.GetTaskResultDefaults()
+	if d := cmp.Diff(actualDefaults, expectedDefaults); d != "" {
+		t.Errorf("Didn't get expected task result defaults map: %s", diff.PrintWantGot(d))
+	}
+}
+
 func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 	testCases := []struct {
 		name              string
@@ -4932,7 +4995,7 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 				TimeoutsState: PipelineRunTimeoutsState{
 					Clock: testClock,
 				},
-			}).GetChildReferences()
+			}).GetChildReferences(context.Background())
 			if d := cmp.Diff(tc.childRefs, childRefs); d != "" {
 				t.Errorf("Didn't get expected child references for %s: %s", tc.name, diff.PrintWantGot(d))
 			}
