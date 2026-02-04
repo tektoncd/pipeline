@@ -92,6 +92,16 @@ func Process(args []string) error {
 			return SubcommandError{subcommand: StepInitCommand, message: err.Error()}
 		}
 		return OK{message: "Setup /step directories"}
+	case SecretMaskInitCommand:
+		// If invoked in "secret-mask-init" mode (`entrypoint secret-mask-init <file-path>`),
+		// write the secret mask data (from environment variable) to the specified file.
+		if len(args) == 2 {
+			filePath := args[1]
+			if err := secretMaskInit(filePath); err != nil {
+				return SubcommandError{subcommand: SecretMaskInitCommand, message: err.Error()}
+			}
+			return OK{message: "Initialized secret mask file"}
+		}
 	default:
 	}
 	return nil
