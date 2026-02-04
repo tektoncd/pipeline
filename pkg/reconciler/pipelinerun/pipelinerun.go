@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -1748,6 +1749,18 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1.Pipe
 	for k := range childRefByName {
 		newChildRefs = append(newChildRefs, *childRefByName[k])
 	}
+
+	// sorting childRef in a specific order can greatly avoid
+	// meaningless updates of status caused by unordered arrays.
+	sort.Slice(newChildRefs, func(i, j int) bool {
+		if newChildRefs[i].PipelineTaskName == newChildRefs[j].PipelineTaskName {
+			if newChildRefs[i].Name == newChildRefs[j].Name {
+				return newChildRefs[i].Kind < newChildRefs[j].Kind
+			}
+			return newChildRefs[i].Name < newChildRefs[j].Name
+		}
+		return newChildRefs[i].PipelineTaskName < newChildRefs[j].PipelineTaskName
+	})
 	pr.Status.ChildReferences = newChildRefs
 }
 
