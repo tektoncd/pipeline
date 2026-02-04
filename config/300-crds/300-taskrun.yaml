@@ -1730,6 +1730,12 @@ spec:
                           description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
                         enableTektonOCIBundles:
+                          description: |-
+                            DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
+                            to allow deletion of PipelineRuns created before v0.62.x.
+                            This field is not used and can be removed in a future release
+                            once we're confident old PipelineRuns have been cleaned up.
+                            See issue #8359 for context.
                           type: boolean
                         enableWaitExponentialBackoff:
                           type: boolean
@@ -1995,6 +2001,12 @@ spec:
                                 description: EnableStepActions is a no-op flag since StepActions are stable
                                 type: boolean
                               enableTektonOCIBundles:
+                                description: |-
+                                  DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
+                                  to allow deletion of PipelineRuns created before v0.62.x.
+                                  This field is not used and can be removed in a future release
+                                  once we're confident old PipelineRuns have been cleaned up.
+                                  See issue #8359 for context.
                                 type: boolean
                               enableWaitExponentialBackoff:
                                 type: boolean
@@ -3709,6 +3721,12 @@ spec:
                           description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
                         enableTektonOCIBundles:
+                          description: |-
+                            DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
+                            to allow deletion of PipelineRuns created before v0.62.x.
+                            This field is not used and can be removed in a future release
+                            once we're confident old PipelineRuns have been cleaned up.
+                            See issue #8359 for context.
                           type: boolean
                         enableWaitExponentialBackoff:
                           type: boolean
@@ -3966,6 +3984,12 @@ spec:
                                 description: EnableStepActions is a no-op flag since StepActions are stable
                                 type: boolean
                               enableTektonOCIBundles:
+                                description: |-
+                                  DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
+                                  to allow deletion of PipelineRuns created before v0.62.x.
+                                  This field is not used and can be removed in a future release
+                                  once we're confident old PipelineRuns have been cleaned up.
+                                  See issue #8359 for context.
                                 type: boolean
                               enableWaitExponentialBackoff:
                                 type: boolean
