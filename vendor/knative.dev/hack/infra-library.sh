@@ -21,7 +21,7 @@ source "$(dirname "${BASH_SOURCE[0]:-$0}")/library.sh"
 
 # Default Kubernetes version to use for GKE, if not overridden with
 # the `--cluster-version` parameter.
-readonly GKE_DEFAULT_CLUSTER_VERSION="1.31"
+readonly GKE_DEFAULT_CLUSTER_VERSION="1.33"
 
 # Dumps the k8s api server metrics. Spins up a proxy, waits a little bit and
 # dumps the metrics to ${ARTIFACTS}/k8s.metrics.txt
