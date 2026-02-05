@@ -174,3 +174,17 @@ jobs:
   e2e-tests:
     needs: [build]
     uses: ./.github/workflows/e2e-matrix.yml
+
+  e2e-summary:
+    name: e2e tests
+    needs: [e2e-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Check e2e results
+      run: |
+        if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
+          echo "e2e-tests failed or were cancelled"
+          exit 1
+        fi
+        echo "All e2e tests passed"
