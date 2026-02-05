@@ -19,6 +19,7 @@ package transform
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	client "knative.dev/pkg/client/injection/kube/client"
@@ -42,6 +43,10 @@ func init() {
 // This approach ensures that all Kubernetes Pod informers used by Tekton apply
 // the transform to reduce memory usage without modifying the generated code or
 // the Knative pkg.
+//
+// The transform can be disabled by setting enable-informer-cache-transforms=false
+// in the feature-flags ConfigMap or by setting the ENABLE_INFORMER_CACHE_TRANSFORMS
+// environment variable to "false".
 func withTransformFilteredFactory(ctx context.Context) context.Context {
 	c := client.Get(ctx)
 
@@ -51,6 +56,14 @@ func withTransformFilteredFactory(ctx context.Context) context.Context {
 		// No selectors configured, let the default factory handle it
 		logging.FromContext(ctx).Debug("No label selectors configured for filtered factory, skipping transform")
 		return ctx
+	}
+
+	// Check if transforms are enabled
+	transformsEnabled := config.InformerCacheTransformsEnabled()
+	if transformsEnabled {
+		logging.FromContext(ctx).Info("Informer cache transforms enabled for Pod resources")
+	} else {
+		logging.FromContext(ctx).Info("Informer cache transforms disabled for Pod resources")
 	}
 
 	labelSelectors := untyped.([]string)
@@ -68,8 +81,10 @@ func withTransformFilteredFactory(ctx context.Context) context.Context {
 			l.LabelSelector = selectorVal
 		}))
 
-		// Add our Pod cache transform
-		opts = append(opts, informers.WithTransform(TransformPodForCache))
+		// Add our Pod cache transform if enabled
+		if transformsEnabled {
+			opts = append(opts, informers.WithTransform(TransformPodForCache))
+		}
 
 		// Store using the same Key as the default factory to override it
 		//nolint:fatcontext // Intentional: we need to add multiple values to context, one per selector

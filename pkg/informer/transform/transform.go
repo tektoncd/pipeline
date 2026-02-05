@@ -25,6 +25,16 @@ limitations under the License.
 // This implements the pattern described in:
 // - https://github.com/projectcontour/contour/pull/5099
 // - https://github.com/kubevela/kubevela/pull/5683
+//
+// DEVELOPER WARNING:
+// If you add new reconciliation logic that reads a field from cached objects
+// (via listers), you MUST verify that field is not stripped by these transforms.
+// Fields stripped from cached objects will be nil/empty even though they exist
+// in etcd. If you need a stripped field, either:
+//  1. Use the Kubernetes API client directly to fetch the full object from etcd
+//  2. Update the transform functions to preserve the field (consider memory impact)
+//
+// See docs/developers/controller-logic.md for more details.
 package transform
 
 import (

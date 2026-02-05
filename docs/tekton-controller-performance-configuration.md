@@ -64,58 +64,24 @@ Although in above example, you set QPS and Burst to be `50` and `50`. However, t
 
 ---
 
-The Tekton controller uses informer caches to watch and react to changes in Kubernetes objects. By default, these caches store the complete object, including fields that are not needed for reconciliation. For clusters with large numbers of PipelineRuns, TaskRuns, and Pods, this can result in significant memory usage.
+The Tekton controller uses informer caches to watch and react to changes in Kubernetes objects. To reduce memory usage, Tekton Pipeline applies **cache transform functions** that strip unnecessary fields from objects before they are stored in the informer cache.
 
-To reduce memory usage, Tekton Pipeline applies **cache transform functions** that strip unnecessary fields from objects before they are stored in the informer cache. This optimization is enabled by default and requires no configuration.
+This optimization is **enabled by default** and can reduce controller memory usage by approximately **78%** for completed runs. It strips metadata like `managedFields` and `last-applied-configuration` from all objects, and additional status fields from completed PipelineRuns, TaskRuns, CustomRuns, and Pods that are no longer needed for reconciliation.
 
-### What Gets Stripped
+### Configuration
 
-The transform functions remove the following fields:
+The cache transforms are **enabled by default**. To disable them (e.g., for troubleshooting), set the `ENABLE_INFORMER_CACHE_TRANSFORMS` environment variable to `false` on the controller deployment:
 
-#### All Objects (PipelineRuns, TaskRuns, CustomRuns, Pods)
+```yaml
+spec:
+  containers:
+    - name: tekton-pipelines-controller
+      env:
+        - name: ENABLE_INFORMER_CACHE_TRANSFORMS
+          value: "false"
+```
 
-- `metadata.managedFields` - Server-side apply metadata (can be 25-30% of object size)
-- `kubectl.kubernetes.io/last-applied-configuration` annotation - Client-side apply metadata
-
-#### Completed PipelineRuns
-
-For PipelineRuns that have finished (succeeded, failed, or cancelled):
-- `status.pipelineSpec` - The resolved Pipeline specification
-- `status.provenance` - Build provenance metadata
-- `status.spanContext` - Tracing context
-
-#### Completed TaskRuns
-
-For TaskRuns that have finished:
-- `status.taskSpec` - The resolved Task specification
-- `status.provenance` - Build provenance metadata
-- `status.spanContext` - Tracing context
-- `status.steps` - Detailed step execution state
-- `status.sidecars` - Detailed sidecar execution state
-
-**Note:** The following fields are intentionally **preserved** for completed TaskRuns:
-- `status.podName` - Required for debugging and referenced by retry status entries
-- `status.retriesStatus` - Required for retry tracking; the controller appends to this slice during retries
-- `status.completionTime` - Part of the observable API and used for metrics/debugging
-
-#### Completed CustomRuns
-
-For CustomRuns that have finished:
-- `status.retriesStatus` - Retry history
-- `status.completionTime` - Completion timestamp
-
-#### Pods
-
-Pod objects are stripped more aggressively since the TaskRun controller only needs:
-- `metadata.name`, `metadata.namespace`, `metadata.labels`, `metadata.ownerReferences`, `metadata.annotations`
-- `status` (fully preserved)
-- `spec.containers[].name` (for status sorting)
-
-All other Pod spec fields are stripped.
-
-### Memory Savings
-
-Benchmark tests show approximately **78% memory reduction** for completed PipelineRuns with realistic configurations. The actual savings depend on the size and complexity of your Pipelines and Tasks.
+**Note:** Changes to this setting require a controller restart to take effect.
 
 ### Important Notes
 
@@ -123,6 +89,6 @@ Benchmark tests show approximately **78% memory reduction** for completed Pipeli
 
 2. **No impact on API access**: When you use `kubectl get` or the Kubernetes API, you always get the complete object from etcd, not the cached version.
 
-3. **Controller behavior unchanged**: The controller reconciliation logic continues to work correctly because it only needs the preserved fields for completed objects.
+3. **Controller behavior unchanged**: The controller reconciliation logic continues to work correctly because it only needs the preserved fields.
 
-4. **Enabled by default**: This optimization is always active and requires no configuration.
+For detailed technical information about which fields are stripped, see the [developer documentation](developers/controller-logic.md).

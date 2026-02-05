@@ -19,11 +19,13 @@ package transform
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	externalversions "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
 	client "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	factory "github.com/tektoncd/pipeline/pkg/client/injection/informers/factory"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
+	"knative.dev/pkg/logging"
 )
 
 func init() {
@@ -36,6 +38,10 @@ func init() {
 //
 // This approach ensures that all Tekton informers use the transform to reduce
 // memory usage without modifying the generated code.
+//
+// The transform can be disabled by setting enable-informer-cache-transforms=false
+// in the feature-flags ConfigMap or by setting the ENABLE_INFORMER_CACHE_TRANSFORMS
+// environment variable to "false".
 func withTransformFactory(ctx context.Context) context.Context {
 	c := client.Get(ctx)
 	opts := make([]externalversions.SharedInformerOption, 0, 2)
@@ -45,7 +51,13 @@ func withTransformFactory(ctx context.Context) context.Context {
 	}
 
 	// Add the cache transform to strip unnecessary fields from cached objects
-	opts = append(opts, externalversions.WithTransform(TransformForCache))
+	// if the feature is enabled (default: true)
+	if config.InformerCacheTransformsEnabled() {
+		opts = append(opts, externalversions.WithTransform(TransformForCache))
+		logging.FromContext(ctx).Info("Informer cache transforms enabled for Tekton resources")
+	} else {
+		logging.FromContext(ctx).Info("Informer cache transforms disabled for Tekton resources")
+	}
 
 	// Use the same Key{} as the generated factory to override it
 	return context.WithValue(ctx, factory.Key{},
