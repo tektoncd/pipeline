@@ -445,21 +445,3 @@ type PerFeatureFlag struct {
 	Deprecated bool
 }
 
-// InformerCacheTransformsEnabled returns whether informer cache transforms are enabled.
-// This function is used by the informer factory during initialization, before the
-// config store is attached to context. It checks the ENABLE_INFORMER_CACHE_TRANSFORMS
-// environment variable.
-//
-// The transforms are enabled by default. Operators can disable the memory optimization
-// if they encounter issues by setting ENABLE_INFORMER_CACHE_TRANSFORMS=false in the
-// controller deployment. Changes require a controller restart to take effect.
-func InformerCacheTransformsEnabled() bool {
-	if val := os.Getenv("ENABLE_INFORMER_CACHE_TRANSFORMS"); val != "" {
-		enabled, err := strconv.ParseBool(val)
-		if err == nil {
-			return enabled
-		}
-	}
-	// Enabled by default
-	return true
-}

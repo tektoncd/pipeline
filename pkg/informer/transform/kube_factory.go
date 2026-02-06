@@ -19,7 +19,6 @@ package transform
 import (
 	"context"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	client "knative.dev/pkg/client/injection/kube/client"
@@ -45,8 +44,7 @@ func init() {
 // the Knative pkg.
 //
 // The transform can be disabled by setting enable-informer-cache-transforms=false
-// in the feature-flags ConfigMap or by setting the ENABLE_INFORMER_CACHE_TRANSFORMS
-// environment variable to "false".
+// in the feature-flags ConfigMap.
 func withTransformFilteredFactory(ctx context.Context) context.Context {
 	c := client.Get(ctx)
 
@@ -59,14 +57,19 @@ func withTransformFilteredFactory(ctx context.Context) context.Context {
 	}
 
 	// Check if transforms are enabled
-	transformsEnabled := config.InformerCacheTransformsEnabled()
+	transformsEnabled := informerCacheTransformsEnabled(ctx)
 	if transformsEnabled {
 		logging.FromContext(ctx).Info("Informer cache transforms enabled for Pod resources")
 	} else {
 		logging.FromContext(ctx).Info("Informer cache transforms disabled for Pod resources")
 	}
 
-	labelSelectors := untyped.([]string)
+	labelSelectors, ok := untyped.([]string)
+	if !ok {
+		logging.FromContext(ctx).Warn("Invalid label selectors type in context, skipping Pod transform")
+		return ctx
+	}
+
 	for _, selector := range labelSelectors {
 		selectorVal := selector
 		opts := []informers.SharedInformerOption{}

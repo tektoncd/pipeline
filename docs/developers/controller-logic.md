@@ -119,7 +119,7 @@ The transform package registers custom informer factories that override the defa
 
 #### Configuration
 
-The transforms are enabled by default and can be disabled by setting the `ENABLE_INFORMER_CACHE_TRANSFORMS=false` environment variable on the controller deployment. Changes require a controller restart.
+The transforms are enabled by default and can be disabled by setting `enable-informer-cache-transforms: "false"` in the `feature-flags` ConfigMap. Changes require a controller restart.
 
 #### Developer Guidelines
 

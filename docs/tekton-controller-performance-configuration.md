@@ -70,15 +70,16 @@ This optimization is **enabled by default** and can reduce controller memory usa
 
 ### Configuration
 
-The cache transforms are **enabled by default**. To disable them (e.g., for troubleshooting), set the `ENABLE_INFORMER_CACHE_TRANSFORMS` environment variable to `false` on the controller deployment:
+The cache transforms are **enabled by default**. To disable them (e.g., for troubleshooting), set `enable-informer-cache-transforms` to `false` in the `feature-flags` ConfigMap:
 
 ```yaml
-spec:
-  containers:
-    - name: tekton-pipelines-controller
-      env:
-        - name: ENABLE_INFORMER_CACHE_TRANSFORMS
-          value: "false"
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags
+  namespace: tekton-pipelines
+data:
+  enable-informer-cache-transforms: "false"
 ```
 
 **Note:** Changes to this setting require a controller restart to take effect.
