@@ -161,7 +161,7 @@ func TestShouldUseCachePrecedence(t *testing.T) {
 			}
 
 			// Test the framework function
-			result := ShouldUse(ctx, &resolverFake{}, req.Params, bundleresolution.LabelValueBundleResolverType)
+			result := ShouldUse(ctx, &resolverFake{}, req.Params)
 
 			// Verify result
 			if result != tt.expected {
