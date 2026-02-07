@@ -11,6 +11,10 @@ Configure ThreadsPerController, QPS and Burst
 - [Overview](#overview)
 - [Performance Configuration](#performance-configuration)
   - [Configure Thread, QPS and Burst](#configure-thread-qps-and-burst)
+- [Informer Cache Transform (Memory Optimization)](#informer-cache-transform-memory-optimization)
+  - [What Gets Stripped](#what-gets-stripped)
+  - [Memory Savings](#memory-savings)
+  - [Important Notes](#important-notes)
 
 ## Overview
 
@@ -55,3 +59,37 @@ If flags and environment variables are set, command line args will take preceden
 **Note**:
 <!-- wokeignore:rule=master -->
 Although in above example, you set QPS and Burst to be `50` and `50`. However, the actual values of them are [multiplied by `2`](https://github.com/pierretasci/pipeline/blob/master/cmd/controller/main.go#L83-L84), so the actual QPS and Burst is `100` and `100`.
+
+## Informer Cache Transform (Memory Optimization)
+
+---
+
+The Tekton controller uses informer caches to watch and react to changes in Kubernetes objects. To reduce memory usage, Tekton Pipeline applies **cache transform functions** that strip unnecessary fields from objects before they are stored in the informer cache.
+
+This optimization is **enabled by default** and can reduce controller memory usage by approximately **78%** for completed runs. It strips metadata like `managedFields` and `last-applied-configuration` from all objects, and additional status fields from completed PipelineRuns, TaskRuns, CustomRuns, and Pods that are no longer needed for reconciliation.
+
+### Configuration
+
+The cache transforms are **enabled by default**. To disable them (e.g., for troubleshooting), set `enable-informer-cache-transforms` to `false` in the `feature-flags` ConfigMap:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags
+  namespace: tekton-pipelines
+data:
+  enable-informer-cache-transforms: "false"
+```
+
+**Note:** Changes to this setting require a controller restart to take effect.
+
+### Important Notes
+
+1. **Read-only optimization**: The transform only affects what is stored in the in-memory cache. The complete objects remain unchanged in etcd.
+
+2. **No impact on API access**: When you use `kubectl get` or the Kubernetes API, you always get the complete object from etcd, not the cached version.
+
+3. **Controller behavior unchanged**: The controller reconciliation logic continues to work correctly because it only needs the preserved fields.
+
+For detailed technical information about which fields are stripped, see the [developer documentation](developers/controller-logic.md).
