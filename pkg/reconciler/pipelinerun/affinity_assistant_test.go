@@ -47,6 +47,7 @@ import (
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/typed/core/v1/fake"
 	testing2 "k8s.io/client-go/testing"
+	"knative.dev/pkg/kmeta"
 	logtesting "knative.dev/pkg/logging/testing"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
@@ -1115,6 +1116,235 @@ func TestCleanupAffinityAssistants_Success(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// TestCleanupAffinityAssistants_AutoCleanupPVC tests the tekton.dev/auto-cleanup-pvc annotation behavior
+// for different annotation values and workspace types in AffinityAssistantPerWorkspace mode.
+func TestCleanupAffinityAssistants_AutoCleanupPVC(t *testing.T) {
+	testCases := []struct {
+		name             string
+		annotations      map[string]string
+		workspace        v1.WorkspaceBinding
+		expectPVCDeleted bool
+	}{
+		{
+			name:        "annotation true with volumeClaimTemplate deletes PVC",
+			annotations: map[string]string{AutoCleanupPVCAnnotation: "true"},
+			workspace: v1.WorkspaceBinding{
+				Name:                "my-workspace",
+				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+			},
+			expectPVCDeleted: true,
+		},
+		{
+			name:        "annotation true with persistentVolumeClaim preserves PVC",
+			annotations: map[string]string{AutoCleanupPVCAnnotation: "true"},
+			workspace: v1.WorkspaceBinding{
+				Name: "my-workspace",
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "user-provided-pvc",
+				},
+			},
+			expectPVCDeleted: false,
+		},
+		{
+			name:        "annotation false preserves PVC",
+			annotations: map[string]string{AutoCleanupPVCAnnotation: "false"},
+			workspace: v1.WorkspaceBinding{
+				Name:                "my-workspace",
+				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+			},
+			expectPVCDeleted: false,
+		},
+		{
+			name:        "annotation invalid value preserves PVC",
+			annotations: map[string]string{AutoCleanupPVCAnnotation: "yes"},
+			workspace: v1.WorkspaceBinding{
+				Name:                "my-workspace",
+				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+			},
+			expectPVCDeleted: false,
+		},
+		{
+			name:        "annotation empty preserves PVC",
+			annotations: map[string]string{AutoCleanupPVCAnnotation: ""},
+			workspace: v1.WorkspaceBinding{
+				Name:                "my-workspace",
+				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+			},
+			expectPVCDeleted: false,
+		},
+		{
+			name:        "no annotation preserves PVC",
+			annotations: nil,
+			workspace: v1.WorkspaceBinding{
+				Name:                "my-workspace",
+				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+			},
+			expectPVCDeleted: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := &v1.PipelineRun{
+				TypeMeta:   metav1.TypeMeta{Kind: "PipelineRun"},
+				ObjectMeta: metav1.ObjectMeta{Name: "test-pipelinerun", Annotations: tc.annotations},
+				Spec:       v1.PipelineRunSpec{Workspaces: []v1.WorkspaceBinding{tc.workspace}},
+			}
+
+			expectedAAName := GetAffinityAssistantName(tc.workspace.Name, pr.Name)
+
+			// Determine PVC name based on workspace type
+			var pvcName string
+			if tc.workspace.VolumeClaimTemplate != nil {
+				pvcName = volumeclaim.GeneratePVCNameFromWorkspaceBinding("", tc.workspace, *kmeta.NewControllerRef(pr))
+			} else {
+				pvcName = tc.workspace.PersistentVolumeClaim.ClaimName
+			}
+
+			data := Data{
+				StatefulSets: []*appsv1.StatefulSet{{
+					ObjectMeta: metav1.ObjectMeta{Name: expectedAAName, Labels: getStatefulSetLabels(pr, expectedAAName)},
+				}},
+				PVCs: []*corev1.PersistentVolumeClaim{{
+					ObjectMeta: metav1.ObjectMeta{Name: pvcName},
+				}},
+			}
+
+			_, c, cancel := seedTestData(data)
+			defer cancel()
+
+			ctx := cfgtesting.SetFeatureFlags(t.Context(), t, map[string]string{"coschedule": "workspaces"})
+
+			pvcDeleteCalled := false
+			c.KubeClientSet.CoreV1().(*fake.FakeCoreV1).PrependReactor("delete", "persistentvolumeclaims",
+				func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+					pvcDeleteCalled = true
+					return true, nil, nil
+				})
+
+			if err := c.cleanupAffinityAssistantsAndPVCs(ctx, pr); err != nil {
+				t.Fatalf("unexpected err: %v", err)
+			}
+
+			// StatefulSet should always be deleted
+			_, err := c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Get(ctx, expectedAAName, metav1.GetOptions{})
+			if !apierrors.IsNotFound(err) {
+				t.Errorf("expected StatefulSet to be deleted, got: %v", err)
+			}
+
+			// Check PVC deletion matches expectation
+			if pvcDeleteCalled != tc.expectPVCDeleted {
+				t.Errorf("PVC delete called = %v, want %v", pvcDeleteCalled, tc.expectPVCDeleted)
+			}
+		})
+	}
+}
+
+// TestCleanupAffinityAssistants_AutoCleanupMixedWorkspaces tests that only volumeClaimTemplate
+// PVCs are deleted when the annotation is set, while persistentVolumeClaim workspaces are preserved.
+func TestCleanupAffinityAssistants_AutoCleanupMixedWorkspaces(t *testing.T) {
+	pr := &v1.PipelineRun{
+		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-pipelinerun-mixed",
+			Annotations: map[string]string{
+				AutoCleanupPVCAnnotation: "true",
+			},
+		},
+		Spec: v1.PipelineRunSpec{
+			Workspaces: []v1.WorkspaceBinding{
+				{
+					Name:                "template-workspace",
+					VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+				},
+				{
+					Name: "pvc-workspace",
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "user-pvc",
+					},
+				},
+			},
+		},
+	}
+
+	expectedAAName1 := GetAffinityAssistantName("template-workspace", pr.Name)
+	expectedAAName2 := GetAffinityAssistantName("pvc-workspace", pr.Name)
+	expectedVCTPVCName := volumeclaim.GeneratePVCNameFromWorkspaceBinding("", pr.Spec.Workspaces[0], *kmeta.NewControllerRef(pr))
+
+	// Seed StatefulSets and PVCs
+	ss1 := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   expectedAAName1,
+			Labels: getStatefulSetLabels(pr, expectedAAName1),
+		},
+	}
+	ss2 := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   expectedAAName2,
+			Labels: getStatefulSetLabels(pr, expectedAAName2),
+		},
+	}
+
+	vctPVC := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: expectedVCTPVCName,
+		},
+	}
+	userPVC := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "user-pvc",
+		},
+	}
+
+	data := Data{
+		StatefulSets: []*appsv1.StatefulSet{ss1, ss2},
+		PVCs:         []*corev1.PersistentVolumeClaim{vctPVC, userPVC},
+	}
+
+	_, c, cancel := seedTestData(data)
+	defer cancel()
+
+	cfgMap := map[string]string{
+		"coschedule": "workspaces",
+	}
+	ctx := cfgtesting.SetFeatureFlags(t.Context(), t, cfgMap)
+
+	// Track which PVCs had delete called
+	deletedPVCs := make(map[string]bool)
+	c.KubeClientSet.CoreV1().(*fake.FakeCoreV1).PrependReactor("delete", "persistentvolumeclaims",
+		func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+			deleteAction := action.(testing2.DeleteAction)
+			deletedPVCs[deleteAction.GetName()] = true
+			return true, vctPVC, nil
+		})
+
+	// Cleanup
+	err := c.cleanupAffinityAssistantsAndPVCs(ctx, pr)
+	if err != nil {
+		t.Fatalf("unexpected err when cleaning up: %v", err)
+	}
+
+	// Validate both StatefulSets are deleted
+	_, err = c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Get(ctx, expectedAAName1, metav1.GetOptions{})
+	if !apierrors.IsNotFound(err) {
+		t.Errorf("expected StatefulSet %s to be deleted, got: %v", expectedAAName1, err)
+	}
+	_, err = c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Get(ctx, expectedAAName2, metav1.GetOptions{})
+	if !apierrors.IsNotFound(err) {
+		t.Errorf("expected StatefulSet %s to be deleted, got: %v", expectedAAName2, err)
+	}
+
+	// Validate volumeClaimTemplate PVC deletion was attempted
+	if !deletedPVCs[expectedVCTPVCName] {
+		t.Errorf("expected volumeClaimTemplate PVC %s to be deleted, but it was not", expectedVCTPVCName)
+	}
+
+	// Validate user-provided PVC was NOT deleted
+	if deletedPVCs["user-pvc"] {
+		t.Errorf("user-provided PVC should NOT be deleted, but delete was called")
 	}
 }
 
