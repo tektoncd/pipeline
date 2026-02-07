@@ -25,19 +25,23 @@ type PRBranchInfo struct {
 
 // PullRequest represents a pull request
 type PullRequest struct {
-	ID        int64      `json:"id"`
-	URL       string     `json:"url"`
-	Index     int64      `json:"number"`
-	Poster    *User      `json:"user"`
-	Title     string     `json:"title"`
-	Body      string     `json:"body"`
-	Labels    []*Label   `json:"labels"`
-	Milestone *Milestone `json:"milestone"`
-	Assignee  *User      `json:"assignee"`
-	Assignees []*User    `json:"assignees"`
-	State     StateType  `json:"state"`
-	IsLocked  bool       `json:"is_locked"`
-	Comments  int        `json:"comments"`
+	ID                      int64      `json:"id"`
+	URL                     string     `json:"url"`
+	Index                   int64      `json:"number"`
+	Poster                  *User      `json:"user"`
+	Title                   string     `json:"title"`
+	Body                    string     `json:"body"`
+	Labels                  []*Label   `json:"labels"`
+	Milestone               *Milestone `json:"milestone"`
+	Assignee                *User      `json:"assignee"`
+	Assignees               []*User    `json:"assignees"`
+	RequestedReviewers      []*User    `json:"requested_reviewers"`
+	RequestedReviewersTeams []*Team    `json:"requested_reviewers_teams"`
+	State                   StateType  `json:"state"`
+	Draft                   bool       `json:"draft"`
+	IsLocked                bool       `json:"is_locked"`
+	Comments                int        `json:"comments"`
+	ReviewComments          int        `json:"review_comments,omitempty"`
 
 	HTMLURL  string `json:"html_url"`
 	DiffURL  string `json:"diff_url"`
@@ -58,6 +62,11 @@ type PullRequest struct {
 	Created  *time.Time `json:"created_at"`
 	Updated  *time.Time `json:"updated_at"`
 	Closed   *time.Time `json:"closed_at"`
+
+	Additions    *int `json:"additions,omitempty"`
+	Deletions    *int `json:"deletions,omitempty"`
+	ChangedFiles *int `json:"changed_files,omitempty"`
+	PinOrder     int  `json:"pin_order"`
 }
 
 // ChangedFile is a changed file in a diff
@@ -149,15 +158,17 @@ func (c *Client) GetPullRequest(owner, repo string, index int64) (*PullRequest, 
 
 // CreatePullRequestOption options when creating a pull request
 type CreatePullRequestOption struct {
-	Head      string     `json:"head"`
-	Base      string     `json:"base"`
-	Title     string     `json:"title"`
-	Body      string     `json:"body"`
-	Assignee  string     `json:"assignee"`
-	Assignees []string   `json:"assignees"`
-	Milestone int64      `json:"milestone"`
-	Labels    []int64    `json:"labels"`
-	Deadline  *time.Time `json:"due_date"`
+	Head          string     `json:"head"`
+	Base          string     `json:"base"`
+	Title         string     `json:"title"`
+	Body          string     `json:"body"`
+	Assignee      string     `json:"assignee"`
+	Assignees     []string   `json:"assignees"`
+	Reviewers     []string   `json:"reviewers"`
+	TeamReviewers []string   `json:"team_reviewers"`
+	Milestone     int64      `json:"milestone"`
+	Labels        []int64    `json:"labels"`
+	Deadline      *time.Time `json:"due_date"`
 }
 
 // CreatePullRequest create pull request with options
@@ -179,7 +190,7 @@ func (c *Client) CreatePullRequest(owner, repo string, opt CreatePullRequestOpti
 // EditPullRequestOption options when modify pull request
 type EditPullRequestOption struct {
 	Title               string     `json:"title"`
-	Body                string     `json:"body"`
+	Body                *string    `json:"body"`
 	Base                string     `json:"base"`
 	Assignee            string     `json:"assignee"`
 	Assignees           []string   `json:"assignees"`
