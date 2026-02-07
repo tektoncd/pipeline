@@ -47,7 +47,6 @@ func ShouldUse(
 	ctx context.Context,
 	resolver ImmutabilityChecker,
 	params []v1.Param,
-	resolverType string,
 ) bool {
 	// Get cache mode from task parameter
 	cacheMode := ""
@@ -116,13 +115,21 @@ func GetFromCacheOrResolve(
 		return cached, nil
 	}
 
-	// If cache miss, resolve from params
-	resource, err := resolve()
+	key := generateCacheKey(resolverType, params)
+	result, err, _ := cacheInstance.flightGroup.Do(key, func() (interface{}, error) {
+		// If cache miss, resolve from params
+		resource, err := resolve()
+		if err != nil {
+			return nil, err
+		}
+
+		// Store annotated resource with store operation and return annotated resource
+		// to indicate it was stored in cache
+		return cacheInstance.Add(resolverType, params, resource), nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	// Store annotated resource with store operation and return annotated resource
-	// to indicate it was stored in cache
-	return cacheInstance.Add(resolverType, params, resource), nil
+	return result.(resolutionframework.ResolvedResource), nil
 }

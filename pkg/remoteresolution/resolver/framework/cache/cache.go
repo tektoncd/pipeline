@@ -26,6 +26,7 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
+	"golang.org/x/sync/singleflight"
 	utilcache "k8s.io/apimachinery/pkg/util/cache"
 )
 
@@ -34,11 +35,12 @@ var _ resolutionframework.ConfigWatcher = (*resolverCache)(nil)
 // resolverCache is a wrapper around utilcache.LRUExpireCache that provides
 // type-safe methods for caching resolver results.
 type resolverCache struct {
-	cache   *utilcache.LRUExpireCache
-	logger  *zap.SugaredLogger
-	ttl     time.Duration
-	maxSize int
-	clock   utilcache.Clock
+	cache       *utilcache.LRUExpireCache
+	logger      *zap.SugaredLogger
+	ttl         time.Duration
+	maxSize     int
+	clock       utilcache.Clock
+	flightGroup *singleflight.Group
 }
 
 func newResolverCache(maxSize int, ttl time.Duration) *resolverCache {
@@ -47,10 +49,11 @@ func newResolverCache(maxSize int, ttl time.Duration) *resolverCache {
 
 func newResolverCacheWithClock(maxSize int, ttl time.Duration, clock utilcache.Clock) *resolverCache {
 	return &resolverCache{
-		cache:   utilcache.NewLRUExpireCacheWithClock(maxSize, clock),
-		ttl:     ttl,
-		maxSize: maxSize,
-		clock:   clock,
+		cache:       utilcache.NewLRUExpireCacheWithClock(maxSize, clock),
+		ttl:         ttl,
+		maxSize:     maxSize,
+		clock:       clock,
+		flightGroup: &singleflight.Group{},
 	}
 }
 
@@ -62,7 +65,7 @@ func (c *resolverCache) GetConfigName(_ context.Context) string {
 // withLogger returns a new ResolverCache instance with the provided logger.
 // This prevents state leak by not storing logger in the global singleton.
 func (c *resolverCache) withLogger(logger *zap.SugaredLogger) *resolverCache {
-	return &resolverCache{logger: logger, cache: c.cache, ttl: c.ttl, maxSize: c.maxSize, clock: c.clock}
+	return &resolverCache{logger: logger, cache: c.cache, ttl: c.ttl, maxSize: c.maxSize, clock: c.clock, flightGroup: c.flightGroup}
 }
 
 // TTL returns the time-to-live duration for cache entries.
