@@ -62,6 +62,15 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	}
 
+	// Check if user provided explicit -run flag
+	// If so, skip category filtering and run normally to respect user's choice
+	runFlag := flag.Lookup("test.run")
+	if runFlag != nil && runFlag.Value.String() != "" {
+		exitCode := m.Run()
+		fmt.Fprintf(os.Stderr, "Using kubeconfig at `%s` with cluster `%s`\n", knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster)
+		os.Exit(exitCode)
+	}
+
 	// Filter tests based on category
 	var exitCode int
 	switch *testCategory {
