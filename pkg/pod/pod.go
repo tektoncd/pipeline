@@ -163,6 +163,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	setSecurityContext := config.FromContextOrDefaults(ctx).FeatureFlags.SetSecurityContext
 	setSecurityContextReadOnlyRootFilesystem := config.FromContextOrDefaults(ctx).FeatureFlags.SetSecurityContextReadOnlyRootFilesystem
 	defaultManagedByLabelValue := config.FromContextOrDefaults(ctx).Defaults.DefaultManagedByLabelValue
+	enableSecretMasking := featureFlags.EnableSecretMasking
 
 	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
 	volumes = append(volumes, implicitVolumes...)
@@ -224,6 +225,26 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 
 	initContainers = []corev1.Container{
 		entrypointInitContainer(b.Images.EntrypointImage, steps, securityContextConfig, windows),
+	}
+
+	var secretMaskData string
+	if enableSecretMasking {
+		var err error
+		secretMaskData, err = CollectSecretsForMasking(ctx, b.KubeClient, taskRun.Namespace, &taskSpec, steps, volumes)
+		if err != nil {
+			return nil, err
+		}
+		if secretMaskData != "" {
+			encodedSecretMaskData, err := encodeSecretMaskData(secretMaskData)
+			if err != nil {
+				return nil, err
+			}
+			volumes = append(volumes, SecretMaskVolume())
+			volumeMounts = append(volumeMounts, SecretMaskVolumeMount())
+			commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-secret_mask_file", SecretMaskFilePath())
+			secretMaskInit := secretMaskInitContainer(b.Images.EntrypointImage, encodedSecretMaskData, securityContextConfig, windows)
+			initContainers = append(initContainers, secretMaskInit)
+		}
 	}
 
 	// Convert any steps with Script to command+args.

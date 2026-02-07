@@ -19,6 +19,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -26,6 +27,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -33,7 +35,8 @@ import (
 )
 
 const (
-	TektonHermeticEnvVar = "TEKTON_HERMETIC"
+	TektonHermeticEnvVar               = "TEKTON_HERMETIC"
+	secretMaskingDelayWarningThreshold = 64 * 1024
 )
 
 // TODO(jasonhall): Test that original exit code is propagated and that
@@ -42,10 +45,11 @@ const (
 // realRunner actually runs commands.
 type realRunner struct {
 	sync.Mutex
-	signals       chan os.Signal
-	signalsClosed bool
-	stdoutPath    string
-	stderrPath    string
+	signals        chan os.Signal
+	signalsClosed  bool
+	stdoutPath     string
+	stderrPath     string
+	secretMaskFile string
 }
 
 var _ entrypoint.Runner = (*realRunner)(nil)
@@ -86,6 +90,14 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 
 	cmd := exec.CommandContext(ctx, name, args...)
 
+	secrets, err := loadSecretsForMasking(rr.secretMaskFile)
+	if err != nil {
+		return err
+	}
+	maskingEnabled := hasMaskableSecrets(secrets)
+	var maskingWriters []*maskingWriter
+	maxSecretLen := 0
+
 	// if a standard output file is specified
 	// create the log file and add to the std multi writer
 	if rr.stdoutPath != "" {
@@ -94,9 +106,24 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 			return err
 		}
 		defer stdout.Close()
-		cmd.Stdout = io.MultiWriter(os.Stdout, stdout)
+		if maskingEnabled {
+			stdoutBase := newMaskingWriter(os.Stdout, secrets)
+			stdoutFile := newMaskingWriter(stdout, secrets)
+			maxSecretLen = stdoutBase.MaxSecretLen()
+			maskingWriters = append(maskingWriters, stdoutBase, stdoutFile)
+			cmd.Stdout = io.MultiWriter(stdoutBase, stdoutFile)
+		} else {
+			cmd.Stdout = io.MultiWriter(os.Stdout, stdout)
+		}
 	} else {
-		cmd.Stdout = os.Stdout
+		if maskingEnabled {
+			stdoutBase := newMaskingWriter(os.Stdout, secrets)
+			maxSecretLen = stdoutBase.MaxSecretLen()
+			maskingWriters = append(maskingWriters, stdoutBase)
+			cmd.Stdout = stdoutBase
+		} else {
+			cmd.Stdout = os.Stdout
+		}
 	}
 	if rr.stderrPath != "" {
 		stderr, err := newStdLogWriter(rr.stderrPath)
@@ -104,9 +131,28 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 			return err
 		}
 		defer stderr.Close()
-		cmd.Stderr = io.MultiWriter(os.Stderr, stderr)
+		if maskingEnabled {
+			stderrBase := newMaskingWriter(os.Stderr, secrets)
+			stderrFile := newMaskingWriter(stderr, secrets)
+			maskingWriters = append(maskingWriters, stderrBase, stderrFile)
+			cmd.Stderr = io.MultiWriter(stderrBase, stderrFile)
+		} else {
+			cmd.Stderr = io.MultiWriter(os.Stderr, stderr)
+		}
 	} else {
-		cmd.Stderr = os.Stderr
+		if maskingEnabled {
+			stderrBase := newMaskingWriter(os.Stderr, secrets)
+			maskingWriters = append(maskingWriters, stderrBase)
+			cmd.Stderr = stderrBase
+		} else {
+			cmd.Stderr = os.Stderr
+		}
+	}
+
+	if shouldWarnSecretMaskingDelay(maxSecretLen) {
+		if _, err := io.WriteString(os.Stderr, secretMaskingDelayWarning(maxSecretLen)); err != nil {
+			return err
+		}
 	}
 
 	// dedicated PID group used to forward signals to
@@ -142,14 +188,22 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	// as os.exec [note](https://github.com/golang/go/blob/ee522e2cdad04a43bc9374776483b6249eb97ec9/src/os/exec/exec.go#L897-L906)
 	// cmd.Wait prefer Process error over context error
 	// but we want to return context error instead
-	if err := cmd.Wait(); err != nil {
+	waitErr := cmd.Wait()
+	var flushErr error
+	if maskingEnabled {
+		flushErr = flushMaskingWriters(maskingWriters)
+	}
+	if waitErr != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return entrypoint.ErrContextDeadlineExceeded
 		}
 		if errors.Is(ctx.Err(), context.Canceled) {
 			return entrypoint.ErrContextCanceled
 		}
-		return err
+		return waitErr
+	}
+	if flushErr != nil {
+		return flushErr
 	}
 
 	return nil
@@ -169,4 +223,56 @@ func newStdLogWriter(path string) (*os.File, error) {
 	}
 
 	return f, nil
+}
+
+func loadSecretsForMasking(filePath string) ([]string, error) {
+	if filePath == "" {
+		return nil, nil
+	}
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	var secrets []string
+	for i, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		decoded, err := base64.StdEncoding.DecodeString(line)
+		if err != nil {
+			return nil, fmt.Errorf("decode secret mask entry %d: %w", i+1, err)
+		}
+		secrets = append(secrets, string(decoded))
+	}
+	return secrets, nil
+}
+
+func flushMaskingWriters(maskingWriters []*maskingWriter) error {
+	for _, w := range maskingWriters {
+		if err := w.Flush(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func hasMaskableSecrets(secrets []string) bool {
+	for _, s := range secrets {
+		if len(s) >= 3 {
+			return true
+		}
+	}
+	return false
+}
+
+func shouldWarnSecretMaskingDelay(maxSecretLen int) bool {
+	if maxSecretLen <= 0 {
+		return false
+	}
+	return maxSecretLen-1 >= secretMaskingDelayWarningThreshold
+}
+
+func secretMaskingDelayWarning(maxSecretLen int) string {
+	return fmt.Sprintf("Warning: secret masking enabled; largest secret is %d bytes; log output may be delayed by up to %d bytes.\n", maxSecretLen, maxSecretLen-1)
 }

@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -221,5 +222,97 @@ func TestRealRunnerCancel(t *testing.T) {
 				t.Fatalf("unexpected error received: %v", err)
 			}
 		}
+	}
+}
+
+func TestShouldWarnSecretMaskingDelay(t *testing.T) {
+	testCases := []struct {
+		name         string
+		maxSecretLen int
+		want         bool
+	}{
+		{name: "no secrets", maxSecretLen: 0, want: false},
+		{name: "below threshold", maxSecretLen: secretMaskingDelayWarningThreshold, want: false},
+		{name: "at threshold", maxSecretLen: secretMaskingDelayWarningThreshold + 1, want: true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := shouldWarnSecretMaskingDelay(tc.maxSecretLen)
+			if got != tc.want {
+				t.Fatalf("got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHasMaskableSecrets(t *testing.T) {
+	testCases := []struct {
+		name    string
+		secrets []string
+		want    bool
+	}{
+		{name: "no secrets", secrets: nil, want: false},
+		{name: "all too short", secrets: []string{"", "ab"}, want: false},
+		{name: "at least one maskable", secrets: []string{"ab", "abc"}, want: true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := hasMaskableSecrets(tc.secrets)
+			if got != tc.want {
+				t.Fatalf("got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRealRunnerSecretMaskingDelayWarning(t *testing.T) {
+	tmpDir := t.TempDir()
+	secret := strings.Repeat("x", secretMaskingDelayWarningThreshold+5)
+	maskFile := filepath.Join(tmpDir, "secret-mask")
+	content := base64.StdEncoding.EncodeToString([]byte(secret)) + "\n"
+	if err := os.WriteFile(maskFile, []byte(content), 0644); err != nil {
+		t.Fatalf("failed writing secret mask file: %v", err)
+	}
+
+	rr := realRunner{
+		secretMaskFile: maskFile,
+	}
+
+	oldStderr := os.Stderr
+	stderrReader, stderrWriter, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed creating pipe: %v", err)
+	}
+	os.Stderr = stderrWriter
+	defer func() {
+		_ = stderrWriter.Close()
+		os.Stderr = oldStderr
+		_ = stderrReader.Close()
+	}()
+
+	if err := rr.Run(t.Context(), "sh", "-c", "echo step-output >&2"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if err := stderrWriter.Close(); err != nil {
+		t.Fatalf("failed closing writer: %v", err)
+	}
+	os.Stderr = oldStderr
+
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, stderrReader); err != nil {
+		t.Fatalf("failed reading stderr: %v", err)
+	}
+	got := buf.String()
+	if !strings.Contains(got, "Warning: secret masking enabled; largest secret is") {
+		t.Fatalf("expected warning in stderr, got %q", got)
+	}
+	if strings.Count(got, "Warning: secret masking enabled;") != 1 {
+		t.Fatalf("expected warning exactly once, got %q", got)
+	}
+	if !strings.Contains(got, "step-output") {
+		t.Fatalf("expected step stderr output, got %q", got)
 	}
 }

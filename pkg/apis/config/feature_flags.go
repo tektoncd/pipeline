@@ -111,6 +111,10 @@ const (
 	EnableWaitExponentialBackoff = "enable-wait-exponential-backoff"
 	// DefaultEnableWaitExponentialBackoff is the default value for EnableWaitExponentialBackoff
 	DefaultEnableWaitExponentialBackoff = false
+	// EnableSecretMasking is the flag to enable masking of secret values in step stdout/stderr
+	EnableSecretMasking = "enable-secret-masking"
+	// DefaultEnableSecretMasking is the default value for EnableSecretMasking
+	DefaultEnableSecretMasking = false
 
 	// EnableStepActions is the flag to enable step actions (no-op since it's stable)
 	EnableStepActions = "enable-step-actions"
@@ -210,6 +214,7 @@ type FeatureFlags struct {
 	EnableConciseResolverSyntax  bool   `json:"enableConciseResolverSyntax,omitempty"`
 	EnableKubernetesSidecar      bool   `json:"enableKubernetesSidecar,omitempty"`
 	EnableWaitExponentialBackoff bool   `json:"enableWaitExponentialBackoff,omitempty"`
+	EnableSecretMasking          bool   `json:"enableSecretMasking,omitempty"`
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -315,6 +320,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setFeature(EnableWaitExponentialBackoff, DefaultEnableWaitExponentialBackoff, &tc.EnableWaitExponentialBackoff); err != nil {
+		return nil, err
+	}
+	if err := setFeature(EnableSecretMasking, DefaultEnableSecretMasking, &tc.EnableSecretMasking); err != nil {
 		return nil, err
 	}
 
