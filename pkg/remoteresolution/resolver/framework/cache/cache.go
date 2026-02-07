@@ -21,11 +21,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"sort"
+	"strings"
 	"time"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
+	"golang.org/x/sync/singleflight"
 	utilcache "k8s.io/apimachinery/pkg/util/cache"
 )
 
@@ -34,11 +36,12 @@ var _ resolutionframework.ConfigWatcher = (*resolverCache)(nil)
 // resolverCache is a wrapper around utilcache.LRUExpireCache that provides
 // type-safe methods for caching resolver results.
 type resolverCache struct {
-	cache   *utilcache.LRUExpireCache
-	logger  *zap.SugaredLogger
-	ttl     time.Duration
-	maxSize int
-	clock   utilcache.Clock
+	cache       *utilcache.LRUExpireCache
+	logger      *zap.SugaredLogger
+	ttl         time.Duration
+	maxSize     int
+	clock       utilcache.Clock
+	flightGroup *singleflight.Group
 }
 
 func newResolverCache(maxSize int, ttl time.Duration) *resolverCache {
@@ -47,10 +50,11 @@ func newResolverCache(maxSize int, ttl time.Duration) *resolverCache {
 
 func newResolverCacheWithClock(maxSize int, ttl time.Duration, clock utilcache.Clock) *resolverCache {
 	return &resolverCache{
-		cache:   utilcache.NewLRUExpireCacheWithClock(maxSize, clock),
-		ttl:     ttl,
-		maxSize: maxSize,
-		clock:   clock,
+		cache:       utilcache.NewLRUExpireCacheWithClock(maxSize, clock),
+		ttl:         ttl,
+		maxSize:     maxSize,
+		clock:       clock,
+		flightGroup: &singleflight.Group{},
 	}
 }
 
@@ -62,7 +66,7 @@ func (c *resolverCache) GetConfigName(_ context.Context) string {
 // withLogger returns a new ResolverCache instance with the provided logger.
 // This prevents state leak by not storing logger in the global singleton.
 func (c *resolverCache) withLogger(logger *zap.SugaredLogger) *resolverCache {
-	return &resolverCache{logger: logger, cache: c.cache, ttl: c.ttl, maxSize: c.maxSize, clock: c.clock}
+	return &resolverCache{logger: logger, cache: c.cache, ttl: c.ttl, maxSize: c.maxSize, clock: c.clock, flightGroup: c.flightGroup}
 }
 
 // TTL returns the time-to-live duration for cache entries.
@@ -137,7 +141,9 @@ func (c *resolverCache) Clear() {
 
 func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 	// Create a deterministic string representation of the parameters
-	paramStr := resolverType + ":"
+	var sb strings.Builder
+	sb.WriteString(resolverType)
+	sb.WriteByte(':')
 
 	// Filter out the 'cache' parameter and sort remaining params by name for determinism
 	filteredParams := make([]pipelinev1.Param, 0, len(params))
@@ -153,11 +159,12 @@ func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 	})
 
 	for _, p := range filteredParams {
-		paramStr += p.Name + "="
+		sb.WriteString(p.Name)
+		sb.WriteByte('=')
 
 		switch p.Value.Type {
 		case pipelinev1.ParamTypeString:
-			paramStr += p.Value.StringVal
+			sb.WriteString(p.Value.StringVal)
 		case pipelinev1.ParamTypeArray:
 			// Sort array values for determinism
 			arrayVals := make([]string, len(p.Value.ArrayVal))
@@ -165,9 +172,9 @@ func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 			sort.Strings(arrayVals)
 			for i, val := range arrayVals {
 				if i > 0 {
-					paramStr += ","
+					sb.WriteByte(',')
 				}
-				paramStr += val
+				sb.WriteString(val)
 			}
 		case pipelinev1.ParamTypeObject:
 			// Sort object keys for determinism
@@ -178,18 +185,20 @@ func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 			sort.Strings(keys)
 			for i, key := range keys {
 				if i > 0 {
-					paramStr += ","
+					sb.WriteByte(',')
 				}
-				paramStr += key + ":" + p.Value.ObjectVal[key]
+				sb.WriteString(key)
+				sb.WriteByte(':')
+				sb.WriteString(p.Value.ObjectVal[key])
 			}
 		default:
 			// For unknown types, use StringVal as fallback
-			paramStr += p.Value.StringVal
+			sb.WriteString(p.Value.StringVal)
 		}
-		paramStr += ";"
+		sb.WriteByte(';')
 	}
 
 	// Generate a SHA-256 hash of the parameter string
-	hash := sha256.Sum256([]byte(paramStr))
+	hash := sha256.Sum256([]byte(sb.String()))
 	return hex.EncodeToString(hash[:])
 }
