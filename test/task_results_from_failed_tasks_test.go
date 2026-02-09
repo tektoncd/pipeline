@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"testing"
 
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -116,5 +117,80 @@ spec:
 		default:
 			t.Fatalf("TaskRuns were not found for both final and dag tasks")
 		}
+	}
+}
+
+// TestPipelineResultsFromFailedTasks verifies that pipeline-level results
+// defined in PipelineSpec.Results are populated from failed task results.
+// This is the observable behavior reported in tektoncd/pipeline#3749:
+// pipeline results referencing failed task outputs were not being recorded.
+// @test:execution=parallel
+func TestPipelineResultsFromFailedTasks(t *testing.T) {
+	ctx := t.Context()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  pipelineSpec:
+    results:
+    - name: pipeline-result-1
+      value: $(tasks.task1.results.result1)
+    tasks:
+    - name: task1
+      taskSpec:
+        results:
+        - name: result1
+        steps:
+        - name: failing-step
+          image: mirror.gcr.io/busybox
+          script: 'echo -n 123 | tee $(results.result1.path); exit 1'
+    finally:
+    - name: finaltask1
+      params:
+      - name: param1
+        value: $(tasks.task1.results.result1)
+      taskSpec:
+        params:
+        - name: param1
+        steps:
+        - image: mirror.gcr.io/busybox
+          script: 'exit 0'
+`, helpers.ObjectNameForTest(t)))
+
+	if _, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to fail", pipelineRun.Name, namespace)
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1.PipelineRunReasonFailed.String(), pipelineRun.Name), "PipelineRunFailed", v1Version); err != nil {
+		t.Fatalf("Error waiting for PipelineRun to fail: %s", err)
+	}
+
+	pr, err := c.V1PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Error getting PipelineRun %s: %s", pipelineRun.Name, err)
+	}
+
+	if len(pr.Status.Results) == 0 {
+		t.Fatalf("Expected pipeline results from failed task, but got none")
+	}
+
+	foundResult := false
+	for _, r := range pr.Status.Results {
+		if r.Name == "pipeline-result-1" {
+			foundResult = true
+			if r.Value.StringVal != "123" {
+				t.Fatalf("Expected pipeline-result-1 to be '123', got '%s'", r.Value.StringVal)
+			}
+		}
+	}
+	if !foundResult {
+		t.Fatalf("pipeline-result-1 not found in PipelineRun results: %v", pr.Status.Results)
 	}
 }
