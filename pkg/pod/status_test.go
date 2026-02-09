@@ -1024,7 +1024,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}},
 		},
 		want: v1.TaskRunStatus{
-			Status: statusFailure(v1.TaskRunReasonFailed.String(), "OOMKilled"),
+			Status: statusFailure(v1.TaskRunReasonPodContainerOOM.String(), "OOMKilled"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
@@ -1467,7 +1467,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}},
 		},
 		want: v1.TaskRunStatus{
-			Status: statusFailure(v1.TaskRunReasonFailed.String(), "\"step-one\" exited with code 137: OOMKilled"),
+			Status: statusFailure(v1.TaskRunReasonPodContainerOOM.String(), "\"step-one\" exited with code 137: OOMKilled"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
@@ -2007,7 +2007,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			},
 		},
 		want: v1.TaskRunStatus{
-			Status: statusFailure(v1.TaskRunReasonFailed.String(), "init container failed, \"init-A\" exited with code 1"),
+			Status: statusFailure(v1.TaskRunReasonPodInitFailed.String(), "init container failed, \"init-A\" exited with code 1"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
@@ -2056,12 +2056,57 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			},
 		},
 		want: v1.TaskRunStatus{
-			Status: statusFailure(v1.TaskRunReasonFailed.String(), "Usage of EmptyDir volume \"ws-b6dfk\" exceeds the limit \"10Gi\"."),
+			Status: statusFailure(v1.TaskRunReasonPodEvicted.String(), "Usage of EmptyDir volume \"ws-b6dfk\" exceeds the limit \"10Gi\"."),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 137,
+						},
+					},
+					Name:      "A",
+					Container: "step-A",
+				}},
+				Sidecars:       []v1.SidecarState{},
+				Artifacts:      &v1.Artifacts{},
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
+		desc: "report PodContainerOOM reason when step container was OOM-killed",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod",
+				Namespace: "foo",
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{{
+					Name: "step-A",
+				}},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "step-A",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 137,
+								Reason:   "OOMKilled",
+							},
+						},
+					},
+				},
+			},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusFailure(v1.TaskRunReasonPodContainerOOM.String(), `"step-A" exited with code 137: OOMKilled`),
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 137,
+							Reason:   "OOMKilled",
 						},
 					},
 					Name:      "A",

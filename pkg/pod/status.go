@@ -611,7 +611,8 @@ func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1.TaskRunStat
 		if onError == v1.PipelineTaskContinue {
 			markStatusFailure(trs, v1.TaskRunReasonFailureIgnored.String(), msg)
 		} else {
-			markStatusFailure(trs, v1.TaskRunReasonFailed.String(), msg)
+			reason := getFailureReason(pod)
+			markStatusFailure(trs, reason, msg)
 		}
 	} else {
 		markStatusSuccess(trs)
@@ -750,6 +751,36 @@ func checkContainersCompleted(pod *corev1.Pod, nameFilters []containerNameFilter
 		}
 	}
 	return true
+}
+
+// getFailureReason classifies the pod failure and returns a specific
+// TaskRunReason string. This surfaces meaningful failure reasons instead
+// of the generic "Failed" for all failure types.
+// See https://github.com/tektoncd/pipeline/issues/7396
+func getFailureReason(pod *corev1.Pod) string {
+	// Check pod-level eviction first -- this is authoritative.
+	if pod.Status.Reason == evicted {
+		return v1.TaskRunReasonPodEvicted.String()
+	}
+
+	// Check init container failures.
+	for _, status := range pod.Status.InitContainerStatuses {
+		if status.State.Terminated != nil && status.State.Terminated.ExitCode != 0 {
+			return v1.TaskRunReasonPodInitFailed.String()
+		}
+	}
+
+	// Check for OOMKilled in step containers.
+	for _, s := range pod.Status.ContainerStatuses {
+		if IsContainerStep(s.Name) {
+			if s.State.Terminated != nil && isOOMKilled(s) {
+				return v1.TaskRunReasonPodContainerOOM.String()
+			}
+		}
+	}
+
+	// Default: generic failure (step exited non-zero).
+	return v1.TaskRunReasonFailed.String()
 }
 
 func getFailureMessage(logger *zap.SugaredLogger, pod *corev1.Pod) string {
