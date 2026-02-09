@@ -58,7 +58,7 @@ func isComparable[T comparable](t T) T { return t }
 
 var (
 	// keyValueType is used in computeDistinctReflect.
-	keyValueType = reflect.TypeFor[KeyValue]()
+	keyValueType = reflect.TypeOf(KeyValue{})
 
 	// emptyHash is the hash of an empty set.
 	emptyHash = xxhash.New().Sum64()
