@@ -26,6 +26,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
@@ -101,6 +102,12 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Ste
 		Command:      []string{shellCommand},
 		Args:         []string{shellArg, ""},
 		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceMemory: resource.MustParse("32Mi"),
+			},
+		},
 	}
 
 	if securityContext.SetSecurityContext {

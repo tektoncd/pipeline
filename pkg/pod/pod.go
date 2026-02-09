@@ -37,6 +37,7 @@ import (
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/version"
@@ -625,6 +626,12 @@ func entrypointInitContainer(image string, steps []v1.Step, securityContext Secu
 		WorkingDir:   "/",
 		Command:      command,
 		VolumeMounts: volumeMounts,
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceMemory: resource.MustParse("16Mi"),
+			},
+		},
 	}
 	if securityContext.SetSecurityContext {
 		prepareInitContainer.SecurityContext = securityContext.GetSecurityContext(windows)
@@ -690,6 +697,12 @@ func createResultsSidecar(taskSpec v1.TaskSpec, image string, securityContext Se
 			{
 				Name:  "SIDECAR_LOG_POLLING_INTERVAL",
 				Value: pollingInterval.String(),
+			},
+		},
+		ComputeResources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceMemory: resource.MustParse("32Mi"),
 			},
 		},
 	}

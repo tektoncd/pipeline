@@ -387,6 +387,147 @@ func TestNewTransformer(t *testing.T) {
 				return expectedPod
 			},
 		},
+
+		// verifies that code-level resource defaults on internal containers are NOT overridden
+		// by the ConfigMap default or per-container entries. This proves the code-level defaults
+		// (from entrypointInitContainer, convertScripts, workingDirInit, createResultsSidecar)
+		// coexist correctly with the ConfigMap transformer.
+		{
+			name: "test-code-level-defaults-preserved-by-configmap",
+			targetPod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-pod", Namespace: "custom-ns"},
+				Spec: corev1.PodSpec{
+					InitContainers: []corev1.Container{
+						{
+							Name: "prepare",
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("16Mi"),
+								},
+							},
+						},
+						{
+							Name: "place-scripts",
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("32Mi"),
+								},
+							},
+						},
+						{
+							Name: "working-dir-initializer",
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("16Mi"),
+								},
+							},
+						},
+					},
+					Containers: []corev1.Container{
+						{Name: "scripts-01"},
+						{
+							Name: "sidecar-tekton-log-results",
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("32Mi"),
+								},
+							},
+						},
+					},
+				},
+			},
+			resourceRequirements: map[string]corev1.ResourceRequirements{
+				"default": {
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("500m"),
+						corev1.ResourceMemory: resource.MustParse("256Mi"),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("250m"),
+						corev1.ResourceMemory: resource.MustParse("128Mi"),
+					},
+				},
+				"prepare": {
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("500m"),
+						corev1.ResourceMemory: resource.MustParse("256Mi"),
+					},
+				},
+			},
+			getExpectedPod: func() *corev1.Pod {
+				return &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{Name: "test-pod", Namespace: "custom-ns"},
+					Spec: corev1.PodSpec{
+						InitContainers: []corev1.Container{
+							// code-level defaults preserved: NOT overridden by ConfigMap "prepare" or "default"
+							{
+								Name: "prepare",
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("16Mi"),
+									},
+								},
+							},
+							// code-level defaults preserved: NOT overridden by ConfigMap "default"
+							{
+								Name: "place-scripts",
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("32Mi"),
+									},
+								},
+							},
+							// code-level defaults preserved: NOT overridden by ConfigMap "default"
+							{
+								Name: "working-dir-initializer",
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("16Mi"),
+									},
+								},
+							},
+						},
+						Containers: []corev1.Container{
+							// no code-level default: gets ConfigMap "default" values
+							{
+								Name: "scripts-01",
+								Resources: corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("500m"),
+										corev1.ResourceMemory: resource.MustParse("256Mi"),
+									},
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("250m"),
+										corev1.ResourceMemory: resource.MustParse("128Mi"),
+									},
+								},
+							},
+							// code-level defaults preserved: NOT overridden by ConfigMap "default"
+							{
+								Name: "sidecar-tekton-log-results",
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("32Mi"),
+									},
+								},
+							},
+						},
+					},
+				}
+			},
+		},
 	}
 
 	for _, tc := range tcs {
