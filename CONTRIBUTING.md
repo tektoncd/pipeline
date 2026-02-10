@@ -54,6 +54,21 @@ Automatically cherry-picks a merged PR to one or more target branches.
 
 The command creates a new PR with the cherry-picked changes for each target branch.
 
+### `/rebase`
+
+Rebases a PR branch against its base branch and force pushes the result.
+
+**Usage**: `/rebase`
+
+**Requirements**:
+- PR must be open
+- PR must not be from a fork (branch must be in tektoncd/pipeline)
+- User must have write permissions
+
+The command rebases the PR's head branch onto the base branch. If there are
+conflicts, it reports them in a comment. Uses `--force-with-lease` for safe
+force pushing.
+
 ## Contributing to Tekton documentation
 
 If you want to contribute to Tekton documentation, see the
