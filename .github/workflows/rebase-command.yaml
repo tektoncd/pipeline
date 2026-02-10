@@ -1,0 +1,30 @@
+# Rebase Command Workflow
+#
+# This workflow is triggered by the /rebase slash command from the slash.yml workflow.
+# It automatically rebases a PR branch against its base branch and force pushes the result.
+#
+# Usage: Comment `/rebase` on an open pull request
+#
+# Security Notes:
+# - Only users with "write" permission can trigger this command (enforced in slash.yml)
+# - Cannot rebase PRs from forks (branch must be in tektoncd/pipeline)
+# - Uses CHATOPS_TOKEN to push rebased branches
+# - Uses --force-with-lease for safe force pushing
+
+name: Rebase Command
+
+on:
+  repository_dispatch:
+    types: [rebase-command]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  rebase:
+    name: Rebase PR
+    uses: tektoncd/plumbing/.github/workflows/_rebase-command.yaml@4e60dd3785868521b0542134f5f57f2989c8883d  # main
+    secrets:
+      CHATOPS_TOKEN: ${{ secrets.CHATOPS_TOKEN }}

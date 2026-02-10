@@ -15,6 +15,7 @@
 # - /retest: re-trigger workflows that failed on a given PR
 # - /e2e-extras: run extra e2e tests on a given PR
 # - /cherry-pick <branch>: cherry-picks the merged PR to the specified branch
+# - /rebase: rebase a PR branch against its base branch
 #
 # When a command is recognised, the rocket and eyes emojis are added
 
@@ -47,6 +48,12 @@ jobs:
             },
             {
               "command": "cherry-pick",
+              "permission": "write",
+              "issue_type": "pull-request",
+              "repository": "tektoncd/pipeline"
+            },
+            {
+              "command": "rebase",
               "permission": "write",
               "issue_type": "pull-request",
               "repository": "tektoncd/pipeline"
