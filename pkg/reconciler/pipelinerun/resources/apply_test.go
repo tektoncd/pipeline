@@ -1783,32 +1783,6 @@ func TestApplyParameters(t *testing.T) {
 			},
 		},
 		{
-			name: "parameter default value inherited from another parameter",
-			original: v1.PipelineSpec{
-				Params: []v1.ParamSpec{
-					{Name: "fallback-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("pipeline fallback value")},
-					{Name: "param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(params.fallback-param)")},
-				},
-				Tasks: []v1.PipelineTask{{
-					Params: v1.Params{
-						{Name: "task-param", Value: *v1.NewStructuredValues("$(params.param)")},
-					},
-				}},
-			},
-			params: v1.Params{{Name: "fallback-param", Value: *v1.NewStructuredValues("override fallback param value")}},
-			expected: v1.PipelineSpec{
-				Params: []v1.ParamSpec{
-					{Name: "fallback-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("pipeline fallback value")},
-					{Name: "param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(params.fallback-param)")},
-				},
-				Tasks: []v1.PipelineTask{{
-					Params: v1.Params{
-						{Name: "task-param", Value: *v1.NewStructuredValues("override fallback param value")},
-					},
-				}},
-			},
-		},
-		{
 			name: "parameter default value inherited from another parameter - no override",
 			original: v1.PipelineSpec{
 				Params: []v1.ParamSpec{
@@ -1835,6 +1809,32 @@ func TestApplyParameters(t *testing.T) {
 			},
 		},
 		{
+			name: "parameter default value inherited from another parameter - override fallback",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "fallback-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("pipeline fallback value")},
+					{Name: "param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(params.fallback-param)")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-param", Value: *v1.NewStructuredValues("$(params.param)")},
+					},
+				}},
+			},
+			params: v1.Params{{Name: "fallback-param", Value: *v1.NewStructuredValues("override fallback param value")}},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "fallback-param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("pipeline fallback value")},
+					{Name: "param", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(params.fallback-param)")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-param", Value: *v1.NewStructuredValues("override fallback param value")},
+					},
+				}},
+			},
+		},
+		{
 			name: "parameter default value inherited from another parameter - override param",
 			original: v1.PipelineSpec{
 				Params: []v1.ParamSpec{
@@ -1856,6 +1856,69 @@ func TestApplyParameters(t *testing.T) {
 				Tasks: []v1.PipelineTask{{
 					Params: v1.Params{
 						{Name: "task-param", Value: *v1.NewStructuredValues("override param value")},
+					},
+				}},
+			},
+		},
+		{
+			name: "parameter default value references non-parameter variable(s) - no override",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "param1", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(context.pipelineRun.name)")},
+					{Name: "param2", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(workspace.some-volume.bound)")},
+					{Name: "param3", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("interpolated-name: $(context.pipeline.name)")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-param1", Value: *v1.NewStructuredValues("$(params.param1)")},
+						{Name: "task-param2", Value: *v1.NewStructuredValues("$(params.param2)")},
+						{Name: "task-param3", Value: *v1.NewStructuredValues("$(params.param3)")},
+					},
+				}},
+			},
+			params: v1.Params{},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "param1", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(context.pipelineRun.name)")},
+					{Name: "param2", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(workspace.some-volume.bound)")},
+					{Name: "param3", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("interpolated-name: $(context.pipeline.name)")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-param1", Value: *v1.NewStructuredValues("$(context.pipelineRun.name)")},
+						{Name: "task-param2", Value: *v1.NewStructuredValues("$(workspace.some-volume.bound)")},
+						{Name: "task-param3", Value: *v1.NewStructuredValues("interpolated-name: $(context.pipeline.name)")},
+					},
+				}},
+			},
+		},
+		{
+			name: "parameter default value references non-parameter variable(s) - param override",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "param1", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(context.pipelineRun.name)")},
+					{Name: "param2", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(workspace.some-volume.bound)")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-param1", Value: *v1.NewStructuredValues("$(params.param1)")},
+						{Name: "task-param2", Value: *v1.NewStructuredValues("$(params.param2)")},
+					},
+				}},
+			},
+			params: v1.Params{
+				{Name: "param1", Value: *v1.NewStructuredValues("override param1 value")},
+				{Name: "param2", Value: *v1.NewStructuredValues("override param2 value")},
+			},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "param1", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(context.pipelineRun.name)")},
+					{Name: "param2", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("$(workspace.some-volume.bound)")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-param1", Value: *v1.NewStructuredValues("override param1 value")},
+						{Name: "task-param2", Value: *v1.NewStructuredValues("override param2 value")},
 					},
 				}},
 			},
