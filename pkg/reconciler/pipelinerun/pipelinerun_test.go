@@ -263,6 +263,9 @@ spec:
     type: string
   - name: bar
     type: string
+  - name: paramWithContextDefault
+    type: string
+    default: "name:$(context.pipeline.name)"
   tasks:
   - name: unit-test-2
     params:
@@ -294,6 +297,8 @@ spec:
       value: $(context.pipelineTask.retries)
     - name: param-not-found
       value: $(params.notfound)
+    - name: paramWithContextDefault
+      value: $(params.paramWithContextDefault)
     retries: 5
     taskRef:
       name: unit-test-task
@@ -384,6 +389,8 @@ spec:
     value: "5"
   - name: param-not-found
     value: $(params.notfound)
+  - name: paramWithContextDefault
+    value: name:test-pipeline
   retries: 5
   serviceAccountName: test-sa
   taskRef:

@@ -328,11 +328,19 @@ func resolveStringParamRecursively(
 // Example: "$(params.registry)/app:$(params.tag)" → ["params.registry", "params.tag"]
 func extractParamReferences(paramValue string) []string {
 	param := v1.Param{Value: *v1.NewStructuredValues(paramValue)}
-	result, ok := param.GetVarSubstitutionExpressions()
+	variableRefs, ok := param.GetVarSubstitutionExpressions()
 	if !ok {
 		return []string{}
 	}
-	return result
+
+	// Filter references to non-parameter variables
+	paramRefs := make([]string, 0, len(variableRefs))
+	for _, variable := range variableRefs {
+		if strings.HasPrefix(variable, "params.") {
+			paramRefs = append(paramRefs, variable)
+		}
+	}
+	return paramRefs
 }
 
 // resolveArrayParam resolves an array parameter by applying string parameter substitutions to each element and adds

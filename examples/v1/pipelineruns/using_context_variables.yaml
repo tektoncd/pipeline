@@ -6,6 +6,9 @@ spec:
   taskRunTemplate:
     serviceAccountName: 'default'
   pipelineSpec:
+    params:
+      - name: pipelineRun-name-from-defaults
+        default: "pipelinerun: $(context.pipelineRun.name)"
     tasks:
     - name: task1
       retries: 7
@@ -16,6 +19,8 @@ spec:
         value: "$(context.pipeline.name)"
       - name: pipelineRun-name
         value: "$(context.pipelineRun.name)"
+      - name: pipelineRun-name-from-defaults
+        value: "$(params.pipelineRun-name-from-defaults)"
       - name: pipelineRun-namespace
         value: "$(context.pipelineRun.namespace)"
       - name: pipelineTask-retries
@@ -40,6 +45,7 @@ spec:
             echo "TaskRun name: $(context.taskRun.name)"
             echo "Pipeline name from params: $(params.pipeline-name)"
             echo "PipelineRun name from params: $(params.pipelineRun-name)"
+            echo "PipelineRun name from pipeline defaults: $(params.pipelineRun-name-from-defaults)"
             echo "PipelineRun namespace from params: $(params.pipelineRun-namespace)"
         - image: mirror.gcr.io/ubuntu
           name: print-retries
