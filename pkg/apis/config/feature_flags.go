@@ -208,8 +208,8 @@ type FeatureFlags struct {
 	EnableArtifacts              bool   `json:"enableArtifacts,omitempty"`
 	DisableInlineSpec            string `json:"disableInlineSpec,omitempty"`
 	EnableConciseResolverSyntax  bool   `json:"enableConciseResolverSyntax,omitempty"`
-	EnableKubernetesSidecar      bool   `json:"enableKubernetesSidecar,omitempty"`
-	EnableWaitExponentialBackoff bool   `json:"enableWaitExponentialBackoff,omitempty"`
+	EnableKubernetesSidecar      bool `json:"enableKubernetesSidecar,omitempty"`
+	EnableWaitExponentialBackoff bool `json:"enableWaitExponentialBackoff,omitempty"`
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -444,3 +444,4 @@ type PerFeatureFlag struct {
 	//nolint:gocritic
 	Deprecated bool
 }
+
