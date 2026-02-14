@@ -168,7 +168,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		return nil, err
 	}
 
-	if cache.ShouldUse(ctx, r, req.Params, labelValueGitResolverType) {
+	if cache.ShouldUse(ctx, r, req.Params) {
 		return cache.GetFromCacheOrResolve(
 			ctx,
 			req.Params,

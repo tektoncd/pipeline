@@ -138,7 +138,7 @@ func TestGet_Errors(t *testing.T) {
 	}
 }
 
-func TestBuildRequestV2(t *testing.T) {
+func TestRemoteResolutionBuildRequest(t *testing.T) {
 	for _, tc := range []struct {
 		name            string
 		targetName      string
