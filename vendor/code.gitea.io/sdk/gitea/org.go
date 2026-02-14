@@ -9,18 +9,23 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 )
 
 // Organization represents an organization
 type Organization struct {
-	ID          int64  `json:"id"`
-	UserName    string `json:"username"`
-	FullName    string `json:"full_name"`
-	AvatarURL   string `json:"avatar_url"`
-	Description string `json:"description"`
-	Website     string `json:"website"`
-	Location    string `json:"location"`
-	Visibility  string `json:"visibility"`
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+	// Deprecated: Use Name instead. See https://github.com/go-gitea/gitea/blob/main/modules/structs/org.go#L29
+	UserName                  string `json:"username"`
+	FullName                  string `json:"full_name"`
+	Email                     string `json:"email"`
+	AvatarURL                 string `json:"avatar_url"`
+	Description               string `json:"description"`
+	Website                   string `json:"website"`
+	Location                  string `json:"location"`
+	Visibility                string `json:"visibility"`
+	RepoAdminChangeTeamAccess bool   `json:"repo_admin_change_team_access"`
 }
 
 // VisibleType defines the visibility
@@ -40,6 +45,16 @@ const (
 // ListOrgsOptions options for listing organizations
 type ListOrgsOptions struct {
 	ListOptions
+}
+
+// ListOrgs lists all public organizations
+func (c *Client) ListOrgs(opt ListOrgsOptions) ([]*Organization, *Response, error) {
+	opt.setDefaults()
+	link, _ := url.Parse("/orgs")
+	link.RawQuery = opt.getURLQuery().Encode()
+	orgs := make([]*Organization, 0, opt.PageSize)
+	resp, err := c.getParsedResponse("GET", link.String(), nil, nil, &orgs)
+	return orgs, resp, err
 }
 
 // ListMyOrgs list all of current user's organizations
@@ -75,6 +90,7 @@ func (c *Client) GetOrg(orgname string) (*Organization, *Response, error) {
 type CreateOrgOption struct {
 	Name                      string      `json:"username"`
 	FullName                  string      `json:"full_name"`
+	Email                     string      `json:"email"`
 	Description               string      `json:"description"`
 	Website                   string      `json:"website"`
 	Location                  string      `json:"location"`
@@ -114,11 +130,13 @@ func (c *Client) CreateOrg(opt CreateOrgOption) (*Organization, *Response, error
 
 // EditOrgOption options for editing an organization
 type EditOrgOption struct {
-	FullName    string      `json:"full_name"`
-	Description string      `json:"description"`
-	Website     string      `json:"website"`
-	Location    string      `json:"location"`
-	Visibility  VisibleType `json:"visibility"`
+	FullName                  string      `json:"full_name"`
+	Email                     string      `json:"email"`
+	Description               string      `json:"description"`
+	Website                   string      `json:"website"`
+	Location                  string      `json:"location"`
+	Visibility                VisibleType `json:"visibility"`
+	RepoAdminChangeTeamAccess *bool       `json:"repo_admin_change_team_access"`
 }
 
 // Validate the EditOrgOption struct
@@ -141,8 +159,7 @@ func (c *Client) EditOrg(orgname string, opt EditOrgOption) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("PATCH", fmt.Sprintf("/orgs/%s", orgname), jsonHeader, bytes.NewReader(body))
-	return resp, err
+	return c.doRequestWithStatusHandle("PATCH", fmt.Sprintf("/orgs/%s", orgname), jsonHeader, bytes.NewReader(body))
 }
 
 // DeleteOrg deletes an organization
@@ -150,6 +167,5 @@ func (c *Client) DeleteOrg(orgname string) (*Response, error) {
 	if err := escapeValidatePathSegments(&orgname); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/orgs/%s", orgname), jsonHeader, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/orgs/%s", orgname), jsonHeader, nil)
 }
