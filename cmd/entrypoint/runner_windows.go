@@ -32,8 +32,9 @@ import (
 
 // realRunner actually runs commands.
 type realRunner struct {
-	stdoutPath string
-	stderrPath string
+	stdoutPath     string
+	stderrPath     string
+	secretMaskFile string
 }
 
 var _ entrypoint.Runner = (*realRunner)(nil)
@@ -41,6 +42,9 @@ var _ entrypoint.Runner = (*realRunner)(nil)
 func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	if rr.stdoutPath != "" || rr.stderrPath != "" {
 		return errors.New("step.StdoutPath and step.StderrPath not supported on Windows")
+	}
+	if rr.secretMaskFile != "" {
+		return errors.New("secret masking is not supported on Windows")
 	}
 	if len(args) == 0 {
 		return nil
