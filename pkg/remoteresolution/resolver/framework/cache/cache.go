@@ -20,25 +20,32 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"sort"
+	"strings"
 	"time"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
+	"golang.org/x/sync/singleflight"
 	utilcache "k8s.io/apimachinery/pkg/util/cache"
 )
+
+type resolveFn = func() (resolutionframework.ResolvedResource, error)
 
 var _ resolutionframework.ConfigWatcher = (*resolverCache)(nil)
 
 // resolverCache is a wrapper around utilcache.LRUExpireCache that provides
 // type-safe methods for caching resolver results.
 type resolverCache struct {
-	cache   *utilcache.LRUExpireCache
-	logger  *zap.SugaredLogger
-	ttl     time.Duration
-	maxSize int
-	clock   utilcache.Clock
+	cache       *utilcache.LRUExpireCache
+	logger      *zap.SugaredLogger
+	ttl         time.Duration
+	maxSize     int
+	clock       utilcache.Clock
+	flightGroup *singleflight.Group
 }
 
 func newResolverCache(maxSize int, ttl time.Duration) *resolverCache {
@@ -47,10 +54,11 @@ func newResolverCache(maxSize int, ttl time.Duration) *resolverCache {
 
 func newResolverCacheWithClock(maxSize int, ttl time.Duration, clock utilcache.Clock) *resolverCache {
 	return &resolverCache{
-		cache:   utilcache.NewLRUExpireCacheWithClock(maxSize, clock),
-		ttl:     ttl,
-		maxSize: maxSize,
-		clock:   clock,
+		cache:       utilcache.NewLRUExpireCacheWithClock(maxSize, clock),
+		ttl:         ttl,
+		maxSize:     maxSize,
+		clock:       clock,
+		flightGroup: &singleflight.Group{},
 	}
 }
 
@@ -62,7 +70,7 @@ func (c *resolverCache) GetConfigName(_ context.Context) string {
 // withLogger returns a new ResolverCache instance with the provided logger.
 // This prevents state leak by not storing logger in the global singleton.
 func (c *resolverCache) withLogger(logger *zap.SugaredLogger) *resolverCache {
-	return &resolverCache{logger: logger, cache: c.cache, ttl: c.ttl, maxSize: c.maxSize, clock: c.clock}
+	return &resolverCache{logger: logger, cache: c.cache, ttl: c.ttl, maxSize: c.maxSize, clock: c.clock, flightGroup: c.flightGroup}
 }
 
 // TTL returns the time-to-live duration for cache entries.
@@ -75,8 +83,53 @@ func (c *resolverCache) MaxSize() int {
 	return c.maxSize
 }
 
+func (c *resolverCache) GetCachedOrResolveFromRemote(
+	params []v1.Param,
+	resolverType string,
+	resolveFromRemote resolveFn,
+) (resolutionframework.ResolvedResource, error) {
+	key := generateCacheKey(resolverType, params)
+
+	if untyped, found := c.cache.Get(key); found {
+		cachedResource, ok := untyped.(resolutionframework.ResolvedResource)
+		if !ok {
+			c.infow("Failed casting cached resource", "key", key)
+			return nil, errors.New("failed casting cached resource")
+		}
+
+		c.infow("Cache hit", "key", key)
+
+		timestamp := c.clock.Now().Format(time.RFC3339)
+		return newAnnotatedResource(cachedResource, resolverType, cacheOperationRetrieve, timestamp), nil
+	}
+
+	// If cache miss, resolve from remote using singleflight
+	untyped, err, _ := c.flightGroup.Do(key, func() (any, error) {
+		resolvedResource, err := resolveFromRemote()
+		if err != nil {
+			return nil, err
+		}
+
+		timestamp := c.clock.Now().Format(time.RFC3339)
+		annotatedResource := newAnnotatedResource(resolvedResource, resolverType, cacheOperationStore, timestamp)
+
+		// Store annotated resource with store operation and return annotated resource
+		// to indicate it was stored in cache
+		c.infow("Adding to cache", "key", key, "expiration", c.ttl)
+		c.cache.Add(key, annotatedResource, c.ttl)
+		return annotatedResource, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return untyped.(resolutionframework.ResolvedResource), nil
+}
+
 // Get retrieves a cached resource by resolver type and parameters, returning
 // the resource and whether it was found.
+//
+// Deprecated: must be removed and GetCachedOrResolveFromRemote used instead
 func (c *resolverCache) Get(resolverType string, params []pipelinev1.Param) (resolutionframework.ResolvedResource, bool) {
 	key := generateCacheKey(resolverType, params)
 	value, found := c.cache.Get(key)
@@ -104,6 +157,8 @@ func (c *resolverCache) infow(msg string, keysAndValues ...any) {
 
 // Add stores a resource in the cache with the configured TTL and returns an
 // annotated version of the resource.
+//
+// Deprecated: must be removed and GetCachedOrResolveFromRemote used instead
 func (c *resolverCache) Add(
 	resolverType string,
 	params []pipelinev1.Param,
@@ -120,14 +175,6 @@ func (c *resolverCache) Add(
 	return annotatedResource
 }
 
-// Remove deletes a cached resource identified by resolver type and parameters.
-func (c *resolverCache) Remove(resolverType string, params []pipelinev1.Param) {
-	key := generateCacheKey(resolverType, params)
-	c.infow("Removing from cache", "key", key)
-
-	c.cache.Remove(key)
-}
-
 // Clear removes all entries from the cache.
 func (c *resolverCache) Clear() {
 	c.infow("Clearing all cache entries")
@@ -137,7 +184,9 @@ func (c *resolverCache) Clear() {
 
 func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 	// Create a deterministic string representation of the parameters
-	paramStr := resolverType + ":"
+	var sb strings.Builder
+	sb.WriteString(resolverType)
+	sb.WriteByte(':')
 
 	// Filter out the 'cache' parameter and sort remaining params by name for determinism
 	filteredParams := make([]pipelinev1.Param, 0, len(params))
@@ -153,11 +202,12 @@ func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 	})
 
 	for _, p := range filteredParams {
-		paramStr += p.Name + "="
+		sb.WriteString(p.Name)
+		sb.WriteByte('=')
 
 		switch p.Value.Type {
 		case pipelinev1.ParamTypeString:
-			paramStr += p.Value.StringVal
+			sb.WriteString(p.Value.StringVal)
 		case pipelinev1.ParamTypeArray:
 			// Sort array values for determinism
 			arrayVals := make([]string, len(p.Value.ArrayVal))
@@ -165,9 +215,9 @@ func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 			sort.Strings(arrayVals)
 			for i, val := range arrayVals {
 				if i > 0 {
-					paramStr += ","
+					sb.WriteByte(',')
 				}
-				paramStr += val
+				sb.WriteString(val)
 			}
 		case pipelinev1.ParamTypeObject:
 			// Sort object keys for determinism
@@ -178,18 +228,20 @@ func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 			sort.Strings(keys)
 			for i, key := range keys {
 				if i > 0 {
-					paramStr += ","
+					sb.WriteByte(',')
 				}
-				paramStr += key + ":" + p.Value.ObjectVal[key]
+				sb.WriteString(key)
+				sb.WriteByte(':')
+				sb.WriteString(p.Value.ObjectVal[key])
 			}
 		default:
 			// For unknown types, use StringVal as fallback
-			paramStr += p.Value.StringVal
+			sb.WriteString(p.Value.StringVal)
 		}
-		paramStr += ";"
+		sb.WriteByte(';')
 	}
 
 	// Generate a SHA-256 hash of the parameter string
-	hash := sha256.Sum256([]byte(paramStr))
+	hash := sha256.Sum256([]byte(sb.String()))
 	return hex.EncodeToString(hash[:])
 }
