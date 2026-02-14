@@ -122,3 +122,32 @@ and then to the associated `Pods`. As for `Pipeline` and `PipelineRun`, if a ann
 - For standalone `TaskRuns` (that is, ones not executing as part of a `Pipeline`), annotations
 propagate from the [referenced `Task`](taskruns.md#specifying-the-target-task), if one exists, to
 the corresponding `TaskRun`, and then to the associated `Pod`. The same as above applies.
+
+## Reserved Annotations
+
+The following annotations are reserved for Tekton's internal use. Do not remove them manually.
+
+<table>
+	<tbody>
+		<tr>
+			<td><b>Annotation</b></td>
+			<td><b>Used On</b></td>
+			<td><b>Description</b></td>
+		</tr>
+		<tr>
+			<td><code>tekton.dev/pipelinerunSpanContext</code></td>
+			<td><code>PipelineRuns</code></td>
+			<td>JSON-encoded span context for internal Tekton trace propagation. The span context is adopted directly without creating an intermediate span.</td>
+		</tr>
+		<tr>
+			<td><code>tekton.dev/taskrunSpanContext</code></td>
+			<td><code>TaskRuns</code></td>
+			<td>JSON-encoded span context propagated from the parent <code>PipelineRun</code>.</td>
+		</tr>
+		<tr>
+			<td><code>tekton.dev/deliveryTraceparent</code></td>
+			<td><code>PipelineRuns</code></td>
+			<td>W3C traceparent string for external parent trace context. When set with a valid traceparent, Tekton creates a child span under the provided parent, making sibling PipelineRuns distinguishable in traces. See <a href="developers/tracing.md#external-parent-trace-context">tracing documentation</a> for details.</td>
+		</tr>
+	</tbody>
+</table>

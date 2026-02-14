@@ -36,6 +36,8 @@ const (
 	SpanContextAnnotation = "tekton.dev/pipelinerunSpanContext"
 	// TaskRunSpanContextAnnotation is the name of the Annotation used for propagating SpanContext to TaskRun
 	TaskRunSpanContextAnnotation = "tekton.dev/taskrunSpanContext"
+	// DeliveryTraceparentAnnotation is the name of the Annotation for external parent trace context
+	DeliveryTraceparentAnnotation = "tekton.dev/deliveryTraceparent"
 )
 
 // initialize tracing by creating the root span and injecting the
@@ -60,6 +62,22 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, pr *v
 
 		pr.Status.SpanContext = spanContext
 		return pro.Extract(ctx, propagation.MapCarrier(pr.Status.SpanContext))
+	}
+
+	// Adopt external delivery traceparent as remote parent
+	if pr.Annotations != nil && pr.Annotations[DeliveryTraceparentAnnotation] != "" {
+		deliveryTraceparent := pr.Annotations[DeliveryTraceparentAnnotation]
+		parentCarrier := map[string]string{"traceparent": deliveryTraceparent}
+		parentCtx := pro.Extract(ctx, propagation.MapCarrier(parentCarrier))
+		if !trace.SpanContextFromContext(parentCtx).IsValid() {
+			logger.Warnf("invalid delivery traceparent annotation value: %s", deliveryTraceparent)
+		} else {
+			pro.Inject(parentCtx, propagation.MapCarrier(spanContext))
+
+			logger.Debugf("adopted delivery traceparent as remote parent: %s", deliveryTraceparent)
+			pr.Status.SpanContext = spanContext
+			return parentCtx
+		}
 	}
 
 	// Create a new root span since there was no parent spanContext provided through annotations
