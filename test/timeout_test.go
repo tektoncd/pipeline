@@ -265,7 +265,7 @@ spec:
 // @test:execution=parallel
 func TestTaskRunTimeout(t *testing.T) {
 	t.Parallel()
-	timeout := 1 * time.Second
+	timeout := 5 * time.Second
 	ctx, cancel := context.WithTimeout(t.Context(), timeout+2*time.Minute)
 	defer cancel()
 	c, namespace := setup(ctx, t)

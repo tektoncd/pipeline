@@ -281,17 +281,17 @@ func (pt *PipelineTask) TaskSpecMetadata() PipelineTaskMetadata {
 }
 
 // HashKey is the name of the PipelineTask, and is used as the key for this PipelineTask in the DAG
-func (pt PipelineTask) HashKey() string {
+func (pt *PipelineTask) HashKey() string {
 	return pt.Name
 }
 
 // Deps returns all other PipelineTask dependencies of this PipelineTask, based on resource usage or ordering
-func (pt PipelineTask) Deps() []string {
+func (pt *PipelineTask) Deps() []string {
 	// hold the list of dependencies in a set to avoid duplicates
 	deps := sets.NewString()
 
 	// add any new dependents from result references - resource dependency
-	for _, ref := range PipelineTaskResultRefs(&pt) {
+	for _, ref := range PipelineTaskResultRefs(pt) {
 		deps.Insert(ref.PipelineTask)
 	}
 
@@ -323,8 +323,8 @@ func (l PipelineTaskList) Deps() map[string][]string {
 // Items returns a slice of all tasks in the PipelineTaskList, converted to dag.Tasks
 func (l PipelineTaskList) Items() []dag.Task {
 	tasks := []dag.Task{}
-	for _, t := range l {
-		tasks = append(tasks, dag.Task(t))
+	for i := range l {
+		tasks = append(tasks, &l[i])
 	}
 	return tasks
 }
