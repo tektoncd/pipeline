@@ -633,6 +633,7 @@ func TestResolveWithCacheHit(t *testing.T) {
 	}
 
 	// add the mock resource to the cache
+	// TODO(twoGiants): use GetCached...
 	cache.Get(ctx).Add(cluster.LabelValueClusterResolverType, params, mockResource)
 
 	// create request with same parameters

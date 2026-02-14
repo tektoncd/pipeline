@@ -168,8 +168,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	}
 
 	if cache.ShouldUse(ctx, r, req.Params) {
-		return cache.GetFromCacheOrResolve(
-			ctx,
+		return cache.Get(ctx).GetCachedOrResolveFromRemote(
 			req.Params,
 			labelValueGitResolverType,
 			func() (resolutionframework.ResolvedResource, error) {
