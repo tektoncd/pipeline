@@ -632,8 +632,11 @@ func TestResolveWithCacheHit(t *testing.T) {
 		{Name: "cache", Value: *pipelinev1.NewStructuredValues("always")},
 	}
 
-	// add the mock resource to the cache
-	cache.Get(ctx).Add(cluster.LabelValueClusterResolverType, params, mockResource)
+	// prepopulate the cache using GetCachedOrResolveFromRemote
+	resolveFn := func() (framework.ResolvedResource, error) {
+		return mockResource, nil
+	}
+	cache.Get(ctx).GetCachedOrResolveFromRemote(params, cluster.LabelValueClusterResolverType, resolveFn)
 
 	// create request with same parameters
 	req := &v1beta1.ResolutionRequestSpec{Params: params}

@@ -109,9 +109,8 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		return nil, errors.New("no params")
 	}
 
-	if cache.ShouldUse(ctx, r, req.Params, LabelValueBundleResolverType) {
-		return cache.GetFromCacheOrResolve(
-			ctx,
+	if cache.ShouldUse(ctx, r, req.Params) {
+		return cache.Get(ctx).GetCachedOrResolveFromRemote(
 			req.Params,
 			LabelValueBundleResolverType,
 			func() (resolutionframework.ResolvedResource, error) {
