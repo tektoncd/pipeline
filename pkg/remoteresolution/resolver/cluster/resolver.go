@@ -88,9 +88,8 @@ func (r *Resolver) IsImmutable([]v1.Param) bool {
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
-	if cache.ShouldUse(ctx, r, req.Params, LabelValueClusterResolverType) {
-		return cache.GetFromCacheOrResolve(
-			ctx,
+	if cache.ShouldUse(ctx, r, req.Params) {
+		return cache.Get(ctx).GetCachedOrResolveFromRemote(
 			req.Params,
 			LabelValueClusterResolverType,
 			func() (resolutionframework.ResolvedResource, error) {

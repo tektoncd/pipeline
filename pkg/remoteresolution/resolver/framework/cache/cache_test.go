@@ -17,11 +17,13 @@ limitations under the License.
 package cache
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	bundleresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/bundle"
+	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap/zaptest"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
@@ -40,37 +42,19 @@ func TestGenerateCacheKey(t *testing.T) {
 			expectedKey:  "1c31dda07cb1e09e89bd660a8d114936b44f728b73a3bc52c69a409ee1d44e67",
 		},
 		{
-			name:         "single param",
+			name:         "single string param",
 			resolverType: "http",
 			params: []pipelinev1.Param{
-				{
-					Name: "url",
-					Value: pipelinev1.ParamValue{
-						Type:      pipelinev1.ParamTypeString,
-						StringVal: "https://example.com",
-					},
-				},
+				{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://example.com"}},
 			},
 			expectedKey: "63f68e3e567eafd7efb4149b3389b3261784c8ac5847b62e90b7ae8d23f6e889",
 		},
 		{
-			name:         "multiple params",
+			name:         "multiple string params",
 			resolverType: "git",
 			params: []pipelinev1.Param{
-				{
-					Name: "url",
-					Value: pipelinev1.ParamValue{
-						Type:      pipelinev1.ParamTypeString,
-						StringVal: "https://github.com/tektoncd/pipeline",
-					},
-				},
-				{
-					Name: "revision",
-					Value: pipelinev1.ParamValue{
-						Type:      pipelinev1.ParamTypeString,
-						StringVal: "main",
-					},
-				},
+				{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/pipeline"}},
+				{Name: "revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "main"}},
 			},
 			expectedKey: "fbe74989962e04dbb512a986864acff592dd02e84ab20f7544fa6b473648f28c",
 		},
@@ -86,163 +70,75 @@ func TestGenerateCacheKey(t *testing.T) {
 	}
 }
 
-func TestGenerateCacheKey_IndependentOfCacheParam(t *testing.T) {
-	tests := []struct {
-		name         string
-		resolverType string
-		params       []pipelinev1.Param
-		expectedSame bool
-		description  string
-	}{
-		{
-			name:         "same params without cache param",
-			resolverType: "git",
-			params: []pipelinev1.Param{
-				{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/pipeline"}},
-				{Name: "revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "main"}},
-			},
-			expectedSame: true,
-			description:  "Params without cache param should generate same key",
-		},
-		{
-			name:         "same params with different cache values",
-			resolverType: "git",
-			params: []pipelinev1.Param{
-				{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/pipeline"}},
-				{Name: "revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "main"}},
-				{Name: "cache", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "true"}},
-			},
-			expectedSame: true,
-			description:  "Params with cache=true should generate same key as without cache param",
-		},
-		{
-			name:         "same params with cache=false",
-			resolverType: "git",
-			params: []pipelinev1.Param{
-				{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/pipeline"}},
-				{Name: "revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "main"}},
-				{Name: "cache", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "false"}},
-			},
-			expectedSame: true,
-			description:  "Params with cache=false should generate same key as without cache param",
-		},
-		{
-			name:         "different params should generate different keys",
-			resolverType: "git",
-			params: []pipelinev1.Param{
-				{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/pipeline"}},
-				{Name: "revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "v0.50.0"}},
-			},
-			expectedSame: false,
-			description:  "Different revision should generate different key",
-		},
-		{
-			name:         "array params",
-			resolverType: "bundle",
-			params: []pipelinev1.Param{
-				{Name: "bundle", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "gcr.io/tekton-releases/catalog/upstream/git-clone"}},
-				{Name: "name", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "git-clone"}},
-				{Name: "cache", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "true"}},
-			},
-			expectedSame: true,
-			description:  "Array params with cache should generate same key as without cache",
-		},
-		{
-			name:         "object params",
-			resolverType: "hub",
-			params: []pipelinev1.Param{
-				{Name: "name", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "git-clone"}},
-				{Name: "version", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "0.8"}},
-				{Name: "cache", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "false"}},
-			},
-			expectedSame: true,
-			description:  "Object params with cache should generate same key as without cache",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.expectedSame {
-				// Generate key with cache param
-				keyWithCache := generateCacheKey(tt.resolverType, tt.params)
-
-				// Generate key without cache param
-				paramsWithoutCache := make([]pipelinev1.Param, 0, len(tt.params))
-				for _, p := range tt.params {
-					if p.Name != "cache" {
-						paramsWithoutCache = append(paramsWithoutCache, p)
-					}
-				}
-				keyWithoutCache := generateCacheKey(tt.resolverType, paramsWithoutCache)
-
-				if keyWithCache != keyWithoutCache {
-					t.Errorf("Expected same keys, but got different:\nWith cache: %s\nWithout cache: %s\nDescription: %s",
-						keyWithCache, keyWithoutCache, tt.description)
-				}
-			} else {
-				// For different params test, create a second set with different values
-				params2 := make([]pipelinev1.Param, len(tt.params))
-				copy(params2, tt.params)
-				// Change the revision value to make it different
-				for i := range params2 {
-					if params2[i].Name == "revision" {
-						params2[i].Value.StringVal = "main"
-						break
-					}
-				}
-
-				key1 := generateCacheKey(tt.resolverType, tt.params)
-				key2 := generateCacheKey(tt.resolverType, params2)
-				if key1 == key2 {
-					t.Errorf("Expected different keys, but got same: %s\nDescription: %s",
-						key1, tt.description)
-				}
-			}
-		})
-	}
-}
-
-func TestGenerateCacheKey_Deterministic(t *testing.T) {
-	resolverType := "git"
-	params := []pipelinev1.Param{
-		{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/pipeline"}},
-		{Name: "revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "main"}},
-		{Name: "cache", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "true"}},
-	}
-
-	// Generate the same key multiple times
-	key1 := generateCacheKey(resolverType, params)
-	key2 := generateCacheKey(resolverType, params)
-
-	if key1 != key2 {
-		t.Errorf("Cache key generation is not deterministic. Got different keys: %s vs %s", key1, key2)
-	}
-}
-
-func TestGenerateCacheKey_AllParamTypes(t *testing.T) {
-	resolverType := "test"
-	params := []pipelinev1.Param{
-		{Name: "string-param", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "string-value"}},
-		{Name: "array-param", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeArray, ArrayVal: []string{"item1", "item2"}}},
-		{Name: "object-param", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeObject, ObjectVal: map[string]string{"key1": "value1", "key2": "value2"}}},
-		{Name: "cache", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "true"}},
-	}
-
-	// Generate key with cache param
-	keyWithCache := generateCacheKey(resolverType, params)
-
-	// Generate key without cache param
-	paramsWithoutCache := make([]pipelinev1.Param, 0, len(params))
-	for _, p := range params {
-		if p.Name != "cache" {
-			paramsWithoutCache = append(paramsWithoutCache, p)
+func TestGenerateCacheKeyProperties(t *testing.T) {
+	t.Run("all param types produce expected key", func(t *testing.T) {
+		expectedKey := "8cc0886ad987feeb9a7dd70cf1b54f988e240d2d6b15a6c4c063c1c8460dcabe"
+		params := []pipelinev1.Param{
+			{Name: "string-param", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "string-value"}},
+			{Name: "array-param", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeArray, ArrayVal: []string{"item1", "item2"}}},
+			{Name: "object-param", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeObject, ObjectVal: map[string]string{"key1": "value1", "key2": "value2"}}},
 		}
-	}
-	keyWithoutCache := generateCacheKey(resolverType, paramsWithoutCache)
-	if keyWithCache != keyWithoutCache {
-		t.Errorf("Expected same keys for all param types, but got different:\nWith cache: %s\nWithout cache: %s",
-			keyWithCache, keyWithoutCache)
-	}
+
+		actualKey := generateCacheKey("test", params)
+		if expectedKey != actualKey {
+			t.Errorf("want %s, got %s", expectedKey, actualKey)
+		}
+	})
+
+	t.Run("independent of param order", func(t *testing.T) {
+		paramsAB := []pipelinev1.Param{
+			{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/pipeline"}},
+			{Name: "revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "main"}},
+		}
+		paramsBA := []pipelinev1.Param{
+			{Name: "revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "main"}},
+			{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/pipeline"}},
+		}
+
+		keyAB := generateCacheKey("git", paramsAB)
+		keyBA := generateCacheKey("git", paramsBA)
+
+		if keyAB != keyBA {
+			t.Errorf("expected same key regardless of param order, got %s vs %s", keyAB, keyBA)
+		}
+	})
+
+	t.Run("ignores cache param", func(t *testing.T) {
+		paramsWithout := []pipelinev1.Param{
+			{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/pipeline"}},
+			{Name: "revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "main"}},
+		}
+		paramsWith := []pipelinev1.Param{
+			{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/pipeline"}},
+			{Name: "revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "main"}},
+			{Name: "cache", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "true"}},
+		}
+
+		keyWithout := generateCacheKey("git", paramsWithout)
+		keyWith := generateCacheKey("git", paramsWith)
+
+		if keyWithout != keyWith {
+			t.Errorf("expected cache param to be ignored, got different keys: %s vs %s", keyWithout, keyWith)
+		}
+	})
+
+	t.Run("different params produce different keys", func(t *testing.T) {
+		params1 := []pipelinev1.Param{
+			{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/pipeline"}},
+			{Name: "revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "main"}},
+		}
+		params2 := []pipelinev1.Param{
+			{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://github.com/tektoncd/pipeline"}},
+			{Name: "revision", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "v0.50.0"}},
+		}
+
+		key1 := generateCacheKey("git", params1)
+		key2 := generateCacheKey("git", params2)
+
+		if key1 == key2 {
+			t.Errorf("expected different keys for different params, got same: %s", key1)
+		}
+	})
 }
 
 func TestCacheTTLExpiration(t *testing.T) {
@@ -250,112 +146,53 @@ func TestCacheTTLExpiration(t *testing.T) {
 	resolverType := "bundle"
 	fc := fakeClock{time.Now()}
 	ttl := 5 * time.Minute
-	mockResource := &mockResolvedResource{data: []byte("test data")}
 	params := []pipelinev1.Param{
 		{Name: resolverType, Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "registry.io/repo@sha256:abcdef"}},
+	}
+	resolveFn := func() (resolutionframework.ResolvedResource, error) {
+		return &mockResolvedResource{data: []byte("test data")}, nil
 	}
 
 	// WHEN
 	cache := newResolverCacheWithClock(100, ttl, &fc).withLogger(zaptest.NewLogger(t).Sugar())
-	cache.Add(resolverType, params, mockResource)
-	_, ok := cache.Get(resolverType, params)
+	defer cache.Clear()
+	resource, err := cache.GetCachedOrResolveFromRemote(params, resolverType, resolveFn)
 
-	// THEN: Verify it's immediately retrievable.
-	if !ok {
-		t.Fatal("Expected cache hit immediately after adding, but got cache miss")
+	// THEN
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	if resource.Annotations()[cacheOperationKey] != cacheOperationStore {
+		t.Fatalf("expected cache miss and cache operation 'store', got %s", resource.Annotations()[cacheOperationKey])
 	}
 
 	// WHEN
 	fc.Advance(ttl + time.Second)
-	cached, ok := cache.Get(resolverType, params)
+	resource, err = cache.GetCachedOrResolveFromRemote(params, resolverType, resolveFn)
 
 	// THEN: Verify entry is no longer in cache after TTL expiration
-	if ok {
-		t.Fatalf("Expected cache miss after TTL expiration, but got cache hit with resource: %v", cached)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	if resource.Annotations()[cacheOperationKey] != cacheOperationStore {
+		t.Fatalf("expected cache miss and cache operation 'store', got %s", resource.Annotations()[cacheOperationKey])
 	}
 }
 
-func TestCacheLRUEviction(t *testing.T) {
-	// Create cache with small size (3 entries) for testing eviction
-	maxSize := 3
-	cache := newResolverCache(maxSize, 1*time.Hour) // Long TTL so only LRU eviction triggers
-
-	resolverType := "bundle"
-
-	// Create 3 different entries
-	entries := []struct {
-		name   string
-		params []pipelinev1.Param
-	}{
-		{
-			name: "entry1",
-			params: []pipelinev1.Param{
-				{Name: "bundle", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "registry.io/repo1@sha256:111111"}},
-			},
-		},
-		{
-			name: "entry2",
-			params: []pipelinev1.Param{
-				{Name: "bundle", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "registry.io/repo2@sha256:222222"}},
-			},
-		},
-		{
-			name: "entry3",
-			params: []pipelinev1.Param{
-				{Name: "bundle", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "registry.io/repo3@sha256:333333"}},
-			},
-		},
-	}
-
-	// Add all 3 entries to fill the cache
-	for _, entry := range entries {
-		mockResource := &mockResolvedResource{
-			data: []byte(entry.name),
-		}
-		cache.Add(resolverType, entry.params, mockResource)
-	}
-
-	// Verify all 3 entries are in cache
-	for _, entry := range entries {
-		if _, ok := cache.Get(resolverType, entry.params); !ok {
-			t.Errorf("Expected cache hit for %s after adding, but got cache miss", entry.name)
-		}
-	}
-
-	// Add a 4th entry which should evict the least recently used (entry1)
-	entry4Params := []pipelinev1.Param{
-		{Name: "bundle", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "registry.io/repo4@sha256:444444"}},
-	}
-	mockResource4 := &mockResolvedResource{
-		data: []byte("entry4"),
-	}
-	cache.Add(resolverType, entry4Params, mockResource4)
-
-	// Verify entry1 (LRU) was evicted
-	if _, ok := cache.Get(resolverType, entries[0].params); ok {
-		t.Error("Expected entry1 to be evicted (LRU), but it was still in cache")
-	}
-
-	// Verify entry2 and entry3 are still in cache
-	if _, ok := cache.Get(resolverType, entries[1].params); !ok {
-		t.Error("Expected entry2 to still be in cache, but got cache miss")
-	}
-	if _, ok := cache.Get(resolverType, entries[2].params); !ok {
-		t.Error("Expected entry3 to still be in cache, but got cache miss")
-	}
-
-	// Verify entry4 is in cache
-	if _, ok := cache.Get(resolverType, entry4Params); !ok {
-		t.Error("Expected entry4 to be in cache after adding, but got cache miss")
-	}
-}
-
-func TestCacheLRUEvictionWithAccess(t *testing.T) {
+func TestCacheMaxSizeLRUEviction(t *testing.T) {
 	// Create cache with small size (3 entries) for testing LRU access pattern
 	maxSize := 3
 	cache := newResolverCache(maxSize, 1*time.Hour)
+	defer cache.Clear()
 
 	resolverType := "bundle"
+
+	resolutionErr := errors.New("resolution error")
+	resolveFnErr := func() (resolutionframework.ResolvedResource, error) {
+		return nil, resolutionErr
+	}
 
 	// Create 3 different entries
 	entries := []struct {
@@ -384,369 +221,172 @@ func TestCacheLRUEvictionWithAccess(t *testing.T) {
 
 	// Add all 3 entries
 	for _, entry := range entries {
-		mockResource := &mockResolvedResource{
-			data: []byte(entry.name),
+		resolveFn := func() (resolutionframework.ResolvedResource, error) {
+			return &mockResolvedResource{
+				data: []byte(entry.name),
+			}, nil
 		}
-		cache.Add(resolverType, entry.params, mockResource)
+		cache.GetCachedOrResolveFromRemote(entry.params, resolverType, resolveFn)
 	}
 
 	// Access entry1 to make it recently used (entry2 becomes LRU)
-	if _, ok := cache.Get(resolverType, entries[0].params); !ok {
-		t.Error("Expected cache hit for entry1")
+	if _, err := cache.GetCachedOrResolveFromRemote(entries[0].params, resolverType, resolveFnErr); err != nil {
+		t.Errorf("Expected cache hit for entry1, but got error %v", err)
 	}
 
 	// Add a 4th entry which should evict entry2 (now LRU) instead of entry1
 	entry4Params := []pipelinev1.Param{
 		{Name: "bundle", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "registry.io/repo4@sha256:ddd"}},
 	}
-	mockResource4 := &mockResolvedResource{
-		data: []byte("entry4"),
+	resolveFnEntry4 := func() (resolutionframework.ResolvedResource, error) {
+		return &mockResolvedResource{
+			data: []byte("entry4"),
+		}, nil
 	}
-	cache.Add(resolverType, entry4Params, mockResource4)
+	cache.GetCachedOrResolveFromRemote(entry4Params, resolverType, resolveFnEntry4)
 
 	// Verify entry2 (LRU after entry1 was accessed) was evicted
-	if _, ok := cache.Get(resolverType, entries[1].params); ok {
+	if _, err := cache.GetCachedOrResolveFromRemote(entries[1].params, resolverType, resolveFnErr); err == nil {
 		t.Error("Expected entry2 to be evicted (LRU), but it was still in cache")
 	}
 
 	// Verify entry1 (accessed recently) is still in cache
-	if _, ok := cache.Get(resolverType, entries[0].params); !ok {
-		t.Error("Expected entry1 to still be in cache after being accessed, but got cache miss")
+	if _, err := cache.GetCachedOrResolveFromRemote(entries[0].params, resolverType, resolveFnErr); err != nil {
+		t.Errorf("Expected entry1 to still be in cache after being accessed, but got cache miss and error %v", err)
 	}
 
 	// Verify entry3 is still in cache
-	if _, ok := cache.Get(resolverType, entries[2].params); !ok {
-		t.Error("Expected entry3 to still be in cache, but got cache miss")
+	if _, err := cache.GetCachedOrResolveFromRemote(entries[2].params, resolverType, resolveFnErr); err != nil {
+		t.Errorf("Expected entry3 to still be in cache, but got cache miss and error %v", err)
 	}
 
 	// Verify entry4 is in cache
-	if _, ok := cache.Get(resolverType, entry4Params); !ok {
-		t.Error("Expected entry4 to be in cache, but got cache miss")
+	if _, err := cache.GetCachedOrResolveFromRemote(entry4Params, resolverType, resolveFnErr); err != nil {
+		t.Errorf("Expected entry4 to be in cache, but got cache miss and error %v", err)
 	}
 }
 
-func TestCacheConcurrentReads(t *testing.T) {
-	// Test concurrent reads with high load
-	cache := newResolverCache(100, 1*time.Hour)
-	resolverType := "bundle"
+// TestGetCachedOrResolveFromRemote verifies the cache-or-resolve logic for all
+// combinations of cache state (miss/hit) and resolution or casting outcome.
+//
+// Test cases:
+//   - cache miss with successful resolution stores and retrieves the resource
+//   - cache miss with failed resolution returns the resolution error
+//   - cache hit with a poisoned entry returns a casting error
+func TestGetCachedOrResolveFromRemote(t *testing.T) {
+	params := []pipelinev1.Param{{
+		Name:  bundleresolution.ParamBundle,
+		Value: pipelinev1.ParamValue{StringVal: "registry.io/repo@sha256:abcdef"},
+	}}
 
-	// Pre-populate cache with entries
-	numEntries := 50
-	entries := make([][]pipelinev1.Param, numEntries)
-	for i := range numEntries {
-		params := []pipelinev1.Param{
-			{Name: "bundle", Value: pipelinev1.ParamValue{
-				Type:      pipelinev1.ParamTypeString,
-				StringVal: fmt.Sprintf("registry.io/repo%d@sha256:%064d", i, i),
-			}},
+	t.Run("cache miss and resolution success stores then retrieves", func(t *testing.T) {
+		// GIVEN
+		resolveFn := func() (resolutionframework.ResolvedResource, error) {
+			return &mockResolvedResource{data: []byte("test data")}, nil
 		}
-		entries[i] = params
-		mockResource := &mockResolvedResource{
-			data: []byte(fmt.Sprintf("data-%d", i)),
+		cache := newResolverCache(100, 1*time.Hour)
+		defer cache.Clear()
+
+		// WHEN
+		cachePopulationResult, cachePopulationErr := cache.GetCachedOrResolveFromRemote(
+			params,
+			bundleresolution.LabelValueBundleResolverType,
+			resolveFn,
+		)
+
+		cacheHitResult, cacheHitErr := cache.GetCachedOrResolveFromRemote(
+			params,
+			bundleresolution.LabelValueBundleResolverType,
+			resolveFn,
+		)
+
+		// THEN
+		if cachePopulationErr != nil {
+			t.Fatalf("unexpected error: %v", cachePopulationErr)
 		}
-		cache.Add(resolverType, params, mockResource)
-	}
 
-	// Launch 1000 concurrent readers
-	numReaders := 1000
-	done := make(chan bool, numReaders)
-
-	for i := range numReaders {
-		go func(readerID int) {
-			defer func() { done <- true }()
-
-			// Each reader performs 100 reads
-			for j := range 100 {
-				entryIdx := (readerID + j) % numEntries
-				if _, ok := cache.Get(resolverType, entries[entryIdx]); !ok {
-					t.Errorf("Reader %d: Expected cache hit for entry %d, got miss", readerID, entryIdx)
-				}
-			}
-		}(i)
-	}
-
-	// Wait for all readers to complete
-	for range numReaders {
-		<-done
-	}
-}
-
-func TestCacheConcurrentWrites(t *testing.T) {
-	// Test concurrent writes with high load
-	cache := newResolverCache(1000, 1*time.Hour)
-	resolverType := "bundle"
-
-	// Launch 500 concurrent writers
-	numWriters := 500
-	entriesPerWriter := 10
-	done := make(chan bool, numWriters)
-
-	// Track all entries written for later verification
-	type entryInfo struct {
-		params       []pipelinev1.Param
-		expectedData string
-	}
-	allEntries := make([]entryInfo, numWriters*entriesPerWriter)
-
-	for i := range numWriters {
-		go func(writerID int) {
-			defer func() { done <- true }()
-
-			// Each writer adds 10 unique entries
-			for j := range entriesPerWriter {
-				params := []pipelinev1.Param{
-					{Name: "bundle", Value: pipelinev1.ParamValue{
-						Type:      pipelinev1.ParamTypeString,
-						StringVal: fmt.Sprintf("registry.io/writer%d-entry%d@sha256:%064d", writerID, j, writerID*100+j),
-					}},
-				}
-				expectedData := fmt.Sprintf("writer-%d-data-%d", writerID, j)
-				mockResource := &mockResolvedResource{
-					data: []byte(expectedData),
-				}
-				cache.Add(resolverType, params, mockResource)
-
-				// Record this entry for verification
-				allEntries[writerID*entriesPerWriter+j] = entryInfo{
-					params:       params,
-					expectedData: expectedData,
-				}
-			}
-		}(i)
-	}
-
-	// Wait for all writers to complete
-	for range numWriters {
-		<-done
-	}
-
-	// Verify that concurrent writes are retrievable and have correct data
-	// With 5000 entries (500 writers * 10 entries each) and cache size of 1000,
-	// we expect many entries to be evicted due to LRU. We verify that:
-	// 1. Entries that ARE in cache have the correct data
-	// 2. We get a reasonable hit rate
-	cachedCount := 0
-	wrongDataCount := 0
-
-	for _, entry := range allEntries {
-		cached, ok := cache.Get(resolverType, entry.params)
-		if ok {
-			cachedCount++
-			// Verify the data is correct
-			if string(cached.Data()) != entry.expectedData {
-				wrongDataCount++
-				t.Errorf("Expected data '%s', got '%s'", entry.expectedData, string(cached.Data()))
-			}
+		actualCachePopulationOperation := cachePopulationResult.Annotations()[cacheOperationKey]
+		if actualCachePopulationOperation != cacheOperationStore {
+			t.Fatalf("expected %s, got %s", cacheOperationStore, actualCachePopulationOperation)
 		}
-	}
 
-	// We should have no entries with wrong data
-	if wrongDataCount > 0 {
-		t.Errorf("Found %d entries with wrong data", wrongDataCount)
-	}
-
-	// We should have some reasonable number of entries cached
-	// With 5000 entries and cache size 1000, we expect close to 1000 entries to be cached
-	// Using a lower bound of 500 to account for concurrent evictions and timing
-	if cachedCount < 500 {
-		t.Errorf("Expected at least 500 entries to be cached, but only found %d out of %d total", cachedCount, len(allEntries))
-	}
-
-	t.Logf("Concurrent write test passed: %d entries cached out of %d written", cachedCount, len(allEntries))
-}
-
-func TestCacheConcurrentReadWrite(t *testing.T) {
-	// Test concurrent reads and writes together
-	cache := newResolverCache(500, 1*time.Hour)
-	resolverType := "bundle"
-
-	// Pre-populate with some entries
-	numInitialEntries := 100
-	initialEntries := make([][]pipelinev1.Param, numInitialEntries)
-	for i := range numInitialEntries {
-		params := []pipelinev1.Param{
-			{Name: "bundle", Value: pipelinev1.ParamValue{
-				Type:      pipelinev1.ParamTypeString,
-				StringVal: fmt.Sprintf("registry.io/initial%d@sha256:%064d", i, i),
-			}},
+		if cacheHitErr != nil {
+			t.Fatalf("unexpected error: %v", cacheHitErr)
 		}
-		initialEntries[i] = params
-		mockResource := &mockResolvedResource{
-			data: []byte(fmt.Sprintf("initial-data-%d", i)),
+
+		actualCacheHitOperation := cacheHitResult.Annotations()[cacheOperationKey]
+		if actualCacheHitOperation != cacheOperationRetrieve {
+			t.Fatalf("expected %s, got %s", cacheOperationRetrieve, actualCacheHitOperation)
 		}
-		cache.Add(resolverType, params, mockResource)
-	}
+	})
 
-	// Launch 300 readers and 300 writers concurrently
-	numReaders := 300
-	numWriters := 300
-	entriesPerWriter := 5
-	totalGoroutines := numReaders + numWriters
-	done := make(chan bool, totalGoroutines)
-
-	// Track entries written by concurrent writers for later verification
-	type entryInfo struct {
-		params       []pipelinev1.Param
-		expectedData string
-	}
-	writerEntries := make([]entryInfo, numWriters*entriesPerWriter)
-
-	// Start readers
-	for i := range numReaders {
-		go func(readerID int) {
-			defer func() { done <- true }()
-
-			for j := range 50 {
-				entryIdx := (readerID + j) % numInitialEntries
-				cache.Get(resolverType, initialEntries[entryIdx])
-			}
-		}(i)
-	}
-
-	// Start writers
-	for i := range numWriters {
-		go func(writerID int) {
-			defer func() { done <- true }()
-
-			for j := range entriesPerWriter {
-				params := []pipelinev1.Param{
-					{Name: "bundle", Value: pipelinev1.ParamValue{
-						Type:      pipelinev1.ParamTypeString,
-						StringVal: fmt.Sprintf("registry.io/concurrent-writer%d-entry%d@sha256:%064d", writerID, j, writerID*10+j),
-					}},
-				}
-				expectedData := fmt.Sprintf("concurrent-writer-%d-data-%d", writerID, j)
-				mockResource := &mockResolvedResource{
-					data: []byte(expectedData),
-				}
-				cache.Add(resolverType, params, mockResource)
-
-				// Record this entry for verification
-				writerEntries[writerID*entriesPerWriter+j] = entryInfo{
-					params:       params,
-					expectedData: expectedData,
-				}
-			}
-		}(i)
-	}
-
-	// Wait for all goroutines to complete
-	for range totalGoroutines {
-		<-done
-	}
-
-	// Verify that concurrent writes are retrievable and have correct data
-	// With 1500 new entries (300 writers * 5 entries each) plus 100 initial entries,
-	// and cache size of 500, we expect some entries to be evicted. We verify that:
-	// 1. Entries that ARE in cache have the correct data
-	// 2. We get a reasonable hit rate for the concurrent writes
-	cachedCount := 0
-	wrongDataCount := 0
-
-	for _, entry := range writerEntries {
-		cached, ok := cache.Get(resolverType, entry.params)
-		if ok {
-			cachedCount++
-			// Verify the data is correct
-			if string(cached.Data()) != entry.expectedData {
-				wrongDataCount++
-				t.Errorf("Expected data '%s', got '%s'", entry.expectedData, string(cached.Data()))
-			}
+	t.Run("cache miss and resolution error returns error", func(t *testing.T) {
+		// GIVEN
+		expectedError := errors.New("resolution failed")
+		resolveFn := func() (resolutionframework.ResolvedResource, error) {
+			return nil, expectedError
 		}
-	}
+		cache := newResolverCache(100, 1*time.Hour)
+		defer cache.Clear()
 
-	// We should have no entries with wrong data
-	if wrongDataCount > 0 {
-		t.Errorf("Found %d entries with wrong data", wrongDataCount)
-	}
+		// WHEN
+		result, actualErr := cache.GetCachedOrResolveFromRemote(
+			params,
+			bundleresolution.LabelValueBundleResolverType,
+			resolveFn,
+		)
 
-	// We should have some reasonable number of entries cached
-	// With 1500 concurrent write entries and cache size 500, accounting for initial entries
-	// and concurrent evictions, we expect at least 200 of the writer entries to be cached
-	if cachedCount < 200 {
-		t.Errorf("Expected at least 200 writer entries to be cached, but only found %d out of %d total", cachedCount, len(writerEntries))
-	}
-
-	t.Logf("Concurrent read/write test passed: %d writer entries cached out of %d written", cachedCount, len(writerEntries))
-}
-
-func TestCacheConcurrentEviction(t *testing.T) {
-	// Test that LRU eviction works correctly under concurrent load
-	maxSize := 50
-	cache := newResolverCache(maxSize, 1*time.Hour)
-	resolverType := "bundle"
-
-	// Launch 200 concurrent writers adding entries to force evictions
-	numWriters := 200
-	entriesPerWriter := 10
-	done := make(chan bool, numWriters)
-
-	for i := range numWriters {
-		go func(writerID int) {
-			defer func() { done <- true }()
-
-			for j := range entriesPerWriter {
-				params := []pipelinev1.Param{
-					{Name: "bundle", Value: pipelinev1.ParamValue{
-						Type:      pipelinev1.ParamTypeString,
-						StringVal: fmt.Sprintf("registry.io/eviction-writer%d-entry%d@sha256:%064d", writerID, j, writerID*100+j),
-					}},
-				}
-				mockResource := &mockResolvedResource{
-					data: []byte(fmt.Sprintf("eviction-data-%d-%d", writerID, j)),
-				}
-				cache.Add(resolverType, params, mockResource)
-
-				// Small random read to simulate real access patterns
-				if j%3 == 0 {
-					cache.Get(resolverType, params)
-				}
-			}
-		}(i)
-	}
-
-	// Wait for all writers to complete
-	for range numWriters {
-		<-done
-	}
-
-	// Cache should not panic or deadlock under concurrent eviction pressure
-	// Verify that expected entries were evicted and cache size is maintained
-
-	// The cache should have at most maxSize entries
-	// We'll verify this by checking that older entries were evicted
-	// Since we had 200 writers * 10 entries = 2000 total entries written
-	// and cache size is 50, we expect most early entries to be evicted
-
-	// Check that early entries were evicted (writers 0-49 should be mostly evicted)
-	evictedCount := 0
-	totalChecked := 0
-	for writerID := range 50 { // Check first 50 writers
-		for j := range entriesPerWriter {
-			params := []pipelinev1.Param{
-				{Name: "bundle", Value: pipelinev1.ParamValue{
-					Type:      pipelinev1.ParamTypeString,
-					StringVal: fmt.Sprintf("registry.io/eviction-writer%d-entry%d@sha256:%064d", writerID, j, writerID*100+j),
-				}},
-			}
-			totalChecked++
-			if _, ok := cache.Get(resolverType, params); !ok {
-				evictedCount++
-			}
+		// THEN
+		if result != nil {
+			t.Fatalf("unexpected result: %v", result)
 		}
-	}
 
-	// We expect most early entries to be evicted (at least 80% of early entries checked)
-	// Using a lower threshold due to concurrent access patterns and timing variations
-	expectedEvicted := int(float64(totalChecked) * 0.8)
-	if evictedCount < expectedEvicted {
-		t.Errorf("Expected at least %d early entries to be evicted, but only %d were evicted out of %d checked", expectedEvicted, evictedCount, totalChecked)
-	}
+		if actualErr == nil {
+			t.Fatal("expected error, got nil")
+		}
 
-	// The main goal of this test is to ensure no panics or deadlocks under concurrent eviction,
-	// and that LRU eviction actually occurs (verified above)
-	// With cache size of 50 and 2000 total entries with random access patterns, we've verified:
-	// 1. No crashes or deadlocks
-	// 2. Old entries are evicted
-	t.Logf("Eviction test passed: %d early entries evicted out of %d checked", evictedCount, totalChecked)
+		if !errors.Is(actualErr, expectedError) {
+			t.Fatalf("expected error %v, got error %v", expectedError, actualErr)
+		}
+	})
+
+	t.Run("cache hit with casting error returns error", func(t *testing.T) {
+		// GIVEN
+		resolveFn := func() (resolutionframework.ResolvedResource, error) {
+			return &mockResolvedResource{data: []byte("test data")}, nil
+		}
+		cacheWrapper := newResolverCache(100, 1*time.Hour)
+		key := generateCacheKey(bundleresolution.LabelValueBundleResolverType, params)
+		defer cacheWrapper.Clear()
+
+		// WHEN
+		cachePopulationResult, cachePopulationErr := cacheWrapper.GetCachedOrResolveFromRemote(
+			params,
+			bundleresolution.LabelValueBundleResolverType,
+			resolveFn,
+		)
+		cacheWrapper.cache.Add(key, "poisoned-resource", cacheWrapper.TTL())
+		result, castingFailedErr := cacheWrapper.GetCachedOrResolveFromRemote(
+			params,
+			bundleresolution.LabelValueBundleResolverType,
+			resolveFn,
+		)
+
+		// THEN
+		if cachePopulationResult == nil {
+			t.Error("expected resolved recourse, got nil")
+		}
+
+		if cachePopulationErr != nil {
+			t.Fatalf("unexpected error %v", cachePopulationErr)
+		}
+
+		if result != nil {
+			t.Errorf("expected nil, got %v", result)
+		}
+
+		if castingFailedErr == nil {
+			t.Fatal("expected casting error, got nil")
+		}
+	})
 }
