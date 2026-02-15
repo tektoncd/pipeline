@@ -17,7 +17,6 @@ limitations under the License.
 package cache
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -161,7 +160,7 @@ func TestShouldUseCachePrecedence(t *testing.T) {
 			}
 
 			// Test the framework function
-			result := ShouldUse(ctx, &resolverFake{}, req.Params, bundleresolution.LabelValueBundleResolverType)
+			result := ShouldUse(ctx, &resolverFake{}, req.Params)
 
 			// Verify result
 			if result != tt.expected {
@@ -214,103 +213,6 @@ func TestValidateCacheMode(t *testing.T) {
 			err := Validate(tt.cacheMode)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateCacheMode() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestGetFromCacheOrResolve(t *testing.T) {
-	tests := []struct {
-		name         string
-		params       []pipelinev1.Param
-		resolverType string
-		cacheHit     bool
-		resolveErr   error
-		description  string
-	}{
-		{
-			name: "cache hit",
-			params: []pipelinev1.Param{
-				{
-					Name:  bundleresolution.ParamBundle,
-					Value: pipelinev1.ParamValue{StringVal: "registry.io/repo@sha256:abcdef"},
-				},
-			},
-			resolverType: bundleresolution.LabelValueBundleResolverType,
-			cacheHit:     true,
-			description:  "Should return cached resource",
-		},
-		{
-			name: "cache miss - successful resolve",
-			params: []pipelinev1.Param{
-				{
-					Name:  bundleresolution.ParamBundle,
-					Value: pipelinev1.ParamValue{StringVal: "registry.io/repo:latest"},
-				},
-			},
-			resolverType: bundleresolution.LabelValueBundleResolverType,
-			cacheHit:     false,
-			description:  "Should resolve and add to cache",
-		},
-		{
-			name: "cache miss - resolve error",
-			params: []pipelinev1.Param{
-				{
-					Name:  bundleresolution.ParamBundle,
-					Value: pipelinev1.ParamValue{StringVal: "registry.io/repo:error"},
-				},
-			},
-			resolverType: bundleresolution.LabelValueBundleResolverType,
-			cacheHit:     false,
-			resolveErr:   errors.New("resolve error"),
-			description:  "Should return error from resolver",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx := t.Context()
-
-			// Create mock resolver function
-			resolveCalled := false
-			resolveFn := func() (resolutionframework.ResolvedResource, error) {
-				resolveCalled = true
-				if tt.resolveErr != nil {
-					return nil, tt.resolveErr
-				}
-				return &mockResolvedResource{data: []byte("test data")}, nil
-			}
-
-			// If this is a cache hit test, pre-populate the cache directly
-			if tt.cacheHit {
-				mockResource := &mockResolvedResource{data: []byte("test data")}
-				Get(ctx).Add(tt.resolverType, tt.params, mockResource)
-			}
-
-			result, err := GetFromCacheOrResolve(ctx, tt.params, tt.resolverType, resolveFn)
-
-			// Verify error handling
-			if tt.resolveErr != nil {
-				if err == nil {
-					t.Fatalf("Expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-
-			if result == nil {
-				t.Fatalf("Expected result but got nil")
-			}
-
-			// Verify cache behavior
-			if tt.cacheHit && resolveCalled {
-				t.Errorf("Expected cache hit but resolve function was called")
-			}
-			if !tt.cacheHit && !resolveCalled {
-				t.Errorf("Expected cache miss but resolve function was not called")
 			}
 		})
 	}
