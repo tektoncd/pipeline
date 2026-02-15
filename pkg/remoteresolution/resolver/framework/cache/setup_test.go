@@ -18,9 +18,11 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 
 	logtesting "knative.dev/pkg/logging/testing"
@@ -62,23 +64,29 @@ func TestCacheSharing(t *testing.T) {
 		t.Fatal("Expected cache from ctx2")
 	}
 
-	// Verify they share the same underlying cache storage by adding data
-	// to cache1 and checking it appears in cache2
+	resolverType := "test-resolver"
 	testParams := []pipelinev1.Param{
 		{Name: "url", Value: pipelinev1.ParamValue{Type: pipelinev1.ParamTypeString, StringVal: "https://example.com"}},
 	}
-	testResource := &mockResolvedResource{data: []byte("test-data")}
 
-	// Add to cache1
-	cache1.Add("test-resolver", testParams, testResource)
-
-	// Verify it exists in cache2 (proving they share the same underlying storage)
-	retrieved, found := cache2.Get("test-resolver", testParams)
-	if !found {
-		t.Fatal("Expected to find resource in cache2 that was added to cache1 - caches are not shared")
+	const testData = "test-data"
+	resolveFn := func() (resolutionframework.ResolvedResource, error) {
+		return &mockResolvedResource{data: []byte(testData)}, nil
+	}
+	resolveFnErr := func() (resolutionframework.ResolvedResource, error) {
+		return nil, errors.New("resolution error")
 	}
 
-	if string(retrieved.Data()) != string(testResource.Data()) {
-		t.Errorf("Expected data %q, got %q", string(testResource.Data()), string(retrieved.Data()))
+	// Add to cache1
+	cache1.GetCachedOrResolveFromRemote(testParams, resolverType, resolveFn)
+
+	// Verify it exists in cache2 (proving they share the same underlying storage)
+	retrieved, err := cache2.GetCachedOrResolveFromRemote(testParams, resolverType, resolveFnErr)
+	if err != nil {
+		t.Fatalf("Expected to find resource in cache2 that was added to cache1 - caches are not shared: %v", err)
+	}
+
+	if string(retrieved.Data()) != testData {
+		t.Errorf("Expected data %q, got %q", testData, string(retrieved.Data()))
 	}
 }
