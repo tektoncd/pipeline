@@ -100,36 +100,3 @@ func Validate(cacheMode string) error {
 
 	return fmt.Errorf("invalid cache mode '%s', must be one of: %v (or empty for default)", cacheMode, validCacheModes)
 }
-
-type resolveFn = func() (resolutionframework.ResolvedResource, error)
-
-func GetFromCacheOrResolve(
-	ctx context.Context,
-	params []v1.Param,
-	resolverType string,
-	resolve resolveFn,
-) (resolutionframework.ResolvedResource, error) {
-	cacheInstance := Get(ctx)
-
-	if cached, ok := cacheInstance.Get(resolverType, params); ok {
-		return cached, nil
-	}
-
-	key := generateCacheKey(resolverType, params)
-	result, err, _ := cacheInstance.flightGroup.Do(key, func() (interface{}, error) {
-		// If cache miss, resolve from params
-		resource, err := resolve()
-		if err != nil {
-			return nil, err
-		}
-
-		// Store annotated resource with store operation and return annotated resource
-		// to indicate it was stored in cache
-		return cacheInstance.Add(resolverType, params, resource), nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return result.(resolutionframework.ResolvedResource), nil
-}

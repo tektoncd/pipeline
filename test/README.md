@@ -541,13 +541,14 @@ A test MUST be marked `serial` if it:
 
 - Modifies ConfigMaps in `system.Namespace()` (typically `tekton-pipelines`)
 - Changes feature flags in the `feature-flags` ConfigMap
-- Modifies any other shared cluster-wide configuration
+- Modifies any other shared cluster-wide configuration or resources
 
 Common examples:
 
 - Tests changing `enable-api-fields`, `results-from`, `coschedule` feature flags
 - Tests modifying `trusted-resources-verification-no-match-policy`
 - Any test calling `updateConfigMap(ctx, c.KubeClient, system.Namespace(), ...)`
+- Tests modifying controller replicas
 
 ### When to Mark Tests as Parallel
 

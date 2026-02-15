@@ -20,7 +20,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"sort"
+	"strings"
 	"time"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -29,6 +31,8 @@ import (
 	"golang.org/x/sync/singleflight"
 	utilcache "k8s.io/apimachinery/pkg/util/cache"
 )
+
+type resolveFn = func() (resolutionframework.ResolvedResource, error)
 
 var _ resolutionframework.ConfigWatcher = (*resolverCache)(nil)
 
@@ -78,57 +82,61 @@ func (c *resolverCache) MaxSize() int {
 	return c.maxSize
 }
 
-// Get retrieves a cached resource by resolver type and parameters, returning
-// the resource and whether it was found.
-func (c *resolverCache) Get(resolverType string, params []pipelinev1.Param) (resolutionframework.ResolvedResource, bool) {
+func (c *resolverCache) GetCachedOrResolveFromRemote(
+	params []pipelinev1.Param,
+	resolverType string,
+	resolveFromRemote resolveFn,
+) (resolutionframework.ResolvedResource, error) {
 	key := generateCacheKey(resolverType, params)
-	value, found := c.cache.Get(key)
-	if !found {
-		c.infow("Cache miss", "key", key)
-		return nil, found
+
+	if untyped, found := c.cache.Get(key); found {
+		cached, ok := untyped.(resolutionframework.ResolvedResource)
+		if !ok {
+			c.infow("Failed casting cached resource", "key", key)
+			return nil, errors.New("failed casting cached resource")
+		}
+
+		c.infow("Cache hit", "key", key)
+
+		return c.annotate(cached, resolverType, cacheOperationRetrieve), nil
 	}
 
-	resource, ok := value.(resolutionframework.ResolvedResource)
-	if !ok {
-		c.infow("Failed casting cached resource", "key", key)
-		return nil, false
+	// If cache miss, resolve from remote using singleflight
+	untyped, err, shared := c.flightGroup.Do(key, func() (any, error) {
+		resolved, err := resolveFromRemote()
+		if err != nil {
+			return nil, err
+		}
+
+		annotated := c.annotate(resolved, resolverType, cacheOperationStore)
+
+		// Store annotated resource with store operation and return annotated resource
+		// to indicate it was stored in cache
+		c.infow("Adding to cache", "key", key, "expiration", c.ttl)
+		c.cache.Add(key, annotated, c.ttl)
+		return annotated, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	c.infow("Cache hit", "key", key)
+	if shared {
+		c.infow("Resolution deduplicated by singleflight", "resolverType", resolverType, "key", key)
+	}
+
+	return untyped.(resolutionframework.ResolvedResource), nil
+}
+
+func (c *resolverCache) annotate(resolvedResource resolutionframework.ResolvedResource, resolverType, operation string) *annotatedResource {
 	timestamp := c.clock.Now().Format(time.RFC3339)
-	return newAnnotatedResource(resource, resolverType, cacheOperationRetrieve, timestamp), true
+	result := newAnnotatedResource(resolvedResource, resolverType, operation, timestamp)
+	return result
 }
 
 func (c *resolverCache) infow(msg string, keysAndValues ...any) {
 	if c.logger != nil {
 		c.logger.Infow(msg, keysAndValues...)
 	}
-}
-
-// Add stores a resource in the cache with the configured TTL and returns an
-// annotated version of the resource.
-func (c *resolverCache) Add(
-	resolverType string,
-	params []pipelinev1.Param,
-	resource resolutionframework.ResolvedResource,
-) resolutionframework.ResolvedResource {
-	key := generateCacheKey(resolverType, params)
-	c.infow("Adding to cache", "key", key, "expiration", c.ttl)
-
-	timestamp := c.clock.Now().Format(time.RFC3339)
-	annotatedResource := newAnnotatedResource(resource, resolverType, cacheOperationStore, timestamp)
-
-	c.cache.Add(key, annotatedResource, c.ttl)
-
-	return annotatedResource
-}
-
-// Remove deletes a cached resource identified by resolver type and parameters.
-func (c *resolverCache) Remove(resolverType string, params []pipelinev1.Param) {
-	key := generateCacheKey(resolverType, params)
-	c.infow("Removing from cache", "key", key)
-
-	c.cache.Remove(key)
 }
 
 // Clear removes all entries from the cache.
@@ -140,7 +148,9 @@ func (c *resolverCache) Clear() {
 
 func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 	// Create a deterministic string representation of the parameters
-	paramStr := resolverType + ":"
+	var sb strings.Builder
+	sb.WriteString(resolverType)
+	sb.WriteByte(':')
 
 	// Filter out the 'cache' parameter and sort remaining params by name for determinism
 	filteredParams := make([]pipelinev1.Param, 0, len(params))
@@ -156,11 +166,12 @@ func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 	})
 
 	for _, p := range filteredParams {
-		paramStr += p.Name + "="
+		sb.WriteString(p.Name)
+		sb.WriteByte('=')
 
 		switch p.Value.Type {
 		case pipelinev1.ParamTypeString:
-			paramStr += p.Value.StringVal
+			sb.WriteString(p.Value.StringVal)
 		case pipelinev1.ParamTypeArray:
 			// Sort array values for determinism
 			arrayVals := make([]string, len(p.Value.ArrayVal))
@@ -168,9 +179,9 @@ func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 			sort.Strings(arrayVals)
 			for i, val := range arrayVals {
 				if i > 0 {
-					paramStr += ","
+					sb.WriteByte(',')
 				}
-				paramStr += val
+				sb.WriteString(val)
 			}
 		case pipelinev1.ParamTypeObject:
 			// Sort object keys for determinism
@@ -181,18 +192,20 @@ func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
 			sort.Strings(keys)
 			for i, key := range keys {
 				if i > 0 {
-					paramStr += ","
+					sb.WriteByte(',')
 				}
-				paramStr += key + ":" + p.Value.ObjectVal[key]
+				sb.WriteString(key)
+				sb.WriteByte(':')
+				sb.WriteString(p.Value.ObjectVal[key])
 			}
 		default:
 			// For unknown types, use StringVal as fallback
-			paramStr += p.Value.StringVal
+			sb.WriteString(p.Value.StringVal)
 		}
-		paramStr += ";"
+		sb.WriteByte(';')
 	}
 
 	// Generate a SHA-256 hash of the parameter string
-	hash := sha256.Sum256([]byte(paramStr))
+	hash := sha256.Sum256([]byte(sb.String()))
 	return hex.EncodeToString(hash[:])
 }
