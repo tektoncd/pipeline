@@ -35,6 +35,7 @@ func main() {
 		p := cleanPath(d)
 
 		if !filepath.IsAbs(p) || strings.HasPrefix(p, ws+string(filepath.Separator)) {
+			// #nosec G703 -- purpose of this executable is to create arbitrary directories
 			if err := os.MkdirAll(p, 0755); err != nil {
 				log.Fatalf("Failed to mkdir %q: %v", p, err)
 			}
