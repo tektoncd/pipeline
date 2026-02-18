@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func TestWorkingDirInit(t *testing.T) {
@@ -65,6 +66,12 @@ func TestWorkingDirInit(t *testing.T) {
 			Args:         []string{"/workspace/bbb", "aaa", "zzz"},
 			WorkingDir:   pipeline.WorkspaceDir,
 			VolumeMounts: implicitVolumeMounts,
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("10m"),
+					corev1.ResourceMemory: resource.MustParse("16Mi"),
+				},
+			},
 		},
 	}, {
 		desc: "workingDirs are unique and sorted, absolute dirs are ignored, + securitycontext",
@@ -86,12 +93,18 @@ func TestWorkingDirInit(t *testing.T) {
 		setSecurityContext:             true,
 		setSecurityContextReadOnlyRoot: true,
 		want: &corev1.Container{
-			Name:            "working-dir-initializer",
-			Image:           images.WorkingDirInitImage,
-			Command:         []string{"/ko-app/workingdirinit"},
-			Args:            []string{"/workspace/bbb", "aaa", "zzz"},
-			WorkingDir:      pipeline.WorkspaceDir,
-			VolumeMounts:    implicitVolumeMounts,
+			Name:         "working-dir-initializer",
+			Image:        images.WorkingDirInitImage,
+			Command:      []string{"/ko-app/workingdirinit"},
+			Args:         []string{"/workspace/bbb", "aaa", "zzz"},
+			WorkingDir:   pipeline.WorkspaceDir,
+			VolumeMounts: implicitVolumeMounts,
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("10m"),
+					corev1.ResourceMemory: resource.MustParse("16Mi"),
+				},
+			},
 			SecurityContext: SecurityContextConfig{SetSecurityContext: true, SetReadOnlyRootFilesystem: true}.GetSecurityContext(false),
 		},
 	}, {
@@ -119,6 +132,12 @@ func TestWorkingDirInit(t *testing.T) {
 			Args:         []string{"/workspace/bbb", "aaa", "zzz"},
 			WorkingDir:   pipeline.WorkspaceDir,
 			VolumeMounts: implicitVolumeMounts,
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("10m"),
+					corev1.ResourceMemory: resource.MustParse("16Mi"),
+				},
+			},
 		},
 	}, {
 		desc: "workingDirs are unique and sorted, absolute dirs are ignored, uses windows, + securityContext",
@@ -141,12 +160,18 @@ func TestWorkingDirInit(t *testing.T) {
 		setSecurityContext:             true,
 		setSecurityContextReadOnlyRoot: true,
 		want: &corev1.Container{
-			Name:            "working-dir-initializer",
-			Image:           images.WorkingDirInitImage,
-			Command:         []string{"/ko-app/workingdirinit"},
-			Args:            []string{"/workspace/bbb", "aaa", "zzz"},
-			WorkingDir:      pipeline.WorkspaceDir,
-			VolumeMounts:    implicitVolumeMounts,
+			Name:         "working-dir-initializer",
+			Image:        images.WorkingDirInitImage,
+			Command:      []string{"/ko-app/workingdirinit"},
+			Args:         []string{"/workspace/bbb", "aaa", "zzz"},
+			WorkingDir:   pipeline.WorkspaceDir,
+			VolumeMounts: implicitVolumeMounts,
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("10m"),
+					corev1.ResourceMemory: resource.MustParse("16Mi"),
+				},
+			},
 			SecurityContext: WindowsSecurityContext,
 		},
 	}} {
