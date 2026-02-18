@@ -480,6 +480,12 @@ func TestPodBuild(t *testing.T) {
 						Args:         []string{filepath.Join(pipeline.WorkspaceDir, "test")},
 						WorkingDir:   pipeline.WorkspaceDir,
 						VolumeMounts: implicitVolumeMounts,
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceMemory: resource.MustParse("16Mi"),
+							},
+						},
 					},
 				},
 				Containers: []corev1.Container{{
@@ -557,9 +563,6 @@ func TestPodBuild(t *testing.T) {
 				}, {
 					Name:  "sidecar-sc-name",
 					Image: "sidecar-image",
-					Resources: corev1.ResourceRequirements{
-						Requests: nil,
-					},
 				}},
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -592,6 +595,12 @@ func TestPodBuild(t *testing.T) {
 						Image:        "busybox",
 						Command:      []string{"sh"},
 						VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceMemory: resource.MustParse("32Mi"),
+							},
+						},
 						Args: []string{"-c", `scriptfile="/tekton/scripts/sidecar-script-0-9l9zj"
 touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '_EOF_'
@@ -1049,6 +1058,12 @@ _EOF_
 /tekton/bin/entrypoint decode-script "${scriptfile}"
 `},
 						VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceMemory: resource.MustParse("32Mi"),
+							},
+						},
 					},
 				},
 				Containers: []corev1.Container{{
@@ -1167,6 +1182,12 @@ _EOF_
 /tekton/bin/entrypoint decode-script "${scriptfile}"
 `},
 						VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceMemory: resource.MustParse("32Mi"),
+							},
+						},
 					},
 				},
 				Containers: []corev1.Container{{
@@ -2053,7 +2074,10 @@ _EOF_
 						"{}",
 					},
 					Resources: corev1.ResourceRequirements{
-						Requests: nil,
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("10m"),
+							corev1.ResourceMemory: resource.MustParse("32Mi"),
+						},
 					},
 					VolumeMounts: append([]corev1.VolumeMount{
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
@@ -2135,7 +2159,10 @@ _EOF_
 						"{\"step-name\":[\"step-foo\"]}",
 					},
 					Resources: corev1.ResourceRequirements{
-						Requests: nil,
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("10m"),
+							corev1.ResourceMemory: resource.MustParse("32Mi"),
+						},
 					},
 					VolumeMounts: append([]corev1.VolumeMount{
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
@@ -2211,7 +2238,10 @@ _EOF_
 						"{}",
 					},
 					Resources: corev1.ResourceRequirements{
-						Requests: nil,
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("10m"),
+							corev1.ResourceMemory: resource.MustParse("32Mi"),
+						},
 					},
 					VolumeMounts: append([]corev1.VolumeMount{
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
@@ -2291,7 +2321,10 @@ _EOF_
 						"{}",
 					},
 					Resources: corev1.ResourceRequirements{
-						Requests: nil,
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("10m"),
+							corev1.ResourceMemory: resource.MustParse("32Mi"),
+						},
 					},
 					VolumeMounts: append([]corev1.VolumeMount{
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
@@ -2376,7 +2409,10 @@ _EOF_
 						"{\"step-name\":[\"step-foo\"]}",
 					},
 					Resources: corev1.ResourceRequirements{
-						Requests: nil,
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("10m"),
+							corev1.ResourceMemory: resource.MustParse("32Mi"),
+						},
 					},
 					VolumeMounts: append([]corev1.VolumeMount{
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
@@ -2455,7 +2491,10 @@ _EOF_
 						"{}",
 					},
 					Resources: corev1.ResourceRequirements{
-						Requests: nil,
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("10m"),
+							corev1.ResourceMemory: resource.MustParse("32Mi"),
+						},
 					},
 					VolumeMounts: append([]corev1.VolumeMount{
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
@@ -2735,6 +2774,12 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 		Image:        "busybox",
 		Command:      []string{"sh"},
 		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount, debugScriptsVolumeMount},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceMemory: resource.MustParse("32Mi"),
+			},
+		},
 		Args: []string{"-c", `tmpfile="/tekton/debug/scripts/debug-continue"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'debug-continue-heredoc-randomly-generated-9l9zj'
@@ -3456,6 +3501,12 @@ func TestPrepareInitContainers(t *testing.T) {
 			WorkingDir:   "/",
 			Command:      []string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointBinary, "step-foo"},
 			VolumeMounts: []corev1.VolumeMount{binMount, internalStepsMount},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("10m"),
+					corev1.ResourceMemory: resource.MustParse("16Mi"),
+				},
+			},
 		},
 	}, {
 		name: "nothing-special-two-steps",
@@ -3470,6 +3521,12 @@ func TestPrepareInitContainers(t *testing.T) {
 			WorkingDir:   "/",
 			Command:      []string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointBinary, "step-foo", "step-bar"},
 			VolumeMounts: []corev1.VolumeMount{binMount, internalStepsMount},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("10m"),
+					corev1.ResourceMemory: resource.MustParse("16Mi"),
+				},
+			},
 		},
 	}, {
 		name: "nothing-special-two-steps-security-context",
@@ -3486,6 +3543,12 @@ func TestPrepareInitContainers(t *testing.T) {
 			WorkingDir:   "/",
 			Command:      []string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointBinary, "step-foo", "step-bar"},
 			VolumeMounts: []corev1.VolumeMount{binMount, internalStepsMount},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("10m"),
+					corev1.ResourceMemory: resource.MustParse("16Mi"),
+				},
+			},
 			SecurityContext: SecurityContextConfig{
 				SetSecurityContext:        true,
 				SetReadOnlyRootFilesystem: true,
@@ -3505,6 +3568,12 @@ func TestPrepareInitContainers(t *testing.T) {
 			WorkingDir:   "/",
 			Command:      []string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointBinary, "step-foo", "step-bar"},
 			VolumeMounts: []corev1.VolumeMount{binMount, internalStepsMount},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("10m"),
+					corev1.ResourceMemory: resource.MustParse("16Mi"),
+				},
+			},
 		},
 	}, {
 		name: "nothing-special-two-steps-windows-security-context",
@@ -3517,11 +3586,17 @@ func TestPrepareInitContainers(t *testing.T) {
 		setSecurityContextReadOnlyRootFilesystem: true,
 		windows:                                  true,
 		want: corev1.Container{
-			Name:            "prepare",
-			Image:           images.EntrypointImage,
-			WorkingDir:      "/",
-			Command:         []string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointBinary, "step-foo", "step-bar"},
-			VolumeMounts:    []corev1.VolumeMount{binMount, internalStepsMount},
+			Name:         "prepare",
+			Image:        images.EntrypointImage,
+			WorkingDir:   "/",
+			Command:      []string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointBinary, "step-foo", "step-bar"},
+			VolumeMounts: []corev1.VolumeMount{binMount, internalStepsMount},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("10m"),
+					corev1.ResourceMemory: resource.MustParse("16Mi"),
+				},
+			},
 			SecurityContext: WindowsSecurityContext,
 		},
 	}}
