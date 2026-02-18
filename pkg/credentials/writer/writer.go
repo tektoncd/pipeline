@@ -90,6 +90,7 @@ func CopyCredsToHome(credPaths []string) error {
 // destination path. A missing source file is treated as normal behaviour
 // and no error is returned.
 func tryCopyCred(source, destination string) error {
+	// #nosec G703 -- no path traversal with that path that is Tekton's creds directory which is a constant joined with a credential file
 	fromInfo, err := os.Lstat(source)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -98,6 +99,7 @@ func tryCopyCred(source, destination string) error {
 		return fmt.Errorf("unable to read source file info: %w", err)
 	}
 
+	// #nosec G703 -- no path traversal with that path that is Tekton's creds directory which is a constant joined with a credential file
 	fromFile, err := os.Open(filepath.Clean(source))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -108,6 +110,7 @@ func tryCopyCred(source, destination string) error {
 	defer fromFile.Close()
 
 	if fromInfo.IsDir() {
+		// #nosec G703 -- no path traversal with that path that is properly joining the home path and a credential file
 		err := os.MkdirAll(destination, credsDirPermissions)
 		if err != nil {
 			return fmt.Errorf("unable to create destination directory: %w", err)
@@ -125,6 +128,7 @@ func tryCopyCred(source, destination string) error {
 		}
 	} else {
 		flags := os.O_RDWR | os.O_CREATE | os.O_TRUNC
+		// #nosec G703 -- no path traversal with that path that is properly joining the home path and a credential file
 		toFile, err := os.OpenFile(destination, flags, credsFilePermissions)
 		if err != nil {
 			return fmt.Errorf("unable to open destination: %w", err)
