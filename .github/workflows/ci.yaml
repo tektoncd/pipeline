@@ -111,3 +111,37 @@ jobs:
   e2e-tests:
     needs: [build]
     uses: ./.github/workflows/e2e-matrix.yml
+
+  ci-summary:
+    name: CI summary
+    needs: [build, buildFips, linting, tests, generated, multi-arch-build, e2e-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Check CI results
+      run: |
+        results=(
+          "build=${{ needs.build.result }}"
+          "buildFips=${{ needs.buildFips.result }}"
+          "linting=${{ needs.linting.result }}"
+          "tests=${{ needs.tests.result }}"
+          "generated=${{ needs.generated.result }}"
+          "multi-arch-build=${{ needs.multi-arch-build.result }}"
+          "e2e-tests=${{ needs.e2e-tests.result }}"
+        )
+        failed=0
+        for r in "${results[@]}"; do
+          name="${r%%=*}"
+          result="${r#*=}"
+          echo "${name}: ${result}"
+          if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+            failed=1
+          fi
+        done
+        if [ "$failed" -eq 1 ]; then
+          echo ""
+          echo "Some CI jobs failed or were cancelled"
+          exit 1
+        fi
+        echo ""
+        echo "All CI checks passed"
