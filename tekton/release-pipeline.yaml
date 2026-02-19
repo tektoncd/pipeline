@@ -95,7 +95,7 @@ spec:
           - name: url
             value: https://github.com/tektoncd/plumbing
           - name: revision
-            value: 995bffb1e4bcee00d0e363f4f3db7f25051ab137
+            value: 50bc706c351cc05087564bb17afc1e658090edb0
           - name: pathInRepo
             value: tekton/resources/release/base/prerelease_checks.yaml
       params:
