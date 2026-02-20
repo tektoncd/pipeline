@@ -28,13 +28,12 @@ SKIP_GO_E2E_TESTS=${SKIP_GO_E2E_TESTS:="false"}
 E2E_GO_TEST_TIMEOUT=${E2E_GO_TEST_TIMEOUT:="20m"}
 RUN_FEATUREFLAG_TESTS=${RUN_FEATUREFLAG_TESTS:="false"}
 RESULTS_FROM=${RESULTS_FROM:-termination-message}
-ENABLE_STEP_ACTIONS=${ENABLE_STEP_ACTIONS:="false"}
+KEEP_POD_ON_CANCEL=${KEEP_POD_ON_CANCEL:="false"}
 ENABLE_CEL_IN_WHENEXPRESSION=${ENABLE_CEL_IN_WHENEXPRESSION:="false"}
 ENABLE_PARAM_ENUM=${ENABLE_PARAM_ENUM:="false"}
 ENABLE_ARTIFACTS=${ENABLE_ARTIFACTS:="false"}
 ENABLE_CONCISE_RESOLVER_SYNTAX=${ENABLE_CONCISE_RESOLVER_SYNTAX:="false"}
 ENABLE_KUBERNETES_SIDECAR=${ENABLE_KUBERNETES_SIDECAR:="false"}
-failed=0
 
 # Script entry point.
 
@@ -49,7 +48,6 @@ install_pipeline_crd
 export SYSTEM_NAMESPACE=tekton-pipelines
 set +x
 
-failed=0
 
 function add_spire() {
   local gate="$1"
@@ -59,7 +57,6 @@ function add_spire() {
     install_spire
     patch_pipeline_spire
     kubectl apply -n tekton-pipelines -f "$DIR"/testdata/spire/config-spire.yaml
-    failed=0
   fi
 }
 
@@ -72,7 +69,7 @@ function set_feature_gate() {
   printf "Setting feature gate to %s\n", ${gate}
   jsonpatch=$(printf "{\"data\": {\"enable-api-fields\": \"%s\"}}" $1)
   echo "feature-flags ConfigMap patch: ${jsonpatch}"
-  kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+  with_retries kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
 }
 
 function set_result_extraction_method() {
@@ -84,30 +81,30 @@ function set_result_extraction_method() {
   printf "Setting results-from to %s\n", ${method}
   jsonpatch=$(printf "{\"data\": {\"results-from\": \"%s\"}}" $1)
   echo "feature-flags ConfigMap patch: ${jsonpatch}"
-  kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+  with_retries kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
 }
 
-function set_enable_step_actions() {
-  local method="$1"
-  if [ "$method" != "false" ] && [ "$method" != "true" ]; then
-    printf "Invalid value for enable-step-actions %s\n" ${method}
-    exit 255
-  fi
-  printf "Setting enable-step-actions to %s\n", ${method}
-  jsonpatch=$(printf "{\"data\": {\"enable-step-actions\": \"%s\"}}" $1)
-  echo "feature-flags ConfigMap patch: ${jsonpatch}"
-  kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+function set_keep_pod_on_cancel() {	
+    local method="$1"	
+    if [ "$method" != "false" ] && [ "$method" != "true" ]; then	
+      printf "Invalid value for keep-pod-on-cancel %s\n" ${method}	
+      exit 255	
+    fi	
+    printf "Setting keep-pod-on-cancel to %s\n", ${method}	
+    jsonpatch=$(printf "{\"data\": {\"keep-pod-on-cancel\": \"%s\"}}" $1)	
+    echo "feature-flags ConfigMap patch: ${jsonpatch}"	
+    with_retries kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
 }
 
 function set_cel_in_whenexpression() {
   local method="$1"
   if [ "$method" != "false" ] && [ "$method" != "true" ]; then
-    printf "Invalid value for enable-step-actions %s\n" ${method}
+    printf "Invalid value for enable-cel-in-whenexpression %s\n" ${method}
     exit 255
   fi
   jsonpatch=$(printf "{\"data\": {\"enable-cel-in-whenexpression\": \"%s\"}}" $1)
   echo "feature-flags ConfigMap patch: ${jsonpatch}"
-  kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+  with_retries kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
 }
 
 function set_enable_param_enum() {
@@ -119,7 +116,7 @@ function set_enable_param_enum() {
   printf "Setting enable-param-enum to %s\n", ${method}
   jsonpatch=$(printf "{\"data\": {\"enable-param-enum\": \"%s\"}}" $1)
   echo "feature-flags ConfigMap patch: ${jsonpatch}"
-  kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+  with_retries kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
 }
 
 function set_enable_artifacts() {
@@ -131,7 +128,7 @@ function set_enable_artifacts() {
   printf "Setting enable-artifacts to %s\n", ${method}
   jsonpatch=$(printf "{\"data\": {\"enable-artifacts\": \"%s\"}}" $1)
   echo "feature-flags ConfigMap patch: ${jsonpatch}"
-  kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+  with_retries kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
 }
 
 function set_enable_concise_resolver_syntax() {
@@ -143,7 +140,7 @@ function set_enable_concise_resolver_syntax() {
   printf "Setting enable-concise-resolver-syntax to %s\n", ${method}
   jsonpatch=$(printf "{\"data\": {\"enable-concise-resolver-syntax\": \"%s\"}}" $1)
   echo "feature-flags ConfigMap patch: ${jsonpatch}"
-  kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+  with_retries kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
 }
 
 function set_enable_kubernetes_sidecar() {
@@ -155,7 +152,14 @@ function set_enable_kubernetes_sidecar() {
   printf "Setting enable-kubernetes-sidecar to %s\n", ${method}
   jsonpatch=$(printf "{\"data\": {\"enable-kubernetes-sidecar\": \"%s\"}}" $1)
   echo "feature-flags ConfigMap patch: ${jsonpatch}"
-  kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+  with_retries kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+}
+
+function set_default_sidecar_log_polling_interval() {
+  # Sets the default-sidecar-log-polling-interval in the config-defaults ConfigMap to 0ms for e2e tests
+  echo "Patching config-defaults ConfigMap: setting default-sidecar-log-polling-interval to 0ms"
+  jsonpatch='{"data": {"default-sidecar-log-polling-interval": "0ms"}}'
+  with_retries kubectl patch configmap config-defaults -n tekton-pipelines -p "$jsonpatch"
 }
 
 function run_e2e() {
@@ -163,31 +167,34 @@ function run_e2e() {
   header "Running Go e2e tests"
   # Skip ./test/*.go tests if SKIP_GO_E2E_TESTS == true
   if [ "${SKIP_GO_E2E_TESTS}" != "true" ]; then
-    go_test_e2e -timeout=${E2E_GO_TEST_TIMEOUT} ./test/... || failed=1
+    go_test_e2e -timeout=${E2E_GO_TEST_TIMEOUT} ./test/...
   fi
 
   # Run these _after_ the integration tests b/c they don't quite work all the way
   # and they cause a lot of noise in the logs, making it harder to debug integration
   # test failures.
   if [ "${RUN_YAML_TESTS}" == "true" ]; then
-    go_test_e2e -mod=readonly -tags=examples -timeout=${E2E_GO_TEST_TIMEOUT} ./test/ || failed=1
+    go_test_e2e -mod=readonly -parallel=2 -tags=examples -timeout=${E2E_GO_TEST_TIMEOUT} ./test/
   fi
 
   if [ "${RUN_FEATUREFLAG_TESTS}" == "true" ]; then
-    go_test_e2e -mod=readonly -tags=featureflags -timeout=${E2E_GO_TEST_TIMEOUT} ./test/ || failed=1
+    go_test_e2e -mod=readonly -tags=featureflags -timeout=${E2E_GO_TEST_TIMEOUT} ./test/
   fi
 }
+
+set -eo pipefail
+trap '[[ "$?" == "0" ]] || fail_test' EXIT
 
 add_spire "$PIPELINE_FEATURE_GATE"
 set_feature_gate "$PIPELINE_FEATURE_GATE"
 set_result_extraction_method "$RESULTS_FROM"
-set_enable_step_actions "$ENABLE_STEP_ACTIONS"
+set_keep_pod_on_cancel "$KEEP_POD_ON_CANCEL"
 set_cel_in_whenexpression "$ENABLE_CEL_IN_WHENEXPRESSION"
 set_enable_param_enum "$ENABLE_PARAM_ENUM"
 set_enable_artifacts "$ENABLE_ARTIFACTS"
 set_enable_concise_resolver_syntax "$ENABLE_CONCISE_RESOLVER_SYNTAX"
 set_enable_kubernetes_sidecar "$ENABLE_KUBERNETES_SIDECAR"
+set_default_sidecar_log_polling_interval
 run_e2e
 
-(( failed )) && fail_test
 success

@@ -19,116 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeVerificationPolicies implements VerificationPolicyInterface
-type FakeVerificationPolicies struct {
+// fakeVerificationPolicies implements VerificationPolicyInterface
+type fakeVerificationPolicies struct {
+	*gentype.FakeClientWithList[*v1alpha1.VerificationPolicy, *v1alpha1.VerificationPolicyList]
 	Fake *FakeTektonV1alpha1
-	ns   string
 }
 
-var verificationpoliciesResource = v1alpha1.SchemeGroupVersion.WithResource("verificationpolicies")
-
-var verificationpoliciesKind = v1alpha1.SchemeGroupVersion.WithKind("VerificationPolicy")
-
-// Get takes name of the verificationPolicy, and returns the corresponding verificationPolicy object, and an error if there is any.
-func (c *FakeVerificationPolicies) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.VerificationPolicy, err error) {
-	emptyResult := &v1alpha1.VerificationPolicy{}
-	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithOptions(verificationpoliciesResource, c.ns, name, options), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
+func newFakeVerificationPolicies(fake *FakeTektonV1alpha1, namespace string) pipelinev1alpha1.VerificationPolicyInterface {
+	return &fakeVerificationPolicies{
+		gentype.NewFakeClientWithList[*v1alpha1.VerificationPolicy, *v1alpha1.VerificationPolicyList](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("verificationpolicies"),
+			v1alpha1.SchemeGroupVersion.WithKind("VerificationPolicy"),
+			func() *v1alpha1.VerificationPolicy { return &v1alpha1.VerificationPolicy{} },
+			func() *v1alpha1.VerificationPolicyList { return &v1alpha1.VerificationPolicyList{} },
+			func(dst, src *v1alpha1.VerificationPolicyList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.VerificationPolicyList) []*v1alpha1.VerificationPolicy {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.VerificationPolicyList, items []*v1alpha1.VerificationPolicy) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.VerificationPolicy), err
-}
-
-// List takes label and field selectors, and returns the list of VerificationPolicies that match those selectors.
-func (c *FakeVerificationPolicies) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.VerificationPolicyList, err error) {
-	emptyResult := &v1alpha1.VerificationPolicyList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewListActionWithOptions(verificationpoliciesResource, verificationpoliciesKind, c.ns, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.VerificationPolicyList{ListMeta: obj.(*v1alpha1.VerificationPolicyList).ListMeta}
-	for _, item := range obj.(*v1alpha1.VerificationPolicyList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested verificationPolicies.
-func (c *FakeVerificationPolicies) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchActionWithOptions(verificationpoliciesResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a verificationPolicy and creates it.  Returns the server's representation of the verificationPolicy, and an error, if there is any.
-func (c *FakeVerificationPolicies) Create(ctx context.Context, verificationPolicy *v1alpha1.VerificationPolicy, opts v1.CreateOptions) (result *v1alpha1.VerificationPolicy, err error) {
-	emptyResult := &v1alpha1.VerificationPolicy{}
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithOptions(verificationpoliciesResource, c.ns, verificationPolicy, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.VerificationPolicy), err
-}
-
-// Update takes the representation of a verificationPolicy and updates it. Returns the server's representation of the verificationPolicy, and an error, if there is any.
-func (c *FakeVerificationPolicies) Update(ctx context.Context, verificationPolicy *v1alpha1.VerificationPolicy, opts v1.UpdateOptions) (result *v1alpha1.VerificationPolicy, err error) {
-	emptyResult := &v1alpha1.VerificationPolicy{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithOptions(verificationpoliciesResource, c.ns, verificationPolicy, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.VerificationPolicy), err
-}
-
-// Delete takes name of the verificationPolicy and deletes it. Returns an error if one occurs.
-func (c *FakeVerificationPolicies) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(verificationpoliciesResource, c.ns, name, opts), &v1alpha1.VerificationPolicy{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeVerificationPolicies) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionActionWithOptions(verificationpoliciesResource, c.ns, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.VerificationPolicyList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched verificationPolicy.
-func (c *FakeVerificationPolicies) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.VerificationPolicy, err error) {
-	emptyResult := &v1alpha1.VerificationPolicy{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(verificationpoliciesResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.VerificationPolicy), err
 }

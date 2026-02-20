@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2019 The Tekton Authors
@@ -32,8 +31,9 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
+// @test:execution=parallel
 func TestWorkingDirCreated(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -105,8 +105,9 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestWorkingDirIgnoredNonSlashWorkspace(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)

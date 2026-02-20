@@ -32,7 +32,7 @@ import (
 //
 // [Key states of KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html
 // [kms:UpdateKeyDescription]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
-// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
+// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/accessing-kms.html#programming-eventual-consistency
 func (c *Client) UpdateKeyDescription(ctx context.Context, params *UpdateKeyDescriptionInput, optFns ...func(*Options)) (*UpdateKeyDescriptionOutput, error) {
 	if params == nil {
 		params = &UpdateKeyDescriptionInput{}
@@ -148,6 +148,9 @@ func (c *Client) addOperationUpdateKeyDescriptionMiddlewares(stack *middleware.S
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpUpdateKeyDescriptionValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -169,16 +172,13 @@ func (c *Client) addOperationUpdateKeyDescriptionMiddlewares(stack *middleware.S
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -33,6 +33,5 @@ type ResolverRef struct {
 	// "repo" or "path" but the set of params ultimately depends on
 	// the chosen resolver.
 	// +optional
-	// +listType=atomic
 	Params Params `json:"params,omitempty"`
 }

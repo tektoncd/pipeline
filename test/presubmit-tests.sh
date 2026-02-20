@@ -46,18 +46,7 @@ function check_yaml_lint() {
 function ko_resolve() {
   header "Running `ko resolve`"
 
-  cat <<EOF > .ko.yaml
-    defaultBaseImage: cgr.dev/chainguard/static
-    baseImageOverrides:
-      # Use the combined base image for images that should include Windows support.
-      # NOTE: Make sure this list of images to use the combined base image is in sync with what's in tekton/publish.yaml's 'create-ko-yaml' Task.
-      github.com/tektoncd/pipeline/cmd/entrypoint: ghcr.io/tektoncd/pipeline/github.com/tektoncd/pipeline/combined-base-image:latest
-      github.com/tektoncd/pipeline/cmd/nop: ghcr.io/tektoncd/pipeline/github.com/tektoncd/pipeline/combined-base-image:latest
-      github.com/tektoncd/pipeline/cmd/workingdirinit: ghcr.io/tektoncd/pipeline/github.com/tektoncd/pipeline/combined-base-image:latest
-
-      github.com/tektoncd/pipeline/cmd/git-init: cgr.dev/chainguard/git
-EOF
-
+  # Use the repository's .ko.yaml for consistent base images
   KO_DOCKER_REPO=example.com ko resolve -l 'app.kubernetes.io/component!=resolvers' --platform=all --push=false -R -f config 1>/dev/null
   KO_DOCKER_REPO=example.com ko resolve --platform=all --push=false -f config/resolvers 1>/dev/null
 }

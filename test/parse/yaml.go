@@ -14,13 +14,13 @@
 package parse
 
 import (
-	"context"
 	"testing"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -83,7 +83,7 @@ kind: Task
 func MustParseV1beta1TaskAndSetDefaults(t *testing.T, yaml string) *v1beta1.Task {
 	t.Helper()
 	task := MustParseV1beta1Task(t, yaml)
-	task.SetDefaults(context.Background())
+	task.SetDefaults(t.Context())
 	return task
 }
 
@@ -113,19 +113,8 @@ kind: Task
 func MustParseV1TaskAndSetDefaults(t *testing.T, yaml string) *v1.Task {
 	t.Helper()
 	task := MustParseV1Task(t, yaml)
-	task.SetDefaults(context.Background())
+	task.SetDefaults(t.Context())
 	return task
-}
-
-// MustParseClusterTask takes YAML and parses it into a *v1beta1.ClusterTask
-func MustParseClusterTask(t *testing.T, yaml string) *v1beta1.ClusterTask {
-	t.Helper()
-	var clusterTask v1beta1.ClusterTask
-	yaml = `apiVersion: tekton.dev/v1beta1
-kind: ClusterTask
-` + yaml
-	mustParseYAML(t, yaml, &clusterTask)
-	return &clusterTask
 }
 
 // MustParseV1beta1PipelineRun takes YAML and parses it into a *v1beta1.PipelineRun
@@ -165,7 +154,7 @@ kind: Pipeline
 func MustParseV1beta1PipelineAndSetDefaults(t *testing.T, yaml string) *v1beta1.Pipeline {
 	t.Helper()
 	p := MustParseV1beta1Pipeline(t, yaml)
-	p.SetDefaults(context.Background())
+	p.SetDefaults(t.Context())
 	return p
 }
 
@@ -184,7 +173,7 @@ kind: Pipeline
 func MustParseV1PipelineAndSetDefaults(t *testing.T, yaml string) *v1.Pipeline {
 	t.Helper()
 	p := MustParseV1Pipeline(t, yaml)
-	p.SetDefaults(context.Background())
+	p.SetDefaults(t.Context())
 	return p
 }
 
@@ -204,4 +193,28 @@ func mustParseYAML(t *testing.T, yaml string, i runtime.Object) {
 	if _, _, err := scheme.Codecs.UniversalDeserializer().Decode([]byte(yaml), nil, i); err != nil {
 		t.Fatalf("mustParseYAML (%s): %v", yaml, err)
 	}
+}
+
+// MustParseTaskRunWithObjectMeta parses YAML to *v1.TaskRun and adds objectMeta to it
+func MustParseTaskRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYAML string) *v1.TaskRun {
+	t.Helper()
+	tr := MustParseV1TaskRun(t, asYAML)
+	tr.ObjectMeta = objectMeta
+	return tr
+}
+
+// MustParseCustomRunWithObjectMeta parses YAML to *v1beta1.CustomRun and adds objectMeta to it
+func MustParseCustomRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYAML string) *v1beta1.CustomRun {
+	t.Helper()
+	r := MustParseCustomRun(t, asYAML)
+	r.ObjectMeta = objectMeta
+	return r
+}
+
+// MustParseChildPipelineRunWithObjectMeta parses YAML to *v1.PipelineRun and adds objectMeta to it
+func MustParseChildPipelineRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYAML string) *v1.PipelineRun {
+	t.Helper()
+	pr := MustParseV1PipelineRun(t, asYAML)
+	pr.ObjectMeta = objectMeta
+	return pr
 }

@@ -17,7 +17,6 @@ limitations under the License.
 package config_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -38,7 +37,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 	testCases := []testCase{
 		{
 			expectedConfig: &config.FeatureFlags{
-				DisableAffinityAssistant:         false,
 				RunningInEnvWithInjectedSidecars: true,
 				RequireGitSSHSecretKnownHosts:    false,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
@@ -54,7 +52,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
 				EnableKeepPodOnCancel:            config.DefaultEnableKeepPodOnCancel.Enabled,
 				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
-				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 				DisableInlineSpec:                config.DefaultDisableInlineSpec,
 				EnableConciseResolverSyntax:      config.DefaultEnableConciseResolverSyntax.Enabled,
@@ -63,7 +60,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		},
 		{
 			expectedConfig: &config.FeatureFlags{
-				DisableAffinityAssistant:                 true,
 				RunningInEnvWithInjectedSidecars:         false,
 				AwaitSidecarReadiness:                    false,
 				RequireGitSSHSecretKnownHosts:            true,
@@ -79,7 +75,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				SetSecurityContextReadOnlyRootFilesystem: true,
 				Coschedule:                               config.CoscheduleDisabled,
 				EnableCELInWhenExpression:                true,
-				EnableStepActions:                        true,
 				EnableArtifacts:                          true,
 				EnableParamEnum:                          true,
 				DisableInlineSpec:                        "pipeline,pipelinerun,taskrun",
@@ -94,7 +89,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				// These are prescribed as true by enabling "alpha" API fields, even
 				// if the submitted text value is "false".
 				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
-				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
@@ -108,7 +102,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				Coschedule:                       config.DefaultCoschedule,
 				EnableKeepPodOnCancel:            config.DefaultEnableKeepPodOnCancel.Enabled,
 				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
-				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 				EnableArtifacts:                  config.DefaultEnableArtifacts.Enabled,
 				DisableInlineSpec:                config.DefaultDisableInlineSpec,
@@ -119,7 +112,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  "stable",
 				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
-				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
@@ -140,7 +132,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  "beta",
 				EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
-				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
@@ -171,7 +162,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				Coschedule:                       config.DefaultCoschedule,
 				EnableKeepPodOnCancel:            config.DefaultEnableKeepPodOnCancel.Enabled,
 				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
-				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 				DisableInlineSpec:                config.DefaultDisableInlineSpec,
 			},
@@ -191,7 +181,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				Coschedule:                       config.DefaultCoschedule,
 				EnableKeepPodOnCancel:            config.DefaultEnableKeepPodOnCancel.Enabled,
 				EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
-				EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 				EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 				DisableInlineSpec:                config.DefaultDisableInlineSpec,
 			},
@@ -211,7 +200,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 	FeatureFlagsConfigEmptyName := "feature-flags-empty"
 	expectedConfig := &config.FeatureFlags{
-		DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 		DisableCredsInit:                 config.DefaultDisableCredsInit,
 		RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 		AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
@@ -227,7 +215,6 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		Coschedule:                       config.DefaultCoschedule,
 		EnableKeepPodOnCancel:            config.DefaultEnableKeepPodOnCancel.Enabled,
 		EnableCELInWhenExpression:        config.DefaultEnableCELInWhenExpression.Enabled,
-		EnableStepActions:                config.DefaultEnableStepActions.Enabled,
 		EnableParamEnum:                  config.DefaultEnableParamEnum.Enabled,
 		DisableInlineSpec:                config.DefaultDisableInlineSpec,
 	}
@@ -287,9 +274,6 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 		fileName: "feature-flags-enforce-nonfalsifiability-bad-flag",
 		want:     `invalid value for feature flag "enforce-nonfalsifiability": "bad-value"`,
 	}, {
-		fileName: "feature-flags-invalid-coschedule-affinity-assistant-comb",
-		want:     `coschedule value pipelineruns is incompatible with disable-affinity-assistant setting to false`,
-	}, {
 		fileName: "feature-flags-invalid-coschedule",
 		want:     `invalid value for feature flag "coschedule": "invalid"`,
 	}, {
@@ -299,14 +283,8 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 		fileName: "feature-flags-invalid-running-in-environment-with-injected-sidecars",
 		want:     `failed parsing feature flags config "invalid-boolean": strconv.ParseBool: parsing "invalid-boolean": invalid syntax`,
 	}, {
-		fileName: "feature-flags-invalid-disable-affinity-assistant",
-		want:     `failed parsing feature flags config "truee": strconv.ParseBool: parsing "truee": invalid syntax`,
-	}, {
 		fileName: "feature-flags-invalid-enable-cel-in-whenexpression",
 		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-cel-in-whenexpression`,
-	}, {
-		fileName: "feature-flags-invalid-enable-step-actions",
-		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-step-actions`,
 	}, {
 		fileName: "feature-flags-invalid-enable-param-enum",
 		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-param-enum`,
@@ -354,7 +332,7 @@ func TestGetVerificationNoMatchPolicy(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
 			featureflags := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -408,7 +386,7 @@ func TestIsSpireEnabled(t *testing.T) {
 		},
 		want: true,
 	}}
-	ctx := context.Background()
+	ctx := t.Context()
 	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
 	for _, tc := range testCases {
 		featureflags := &corev1.ConfigMap{

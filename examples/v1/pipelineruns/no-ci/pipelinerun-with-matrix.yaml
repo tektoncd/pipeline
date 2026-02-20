@@ -1,0 +1,130 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: platform-browsers
+  annotations:
+    description: |
+      A task that does something cool with platforms and browsers
+spec:
+  params:
+    - name: platform
+    - name: browser
+  steps:
+    - name: echo
+      displayName: "echo platform and browser"
+      image: mirror.gcr.io/alpine
+      script: |
+        echo "$(params.platform) and $(params.browser)"
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: matrixed-pr-
+spec:
+  taskRunTemplate:
+    serviceAccountName: "default"
+  pipelineSpec:
+    tasks:
+      - name: platforms-and-browsers
+        displayName: "Platform: $(params.platform) with Browser: $(params.browser)"
+        matrix:
+          params:
+            - name: platform
+              value:
+                - linux
+                - mac
+            - name: browser
+              value:
+                - chrome
+                - firefox
+        taskRef:
+          name: platform-browsers
+      - name: matrix-and-params
+        matrix:
+          params:
+            - name: platform
+              value:
+                - linux
+                - mac
+        params:
+          - name: browser
+            value: chrome
+        taskRef:
+          name: platform-browsers
+      - name: matrix-and-params-include
+        matrix:
+          include:
+            - name: "Platform: $(params.platform) with Browser: $(params.browser)"
+              params:
+                - name: platform
+                  value: linux
+        params:
+          - name: browser
+            value: chrome
+        taskRef:
+          name: platform-browsers
+      - name: matrix-params-with-empty-array-skipped
+        matrix:
+          params:
+            - name: version
+              value: []
+        taskSpec:
+          params:
+            - name: version
+          steps:
+            - name: echo
+              image: mirror.gcr.io/ubuntu
+              script: exit 1
+      - name: matrix-with-task-using-onerror
+        matrix:
+          params:
+            - name: version
+              value:
+                - "1"
+                - "2"
+        taskSpec:
+          params:
+            - name: version
+          steps:
+            - name: echo
+              image: mirror.gcr.io/ubuntu
+              onError: continue
+              script: exit 1
+      - name: matrix-with-task-retries
+        retries: 1
+        params:
+          - name: pipelineTask-retries
+            value: $(context.pipelineTask.retries)
+        matrix:
+          params:
+            - name: version
+              value:
+                - "1"
+                - "2"
+        taskSpec:
+          params:
+            - name: version
+            - name: pipelineTask-retries
+          steps:
+            - image: mirror.gcr.io/alpine
+              script: |
+                #!/usr/bin/env sh
+                if [ "$(context.task.retry-count)" == "$(params.pipelineTask-retries)" ]; then
+                  echo "This is the last retry."
+                  exit 0;
+                fi
+                echo "The PipelineTask has retried $(context.task.retry-count) times."
+                exit 1
+    finally:
+      - name: matrix-params-with-empty-array-skipped-in-finally
+        matrix:
+          params:
+            - name: version
+              value: []
+        taskSpec:
+          params:
+            - name: version
+          steps:
+            - name: echo
+              image: mirror.gcr.io/ubuntu
+              script: exit 1

@@ -29,11 +29,10 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/cmd/entrypoint/subcommands"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"github.com/tektoncd/pipeline/pkg/credentials"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1/types"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
+	credwriter "github.com/tektoncd/pipeline/pkg/credentials/writer"
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/platforms"
 	"github.com/tektoncd/pipeline/pkg/termination"
@@ -92,9 +91,9 @@ func main() {
 	// from secret volume mounts to /tekton/creds. This is done to support the expansion
 	// of a variable, $(credentials.path), that resolves to a single place with all the
 	// stored credentials.
-	builders := []credentials.Builder{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
+	builders := []credwriter.Writer{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
 	for _, c := range builders {
-		if err := c.Write(pipeline.CredsDir); err != nil {
+		if err := c.Write(entrypoint.CredsDir); err != nil {
 			log.Printf("Error initializing credentials: %s", err)
 		}
 	}
@@ -154,7 +153,7 @@ func main() {
 
 	// Copy any creds injected by the controller into the $HOME directory of the current
 	// user so that they're discoverable by git / ssh.
-	if err := credentials.CopyCredsToHome(credentials.CredsInitCredentials); err != nil {
+	if err := credwriter.CopyCredsToHome(credwriter.CredsInitCredentials); err != nil {
 		log.Printf("non-fatal error copying credentials: %q", err)
 	}
 

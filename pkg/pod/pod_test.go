@@ -17,11 +17,11 @@ limitations under the License.
 package pod
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -87,6 +88,7 @@ func TestPodBuild(t *testing.T) {
 	dnsPolicy := corev1.DNSNone
 	enableServiceLinks := false
 	priorityClassName := "system-cluster-critical"
+	hostUsers := false
 	taskRunName := "taskrun-name"
 
 	for _, c := range []struct {
@@ -1404,6 +1406,57 @@ _EOF_
 			},
 		},
 		{
+			desc: "using hostUsers false",
+			ts: v1.TaskSpec{
+				Steps: []v1.Step{
+					{
+						Name:    "use-my-hostUsers",
+						Image:   "image",
+						Command: []string{"cmd"}, // avoid entrypoint lookup.
+					},
+				},
+			},
+			trs: v1.TaskRunSpec{
+				PodTemplate: &pod.Template{
+					HostUsers: &hostUsers,
+				},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1.Step{{Name: "use-my-hostUsers"}}, SecurityContextConfig{SetSecurityContext: false, SetReadOnlyRootFilesystem: false}, false /* windows */)},
+				HostUsers:      &hostUsers,
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				Containers: []corev1.Container{{
+					Name:    "step-use-my-hostUsers",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/run/0/status",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+						Name:      "tekton-creds-init-home-0",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+				}},
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
+		},
+		{
 			desc: "step-with-timeout",
 			ts: v1.TaskSpec{
 				Steps: []v1.Step{{
@@ -2006,6 +2059,7 @@ _EOF_
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
 						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
 					}, implicitVolumeMounts...),
+					Env: []corev1.EnvVar{{Name: "SIDECAR_LOG_POLLING_INTERVAL", Value: "100ms"}},
 				}},
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -2087,6 +2141,7 @@ _EOF_
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
 						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
 					}, implicitVolumeMounts...),
+					Env: []corev1.EnvVar{{Name: "SIDECAR_LOG_POLLING_INTERVAL", Value: "100ms"}},
 				}},
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -2163,6 +2218,7 @@ _EOF_
 						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
 					}, implicitVolumeMounts...),
 					SecurityContext: SecurityContextConfig{SetSecurityContext: true, SetReadOnlyRootFilesystem: true}.GetSecurityContext(false),
+					Env:             []corev1.EnvVar{{Name: "SIDECAR_LOG_POLLING_INTERVAL", Value: "100ms"}},
 				}},
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -2241,6 +2297,7 @@ _EOF_
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
 						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
 					}, implicitVolumeMounts...),
+					Env: []corev1.EnvVar{{Name: "SIDECAR_LOG_POLLING_INTERVAL", Value: "100ms"}},
 				}},
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -2325,6 +2382,7 @@ _EOF_
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
 						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
 					}, implicitVolumeMounts...),
+					Env: []corev1.EnvVar{{Name: "SIDECAR_LOG_POLLING_INTERVAL", Value: "100ms"}},
 				}},
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -2404,6 +2462,7 @@ _EOF_
 						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
 					}, implicitVolumeMounts...),
 					SecurityContext: SecurityContextConfig{SetSecurityContext: true, SetReadOnlyRootFilesystem: true}.GetSecurityContext(false),
+					Env:             []corev1.EnvVar{{Name: "SIDECAR_LOG_POLLING_INTERVAL", Value: "100ms"}},
 				}},
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -2645,7 +2704,7 @@ _EOF_
 				KubeClient:      kubeclient,
 				EntrypointCache: entrypointCache,
 			}
-			got, err := builder.Build(store.ToContext(context.Background()), tr, c.ts)
+			got, err := builder.Build(store.ToContext(t.Context()), tr, c.ts)
 			if err != nil {
 				t.Fatalf("builder.Build: %v", err)
 			}
@@ -2852,7 +2911,7 @@ debug-fail-continue-heredoc-randomly-generated-mz4c7
 				EntrypointCache: entrypointCache,
 			}
 
-			got, err := builder.Build(store.ToContext(context.Background()), tr, c.ts)
+			got, err := builder.Build(store.ToContext(t.Context()), tr, c.ts)
 			if err != nil {
 				t.Fatalf("builder.Build: %v", err)
 			}
@@ -3058,7 +3117,7 @@ func TestPodBuild_TaskLevelResourceRequirements(t *testing.T) {
 				Spec: tc.trs,
 			}
 
-			gotPod, err := builder.Build(store.ToContext(context.Background()), tr, tc.ts)
+			gotPod, err := builder.Build(store.ToContext(t.Context()), tr, tc.ts)
 			if err != nil {
 				t.Fatalf("builder.Build: %v", err)
 			}
@@ -3210,7 +3269,7 @@ func TestPodBuildwithSpireEnabled(t *testing.T) {
 				EntrypointCache: entrypointCache,
 			}
 
-			got, err := builder.Build(store.ToContext(context.Background()), tr, c.ts)
+			got, err := builder.Build(store.ToContext(t.Context()), tr, c.ts)
 			if err != nil {
 				t.Fatalf("builder.Build: %v", err)
 			}
@@ -3257,6 +3316,7 @@ func TestMakeLabels(t *testing.T) {
 		"foo":                       "bar",
 		"hello":                     "world",
 		pipeline.TaskRunUIDLabelKey: string(taskRunUID),
+		tknreconciler.KubernetesManagedByAnnotationKey: "foo",
 	}
 	got := makeLabels(&v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -3267,7 +3327,7 @@ func TestMakeLabels(t *testing.T) {
 				"hello": "world",
 			},
 		},
-	})
+	}, "foo")
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("Diff labels %s", diff.PrintWantGot(d))
 	}
@@ -3768,7 +3828,7 @@ func TestPodBuildWithK8s129(t *testing.T) {
 		KubeClient:      kubeclient,
 		EntrypointCache: entrypointCache,
 	}
-	got, err := builder.Build(store.ToContext(context.Background()), tr, ts)
+	got, err := builder.Build(store.ToContext(t.Context()), tr, ts)
 	if err != nil {
 		t.Errorf("Pod build failed: %s", err)
 	}
@@ -3848,6 +3908,156 @@ func TestIsNativeSidecarSupport(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsNativeSidecarSupport(tt.serverVersion); got != tt.want {
 				t.Errorf("IsNativeSidecarSupport() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCreateResultsSidecarWithWaitForever(t *testing.T) {
+	tests := []struct {
+		name                    string
+		enableKubernetesSidecar bool
+		wantWaitForeverFlag     bool
+	}{
+		{
+			name:                    "Kubernetes sidecar disabled",
+			enableKubernetesSidecar: false,
+			wantWaitForeverFlag:     false,
+		},
+		{
+			name:                    "Kubernetes sidecar enabled",
+			enableKubernetesSidecar: true,
+			wantWaitForeverFlag:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup test context with feature flags
+			store := config.NewStore(logtesting.TestLogger(t))
+			featureFlags := map[string]string{
+				"results-from": "sidecar-logs",
+			}
+			if tt.enableKubernetesSidecar {
+				featureFlags["enable-kubernetes-sidecar"] = "true"
+			}
+			store.OnConfigChanged(
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data:       featureFlags,
+				},
+			)
+			always := corev1.ContainerRestartPolicyAlways
+			ts := v1.TaskSpec{
+				Results: []v1.TaskResult{{
+					Name: "result1",
+					Type: v1.ResultsTypeString,
+				}},
+				Steps: []v1.Step{{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"cmd"}, // avoid entrypoint lookup.
+				}},
+			}
+
+			// Set up test images
+			testImages := pipeline.Images{
+				EntrypointImage:        "entrypoint-image",
+				ShellImage:             "busybox",
+				SidecarLogResultsImage: "sidecar-log-results-image",
+			}
+
+			kubeclient := fakek8s.NewSimpleClientset(
+				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
+			)
+			fakeDisc, _ := kubeclient.Discovery().(*fakediscovery.FakeDiscovery)
+			fakeDisc.FakedServerVersion = &version.Info{
+				Major: "1",
+				Minor: "29",
+			}
+
+			trs := v1.TaskRunSpec{
+				TaskSpec: &ts,
+			}
+
+			tr := &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "taskrunName",
+					Namespace: "default",
+				},
+				Spec: trs,
+			}
+
+			// No entrypoints should be looked up.
+			entrypointCache := fakeCache{}
+
+			builder := Builder{
+				Images:          testImages,
+				KubeClient:      kubeclient,
+				EntrypointCache: entrypointCache,
+			}
+			got, err := builder.Build(store.ToContext(t.Context()), tr, ts)
+			if err != nil {
+				t.Errorf("Pod build failed: %s", err)
+			}
+
+			// Find the results sidecar container in the appropriate location
+			var resultsSidecar *corev1.Container
+
+			// When Kubernetes sidecar is enabled, the sidecar should be in init containers
+			// When disabled, it should be in regular containers
+			if tt.enableKubernetesSidecar {
+				for i, container := range got.Spec.InitContainers {
+					if strings.HasPrefix(container.Name, "sidecar-"+pipeline.ReservedResultsSidecarName) {
+						resultsSidecar = &got.Spec.InitContainers[i]
+						break
+					}
+				}
+
+				if resultsSidecar == nil {
+					t.Fatalf("Results sidecar not found in init containers")
+				}
+
+				// Check that the sidecar has RestartPolicy Always
+				if resultsSidecar.RestartPolicy == nil || *resultsSidecar.RestartPolicy != always {
+					t.Errorf("Results sidecar does not have RestartPolicy Always")
+				}
+			} else {
+				for i, container := range got.Spec.Containers {
+					if container.Name == pipeline.ReservedResultsSidecarContainerName {
+						resultsSidecar = &got.Spec.Containers[i]
+						break
+					}
+				}
+
+				if resultsSidecar == nil {
+					t.Fatalf("Results sidecar not found in containers")
+				}
+
+				// When Kubernetes sidecar is disabled, the container shouldn't have a RestartPolicy
+				if resultsSidecar.RestartPolicy != nil {
+					t.Errorf("Results sidecar should not have RestartPolicy when Kubernetes sidecar is disabled")
+				}
+			}
+
+			// Check for the kubernetes-sidecar-mode flag
+			hasKubernetesSidecarModeFlag := false
+			for i := range len(resultsSidecar.Command) - 1 {
+				if resultsSidecar.Command[i] == "-kubernetes-sidecar-mode" && resultsSidecar.Command[i+1] == "true" {
+					hasKubernetesSidecarModeFlag = true
+					break
+				}
+			}
+
+			// Only check for the flag when it's expected to be present
+			if tt.wantWaitForeverFlag {
+				if !hasKubernetesSidecarModeFlag {
+					t.Errorf("Results sidecar does not have -kubernetes-sidecar-mode flag set")
+				}
+			} else {
+				if hasKubernetesSidecarModeFlag {
+					t.Errorf("Results sidecar should not have -kubernetes-sidecar-mode flag set")
+				}
 			}
 		})
 	}

@@ -14,7 +14,6 @@ limitations under the License.
 package resolution
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -53,7 +52,7 @@ func TestGet_Successful(t *testing.T) {
 		resolvedData:        pipelineBytes,
 		resolvedAnnotations: nil,
 	}} {
-		ctx := context.Background()
+		ctx := t.Context()
 		owner := &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
@@ -181,7 +180,7 @@ func TestGet_Errors(t *testing.T) {
 		expectedGetErr:   &DataAccessError{},
 		resolvedResource: invalidStepAction,
 	}} {
-		ctx := context.Background()
+		ctx := t.Context()
 		owner := &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",

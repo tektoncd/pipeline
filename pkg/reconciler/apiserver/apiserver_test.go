@@ -1,7 +1,6 @@
 package apiserver_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -11,6 +10,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
+	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -49,16 +49,11 @@ func TestDryRunCreate_Valid_DifferentGVKs(t *testing.T) {
 		name:    "v1beta1 stepaction",
 		obj:     &v1beta1.StepAction{},
 		wantObj: &v1beta1.StepAction{},
-	}, {
-		name:    "unsupported gvk",
-		obj:     &v1beta1.ClusterTask{},
-		wantErr: true,
-		wantObj: nil,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			tektonclient := fake.NewSimpleClientset()
-			mutatedObj, err := apiserver.DryRunValidate(context.Background(), "default", tc.obj, tektonclient)
+			mutatedObj, err := apiserver.DryRunValidate(t.Context(), "default", tc.obj, tektonclient)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("wantErr was %t but got err %v", tc.wantErr, err)
 			}
@@ -98,10 +93,6 @@ func TestDryRunCreate_Invalid_DifferentGVKs(t *testing.T) {
 		name:    "v1beta1 stepaction",
 		obj:     &v1beta1.StepAction{},
 		wantErr: apiserver.ErrReferencedObjectValidationFailed,
-	}, {
-		name:    "unsupported gvk",
-		obj:     &v1beta1.ClusterTask{},
-		wantErr: cmpopts.AnyError,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -115,7 +106,7 @@ func TestDryRunCreate_Invalid_DifferentGVKs(t *testing.T) {
 			tektonclient.PrependReactor("create", "stepactions", func(action ktesting.Action) (bool, runtime.Object, error) {
 				return true, nil, apierrors.NewBadRequest("bad request")
 			})
-			_, err := apiserver.DryRunValidate(context.Background(), "default", tc.obj, tektonclient)
+			_, err := apiserver.DryRunValidate(t.Context(), "default", tc.obj, tektonclient)
 			if d := cmp.Diff(tc.wantErr, err, cmpopts.EquateErrors()); d != "" {
 				t.Errorf("wrong error: %s", d)
 			}
@@ -125,36 +116,43 @@ func TestDryRunCreate_Invalid_DifferentGVKs(t *testing.T) {
 
 func TestDryRunCreate_DifferentErrTypes(t *testing.T) {
 	tcs := []struct {
-		name       string
-		webhookErr error
-		wantErr    error
+		name             string
+		webhookErr       error
+		wantErr          error
+		wantTransientErr bool
 	}{{
 		name:    "no error",
 		wantErr: nil,
 	}, {
-		name:       "bad request",
-		webhookErr: apierrors.NewBadRequest("bad request"),
-		wantErr:    apiserver.ErrReferencedObjectValidationFailed,
+		name:             "bad request",
+		webhookErr:       apierrors.NewBadRequest("bad request"),
+		wantErr:          apiserver.ErrReferencedObjectValidationFailed,
+		wantTransientErr: false,
 	}, {
-		name:       "invalid",
-		webhookErr: apierrors.NewInvalid(schema.GroupKind{Group: "tekton.dev/v1", Kind: "Task"}, "task", field.ErrorList{}),
-		wantErr:    apiserver.ErrCouldntValidateObjectPermanent,
+		name:             "invalid",
+		webhookErr:       apierrors.NewInvalid(schema.GroupKind{Group: "tekton.dev/v1", Kind: "Task"}, "task", field.ErrorList{}),
+		wantErr:          apiserver.ErrCouldntValidateObjectPermanent,
+		wantTransientErr: false,
 	}, {
-		name:       "not supported",
-		webhookErr: apierrors.NewMethodNotSupported(schema.GroupResource{}, "create"),
-		wantErr:    apiserver.ErrCouldntValidateObjectPermanent,
+		name:             "not supported",
+		webhookErr:       apierrors.NewMethodNotSupported(schema.GroupResource{}, "create"),
+		wantErr:          apiserver.ErrCouldntValidateObjectPermanent,
+		wantTransientErr: false,
 	}, {
-		name:       "timeout",
-		webhookErr: apierrors.NewTimeoutError("timeout", 5),
-		wantErr:    apiserver.ErrCouldntValidateObjectRetryable,
+		name:             "timeout",
+		webhookErr:       apierrors.NewTimeoutError("timeout", 5),
+		wantErr:          apiserver.ErrCouldntValidateObjectRetryable,
+		wantTransientErr: true,
 	}, {
-		name:       "server timeout",
-		webhookErr: apierrors.NewServerTimeout(schema.GroupResource{}, "create", 5),
-		wantErr:    apiserver.ErrCouldntValidateObjectRetryable,
+		name:             "server timeout",
+		webhookErr:       apierrors.NewServerTimeout(schema.GroupResource{}, "create", 5),
+		wantErr:          apiserver.ErrCouldntValidateObjectRetryable,
+		wantTransientErr: true,
 	}, {
-		name:       "too many requests",
-		webhookErr: apierrors.NewTooManyRequests("foo", 5),
-		wantErr:    apiserver.ErrCouldntValidateObjectRetryable,
+		name:             "too many requests",
+		webhookErr:       apierrors.NewTooManyRequests("foo", 5),
+		wantErr:          apiserver.ErrCouldntValidateObjectRetryable,
+		wantTransientErr: true,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -162,9 +160,21 @@ func TestDryRunCreate_DifferentErrTypes(t *testing.T) {
 			tektonclient.PrependReactor("create", "tasks", func(action ktesting.Action) (bool, runtime.Object, error) {
 				return true, nil, tc.webhookErr
 			})
-			_, err := apiserver.DryRunValidate(context.Background(), "default", &v1.Task{}, tektonclient)
+			_, err := apiserver.DryRunValidate(t.Context(), "default", &v1.Task{}, tektonclient)
 			if d := cmp.Diff(tc.wantErr, err, cmpopts.EquateErrors()); d != "" {
 				t.Errorf("wrong error: %s", d)
+			}
+			if tc.wantErr != nil {
+				errIsTransient := resolutioncommon.IsErrTransient(err)
+				if tc.wantTransientErr != errIsTransient {
+					errMode := "permanent"
+					if tc.wantTransientErr {
+						errMode = "transient"
+					}
+					if tc.wantTransientErr {
+						t.Errorf("expected %s error but received error was not %s: %v", errMode, errMode, err)
+					}
+				}
 			}
 		})
 	}

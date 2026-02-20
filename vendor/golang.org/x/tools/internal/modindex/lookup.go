@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"golang.org/x/mod/module"
 )
 
 type Candidate struct {
@@ -35,20 +37,50 @@ const (
 	Func
 )
 
+// LookupAll only returns those Candidates whose import path
+// finds all the names.
+func (ix *Index) LookupAll(pkgName string, names ...string) map[string][]Candidate {
+	// this can be made faster when benchmarks show that it needs to be
+	names = uniquify(names)
+	byImpPath := make(map[string][]Candidate)
+	for _, nm := range names {
+		cands := ix.Lookup(pkgName, nm, false)
+		for _, c := range cands {
+			byImpPath[c.ImportPath] = append(byImpPath[c.ImportPath], c)
+		}
+	}
+	for k, v := range byImpPath {
+		if len(v) != len(names) {
+			delete(byImpPath, k)
+		}
+	}
+	return byImpPath
+}
+
+// remove duplicates
+func uniquify(in []string) []string {
+	if len(in) == 0 {
+		return in
+	}
+	in = slices.Clone(in)
+	slices.Sort(in)
+	return slices.Compact(in)
+}
+
 // Lookup finds all the symbols in the index with the given PkgName and name.
 // If prefix is true, it finds all of these with name as a prefix.
-func (ix *Index) Lookup(pkg, name string, prefix bool) []Candidate {
-	loc, ok := slices.BinarySearchFunc(ix.Entries, pkg, func(e Entry, pkg string) int {
-		return strings.Compare(e.PkgName, pkg)
+func (ix *Index) Lookup(pkgName, name string, prefix bool) []Candidate {
+	loc, ok := slices.BinarySearchFunc(ix.Entries, pkgName, func(e Entry, pkg string) int {
+		return strings.Compare(e.PkgName, pkgName)
 	})
 	if !ok {
 		return nil // didn't find the package
 	}
 	var ans []Candidate
-	// loc is the first entry for this package name, but there may be severeal
+	// loc is the first entry for this package name, but there may be several
 	for i := loc; i < len(ix.Entries); i++ {
 		e := ix.Entries[i]
-		if e.PkgName != pkg {
+		if e.PkgName != pkgName {
 			break // end of sorted package names
 		}
 		nloc, ok := slices.BinarySearchFunc(e.Names, name, func(s string, name string) int {
@@ -74,11 +106,15 @@ func (ix *Index) Lookup(pkg, name string, prefix bool) []Candidate {
 			if len(flds) < 2 {
 				continue // should never happen
 			}
+			impPath, err := module.UnescapePath(e.ImportPath)
+			if err != nil {
+				continue
+			}
 			px := Candidate{
-				PkgName:    pkg,
+				PkgName:    pkgName,
 				Name:       flds[0],
 				Dir:        string(e.Dir),
-				ImportPath: e.ImportPath,
+				ImportPath: impPath,
 				Type:       asLexType(flds[1][0]),
 				Deprecated: len(flds[1]) > 1 && flds[1][1] == 'D',
 			}
@@ -90,7 +126,7 @@ func (ix *Index) Lookup(pkg, name string, prefix bool) []Candidate {
 				px.Results = int16(n)
 				if len(flds) >= 4 {
 					sig := strings.Split(flds[3], " ")
-					for i := 0; i < len(sig); i++ {
+					for i := range sig {
 						// $ cannot otherwise occur. removing the spaces
 						// almost works, but for chan struct{}, e.g.
 						sig[i] = strings.Replace(sig[i], "$", " ", -1)
@@ -106,7 +142,7 @@ func (ix *Index) Lookup(pkg, name string, prefix bool) []Candidate {
 
 func toFields(sig []string) []Field {
 	ans := make([]Field, len(sig)/2)
-	for i := 0; i < len(ans); i++ {
+	for i := range ans {
 		ans[i] = Field{Arg: sig[2*i], Type: sig[2*i+1]}
 	}
 	return ans

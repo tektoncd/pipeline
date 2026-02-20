@@ -26,9 +26,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/google/go-cmp/cmp"
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/driver/fake"
@@ -51,7 +48,7 @@ import (
 
 func TestGetSelector(t *testing.T) {
 	resolver := Resolver{}
-	sel := resolver.GetSelector(context.Background())
+	sel := resolver.GetSelector(t.Context())
 	if typ, has := sel[common.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
 	} else if typ != labelValueGitResolverType {
@@ -126,7 +123,7 @@ func TestValidateParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resolver := Resolver{}
-			err := resolver.ValidateParams(context.Background(), toParams(tt.params))
+			err := resolver.ValidateParams(t.Context(), toParams(tt.params))
 			if tt.wantErr == "" {
 				if err != nil {
 					t.Fatalf("unexpected error validating params: %v", err)
@@ -202,7 +199,7 @@ func TestValidateParams_Failure(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			resolver := &Resolver{}
-			err := resolver.ValidateParams(context.Background(), toParams(tc.params))
+			err := resolver.ValidateParams(t.Context(), toParams(tc.params))
 			if err == nil {
 				t.Fatalf("got no error, but expected: %s", tc.expectedErr)
 			}
@@ -216,7 +213,7 @@ func TestValidateParams_Failure(t *testing.T) {
 func TestGetResolutionTimeoutDefault(t *testing.T) {
 	resolver := Resolver{}
 	defaultTimeout := 30 * time.Minute
-	timeout, err := resolver.GetResolutionTimeout(context.Background(), defaultTimeout, map[string]string{})
+	timeout, err := resolver.GetResolutionTimeout(t.Context(), defaultTimeout, map[string]string{})
 	if err != nil {
 		t.Fatalf("couldn't get default-timeout: %v", err)
 	}
@@ -232,7 +229,7 @@ func TestGetResolutionTimeoutCustom(t *testing.T) {
 	config := map[string]string{
 		DefaultTimeoutKey: configTimeout.String(),
 	}
-	ctx := framework.InjectResolverConfigToContext(context.Background(), config)
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
 	timeout, err := resolver.GetResolutionTimeout(ctx, defaultTimeout, map[string]string{})
 	if err != nil {
 		t.Fatalf("couldn't get default-timeout: %v", err)
@@ -251,7 +248,7 @@ func TestGetResolutionTimeoutCustomIdentifier(t *testing.T) {
 		DefaultTimeoutKey:          configTimeout.String(),
 		"foo." + DefaultTimeoutKey: identifierConfigTImeout.String(),
 	}
-	ctx := framework.InjectResolverConfigToContext(context.Background(), config)
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
 	timeout, err := resolver.GetResolutionTimeout(ctx, defaultTimeout, map[string]string{"configKey": "foo"})
 	if err != nil {
 		t.Fatalf("couldn't get default-timeout: %v", err)
@@ -280,17 +277,19 @@ func TestResolveNotEnabled(t *testing.T) {
 }
 
 type params struct {
-	url        string
-	revision   string
-	pathInRepo string
-	org        string
-	repo       string
-	token      string
-	tokenKey   string
-	namespace  string
-	serverURL  string
-	scmType    string
-	configKey  string
+	url         string
+	revision    string
+	pathInRepo  string
+	org         string
+	repo        string
+	token       string
+	tokenKey    string
+	namespace   string
+	serverURL   string
+	scmType     string
+	configKey   string
+	gitToken    string
+	gitTokenKey string
 }
 
 func TestResolve(t *testing.T) {
@@ -317,8 +316,6 @@ func TestResolve(t *testing.T) {
 
 	// local repo set up for scm cloning
 	// ----
-	withTemporaryGitConfig(t)
-
 	testOrg := "test-org"
 	testRepo := "test-repo"
 
@@ -420,13 +417,33 @@ func TestResolve(t *testing.T) {
 		},
 		expectedErr: createError(`error opening file "foo/non-exist": file does not exist`),
 	}, {
+		name: "clone: secret for git clone",
+		args: &params{
+			pathInRepo:  "./released",
+			url:         anonFakeRepoURL,
+			gitToken:    "token-secret",
+			gitTokenKey: "token",
+			namespace:   "foo",
+		},
+		expectedCommitSHA: commitSHAsInAnonRepo[2],
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte("released content in main branch and in tag v1")),
+	}, {
+		name: "clone: secret for git clone does not exist",
+		args: &params{
+			pathInRepo:  "./released",
+			url:         anonFakeRepoURL,
+			gitToken:    "non-existent",
+			gitTokenKey: "token",
+		},
+		expectedErr: createError(`cannot get API token, secret non-existent not found in namespace foo`),
+	}, {
 		name: "clone: revision does not exist",
 		args: &params{
 			revision:   "non-existent-revision",
 			pathInRepo: "foo/new",
 			url:        anonFakeRepoURL,
 		},
-		expectedErr: createError("revision error: reference not found"),
+		expectedErr: createError("git fetch error: fatal: couldn't find remote ref non-existent-revision: exit status 128"),
 	}, {
 		name: "api: successful task from params api information",
 		args: &params{
@@ -657,7 +674,7 @@ func TestResolve(t *testing.T) {
 			}
 			cfg[tc.configIdentifer+DefaultTimeoutKey] = "1m"
 			if cfg[tc.configIdentifer+DefaultRevisionKey] == "" {
-				cfg[tc.configIdentifer+DefaultRevisionKey] = plumbing.Master.Short()
+				cfg[tc.configIdentifer+DefaultRevisionKey] = "main"
 			}
 
 			request := createRequest(tc.args)
@@ -721,8 +738,13 @@ func TestResolve(t *testing.T) {
 				if tc.config[tc.configIdentifer+APISecretNameKey] != "" && tc.config[tc.configIdentifer+APISecretNamespaceKey] != "" && tc.config[tc.configIdentifer+APISecretKeyKey] != "" && tc.apiToken != "" {
 					secretName, secretNameKey, secretNamespace = tc.config[tc.configIdentifer+APISecretNameKey], tc.config[tc.configIdentifer+APISecretKeyKey], tc.config[tc.configIdentifer+APISecretNamespaceKey]
 				}
+
 				if tc.args.token != "" && tc.args.namespace != "" && tc.args.tokenKey != "" {
 					secretName, secretNameKey, secretNamespace = tc.args.token, tc.args.tokenKey, tc.args.namespace
+				}
+
+				if tc.args.gitToken != "" && tc.args.gitTokenKey != "" && tc.args.namespace != "" {
+					secretName, secretNameKey, secretNamespace = tc.args.gitToken, tc.args.gitTokenKey, tc.args.namespace
 				}
 				if secretName == "" || secretNameKey == "" || secretNamespace == "" {
 					return
@@ -743,136 +765,6 @@ func TestResolve(t *testing.T) {
 			})
 		})
 	}
-}
-
-// createTestRepo is used to instantiate a local test repository with the desired commits.
-func createTestRepo(t *testing.T, commits []commitForRepo) (string, []string) {
-	t.Helper()
-	commitSHAs := []string{}
-
-	t.Helper()
-	tempDir := t.TempDir()
-
-	repo, err := git.PlainInit(tempDir, false)
-
-	worktree, err := repo.Worktree()
-	if err != nil {
-		t.Fatalf("getting test worktree: %v", err)
-	}
-	if worktree == nil {
-		t.Fatal("test worktree not created")
-	}
-
-	startingHash := writeAndCommitToTestRepo(t, worktree, tempDir, "", "README", []byte("This is a test"))
-
-	hashesByBranch := make(map[string][]string)
-
-	// Iterate over the commits and add them.
-	for _, cmt := range commits {
-		branch := cmt.Branch
-		if branch == "" {
-			branch = plumbing.Master.Short()
-		}
-
-		// If we're given a revision, check out that revision.
-		coOpts := &git.CheckoutOptions{
-			Branch: plumbing.NewBranchReferenceName(branch),
-		}
-
-		if _, ok := hashesByBranch[branch]; !ok && branch != plumbing.Master.Short() {
-			coOpts.Hash = plumbing.NewHash(startingHash.String())
-			coOpts.Create = true
-		}
-
-		if err := worktree.Checkout(coOpts); err != nil {
-			t.Fatalf("couldn't do checkout of %s: %v", branch, err)
-		}
-
-		hash := writeAndCommitToTestRepo(t, worktree, tempDir, cmt.Dir, cmt.Filename, []byte(cmt.Content))
-		commitSHAs = append(commitSHAs, hash.String())
-
-		if _, ok := hashesByBranch[branch]; !ok {
-			hashesByBranch[branch] = []string{hash.String()}
-		} else {
-			hashesByBranch[branch] = append(hashesByBranch[branch], hash.String())
-		}
-
-		if cmt.Tag != "" {
-			_, err = repo.CreateTag(cmt.Tag, hash, &git.CreateTagOptions{
-				Message: cmt.Tag,
-				Tagger: &object.Signature{
-					Name:  "Someone",
-					Email: "someone@example.com",
-					When:  time.Now(),
-				},
-			})
-		}
-		if err != nil {
-			t.Fatalf("couldn't add tag for %s: %v", cmt.Tag, err)
-		}
-	}
-
-	return tempDir, commitSHAs
-}
-
-// commitForRepo provides the directory, filename, content and revision for a test commit.
-type commitForRepo struct {
-	Dir      string
-	Filename string
-	Content  string
-	Branch   string
-	Tag      string
-}
-
-func writeAndCommitToTestRepo(t *testing.T, worktree *git.Worktree, repoDir string, subPath string, filename string, content []byte) plumbing.Hash {
-	t.Helper()
-
-	targetDir := repoDir
-	if subPath != "" {
-		targetDir = filepath.Join(targetDir, subPath)
-		fi, err := os.Stat(targetDir)
-		if os.IsNotExist(err) {
-			if err := os.MkdirAll(targetDir, 0o700); err != nil {
-				t.Fatalf("couldn't create directory %s in worktree: %v", targetDir, err)
-			}
-		} else if err != nil {
-			t.Fatalf("checking if directory %s in worktree exists: %v", targetDir, err)
-		}
-		if fi != nil && !fi.IsDir() {
-			t.Fatalf("%s already exists but is not a directory", targetDir)
-		}
-	}
-
-	outfile := filepath.Join(targetDir, filename)
-	if err := os.WriteFile(outfile, content, 0o600); err != nil {
-		t.Fatalf("couldn't write content to file %s: %v", outfile, err)
-	}
-
-	_, err := worktree.Add(filepath.Join(subPath, filename))
-	if err != nil {
-		t.Fatalf("couldn't add file %s to git: %v", outfile, err)
-	}
-
-	hash, err := worktree.Commit("adding file for test", &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Someone",
-			Email: "someone@example.com",
-			When:  time.Now(),
-		},
-	})
-	if err != nil {
-		t.Fatalf("couldn't perform commit for test: %v", err)
-	}
-
-	return hash
-}
-
-// withTemporaryGitConfig resets the .gitconfig for the duration of the test.
-func withTemporaryGitConfig(t *testing.T) {
-	t.Helper()
-	gitConfigDir := t.TempDir()
-	key := "GIT_CONFIG_GLOBAL"
-	t.Setenv(key, filepath.Join(gitConfigDir, "config"))
 }
 
 func createRequest(args *params) *v1beta1.ResolutionRequest {
@@ -922,6 +814,16 @@ func createRequest(args *params) *v1beta1.ResolutionRequest {
 			Name:  UrlParam,
 			Value: *pipelinev1.NewStructuredValues(args.url),
 		})
+		if args.gitToken != "" {
+			rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
+				Name:  GitTokenParam,
+				Value: *pipelinev1.NewStructuredValues(args.gitToken),
+			})
+			rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
+				Name:  GitTokenKeyParam,
+				Value: *pipelinev1.NewStructuredValues(args.gitTokenKey),
+			})
+		}
 	} else {
 		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
 			Name:  RepoParam,
@@ -1143,7 +1045,7 @@ func TestGetScmConfigForParamConfigKey(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := framework.InjectResolverConfigToContext(context.Background(), tc.config)
+			ctx := framework.InjectResolverConfigToContext(t.Context(), tc.config)
 			gitResolverConfig, err := GetScmConfigForParamConfigKey(ctx, tc.params)
 			if tc.wantErr {
 				if err == nil {

@@ -135,7 +135,7 @@ func TestPipelineTask_OnError(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -347,7 +347,7 @@ func TestPipelineTask_ValidateRefOrSpec(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -422,7 +422,7 @@ func TestPipelineTask_ValidateRefOrSpec_APIVersionsCompatibility(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if test.wc != nil {
 				ctx = test.wc(ctx)
 			}
@@ -447,7 +447,7 @@ func TestPipelineTask_ValidateCustomTask(t *testing.T) {
 		expectedError apis.FieldError
 	}{{
 		name: "custom task - taskRef without kind",
-		task: PipelineTask{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "", Name: ""}},
+		task: PipelineTask{Name: "foo", TaskRef: &TaskRef{APIVersion: "example/v0", Kind: "", Name: ""}},
 		expectedError: apis.FieldError{
 			Message: `invalid value: custom task ref must specify kind`,
 			Paths:   []string{"taskRef.kind"},
@@ -456,7 +456,7 @@ func TestPipelineTask_ValidateCustomTask(t *testing.T) {
 		name: "custom task - taskSpec without kind",
 		task: PipelineTask{Name: "foo", TaskSpec: &EmbeddedTask{
 			TypeMeta: runtime.TypeMeta{
-				APIVersion: "example.dev/v0",
+				APIVersion: "example/v0",
 				Kind:       "",
 			},
 		}},
@@ -483,6 +483,39 @@ func TestPipelineTask_ValidateCustomTask(t *testing.T) {
 			Message: `invalid value: custom task ref must specify apiVersion`,
 			Paths:   []string{"taskRef.apiVersion"},
 		},
+	}, {
+		name: "custom task - taskRef with invalid apiVersion format",
+		task: PipelineTask{Name: "foo", TaskRef: &TaskRef{APIVersion: "invalid-api-version", Kind: "some-kind", Name: ""}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalid apiVersion format "invalid-api-version", must be in the format "group/version"`,
+			Paths:   []string{"taskRef.apiVersion"},
+		},
+	}, {
+		name: "custom task - taskSpec with invalid apiVersion format",
+		task: PipelineTask{Name: "foo", TaskSpec: &EmbeddedTask{
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: "no-slash-no-dot",
+				Kind:       "some-kind",
+			},
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalid apiVersion format "no-slash-no-dot", must be in the format "group/version"`,
+			Paths:   []string{"taskSpec.apiVersion"},
+		},
+	}, {
+		name: "custom task - taskRef with empty group in apiVersion",
+		task: PipelineTask{Name: "foo", TaskRef: &TaskRef{APIVersion: "/v1", Kind: "some-kind", Name: ""}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalid apiVersion format "/v1", must be in the format "group/version"`,
+			Paths:   []string{"taskRef.apiVersion"},
+		},
+	}, {
+		name: "custom task - taskRef with empty version in apiVersion",
+		task: PipelineTask{Name: "foo", TaskRef: &TaskRef{APIVersion: "example/", Kind: "some-kind", Name: ""}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalid apiVersion format "example/", must be in the format "group/version"`,
+			Paths:   []string{"taskRef.apiVersion"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -492,6 +525,38 @@ func TestPipelineTask_ValidateCustomTask(t *testing.T) {
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("PipelineTaskList.ValidateCustomTask() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestPipelineTask_ValidateCustomTask_ValidAPIVersion(t *testing.T) {
+	tests := []struct {
+		name string
+		task PipelineTask
+	}{{
+		name: "custom task - valid apiVersion with group/version",
+		task: PipelineTask{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v1", Kind: "Example", Name: "example"}},
+	}, {
+		name: "custom task - valid apiVersion with multi-level group",
+		task: PipelineTask{Name: "foo", TaskRef: &TaskRef{APIVersion: "custom.tekton.dev/v1beta1", Kind: "Custom", Name: "custom"}},
+	}, {
+		name: "custom task - valid apiVersion without dots in group",
+		task: PipelineTask{Name: "foo", TaskRef: &TaskRef{APIVersion: "example/v1", Kind: "Example", Name: "example"}},
+	}, {
+		name: "custom task - valid apiVersion in taskSpec",
+		task: PipelineTask{Name: "foo", TaskSpec: &EmbeddedTask{
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: "example.io/v2",
+				Kind:       "CustomTask",
+			},
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.task.validateCustomTask()
+			if err != nil {
+				t.Errorf("PipelineTask.validateCustomTask() returned unexpected error: %v", err)
 			}
 		})
 	}
@@ -558,7 +623,7 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := cfgtesting.SetFeatureFlags(context.Background(), t, tt.configMap)
+			ctx := cfgtesting.SetFeatureFlags(t.Context(), t, tt.configMap)
 			err := tt.tasks.validateTask(ctx)
 			if err != nil {
 				t.Errorf("PipelineTask.validateTask() returned error for valid pipeline task: %v", err)
@@ -669,7 +734,7 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := cfgtesting.SetFeatureFlags(context.Background(), t, tt.configMap)
+			ctx := cfgtesting.SetFeatureFlags(t.Context(), t, tt.configMap)
 			err := tt.task.validateTask(ctx)
 			if err == nil {
 				t.Error("PipelineTask.validateTask() did not return error for invalid pipeline task")
@@ -691,7 +756,7 @@ func TestPipelineTask_Validate_Failure(t *testing.T) {
 		name: "custom task reference in taskref missing apiversion Kind",
 		p: PipelineTask{
 			Name:    "invalid-custom-task",
-			TaskRef: &TaskRef{APIVersion: "example.com"},
+			TaskRef: &TaskRef{APIVersion: "example.com/v1"},
 		},
 		expectedError: apis.FieldError{
 			Message: `invalid value: custom task ref must specify kind`,
@@ -701,7 +766,7 @@ func TestPipelineTask_Validate_Failure(t *testing.T) {
 		name: "custom task reference in taskspec missing kind",
 		p: PipelineTask{Name: "foo", TaskSpec: &EmbeddedTask{
 			TypeMeta: runtime.TypeMeta{
-				APIVersion: "example.com",
+				APIVersion: "example.com/v1",
 			}}},
 		expectedError: *apis.ErrInvalidValue("custom task spec must specify kind", "taskSpec.kind"),
 	}, {
@@ -719,7 +784,7 @@ func TestPipelineTask_Validate_Failure(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -1127,7 +1192,7 @@ func TestPipelineTask_ValidateMatrix(t *testing.T) {
 				FeatureFlags: featureFlags,
 				Defaults:     defaults,
 			}
-			ctx := config.ToContext(context.Background(), cfg)
+			ctx := config.ToContext(t.Context(), cfg)
 			if d := cmp.Diff(tt.wantErrs.Error(), tt.pt.validateMatrix(ctx).Error()); d != "" {
 				t.Errorf("PipelineTask.validateMatrix() errors diff %s", diff.PrintWantGot(d))
 			}
@@ -1159,6 +1224,19 @@ func TestPipelineTask_ValidateEmbeddedOrType(t *testing.T) {
 						Steps: []Step{{
 							Name:  "foo",
 							Image: "bar",
+						}},
+					},
+				},
+			},
+		}, {
+			name: "just steps with DisplayName",
+			pt: PipelineTask{
+				TaskSpec: &EmbeddedTask{
+					TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:        "foo",
+							DisplayName: "step DisplayName",
+							Image:       "bar",
 						}},
 					},
 				},

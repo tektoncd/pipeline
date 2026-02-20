@@ -23,6 +23,29 @@ See the following for examples of specifying a Pod template:
 - [Specifying a Pod template for a `TaskRun`](./taskruns.md#specifying-a-pod-template)
 - [Specifying a Pod template for a `PipelineRun`](./pipelineruns.md#specifying-a-pod-template)
 
+## Parameter Substitution in Pod Templates
+
+When using Pod templates within `PipelineRun` [`taskRunSpecs`](./pipelineruns.md#specifying-taskrunspecs), you can use parameter substitution to dynamically configure Pod template fields based on pipeline parameters. This is particularly useful when working with [`Matrix`](./matrix.md) tasks that fan out with different parameter values.
+
+Parameter substitution uses the standard Tekton syntax `$(params.paramName)` and is supported in all Pod template fields that accept string values.
+
+Example with parameter substitution:
+```yaml
+taskRunSpecs:
+  - pipelineTaskName: build-task
+    podTemplate:
+      nodeSelector:
+        kubernetes.io/arch: $(params.arch)
+        environment: $(params.env)
+      tolerations:
+        - key: "workload-type"
+          operator: "Equal"
+          value: "$(params.workload)"
+          effect: "NoSchedule"
+```
+
+When used with Matrix tasks, each matrix combination will create a separate `TaskRun` with the parameter values substituted appropriately in the Pod template. For more information and examples, see [Matrix Support with taskRunSpecs](./pipelineruns.md#matrix-support-with-taskrunspecs).
+
 ## Supported fields
 
 Pod templates support fields listed in the table below.
@@ -94,12 +117,16 @@ Pod templates support fields listed in the table below.
                 pulling a container image</a>.</td>
 		</tr>
 		<tr>
-			<td><code>hostNetwork</code></td>
-			<td><b>Default:</b> <code>false</code>. Determines whether to use the host network namespace.</td>
-		</tr>
-		<tr>
-			<td><code>hostAliases</code></td>
-			<td>Adds entries to a Pod's `/etc/hosts` to provide Pod-level overrides of hostnames. For further info see [Kubernetes' docs for this field](https://kubernetes.io/docs/tasks/network/customize-hosts-file-for-pods/).</td>
+            <td><code>hostNetwork</code></td>
+            <td><b>Default:</b> <code>false</code>. Determines whether to use the host network namespace.</td>
+        </tr>
+        <tr>
+            <td><code>hostUsers</code></td>
+            <td><b>Default:</b> <code>true</code>. Determines whether to use the host's user namespace. When set to <code>false</code>, a new user namespace is created for the pod, providing better security isolation. This is useful for mitigating container breakout vulnerabilities. This field is alpha-level and requires the <code>UserNamespacesSupport</code> feature gate to be enabled on the Kubernetes cluster (available in Kubernetes 1.25+).</td>
+        </tr>
+        <tr>
+            <td><code>hostAliases</code></td>
+            <td>Adds entries to a Pod's `/etc/hosts` to provide Pod-level overrides of hostnames. For further info see [Kubernetes' docs for this field](https://kubernetes.io/docs/tasks/network/customize-hosts-file-for-pods/).</td>
 		</tr>
         <tr>
             <td><code>topologySpreadConstraints</code></td>

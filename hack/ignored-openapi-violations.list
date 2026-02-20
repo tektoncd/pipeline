@@ -61,3 +61,6 @@ API rule violation: list_type_missing,github.com/tektoncd/pipeline/pkg/apis/pipe
 API rule violation: list_type_missing,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,Artifacts,Outputs
 API rule violation: list_type_missing,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1,Artifacts,Inputs
 API rule violation: list_type_missing,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1,Artifacts,Outputs
+API rule violation: streaming_list_type_json_tags,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,PipelineRunList,Items
+API rule violation: streaming_list_type_json_tags,github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1,ResolutionRequestList,ListMeta
+API rule violation: streaming_list_type_json_tags,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1,PipelineRunList,Items

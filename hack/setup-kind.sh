@@ -30,7 +30,7 @@ function abort() {
 }
 
 # Defaults
-K8S_VERSION="v1.28.x"
+K8S_VERSION="v1.30.x"
 REGISTRY_NAME="registry.local"
 REGISTRY_PORT="5000"
 CLUSTER_SUFFIX="cluster.local"
@@ -84,34 +84,39 @@ fi
 
 # The version map correlated with this version of KinD
 case ${K8S_VERSION} in
-  v1.25.x)
-    K8S_VERSION="1.25.16"
-    KIND_IMAGE_SHA="sha256:5da57dfc290ac3599e775e63b8b6c49c0c85d3fec771cd7d55b45fae14b38d3b"
-    KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
-    ;;
-  v1.26.x)
-    K8S_VERSION="1.26.15"
-    KIND_IMAGE_SHA="sha256:84333e26cae1d70361bb7339efb568df1871419f2019c80f9a12b7e2d485fe19"
-    KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
-    ;;
-  v1.27.x)
-    K8S_VERSION="1.27.13"
-    KIND_IMAGE_SHA="sha256:17439fa5b32290e3ead39ead1250dca1d822d94a10d26f1981756cd51b24b9d8"
-    KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
-    ;;
   v1.28.x)
     K8S_VERSION="1.28.9"
     KIND_IMAGE_SHA="sha256:dca54bc6a6079dd34699d53d7d4ffa2e853e46a20cd12d619a09207e35300bd0"
     KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
     ;;
   v1.29.x)
-    K8S_VERSION="1.29.4"
-    KIND_IMAGE_SHA="sha256:3abb816a5b1061fb15c6e9e60856ec40d56b7b52bcea5f5f1350bc6e2320b6f8"
+    K8S_VERSION="1.29.14"
+    KIND_IMAGE_SHA="sha256:8703bd94ee24e51b778d5556ae310c6c0fa67d761fae6379c8e0bb480e6fea29"
     KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
     ;;
   v1.30.x)
-    K8S_VERSION="1.30.0"
-    KIND_IMAGE_SHA="sha256:047357ac0cfea04663786a612ba1eaba9702bef25227a794b52890dd8bcd692e"
+    K8S_VERSION="1.30.13"
+    KIND_IMAGE_SHA="sha256:397209b3d947d154f6641f2d0ce8d473732bd91c87d9575ade99049aa33cd648"
+    KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
+    ;;
+  v1.31.x)
+    K8S_VERSION="1.31.12"
+    KIND_IMAGE_SHA="sha256:0f5cc49c5e73c0c2bb6e2df56e7df189240d83cf94edfa30946482eb08ec57d2"
+    KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
+    ;;
+  v1.32.x)
+    K8S_VERSION="1.32.8"
+    KIND_IMAGE_SHA="sha256:abd489f042d2b644e2d033f5c2d900bc707798d075e8186cb65e3f1367a9d5a1"
+    KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
+    ;;
+  v1.33.x)
+    K8S_VERSION="1.33.4"
+    KIND_IMAGE_SHA="sha256:0f5cc49c5e73c0c2bb6e2df56e7df189240d83cf94edfa30946482eb08ec57d2"
+    KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
+    ;;
+  v1.34.x)
+    K8S_VERSION="1.34.0"
+    KIND_IMAGE_SHA="sha256:7416a61b42b1662ca6ca89f02028ac133a309a2a30ba309614e8ec94d976dc5a"
     KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
     ;;
   *) abort "Unsupported version: ${K8S_VERSION}" ;;
@@ -130,6 +135,8 @@ kind: Cluster
 nodes:
 - role: control-plane
   image: "${KIND_IMAGE}"
+  labels:
+    node-type: "control-plane"
 EOF
 
 for i in $(seq 1 1 "${NODE_COUNT}");
@@ -137,6 +144,8 @@ do
   cat >> kind.yaml <<EOF
 - role: worker
   image: "${KIND_IMAGE}"
+  labels:
+    node-type: "worker-${i}"
 EOF
 done
 

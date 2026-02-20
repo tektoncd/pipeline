@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	scheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,31 +37,32 @@ type VerificationPoliciesGetter interface {
 
 // VerificationPolicyInterface has methods to work with VerificationPolicy resources.
 type VerificationPolicyInterface interface {
-	Create(ctx context.Context, verificationPolicy *v1alpha1.VerificationPolicy, opts v1.CreateOptions) (*v1alpha1.VerificationPolicy, error)
-	Update(ctx context.Context, verificationPolicy *v1alpha1.VerificationPolicy, opts v1.UpdateOptions) (*v1alpha1.VerificationPolicy, error)
+	Create(ctx context.Context, verificationPolicy *pipelinev1alpha1.VerificationPolicy, opts v1.CreateOptions) (*pipelinev1alpha1.VerificationPolicy, error)
+	Update(ctx context.Context, verificationPolicy *pipelinev1alpha1.VerificationPolicy, opts v1.UpdateOptions) (*pipelinev1alpha1.VerificationPolicy, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.VerificationPolicy, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.VerificationPolicyList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*pipelinev1alpha1.VerificationPolicy, error)
+	List(ctx context.Context, opts v1.ListOptions) (*pipelinev1alpha1.VerificationPolicyList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.VerificationPolicy, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *pipelinev1alpha1.VerificationPolicy, err error)
 	VerificationPolicyExpansion
 }
 
 // verificationPolicies implements VerificationPolicyInterface
 type verificationPolicies struct {
-	*gentype.ClientWithList[*v1alpha1.VerificationPolicy, *v1alpha1.VerificationPolicyList]
+	*gentype.ClientWithList[*pipelinev1alpha1.VerificationPolicy, *pipelinev1alpha1.VerificationPolicyList]
 }
 
 // newVerificationPolicies returns a VerificationPolicies
 func newVerificationPolicies(c *TektonV1alpha1Client, namespace string) *verificationPolicies {
 	return &verificationPolicies{
-		gentype.NewClientWithList[*v1alpha1.VerificationPolicy, *v1alpha1.VerificationPolicyList](
+		gentype.NewClientWithList[*pipelinev1alpha1.VerificationPolicy, *pipelinev1alpha1.VerificationPolicyList](
 			"verificationpolicies",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.VerificationPolicy { return &v1alpha1.VerificationPolicy{} },
-			func() *v1alpha1.VerificationPolicyList { return &v1alpha1.VerificationPolicyList{} }),
+			func() *pipelinev1alpha1.VerificationPolicy { return &pipelinev1alpha1.VerificationPolicy{} },
+			func() *pipelinev1alpha1.VerificationPolicyList { return &pipelinev1alpha1.VerificationPolicyList{} },
+		),
 	}
 }

@@ -766,7 +766,8 @@ PipelineSpec
 <td>
 <em>(Optional)</em>
 <p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<code>disable-inline-spec</code> feature flag.
+See Pipeline.spec (API version: tekton.dev/v1)</p>
 </td>
 </tr>
 <tr>
@@ -1004,7 +1005,8 @@ source mounted into /workspace.</p>
 </td>
 <td>
 <p>Volumes is a collection of volumes that are available to mount into the
-steps of the build.</p>
+steps of the build.
+See Pod.spec.volumes (API version: v1)</p>
 </td>
 </tr>
 <tr>
@@ -1189,8 +1191,9 @@ TaskSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<p>Specifying TaskSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag.
+See Task.spec (API version: tekton.dev/v1)</p>
 </td>
 </tr>
 <tr>
@@ -2401,7 +2404,8 @@ PipelineSpec
 <td>
 <em>(Optional)</em>
 <p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<code>disable-inline-spec</code> feature flag.
+See Pipeline.spec (API version: tekton.dev/v1)</p>
 </td>
 </tr>
 <tr>
@@ -2618,7 +2622,8 @@ PipelineSpec
 </em>
 </td>
 <td>
-<p>PipelineRunSpec contains the exact spec used to instantiate the run</p>
+<p>PipelineSpec contains the exact spec used to instantiate the run.
+See Pipeline.spec (API version: tekton.dev/v1)</p>
 </td>
 </tr>
 <tr>
@@ -2942,7 +2947,8 @@ EmbeddedTask
 <em>(Optional)</em>
 <p>TaskSpec is a specification of a task
 Specifying TaskSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<code>disable-inline-spec</code> feature flag.
+See Task.spec (API version: tekton.dev/v1)</p>
 </td>
 </tr>
 <tr>
@@ -3071,7 +3077,8 @@ PipelineSpec
 <p>PipelineSpec is a specification of a pipeline
 Note: PipelineSpec is in preview mode and not yet supported
 Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<code>disable-inline-spec</code> feature flag.
+See Pipeline.spec (API version: tekton.dev/v1)</p>
 </td>
 </tr>
 <tr>
@@ -3313,6 +3320,21 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <p>Compute resources to use for this TaskRun</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeout</code><br/>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time after which the TaskRun times out.
+Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
 </tr>
 </tbody>
@@ -4367,6 +4389,19 @@ Each Step in a Task must have a unique name.</p>
 </tr>
 <tr>
 <td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisplayName is a user-facing name of the step that may be
+used to populate a UI.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>image</code><br/>
 <em>
 string
@@ -4673,7 +4708,6 @@ Params
 <td>
 <em>(Optional)</em>
 <p>Results declares StepResults produced by the Step.</p>
-<p>This is field is at an ALPHA stability level and gated by &ldquo;enable-step-actions&rdquo; feature flag.</p>
 <p>It can be used in an inlined Step when used to store Results to $(step.results.resultName.path).
 It cannot be used when referencing StepActions using [v1.Step.Ref].
 The Results declared by the StepActions will be stored here instead.</p>
@@ -4732,7 +4766,6 @@ string
 </p>
 <div>
 <p>StepResult used to describe the Results of a Step.</p>
-<p>This is field is at an BETA stability level and gated by &ldquo;enable-step-actions&rdquo; feature flag.</p>
 </div>
 <table>
 <thead>
@@ -5170,11 +5203,7 @@ failed step will not exit</p>
 <th>Description</th>
 </tr>
 </thead>
-<tbody><tr><td><p>&#34;ClusterTask&#34;</p></td>
-<td><p>ClusterTaskRefKind is the task type for a reference to a task with cluster scope.
-ClusterTasks are not supported in v1, but v1 types may reference ClusterTasks.</p>
-</td>
-</tr><tr><td><p>&#34;Task&#34;</p></td>
+<tbody><tr><td><p>&#34;Task&#34;</p></td>
 <td><p>NamespacedTaskKind indicates that the task type has a namespaced scope.</p>
 </td>
 </tr></tbody>
@@ -5641,8 +5670,9 @@ TaskSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<p>Specifying TaskSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag.
+See Task.spec (API version: tekton.dev/v1)</p>
 </td>
 </tr>
 <tr>
@@ -6148,7 +6178,8 @@ source mounted into /workspace.</p>
 </td>
 <td>
 <p>Volumes is a collection of volumes that are available to mount into the
-steps of the build.</p>
+steps of the build.
+See Pod.spec.volumes (API version: v1)</p>
 </td>
 </tr>
 <tr>
@@ -6392,7 +6423,8 @@ Kubernetes core/v1.PersistentVolumeClaim
 <td>
 <em>(Optional)</em>
 <p>VolumeClaimTemplate is a template for a claim that will be created in the same namespace.
-The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.</p>
+The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.
+See PersistentVolumeClaim (API version: v1)</p>
 </td>
 </tr>
 <tr>
@@ -8470,8 +8502,6 @@ controller.</p>
 </div>
 Resource Types:
 <ul><li>
-<a href="#tekton.dev/v1beta1.ClusterTask">ClusterTask</a>
-</li><li>
 <a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>
 </li><li>
 <a href="#tekton.dev/v1beta1.Pipeline">Pipeline</a>
@@ -8484,215 +8514,6 @@ Resource Types:
 </li><li>
 <a href="#tekton.dev/v1beta1.TaskRun">TaskRun</a>
 </li></ul>
-<h3 id="tekton.dev/v1beta1.ClusterTask">ClusterTask
-</h3>
-<div>
-<p>ClusterTask is a Task with a cluster scope. ClusterTasks are used to
-represent Tasks that should be publicly addressable from any namespace in the
-cluster.</p>
-<p>Deprecated: Please use the cluster resolver instead.</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>apiVersion</code><br/>
-string</td>
-<td>
-<code>
-tekton.dev/v1beta1
-</code>
-</td>
-</tr>
-<tr>
-<td>
-<code>kind</code><br/>
-string
-</td>
-<td><code>ClusterTask</code></td>
-</tr>
-<tr>
-<td>
-<code>metadata</code><br/>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
-Kubernetes meta/v1.ObjectMeta
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-Refer to the Kubernetes API documentation for the fields of the
-<code>metadata</code> field.
-</td>
-</tr>
-<tr>
-<td>
-<code>spec</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.TaskSpec">
-TaskSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Spec holds the desired state of the Task from the client</p>
-<br/>
-<br/>
-<table>
-<tr>
-<td>
-<code>resources</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.TaskResources">
-TaskResources
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Resources is a list input and output resource to run the task
-Resources are represented in TaskRuns as bindings to instances of
-PipelineResources.</p>
-<p>Deprecated: Unused, preserved only for backwards compatibility</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>params</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.ParamSpecs">
-ParamSpecs
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Params is a list of input parameters required to run the task. Params
-must be supplied as inputs in TaskRuns unless they declare a default
-value.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>displayName</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>DisplayName is a user-facing name of the task that may be
-used to populate a UI.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>description</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Description is a user-facing description of the task that may be
-used to populate a UI.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>steps</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.Step">
-[]Step
-</a>
-</em>
-</td>
-<td>
-<p>Steps are the steps of the build; each step is run sequentially with the
-source mounted into /workspace.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>volumes</code><br/>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volume-v1-core">
-[]Kubernetes core/v1.Volume
-</a>
-</em>
-</td>
-<td>
-<p>Volumes is a collection of volumes that are available to mount into the
-steps of the build.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>stepTemplate</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.StepTemplate">
-StepTemplate
-</a>
-</em>
-</td>
-<td>
-<p>StepTemplate can be used as the basis for all step containers within the
-Task, so that the steps inherit settings on the base container.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>sidecars</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.Sidecar">
-[]Sidecar
-</a>
-</em>
-</td>
-<td>
-<p>Sidecars are run alongside the Task&rsquo;s step containers. They begin before
-the steps start and end after the steps complete.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>workspaces</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.WorkspaceDeclaration">
-[]WorkspaceDeclaration
-</a>
-</em>
-</td>
-<td>
-<p>Workspaces are the volumes that this Task requires.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>results</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.TaskResult">
-[]TaskResult
-</a>
-</em>
-</td>
-<td>
-<p>Results are values that this Task can output</p>
-</td>
-</tr>
-</table>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.CustomRun">CustomRun
 </h3>
 <div>
@@ -9156,7 +8977,8 @@ PipelineSpec
 <td>
 <em>(Optional)</em>
 <p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<code>disable-inline-spec</code> feature flag.
+See Pipeline.spec (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -9689,7 +9511,8 @@ source mounted into /workspace.</p>
 </td>
 <td>
 <p>Volumes is a collection of volumes that are available to mount into the
-steps of the build.</p>
+steps of the build.
+See Pod.spec.volumes (API version: v1)</p>
 </td>
 </tr>
 <tr>
@@ -9889,8 +9712,9 @@ TaskSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<p>Specifying TaskSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag.
+See Task.spec (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -11578,7 +11402,8 @@ PipelineSpec
 <td>
 <em>(Optional)</em>
 <p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<code>disable-inline-spec</code> feature flag.
+See Pipeline.spec (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -11872,7 +11697,8 @@ PipelineSpec
 </em>
 </td>
 <td>
-<p>PipelineRunSpec contains the exact spec used to instantiate the run</p>
+<p>PipelineSpec contains the exact spec used to instantiate the run.
+See Pipeline.spec (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -12212,7 +12038,8 @@ EmbeddedTask
 <em>(Optional)</em>
 <p>TaskSpec is a specification of a task
 Specifying TaskSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<code>disable-inline-spec</code> feature flag.
+See Task.spec (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -12354,8 +12181,9 @@ PipelineSpec
 <em>(Optional)</em>
 <p>PipelineSpec is a specification of a pipeline
 Note: PipelineSpec is in preview mode and not yet supported
-Specifying TaskSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+Specifying PipelineSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag.
+See Pipeline.spec (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -13701,6 +13529,19 @@ Each Step in a Task must have a unique name.</p>
 </tr>
 <tr>
 <td>
+<code>displayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisplayName is a user-facing name of the step that may be
+used to populate a UI.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>image</code><br/>
 <em>
 string
@@ -14175,7 +14016,6 @@ Params
 <td>
 <em>(Optional)</em>
 <p>Results declares StepResults produced by the Step.</p>
-<p>This is field is at an ALPHA stability level and gated by &ldquo;enable-step-actions&rdquo; feature flag.</p>
 <p>It can be used in an inlined Step when used to store Results to $(step.results.resultName.path).
 It cannot be used when referencing StepActions using [v1beta1.Step.Ref].
 The Results declared by the StepActions will be stored here instead.</p>
@@ -14967,7 +14807,7 @@ failed step will not exit</p>
 <h3 id="tekton.dev/v1beta1.TaskObject">TaskObject
 </h3>
 <div>
-<p>TaskObject is implemented by Task and ClusterTask</p>
+<p>TaskObject is implemented by Task</p>
 </div>
 <h3 id="tekton.dev/v1beta1.TaskRef">TaskRef
 </h3>
@@ -15008,8 +14848,7 @@ TaskKind
 <td>
 <p>TaskKind indicates the Kind of the Task:
 1. Namespaced Task when Kind is set to &ldquo;Task&rdquo;. If Kind is &ldquo;&rdquo;, it defaults to &ldquo;Task&rdquo;.
-2. Cluster-Scoped Task when Kind is set to &ldquo;ClusterTask&rdquo;
-3. Custom Task when Kind is non-empty and APIVersion is non-empty</p>
+2. Custom Task when Kind is non-empty and APIVersion is non-empty</p>
 </td>
 </tr>
 <tr>
@@ -15627,8 +15466,9 @@ TaskSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>Specifying PipelineSpec can be disabled by setting
-<code>disable-inline-spec</code> feature flag..</p>
+<p>Specifying TaskSpec can be disabled by setting
+<code>disable-inline-spec</code> feature flag.
+See Task.spec (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -15924,7 +15764,8 @@ CloudEventResource.</p>
 <td>
 <em>(Optional)</em>
 <p>RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
-All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.</p>
+All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
+See TaskRun.status (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -15979,7 +15820,8 @@ TaskSpec
 </em>
 </td>
 <td>
-<p>TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.</p>
+<p>TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.
+See Task.spec (API version tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>
@@ -16054,7 +15896,7 @@ Kubernetes core/v1.ResourceRequirements
 <h3 id="tekton.dev/v1beta1.TaskSpec">TaskSpec
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.ClusterTask">ClusterTask</a>, <a href="#tekton.dev/v1beta1.Task">Task</a>, <a href="#tekton.dev/v1beta1.EmbeddedTask">EmbeddedTask</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>, <a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Task">Task</a>, <a href="#tekton.dev/v1beta1.EmbeddedTask">EmbeddedTask</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>, <a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
 </p>
 <div>
 <p>TaskSpec defines the desired state of Task.</p>
@@ -16151,7 +15993,8 @@ source mounted into /workspace.</p>
 </td>
 <td>
 <p>Volumes is a collection of volumes that are available to mount into the
-steps of the build.</p>
+steps of the build.
+See Pod.spec.volumes (API version: v1)</p>
 </td>
 </tr>
 <tr>
@@ -16395,7 +16238,8 @@ Kubernetes core/v1.PersistentVolumeClaim
 <td>
 <em>(Optional)</em>
 <p>VolumeClaimTemplate is a template for a claim that will be created in the same namespace.
-The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.</p>
+The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.
+See PersistentVolumeClaim (API version: v1)</p>
 </td>
 </tr>
 <tr>
@@ -16822,7 +16666,8 @@ tasks in a pipeline.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>RetriesStatus contains the history of CustomRunStatus, in case of a retry.</p>
+<p>RetriesStatus contains the history of CustomRunStatus, in case of a retry.
+See CustomRun.status (API version: tekton.dev/v1beta1)</p>
 </td>
 </tr>
 <tr>

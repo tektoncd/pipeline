@@ -15,7 +15,7 @@ import (
 //
 // For general information about tags, including the format and syntax, see [Tagging Amazon Web Services resources] in
 // the Amazon Web Services General Reference. For information about using tags in
-// KMS, see [Tagging keys].
+// KMS, see [Tags in KMS].
 //
 // Cross-account use: No. You cannot perform this operation on a KMS key in a
 // different Amazon Web Services account.
@@ -35,9 +35,9 @@ import (
 // Eventual consistency: The KMS API follows an eventual consistency model. For
 // more information, see [KMS eventual consistency].
 //
-// [Tagging keys]: https://docs.aws.amazon.com/kms/latest/developerguide/tagging-keys.html
 // [kms:ListResourceTags]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
-// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
+// [Tags in KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/tagging-keys.html
+// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/accessing-kms.html#programming-eventual-consistency
 // [Tagging Amazon Web Services resources]: https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html
 func (c *Client) ListResourceTags(ctx context.Context, params *ListResourceTagsInput, optFns ...func(*Options)) (*ListResourceTagsOutput, error) {
 	if params == nil {
@@ -183,6 +183,9 @@ func (c *Client) addOperationListResourceTagsMiddlewares(stack *middleware.Stack
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpListResourceTagsValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -204,16 +207,13 @@ func (c *Client) addOperationListResourceTagsMiddlewares(stack *middleware.Stack
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

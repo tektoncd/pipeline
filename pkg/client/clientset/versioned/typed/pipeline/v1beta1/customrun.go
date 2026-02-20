@@ -19,9 +19,9 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	scheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,33 +37,34 @@ type CustomRunsGetter interface {
 
 // CustomRunInterface has methods to work with CustomRun resources.
 type CustomRunInterface interface {
-	Create(ctx context.Context, customRun *v1beta1.CustomRun, opts v1.CreateOptions) (*v1beta1.CustomRun, error)
-	Update(ctx context.Context, customRun *v1beta1.CustomRun, opts v1.UpdateOptions) (*v1beta1.CustomRun, error)
+	Create(ctx context.Context, customRun *pipelinev1beta1.CustomRun, opts v1.CreateOptions) (*pipelinev1beta1.CustomRun, error)
+	Update(ctx context.Context, customRun *pipelinev1beta1.CustomRun, opts v1.UpdateOptions) (*pipelinev1beta1.CustomRun, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, customRun *v1beta1.CustomRun, opts v1.UpdateOptions) (*v1beta1.CustomRun, error)
+	UpdateStatus(ctx context.Context, customRun *pipelinev1beta1.CustomRun, opts v1.UpdateOptions) (*pipelinev1beta1.CustomRun, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta1.CustomRun, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1beta1.CustomRunList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*pipelinev1beta1.CustomRun, error)
+	List(ctx context.Context, opts v1.ListOptions) (*pipelinev1beta1.CustomRunList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.CustomRun, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *pipelinev1beta1.CustomRun, err error)
 	CustomRunExpansion
 }
 
 // customRuns implements CustomRunInterface
 type customRuns struct {
-	*gentype.ClientWithList[*v1beta1.CustomRun, *v1beta1.CustomRunList]
+	*gentype.ClientWithList[*pipelinev1beta1.CustomRun, *pipelinev1beta1.CustomRunList]
 }
 
 // newCustomRuns returns a CustomRuns
 func newCustomRuns(c *TektonV1beta1Client, namespace string) *customRuns {
 	return &customRuns{
-		gentype.NewClientWithList[*v1beta1.CustomRun, *v1beta1.CustomRunList](
+		gentype.NewClientWithList[*pipelinev1beta1.CustomRun, *pipelinev1beta1.CustomRunList](
 			"customruns",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1beta1.CustomRun { return &v1beta1.CustomRun{} },
-			func() *v1beta1.CustomRunList { return &v1beta1.CustomRunList{} }),
+			func() *pipelinev1beta1.CustomRun { return &pipelinev1beta1.CustomRun{} },
+			func() *pipelinev1beta1.CustomRunList { return &pipelinev1beta1.CustomRunList{} },
+		),
 	}
 }

@@ -67,7 +67,7 @@ func TestUninitializedMetrics(t *testing.T) {
 		Status: corev1.ConditionUnknown,
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	if err := metrics.DurationAndCount(ctx, &v1.TaskRun{}, beforeCondition); err == nil {
 		t.Error("DurationCount recording expected to return error but got nil")
@@ -81,49 +81,109 @@ func TestUninitializedMetrics(t *testing.T) {
 }
 
 func TestOnStore(t *testing.T) {
-	log := zap.NewExample()
-	defer log.Sync()
-	logger := log.Sugar()
+	unregisterMetrics()
+	log := zap.NewExample().Sugar()
 
+	// 1. Initial state
+	initialCfg := &config.Config{Metrics: &config.Metrics{
+		TaskrunLevel:        config.TaskrunLevelAtTaskrun,
+		PipelinerunLevel:    config.PipelinerunLevelAtPipelinerun,
+		DurationTaskrunType: config.DurationTaskrunTypeLastValue,
+	}}
+	ctx := config.ToContext(t.Context(), initialCfg)
+	r, err := NewRecorder(ctx)
+	if err != nil {
+		t.Fatalf("NewRecorder failed: %v", err)
+	}
+	onStoreCallback := OnStore(log, r)
+
+	// Check initial state
+	if reflect.ValueOf(r.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
+		t.Fatalf("Initial insertTaskTag function is incorrect")
+	}
+	initialHash := r.hash
+
+	// 2. Call with wrong name - should not change anything
+	onStoreCallback("wrong-name", &config.Metrics{TaskrunLevel: config.TaskrunLevelAtNS})
+	if r.hash != initialHash {
+		t.Errorf("Hash changed after call with wrong name")
+	}
+	if reflect.ValueOf(r.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
+		t.Errorf("insertTaskTag changed after call with wrong name")
+	}
+
+	// 3. Call with wrong type - should log an error and not change anything
+	onStoreCallback(config.GetMetricsConfigName(), &config.Store{})
+	if r.hash != initialHash {
+		t.Errorf("Hash changed after call with wrong type")
+	}
+	if reflect.ValueOf(r.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
+		t.Errorf("insertTaskTag changed after call with wrong type")
+	}
+
+	// 4. Call with a valid new config - should change
+	newCfg := &config.Metrics{
+		TaskrunLevel:        config.TaskrunLevelAtNS,
+		PipelinerunLevel:    config.PipelinerunLevelAtNS,
+		DurationTaskrunType: config.DurationTaskrunTypeLastValue,
+	}
+	onStoreCallback(config.GetMetricsConfigName(), newCfg)
+	if r.hash == initialHash {
+		t.Errorf("Hash did not change after valid config update")
+	}
+	if reflect.ValueOf(r.insertTaskTag).Pointer() != reflect.ValueOf(nilInsertTag).Pointer() {
+		t.Errorf("insertTaskTag did not change after valid config update")
+	}
+	newHash := r.hash
+
+	// 5. Call with the same config again - should not change
+	onStoreCallback(config.GetMetricsConfigName(), newCfg)
+	if r.hash != newHash {
+		t.Errorf("Hash changed after second call with same config")
+	}
+	if reflect.ValueOf(r.insertTaskTag).Pointer() != reflect.ValueOf(nilInsertTag).Pointer() {
+		t.Errorf("insertTaskTag changed after second call with same config")
+	}
+
+	// 6. Call with an invalid config - should update hash but not insertTag
+	invalidCfg := &config.Metrics{TaskrunLevel: "invalid-level"}
+	onStoreCallback(config.GetMetricsConfigName(), invalidCfg)
+	if r.hash == newHash {
+		t.Errorf("Hash did not change after invalid config update")
+	}
+	// Because viewRegister fails, the insertTag function should not be updated and should remain `nilInsertTag` from the previous step.
+	if reflect.ValueOf(r.insertTaskTag).Pointer() != reflect.ValueOf(nilInsertTag).Pointer() {
+		t.Errorf("insertTag changed after invalid config update")
+	}
+}
+
+func TestUpdateConfig(t *testing.T) {
+	// Test that the config is updated when it changes, and not when it doesn't.
 	ctx := getConfigContext(false, false)
-	metrics, err := NewRecorder(ctx)
+	r, err := NewRecorder(ctx)
 	if err != nil {
 		t.Fatalf("NewRecorder: %v", err)
 	}
 
-	// We check that there's no change when incorrect config is passed
-	OnStore(logger, metrics)(config.GetMetricsConfigName(), &config.Store{})
-	// Comparing function assign to struct with the one which should yield same value
-	if reflect.ValueOf(metrics.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
-		t.Fatalf("metrics recorder shouldn't change during this OnStore call")
+	// First, update with a new config.
+	newConfig := &config.Metrics{
+		TaskrunLevel: config.TaskrunLevelAtTask,
+	}
+	if !r.updateConfig(newConfig) {
+		t.Error("updateConfig should have returned true, but returned false")
 	}
 
-	// Config shouldn't change when incorrect config map is pass
-	cfg := &config.Metrics{
-		TaskrunLevel:            "foo",
-		PipelinerunLevel:        "bar",
-		DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
-		DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
+	// Then, update with the same config.
+	if r.updateConfig(newConfig) {
+		t.Error("updateConfig should have returned false, but returned true")
 	}
 
-	// We test that there's no change when incorrect values in configmap is passed
-	OnStore(logger, metrics)(config.GetMetricsConfigName(), cfg)
-	// Comparing function assign to struct with the one which should yield same value
-	if reflect.ValueOf(metrics.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
-		t.Fatalf("metrics recorder shouldn't change during this OnStore call")
+	// Finally, update with a different config.
+	differentConfig := &config.Metrics{
+		TaskrunLevel: config.TaskrunLevelAtNS,
 	}
-
-	// We test when we pass correct config
-	cfg = &config.Metrics{
-		TaskrunLevel:            config.TaskrunLevelAtNS,
-		PipelinerunLevel:        config.PipelinerunLevelAtNS,
-		DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
-		DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
-	}
-
-	OnStore(logger, metrics)(config.GetMetricsConfigName(), cfg)
-	if reflect.ValueOf(metrics.insertTaskTag).Pointer() != reflect.ValueOf(nilInsertTag).Pointer() {
-		t.Fatalf("metrics recorder didn't change during OnStore call")
+	if !r.updateConfig(differentConfig) {
+		t.Error("updateConfig should have returned true, but returned false")
 	}
 }
 
@@ -180,42 +240,6 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 			}},
 			Spec: v1.TaskRunSpec{
 				TaskSpec: &v1.TaskSpec{},
-			},
-			Status: v1.TaskRunStatus{
-				Status: duckv1.Status{
-					Conditions: duckv1.Conditions{{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionTrue,
-					}},
-				},
-				TaskRunStatusFields: v1.TaskRunStatusFields{
-					StartTime:      &startTime,
-					CompletionTime: &completionTime,
-				},
-			},
-		},
-		metricName: "taskrun_duration_seconds",
-		expectedDurationTags: map[string]string{
-			"task":      "task-1",
-			"taskrun":   "taskrun-1",
-			"namespace": "ns",
-			"status":    "success",
-		},
-		expectedCountTags: map[string]string{
-			"status": "success",
-		},
-		expectedDuration: 60,
-		expectedCount:    1,
-		beforeCondition:  nil,
-		countWithReason:  false,
-	}, {
-		name: "for succeeded taskrun create by pipelinerun",
-		taskRun: &v1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns", Labels: map[string]string{
-				pipeline.ClusterTaskLabelKey: "task-1",
-			}},
-			Spec: v1.TaskRunSpec{
-				TaskRef: &v1.TaskRef{Kind: v1.ClusterTaskRefKind},
 			},
 			Status: v1.TaskRunStatus{
 				Status: duckv1.Status{
@@ -532,11 +556,9 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 				t.Errorf("DurationAndCount: %v", err)
 			}
 			if c.expectedCountTags != nil {
-				metricstest.CheckCountData(t, "taskrun_count", c.expectedCountTags, c.expectedCount)
 				delete(c.expectedCountTags, "reason")
 				metricstest.CheckCountData(t, "taskrun_total", c.expectedCountTags, c.expectedCount)
 			} else {
-				metricstest.CheckStatsNotReported(t, "taskrun_count")
 				metricstest.CheckStatsNotReported(t, "taskrun_total")
 			}
 			if c.expectedDurationTags != nil {
@@ -586,7 +608,6 @@ func TestRecordRunningTaskRunsCount(t *testing.T) {
 	if err := metrics.RunningTaskRuns(ctx, informer.Lister()); err != nil {
 		t.Errorf("RunningTaskRuns: %v", err)
 	}
-	metricstest.CheckLastValueData(t, "running_taskruns_count", map[string]string{}, 1)
 }
 
 func TestRecordRunningTaskRunsThrottledCounts(t *testing.T) {
@@ -703,13 +724,11 @@ func TestRecordRunningTaskRunsThrottledCounts(t *testing.T) {
 		if err := metrics.RunningTaskRuns(ctx, informer.Lister()); err != nil {
 			t.Errorf("RunningTaskRuns: %v", err)
 		}
-		metricstest.CheckLastValueData(t, "running_taskruns_throttled_by_quota_count", map[string]string{}, tc.quotaCount)
 		nsMap := map[string]string{}
 		if tc.addNS {
 			nsMap = map[string]string{namespaceTag.Name(): "test"}
 		}
 		metricstest.CheckLastValueData(t, "running_taskruns_throttled_by_quota", nsMap, tc.quotaCount)
-		metricstest.CheckLastValueData(t, "running_taskruns_throttled_by_node_count", map[string]string{}, tc.nodeCount)
 		metricstest.CheckLastValueData(t, "running_taskruns_throttled_by_node", nsMap, tc.nodeCount)
 		metricstest.CheckLastValueData(t, "running_taskruns_waiting_on_task_resolution_count", map[string]string{}, tc.waitCount)
 	}
@@ -904,7 +923,7 @@ func TestTaskRunIsOfPipelinerun(t *testing.T) {
 }
 
 func unregisterMetrics() {
-	metricstest.Unregister("taskrun_duration_seconds", "pipelinerun_taskrun_duration_seconds", "taskrun_count", "running_taskruns_count", "running_taskruns_throttled_by_quota_count", "running_taskruns_throttled_by_node_count", "running_taskruns_waiting_on_task_resolution_count", "taskruns_pod_latency_milliseconds", "taskrun_total", "running_taskruns", "running_taskruns_throttled_by_quota", "running_taskruns_throttled_by_node", "running_taskruns_waiting_on_task_resolution")
+	metricstest.Unregister("taskrun_duration_seconds", "pipelinerun_taskrun_duration_seconds", "running_taskruns_waiting_on_task_resolution_count", "taskruns_pod_latency_milliseconds", "taskrun_total", "running_taskruns", "running_taskruns_throttled_by_quota", "running_taskruns_throttled_by_node")
 
 	// Allow the recorder singleton to be recreated.
 	once = sync.Once{}

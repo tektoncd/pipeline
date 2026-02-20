@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2023 The Tekton Authors
@@ -198,16 +197,17 @@ status:
 
 // TestSimpleTaskRun creates a taskRun with a basic task and verifies the
 // runs created are successful and as expected.
+// @test:execution=parallel
 func TestSimpleTaskRun(t *testing.T) {
 	t.Parallel()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	c, namespace := setup(ctx, t)
 
 	taskRunName := helpers.ObjectNameForTest(t)
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
-	defer tearDown(context.Background(), t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t.Context(), t, c, namespace) }, t.Logf)
+	defer tearDown(t.Context(), t, c, namespace)
 
 	t.Logf("Creating Task in namespace %s", namespace)
 	task := parse.MustParseV1Task(t, fmt.Sprintf(simpleTaskYaml, task1Name, namespace))
@@ -238,14 +238,15 @@ func TestSimpleTaskRun(t *testing.T) {
 
 // TestSimplePipelineRun creates a pipelineRun with a basic Pipeline
 // and verifies the runs created are successful and as expected.
+// @test:execution=parallel
 func TestSimplePipelineRun(t *testing.T) {
 	t.Parallel()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	c, namespace := setup(ctx, t)
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
-	defer tearDown(context.Background(), t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t.Context(), t, c, namespace) }, t.Logf)
+	defer tearDown(t.Context(), t, c, namespace)
 
 	t.Logf("Creating Task in namespace %s", namespace)
 	task := parse.MustParseV1Task(t, fmt.Sprintf(simpleTaskYaml, task1Name, namespace))

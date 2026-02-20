@@ -4,14 +4,22 @@ kind: PipelineRun
 metadata:
   generateName: http-resolver-
 spec:
+  workspaces:
+    - name: output
+      emptyDir: {}
   pipelineSpec:
+    workspaces:
+      - name: output
     tasks:
       - name: http-resolver
         taskRef:
           resolver: http
           params:
             - name: url
-              value: https://api.hub.tekton.dev/v1/resource/tekton/task/tkn/0.4/raw
+              value: https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.10/git-clone.yaml
         params:
-          - name: ARGS
-            value: ["version"]
+          - name: url
+            value: "https://github.com/kelseyhightower/nocode"
+        workspaces:
+          - name: output
+            workspace: output

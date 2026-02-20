@@ -67,7 +67,7 @@ spec:
       mountPath: /messages
     sidecars:
     - name: server
-      image: docker.io/alpine/git:v2.26.2
+      image: mirror.gcr.io/alpine/git:v2.26.2
       securityContext:
         runAsUser: 0
       script: |
@@ -107,7 +107,7 @@ spec:
     - name: setup
       # This Step is only necessary as part of the test, it's not something you'll
       # ever need in a real-world scenario involving an external git repo.
-      image: docker.io/alpine/git:v2.26.2
+      image: mirror.gcr.io/alpine/git:v2.26.2
       securityContext:
         runAsUser: 0
       script: |
@@ -123,7 +123,7 @@ spec:
           sleep 1
         done
     - name: git-clone-and-push
-      image: docker.io/alpine/git:v2.26.2
+      image: mirror.gcr.io/alpine/git:v2.26.2
       securityContext:
         runAsUser: 0
       workingDir: /root
@@ -161,7 +161,7 @@ spec:
         git commit -m "Test commit!"
         git push origin master
     - name: git-clone-and-check
-      image: gcr.io/tekton-releases/dogfooding/alpine-git-nonroot:latest
+      image: ghcr.io/tektoncd/plumbing/alpine-git-nonroot:latest
       # Because this Step runs with a non-root security context, the creds-init
       # credentials will fail to copy into /tekton/home. This happens because
       # our previous step _already_ wrote to /tekton/home and ran as a root

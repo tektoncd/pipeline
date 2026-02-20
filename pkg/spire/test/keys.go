@@ -22,8 +22,6 @@ import (
 	"crypto/rand"
 	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 // Methods to generate private keys. If generation starts slowing down test
@@ -32,7 +30,9 @@ import (
 // NewEC256Key returns an ECDSA key over the P256 curve
 func NewEC256Key(tb testing.TB) *ecdsa.PrivateKey {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(tb, err)
+	if err != nil {
+		tb.Fatalf("failed to marshal private key: %v", err)
+	}
 	return key
 }
 
@@ -40,7 +40,9 @@ func NewEC256Key(tb testing.TB) *ecdsa.PrivateKey {
 func NewKeyID(tb testing.TB) string {
 	choices := make([]byte, 32)
 	_, err := rand.Read(choices)
-	require.NoError(tb, err)
+	if err != nil {
+		tb.Fatalf("failed to marshal private key: %v", err)
+	}
 	return keyIDFromBytes(choices)
 }
 

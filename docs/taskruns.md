@@ -40,10 +40,10 @@ weight: 202
     - [Debug Environment](#debug-environment)
 - [Events](events.md#taskruns)
 - [Running a TaskRun Hermetically](hermetic.md)
+- [Delegating reconciliation](#delegating-reconciliation)
 - [Code examples](#code-examples)
   - [Example `TaskRun` with a referenced `Task`](#example-taskrun-with-a-referenced-task)
   - [Example `TaskRun` with an embedded `Task`](#example-taskrun-with-an-embedded-task)
-  - [Example of reusing a `Task`](#example-of-reusing-a-task)
   - [Example of Using custom `ServiceAccount` credentials](#example-of-using-custom-serviceaccount-credentials)
   - [Example of Running Step Containers as a Non Root User](#example-of-running-step-containers-as-a-non-root-user)
 <!-- /toc -->
@@ -77,8 +77,9 @@ A `TaskRun` definition supports the following fields:
   - [`workspaces`](#specifying-workspaces) - Specifies the physical volumes to use for the
     [`Workspaces`](workspaces.md#using-workspaces-in-tasks) declared by a `Task`.
   - [`debug`](#debugging-a-taskrun)- Specifies any breakpoints and debugging configuration for the `Task` execution.
-  - [`stepOverrides`](#overriding-task-steps-and-sidecars) - Specifies configuration to use to override the `Task`'s `Step`s.
-  - [`sidecarOverrides`](#overriding-task-steps-and-sidecars) - Specifies configuration to use to override the `Task`'s `Sidecar`s.
+  - [`stepSpecs`](#configuring-task-steps-and-sidecars-in-a-taskrun) - Specifies configuration to use to override the `Task`'s `Step`s.
+  - [`sidecarSpecs`](#configuring-task-steps-and-sidecars-in-a-taskrun) - Specifies configuration to use to override the `Task`'s `Sidecar`s.
+  - [`managedBy`](#delegating-reconciliation) - Specifies the controller responsible for managing this TaskRun's lifecycle.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -955,7 +956,6 @@ To better understand `TaskRuns`, study the following code examples:
 
 - [Example `TaskRun` with a referenced `Task`](#example-taskrun-with-a-referenced-task)
 - [Example `TaskRun` with an embedded `Task`](#example-taskrun-with-an-embedded-task)
-- [Example of reusing a `Task`](#example-of-reusing-a-task)
 - [Example of Using custom `ServiceAccount` credentials](#example-of-using-custom-serviceaccount-credentials)
 - [Example of Running Step Containers as a Non Root User](#example-of-running-step-containers-as-a-non-root-user)
 
@@ -1111,6 +1111,40 @@ the step's `securityContext` will be applied instead of what is specified at the
 this is available as a [TaskRun example](../examples/v1/taskruns/run-steps-as-non-root.yaml).
 
 More information about Pod and Container Security Contexts can be found via the [Kubernetes website](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).
+
+## Delegating reconciliation
+
+The `managedBy` field allows you to delegate the responsibility of managing a `TaskRun`'s lifecycle to an external controller. When this field is set to a value other than `"tekton.dev/pipeline"`, the Tekton Pipeline controller will ignore the `TaskRun`, allowing your external controller to take full control. This delegation enables several advanced use cases, such as implementing custom pipeline execution logic, integrating with external management tools, using advanced scheduling algorithms, or coordinating PipelineRuns across multiple clusters (like using [MultiKueue](https://kueue.sigs.k8s.io/docs/concepts/multikueue/)).
+
+### Example
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: externally-managed-task
+spec:
+  taskRef:
+    name: my-task
+  managedBy: "my-custom-controller"
+```
+
+### Behavior
+
+- **When `managedBy` is empty**: The Tekton Pipeline controller manages the TaskRun normally
+- **When `managedBy` is set to `"tekton.dev/pipeline"`**: The Tekton Pipeline controller manages the TaskRun normally
+- **When `managedBy` is set to any other value**: The Tekton Pipeline controller ignores the TaskRun completely
+- **Immutability**: The `managedBy` field is immutable and cannot be changed after creation
+
+### External controller responsibilities
+
+When you set `managedBy` to a custom value, your external controller is responsible for:
+
+- Creating and managing Pods
+- Updating TaskRun status
+- Handling timeouts and cancellations
+- Managing retries and error handling
+- Processing step results and artifacts
 
 ---
 

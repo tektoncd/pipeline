@@ -173,6 +173,13 @@ func schema_pkg_apis_pipeline_pod_AffinityAssistantTemplate(ref common.Reference
 							Format:      "",
 						},
 					},
+					"serviceAccountName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ServiceAccountName is the name of the ServiceAccount to use for the affinity assistant pod. If not specified, the affinity assistant will inherit the serviceAccountName from the PipelineRun's taskRunTemplate. If that is also not specified, the pod will use the namespace's default ServiceAccount. More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -246,26 +253,25 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 					},
 					"affinity": {
 						SchemaProps: spec.SchemaProps{
-							Description: "If specified, the pod's scheduling constraints",
+							Description: "If specified, the pod's scheduling constraints. See Pod.spec.affinity (API version: v1)",
 							Ref:         ref("k8s.io/api/core/v1.Affinity"),
 						},
 					},
 					"securityContext": {
 						SchemaProps: spec.SchemaProps{
-							Description: "SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field.",
+							Description: "SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field. See Pod.spec.securityContext (API version: v1)",
 							Ref:         ref("k8s.io/api/core/v1.PodSecurityContext"),
 						},
 					},
 					"volumes": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
-								"x-kubernetes-list-type":       "atomic",
 								"x-kubernetes-patch-merge-key": "name",
 								"x-kubernetes-patch-strategy":  "merge,retainKeys",
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes",
+							Description: "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes See Pod.spec.volumes (API version: v1)",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -366,6 +372,13 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 					"hostNetwork": {
 						SchemaProps: spec.SchemaProps{
 							Description: "HostNetwork specifies whether the pod may use the node network namespace",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"hostUsers": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HostUsers indicates whether the pod will use the host's user namespace. Optional: Default to true. If set to true or not present, the pod will be run in the host user namespace, useful for when the pod needs a feature only available to the host user namespace, such as loading a kernel module with CAP_SYS_MODULE. When set to false, a new user namespace is created for the pod. Setting false is useful to mitigating container breakout vulnerabilities such as allowing containers to run as root without their user having root privileges on the host. This field depends on the kubernetes feature gate UserNamespacesSupport being enabled.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -483,6 +496,11 @@ func schema_pkg_apis_pipeline_v1_Artifacts(ref common.ReferenceCallback) common.
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"inputs": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
@@ -496,6 +514,11 @@ func schema_pkg_apis_pipeline_v1_Artifacts(ref common.ReferenceCallback) common.
 						},
 					},
 					"outputs": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
@@ -615,11 +638,6 @@ func schema_pkg_apis_pipeline_v1_EmbeddedTask(ref common.ReferenceCallback) comm
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params is a list of input parameters required to run the task. Params must be supplied as inputs in TaskRuns unless they declare a default value.",
 							Type:        []string{"array"},
@@ -667,13 +685,8 @@ func schema_pkg_apis_pipeline_v1_EmbeddedTask(ref common.ReferenceCallback) comm
 						},
 					},
 					"volumes": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
-							Description: "Volumes is a collection of volumes that are available to mount into the steps of the build.",
+							Description: "Volumes is a collection of volumes that are available to mount into the steps of the build. See Pod.spec.volumes (API version: v1)",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -771,11 +784,6 @@ func schema_pkg_apis_pipeline_v1_IncludeParams(ref common.ReferenceCallback) com
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params takes only `Parameters` of type `\"string\"` The names of the `params` must match the names of the `params` in the underlying `Task`",
 							Type:        []string{"array"},
@@ -805,11 +813,6 @@ func schema_pkg_apis_pipeline_v1_Matrix(ref common.ReferenceCallback) common.Ope
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params is a list of parameters used to fan out the pipelineTask Params takes only `Parameters` of type `\"array\"` Each array element is supplied to the `PipelineTask` by substituting `params` of type `\"string\"` in the underlying `Task`. The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.",
 							Type:        []string{"array"},
@@ -824,11 +827,6 @@ func schema_pkg_apis_pipeline_v1_Matrix(ref common.ReferenceCallback) common.Ope
 						},
 					},
 					"include": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Include is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.",
 							Type:        []string{"array"},
@@ -1266,6 +1264,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunList(ref common.ReferenceCallback) c
 						},
 					},
 				},
+				Required: []string{"items"},
 			},
 		},
 		Dependencies: []string{
@@ -1364,16 +1363,11 @@ func schema_pkg_apis_pipeline_v1_PipelineRunSpec(ref common.ReferenceCallback) c
 					},
 					"pipelineSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
+							Description: "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag. See Pipeline.spec (API version: tekton.dev/v1)",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineSpec"),
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params is a list of parameter names and values.",
 							Type:        []string{"array"},
@@ -1443,6 +1437,13 @@ func schema_pkg_apis_pipeline_v1_PipelineRunSpec(ref common.ReferenceCallback) c
 									},
 								},
 							},
+						},
+					},
+					"managedBy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ManagedBy indicates which controller is responsible for reconciling this resource. If unset or set to \"tekton.dev/pipeline\", the default Tekton controller will manage this resource. This field is immutable.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -1536,7 +1537,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatus(ref common.ReferenceCallback)
 					},
 					"pipelineSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "PipelineRunSpec contains the exact spec used to instantiate the run",
+							Description: "PipelineSpec contains the exact spec used to instantiate the run. See Pipeline.spec (API version: tekton.dev/v1)",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineSpec"),
 						},
 					},
@@ -1654,7 +1655,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatusFields(ref common.ReferenceCal
 					},
 					"pipelineSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "PipelineRunSpec contains the exact spec used to instantiate the run",
+							Description: "PipelineSpec contains the exact spec used to instantiate the run. See Pipeline.spec (API version: tekton.dev/v1)",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineSpec"),
 						},
 					},
@@ -1820,11 +1821,6 @@ func schema_pkg_apis_pipeline_v1_PipelineSpec(ref common.ReferenceCallback) comm
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params declares a list of input parameters that must be supplied when this Pipeline is run.",
 							Type:        []string{"array"},
@@ -1939,7 +1935,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTask(ref common.ReferenceCallback) comm
 					},
 					"taskSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TaskSpec is a specification of a task Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag..",
+							Description: "TaskSpec is a specification of a task Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag. See Task.spec (API version: tekton.dev/v1)",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.EmbeddedTask"),
 						},
 					},
@@ -1985,11 +1981,6 @@ func schema_pkg_apis_pipeline_v1_PipelineTask(ref common.ReferenceCallback) comm
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Parameters declares parameters passed to this task.",
 							Type:        []string{"array"},
@@ -2030,7 +2021,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTask(ref common.ReferenceCallback) comm
 					},
 					"timeout": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Time after which the TaskRun times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+							Description: "Duration after which the TaskRun times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
@@ -2042,7 +2033,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTask(ref common.ReferenceCallback) comm
 					},
 					"pipelineSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "PipelineSpec is a specification of a pipeline Note: PipelineSpec is in preview mode and not yet supported Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
+							Description: "PipelineSpec is a specification of a pipeline Note: PipelineSpec is in preview mode and not yet supported Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag. See Pipeline.spec (API version: tekton.dev/v1)",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineSpec"),
 						},
 					},
@@ -2222,11 +2213,17 @@ func schema_pkg_apis_pipeline_v1_PipelineTaskRunSpec(ref common.ReferenceCallbac
 							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
 						},
 					},
+					"timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Duration after which the TaskRun times out. Overrides the timeout specified on the Task's spec if specified. Takes lower precedence to PipelineRun's `spec.timeouts.tasks` Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineTaskMetadata", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec", "k8s.io/api/core/v1.ResourceRequirements"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineTaskMetadata", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -2390,7 +2387,7 @@ func schema_pkg_apis_pipeline_v1_RefSource(ref common.ReferenceCallback) common.
 					},
 					"entryPoint": {
 						SchemaProps: spec.SchemaProps{
-							Description: "EntryPoint identifies the entry point into the build. This is often a path to a build definition file and/or a target label within that file. Example: \"task/git-clone/0.8/git-clone.yaml\"",
+							Description: "EntryPoint identifies the entry point into the build. This is often a path to a build definition file and/or a target label within that file. Example: \"task/git-clone/0.10/git-clone.yaml\"",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2416,11 +2413,6 @@ func schema_pkg_apis_pipeline_v1_ResolverRef(ref common.ReferenceCallback) commo
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params contains the parameters used to identify the referenced Tekton resource. Example entries might include \"repo\" or \"path\" but the set of params ultimately depends on the chosen resolver.",
 							Type:        []string{"array"},
@@ -2897,6 +2889,13 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 							Format:      "",
 						},
 					},
+					"displayName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisplayName is a user-facing name of the step that may be used to populate a UI.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"image": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Docker image name. More info: https://kubernetes.io/docs/concepts/containers/images",
@@ -3111,11 +3110,6 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params declares parameters passed to this step action.",
 							Type:        []string{"array"},
@@ -3136,7 +3130,7 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "Results declares StepResults produced by the Step.\n\nThis is field is at an ALPHA stability level and gated by \"enable-step-actions\" feature flag.\n\nIt can be used in an inlined Step when used to store Results to $(step.results.resultName.path). It cannot be used when referencing StepActions using [v1.Step.Ref]. The Results declared by the StepActions will be stored here instead.",
+							Description: "Results declares StepResults produced by the Step.\n\nIt can be used in an inlined Step when used to store Results to $(step.results.resultName.path). It cannot be used when referencing StepActions using [v1.Step.Ref]. The Results declared by the StepActions will be stored here instead.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -3195,7 +3189,7 @@ func schema_pkg_apis_pipeline_v1_StepResult(ref common.ReferenceCallback) common
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "StepResult used to describe the Results of a Step.\n\nThis is field is at an BETA stability level and gated by \"enable-step-actions\" feature flag.",
+				Description: "StepResult used to describe the Results of a Step.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"name": {
@@ -3969,11 +3963,6 @@ func schema_pkg_apis_pipeline_v1_TaskRunSpec(ref common.ReferenceCallback) commo
 						},
 					},
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
@@ -4001,7 +3990,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunSpec(ref common.ReferenceCallback) commo
 					},
 					"taskSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
+							Description: "Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag. See Task.spec (API version: tekton.dev/v1)",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskSpec"),
 						},
 					},
@@ -4099,6 +4088,13 @@ func schema_pkg_apis_pipeline_v1_TaskRunSpec(ref common.ReferenceCallback) commo
 						SchemaProps: spec.SchemaProps{
 							Description: "Compute resources to use for this TaskRun",
 							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+						},
+					},
+					"managedBy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ManagedBy indicates which controller is responsible for reconciling this resource. If unset or set to \"tekton.dev/pipeline\", the default Tekton controller will manage this resource. This field is immutable.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -4199,11 +4195,6 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 						},
 					},
 					"retriesStatus": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
 							Type:        []string{"array"},
@@ -4237,11 +4228,6 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 						},
 					},
 					"artifacts": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Artifacts are the list of artifacts written out by the task's containers",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts"),
@@ -4350,11 +4336,6 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref common.ReferenceCallbac
 						},
 					},
 					"retriesStatus": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
 							Type:        []string{"array"},
@@ -4388,11 +4369,6 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref common.ReferenceCallbac
 						},
 					},
 					"artifacts": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Artifacts are the list of artifacts written out by the task's containers",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts"),
@@ -4493,11 +4469,6 @@ func schema_pkg_apis_pipeline_v1_TaskSpec(ref common.ReferenceCallback) common.O
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"params": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params is a list of input parameters required to run the task. Params must be supplied as inputs in TaskRuns unless they declare a default value.",
 							Type:        []string{"array"},
@@ -4545,13 +4516,8 @@ func schema_pkg_apis_pipeline_v1_TaskSpec(ref common.ReferenceCallback) common.O
 						},
 					},
 					"volumes": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
-							Description: "Volumes is a collection of volumes that are available to mount into the steps of the build.",
+							Description: "Volumes is a collection of volumes that are available to mount into the steps of the build. See Pod.spec.volumes (API version: v1)",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -4745,7 +4711,7 @@ func schema_pkg_apis_pipeline_v1_WorkspaceBinding(ref common.ReferenceCallback) 
 					},
 					"volumeClaimTemplate": {
 						SchemaProps: spec.SchemaProps{
-							Description: "VolumeClaimTemplate is a template for a claim that will be created in the same namespace. The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.",
+							Description: "VolumeClaimTemplate is a template for a claim that will be created in the same namespace. The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun. See PersistentVolumeClaim (API version: v1)",
 							Ref:         ref("k8s.io/api/core/v1.PersistentVolumeClaim"),
 						},
 					},

@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2019 The Tekton Authors
@@ -59,8 +58,9 @@ var (
 	filterPipelineRunStatus = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "StartTime", "CompletionTime")
 )
 
+// @test:execution=parallel
 func TestCustomTask(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -151,9 +151,10 @@ spec:
 		// Simulate a Custom Task controller updating the CustomRun to done/successful.
 		cr.Status = v1beta1.CustomRunStatus{
 			Status: duckv1.Status{
-				Conditions: duckv1.Conditions{{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionTrue,
+				Conditions: []apis.Condition{{
+					Type:               apis.ConditionSucceeded,
+					Status:             corev1.ConditionTrue,
+					LastTransitionTime: apis.VolatileTime{Inner: metav1.NewTime(time.Now())},
 				}},
 			},
 			CustomRunStatusFields: v1beta1.CustomRunStatusFields{
@@ -161,6 +162,10 @@ spec:
 					Name:  "runResult",
 					Value: "aResultValue",
 				}},
+				ExtraFields: runtime.RawExtension{
+					// Raw: customTaskRawSpec,
+					Raw: []byte(`{"blah":1,"blub":"value"}`),
+				},
 			},
 		}
 
@@ -249,7 +254,7 @@ spec:
 // the metric that is emitted to track how long it took.
 func WaitForCustomRunSpecCancelled(ctx context.Context, c *clients, name string, desc string) error {
 	metricName := fmt.Sprintf("WaitForRunSpecCancelled/%s/%s", name, desc)
-	_, span := trace.StartSpan(context.Background(), metricName)
+	_, span := trace.StartSpan(ctx, metricName)
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
@@ -263,13 +268,14 @@ func WaitForCustomRunSpecCancelled(ctx context.Context, c *clients, name string,
 
 // TestPipelineRunCustomTaskTimeout is an integration test that will
 // verify that pipelinerun timeout works and leads to the correct Run Spec.status
+// @test:execution=parallel
 func TestPipelineRunCustomTaskTimeout(t *testing.T) {
 	// cancel the context after we have waited a suitable buffer beyond the given deadline.
-	ctx, cancel := context.WithTimeout(context.Background(), timeout+2*time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), timeout+2*time.Minute)
 	defer cancel()
 	c, namespace := setup(ctx, t)
-	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
-	defer tearDown(context.Background(), t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t.Context(), t, c, namespace) }, t.Logf)
+	defer tearDown(t.Context(), t, c, namespace)
 
 	pipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
 metadata:
@@ -331,11 +337,16 @@ spec:
 	cr.Status = v1beta1.CustomRunStatus{
 		CustomRunStatusFields: v1beta1.CustomRunStatusFields{
 			StartTime: &metav1.Time{Time: time.Now()},
+			ExtraFields: runtime.RawExtension{
+				// Raw: customTaskRawSpec,
+				Raw: []byte(`{"blah":1,"blub":"value"}`),
+			},
 		},
 		Status: duckv1.Status{
 			Conditions: []apis.Condition{{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionUnknown,
+				Type:               apis.ConditionSucceeded,
+				Status:             corev1.ConditionUnknown,
+				LastTransitionTime: apis.VolatileTime{Inner: metav1.NewTime(time.Now())},
 			}},
 		},
 	}
@@ -375,11 +386,21 @@ spec:
 func applyV1Beta1Controller(t *testing.T) {
 	t.Helper()
 	t.Log("Creating Wait v1beta1.CustomRun Custom Task Controller...")
-	cmd := exec.Command("ko", "apply", "--platform", "linux/amd64,linux/s390x,linux/ppc64le", "-f", "./config/controller.yaml")
+	cmd := exec.Command("ko", "apply", "--platform", "linux/amd64,linux/arm64,linux/s390x,linux/ppc64le", "-f", "./config/controller.yaml")
 	cmd.Dir = betaWaitTaskDir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to create Wait Custom Task Controller: %s, Output: %s", err, out)
+	}
+
+	// Wait for the controller deployment to be ready before running tests.
+	// This prevents race conditions where tests create CustomRuns before the
+	// controller is ready to reconcile them.
+	t.Log("Waiting for Wait Custom Task Controller deployment to be ready...")
+	cmd = exec.CommandContext(context.Background(), "kubectl", "rollout", "status", "deployment/wait-task-controller", "-n", "wait-task-beta", "--timeout=60s")
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Failed to wait for Wait Custom Task Controller deployment: %s, Output: %s", err, out)
 	}
 }
 
@@ -394,8 +415,9 @@ func cleanUpV1beta1Controller(t *testing.T) {
 	}
 }
 
+// @test:execution=parallel
 func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -406,8 +428,6 @@ func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
 	applyV1Beta1Controller(t)
 	// Cleanup the controller after finishing the test
 	defer cleanUpV1beta1Controller(t)
-
-	featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 
 	for _, tc := range []struct {
 		name                  string
@@ -641,9 +661,6 @@ func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
 								},
 							},
 						},
-						Provenance: &v1.Provenance{
-							FeatureFlags: featureFlags,
-						},
 					},
 				},
 			}
@@ -681,6 +698,10 @@ func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
 				filterCondition,
 				filterCustomRunStatus,
 				filterPipelineRunStatus,
+				// Ignoring Provenance field as it differs from one instance to the other (different flags,
+				// new flags, ...). It can also be modified by another test. In addition, we don't care about its value here.
+				// #9071, #9066
+				ignorePipelineRunProvenance,
 				// ignore serviceaccount field also, because it can be different based on the value in config-defaults
 				ignoreSAPipelineRunSpec,
 			); d != "" {

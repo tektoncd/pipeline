@@ -49,6 +49,14 @@ spec:
         version: "devel"
     spec:
       affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: kubernetes.io/os
+                  operator: NotIn
+                  values:
+                  - windows
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
           - podAffinityTerm:
@@ -64,6 +72,11 @@ spec:
       containers:
       - name: controller
         image: ko://github.com/tektoncd/pipeline/cmd/resolvers
+        command:
+        - /sbin/tini
+        - --
+        - /ko-app/resolvers
+        args: []
         resources:
           requests:
             cpu: 100m
@@ -101,17 +114,24 @@ spec:
           value: tekton.dev/resolution
         - name: PROBES_PORT
           value: "8080"
-      # Override this env var to set a private hub api endpoint
+        - name: TEKTON_HUB_API
+          value: "" # Override this env var to set a private hub api endpoint
         - name: ARTIFACT_HUB_API
           value: "https://artifacthub.io/"
-        - name: TEKTON_HUB_API
-          value: "https://api.hub.tekton.dev/"
+        volumeMounts:
+          - name: tmp-clone-volume
+            mountPath: "/tmp"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           runAsNonRoot: true
+          runAsUser: 65532
           capabilities:
             drop:
             - "ALL"
           seccompProfile:
             type: RuntimeDefault
+      volumes:
+        - name: tmp-clone-volume
+          emptyDir:
+            sizeLimit: 4Gi

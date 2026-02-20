@@ -16,7 +16,6 @@ limitations under the License.
 package v1beta1_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -65,16 +64,6 @@ func TestTaskRunSpec_SetDefaults(t *testing.T) {
 			Timeout:            &metav1.Duration{Duration: 500 * time.Millisecond},
 		},
 	}, {
-		desc: "timeout is nil",
-		trs: &v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{Kind: v1beta1.ClusterTaskKind},
-		},
-		want: &v1beta1.TaskRunSpec{
-			TaskRef:            &v1beta1.TaskRef{Kind: v1beta1.ClusterTaskKind},
-			ServiceAccountName: config.DefaultServiceAccountValue,
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-	}, {
 		desc: "pod template is nil",
 		trs:  &v1beta1.TaskRunSpec{},
 		want: &v1beta1.TaskRunSpec{
@@ -121,7 +110,7 @@ func TestTaskRunSpec_SetDefaults(t *testing.T) {
 	}}
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			tc.trs.SetDefaults(ctx)
 
 			if d := cmp.Diff(tc.want, tc.trs); d != "" {
@@ -401,7 +390,7 @@ func TestTaskRunDefaulting(t *testing.T) {
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := cfgtesting.SetDefaults(context.Background(), t, tc.defaults)
+			ctx := cfgtesting.SetDefaults(t.Context(), t, tc.defaults)
 			got := tc.in
 			got.SetDefaults(ctx)
 			if !cmp.Equal(got, tc.want, ignoreUnexportedResources) {
@@ -447,7 +436,7 @@ func TestTaskRunDefaultingOnCreate(t *testing.T) {
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := apis.WithinCreate(cfgtesting.SetDefaults(context.Background(), t, tc.defaults))
+			ctx := apis.WithinCreate(cfgtesting.SetDefaults(t.Context(), t, tc.defaults))
 			got := tc.in
 			got.SetDefaults(ctx)
 			if !cmp.Equal(got, tc.want, ignoreUnexportedResources) {

@@ -28,8 +28,8 @@ import (
 //
 // [Key states of KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html
 // [kms:EnableKey]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
-// [cryptographic operations]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#cryptographic-operations
-// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
+// [cryptographic operations]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-cryptography.html#cryptographic-operations
+// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/accessing-kms.html#programming-eventual-consistency
 func (c *Client) EnableKey(ctx context.Context, params *EnableKeyInput, optFns ...func(*Options)) (*EnableKeyOutput, error) {
 	if params == nil {
 		params = &EnableKeyInput{}
@@ -137,6 +137,9 @@ func (c *Client) addOperationEnableKeyMiddlewares(stack *middleware.Stack, optio
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpEnableKeyValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -158,16 +161,13 @@ func (c *Client) addOperationEnableKeyMiddlewares(stack *middleware.Stack, optio
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

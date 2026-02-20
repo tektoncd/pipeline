@@ -31,16 +31,15 @@ type Matrix struct {
 	// Params takes only `Parameters` of type `"array"`
 	// Each array element is supplied to the `PipelineTask` by substituting `params` of type `"string"` in the underlying `Task`.
 	// The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.
-	// +listType=atomic
 	Params Params `json:"params,omitempty"`
 
 	// Include is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.
 	// +optional
-	// +listType=atomic
 	Include IncludeParamsList `json:"include,omitempty"`
 }
 
 // IncludeParamsList is a list of IncludeParams which allows passing in specific combinations of Parameters into the Matrix.
+// +listType=atomic
 type IncludeParamsList []IncludeParams
 
 // IncludeParams allows passing in a specific combinations of Parameters into the Matrix.
@@ -50,7 +49,6 @@ type IncludeParams struct {
 
 	// Params takes only `Parameters` of type `"string"`
 	// The names of the `params` must match the names of the `params` in the underlying `Task`
-	// +listType=atomic
 	Params Params `json:"params,omitempty"`
 }
 
@@ -236,7 +234,9 @@ func (m *Matrix) countGeneratedCombinationsFromParams() int {
 	}
 	count := 1
 	for _, param := range m.Params {
-		count *= len(param.Value.ArrayVal)
+		if len(param.Value.ArrayVal) > 0 {
+			count *= len(param.Value.ArrayVal)
+		}
 	}
 	return count
 }

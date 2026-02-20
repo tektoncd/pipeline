@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2021 The Tekton Authors
@@ -33,8 +32,9 @@ import (
 	knativetest "knative.dev/pkg/test"
 )
 
+// @test:execution=parallel
 func TestFailingStepOnContinue(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)

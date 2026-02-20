@@ -31,9 +31,6 @@ import (
 
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature/options"
-
-	// these ensure we have the implementations loaded
-	_ "golang.org/x/crypto/sha3"
 )
 
 // Signer creates digital signatures over a message using a specified key pair
@@ -122,4 +119,26 @@ func LoadSignerFromPEMFileWithOpts(path string, pf cryptoutils.PassFunc, opts ..
 		return nil, err
 	}
 	return LoadSignerWithOpts(priv, opts...)
+}
+
+// LoadDefaultSigner returns a signature.Signer based on the private key.
+// Each private key has a corresponding PublicKeyDetails associated in the
+// Sigstore ecosystem, see Algorithm Registry for more details.
+func LoadDefaultSigner(privateKey crypto.PrivateKey, opts ...LoadOption) (Signer, error) {
+	signer, ok := privateKey.(crypto.Signer)
+	if !ok {
+		return nil, errors.New("private key does not implement signature.Signer")
+	}
+	algorithmDetails, err := GetDefaultAlgorithmDetails(signer.Public(), opts...)
+	if err != nil {
+		return nil, err
+	}
+	return LoadSignerFromAlgorithmDetails(privateKey, algorithmDetails, opts...)
+}
+
+// LoadSignerFromAlgorithmDetails returns a signature.Signer based on
+// the algorithm details and the user's choice of options.
+func LoadSignerFromAlgorithmDetails(privateKey crypto.PrivateKey, algorithmDetails AlgorithmDetails, opts ...LoadOption) (Signer, error) {
+	filteredOpts := GetOptsFromAlgorithmDetails(algorithmDetails, opts...)
+	return LoadSignerWithOpts(privateKey, filteredOpts...)
 }

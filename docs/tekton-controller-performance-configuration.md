@@ -49,6 +49,9 @@ spec:
 
 Now, the ThreadsPerController, QPS and Burst have been changed to be `32`, `50` and `50`.
 
+You can also set `THREADS_PER_CONTROLLER`, `KUBE_API_QPS` and `KUBE_API_BURST` environment variables to overwrite default values.
+If flags and environment variables are set, command line args will take precedence.
+
 **Note**:
 <!-- wokeignore:rule=master -->
 Although in above example, you set QPS and Burst to be `50` and `50`. However, the actual values of them are [multiplied by `2`](https://github.com/pierretasci/pipeline/blob/master/cmd/controller/main.go#L83-L84), so the actual QPS and Burst is `100` and `100`.

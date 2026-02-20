@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2019 The Tekton Authors
@@ -41,8 +40,9 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
+// @test:execution=parallel
 func TestTaskRunFailure(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -132,7 +132,7 @@ spec:
 		t.Fatalf("expected at least %d steps, got %d", expectedStepNumber, len(taskrun.Status.Steps))
 	}
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
-	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Running")
+	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Running", "Provenance")
 	lastStepIndex := len(expectedStepState) - 1
 	for i := range lastStepIndex {
 		if d := cmp.Diff(taskrun.Status.Steps[i], expectedStepState[i], ignoreTerminatedFields, ignoreStepFields); d != "" {
@@ -164,8 +164,9 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestTaskRunStatus(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -227,7 +228,7 @@ spec:
 	}}
 
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
-	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID")
+	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Provenance")
 	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
 		t.Fatalf("-got, +want: %v", d)
 	}
@@ -241,8 +242,9 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestTaskRunStepsTerminationReasons(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	c, namespace := setup(ctx, t)
 	defer tearDown(ctx, t, c, namespace)
 	fqImageName := getTestImage(busyboxImage)
@@ -481,7 +483,7 @@ spec:
 			}
 
 			ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID", "Message")
-			ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID")
+			ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Provenance")
 			if d := cmp.Diff(taskRunState.Status.Steps, test.expectedStepStatus, ignoreTerminatedFields, ignoreStepFields); d != "" {
 				t.Fatalf("-got, +want: %v", d)
 			}
@@ -515,8 +517,9 @@ func cancelTaskRun(t *testing.T, ctx context.Context, taskRunName string, c *cli
 	return nil
 }
 
+// @test:execution=parallel
 func TestTaskRunRetryFailure(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -596,11 +599,112 @@ spec:
 		Container:         "step-unnamed-0",
 	}}
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
-	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID")
+	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Provenance")
 	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
 		t.Fatalf("-got, +want: %v", d)
 	}
 	if len(taskrun.Status.RetriesStatus) != 1 {
 		t.Fatalf("expected 1 retry status, got %d", len(taskrun.Status.RetriesStatus))
+	}
+}
+
+// @test:execution=parallel
+func TestTaskRunResolveDefaultParameterSubstitutionOnStepAction(t *testing.T) {
+	ctx := t.Context()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	c, namespace := setup(ctx, t, requireAllGates(map[string]string{
+		"enable-api-fields": "beta",
+	}))
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
+	task := parse.MustParseV1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  params:
+    - name: repository
+      type: string
+      default: https://github.com/tektoncd/catalog.git
+    - name: revision
+      type: string
+      default: main
+  steps:
+    - name: clone
+      ref:
+        resolver: git
+        params:
+        - name: url
+          value: "$(params.repository)"
+        - name: pathInRepo
+          value: /stepaction/git-clone/0.1/git-clone.yaml
+        - name: revision
+          value: "$(params.revision)"
+      params:
+        - name: output-path
+          value: "/tmp"
+        - name: url
+          value: $(params.repository)
+        - name: revision
+          value: $(params.revision)
+`, helpers.ObjectNameForTest(t), namespace))
+	if _, err := c.V1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Task: %s", err)
+	}
+
+	taskRunName := helpers.ObjectNameForTest(t)
+	taskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    name: %s
+  retries: 1
+`, taskRunName, namespace, task.Name))
+	if _, err := c.V1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create TaskRun: %s", err)
+	}
+
+	t.Logf("Waiting for TaskRun in namespace %s to complete", namespace)
+	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunSucceed", v1Version); err != nil {
+		t.Errorf("Error waiting for TaskRun to finish: %s", err)
+	}
+
+	taskrun, err := c.V1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
+	}
+
+	if !isSuccessful(t, taskrun.GetName(), taskrun.Status.Conditions) {
+		t.Fatalf("task should have succeeded")
+	}
+
+	expectedReason := "Succeeded"
+	actualReason := taskrun.Status.GetCondition(apis.ConditionSucceeded).GetReason()
+	if actualReason != expectedReason {
+		t.Fatalf("expected TaskRun to have failed reason %s, got %s", expectedReason, actualReason)
+	}
+
+	expectedStepState := []v1.StepState{{
+		ContainerState: corev1.ContainerState{
+			Terminated: &corev1.ContainerStateTerminated{
+				ExitCode: 0,
+				Reason:   "Completed",
+			},
+		},
+		TerminationReason: "Completed",
+		Name:              "clone",
+		Container:         "step-clone",
+	}}
+	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID", "Message")
+	ignoreStepFields := cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "Results", "Provenance")
+	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
+		t.Fatalf("-got, +want: %v", d)
 	}
 }

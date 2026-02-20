@@ -19,16 +19,15 @@ limitations under the License.
 package v1beta1
 
 import (
-	"net/http"
+	http "net/http"
 
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	scheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
 type TektonV1beta1Interface interface {
 	RESTClient() rest.Interface
-	ClusterTasksGetter
 	CustomRunsGetter
 	PipelinesGetter
 	PipelineRunsGetter
@@ -40,10 +39,6 @@ type TektonV1beta1Interface interface {
 // TektonV1beta1Client is used to interact with features provided by the tekton.dev group.
 type TektonV1beta1Client struct {
 	restClient rest.Interface
-}
-
-func (c *TektonV1beta1Client) ClusterTasks() ClusterTaskInterface {
-	return newClusterTasks(c)
 }
 
 func (c *TektonV1beta1Client) CustomRuns(namespace string) CustomRunInterface {
@@ -115,10 +110,10 @@ func New(c rest.Interface) *TektonV1beta1Client {
 }
 
 func setConfigDefaults(config *rest.Config) error {
-	gv := v1beta1.SchemeGroupVersion
+	gv := pipelinev1beta1.SchemeGroupVersion
 	config.GroupVersion = &gv
 	config.APIPath = "/apis"
-	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+	config.NegotiatedSerializer = rest.CodecFactoryForGeneratedClient(scheme.Scheme, scheme.Codecs).WithoutConversion()
 
 	if config.UserAgent == "" {
 		config.UserAgent = rest.DefaultKubernetesUserAgent()

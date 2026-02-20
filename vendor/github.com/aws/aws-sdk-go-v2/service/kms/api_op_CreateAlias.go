@@ -27,7 +27,7 @@ import (
 //
 // The alias must be unique in the account and Region, but you can have aliases
 // with the same name in different Regions. For detailed information about aliases,
-// see [Using aliases]in the Key Management Service Developer Guide.
+// see [Aliases in KMS]in the Key Management Service Developer Guide.
 //
 // This operation does not return a response. To get the alias that you created,
 // use the ListAliasesoperation.
@@ -60,12 +60,12 @@ import (
 // more information, see [KMS eventual consistency].
 //
 // [Key states of KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html
-// [cryptographic operations]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#cryptographic-operations
-// [Using aliases]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-alias.html
+// [cryptographic operations]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-cryptography.html#cryptographic-operations
 // [kms:CreateAlias]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
+// [Aliases in KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-alias.html
 // [ABAC for KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/abac.html
-// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
-// [Controlling access to aliases]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-alias.html#alias-access
+// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/accessing-kms.html#programming-eventual-consistency
+// [Controlling access to aliases]: https://docs.aws.amazon.com/kms/latest/developerguide/alias-access.html
 func (c *Client) CreateAlias(ctx context.Context, params *CreateAliasInput, optFns ...func(*Options)) (*CreateAliasOutput, error) {
 	if params == nil {
 		params = &CreateAliasInput{}
@@ -94,7 +94,7 @@ type CreateAliasInput struct {
 	// The alias name cannot begin with alias/aws/ . The alias/aws/ prefix is reserved
 	// for [Amazon Web Services managed keys].
 	//
-	// [Amazon Web Services managed keys]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#aws-managed-cmk
+	// [Amazon Web Services managed keys]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#aws-managed-key
 	//
 	// This member is required.
 	AliasName *string
@@ -105,7 +105,7 @@ type CreateAliasInput struct {
 	// A valid key ID is required. If you supply a null or empty string value, this
 	// operation returns an error.
 	//
-	// For help finding the key ID and ARN, see [Finding the Key ID and ARN] in the Key Management Service
+	// For help finding the key ID and ARN, see [Find the key ID and key ARN] in the Key Management Service
 	// Developer Guide .
 	//
 	// Specify the key ID or key ARN of the KMS key.
@@ -119,8 +119,8 @@ type CreateAliasInput struct {
 	//
 	// To get the key ID and key ARN for a KMS key, use ListKeys or DescribeKey.
 	//
-	// [customer managed key]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#customer-cmk
-	// [Finding the Key ID and ARN]: https://docs.aws.amazon.com/kms/latest/developerguide/viewing-keys.html#find-cmk-id-arn
+	// [customer managed key]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#customer-mgn-key
+	// [Find the key ID and key ARN]: https://docs.aws.amazon.com/kms/latest/developerguide/find-cmk-id-arn.html
 	//
 	// This member is required.
 	TargetKeyId *string
@@ -199,6 +199,9 @@ func (c *Client) addOperationCreateAliasMiddlewares(stack *middleware.Stack, opt
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpCreateAliasValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -220,16 +223,13 @@ func (c *Client) addOperationCreateAliasMiddlewares(stack *middleware.Stack, opt
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

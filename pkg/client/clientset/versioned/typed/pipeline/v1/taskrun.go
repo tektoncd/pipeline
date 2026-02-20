@@ -19,9 +19,9 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	scheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,33 +37,34 @@ type TaskRunsGetter interface {
 
 // TaskRunInterface has methods to work with TaskRun resources.
 type TaskRunInterface interface {
-	Create(ctx context.Context, taskRun *v1.TaskRun, opts metav1.CreateOptions) (*v1.TaskRun, error)
-	Update(ctx context.Context, taskRun *v1.TaskRun, opts metav1.UpdateOptions) (*v1.TaskRun, error)
+	Create(ctx context.Context, taskRun *pipelinev1.TaskRun, opts metav1.CreateOptions) (*pipelinev1.TaskRun, error)
+	Update(ctx context.Context, taskRun *pipelinev1.TaskRun, opts metav1.UpdateOptions) (*pipelinev1.TaskRun, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, taskRun *v1.TaskRun, opts metav1.UpdateOptions) (*v1.TaskRun, error)
+	UpdateStatus(ctx context.Context, taskRun *pipelinev1.TaskRun, opts metav1.UpdateOptions) (*pipelinev1.TaskRun, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.TaskRun, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v1.TaskRunList, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*pipelinev1.TaskRun, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*pipelinev1.TaskRunList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.TaskRun, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *pipelinev1.TaskRun, err error)
 	TaskRunExpansion
 }
 
 // taskRuns implements TaskRunInterface
 type taskRuns struct {
-	*gentype.ClientWithList[*v1.TaskRun, *v1.TaskRunList]
+	*gentype.ClientWithList[*pipelinev1.TaskRun, *pipelinev1.TaskRunList]
 }
 
 // newTaskRuns returns a TaskRuns
 func newTaskRuns(c *TektonV1Client, namespace string) *taskRuns {
 	return &taskRuns{
-		gentype.NewClientWithList[*v1.TaskRun, *v1.TaskRunList](
+		gentype.NewClientWithList[*pipelinev1.TaskRun, *pipelinev1.TaskRunList](
 			"taskruns",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1.TaskRun { return &v1.TaskRun{} },
-			func() *v1.TaskRunList { return &v1.TaskRunList{} }),
+			func() *pipelinev1.TaskRun { return &pipelinev1.TaskRun{} },
+			func() *pipelinev1.TaskRunList { return &pipelinev1.TaskRunList{} },
+		),
 	}
 }

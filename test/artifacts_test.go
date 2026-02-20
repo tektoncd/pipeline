@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 // /*
 // Copyright 2024 The Tekton Authors
@@ -40,6 +39,8 @@ var (
 	}
 )
 
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
 func TestSurfaceArtifacts(t *testing.T) {
 	tests := []struct {
 		desc                   string
@@ -58,7 +59,7 @@ func TestSurfaceArtifacts(t *testing.T) {
 			featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 			checkFlagsEnabled := requireAllGates(requireEnableStepArtifactsGate)
 
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, namespace := setup(ctx, t)
@@ -128,11 +129,13 @@ spec:
 	}
 }
 
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
 func TestSurfaceArtifactsThroughTerminationMessageScriptProducesArtifacts(t *testing.T) {
 	featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 	checkFlagsEnabled := requireAllGates(requireEnableStepArtifactsGate)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -200,6 +203,8 @@ spec:
 	}
 }
 
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
 func TestConsumeArtifacts(t *testing.T) {
 	tests := []struct {
 		desc                   string
@@ -217,11 +222,10 @@ func TestConsumeArtifacts(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 			checkFlagsEnabled := requireAllGates(map[string]string{
-				"enable-artifacts":    "true",
-				"enable-step-actions": "true",
+				"enable-artifacts": "true",
 			})
 
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, namespace := setup(ctx, t)
@@ -295,6 +299,8 @@ spec:
 	}
 }
 
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
 func TestStepProduceResultsAndArtifacts(t *testing.T) {
 	tests := []struct {
 		desc                   string
@@ -312,11 +318,10 @@ func TestStepProduceResultsAndArtifacts(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 			checkFlagsEnabled := requireAllGates(map[string]string{
-				"enable-artifacts":    "true",
-				"enable-step-actions": "true",
+				"enable-artifacts": "true",
 			})
 
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, namespace := setup(ctx, t)

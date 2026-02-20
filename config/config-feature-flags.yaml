@@ -21,17 +21,6 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 data:
-  # Setting this flag to "true" will prevent Tekton to create an
-  # Affinity Assistant for every TaskRun sharing a PVC workspace
-  #
-  # The default behaviour is for Tekton to create Affinity Assistants
-  #
-  # See more in the Affinity Assistant documentation
-  # https://github.com/tektoncd/pipeline/blob/main/docs/affinityassistants.md
-  # or https://github.com/tektoncd/pipeline/pull/2630 for more info.
-  #
-  # Note: This feature flag is deprecated and will be removed in release v0.60. Consider using `coschedule` feature flag to configure Affinity Assistant behavior.
-  disable-affinity-assistant: "false"
   # Setting this flag will determine how PipelineRun Pods are scheduled with Affinity Assistant.
   # Acceptable values are "workspaces" (default), "pipelineruns", "isolate-pipelinerun", or "disabled".
   #
@@ -124,9 +113,6 @@ data:
   keep-pod-on-cancel: "false"
   # Setting this flag to "true" will enable the CEL evaluation in WhenExpression
   enable-cel-in-whenexpression: "false"
-  # Setting this flag to "true" will enable the use of StepActions in Steps
-  # This feature is in preview mode and not implemented yet. Please check #7259 for updates.
-  enable-step-actions: "false"
   # Setting this flag to "true" will enable the use of Artifacts in Steps
   # This feature is in preview mode and not implemented yet. Please check #7693 for updates.
   enable-artifacts: "false"
@@ -142,3 +128,11 @@ data:
   enable-concise-resolver-syntax: "false"
   # Setthing this flag to "true" will enable native Kubernetes Sidecar support
   enable-kubernetes-sidecar: "false"
+  # Setting this flag to "false" will have no effect since StepActions are a stable feature
+  enable-step-actions: "true"
+  # Controls whether exponential backoff is enabled when creating TaskRuns or CustomRuns.
+  # If set to "true", the controller will use exponential backoff when retrying failed create operations,
+  # which can help mitigate issues caused by temporary API server or webhook unavailability.
+  # If set to "false", exponential backoff will be disabled.
+  # For advanced tuning of backoff parameters, update the 'wait-exponential-backoff' ConfigMap.
+  enable-wait-exponential-backoff: "false"

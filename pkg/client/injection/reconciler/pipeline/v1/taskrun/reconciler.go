@@ -27,7 +27,7 @@ import (
 	versioned "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
 	zap "go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	zapcore "go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	equality "k8s.io/apimachinery/pkg/api/equality"
 	errors "k8s.io/apimachinery/pkg/api/errors"

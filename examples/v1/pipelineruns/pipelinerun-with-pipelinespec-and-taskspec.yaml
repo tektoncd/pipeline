@@ -12,6 +12,7 @@ spec:
               app: "example"
           steps:
             - name: echo
+              displayName: "echo step"
               image: mirror.gcr.io/ubuntu
               script: |
                 #!/usr/bin/env bash

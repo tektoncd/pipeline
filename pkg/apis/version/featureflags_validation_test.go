@@ -17,7 +17,6 @@ limitations under the License.
 package version_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -65,7 +64,7 @@ func TestValidateEnabledAPIFields(t *testing.T) {
 			cfg := &config.Config{
 				FeatureFlags: flags,
 			}
-			ctx := config.ToContext(context.Background(), cfg)
+			ctx := config.ToContext(t.Context(), cfg)
 			if err := version.ValidateEnabledAPIFields(ctx, "test feature", tc.wantVersion); err != nil {
 				t.Errorf("unexpected error for compatible feature gates: %q", err)
 			}
@@ -106,7 +105,7 @@ func TestValidateEnabledAPIFieldsError(t *testing.T) {
 			cfg := &config.Config{
 				FeatureFlags: flags,
 			}
-			ctx := config.ToContext(context.Background(), cfg)
+			ctx := config.ToContext(t.Context(), cfg)
 			fieldErr := version.ValidateEnabledAPIFields(ctx, "test feature", tc.wantVersion)
 
 			if fieldErr == nil {

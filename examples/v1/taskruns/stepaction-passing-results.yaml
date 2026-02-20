@@ -1,0 +1,93 @@
+apiVersion: tekton.dev/v1beta1
+kind: StepAction
+metadata:
+  name: step-action
+spec:
+  params:
+    - name: param1
+      type: array
+    - name: param2
+      type: string
+    - name: param3
+      type: object
+      properties:
+        IMAGE_URL:
+          type: string
+        IMAGE_DIGEST:
+          type: string
+  image: mirror.gcr.io/bash
+  env:
+    - name: STRINGPARAM
+      value: $(params.param2)
+  args: [
+    "$(params.param1[*])",
+    "$(params.param1[0])",
+    "$(params.param3.IMAGE_URL)",
+    "$(params.param3.IMAGE_DIGEST)",
+  ]
+  script: |
+    if [[ $1 != "image1" ]]; then
+        echo "Want: image1, Got: $1"
+      exit 1
+    fi
+    if [[ $2 != "image2" ]]; then
+        echo "Want: image2, Got: $2"
+      exit 1
+    fi
+    if [[ $3 != "image3" ]]; then
+        echo "Want: image3, Got: $3"
+      exit 1
+    fi
+    if [[ $4 != "image1" ]]; then
+        echo "Want: image1, Got: $4"
+      exit 1
+    fi
+    if [[ $5 != "ar.com" ]]; then
+        echo "Want: ar.com, Got: $5"
+      exit 1
+    fi
+    if [[ $6 != "sha234" ]]; then
+        echo "Want: sha234, Got: $6"
+      exit 1
+    fi
+    if [[ ${STRINGPARAM} != "foo" ]]; then
+        echo "Want: foo, Got: ${STRINGPARAM}"
+      exit 1
+    fi
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: step-action-run
+spec:
+  taskSpec:
+    steps:
+      - name: inline-step
+        results:
+          - name: result1
+            type: array
+          - name: result2
+            type: string
+          - name: result3
+            type: object
+            properties:
+              IMAGE_URL:
+                type: string
+              IMAGE_DIGEST:
+                type: string
+        image: mirror.gcr.io/alpine
+        script: |
+          echo -n "[\"image1\", \"image2\", \"image3\"]" | tee $(step.results.result1.path)
+          echo -n "foo" | tee $(step.results.result2.path)
+          echo -n "{\"IMAGE_URL\":\"ar.com\", \"IMAGE_DIGEST\":\"sha234\"}" | tee $(step.results.result3.path)
+          cat /tekton/scripts/*
+      - name: action-runner
+        ref:
+          name: step-action
+        params:
+          - name: param1
+            value: $(steps.inline-step.results.result1[*])
+          - name: param2
+            value: $(steps.inline-step.results.result2)
+          - name: param3
+            value: $(steps.inline-step.results.result3[*])

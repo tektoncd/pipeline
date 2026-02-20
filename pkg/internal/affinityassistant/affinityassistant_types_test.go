@@ -14,7 +14,6 @@ limitations under the License.
 package affinityassistant
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -30,50 +29,40 @@ func Test_GetAffinityAssistantBehavior(t *testing.T) {
 		configMap map[string]string
 		expect    AffinityAssistantBehavior
 	}{{
-		name: "affinity-assistant-enabled",
+		name: "coschedule-workspaces",
 		configMap: map[string]string{
-			"disable-affinity-assistant": "false",
+			"coschedule": config.CoscheduleWorkspaces,
 		},
 		expect: AffinityAssistantPerWorkspace,
 	}, {
-		name: "affinity-assistant-disabled-coschedule-workspaces",
+		name: "coschedule-pipelineruns",
 		configMap: map[string]string{
-			"disable-affinity-assistant": "true",
-			"coschedule":                 config.CoscheduleWorkspaces,
-		},
-		expect: AffinityAssistantDisabled,
-	}, {
-		name: "affinity-assistant-disabled-coschedule-pipelineruns",
-		configMap: map[string]string{
-			"disable-affinity-assistant": "true",
-			"coschedule":                 config.CoschedulePipelineRuns,
+			"coschedule": config.CoschedulePipelineRuns,
 		},
 		expect: AffinityAssistantPerPipelineRun,
 	}, {
-		name: "affinity-assistant-disabled-coschedule-isolate-pipelinerun",
+		name: "coschedule-isolate-pipelinerun",
 		configMap: map[string]string{
-			"disable-affinity-assistant": "true",
-			"coschedule":                 config.CoscheduleIsolatePipelineRun,
+			"coschedule": config.CoscheduleIsolatePipelineRun,
 		},
 		expect: AffinityAssistantPerPipelineRunWithIsolation,
 	}, {
-		name: "affinity-assistant-disabled-coschedule-disabled",
+		name: "coschedule-disabled",
 		configMap: map[string]string{
-			"disable-affinity-assistant": "true",
-			"coschedule":                 config.CoscheduleDisabled,
+			"coschedule": config.CoscheduleDisabled,
 		},
 		expect: AffinityAssistantDisabled,
 	}}
 
 	for _, tc := range tcs {
-		ctx := cfgtesting.SetFeatureFlags(context.Background(), t, tc.configMap)
+		ctx := cfgtesting.SetFeatureFlags(t.Context(), t, tc.configMap)
 		get, err := GetAffinityAssistantBehavior(ctx)
 		if err != nil {
-			t.Fatalf("unexpected error when getting affinity assistant behavior: %v", err)
+			t.Fatalf("%s: unexpected error when getting affinity assistant behavior: %v", tc.name, err)
 		}
 
 		if d := cmp.Diff(tc.expect, get); d != "" {
-			t.Errorf("AffinityAssistantBehavior mismatch: %v", diff.PrintWantGot(d))
+			t.Errorf("%s: AffinityAssistantBehavior mismatch: %v", tc.name, diff.PrintWantGot(d))
 		}
 	}
 }

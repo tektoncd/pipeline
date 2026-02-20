@@ -1,0 +1,67 @@
+apiVersion: tekton.dev/v1alpha1
+kind: StepAction
+metadata:
+  name: step-action
+spec:
+  params:
+    - name: string-param
+      default: "a string param"
+    - name: array-param
+      type: array
+      default:
+        - an
+        - array
+        - param
+    - name: object-param
+      type: object
+      properties:
+        key1:
+          type: string
+        key2:
+          type: string
+        key3:
+          type: string
+      default:
+        key1: "step-action default key1"
+        key2: "step-action default key2"
+        key3: "step-action default key3"
+  image: mirror.gcr.io/bash
+  args: [
+    "echo",
+    "$(params.array-param[*])",
+    "$(params.string-param)",
+    "$(params.object-param.key1)",
+    "$(params.object-param.key2)"
+  ]
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: step-action-pipeline-run-propagated
+spec:
+  params:
+    - name: stringparam
+      value: "pipelinerun stringparam"
+    - name: arrayparam
+      value:
+        - "pipelinerun"
+        - "array"
+        - "param"
+    - name: objectparam
+      value:
+        key2: "pipelinerun key2"
+  pipelineSpec:
+    tasks:
+      - name: run-action
+        taskSpec:
+          steps:
+          - name: action-runner
+            ref:
+              name: step-action
+            params:
+              - name: string-param
+                value: $(params.stringparam)
+              - name: array-param
+                value: $(params.arrayparam[*])
+              - name: object-param
+                value: $(params.objectparam[*])

@@ -1,0 +1,40 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: matrix-podtemplate-taskrunspecs-test-
+spec:
+  taskRunSpecs:
+  - pipelineTaskName: build-and-push-manifest
+    podTemplate:
+      nodeSelector:
+        node-type: $(params.node-type)
+  pipelineSpec:
+    tasks:
+      - name: build-and-push-manifest
+        matrix:
+          params:
+          - name: node-type
+            value: ["worker-1", "worker-2"]
+        taskSpec:
+          results:
+            - name: manifest
+              type: string
+          params:
+            - name: node-type
+          steps:
+            - name: build-and-push
+              displayName: "Build and push"
+              image: mirror.gcr.io/ubuntu
+              script: |
+                echo "building on $(params.node-type)"
+                echo "testmanifest-$(params.node-type)" | tee $(results.manifest.path)
+      - name: create-manifest-list
+        params:
+          - name: manifest
+            value: $(tasks.build-and-push-manifest.results.manifest[*])
+        taskSpec:
+          steps:
+            - name: echo-manifests
+              image: mirror.gcr.io/ubuntu
+              args: ["$(params.manifest[*])"]
+              script: echo "$@"

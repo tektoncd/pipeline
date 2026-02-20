@@ -29,19 +29,19 @@ type FakeTektonV1 struct {
 }
 
 func (c *FakeTektonV1) Pipelines(namespace string) v1.PipelineInterface {
-	return &FakePipelines{c, namespace}
+	return newFakePipelines(c, namespace)
 }
 
 func (c *FakeTektonV1) PipelineRuns(namespace string) v1.PipelineRunInterface {
-	return &FakePipelineRuns{c, namespace}
+	return newFakePipelineRuns(c, namespace)
 }
 
 func (c *FakeTektonV1) Tasks(namespace string) v1.TaskInterface {
-	return &FakeTasks{c, namespace}
+	return newFakeTasks(c, namespace)
 }
 
 func (c *FakeTektonV1) TaskRuns(namespace string) v1.TaskRunInterface {
-	return &FakeTaskRuns{c, namespace}
+	return newFakeTaskRuns(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

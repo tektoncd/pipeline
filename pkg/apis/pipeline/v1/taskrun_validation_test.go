@@ -18,6 +18,7 @@ package v1_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,6 +34,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	"knative.dev/pkg/ptr"
 )
 
 func TestTaskRun_Invalidate(t *testing.T) {
@@ -124,7 +126,7 @@ func TestTaskRun_Invalidate(t *testing.T) {
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ts.wc != nil {
 				ctx = ts.wc(ctx)
 			}
@@ -441,7 +443,7 @@ func TestTaskRun_Validate(t *testing.T) {
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ts.wc != nil {
 				ctx = ts.wc(ctx)
 			}
@@ -489,7 +491,7 @@ func TestTaskRun_Workspaces_Invalid(t *testing.T) {
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			err := ts.tr.Validate(context.Background())
+			err := ts.tr.Validate(t.Context())
 			if err == nil {
 				t.Errorf("Expected error for invalid TaskRun but got none")
 			}
@@ -865,7 +867,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ts.wc != nil {
 				ctx = ts.wc(ctx)
 			}
@@ -975,7 +977,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if ts.wc != nil {
 				ctx = ts.wc(ctx)
 			}
@@ -1107,12 +1109,62 @@ func TestTaskRunSpec_ValidateUpdate(t *testing.T) {
 				Message: `invalid value: Once the TaskRun is complete, no updates are allowed`,
 				Paths:   []string{""},
 			},
+		}, {
+			name: "is update ctx, baseline is not done, managedBy changes",
+			baselineTaskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					ManagedBy: ptr.String("tekton.dev/pipeline"),
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown},
+						},
+					},
+				},
+			},
+			taskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					ManagedBy: ptr.String("some-other-controller"),
+				},
+			},
+			isCreate: false,
+			isUpdate: true,
+			expectedError: apis.FieldError{
+				Message: `invalid value: managedBy is immutable`,
+				Paths:   []string{"spec.managedBy"},
+			},
+		}, {
+			name: "is update ctx, baseline is unknown, managedBy changes",
+			baselineTaskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					ManagedBy: ptr.String("tekton.dev/pipeline"),
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown},
+						},
+					},
+				},
+			},
+			taskRun: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					ManagedBy: ptr.String("some-other-controller"),
+				},
+			},
+			isCreate: false,
+			isUpdate: true,
+			expectedError: apis.FieldError{
+				Message: `invalid value: managedBy is immutable`,
+				Paths:   []string{"spec.managedBy"},
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := config.ToContext(context.Background(), &config.Config{
+			ctx := config.ToContext(t.Context(), &config.Config{
 				FeatureFlags: &config.FeatureFlags{},
 				Defaults:     &config.Defaults{},
 			})
@@ -1126,6 +1178,115 @@ func TestTaskRunSpec_ValidateUpdate(t *testing.T) {
 			err := tr.Spec.ValidateUpdate(ctx)
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("TaskRunSpec.ValidateUpdate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestTaskRunSpec_ValidateUpdate_FinalizerChanges(t *testing.T) {
+	tests := []struct {
+		name            string
+		baselineTaskRun *v1.TaskRun
+		taskRun         *v1.TaskRun
+		expectedError   string
+	}{
+		{
+			name: "allow finalizer update when specs are identical",
+			baselineTaskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-tr",
+				},
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{
+						Name: "test-task",
+						ResolverRef: v1.ResolverRef{
+							Resolver: "bundles",
+						},
+					},
+					Timeout: &metav1.Duration{Duration: 60 * time.Minute},
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+			},
+			taskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "test-tr",
+					Finalizers: []string{"chains.tekton.dev/finalizer"},
+				},
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{
+						Name: "test-task",
+						ResolverRef: v1.ResolverRef{
+							Resolver: "bundles",
+						},
+					},
+					Timeout: &metav1.Duration{Duration: 60 * time.Minute},
+				},
+			},
+			expectedError: "",
+		},
+		{
+			name: "block actual spec changes on completed TaskRun",
+			baselineTaskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-tr",
+				},
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{
+						Name: "test-task",
+					},
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{
+							{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+			},
+			taskRun: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "test-tr",
+					Finalizers: []string{"chains.tekton.dev/finalizer"},
+				},
+				Spec: v1.TaskRunSpec{
+					TaskRef: &v1.TaskRef{
+						Name: "different-task",
+					},
+				},
+			},
+			expectedError: "invalid value: Once the TaskRun is complete, no updates are allowed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := config.ToContext(t.Context(), &config.Config{
+				Defaults: &config.Defaults{
+					DefaultResolverType:   "bundles",
+					DefaultTimeoutMinutes: 60,
+					DefaultServiceAccount: "default",
+				},
+			})
+			ctx = apis.WithinUpdate(ctx, tt.baselineTaskRun)
+
+			err := tt.taskRun.Spec.ValidateUpdate(ctx)
+
+			if tt.expectedError == "" {
+				if err != nil {
+					t.Errorf("Expected no error, but got: %v", err)
+				}
+			} else {
+				if err == nil {
+					t.Errorf("Expected error containing %q, but got none", tt.expectedError)
+				} else if !strings.Contains(err.Error(), tt.expectedError) {
+					t.Errorf("Expected error containing %q, but got: %v", tt.expectedError, err)
+				}
 			}
 		})
 	}

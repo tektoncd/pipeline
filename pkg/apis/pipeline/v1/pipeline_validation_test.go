@@ -81,14 +81,6 @@ func TestPipeline_Validate_Success(t *testing.T) {
 			},
 		},
 	}, {
-		name: "valid reference to clusterTask",
-		p: &Pipeline{
-			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-			Spec: PipelineSpec{
-				Tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{Name: "bar", Kind: ClusterTaskRefKind}}},
-			},
-		},
-	}, {
 		name: "valid task with pipelineRef",
 		wc:   cfgtesting.EnableAlphaAPIFields,
 		p: &Pipeline{
@@ -323,10 +315,30 @@ func TestPipeline_Validate_Success(t *testing.T) {
 					"enable-artifacts":  "true",
 					"enable-api-fields": "alpha"})
 		},
+	}, {
+		name: "valid pipeline with onError containing parameter reference",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Params: ParamSpecs{{
+					Name: "error-behavior",
+					Type: ParamTypeString,
+					Default: &ParamValue{
+						Type:      ParamTypeString,
+						StringVal: "continue",
+					},
+				}},
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					OnError: PipelineTaskOnErrorType("$(params.error-behavior)"),
+				}},
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -648,10 +660,43 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			Message: `non-existent variable in "$(params.param1)"`,
 			Paths:   []string{"spec.tasks[0].params[param1]"},
 		},
+	}, {
+		name: "invalid onError value in pipeline task",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					OnError: PipelineTaskOnErrorType("invalid-value"),
+				}},
+			},
+		},
+		expectedError: *apis.ErrInvalidValue(
+			PipelineTaskOnErrorType("invalid-value"), "OnError",
+			"PipelineTask OnError must be either \"continue\" or \"stopAndFail\"").
+			ViaField("spec.tasks[0]"),
+	}, {
+		name: "invalid onError with continue and retries",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					OnError: PipelineTaskContinue,
+					Retries: 3,
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `PipelineTask OnError cannot be set to "continue" when Retries is greater than 0`,
+			Paths:   []string{""},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -1362,7 +1407,7 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -1370,7 +1415,7 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 			if err == nil {
 				t.Errorf("PipelineSpec.Validate() did not return error for invalid pipelineSpec")
 			}
-			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error()); d != "" {
 				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -1388,7 +1433,7 @@ func TestPipelineSpec_Validate_Failure_CycleDAG(t *testing.T) {
 			Name: "baz", TaskRef: &TaskRef{Name: "baz-task"}, RunAfter: []string{"bar"},
 		}},
 	}
-	err := ps.Validate(context.Background())
+	err := ps.Validate(t.Context())
 	if err == nil {
 		t.Errorf("PipelineSpec.Validate() did not return error for invalid pipelineSpec: %s", name)
 	}
@@ -1455,7 +1500,7 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidatePipelineTasks(context.Background(), tt.tasks, tt.finalTasks)
+			err := ValidatePipelineTasks(t.Context(), tt.tasks, tt.finalTasks)
 			if err == nil {
 				t.Error("ValidatePipelineTasks() did not return error for invalid pipeline tasks")
 			}
@@ -1642,7 +1687,7 @@ func TestFinallyTaskResultsToPipelineResults_Success(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -1742,7 +1787,7 @@ func TestFinallyTaskResultsToPipelineResults_Failure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -2066,7 +2111,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+			ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
 			if tt.configMap != nil {
 				ctx = cfgtesting.SetFeatureFlags(ctx, t, tt.configMap)
 			}
@@ -2662,7 +2707,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.configMap != nil {
 				ctx = cfgtesting.SetFeatureFlags(ctx, t, tt.configMap)
 			}
@@ -2933,7 +2978,7 @@ func TestValidatePipelineWithFinalTasks_Success(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -3401,7 +3446,7 @@ func TestValidatePipelineWithFinalTasks_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
@@ -4151,7 +4196,7 @@ func TestMatrixIncompatibleAPIVersions(t *testing.T) {
 				Defaults:     defaults,
 				FeatureFlags: featureFlags,
 			}
-			ctx := config.ToContext(context.Background(), cfg)
+			ctx := config.ToContext(t.Context(), cfg)
 			err := test.pt.validateMatrix(ctx)
 			if test.wantErr != nil {
 				if d := cmp.Diff(test.wantErr.Error(), err.Error()); d != "" {
@@ -4685,7 +4730,7 @@ func Test_validateMatrix(t *testing.T) {
 				Defaults:     defaults,
 			}
 
-			ctx := config.ToContext(context.Background(), cfg)
+			ctx := config.ToContext(t.Context(), cfg)
 			if d := cmp.Diff(tt.wantErrs.Error(), validateMatrix(ctx, tt.tasks).Error()); d != "" {
 				t.Errorf("validateMatrix() errors diff %s", diff.PrintWantGot(d))
 			}
@@ -4749,12 +4794,12 @@ func TestPipelineWithBetaFields(t *testing.T) {
 	for _, tt := range tts {
 		t.Run(tt.name, func(t *testing.T) {
 			pipeline := Pipeline{ObjectMeta: metav1.ObjectMeta{Name: "foo"}, Spec: tt.spec}
-			ctx := cfgtesting.EnableStableAPIFields(context.Background())
+			ctx := cfgtesting.EnableStableAPIFields(t.Context())
 			if err := pipeline.Validate(ctx); err == nil {
 				t.Errorf("no error when using beta field when `enable-api-fields` is stable")
 			}
 
-			ctx = cfgtesting.EnableBetaAPIFields(context.Background())
+			ctx = cfgtesting.EnableBetaAPIFields(t.Context())
 			if err := pipeline.Validate(ctx); err != nil {
 				t.Errorf("unexpected error when using beta field: %s", err)
 			}

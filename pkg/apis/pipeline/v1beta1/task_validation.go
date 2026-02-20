@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -256,42 +255,6 @@ func validateSteps(ctx context.Context, steps []Step) (errs *apis.FieldError) {
 	return errs
 }
 
-// isCreateOrUpdateAndDiverged checks if the webhook event was create or update
-// if create, it returns true.
-// if update, it checks if the step results have diverged and returns if diverged.
-// if neither, it returns false.
-func isCreateOrUpdateAndDiverged(ctx context.Context, s Step) bool {
-	if apis.IsInCreate(ctx) {
-		return true
-	}
-	if apis.IsInUpdate(ctx) {
-		baseline := apis.GetBaseline(ctx)
-		var baselineStep Step
-		switch o := baseline.(type) {
-		case *TaskRun:
-			if o.Spec.TaskSpec != nil {
-				for _, step := range o.Spec.TaskSpec.Steps {
-					if s.Name == step.Name {
-						baselineStep = step
-						break
-					}
-				}
-			}
-		default:
-			// the baseline is not a taskrun.
-			// return true so that the validation can happen
-			return true
-		}
-		// If an update event, check if the results have diverged from the baseline
-		// this way, the feature flag check wont happen.
-		// This will avoid issues like https://github.com/tektoncd/pipeline/issues/5203
-		// when the feature is turned off mid-run.
-		diverged := !reflect.DeepEqual(s.Results, baselineStep.Results)
-		return diverged
-	}
-	return false
-}
-
 func errorIfStepResultReferenceinField(value, fieldName string) (errs *apis.FieldError) {
 	matches := resultref.StepResultRegex.FindAllStringSubmatch(value, -1)
 	if len(matches) > 0 {
@@ -324,7 +287,7 @@ func errorIfStepArtifactReferencedInField(value, fieldName string) (errs *apis.F
 func validateStepArtifactsReference(s Step) (errs *apis.FieldError) {
 	errs = errs.Also(errorIfStepArtifactReferencedInField(s.Name, "name"))
 	errs = errs.Also(errorIfStepArtifactReferencedInField(s.Image, "image"))
-	errs = errs.Also(errorIfStepArtifactReferencedInField(string(s.ImagePullPolicy), "imagePullPoliicy"))
+	errs = errs.Also(errorIfStepArtifactReferencedInField(string(s.ImagePullPolicy), "imagePullPolicy"))
 	errs = errs.Also(errorIfStepArtifactReferencedInField(s.WorkingDir, "workingDir"))
 	for _, e := range s.EnvFrom {
 		errs = errs.Also(errorIfStepArtifactReferencedInField(e.Prefix, "envFrom.prefix"))
@@ -351,7 +314,7 @@ func validateStepResultReference(s Step) (errs *apis.FieldError) {
 	errs = errs.Also(errorIfStepResultReferenceinField(s.Name, "name"))
 	errs = errs.Also(errorIfStepResultReferenceinField(s.Image, "image"))
 	errs = errs.Also(errorIfStepResultReferenceinField(s.Script, "script"))
-	errs = errs.Also(errorIfStepResultReferenceinField(string(s.ImagePullPolicy), "imagePullPoliicy"))
+	errs = errs.Also(errorIfStepResultReferenceinField(string(s.ImagePullPolicy), "imagePullPolicy"))
 	errs = errs.Also(errorIfStepResultReferenceinField(s.WorkingDir, "workingDir"))
 	for _, e := range s.EnvFrom {
 		errs = errs.Also(errorIfStepResultReferenceinField(e.Prefix, "envFrom.prefix"))
@@ -380,9 +343,6 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	}
 
 	if s.Ref != nil {
-		if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
-			return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to reference StepActions in Steps.", config.EnableStepActions), "")
-		}
 		errs = errs.Also(s.Ref.Validate(ctx))
 		if s.Image != "" {
 			errs = errs.Also(&apis.FieldError{
@@ -438,16 +398,6 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 				Message: "params cannot be used without Ref",
 				Paths:   []string{"params"},
 			})
-		}
-		if len(s.Results) > 0 {
-			if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
-				return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true in order to use Results in Steps.", config.EnableStepActions), "")
-			}
-		}
-		if len(s.When) > 0 {
-			if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
-				return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true in order to use When in Steps.", config.EnableStepActions), "")
-			}
 		}
 		if s.Image == "" {
 			errs = errs.Also(apis.ErrMissingField("Image"))

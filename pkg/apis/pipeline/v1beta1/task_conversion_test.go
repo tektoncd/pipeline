@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -33,11 +32,11 @@ import (
 func TestTaskConversionBadType(t *testing.T) {
 	good, bad := &v1beta1.Task{}, &v1beta1.Pipeline{}
 
-	if err := good.ConvertTo(context.Background(), bad); err == nil {
+	if err := good.ConvertTo(t.Context(), bad); err == nil {
 		t.Errorf("ConvertTo() = %#v, wanted error", bad)
 	}
 
-	if err := good.ConvertFrom(context.Background(), bad); err == nil {
+	if err := good.ConvertFrom(t.Context(), bad); err == nil {
 		t.Errorf("ConvertFrom() = %#v, wanted error", bad)
 	}
 }
@@ -53,6 +52,7 @@ spec:
   description: test
   steps:
   - image: foo
+  - displayName: "step-display-name"
   params:
   - name: param-1
     type: string
@@ -425,7 +425,7 @@ spec:
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			v1Task := &v1.Task{}
-			if err := test.v1beta1Task.ConvertTo(context.Background(), v1Task); err != nil {
+			if err := test.v1beta1Task.ConvertTo(t.Context(), v1Task); err != nil {
 				t.Errorf("ConvertTo() = %v", err)
 				return
 			}
@@ -434,7 +434,7 @@ spec:
 				t.Errorf("expected v1Task is different from what's converted: %s", d)
 			}
 			gotV1beta1 := &v1beta1.Task{}
-			if err := gotV1beta1.ConvertFrom(context.Background(), v1Task); err != nil {
+			if err := gotV1beta1.ConvertFrom(t.Context(), v1Task); err != nil {
 				t.Errorf("ConvertFrom() = %v", err)
 			}
 			t.Logf("ConvertFrom() = %#v", gotV1beta1)
@@ -506,12 +506,12 @@ func TestTaskConversionFromDeprecated(t *testing.T) {
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
-				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
+				if err := test.in.ConvertTo(t.Context(), ver); err != nil {
 					t.Errorf("ConvertTo() = %v", err)
 				}
 				t.Logf("ConvertTo() = %#v", ver)
 				got := &v1beta1.Task{}
-				if err := got.ConvertFrom(context.Background(), ver); err != nil {
+				if err := got.ConvertFrom(t.Context(), ver); err != nil {
 					t.Errorf("ConvertFrom() = %v", err)
 				}
 				t.Logf("ConvertFrom() = %#v", got)

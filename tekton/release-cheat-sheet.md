@@ -12,24 +12,55 @@ the pipelines repo, a terminal window and a text editor.
 
 1. [Install kustomize](https://kubectl.docs.kubernetes.io/installation/kustomize) if you haven't already.
 
-1. Ensure the correct version of the release pipeline is installed on the cluster:
+1. Select the commit you would like to build the release from (NOTE: the commit is full (40-digit) hash.)
+    - Select the most recent commit on the ***main branch*** if you are cutting a major or minor release i.e. `x.0.0` or `0.x.0`
+    - Select the most recent commit on the ***`release-<version number>x` branch***, e.g. [`release-v0.47.x`](https://github.com/tektoncd/pipeline/tree/release-v0.47.x) if you are patching a release i.e. `v0.47.2`.
+
+1. Ensure the correct version of the release pipeline is installed on the cluster.
+   To do that, the selected commit should be checked-out locally
 
     ```bash
     kustomize build tekton | kubectl --context dogfooding replace -f -
     ```
 
-1. Create environment variables for bash scripts in later steps.
+1. Choose a name for the new release! The usual pattern is "< cat breed > < famous robot >" e.g. "Ragdoll Norby". For LTS releases, add a suffix "LTS" in the name such as "< cat breed > < famous robot > LTS" e.g. "Ragdoll Norby LTS". Use this command to generate a name that has not yet been used:
 
     ```bash
-    TEKTON_VERSION=# Example: v0.21.0
+    go run tekton/release_names.go
     ```
 
-    - Select the commit you would like to build the release from (NOTE: the commit is full (40-digit) hash.)
-        - Select the most recent commit on the ***main branch*** if you are cutting a major or minor release i.e. `x.0.0` or `0.x.0`
-        - Select the most recent commit on the ***`release-<version number>x` branch***, e.g. [`release-v0.47.x`](https://github.com/tektoncd/pipeline/tree/release-v0.47.x) if you are patching a release i.e. `v0.47.2`.
+    It returns something like:
+
+    ```json
+    {
+        "release_name": "Khao Manee KARR",
+        "cat_breed_url": "https://en.wikipedia.org/wiki/Khao_Manee",
+        "robot_url": "https://en.wikipedia.org/wiki/KARR"
+    }
+    ```
+
+    The URLs can be used to find out more about the cat breed and robot selected by the tool.
+    Previous release names can also be found with the following command:
 
     ```bash
-    TEKTON_RELEASE_GIT_SHA=# SHA of the release to be released
+    curl \
+      -H "Accept: application/vnd.github.v3+json" \
+      https://api.github.com/repos/tektoncd/pipeline/releases\?per_page=100 \
+      | jq ".[].name" | cut -d'"' -f 3 | tr -d '\' | sort -u
+    ```
+
+1. Create a `release.env` file with environment variables for bash scripts in later steps, and source it:
+
+    ```bash
+    cat <<EOF > release.env
+    TEKTON_VERSION= # Example: v0.69.0
+    TEKTON_RELEASE_GIT_SHA= # SHA of the release to be released, e.g. 5b082b1106753e093593d12152c82e1c4b0f37e5
+    TEKTON_OLD_VERSION= # Example: v0.68.0
+    TEKTON_RELEASE_NAME="Oriental Longhair Omnibot" # Name of the release
+    TEKTON_PACKAGE=tektoncd/pipeline
+    TEKTON_REPO_NAME=pipeline
+    EOF
+    . ./release.env
     ```
 
 1. Confirm commit SHA matches what you want to release.
@@ -41,13 +72,14 @@ the pipelines repo, a terminal window and a text editor.
 1. Create a workspace template file:
 
    ```bash
-   cat <<EOF > workspace-template.yaml
+   WORKSPACE_TEMPLATE=$(mktemp /tmp/workspace-template.XXXXXX.yaml)
+   cat <<'EOF' > $WORKSPACE_TEMPLATE
    spec:
-     accessModes:
-     - ReadWriteOnce
-     resources:
-       requests:
-         storage: 1Gi
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 1Gi
    EOF
    ```
 
@@ -59,21 +91,20 @@ the pipelines repo, a terminal window and a text editor.
 
    ```bash
     tkn --context dogfooding pipeline start pipeline-release \
-      --serviceaccount=release-right-meow \
       --param package=github.com/tektoncd/pipeline \
+      --param repoName="${TEKTON_REPO_NAME}" \
       --param gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
       --param imageRegistry=ghcr.io \
       --param imageRegistryPath=tektoncd/pipeline \
       --param imageRegistryRegions="" \
       --param imageRegistryUser=tekton-robot \
-      --param serviceAccountPath=release.json \
       --param serviceAccountImagesPath=credentials \
       --param versionTag="${TEKTON_VERSION}" \
-      --param releaseBucket=gs://tekton-releases/pipeline \
+      --param releaseBucket=tekton-releases \
       --param koExtraArgs="" \
-      --workspace name=release-secret,secret=release-secret \
+      --workspace name=release-secret,secret=oci-release-secret \
       --workspace name=release-images-secret,secret=ghcr-creds \
-      --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
+      --workspace name=workarea,volumeClaimTemplateFile="${WORKSPACE_TEMPLATE}" \
       --tasks-timeout 2h \
       --pipeline-timeout 3h
    ```
@@ -92,8 +123,8 @@ the pipelines repo, a terminal window and a text editor.
 
     NAME                    VALUE
     ∙ commit-sha            ff6d7abebde12460aecd061ab0f6fd21053ba8a7
-    ∙ release-file           https://storage.googleapis.com/tekton-releases-nightly/pipeline/previous/v20210223-xyzxyz/release.yaml
-    ∙ release-file-no-tag    https://storage.googleapis.com/tekton-releases-nightly/pipeline/previous/v20210223-xyzxyz/release.notag.yaml
+    ∙ release-file           https://infra.tekton.dev/tekton-releases/pipeline/previous/v0.13.0/release.yaml
+    ∙ release-file-no-tag    https://infra.tekton.dev/tekton-releases/pipeline/previous/v0.13.0/release.notag.yaml
 
     (...)
     ```
@@ -103,48 +134,46 @@ the pipelines repo, a terminal window and a text editor.
 
 1. The YAMLs are now released! Anyone installing Tekton Pipelines will get the new version. Time to create a new GitHub release announcement:
 
-    1. Choose a name for the new release! The usual pattern is "< cat breed > < famous robot >" e.g. "Ragdoll Norby". For LTS releases, add a suffix "LTS" in the name such as "< cat breed > < famous robot > LTS" e.g. "Ragdoll Norby LTS". Browse [the releases page](https://github.com/tektoncd/pipeline/releases) or run this command to check which names have already been used:
-
-    ```bash
-    curl \
-      -H "Accept: application/vnd.github.v3+json" \
-      https://api.github.com/repos/tektoncd/pipeline/releases\?per_page=100 \
-      | jq ".[].name"
-    ```
-
     1. Find the Rekor UUID for the release
 
     ```bash
-    RELEASE_FILE=https://storage.googleapis.com/tekton-releases/pipeline/previous/${TEKTON_VERSION}/release.yaml
-    CONTROLLER_IMAGE_SHA=$(curl $RELEASE_FILE | egrep 'gcr.io.*controller' | cut -d'@' -f2)
+    RELEASE_FILE=https://infra.tekton.dev/tekton-releases/pipeline/previous/${TEKTON_VERSION}/release.yaml
+    CONTROLLER_IMAGE_SHA=$(curl -L $RELEASE_FILE | sed -n 's/"//g;s/.*ghcr\.io.*controller.*@//p;')
     REKOR_UUID=$(rekor-cli search --sha $CONTROLLER_IMAGE_SHA | grep -v Found | head -1)
     echo -e "CONTROLLER_IMAGE_SHA: ${CONTROLLER_IMAGE_SHA}\nREKOR_UUID: ${REKOR_UUID}"
     ```
 
-    1. Create additional environment variables
-
-    ```bash
-    TEKTON_OLD_VERSION=# Example: v0.11.1
-    TEKTON_RELEASE_NAME=# The release name you just chose, e.g.: "Ragdoll Norby"
-    ```
-
     1. Execute the Draft Release Pipeline.
 
-    ```bash
-    tkn --context dogfooding pipeline start \
-      --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
-      --workspace name=credentials,secret=release-secret \
-      -p package="tektoncd/pipeline" \
-      -p git-revision="$TEKTON_RELEASE_GIT_SHA" \
-      -p release-tag="${TEKTON_VERSION}" \
-      -p previous-release-tag="${TEKTON_OLD_VERSION}" \
-      -p release-name="${TEKTON_RELEASE_NAME}" \
-      -p bucket="gs://tekton-releases/pipeline" \
-      -p rekor-uuid="$REKOR_UUID" \
-      release-draft
-    ```
+        Create a pod template file:
 
-    1. Watch logs of create-draft-release
+        ```shell
+        POD_TEMPLATE=$(mktemp /tmp/pod-template.XXXXXX.yaml)
+        cat <<'EOF' > $POD_TEMPLATE
+        securityContext:
+          fsGroup: 65532
+          runAsUser: 65532
+          runAsNonRoot: true
+        EOF
+        ```
+
+        ```shell
+        tkn pipeline start \
+          --workspace name=shared,volumeClaimTemplateFile="${WORKSPACE_TEMPLATE}" \
+          --workspace name=credentials,secret=oci-release-secret \
+          --pod-template "${POD_TEMPLATE}" \
+          -p package="${TEKTON_PACKAGE}" \
+          -p git-revision="$TEKTON_RELEASE_GIT_SHA" \
+          -p release-tag="${TEKTON_VERSION}" \
+          -p previous-release-tag="${TEKTON_OLD_VERSION}" \
+          -p release-name="${TEKTON_RELEASE_NAME}" \
+          -p repo-name="${TEKTON_REPO_NAME}" \
+          -p bucket="tekton-releases" \
+          -p rekor-uuid="$REKOR_UUID" \
+          release-draft-oci
+        ```
+
+    1. Watch logs of resulting pipeline run on pipeline `release-draft-oci`
 
     1. On successful completion, a URL will be logged. Visit that URL and look through the release notes.
       1. Manually add upgrade and deprecation notices based on the generated release notes
@@ -181,19 +210,21 @@ the pipelines repo, a terminal window and a text editor.
 
     ```bash
     # Test latest
-    kubectl --context my-dev-cluster apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+    kubectl --context my-dev-cluster apply --filename https://infra.tekton.dev/tekton-releases/pipeline/latest/release.yaml
     ```
 
     ```bash
     # Test backport
-    kubectl --context my-dev-cluster apply --filename https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.11.2/release.yaml
+    kubectl --context my-dev-cluster apply --filename https://infra.tekton.dev/tekton-releases/pipeline/previous/v0.11.2/release.yaml
     ```
 
 1. Announce the release in Slack channels #general, #announcements and #pipelines.
 Optional: Add a photo of this release's "purr programmer" (someone's cat).
 
 1. Update [the catalog repo](https://github.com/tektoncd/catalog) test infrastructure
-to use the new release by updating the `RELEASE_YAML` link in [e2e-tests.sh](https://github.com/tektoncd/catalog/blob/main/test/e2e-tests.sh).
+to use the new release by updating the test matrix in the `[ci.yaml](https://github.com/tektoncd/catalog/blob/main/.github/workflows/ci.yaml)`.
+
+1. Update [the plumbing repo](https://github.com/tektoncd/plumbing/blob/d244554a42d7b6a5f1180c58c513eeecc9febcde/tekton/cd/pipeline/overlays/oci-ci-cd/kustomization.yaml#L4) to deploy the latest version to the dogfooging cluster on OCI.
 
 1. For major releases, the [website sync configuration](https://github.com/tektoncd/website/blob/main/sync/config/pipelines.yaml)
    to include the new release.
@@ -205,15 +236,22 @@ Congratulations, you're done!
 1. Configure `kubectl` to connect to
    [the dogfooding cluster](https://github.com/tektoncd/plumbing/blob/main/docs/dogfooding.md):
 
+   The dogfooding cluster is currently an OKE cluster in oracle cloud. we need the Oracle Cloud CLI client. Install oracle cloud cli (https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm) 
+
     ```bash
-    gcloud container clusters get-credentials dogfooding --zone us-central1-a --project tekton-releases
+    oci ce cluster create-kubeconfig --cluster-id <CLUSTER-OCID> --file $HOME/.kube/config --region <CLUSTER-REGION> --token-version 2.0.0  --kube-endpoint PUBLIC_ENDPOINT
     ```
 
 1. Give [the context](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
    a short memorable name such as `dogfooding`:
 
    ```bash
-   kubectl config rename-context gke_tekton-releases_us-central1-a_dogfooding dogfooding
+   kubectl config current-context
+   ```
+   get the context name and replace with current_context_name
+
+   ```bash
+   kubectl config rename-context <current_context_name> dogfooding
    ```
 
 1. **Important: Switch `kubectl` back to your own cluster by default.**

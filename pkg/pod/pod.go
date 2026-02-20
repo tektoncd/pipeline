@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/tektoncd/pipeline/internal/artifactref"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -33,6 +34,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/tasklevel"
 	"github.com/tektoncd/pipeline/pkg/names"
+	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,6 +43,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/strings/slices"
 	"knative.dev/pkg/changeset"
+	"knative.dev/pkg/kmap"
 	"knative.dev/pkg/kmeta"
 )
 
@@ -159,6 +162,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	enableKeepPodOnCancel := featureFlags.EnableKeepPodOnCancel
 	setSecurityContext := config.FromContextOrDefaults(ctx).FeatureFlags.SetSecurityContext
 	setSecurityContextReadOnlyRootFilesystem := config.FromContextOrDefaults(ctx).FeatureFlags.SetSecurityContextReadOnlyRootFilesystem
+	defaultManagedByLabelValue := config.FromContextOrDefaults(ctx).Defaults.DefaultManagedByLabelValue
 
 	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
 	volumes = append(volumes, implicitVolumes...)
@@ -200,10 +204,11 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	}
 
 	windows := usesWindows(taskRun)
+	pollingInterval := config.FromContextOrDefaults(ctx).Defaults.DefaultSidecarLogPollingInterval
 	if sidecarLogsResultsEnabled {
 		if taskSpec.Results != nil || artifactsPathReferenced(steps) {
 			// create a results sidecar
-			resultsSidecar, err := createResultsSidecar(taskSpec, b.Images.SidecarLogResultsImage, securityContextConfig, windows)
+			resultsSidecar, err := createResultsSidecar(taskSpec, b.Images.SidecarLogResultsImage, securityContextConfig, windows, pollingInterval)
 			if err != nil {
 				return nil, err
 			}
@@ -436,6 +441,22 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 				sc := &sidecarContainers[i]
 				always := corev1.ContainerRestartPolicyAlways
 				sc.RestartPolicy = &always
+
+				// For the results sidecar specifically, ensure it has the kubernetes-sidecar-mode flag
+				// to prevent it from exiting and restarting
+				if sc.Name == pipeline.ReservedResultsSidecarName {
+					kubernetesSidecarModeFound := false
+					for j, arg := range sc.Command {
+						if arg == "-kubernetes-sidecar-mode" && j+1 < len(sc.Command) {
+							kubernetesSidecarModeFound = true
+							break
+						}
+					}
+					if !kubernetesSidecarModeFound {
+						sc.Command = append(sc.Command, "-kubernetes-sidecar-mode", "true")
+					}
+				}
+
 				sc.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", sidecarPrefix, sc.Name))
 				mergedPodInitContainers = append(mergedPodInitContainers, *sc)
 			}
@@ -459,7 +480,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		priorityClassName = *podTemplate.PriorityClassName
 	}
 
-	podAnnotations := kmeta.CopyMap(taskRun.Annotations)
+	podAnnotations := kmap.ExcludeKeys(kmeta.CopyMap(taskRun.Annotations), tknreconciler.KubernetesManagedByAnnotationKey)
 	podAnnotations[ReleaseAnnotation] = changeset.Get()
 
 	if readyImmediately {
@@ -491,7 +512,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 				*metav1.NewControllerRef(taskRun, groupVersionKind),
 			},
 			Annotations: podAnnotations,
-			Labels:      makeLabels(taskRun),
+			Labels:      makeLabels(taskRun, defaultManagedByLabelValue),
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy:                corev1.RestartPolicyNever,
@@ -507,6 +528,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 			AutomountServiceAccountToken: podTemplate.AutomountServiceAccountToken,
 			SchedulerName:                podTemplate.SchedulerName,
 			HostNetwork:                  podTemplate.HostNetwork,
+			HostUsers:                    podTemplate.HostUsers,
 			DNSPolicy:                    dnsPolicy,
 			DNSConfig:                    podTemplate.DNSConfig,
 			EnableServiceLinks:           podTemplate.EnableServiceLinks,
@@ -529,7 +551,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 }
 
 // makeLabels constructs the labels we will propagate from TaskRuns to Pods.
-func makeLabels(s *v1.TaskRun) map[string]string {
+func makeLabels(s *v1.TaskRun, defaultManagedByLabelValue string) map[string]string {
 	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
 	// NB: Set this *before* passing through TaskRun labels. If the TaskRun
 	// has a managed-by label, it should override this default.
@@ -543,6 +565,8 @@ func makeLabels(s *v1.TaskRun) map[string]string {
 	// specifies this label, it should be overridden by this value.
 	labels[pipeline.TaskRunLabelKey] = s.Name
 	labels[pipeline.TaskRunUIDLabelKey] = string(s.UID)
+	// Enforce app.kubernetes.io/managed-by to be the value configured
+	labels[tknreconciler.KubernetesManagedByAnnotationKey] = defaultManagedByLabelValue
 	return labels
 }
 
@@ -613,7 +637,7 @@ func entrypointInitContainer(image string, steps []v1.Step, securityContext Secu
 // whether it will run on a windows node, and whether the sidecar should include a security context
 // that will allow it to run in namespaces with "restricted" pod security admission.
 // It will also provide arguments to the binary that allow it to surface the step results.
-func createResultsSidecar(taskSpec v1.TaskSpec, image string, securityContext SecurityContextConfig, windows bool) (v1.Sidecar, error) {
+func createResultsSidecar(taskSpec v1.TaskSpec, image string, securityContext SecurityContextConfig, windows bool, pollingInterval time.Duration) (v1.Sidecar, error) {
 	names := make([]string, 0, len(taskSpec.Results))
 	for _, r := range taskSpec.Results {
 		names = append(names, r.Name)
@@ -651,10 +675,23 @@ func createResultsSidecar(taskSpec v1.TaskSpec, image string, securityContext Se
 	if len(stepResultsBytes) > 0 {
 		command = append(command, "-step-results", string(stepResultsBytes))
 	}
+
+	// When using Kubernetes native sidecar support, add the kubernetes-sidecar-mode flag
+	// to prevent the sidecar from exiting after processing results
+	if config.FromContextOrDefaults(context.Background()).FeatureFlags.EnableKubernetesSidecar {
+		command = append(command, "-kubernetes-sidecar-mode", "true")
+	}
+
 	sidecar := v1.Sidecar{
 		Name:    pipeline.ReservedResultsSidecarName,
 		Image:   image,
 		Command: command,
+		Env: []corev1.EnvVar{
+			{
+				Name:  "SIDECAR_LOG_POLLING_INTERVAL",
+				Value: pollingInterval.String(),
+			},
+		},
 	}
 
 	if securityContext.SetSecurityContext {

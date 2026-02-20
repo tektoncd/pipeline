@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2019 The Tekton Authors
@@ -43,8 +42,9 @@ var (
 // TestTaskRunPipelineRunStatus is an integration test that will
 // verify a very simple "hello world" TaskRun and PipelineRun failure
 // execution lead to the correct TaskRun status.
+// @test:execution=parallel
 func TestTaskRunPipelineRunStatus(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
@@ -119,8 +119,9 @@ spec:
 // [Expectation]: PipelineRun status should contain the provenance about the remote pipeline
 // i.e. refSource info, and the child TaskRun status should contain the provnenace
 // about the remote task i.e. refSource info .
+// @test:execution=parallel
 func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{"enable-api-fields": "beta"}))

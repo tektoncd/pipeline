@@ -106,7 +106,7 @@ func (in *Template) DeepCopyInto(out *Template) {
 	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
-		*out = make([]v1.Volume, len(*in))
+		*out = make(Volumes, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -152,6 +152,11 @@ func (in *Template) DeepCopyInto(out *Template) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.HostUsers != nil {
+		in, out := &in.HostUsers, &out.HostUsers
+		*out = new(bool)
+		**out = **in
 	}
 	if in.TopologySpreadConstraints != nil {
 		in, out := &in.TopologySpreadConstraints, &out.TopologySpreadConstraints

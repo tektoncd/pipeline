@@ -9,7 +9,6 @@ TESTPKGS = $(shell env GO111MODULE=on $(GO) list -f \
 BIN      = $(CURDIR)/.bin
 WOKE 	?= go run -modfile go.mod github.com/get-woke/woke
 
-# Get golangci_version from tools/go.mod
 GOLANGCI_VERSION := $(shell yq '.jobs.linting.steps[] | select(.name == "golangci-lint") | .with.version' .github/workflows/ci.yaml)
 WOKE_VERSION     = v0.19.0
 
@@ -199,6 +198,11 @@ $(BIN)/woke: ; $(info $(M) getting woke $(WOKE_VERSION))
 .PHONY: woke 
 woke: | $(WOKE) ; $(info $(M) running woke...) @ ## Run woke
 	$Q $(WOKE) -c https://github.com/canonical/Inclusive-naming/raw/main/config.yml
+
+.PHONY: yamlint
+YAMLLINT := $(shell find . -path ./vendor -prune -o -type f -regex ".*y[a]ml" -print) 
+yamllint: | $(BIN) ; $(info $(M) running yamlint…)
+	yamllint -c .yamllint $(YAMLLINT)
 
 # Misc
 

@@ -19,9 +19,9 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	scheme "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,33 +37,34 @@ type ResolutionRequestsGetter interface {
 
 // ResolutionRequestInterface has methods to work with ResolutionRequest resources.
 type ResolutionRequestInterface interface {
-	Create(ctx context.Context, resolutionRequest *v1beta1.ResolutionRequest, opts v1.CreateOptions) (*v1beta1.ResolutionRequest, error)
-	Update(ctx context.Context, resolutionRequest *v1beta1.ResolutionRequest, opts v1.UpdateOptions) (*v1beta1.ResolutionRequest, error)
+	Create(ctx context.Context, resolutionRequest *resolutionv1beta1.ResolutionRequest, opts v1.CreateOptions) (*resolutionv1beta1.ResolutionRequest, error)
+	Update(ctx context.Context, resolutionRequest *resolutionv1beta1.ResolutionRequest, opts v1.UpdateOptions) (*resolutionv1beta1.ResolutionRequest, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, resolutionRequest *v1beta1.ResolutionRequest, opts v1.UpdateOptions) (*v1beta1.ResolutionRequest, error)
+	UpdateStatus(ctx context.Context, resolutionRequest *resolutionv1beta1.ResolutionRequest, opts v1.UpdateOptions) (*resolutionv1beta1.ResolutionRequest, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta1.ResolutionRequest, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1beta1.ResolutionRequestList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*resolutionv1beta1.ResolutionRequest, error)
+	List(ctx context.Context, opts v1.ListOptions) (*resolutionv1beta1.ResolutionRequestList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.ResolutionRequest, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *resolutionv1beta1.ResolutionRequest, err error)
 	ResolutionRequestExpansion
 }
 
 // resolutionRequests implements ResolutionRequestInterface
 type resolutionRequests struct {
-	*gentype.ClientWithList[*v1beta1.ResolutionRequest, *v1beta1.ResolutionRequestList]
+	*gentype.ClientWithList[*resolutionv1beta1.ResolutionRequest, *resolutionv1beta1.ResolutionRequestList]
 }
 
 // newResolutionRequests returns a ResolutionRequests
 func newResolutionRequests(c *ResolutionV1beta1Client, namespace string) *resolutionRequests {
 	return &resolutionRequests{
-		gentype.NewClientWithList[*v1beta1.ResolutionRequest, *v1beta1.ResolutionRequestList](
+		gentype.NewClientWithList[*resolutionv1beta1.ResolutionRequest, *resolutionv1beta1.ResolutionRequestList](
 			"resolutionrequests",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1beta1.ResolutionRequest { return &v1beta1.ResolutionRequest{} },
-			func() *v1beta1.ResolutionRequestList { return &v1beta1.ResolutionRequestList{} }),
+			func() *resolutionv1beta1.ResolutionRequest { return &resolutionv1beta1.ResolutionRequest{} },
+			func() *resolutionv1beta1.ResolutionRequestList { return &resolutionv1beta1.ResolutionRequestList{} },
+		),
 	}
 }

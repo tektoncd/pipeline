@@ -46,22 +46,22 @@ import (
 // operation fails. This practice ensures that you use the KMS key that you intend.
 //
 // Whenever possible, use key policies to give users permission to call the Decrypt
-// operation on a particular KMS key, instead of using &IAM; policies. Otherwise,
-// you might create an &IAM; policy that gives the user Decrypt permission on all
-// KMS keys. This user could decrypt ciphertext that was encrypted by KMS keys in
-// other accounts if the key policy for the cross-account KMS key permits it. If
-// you must use an IAM policy for Decrypt permissions, limit the user to
-// particular KMS keys or particular trusted accounts. For details, see [Best practices for IAM policies]in the Key
-// Management Service Developer Guide.
+// operation on a particular KMS key, instead of using IAM policies. Otherwise, you
+// might create an IAM policy that gives the user Decrypt permission on all KMS
+// keys. This user could decrypt ciphertext that was encrypted by KMS keys in other
+// accounts if the key policy for the cross-account KMS key permits it. If you must
+// use an IAM policy for Decrypt permissions, limit the user to particular KMS
+// keys or particular trusted accounts. For details, see [Best practices for IAM policies]in the Key Management
+// Service Developer Guide.
 //
-// Decrypt also supports [Amazon Web Services Nitro Enclaves], which provide an isolated compute environment in Amazon
-// EC2. To call Decrypt for a Nitro enclave, use the [Amazon Web Services Nitro Enclaves SDK] or any Amazon Web Services
-// SDK. Use the Recipient parameter to provide the attestation document for the
-// enclave. Instead of the plaintext data, the response includes the plaintext data
-// encrypted with the public key from the attestation document (
-// CiphertextForRecipient ). For information about the interaction between KMS and
-// Amazon Web Services Nitro Enclaves, see [How Amazon Web Services Nitro Enclaves uses KMS]in the Key Management Service Developer
-// Guide.
+// Decrypt also supports [Amazon Web Services Nitro Enclaves] and NitroTPM, which provide attested environments in
+// Amazon EC2. To call Decrypt for a Nitro enclave or NitroTPM, use the [Amazon Web Services Nitro Enclaves SDK] or any
+// Amazon Web Services SDK. Use the Recipient parameter to provide the attestation
+// document for the attested environment. Instead of the plaintext data, the
+// response includes the plaintext data encrypted with the public key from the
+// attestation document ( CiphertextForRecipient ). For information about the
+// interaction between KMS and Amazon Web Services Nitro Enclaves or Amazon Web
+// Services NitroTPM, see [Cryptographic attestation support in KMS]in the Key Management Service Developer Guide.
 //
 // The KMS key that you use for this operation must be in a compatible key state.
 // For details, see [Key states of KMS keys]in the Key Management Service Developer Guide.
@@ -86,14 +86,14 @@ import (
 // more information, see [KMS eventual consistency].
 //
 // [Amazon Web Services Encryption SDK]: https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/
+// [Cryptographic attestation support in KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/cryptographic-attestation.html
 // [Key states of KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html
 // [kms:Decrypt]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
 // [Asymmetric KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/symmetric-asymmetric.html
 // [Amazon Web Services Nitro Enclaves]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nitro-enclave.html
 // [Amazon S3 client-side encryption]: https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingClientSideEncryption.html
 // [Best practices for IAM policies]: https://docs.aws.amazon.com/kms/latest/developerguide/iam-policies.html#iam-policies-best-practices
-// [How Amazon Web Services Nitro Enclaves uses KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html
-// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
+// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/accessing-kms.html#programming-eventual-consistency
 // [Amazon Web Services Nitro Enclaves SDK]: https://docs.aws.amazon.com/enclaves/latest/user/developing-applications.html#sdk
 func (c *Client) Decrypt(ctx context.Context, params *DecryptInput, optFns ...func(*Options)) (*DecryptOutput, error) {
 	if params == nil {
@@ -119,10 +119,10 @@ type DecryptInput struct {
 
 	// Checks if your request will succeed. DryRun is an optional parameter.
 	//
-	// To learn more about how to use this parameter, see [Testing your KMS API calls] in the Key Management
+	// To learn more about how to use this parameter, see [Testing your permissions] in the Key Management
 	// Service Developer Guide.
 	//
-	// [Testing your KMS API calls]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-dryrun.html
+	// [Testing your permissions]: https://docs.aws.amazon.com/kms/latest/developerguide/testing-permissions.html
 	DryRun *bool
 
 	// Specifies the encryption algorithm that will be used to decrypt the ciphertext.
@@ -149,8 +149,8 @@ type DecryptInput struct {
 	//
 	// For more information, see [Encryption context] in the Key Management Service Developer Guide.
 	//
-	// [cryptographic operations]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#cryptographic-operations
-	// [Encryption context]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#encrypt_context
+	// [cryptographic operations]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-cryptography.html#cryptographic-operations
+	// [Encryption context]: https://docs.aws.amazon.com/kms/latest/developerguide/encrypt_context.html
 	EncryptionContext map[string]string
 
 	// A list of grant tokens.
@@ -160,7 +160,7 @@ type DecryptInput struct {
 	// and [Using a grant token]in the Key Management Service Developer Guide.
 	//
 	// [Grant token]: https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#grant_token
-	// [Using a grant token]: https://docs.aws.amazon.com/kms/latest/developerguide/grant-manage.html#using-grant-token
+	// [Using a grant token]: https://docs.aws.amazon.com/kms/latest/developerguide/using-grant-token.html
 	GrantTokens []string
 
 	// Specifies the KMS key that KMS uses to decrypt the ciphertext.
@@ -194,25 +194,26 @@ type DecryptInput struct {
 	// and alias ARN, use ListAliases.
 	KeyId *string
 
-	// A signed [attestation document] from an Amazon Web Services Nitro enclave and the encryption
-	// algorithm to use with the enclave's public key. The only valid encryption
-	// algorithm is RSAES_OAEP_SHA_256 .
+	// A signed [attestation document] from an Amazon Web Services Nitro enclave or NitroTPM, and the
+	// encryption algorithm to use with the public key in the attestation document. The
+	// only valid encryption algorithm is RSAES_OAEP_SHA_256 .
 	//
-	// This parameter only supports attestation documents for Amazon Web Services
-	// Nitro Enclaves. To include this parameter, use the [Amazon Web Services Nitro Enclaves SDK]or any Amazon Web Services
-	// SDK.
+	// This parameter supports the [Amazon Web Services Nitro Enclaves SDK] or any Amazon Web Services SDK for Amazon Web
+	// Services Nitro Enclaves. It supports any Amazon Web Services SDK for Amazon Web
+	// Services NitroTPM.
 	//
 	// When you use this parameter, instead of returning the plaintext data, KMS
 	// encrypts the plaintext data with the public key in the attestation document, and
 	// returns the resulting ciphertext in the CiphertextForRecipient field in the
 	// response. This ciphertext can be decrypted only with the private key in the
-	// enclave. The Plaintext field in the response is null or empty.
+	// attested environment. The Plaintext field in the response is null or empty.
 	//
 	// For information about the interaction between KMS and Amazon Web Services Nitro
-	// Enclaves, see [How Amazon Web Services Nitro Enclaves uses KMS]in the Key Management Service Developer Guide.
+	// Enclaves or Amazon Web Services NitroTPM, see [Cryptographic attestation support in KMS]in the Key Management Service
+	// Developer Guide.
 	//
+	// [Cryptographic attestation support in KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/cryptographic-attestation.html
 	// [attestation document]: https://docs.aws.amazon.com/enclaves/latest/user/nitro-enclave-concepts.html#term-attestdoc
-	// [How Amazon Web Services Nitro Enclaves uses KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html
 	// [Amazon Web Services Nitro Enclaves SDK]: https://docs.aws.amazon.com/enclaves/latest/user/developing-applications.html#sdk
 	Recipient *types.RecipientInfo
 
@@ -221,14 +222,17 @@ type DecryptInput struct {
 
 type DecryptOutput struct {
 
-	// The plaintext data encrypted with the public key in the attestation document.
+	// The plaintext data encrypted with the public key from the attestation document.
+	// This ciphertext can be decrypted only by using a private key from the attested
+	// environment.
 	//
 	// This field is included in the response only when the Recipient parameter in the
 	// request includes a valid attestation document from an Amazon Web Services Nitro
-	// enclave. For information about the interaction between KMS and Amazon Web
-	// Services Nitro Enclaves, see [How Amazon Web Services Nitro Enclaves uses KMS]in the Key Management Service Developer Guide.
+	// enclave or NitroTPM. For information about the interaction between KMS and
+	// Amazon Web Services Nitro Enclaves or Amazon Web Services NitroTPM, see [Cryptographic attestation support in KMS]in the
+	// Key Management Service Developer Guide.
 	//
-	// [How Amazon Web Services Nitro Enclaves uses KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html
+	// [Cryptographic attestation support in KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/cryptographic-attestation.html
 	CiphertextForRecipient []byte
 
 	// The encryption algorithm that was used to decrypt the ciphertext.
@@ -239,6 +243,11 @@ type DecryptOutput struct {
 	//
 	// [key ARN]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#key-id-key-ARN
 	KeyId *string
+
+	// The identifier of the key material used to decrypt the ciphertext. This field
+	// is present only when the operation uses a symmetric encryption KMS key. This
+	// field is omitted if the request includes the Recipient parameter.
+	KeyMaterialId *string
 
 	// Decrypted plaintext data. When you use the HTTP API or the Amazon Web Services
 	// CLI, the value is Base64-encoded. Otherwise, it is not Base64-encoded.
@@ -317,6 +326,9 @@ func (c *Client) addOperationDecryptMiddlewares(stack *middleware.Stack, options
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDecryptValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -338,16 +350,13 @@ func (c *Client) addOperationDecryptMiddlewares(stack *middleware.Stack, options
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

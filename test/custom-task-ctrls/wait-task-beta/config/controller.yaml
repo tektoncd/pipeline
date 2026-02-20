@@ -115,6 +115,48 @@ roleRef:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: config-leader-election
+  namespace: wait-task-beta
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: wait-task
+data:
+  # An inactive but valid configuration follows; see example.
+  # https://github.com/knative/pkg/blob/main/leaderelection/config.go
+  _example: |
+    ################################
+    #                              #
+    #    EXAMPLE CONFIGURATION     #
+    #                              #
+    ################################
+    # This block is not actually functional configuration,
+    # but serves to illustrate the available configuration
+    # options and document them in a way that is accessible
+    # to users that `kubectl edit` this config map.
+    #
+    # These sample configuration options may be copied out of
+    # this example block and unindented to be in the data block
+    # to actually change the configuration.
+    # lease-duration is how long non-leaders will wait to try to acquire the
+    # lock; 15 seconds is the value used by core kubernetes controllers.
+    lease-duration: "60s"
+    # renew-deadline is how long a leader will try to renew the lease before
+    # giving up; 10 seconds is the value used by core kubernetes controllers.
+    renew-deadline: "40s"
+    # retry-period is how long the leader election client waits between tries of
+    # actions; 2 seconds is the value used by core kubernetes controllers.
+    retry-period: "10s"
+    # buckets is the number of buckets used to partition key space of each
+    # Reconciler. If this number is M and the replica number of the controller
+    # is N, the N replicas will compete for the M Leases. The work items are
+    # partitioned across the M Leases and reconciled by whichever replica is the leader.
+    buckets: "1"
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: config-logging
   namespace: wait-task-beta
   labels:
@@ -189,6 +231,25 @@ spec:
       containers:
       - name: wait-task-controller
         image: ko://github.com/tektoncd/pipeline/test/wait-task-beta/cmd/controller
+        ports:
+        - name: probes
+          containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /readiness
+            port: probes
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: probes
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
         volumeMounts:
         - name: config-logging
           mountPath: /etc/config-logging
@@ -204,6 +265,10 @@ spec:
           value: config-logging
         - name: METRICS_DOMAIN
           value: wait.testing.tekton.dev/wait-task
+        # Allow running on older Kubernetes versions for testing.
+        # The newer knative.dev/pkg requires k8s 1.31+ by default.
+        - name: KUBERNETES_MIN_VERSION
+          value: "1.28.0"
       volumes:
         - name: config-logging
           configMap:

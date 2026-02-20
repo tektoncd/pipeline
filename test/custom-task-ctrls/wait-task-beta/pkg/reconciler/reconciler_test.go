@@ -17,7 +17,6 @@ limitations under the License.
 package reconciler
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -330,6 +329,7 @@ status:
 `
 )
 
+// @test:execution=parallel
 func TestReconcile(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -374,7 +374,7 @@ func TestReconcile(t *testing.T) {
 		expectedCustomRun: expectedRetryTimedOutCustomRunYAML,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			rec := &Reconciler{
 				Clock: testClock,
 			}

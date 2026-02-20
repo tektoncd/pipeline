@@ -104,5 +104,5 @@ func handleDryRunCreateErr(err error, objectName string) error {
 		// Additional errors can be added to the switch statements as needed
 		errType = ErrCouldntValidateObjectRetryable
 	}
-	return fmt.Errorf("%w %s: %s", errType, objectName, err.Error())
+	return fmt.Errorf("%w %s: %w", errType, objectName, err)
 }

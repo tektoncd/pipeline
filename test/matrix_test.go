@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2023 The Tekton Authors
@@ -29,6 +28,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -36,19 +36,18 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
-var requireAlphaFeatureFlag = requireAnyGate(map[string]string{
-	"enable-api-fields": "alpha",
-})
-
 // TestPipelineRunMatrixed is an integration test that verifies that a Matrixed PipelineRun
 // succeeds with both `matrix params` and `matrix include params`. It also tests array indexing
 // and whole array replacements by consuming results produced by other PipelineTasks.
+// @test:execution=parallel
 func TestPipelineRunMatrixed(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t, requireAlphaFeatureFlag)
+	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{
+		"enable-api-fields": "alpha",
+	}))
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 	t.Logf("Creating Tasks in namespace %s", namespace)
@@ -68,11 +67,14 @@ spec:
       default: ""
     - name: package
       default: ""
+  results:
+  - name: str
+    type: string
   steps:
     - name: echo
       image: mirror.gcr.io/alpine
       script: |
-        echo "$(params.GOARCH) and $(params.version)"
+        echo -n "$(params.GOARCH) and $(params.version)" | tee $(results.str.path)
 `, namespace))
 
 	task1withresults := parse.MustParseV1Task(t, fmt.Sprintf(`
@@ -107,6 +109,22 @@ spec:
         echo -n "[\"go1.17\",\"go1.18.1\"]" | tee $(results.versions.path)
 `, namespace))
 
+	task3printer := parse.MustParseV1Task(t, fmt.Sprintf(`
+metadata:
+  name: printer
+  namespace: %s
+spec:
+  params:
+    - name: platform
+      value: "default-platform"
+  steps:
+    - name: produce-a-list-of-versions
+      image: mirror.gcr.io/bash
+      script: |
+        #!/usr/bin/env bash
+        echo "platform: $(params.platform)"
+`, namespace))
+
 	if _, err := c.V1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
 	}
@@ -115,6 +133,9 @@ spec:
 	}
 	if _, err := c.V1TaskClient.Create(ctx, task2withresults, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", task2withresults.Name, err)
+	}
+	if _, err := c.V1TaskClient.Create(ctx, task3printer, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", task3printer.Name, err)
 	}
 
 	pipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
@@ -157,6 +178,13 @@ spec:
            params:
             - name: GOARCH
               value: I-do-not-exist
+    - name: printer-matrix
+      taskRef:
+        name: printer
+      matrix:
+        params:
+          - name: platform
+            value: $(tasks.matrix-include.results.str[*])
 `, helpers.ObjectNameForTest(t), namespace))
 
 	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
@@ -208,6 +236,11 @@ spec:
 			}}},
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Artifacts: &v1.Artifacts{},
+				Results: []v1.TaskRunResult{{
+					Name:  "str",
+					Type:  v1.ResultsTypeString,
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64 and go1.17"},
+				}},
 			},
 		},
 	}, {
@@ -240,6 +273,11 @@ spec:
 			}}},
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Artifacts: &v1.Artifacts{},
+				Results: []v1.TaskRunResult{{
+					Name:  "str",
+					Type:  v1.ResultsTypeString,
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le and go1.17"},
+				}},
 			},
 		},
 	}, {
@@ -269,6 +307,11 @@ spec:
 			}}},
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Artifacts: &v1.Artifacts{},
+				Results: []v1.TaskRunResult{{
+					Name:  "str",
+					Type:  v1.ResultsTypeString,
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64 and go1.18.1"},
+				}},
 			},
 		},
 	}, {
@@ -298,6 +341,11 @@ spec:
 			}}},
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Artifacts: &v1.Artifacts{},
+				Results: []v1.TaskRunResult{{
+					Name:  "str",
+					Type:  v1.ResultsTypeString,
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le and go1.18.1"},
+				}},
 			},
 		},
 	}, {
@@ -319,6 +367,136 @@ spec:
 				Reason:  "Succeeded",
 				Message: "All Steps have completed executing",
 			}}},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Artifacts: &v1.Artifacts{},
+				Results: []v1.TaskRunResult{{
+					Name:  "str",
+					Type:  v1.ResultsTypeString,
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "I-do-not-exist and "},
+				}},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pr-printer-matrix-0",
+		},
+		Spec: v1.TaskRunSpec{
+			Params: v1.Params{{
+				Name:  "platform",
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64 and go1.17"},
+			}},
+			ServiceAccountName: "default",
+			TaskRef:            &v1.TaskRef{Name: "printer", Kind: v1.NamespacedTaskKind},
+		},
+		Status: v1.TaskRunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionTrue,
+					Reason:  "Succeeded",
+					Message: "All Steps have completed executing",
+				}},
+			},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Artifacts: &v1.Artifacts{},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pr-printer-matrix-1",
+		},
+		Spec: v1.TaskRunSpec{
+			Params: v1.Params{{
+				Name:  "platform",
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le and go1.17"},
+			}},
+			ServiceAccountName: "default",
+			TaskRef:            &v1.TaskRef{Name: "printer", Kind: v1.NamespacedTaskKind},
+		},
+		Status: v1.TaskRunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionTrue,
+					Reason:  "Succeeded",
+					Message: "All Steps have completed executing",
+				}},
+			},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Artifacts: &v1.Artifacts{},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pr-printer-matrix-2",
+		},
+		Spec: v1.TaskRunSpec{
+			Params: v1.Params{{
+				Name:  "platform",
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/amd64 and go1.18.1"},
+			}},
+			ServiceAccountName: "default",
+			TaskRef:            &v1.TaskRef{Name: "printer", Kind: v1.NamespacedTaskKind},
+		},
+		Status: v1.TaskRunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionTrue,
+					Reason:  "Succeeded",
+					Message: "All Steps have completed executing",
+				}},
+			},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Artifacts: &v1.Artifacts{},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pr-printer-matrix-3",
+		},
+		Spec: v1.TaskRunSpec{
+			Params: v1.Params{{
+				Name:  "platform",
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "linux/ppc64le and go1.18.1"},
+			}},
+			ServiceAccountName: "default",
+			TaskRef:            &v1.TaskRef{Name: "printer", Kind: v1.NamespacedTaskKind},
+		},
+		Status: v1.TaskRunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionTrue,
+					Reason:  "Succeeded",
+					Message: "All Steps have completed executing",
+				}},
+			},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Artifacts: &v1.Artifacts{},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pr-printer-matrix-4",
+		},
+		Spec: v1.TaskRunSpec{
+			Params: v1.Params{{
+				Name:  "platform",
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "I-do-not-exist and "},
+			}},
+			ServiceAccountName: "default",
+			TaskRef:            &v1.TaskRef{Name: "printer", Kind: v1.NamespacedTaskKind},
+		},
+		Status: v1.TaskRunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionTrue,
+					Reason:  "Succeeded",
+					Message: "All Steps have completed executing",
+				}},
+			},
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Artifacts: &v1.Artifacts{},
 			},
@@ -402,12 +580,15 @@ spec:
 // TestPipelineRunMatrixedFailed is an integration test with a Matrixed PipelineRun
 // that contains an unsuccessful TaskRun. This test verifies that the taskRun will fail,
 // which will cause the entire PipelineRun to fail.
+// @test:execution=parallel
 func TestPipelineRunMatrixedFailed(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t, requireAlphaFeatureFlag)
+	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{
+		"enable-api-fields": "alpha",
+	}))
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 	t.Logf("Creating Task in namespace %s", namespace)

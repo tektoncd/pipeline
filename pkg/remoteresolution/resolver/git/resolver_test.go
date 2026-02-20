@@ -22,13 +22,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/google/go-cmp/cmp"
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/driver/fake"
@@ -43,6 +42,7 @@ import (
 	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frameworktesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
+	"github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
 	gitresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -54,7 +54,7 @@ import (
 
 func TestGetSelector(t *testing.T) {
 	resolver := Resolver{}
-	sel := resolver.GetSelector(context.Background())
+	sel := resolver.GetSelector(t.Context())
 	if typ, has := sel[common.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
 	} else if typ != labelValueGitResolverType {
@@ -129,7 +129,7 @@ func TestValidateParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resolver := Resolver{}
-			err := resolver.Validate(context.Background(), &v1beta1.ResolutionRequestSpec{Params: toParams(tt.params)})
+			err := resolver.Validate(t.Context(), &v1beta1.ResolutionRequestSpec{Params: toParams(tt.params)})
 			if tt.wantErr == "" {
 				if err != nil {
 					t.Fatalf("unexpected error validating params: %v", err)
@@ -205,7 +205,7 @@ func TestValidateParams_Failure(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			resolver := &Resolver{}
-			err := resolver.Validate(context.Background(), &v1beta1.ResolutionRequestSpec{Params: toParams(tc.params)})
+			err := resolver.Validate(t.Context(), &v1beta1.ResolutionRequestSpec{Params: toParams(tc.params)})
 			if err == nil {
 				t.Fatalf("got no error, but expected: %s", tc.expectedErr)
 			}
@@ -215,11 +215,55 @@ func TestValidateParams_Failure(t *testing.T) {
 		})
 	}
 }
+func TestResolver_IsImmutable(t *testing.T) {
+	tests := []struct {
+		name     string
+		revision string
+		want     bool
+	}{
+		{
+			name:     "valid SHA-1 format",
+			revision: "0123456789abcdef0123456789abcdef01234567",
+			want:     true,
+		},
+		{
+			name:     "valid SHA-256 format",
+			revision: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			want:     true,
+		},
+		{
+			name:     "between SHA-1 and SHA-256 - 50 chars",
+			revision: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1",
+			want:     false,
+		},
+		{
+			name:     "empty string",
+			revision: "",
+			want:     false,
+		},
+	}
+	resolver := &Resolver{}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params := []pipelinev1.Param{
+				{
+					Name:  gitresolution.RevisionParam,
+					Value: *pipelinev1.NewStructuredValues(tt.revision),
+				},
+			}
+
+			got := resolver.IsImmutable(params)
+			if got != tt.want {
+				t.Errorf("IsImmutable() = %v, want %v for revision %q", got, tt.want, tt.revision)
+			}
+		})
+	}
+}
 
 func TestGetResolutionTimeoutDefault(t *testing.T) {
 	resolver := Resolver{}
 	defaultTimeout := 30 * time.Minute
-	timeout, err := resolver.GetResolutionTimeout(context.Background(), defaultTimeout, map[string]string{})
+	timeout, err := resolver.GetResolutionTimeout(t.Context(), defaultTimeout, map[string]string{})
 	if err != nil {
 		t.Fatalf("couldn't get default-timeout: %v", err)
 	}
@@ -235,7 +279,7 @@ func TestGetResolutionTimeoutCustom(t *testing.T) {
 	config := map[string]string{
 		gitresolution.DefaultTimeoutKey: configTimeout.String(),
 	}
-	ctx := resolutionframework.InjectResolverConfigToContext(context.Background(), config)
+	ctx := resolutionframework.InjectResolverConfigToContext(t.Context(), config)
 	timeout, err := resolver.GetResolutionTimeout(ctx, defaultTimeout, map[string]string{})
 	if err != nil {
 		t.Fatalf("couldn't get default-timeout: %v", err)
@@ -254,7 +298,7 @@ func TestGetResolutionTimeoutCustomIdentifier(t *testing.T) {
 		gitresolution.DefaultTimeoutKey:          configTimeout.String(),
 		"foo." + gitresolution.DefaultTimeoutKey: identifierConfigTImeout.String(),
 	}
-	ctx := resolutionframework.InjectResolverConfigToContext(context.Background(), config)
+	ctx := resolutionframework.InjectResolverConfigToContext(t.Context(), config)
 	timeout, err := resolver.GetResolutionTimeout(ctx, defaultTimeout, map[string]string{"configKey": "foo"})
 	if err != nil {
 		t.Fatalf("couldn't get default-timeout: %v", err)
@@ -320,8 +364,6 @@ func TestResolve(t *testing.T) {
 
 	// local repo set up for scm cloning
 	// ----
-	withTemporaryGitConfig(t)
-
 	testOrg := "test-org"
 	testRepo := "test-repo"
 
@@ -429,7 +471,7 @@ func TestResolve(t *testing.T) {
 			pathInRepo: "foo/new",
 			url:        anonFakeRepoURL,
 		},
-		expectedErr: createError("revision error: reference not found"),
+		expectedErr: createError("git fetch error: fatal: couldn't find remote ref non-existent-revision: exit status 128"),
 	}, {
 		name: "api: successful task from params api information",
 		args: &params{
@@ -660,7 +702,7 @@ func TestResolve(t *testing.T) {
 			}
 			cfg[tc.configIdentifer+gitresolution.DefaultTimeoutKey] = "1m"
 			if cfg[tc.configIdentifer+gitresolution.DefaultRevisionKey] == "" {
-				cfg[tc.configIdentifer+gitresolution.DefaultRevisionKey] = plumbing.Master.Short()
+				cfg[tc.configIdentifer+gitresolution.DefaultRevisionKey] = defaultBranch
 			}
 
 			request := createRequest(tc.args)
@@ -668,7 +710,7 @@ func TestResolve(t *testing.T) {
 			d := test.Data{
 				ConfigMaps: []*corev1.ConfigMap{{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      ConfigMapName,
+						Name:      git.ConfigMapName,
 						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
 					},
 					Data: cfg,
@@ -680,6 +722,12 @@ func TestResolve(t *testing.T) {
 					Data: map[string]string{
 						"enable-git-resolver": "true",
 					},
+				}, {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "resolver-cache-config",
+						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+					},
+					Data: map[string]string{},
 				}},
 				ResolutionRequests: []*v1beta1.ResolutionRequest{request},
 			}
@@ -748,25 +796,36 @@ func TestResolve(t *testing.T) {
 	}
 }
 
+const defaultBranch string = "main"
+
+func getGitCmd(t *testing.T, dir string) func(...string) *exec.Cmd {
+	t.Helper()
+	withTemporaryGitConfig(t)
+	return func(args ...string) *exec.Cmd {
+		args = append(
+			[]string{
+				"-C", dir,
+				"-c", "user.email=test@test.com",
+				"-c", "user.name=PipelinesTests",
+			},
+			args...)
+		return exec.Command("git", args...)
+	}
+}
+
 // createTestRepo is used to instantiate a local test repository with the desired commits.
 func createTestRepo(t *testing.T, commits []commitForRepo) (string, []string) {
 	t.Helper()
 	commitSHAs := []string{}
 
-	t.Helper()
 	tempDir := t.TempDir()
-
-	repo, err := git.PlainInit(tempDir, false)
-
-	worktree, err := repo.Worktree()
+	gitCmd := getGitCmd(t, tempDir)
+	err := gitCmd("init", "-b", "main").Run()
 	if err != nil {
-		t.Fatalf("getting test worktree: %v", err)
-	}
-	if worktree == nil {
-		t.Fatal("test worktree not created")
+		t.Fatalf("couldn't create test repo: %v", err)
 	}
 
-	startingHash := writeAndCommitToTestRepo(t, worktree, tempDir, "", "README", []byte("This is a test"))
+	writeAndCommitToTestRepo(t, tempDir, "", "README", []byte("This is a test"))
 
 	hashesByBranch := make(map[string][]string)
 
@@ -774,44 +833,34 @@ func createTestRepo(t *testing.T, commits []commitForRepo) (string, []string) {
 	for _, cmt := range commits {
 		branch := cmt.Branch
 		if branch == "" {
-			branch = plumbing.Master.Short()
+			branch = defaultBranch
 		}
 
 		// If we're given a revision, check out that revision.
-		coOpts := &git.CheckoutOptions{
-			Branch: plumbing.NewBranchReferenceName(branch),
+		checkoutCmd := gitCmd("checkout")
+		if _, ok := hashesByBranch[branch]; !ok && branch != defaultBranch {
+			checkoutCmd.Args = append(checkoutCmd.Args, "-b")
 		}
+		checkoutCmd.Args = append(checkoutCmd.Args, branch)
 
-		if _, ok := hashesByBranch[branch]; !ok && branch != plumbing.Master.Short() {
-			coOpts.Hash = plumbing.NewHash(startingHash.String())
-			coOpts.Create = true
-		}
-
-		if err := worktree.Checkout(coOpts); err != nil {
+		if err := checkoutCmd.Run(); err != nil {
 			t.Fatalf("couldn't do checkout of %s: %v", branch, err)
 		}
 
-		hash := writeAndCommitToTestRepo(t, worktree, tempDir, cmt.Dir, cmt.Filename, []byte(cmt.Content))
-		commitSHAs = append(commitSHAs, hash.String())
+		hash := writeAndCommitToTestRepo(t, tempDir, cmt.Dir, cmt.Filename, []byte(cmt.Content))
+		commitSHAs = append(commitSHAs, hash)
 
 		if _, ok := hashesByBranch[branch]; !ok {
-			hashesByBranch[branch] = []string{hash.String()}
+			hashesByBranch[branch] = []string{hash}
 		} else {
-			hashesByBranch[branch] = append(hashesByBranch[branch], hash.String())
+			hashesByBranch[branch] = append(hashesByBranch[branch], hash)
 		}
 
 		if cmt.Tag != "" {
-			_, err = repo.CreateTag(cmt.Tag, hash, &git.CreateTagOptions{
-				Message: cmt.Tag,
-				Tagger: &object.Signature{
-					Name:  "Someone",
-					Email: "someone@example.com",
-					When:  time.Now(),
-				},
-			})
-		}
-		if err != nil {
-			t.Fatalf("couldn't add tag for %s: %v", cmt.Tag, err)
+			err = gitCmd("tag", cmt.Tag).Run()
+			if err != nil {
+				t.Fatalf("couldn't add tag for %s: %v", cmt.Tag, err)
+			}
 		}
 	}
 
@@ -827,8 +876,10 @@ type commitForRepo struct {
 	Tag      string
 }
 
-func writeAndCommitToTestRepo(t *testing.T, worktree *git.Worktree, repoDir string, subPath string, filename string, content []byte) plumbing.Hash {
+func writeAndCommitToTestRepo(t *testing.T, repoDir string, subPath string, filename string, content []byte) string {
 	t.Helper()
+
+	gitCmd := getGitCmd(t, repoDir)
 
 	targetDir := repoDir
 	if subPath != "" {
@@ -851,23 +902,22 @@ func writeAndCommitToTestRepo(t *testing.T, worktree *git.Worktree, repoDir stri
 		t.Fatalf("couldn't write content to file %s: %v", outfile, err)
 	}
 
-	_, err := worktree.Add(filepath.Join(subPath, filename))
+	err := gitCmd("add", outfile).Run()
 	if err != nil {
 		t.Fatalf("couldn't add file %s to git: %v", outfile, err)
 	}
 
-	hash, err := worktree.Commit("adding file for test", &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Someone",
-			Email: "someone@example.com",
-			When:  time.Now(),
-		},
-	})
+	err = gitCmd("commit", "-m", "adding file for test").Run()
 	if err != nil {
 		t.Fatalf("couldn't perform commit for test: %v", err)
 	}
 
-	return hash
+	out, err := gitCmd("rev-parse", "HEAD").Output()
+	if err != nil {
+		t.Fatalf("couldn't parse HEAD revision: %v", err)
+	}
+
+	return strings.TrimSpace(string(out))
 }
 
 // withTemporaryGitConfig resets the .gitconfig for the duration of the test.

@@ -42,12 +42,13 @@ var unsignedV1beta1Task = &v1beta1.Task{
 	},
 	Spec: v1beta1.TaskSpec{
 		Steps: []v1beta1.Step{{
-			Image: "ubuntu",
+			Image: "mirror.gcr.io/ubuntu",
 			Name:  "echo",
 		}},
 	},
 }
 
+// @test:execution=parallel
 func TestSignInterface(t *testing.T) {
 	sv, _, err := signature.NewDefaultECDSASignerVerifier()
 	if err != nil {

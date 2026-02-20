@@ -1,5 +1,4 @@
 //go:build conformance || e2e || examples || featureflags
-// +build conformance e2e examples featureflags
 
 /*
 Copyright 2023 The Tekton Authors
@@ -27,11 +26,13 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,14 +49,20 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+const (
+	sleepDuration = 15 * time.Second
+)
+
 var (
-	initMetrics           sync.Once
-	ignoreTypeMeta        = cmpopts.IgnoreFields(metav1.TypeMeta{}, "Kind", "APIVersion")
-	ignoreObjectMeta      = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion", "UID", "CreationTimestamp", "Generation", "ManagedFields", "Labels", "Annotations", "OwnerReferences")
-	ignoreCondition       = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time", "Message")
-	ignoreConditions      = cmpopts.IgnoreFields(duckv1.Status{}, "Conditions")
-	ignoreStepState       = cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "TerminationReason")
-	ignoreContainerStates = cmpopts.IgnoreFields(corev1.ContainerState{}, "Terminated")
+	initMetrics             sync.Once
+	ignoreTypeMeta          = cmpopts.IgnoreFields(metav1.TypeMeta{}, "Kind", "APIVersion")
+	ignoreObjectMeta        = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion", "UID", "CreationTimestamp", "Generation", "ManagedFields", "Labels", "Annotations", "OwnerReferences")
+	ignoreCondition         = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time", "Message")
+	ignoreConditions        = cmpopts.IgnoreFields(duckv1.Status{}, "Conditions")
+	ignoreStepState         = cmpopts.IgnoreFields(v1.StepState{}, "ImageID", "TerminationReason", "Provenance")
+	ignoreContainerStates   = cmpopts.IgnoreFields(corev1.ContainerState{}, "Terminated")
+	ignorePipelineRunStatus = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "StartTime", "CompletionTime", "FinallyStartTime", "ChildReferences", "Provenance")
+	ignoreTaskRunStatus     = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime", "Provenance")
 	// ignoreSATaskRunSpec ignores the service account in the TaskRunSpec as it may differ across platforms
 	ignoreSATaskRunSpec = cmpopts.IgnoreFields(v1.TaskRunSpec{}, "ServiceAccountName")
 	// ignoreSAPipelineRunSpec ignores the service account in the PipelineRunSpec as it may differ across platforms
@@ -66,7 +73,8 @@ func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testi
 	t.Helper()
 	skipIfExcluded(t)
 
-	t.Helper()
+	cache.Get(ctx).Clear()
+
 	namespace := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("arendelle")
 
 	initializeLogsAndMetrics(t)
@@ -179,7 +187,7 @@ func verifyServiceAccountExistence(ctx context.Context, t *testing.T, namespace 
 	defaultSA := getDefaultSA(ctx, t, kubeClient, namespace)
 	t.Logf("Verify SA %q is created in namespace %q", defaultSA, namespace)
 
-	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
+	if err := wait.PollUntilContextTimeout(ctx, interval, timeout, true, func(context.Context) (bool, error) {
 		_, err := kubeClient.CoreV1().ServiceAccounts(namespace).Get(ctx, defaultSA, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			return false, nil
@@ -199,15 +207,6 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		}
 		output = append(output, []byte("\n---\n")...)
 		output = append(output, bs...)
-	}
-
-	v1beta1ClusterTasks, err := cs.V1beta1ClusterTaskClient.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not get v1beta1 clustertasks: %w", err)
-	}
-	for _, i := range v1beta1ClusterTasks.Items {
-		i.SetManagedFields(nil)
-		printOrAdd(i)
 	}
 
 	v1Tasks, err := cs.V1TaskClient.List(ctx, metav1.ListOptions{})

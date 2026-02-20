@@ -1,0 +1,131 @@
+# This file is auto-generated from peribolos.
+# Do not modify this file, instead modify peribolos/knative.yaml
+
+aliases:
+  client-reviewers:
+  - itsmurugappan
+  client-wg-leads:
+  - dsimansk
+  - rhuss
+  client-writers:
+  - dsimansk
+  - rhuss
+  - vyasgun
+  docs-reviewers:
+  - nainaz
+  - skonto
+  docs-writers:
+  - csantanapr
+  - skonto
+  eventing-reviewers:
+  - Leo6Leo
+  - aslom
+  - cali0707
+  - creydr
+  eventing-wg-leads:
+  - creydr
+  - pierDipi
+  eventing-writers:
+  - Leo6Leo
+  - aliok
+  - cali0707
+  - creydr
+  - lionelvillard
+  - matzew
+  - pierDipi
+  func-reviewers:
+  - jrangelramos
+  - nainaz
+  func-writers:
+  - gauron99
+  - jrangelramos
+  - lance
+  - lkingland
+  - matejvasek
+  - matzew
+  - salaboy
+  functions-wg-leads:
+  - lkingland
+  - salaboy
+  knative-admin:
+  - aliok
+  - cardil
+  - dprotaso
+  - dsimansk
+  - evankanderson
+  - knative-automation
+  - knative-prow-releaser-robot
+  - knative-prow-robot
+  - knative-prow-updater-robot
+  - knative-test-reporter-robot
+  - matzew
+  - nrrso
+  - skonto
+  - upodroid
+  knative-release-leads:
+  - dprotaso
+  - dsimansk
+  - skonto
+  knative-robots:
+  - knative-automation
+  - knative-prow-releaser-robot
+  - knative-prow-robot
+  - knative-prow-updater-robot
+  - knative-test-reporter-robot
+  operations-reviewers:
+  - aliok
+  - houshengbo
+  - matzew
+  operations-wg-leads:
+  - houshengbo
+  operations-writers:
+  - aliok
+  - houshengbo
+  - matzew
+  productivity-leads:
+  - cardil
+  - upodroid
+  productivity-reviewers:
+  - evankanderson
+  - mgencur
+  productivity-wg-leads:
+  - cardil
+  - upodroid
+  productivity-writers:
+  - cardil
+  - upodroid
+  security-wg-leads:
+  - davidhadas
+  - evankanderson
+  security-writers:
+  - davidhadas
+  - evankanderson
+  serving-approvers:
+  - dsimansk
+  - skonto
+  serving-reviewers:
+  - skonto
+  serving-triage:
+  - skonto
+  serving-wg-leads:
+  - dprotaso
+  serving-writers:
+  - dprotaso
+  - dsimansk
+  - skonto
+  steering-committee:
+  - aliok
+  - dprotaso
+  - evankanderson
+  - matzew
+  - nrrso
+  ux-wg-leads:
+  - cali0707
+  - leo6leo
+  - mmejia02
+  - zainabhusain227
+  ux-writers:
+  - cali0707
+  - leo6leo
+  - mmejia02
+  - zainabhusain227

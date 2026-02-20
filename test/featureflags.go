@@ -114,20 +114,20 @@ func getFeatureFlagsBaseOnAPIFlag(t *testing.T) *config.FeatureFlags {
 		"enable-api-fields":              "alpha",
 		"results-from":                   "sidecar-logs",
 		"enable-tekton-oci-bundles":      "true",
-		"enable-step-actions":            "true",
 		"enable-cel-in-whenexpression":   "true",
 		"enable-param-enum":              "true",
 		"enable-artifacts":               "true",
 		"enable-concise-resolver-syntax": "true",
 		"enable-kubernetes-sidecar":      "true",
+		"keep-pod-on-cancel":             "true",
 	})
 	if err != nil {
 		t.Fatalf("error creating alpha feature flags configmap: %v", err)
 	}
 	betaFeatureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
-		"results-from":        "sidecar-logs",
-		"enable-api-fields":   "beta",
-		"enable-step-actions": "true",
+		"results-from":       "sidecar-logs",
+		"enable-api-fields":  "beta",
+		"keep-pod-on-cancel": "true",
 	})
 	if err != nil {
 		t.Fatalf("error creating beta feature flags configmap: %v", err)

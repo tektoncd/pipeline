@@ -46,6 +46,8 @@ consumers of a project. In that case we'll make a patch release. To make one:
 
 ## Nightly releases
 
+### Existing approach:
+
 [The nightly release pipeline](release-pipeline.yaml) is
 [triggered nightly by Tekton](https://github.com/tektoncd/plumbing/tree/main/tekton).
 
@@ -129,38 +131,22 @@ release and generate the `release.yaml`
   [`tektoncd/catalog`](https://github.com/tektoncd/catalog) and
   [`publish.yaml`](publish.yaml)'s `Task`.
 
-### Service account and secrets
+### Dogfooding Cluster connectivity and secrets
 
-In order to release, these Pipelines use the `release-right-meow` service account,
-which uses `release-secret` and has
-[`Storage Admin`](https://cloud.google.com/container-registry/docs/access-control)
-access to
-[`tekton-releases`]((https://github.com/tektoncd/plumbing/blob/main/gcp.md))
-and
-[`tekton-releases-nightly`]((https://github.com/tektoncd/plumbing/blob/main/gcp.md)).
+1. To connect to the cloud instance and OKE cluster we need the Oracle Cloud CLI client. Install Oracle Cloud CLI from https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm
 
-After creating these service accounts in GCP, the kubernetes service account and
-secret were created with:
+1. The next step is to establish connection from the local client to the cloud instance. Login to the Oracle Cloud Console and create a new `API key` from the user profile.
+Follow the steps here: https://docs.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm#two
+Download a Private Key and Add a new API key as mentioned in the doc. Copy the config file to `~/.oci/config` and update the path to the private key file in config.
+With this the config is ready for usage by the CLI.
 
-```bash
-KEY_FILE=release.json
-GENERIC_SECRET=release-secret
-ACCOUNT=release-right-meow
+1. Test the connection by doing a get of the OKE cluster id.
+Refer here https://docs.oracle.com/en-us/iaas/tools/oci-cli/3.70.0/oci_cli_docs/cmdref/ce.html for the CLI options.
+Command to create a kubeconfig in your local could be obtained from console navigating to the OKE > Actions > Access Cluster. Run the command pointing to the PUBLIC_ENDPOINT and we should be connected to the cluster.
 
-# Connected to the `prow` in the `tekton-releases` GCP project
-GCP_ACCOUNT="$ACCOUNT@tekton-releases.iam.gserviceaccount.com"
+1. [Setup a context to connect to the dogfooding cluster](./release-cheat-sheet.md#setup-dogfooding-context) 
 
-# 1. Create a private key for the service account
-gcloud iam service-accounts keys create $KEY_FILE --iam-account $GCP_ACCOUNT
-
-# 2. Create kubernetes secret, which we will use via a service account and directly mounting
-kubectl create secret generic $GENERIC_SECRET --from-file=./$KEY_FILE
-
-# 3. Add the docker secret to the service account
-kubectl apply -f tekton/account.yaml
-kubectl patch serviceaccount $ACCOUNT \
-  -p "{\"secrets\": [{\"name\": \"$GENERIC_SECRET\"}]}"
-```
+1. NOTE: When executing release pipelines, some tasks require OCI CLI commands which need credentials. The OCI credentials secret is already deployed to the dogfooding cluster via terraform and is mounted as a workspace to tasks that require it (such as the precheck task). Release managers do not need to create this secret manually. This is stated here for troubleshooting purposes.
 
 ### Setup post processing
 
@@ -207,3 +193,57 @@ The image which we use for this is built from
 
 _[go-containerregistry#383](https://github.com/google/go-containerregistry/issues/383)
 is about publishing a `ko` image, which hopefully we'll be able to move it._
+
+### GitHub Action based approach:
+
+The GitHub Actions workflow provides an alternative approach for automated nightly releases with enhanced CI/CD capabilities and better integration with GitHub infrastructure.
+
+[The nightly release workflow](../.github/workflows/nightly-release.yaml) is triggered daily and uses:
+
+- [release-nightly-pipeline.yaml](release-nightly-pipeline.yaml) - Tekton Pipeline for nightly releases
+- [publish-nightly.yaml](publish-nightly.yaml) - Tekton Task for building and publishing nightly images
+
+#### Key Features:
+
+**Automated Scheduling:**
+- Runs daily at 03:00 UTC via cron schedule
+- Supports manual triggering with customizable parameters
+- Intelligent change detection - only releases when there are recent commits (configurable)
+
+**Multi-mode Operation:**
+- **Production mode**: For `tektoncd/pipeline` repository with full release capabilities
+- **Fork mode**: For testing in forks with isolated buckets and registries
+
+#### Usage:
+
+**Scheduled Release:**
+The workflow runs automatically every night and will create a release if:
+- There have been commits in the last 25 hours, OR
+- Force release is enabled, OR
+- It's manually triggered
+
+**Manual Release:**
+```bash
+# Trigger via GitHub UI or CLI
+gh workflow run nightly-release.yaml \
+  --field kubernetes_version=v1.33.0 \
+  --field force_release=true \
+  --field dry_run=false
+```
+
+**Fork Testing:**
+For testing in forks, the workflow automatically:
+- Uses a test bucket pattern: `gs://tekton-releases-nightly-{repo-owner}`
+- Publishes to `ghcr.io/{owner}/pipeline/*` instead of production registry
+- Skips certain production-only validations
+
+#### Output:
+
+The workflow generates:
+- Container images tagged with `vYYYYMMDD-{sha7}` format
+- Release YAML manifests uploaded to GCS bucket
+- Multi-architecture image support
+- Comprehensive build logs and artifacts
+
+This approach provides better observability, easier debugging, and more flexible configuration compared to the traditional Tekton-only pipeline approach.
+

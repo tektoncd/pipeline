@@ -16,9 +16,9 @@ weight: 406
 
 A mechanism to define and execute Pipelines in Pipelines, alongside Tasks and Custom Tasks, for a more in-depth background and inspiration, refer to the proposal [TEP-0056](https://github.com/tektoncd/community/blob/main/teps/0056-pipelines-in-pipelines.md "Proposal").
 
-> :seedling: **Pipelines in Pipelines is an  [alpha](additional-configs.md#alpha-features) feature.**
-> The `enable-api-fields` feature flag must be set to `"alpha"` to specify `pipelineRef` or `pipelineSpec` in a `pipelineTask`.
-> This feature is in Preview Only mode and not yet supported/implemented.
+> :seedling: **Pipelines in Pipelines not yet [alpha](additional-configs.md#alpha-features) feature.**
+> If the `enable-api-fields` feature flag is set to `"alpha"` users may specify `pipelineRef` or `pipelineSpec` in a `pipelineTask`, however this feature is not yet supported/implemented.
+> **Specifying a `pipelineRef` or `pipelineSpec` in a `pipelineTask` will not cause the Pipeline to run at this time.**
 
 ## Specifying `pipelineRef` in `pipelineTasks`
 

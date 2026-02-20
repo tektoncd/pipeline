@@ -125,6 +125,9 @@ type hmacAlgorithm struct {
 
 func (h *hmacAlgorithm) Sign(sig, key []byte) ([]byte, error) {
 	hs, err := h.fn(key)
+	if err != nil {
+		return nil, err
+	}
 	if err = setSig(hs, sig); err != nil {
 		return nil, err
 	}

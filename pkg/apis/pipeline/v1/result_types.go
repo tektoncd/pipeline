@@ -35,12 +35,12 @@ type TaskResult struct {
 
 	// Value the expression used to retrieve the value of the result from an underlying Step.
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	Value *ResultValue `json:"value,omitempty"`
 }
 
 // StepResult used to describe the Results of a Step.
-//
-// This is field is at an BETA stability level and gated by "enable-step-actions" feature flag.
 type StepResult struct {
 	// Name the given name
 	Name string `json:"name"`
@@ -69,6 +69,8 @@ type TaskRunResult struct {
 	Type ResultsType `json:"type,omitempty"`
 
 	// Value the given value of the result
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	Value ResultValue `json:"value"`
 }
 

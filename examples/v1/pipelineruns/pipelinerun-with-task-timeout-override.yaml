@@ -1,0 +1,53 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: sleep-task
+spec:
+  steps:
+  - name: sleep-long
+    image: mirror.gcr.io/alpine
+    script: |
+      #!/bin/sh
+      sleep 10
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: verify-task
+spec:
+  steps:
+  - name: verify-completion
+    image: mirror.gcr.io/alpine
+    script: |
+      #!/bin/sh
+      echo "- Pipeline task timeout: 60s (defined in pipeline spec)"
+      echo "- TaskRunSpecs override: 40s (defined in pipelinerun spec)"
+      echo "- Actual task duration: 10s (within 40s override timeout)"
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: taskrun-timeout-override
+spec:
+  tasks:
+  - name: long-running-task
+    taskRef:
+      name: sleep-task
+      kind: Task
+    timeout: "60s"  # pipeline task timeout (will be overridden to 20s)
+  - name: verify-timeout
+    taskRef:
+      name: verify-task
+      kind: Task
+    runAfter: ["long-running-task"]
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: taskrun-timeout-override
+spec:
+  pipelineRef:
+    name: taskrun-timeout-override
+  taskRunSpecs:
+  - pipelineTaskName: long-running-task
+    timeout: "40s"      # 40s timeout (accounts for image pull time + 10s sleep)

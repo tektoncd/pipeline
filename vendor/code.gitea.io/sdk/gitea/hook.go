@@ -14,14 +14,16 @@ import (
 
 // Hook a hook is a web hook when one repository changed
 type Hook struct {
-	ID      int64             `json:"id"`
-	Type    string            `json:"type"`
-	URL     string            `json:"-"`
-	Config  map[string]string `json:"config"`
-	Events  []string          `json:"events"`
-	Active  bool              `json:"active"`
-	Updated time.Time         `json:"updated_at"`
-	Created time.Time         `json:"created_at"`
+	ID                  int64             `json:"id"`
+	Type                string            `json:"type"`
+	URL                 string            `json:"-"`
+	BranchFilter        string            `json:"branch_filter"`
+	Config              map[string]string `json:"config"`
+	Events              []string          `json:"events"`
+	AuthorizationHeader string            `json:"authorization_header"`
+	Active              bool              `json:"active"`
+	Updated             time.Time         `json:"updated_at"`
+	Created             time.Time         `json:"created_at"`
 }
 
 // HookType represent all webhook types gitea currently offer

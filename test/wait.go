@@ -61,7 +61,7 @@ import (
 
 const (
 	interval       = 1 * time.Second
-	timeout        = 10 * time.Minute
+	timeout        = 15 * time.Minute
 	v1Version      = "v1"
 	v1beta1Version = "v1beta1"
 )
@@ -70,7 +70,7 @@ const (
 type ConditionAccessorFn func(ca apis.ConditionAccessor) (bool, error)
 
 func pollImmediateWithContext(ctx context.Context, fn func() (bool, error)) error {
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(ctx, interval, timeout, true, func(context.Context) (bool, error) {
 		select {
 		case <-ctx.Done():
 			return true, ctx.Err()
@@ -87,7 +87,7 @@ func pollImmediateWithContext(ctx context.Context, fn func() (bool, error)) erro
 // version will be used to determine the client to be applied for the wait.
 func WaitForTaskRunState(ctx context.Context, c *clients, name string, inState ConditionAccessorFn, desc, version string) error {
 	metricName := fmt.Sprintf("WaitForTaskRunState/%s/%s", name, desc)
-	_, span := trace.StartSpan(context.Background(), metricName)
+	_, span := trace.StartSpan(ctx, metricName)
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
@@ -114,7 +114,7 @@ func WaitForTaskRunState(ctx context.Context, c *clients, name string, inState C
 // track how long it took for name to get into the state checked by inState.
 func WaitForDeploymentState(ctx context.Context, c *clients, name string, namespace string, inState func(d *appsv1.Deployment) (bool, error), desc string) error {
 	metricName := fmt.Sprintf("WaitForDeploymentState/%s/%s", name, desc)
-	_, span := trace.StartSpan(context.Background(), metricName)
+	_, span := trace.StartSpan(ctx, metricName)
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
@@ -132,7 +132,7 @@ func WaitForDeploymentState(ctx context.Context, c *clients, name string, namesp
 // track how long it took for name to get into the state checked by inState.
 func WaitForPodState(ctx context.Context, c *clients, name string, namespace string, inState func(r *corev1.Pod) (bool, error), desc string) error {
 	metricName := fmt.Sprintf("WaitForPodState/%s/%s", name, desc)
-	_, span := trace.StartSpan(context.Background(), metricName)
+	_, span := trace.StartSpan(ctx, metricName)
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
@@ -150,7 +150,7 @@ func WaitForPodState(ctx context.Context, c *clients, name string, namespace str
 // track how long it took to delete all the PVCs in the namespace.
 func WaitForPVCIsDeleted(ctx context.Context, c *clients, polltimeout time.Duration, name, namespace, desc string) error {
 	metricName := fmt.Sprintf("WaitForPVCIsDeleted/%s/%s", name, desc)
-	_, span := trace.StartSpan(context.Background(), metricName)
+	_, span := trace.StartSpan(ctx, metricName)
 	defer span.End()
 
 	ctx, cancel := context.WithTimeout(ctx, polltimeout)
@@ -176,7 +176,7 @@ func WaitForPVCIsDeleted(ctx context.Context, c *clients, polltimeout time.Durat
 // version will be used to determine the client to be applied for the wait.
 func WaitForPipelineRunState(ctx context.Context, c *clients, name string, polltimeout time.Duration, inState ConditionAccessorFn, desc, version string) error {
 	metricName := fmt.Sprintf("WaitForPipelineRunState/%s/%s", name, desc)
-	_, span := trace.StartSpan(context.Background(), metricName)
+	_, span := trace.StartSpan(ctx, metricName)
 	defer span.End()
 
 	ctx, cancel := context.WithTimeout(ctx, polltimeout)
@@ -206,7 +206,7 @@ func WaitForPipelineRunState(ctx context.Context, c *clients, name string, pollt
 // track how long it took for name to get into the state checked by inState.
 func WaitForServiceExternalIPState(ctx context.Context, c *clients, namespace, name string, inState func(s *corev1.Service) (bool, error), desc string) error {
 	metricName := fmt.Sprintf("WaitForServiceExternalIPState/%s/%s", name, desc)
-	_, span := trace.StartSpan(context.Background(), metricName)
+	_, span := trace.StartSpan(ctx, metricName)
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {

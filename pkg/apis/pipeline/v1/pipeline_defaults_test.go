@@ -17,7 +17,6 @@ limitations under the License.
 package v1_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -29,7 +28,7 @@ import (
 func TestPipeline_SetDefaults(t *testing.T) {
 	p := &v1.Pipeline{}
 	want := &v1.Pipeline{}
-	ctx := context.Background()
+	ctx := t.Context()
 	p.SetDefaults(ctx)
 	if d := cmp.Diff(want, p); d != "" {
 		t.Errorf("Mismatch of Pipeline: empty pipeline must not change after setting defaults: %s", diff.PrintWantGot(d))
@@ -147,7 +146,7 @@ func TestPipelineSpec_SetDefaults(t *testing.T) {
 	}}
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			tc.ps.SetDefaults(ctx)
 			if d := cmp.Diff(tc.want, tc.ps); d != "" {
 				t.Errorf("Mismatch of pipelineSpec after setting defaults: %s", diff.PrintWantGot(d))
@@ -239,9 +238,9 @@ func TestPipelineTask_SetDefaults(t *testing.T) {
 	}}
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if len(tc.defaults) > 0 {
-				ctx = dfttesting.SetDefaults(context.Background(), t, tc.defaults)
+				ctx = dfttesting.SetDefaults(t.Context(), t, tc.defaults)
 			}
 			tc.pt.SetDefaults(ctx)
 			if d := cmp.Diff(tc.want, tc.pt); d != "" {

@@ -142,10 +142,26 @@ data:
     #       memory: "128Mi"
     #       cpu: "500m"
     #
-    #   default: # updates resource requirements of init-containers and containers which has empty resource resource requirements
+    #   default: # updates resource requirements of init-containers and containers which has empty resource requirements
     #     requests:
     #       memory: "64Mi"
     #       cpu: "250m"
     #     limits:
     #       memory: "256Mi"
     #       cpu: "500m"
+
+    # default-sidecar-log-polling-interval specifies the polling interval for the Tekton sidecar log results container.
+    # This controls how frequently the sidecar checks for step completion files written by steps in a TaskRun.
+    # Lower values (e.g., "10ms") make the sidecar more responsive but may increase CPU usage; higher values (e.g., "1s")
+    # reduce resource usage but may delay result collection.
+    # This value is used by the sidecar-tekton-log-results container and can be tuned for performance or test scenarios.
+    # Example values: "100ms", "500ms", "1s"
+    default-sidecar-log-polling-interval: "100ms"
+
+    # default-step-ref-concurrency-limit specifies the concurrency limit for resolving step references.
+    # This setting controls the maximum number of concurrent goroutines used to resolve
+    # step references (`step.ref` fields) simultaneously. This limit acts as a throttle
+    # to prevent overwhelming remote servers (e.g., git providers, OCI registries) or
+    # the Kubernetes API server, especially when a TaskRun contains many steps that
+    # reference StepActions.
+    default-step-ref-concurrency-limit: "5"

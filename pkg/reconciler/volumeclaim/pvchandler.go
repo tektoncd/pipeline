@@ -21,7 +21,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
@@ -37,6 +39,11 @@ const (
 	// ReasonCouldntCreateWorkspacePVC indicates that a Pipeline expects a workspace from a
 	// volumeClaimTemplate but couldn't create a claim.
 	ReasonCouldntCreateWorkspacePVC = "CouldntCreateWorkspacePVC"
+)
+
+var (
+	ErrPvcCreationFailed          = errors.New("PVC creation error")
+	ErrPvcCreationFailedRetryable = errors.New("PVC creation error, retryable")
 )
 
 // PvcHandler is used to create PVCs for workspaces
@@ -73,8 +80,11 @@ func (c *defaultPVCHandler) CreatePVCFromVolumeClaimTemplate(ctx context.Context
 			if apierrors.IsAlreadyExists(err) {
 				c.logger.Infof("Tried to create PersistentVolumeClaim %s in namespace %s, but it already exists",
 					claim.Name, claim.Namespace)
+			} else if isRetryableError(err) {
+				// This is a retry-able error
+				return fmt.Errorf("%w for %s: %v", ErrPvcCreationFailedRetryable, claim.Name, err.Error())
 			} else {
-				return fmt.Errorf("failed to create PVC %s: %w", claim.Name, err)
+				return fmt.Errorf("%w for %s: %v", ErrPvcCreationFailed, claim.Name, err.Error())
 			}
 		} else {
 			c.logger.Infof("Created PersistentVolumeClaim %s in namespace %s", claim.Name, claim.Namespace)
@@ -92,6 +102,11 @@ func (c *defaultPVCHandler) CreatePVCFromVolumeClaimTemplate(ctx context.Context
 func (c *defaultPVCHandler) PurgeFinalizerAndDeletePVCForWorkspace(ctx context.Context, pvcName, namespace string) error {
 	p, err := c.clientset.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, pvcName, metav1.GetOptions{})
 	if err != nil {
+		// check if the PVC exists, otherwise skip the deletion
+		if apierrors.IsNotFound(err) {
+			c.logger.Debugf("PVC %s no longer exists, skipping deletion as it has already been removed", pvcName)
+			return nil
+		}
 		return fmt.Errorf("failed to get the PVC %s: %w", pvcName, err)
 	}
 
@@ -162,4 +177,11 @@ func getPersistentVolumeClaimIdentity(workspaceName, ownerName string) string {
 	hashBytes := sha256.Sum256([]byte(workspaceName + ownerName))
 	hashString := hex.EncodeToString(hashBytes[:])
 	return hashString[:10]
+}
+
+func isRetryableError(err error) bool {
+	if (apierrors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota")) || apierrors.IsConflict(err) {
+		return true
+	}
+	return false
 }

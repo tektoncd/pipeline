@@ -36,6 +36,10 @@
           "description": "SecurityContext sets the security context for the pod",
           "$ref": "#/definitions/v1.PodSecurityContext"
         },
+        "serviceAccountName": {
+          "description": "ServiceAccountName is the name of the ServiceAccount to use for the affinity assistant pod. If not specified, the affinity assistant will inherit the serviceAccountName from the PipelineRun's taskRunTemplate. If that is also not specified, the pod will use the namespace's default ServiceAccount. More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/",
+          "type": "string"
+        },
         "tolerations": {
           "description": "If specified, the pod's tolerations.",
           "type": "array",
@@ -52,7 +56,7 @@
       "type": "object",
       "properties": {
         "affinity": {
-          "description": "If specified, the pod's scheduling constraints",
+          "description": "If specified, the pod's scheduling constraints. See Pod.spec.affinity (API version: v1)",
           "$ref": "#/definitions/v1.Affinity"
         },
         "automountServiceAccountToken": {
@@ -95,6 +99,10 @@
           "description": "HostNetwork specifies whether the pod may use the node network namespace",
           "type": "boolean"
         },
+        "hostUsers": {
+          "description": "HostUsers indicates whether the pod will use the host's user namespace. Optional: Default to true. If set to true or not present, the pod will be run in the host user namespace, useful for when the pod needs a feature only available to the host user namespace, such as loading a kernel module with CAP_SYS_MODULE. When set to false, a new user namespace is created for the pod. Setting false is useful to mitigating container breakout vulnerabilities such as allowing containers to run as root without their user having root privileges on the host. This field depends on the kubernetes feature gate UserNamespacesSupport being enabled.",
+          "type": "boolean"
+        },
         "imagePullSecrets": {
           "description": "ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified",
           "type": "array",
@@ -125,7 +133,7 @@
           "type": "string"
         },
         "securityContext": {
-          "description": "SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field.",
+          "description": "SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field. See Pod.spec.securityContext (API version: v1)",
           "$ref": "#/definitions/v1.PodSecurityContext"
         },
         "tolerations": {
@@ -147,13 +155,12 @@
           "x-kubernetes-list-type": "atomic"
         },
         "volumes": {
-          "description": "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes",
+          "description": "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes See Pod.spec.volumes (API version: v1)",
           "type": "array",
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Volume"
           },
-          "x-kubernetes-list-type": "atomic",
           "x-kubernetes-patch-merge-key": "name",
           "x-kubernetes-patch-strategy": "merge,retainKeys"
         }
@@ -438,8 +445,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.ParamSpec"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "results": {
           "description": "Results are values that this StepAction can output",

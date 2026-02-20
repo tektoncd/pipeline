@@ -17,10 +17,10 @@ limitations under the License.
 package resources_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	podtpl "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/workspace"
@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -784,6 +785,238 @@ func TestApplyParameters(t *testing.T) {
 				Name:  "FOO",
 				Value: *v1.NewStructuredValues("world"),
 			}},
+			PodTemplate: &podtpl.Template{
+				NodeSelector: map[string]string{
+					"kubernetes.io/arch": "$(params.myimage)",
+					"disktype":           "$(params.FOO)",
+					"static":             "value",
+				},
+				Tolerations: []corev1.Toleration{{
+					Key:      "$(params.myimage)",
+					Value:    "$(params.FOO)",
+					Operator: corev1.TolerationOpEqual,
+					Effect:   corev1.TaintEffectNoSchedule,
+				}},
+				RuntimeClassName:  ptr.To("$(params.myimage)"),
+				SchedulerName:     "$(params.FOO)",
+				PriorityClassName: ptr.To("$(params.myimage)"),
+				ImagePullSecrets: []corev1.LocalObjectReference{
+					{Name: "$(params.myimage)"},
+					{Name: "$(params.FOO)"},
+				},
+				HostAliases: []corev1.HostAlias{{
+					IP:        "$(params.myimage)",
+					Hostnames: []string{"$(params.FOO).example.com", "host2.example.com"},
+				}},
+				Env: []corev1.EnvVar{
+					{Name: "$(params.myimage)", Value: "$(params.FOO)"},
+					{Name: "STATIC_VAR", Value: "static_value"},
+					{Name: "FROM_CONFIG", ValueFrom: &corev1.EnvVarSource{
+						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(params.myimage)"},
+							Key:                  "config-key-$(params.FOO)",
+						},
+					}},
+					{Name: "FROM_SECRET", ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(params.myimage)"},
+							Key:                  "secret-key-$(params.FOO)",
+						},
+					}},
+					{Name: "FROM_FIELD", ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "spec.nodeName.$(params.myimage)",
+						},
+					}},
+					{Name: "FROM_RESOURCE", ValueFrom: &corev1.EnvVarSource{
+						ResourceFieldRef: &corev1.ResourceFieldSelector{
+							Resource:      "limits.memory.$(params.FOO)",
+							ContainerName: "container-$(params.myimage)",
+						},
+					}},
+				},
+				DNSConfig: &corev1.PodDNSConfig{
+					Nameservers: []string{"$(params.myimage)", "$(params.FOO)"},
+					Searches:    []string{"$(params.FOO).local"},
+					Options: []corev1.PodDNSConfigOption{
+						{Name: "$(params.myimage)", Value: ptr.To("$(params.FOO)")},
+					},
+				},
+				DNSPolicy: &[]corev1.DNSPolicy{corev1.DNSClusterFirst}[0],
+				SecurityContext: &corev1.PodSecurityContext{
+					SELinuxOptions: &corev1.SELinuxOptions{
+						User:  "$(params.myimage)",
+						Role:  "$(params.FOO)",
+						Type:  "container_t",
+						Level: "s0:c123,c456",
+					},
+					WindowsOptions: &corev1.WindowsSecurityContextOptions{
+						GMSACredentialSpecName: ptr.To("$(params.myimage)"),
+						GMSACredentialSpec:     ptr.To("$(params.FOO)"),
+						RunAsUserName:          ptr.To("$(params.myimage)"),
+					},
+					AppArmorProfile: &corev1.AppArmorProfile{
+						Type:             corev1.AppArmorProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("$(params.myimage)"),
+					},
+					Sysctls: []corev1.Sysctl{{
+						Name:  "$(params.myimage)",
+						Value: "$(params.FOO)",
+					}},
+					FSGroupChangePolicy:      &[]corev1.PodFSGroupChangePolicy{corev1.FSGroupChangeOnRootMismatch}[0],
+					SupplementalGroupsPolicy: &[]corev1.SupplementalGroupsPolicy{corev1.SupplementalGroupsPolicyMerge}[0],
+					SeccompProfile: &corev1.SeccompProfile{
+						Type:             corev1.SeccompProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("$(params.FOO)"),
+					},
+					SELinuxChangePolicy: &[]corev1.PodSELinuxChangePolicy{corev1.SELinuxChangePolicyMountOption}[0],
+				},
+				Affinity: &corev1.Affinity{
+					NodeAffinity: &corev1.NodeAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+							NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+								MatchExpressions: []corev1.NodeSelectorRequirement{{
+									Key:      "$(params.myimage)",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"$(params.FOO)"},
+								}},
+								MatchFields: []corev1.NodeSelectorRequirement{{
+									Key:      "$(params.myimage)",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"$(params.FOO)"},
+								}},
+							}},
+						},
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{{
+							Weight: 1,
+							Preference: corev1.NodeSelectorTerm{
+								MatchExpressions: []corev1.NodeSelectorRequirement{{
+									Key:      "$(params.myimage)",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"$(params.FOO)"},
+								}},
+							},
+						}},
+					},
+					PodAffinity: &corev1.PodAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.myimage)": "$(params.FOO)",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "$(params.myimage)",
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"$(params.FOO)"},
+								}},
+							},
+							TopologyKey: "$(params.myimage)",
+							Namespaces:  []string{"$(params.FOO)"},
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.myimage)": "$(params.FOO)",
+								},
+							},
+						}},
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+							Weight: 1,
+							PodAffinityTerm: corev1.PodAffinityTerm{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"$(params.myimage)": "$(params.FOO)",
+									},
+								},
+								TopologyKey: "$(params.myimage)",
+							},
+						}},
+					},
+					PodAntiAffinity: &corev1.PodAntiAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.myimage)": "$(params.FOO)",
+								},
+							},
+							TopologyKey: "$(params.myimage)",
+						}},
+					},
+				},
+				TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
+					MaxSkew:           1,
+					TopologyKey:       "$(params.myimage)",
+					WhenUnsatisfiable: corev1.DoNotSchedule,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app": "$(params.FOO)",
+						},
+					},
+				}},
+				Volumes: []corev1.Volume{{
+					Name: "$(params.myimage)",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "$(params.myimage)",
+							},
+							Items: []corev1.KeyToPath{{
+								Key:  "$(params.myimage)",
+								Path: "$(params.FOO)",
+							}},
+						},
+					},
+				}, {
+					Name: "secret-volume",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "$(params.myimage)",
+							Items: []corev1.KeyToPath{{
+								Key:  "$(params.myimage)",
+								Path: "$(params.FOO)",
+							}},
+						},
+					},
+				}, {
+					Name: "pvc-volume",
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "$(params.myimage)",
+						},
+					},
+				}, {
+					Name: "projected-volume",
+					VolumeSource: corev1.VolumeSource{
+						Projected: &corev1.ProjectedVolumeSource{
+							Sources: []corev1.VolumeProjection{{
+								ConfigMap: &corev1.ConfigMapProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "$(params.myimage)",
+									},
+								},
+								Secret: &corev1.SecretProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "$(params.myimage)",
+									},
+								},
+								ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+									Audience: "$(params.FOO)",
+								},
+							}},
+						},
+					},
+				}, {
+					Name: "csi-volume",
+					VolumeSource: corev1.VolumeSource{
+						CSI: &corev1.CSIVolumeSource{
+							VolumeAttributes: map[string]string{
+								"secretProviderClass": "$(params.myimage)",
+							},
+							NodePublishSecretRef: &corev1.LocalObjectReference{
+								Name: "$(params.myimage)",
+							},
+						},
+					},
+				}},
+			},
 		},
 	}
 	dp := []v1.ParamSpec{{
@@ -835,9 +1068,258 @@ func TestApplyParameters(t *testing.T) {
 		spec.Sidecars[0].Image = "bar"
 		spec.Sidecars[0].Env[0].Value = "world"
 	})
+	wantTr := &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: []v1.Param{{
+				Name:  "myimage",
+				Value: *v1.NewStructuredValues("bar"),
+			}, {
+				Name:  "FOO",
+				Value: *v1.NewStructuredValues("world"),
+			}},
+			PodTemplate: &podtpl.Template{
+				NodeSelector: map[string]string{
+					"kubernetes.io/arch": "bar",
+					"disktype":           "world",
+					"static":             "value",
+				},
+				Tolerations: []corev1.Toleration{{
+					Key:      "bar",
+					Value:    "world",
+					Operator: corev1.TolerationOpEqual,
+					Effect:   corev1.TaintEffectNoSchedule,
+				}},
+				RuntimeClassName:  ptr.To("bar"),
+				SchedulerName:     "world",
+				PriorityClassName: ptr.To("bar"),
+				ImagePullSecrets: []corev1.LocalObjectReference{
+					{Name: "bar"},
+					{Name: "world"},
+				},
+				HostAliases: []corev1.HostAlias{{
+					IP:        "bar",
+					Hostnames: []string{"world.example.com", "host2.example.com"},
+				}},
+				Env: []corev1.EnvVar{
+					{Name: "bar", Value: "world"},
+					{Name: "STATIC_VAR", Value: "static_value"},
+					{Name: "FROM_CONFIG", ValueFrom: &corev1.EnvVarSource{
+						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "config-bar"},
+							Key:                  "config-key-world",
+						},
+					}},
+					{Name: "FROM_SECRET", ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "secret-bar"},
+							Key:                  "secret-key-world",
+						},
+					}},
+					{Name: "FROM_FIELD", ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "spec.nodeName.bar",
+						},
+					}},
+					{Name: "FROM_RESOURCE", ValueFrom: &corev1.EnvVarSource{
+						ResourceFieldRef: &corev1.ResourceFieldSelector{
+							Resource:      "limits.memory.world",
+							ContainerName: "container-bar",
+						},
+					}},
+				},
+				DNSConfig: &corev1.PodDNSConfig{
+					Nameservers: []string{"bar", "world"},
+					Searches:    []string{"world.local"},
+					Options: []corev1.PodDNSConfigOption{
+						{Name: "bar", Value: ptr.To("world")},
+					},
+				},
+				DNSPolicy: &[]corev1.DNSPolicy{corev1.DNSClusterFirst}[0],
+				SecurityContext: &corev1.PodSecurityContext{
+					SELinuxOptions: &corev1.SELinuxOptions{
+						User:  "bar",
+						Role:  "world",
+						Type:  "container_t",
+						Level: "s0:c123,c456",
+					},
+					WindowsOptions: &corev1.WindowsSecurityContextOptions{
+						GMSACredentialSpecName: ptr.To("bar"),
+						GMSACredentialSpec:     ptr.To("world"),
+						RunAsUserName:          ptr.To("bar"),
+					},
+					AppArmorProfile: &corev1.AppArmorProfile{
+						Type:             corev1.AppArmorProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("bar"),
+					},
+					Sysctls: []corev1.Sysctl{{
+						Name:  "bar",
+						Value: "world",
+					}},
+					FSGroupChangePolicy:      &[]corev1.PodFSGroupChangePolicy{corev1.FSGroupChangeOnRootMismatch}[0],
+					SupplementalGroupsPolicy: &[]corev1.SupplementalGroupsPolicy{corev1.SupplementalGroupsPolicyMerge}[0],
+					SeccompProfile: &corev1.SeccompProfile{
+						Type:             corev1.SeccompProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("world"),
+					},
+					SELinuxChangePolicy: &[]corev1.PodSELinuxChangePolicy{corev1.SELinuxChangePolicyMountOption}[0],
+				},
+				Affinity: &corev1.Affinity{
+					NodeAffinity: &corev1.NodeAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+							NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+								MatchExpressions: []corev1.NodeSelectorRequirement{{
+									Key:      "bar",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"world"},
+								}},
+								MatchFields: []corev1.NodeSelectorRequirement{{
+									Key:      "bar",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"world"},
+								}},
+							}},
+						},
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{{
+							Weight: 1,
+							Preference: corev1.NodeSelectorTerm{
+								MatchExpressions: []corev1.NodeSelectorRequirement{{
+									Key:      "bar",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"world"},
+								}},
+							},
+						}},
+					},
+					PodAffinity: &corev1.PodAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"bar": "world",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "bar",
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"world"},
+								}},
+							},
+							TopologyKey: "bar",
+							Namespaces:  []string{"world"},
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"bar": "world",
+								},
+							},
+						}},
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+							Weight: 1,
+							PodAffinityTerm: corev1.PodAffinityTerm{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"bar": "world",
+									},
+								},
+								TopologyKey: "bar",
+							},
+						}},
+					},
+					PodAntiAffinity: &corev1.PodAntiAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"bar": "world",
+								},
+							},
+							TopologyKey: "bar",
+						}},
+					},
+				},
+				TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
+					MaxSkew:           1,
+					TopologyKey:       "bar",
+					WhenUnsatisfiable: corev1.DoNotSchedule,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app": "world",
+						},
+					},
+				}},
+				Volumes: []corev1.Volume{{
+					Name: "bar",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "bar",
+							},
+							Items: []corev1.KeyToPath{{
+								Key:  "bar",
+								Path: "world",
+							}},
+						},
+					},
+				}, {
+					Name: "secret-volume",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "bar",
+							Items: []corev1.KeyToPath{{
+								Key:  "bar",
+								Path: "world",
+							}},
+						},
+					},
+				}, {
+					Name: "pvc-volume",
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "bar",
+						},
+					},
+				}, {
+					Name: "projected-volume",
+					VolumeSource: corev1.VolumeSource{
+						Projected: &corev1.ProjectedVolumeSource{
+							Sources: []corev1.VolumeProjection{{
+								ConfigMap: &corev1.ConfigMapProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "bar",
+									},
+								},
+								Secret: &corev1.SecretProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "bar",
+									},
+								},
+								ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+									Audience: "world",
+								},
+							}},
+						},
+					},
+				}, {
+					Name: "csi-volume",
+					VolumeSource: corev1.VolumeSource{
+						CSI: &corev1.CSIVolumeSource{
+							VolumeAttributes: map[string]string{
+								"secretProviderClass": "bar",
+							},
+							NodePublishSecretRef: &corev1.LocalObjectReference{
+								Name: "bar",
+							},
+						},
+					},
+				}},
+			},
+		},
+	}
 	got := resources.ApplyParameters(simpleTaskSpec, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
+	}
+
+	gotTr := tr.DeepCopy()
+	gotTr.Spec.PodTemplate = resources.ApplyPodTemplateReplacements(tr.Spec.PodTemplate, tr)
+	if d := cmp.Diff(wantTr, gotTr); d != "" {
+		t.Errorf("ApplyPodTemplateParameters() got diff %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -851,6 +1333,237 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 				Name:  "FOO",
 				Value: *v1.NewStructuredValues("hello", "world"),
 			}},
+			PodTemplate: &podtpl.Template{
+				NodeSelector: map[string]string{
+					"kubernetes.io/arch": "$(params.myimage[0])",
+					"disktype":           "$(params.FOO[1])",
+				},
+				ImagePullSecrets: []corev1.LocalObjectReference{
+					{Name: "$(params.myimage[0])"},
+					{Name: "$(params.FOO[1])"},
+				},
+				Tolerations: []corev1.Toleration{{
+					Key:      "$(params.myimage[0])",
+					Value:    "$(params.FOO[1])",
+					Operator: corev1.TolerationOpEqual,
+					Effect:   corev1.TaintEffectNoSchedule,
+				}},
+				RuntimeClassName:  ptr.To("$(params.myimage[0])"),
+				SchedulerName:     "$(params.FOO[1])",
+				PriorityClassName: ptr.To("$(params.myimage[0])"),
+				HostAliases: []corev1.HostAlias{{
+					IP:        "$(params.myimage[0])",
+					Hostnames: []string{"$(params.FOO[1]).example.com", "host2.example.com"},
+				}},
+				Env: []corev1.EnvVar{
+					{Name: "$(params.myimage[0])", Value: "$(params.FOO[1])"},
+					{Name: "STATIC_VAR", Value: "static_value"},
+					{Name: "FROM_CONFIG", ValueFrom: &corev1.EnvVarSource{
+						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(params.myimage[0])"},
+							Key:                  "config-key-$(params.FOO[1])",
+						},
+					}},
+					{Name: "FROM_SECRET", ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(params.myimage[0])"},
+							Key:                  "secret-key-$(params.FOO[1])",
+						},
+					}},
+					{Name: "FROM_FIELD", ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "spec.nodeName.$(params.myimage[0])",
+						},
+					}},
+					{Name: "FROM_RESOURCE", ValueFrom: &corev1.EnvVarSource{
+						ResourceFieldRef: &corev1.ResourceFieldSelector{
+							Resource:      "limits.memory.$(params.FOO[1])",
+							ContainerName: "container-$(params.myimage[0])",
+						},
+					}},
+				},
+				DNSConfig: &corev1.PodDNSConfig{
+					Nameservers: []string{"$(params.myimage[0])", "$(params.FOO[1])"},
+					Searches:    []string{"$(params.FOO[1]).local"},
+					Options: []corev1.PodDNSConfigOption{
+						{Name: "$(params.myimage[0])", Value: ptr.To("$(params.FOO[1])")},
+					},
+				},
+				DNSPolicy: &[]corev1.DNSPolicy{corev1.DNSClusterFirst}[0],
+				SecurityContext: &corev1.PodSecurityContext{
+					SELinuxOptions: &corev1.SELinuxOptions{
+						User:  "$(params.myimage[0])",
+						Role:  "$(params.FOO[1])",
+						Type:  "container_t",
+						Level: "s0:c123,c456",
+					},
+					WindowsOptions: &corev1.WindowsSecurityContextOptions{
+						GMSACredentialSpecName: ptr.To("$(params.myimage[0])"),
+						GMSACredentialSpec:     ptr.To("$(params.FOO[1])"),
+						RunAsUserName:          ptr.To("$(params.myimage[0])"),
+					},
+					AppArmorProfile: &corev1.AppArmorProfile{
+						Type:             corev1.AppArmorProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("$(params.myimage[0])"),
+					},
+					Sysctls: []corev1.Sysctl{{
+						Name:  "$(params.myimage[0])",
+						Value: "$(params.FOO[1])",
+					}},
+					FSGroupChangePolicy:      &[]corev1.PodFSGroupChangePolicy{corev1.FSGroupChangeOnRootMismatch}[0],
+					SupplementalGroupsPolicy: &[]corev1.SupplementalGroupsPolicy{corev1.SupplementalGroupsPolicyMerge}[0],
+					SeccompProfile: &corev1.SeccompProfile{
+						Type:             corev1.SeccompProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("$(params.FOO[1])"),
+					},
+					SELinuxChangePolicy: &[]corev1.PodSELinuxChangePolicy{corev1.SELinuxChangePolicyMountOption}[0],
+				},
+				Affinity: &corev1.Affinity{
+					NodeAffinity: &corev1.NodeAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+							NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+								MatchExpressions: []corev1.NodeSelectorRequirement{{
+									Key:      "$(params.myimage[0])",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"$(params.FOO[1])"},
+								}},
+								MatchFields: []corev1.NodeSelectorRequirement{{
+									Key:      "$(params.myimage[0])",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"$(params.FOO[1])"},
+								}},
+							}},
+						},
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{{
+							Weight: 1,
+							Preference: corev1.NodeSelectorTerm{
+								MatchExpressions: []corev1.NodeSelectorRequirement{{
+									Key:      "$(params.myimage[0])",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"$(params.FOO[1])"},
+								}},
+							},
+						}},
+					},
+					PodAffinity: &corev1.PodAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.myimage[0])": "$(params.FOO[1])",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "$(params.myimage[0])",
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"$(params.FOO[1])"},
+								}},
+							},
+							TopologyKey: "$(params.myimage[0])",
+							Namespaces:  []string{"$(params.FOO[1])"},
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.myimage[0])": "$(params.FOO[1])",
+								},
+							},
+						}},
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+							Weight: 1,
+							PodAffinityTerm: corev1.PodAffinityTerm{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"$(params.myimage[0])": "$(params.FOO[1])",
+									},
+								},
+								TopologyKey: "$(params.myimage[0])",
+							},
+						}},
+					},
+					PodAntiAffinity: &corev1.PodAntiAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.myimage[0])": "$(params.FOO[1])",
+								},
+							},
+							TopologyKey: "$(params.myimage[0])",
+						}},
+					},
+				},
+				TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
+					MaxSkew:           1,
+					TopologyKey:       "$(params.myimage[0])",
+					WhenUnsatisfiable: corev1.DoNotSchedule,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app": "$(params.FOO[1])",
+						},
+					},
+				}},
+				Volumes: []corev1.Volume{{
+					Name: "$(params.myimage[0])",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "$(params.myimage[0])",
+							},
+							Items: []corev1.KeyToPath{{
+								Key:  "$(params.myimage[0])",
+								Path: "$(params.FOO[1])",
+							}},
+						},
+					},
+				}, {
+					Name: "secret-volume",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "$(params.myimage[0])",
+							Items: []corev1.KeyToPath{{
+								Key:  "$(params.myimage[0])",
+								Path: "$(params.FOO[1])",
+							}},
+						},
+					},
+				}, {
+					Name: "pvc-volume",
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "$(params.myimage[0])",
+						},
+					},
+				}, {
+					Name: "projected-volume",
+					VolumeSource: corev1.VolumeSource{
+						Projected: &corev1.ProjectedVolumeSource{
+							Sources: []corev1.VolumeProjection{{
+								ConfigMap: &corev1.ConfigMapProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "$(params.myimage[0])",
+									},
+								},
+								Secret: &corev1.SecretProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "$(params.myimage[0])",
+									},
+								},
+								ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+									Audience: "$(params.FOO[1])",
+								},
+							}},
+						},
+					},
+				}, {
+					Name: "csi-volume",
+					VolumeSource: corev1.VolumeSource{
+						CSI: &corev1.CSIVolumeSource{
+							VolumeAttributes: map[string]string{
+								"secretProviderClass": "$(params.myimage[0])",
+							},
+							NodePublishSecretRef: &corev1.LocalObjectReference{
+								Name: "$(params.myimage[0])",
+							},
+						},
+					},
+				}},
+			},
 		},
 	}
 	dp := []v1.ParamSpec{{
@@ -901,9 +1614,258 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 		spec.Sidecars[0].Image = "bar"
 		spec.Sidecars[0].Env[0].Value = "world"
 	})
+	wantTr := &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: []v1.Param{{
+				Name:  "myimage",
+				Value: *v1.NewStructuredValues("bar", "foo"),
+			}, {
+				Name:  "FOO",
+				Value: *v1.NewStructuredValues("hello", "world"),
+			}},
+			PodTemplate: &podtpl.Template{
+				NodeSelector: map[string]string{
+					"kubernetes.io/arch": "bar",
+					"disktype":           "world",
+				},
+				ImagePullSecrets: []corev1.LocalObjectReference{
+					{Name: "bar"},
+					{Name: "world"},
+				},
+				Tolerations: []corev1.Toleration{{
+					Key:      "bar",
+					Value:    "world",
+					Operator: corev1.TolerationOpEqual,
+					Effect:   corev1.TaintEffectNoSchedule,
+				}},
+				RuntimeClassName:  ptr.To("bar"),
+				SchedulerName:     "world",
+				PriorityClassName: ptr.To("bar"),
+				HostAliases: []corev1.HostAlias{{
+					IP:        "bar",
+					Hostnames: []string{"world.example.com", "host2.example.com"},
+				}},
+				Env: []corev1.EnvVar{
+					{Name: "bar", Value: "world"},
+					{Name: "STATIC_VAR", Value: "static_value"},
+					{Name: "FROM_CONFIG", ValueFrom: &corev1.EnvVarSource{
+						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "config-bar"},
+							Key:                  "config-key-world",
+						},
+					}},
+					{Name: "FROM_SECRET", ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "secret-bar"},
+							Key:                  "secret-key-world",
+						},
+					}},
+					{Name: "FROM_FIELD", ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "spec.nodeName.bar",
+						},
+					}},
+					{Name: "FROM_RESOURCE", ValueFrom: &corev1.EnvVarSource{
+						ResourceFieldRef: &corev1.ResourceFieldSelector{
+							Resource:      "limits.memory.world",
+							ContainerName: "container-bar",
+						},
+					}},
+				},
+				DNSConfig: &corev1.PodDNSConfig{
+					Nameservers: []string{"bar", "world"},
+					Searches:    []string{"world.local"},
+					Options: []corev1.PodDNSConfigOption{
+						{Name: "bar", Value: ptr.To("world")},
+					},
+				},
+				DNSPolicy: &[]corev1.DNSPolicy{corev1.DNSClusterFirst}[0],
+				SecurityContext: &corev1.PodSecurityContext{
+					SELinuxOptions: &corev1.SELinuxOptions{
+						User:  "bar",
+						Role:  "world",
+						Type:  "container_t",
+						Level: "s0:c123,c456",
+					},
+					WindowsOptions: &corev1.WindowsSecurityContextOptions{
+						GMSACredentialSpecName: ptr.To("bar"),
+						GMSACredentialSpec:     ptr.To("world"),
+						RunAsUserName:          ptr.To("bar"),
+					},
+					AppArmorProfile: &corev1.AppArmorProfile{
+						Type:             corev1.AppArmorProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("bar"),
+					},
+					Sysctls: []corev1.Sysctl{{
+						Name:  "bar",
+						Value: "world",
+					}},
+					FSGroupChangePolicy:      &[]corev1.PodFSGroupChangePolicy{corev1.FSGroupChangeOnRootMismatch}[0],
+					SupplementalGroupsPolicy: &[]corev1.SupplementalGroupsPolicy{corev1.SupplementalGroupsPolicyMerge}[0],
+					SeccompProfile: &corev1.SeccompProfile{
+						Type:             corev1.SeccompProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("world"),
+					},
+					SELinuxChangePolicy: &[]corev1.PodSELinuxChangePolicy{corev1.SELinuxChangePolicyMountOption}[0],
+				},
+				Affinity: &corev1.Affinity{
+					NodeAffinity: &corev1.NodeAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+							NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+								MatchExpressions: []corev1.NodeSelectorRequirement{{
+									Key:      "bar",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"world"},
+								}},
+								MatchFields: []corev1.NodeSelectorRequirement{{
+									Key:      "bar",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"world"},
+								}},
+							}},
+						},
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{{
+							Weight: 1,
+							Preference: corev1.NodeSelectorTerm{
+								MatchExpressions: []corev1.NodeSelectorRequirement{{
+									Key:      "bar",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"world"},
+								}},
+							},
+						}},
+					},
+					PodAffinity: &corev1.PodAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"bar": "world",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "bar",
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"world"},
+								}},
+							},
+							TopologyKey: "bar",
+							Namespaces:  []string{"world"},
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"bar": "world",
+								},
+							},
+						}},
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+							Weight: 1,
+							PodAffinityTerm: corev1.PodAffinityTerm{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"bar": "world",
+									},
+								},
+								TopologyKey: "bar",
+							},
+						}},
+					},
+					PodAntiAffinity: &corev1.PodAntiAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"bar": "world",
+								},
+							},
+							TopologyKey: "bar",
+						}},
+					},
+				},
+				TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
+					MaxSkew:           1,
+					TopologyKey:       "bar",
+					WhenUnsatisfiable: corev1.DoNotSchedule,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app": "world",
+						},
+					},
+				}},
+				Volumes: []corev1.Volume{{
+					Name: "bar",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "bar",
+							},
+							Items: []corev1.KeyToPath{{
+								Key:  "bar",
+								Path: "world",
+							}},
+						},
+					},
+				}, {
+					Name: "secret-volume",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "bar",
+							Items: []corev1.KeyToPath{{
+								Key:  "bar",
+								Path: "world",
+							}},
+						},
+					},
+				}, {
+					Name: "pvc-volume",
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "bar",
+						},
+					},
+				}, {
+					Name: "projected-volume",
+					VolumeSource: corev1.VolumeSource{
+						Projected: &corev1.ProjectedVolumeSource{
+							Sources: []corev1.VolumeProjection{{
+								ConfigMap: &corev1.ConfigMapProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "bar",
+									},
+								},
+								Secret: &corev1.SecretProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "bar",
+									},
+								},
+								ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+									Audience: "world",
+								},
+							}},
+						},
+					},
+				}, {
+					Name: "csi-volume",
+					VolumeSource: corev1.VolumeSource{
+						CSI: &corev1.CSIVolumeSource{
+							VolumeAttributes: map[string]string{
+								"secretProviderClass": "bar",
+							},
+							NodePublishSecretRef: &corev1.LocalObjectReference{
+								Name: "bar",
+							},
+						},
+					},
+				}},
+			},
+		},
+	}
 	got := resources.ApplyParameters(simpleTaskSpecArrayIndexing, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
+	}
+
+	// Test PodTemplate parameter substitution
+	gotTr := tr.DeepCopy()
+	gotTr.Spec.PodTemplate = resources.ApplyPodTemplateReplacements(tr.Spec.PodTemplate, tr)
+	if d := cmp.Diff(wantTr, gotTr); d != "" {
+		t.Errorf("ApplyPodTemplateParameters() got diff %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -918,6 +1880,149 @@ func TestApplyObjectParameters(t *testing.T) {
 					"key2": "taskrun-value-for-key2",
 				}),
 			}},
+			PodTemplate: &podtpl.Template{
+				NodeSelector: map[string]string{
+					"kubernetes.io/arch": "$(params.myObject.key1)",
+					"zone":               "$(params.myObject.key2)",
+					"static":             "value",
+				},
+				Tolerations: []corev1.Toleration{{
+					Key:      "$(params.myObject.key1)",
+					Value:    "$(params.myObject.key2)",
+					Operator: corev1.TolerationOpEqual,
+					Effect:   corev1.TaintEffectNoSchedule,
+				}},
+				RuntimeClassName:  ptr.To("$(params.myObject.key1)"),
+				SchedulerName:     "$(params.myObject.key2)",
+				PriorityClassName: ptr.To("$(params.myObject.key1)"),
+				ImagePullSecrets: []corev1.LocalObjectReference{
+					{Name: "$(params.myObject.key1)"},
+					{Name: "$(params.myObject.key2)"},
+				},
+				HostAliases: []corev1.HostAlias{{
+					IP:        "$(params.myObject.key1)",
+					Hostnames: []string{"$(params.myObject.key2).example.com", "host2.example.com"},
+				}},
+				Env: []corev1.EnvVar{
+					{Name: "DEPLOYMENT_ENV", Value: "$(params.myObject.key1)"},
+					{Name: "VERSION", Value: "$(params.myObject.key2)"},
+				},
+				DNSConfig: &corev1.PodDNSConfig{
+					Nameservers: []string{"$(params.myObject.key1)", "$(params.myObject.key2)"},
+					Searches:    []string{"$(params.myObject.key2).local"},
+					Options: []corev1.PodDNSConfigOption{
+						{Name: "$(params.myObject.key1)", Value: ptr.To("$(params.myObject.key2)")},
+					},
+				},
+				DNSPolicy: &[]corev1.DNSPolicy{corev1.DNSClusterFirst}[0],
+				SecurityContext: &corev1.PodSecurityContext{
+					SELinuxOptions: &corev1.SELinuxOptions{
+						User:  "$(params.myObject.key1)",
+						Role:  "$(params.myObject.key2)",
+						Type:  "container_t",
+						Level: "s0:c123,c456",
+					},
+					WindowsOptions: &corev1.WindowsSecurityContextOptions{
+						GMSACredentialSpecName: ptr.To("$(params.myObject.key1)"),
+						RunAsUserName:          ptr.To("$(params.myObject.key2)"),
+					},
+					AppArmorProfile: &corev1.AppArmorProfile{
+						Type:             corev1.AppArmorProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("$(params.myObject.key1)"),
+					},
+					Sysctls: []corev1.Sysctl{{
+						Name:  "$(params.myObject.key1)",
+						Value: "$(params.myObject.key2)",
+					}},
+					FSGroupChangePolicy:      &[]corev1.PodFSGroupChangePolicy{corev1.FSGroupChangeOnRootMismatch}[0],
+					SupplementalGroupsPolicy: &[]corev1.SupplementalGroupsPolicy{corev1.SupplementalGroupsPolicyMerge}[0],
+					SeccompProfile: &corev1.SeccompProfile{
+						Type:             corev1.SeccompProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("$(params.myObject.key2)"),
+					},
+					SELinuxChangePolicy: &[]corev1.PodSELinuxChangePolicy{corev1.SELinuxChangePolicyMountOption}[0],
+				},
+				Affinity: &corev1.Affinity{
+					NodeAffinity: &corev1.NodeAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+							NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+								MatchExpressions: []corev1.NodeSelectorRequirement{{
+									Key:      "$(params.myObject.key1)",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"$(params.myObject.key2)"},
+								}},
+								MatchFields: []corev1.NodeSelectorRequirement{{
+									Key:      "$(params.myObject.key1)",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"$(params.myObject.key2)"},
+								}},
+							}},
+						},
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{{
+							Weight: 1,
+							Preference: corev1.NodeSelectorTerm{
+								MatchExpressions: []corev1.NodeSelectorRequirement{{
+									Key:      "$(params.myObject.key1)",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"$(params.myObject.key2)"},
+								}},
+							},
+						}},
+					},
+					PodAffinity: &corev1.PodAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.myObject.key1)": "$(params.myObject.key2)",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "$(params.myObject.key1)",
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"$(params.myObject.key2)"},
+								}},
+							},
+							TopologyKey: "$(params.myObject.key1)",
+							Namespaces:  []string{"$(params.myObject.key2)"},
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.myObject.key1)": "$(params.myObject.key2)",
+								},
+							},
+						}},
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+							Weight: 1,
+							PodAffinityTerm: corev1.PodAffinityTerm{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"$(params.myObject.key1)": "$(params.myObject.key2)",
+									},
+								},
+								TopologyKey: "$(params.myObject.key1)",
+							},
+						}},
+					},
+					PodAntiAffinity: &corev1.PodAntiAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"$(params.myObject.key1)": "$(params.myObject.key2)",
+								},
+							},
+							TopologyKey: "$(params.myObject.key1)",
+						}},
+					},
+				},
+				TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
+					MaxSkew:           1,
+					TopologyKey:       "$(params.myObject.key1)",
+					WhenUnsatisfiable: corev1.DoNotSchedule,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app": "$(params.myObject.key2)",
+						},
+					},
+				}},
+			},
 		},
 	}
 	dp := []v1.ParamSpec{{
@@ -967,9 +2072,170 @@ func TestApplyObjectParameters(t *testing.T) {
 		spec.Volumes[3].VolumeSource.CSI.VolumeAttributes["secretProviderClass"] = "taskrun-value-for-key1"
 		spec.Volumes[3].VolumeSource.CSI.NodePublishSecretRef.Name = "taskrun-value-for-key1"
 	})
+	wantTr := &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: []v1.Param{{
+				Name: "myObject",
+				Value: *v1.NewObject(map[string]string{
+					"key1": "taskrun-value-for-key1",
+					"key2": "taskrun-value-for-key2",
+				}),
+			}},
+			PodTemplate: &podtpl.Template{
+				NodeSelector: map[string]string{
+					"kubernetes.io/arch": "taskrun-value-for-key1",
+					"zone":               "taskrun-value-for-key2",
+					"static":             "value",
+				},
+				Tolerations: []corev1.Toleration{{
+					Key:      "taskrun-value-for-key1",
+					Value:    "taskrun-value-for-key2",
+					Operator: corev1.TolerationOpEqual,
+					Effect:   corev1.TaintEffectNoSchedule,
+				}},
+				RuntimeClassName:  ptr.To("taskrun-value-for-key1"),
+				SchedulerName:     "taskrun-value-for-key2",
+				PriorityClassName: ptr.To("taskrun-value-for-key1"),
+				ImagePullSecrets: []corev1.LocalObjectReference{
+					{Name: "taskrun-value-for-key1"},
+					{Name: "taskrun-value-for-key2"},
+				},
+				HostAliases: []corev1.HostAlias{{
+					IP:        "taskrun-value-for-key1",
+					Hostnames: []string{"taskrun-value-for-key2.example.com", "host2.example.com"},
+				}},
+				Env: []corev1.EnvVar{
+					{Name: "DEPLOYMENT_ENV", Value: "taskrun-value-for-key1"},
+					{Name: "VERSION", Value: "taskrun-value-for-key2"},
+				},
+				DNSConfig: &corev1.PodDNSConfig{
+					Nameservers: []string{"taskrun-value-for-key1", "taskrun-value-for-key2"},
+					Searches:    []string{"taskrun-value-for-key2.local"},
+					Options: []corev1.PodDNSConfigOption{
+						{Name: "taskrun-value-for-key1", Value: ptr.To("taskrun-value-for-key2")},
+					},
+				},
+				DNSPolicy: &[]corev1.DNSPolicy{corev1.DNSClusterFirst}[0],
+				SecurityContext: &corev1.PodSecurityContext{
+					SELinuxOptions: &corev1.SELinuxOptions{
+						User:  "taskrun-value-for-key1",
+						Role:  "taskrun-value-for-key2",
+						Type:  "container_t",
+						Level: "s0:c123,c456",
+					},
+					WindowsOptions: &corev1.WindowsSecurityContextOptions{
+						GMSACredentialSpecName: ptr.To("taskrun-value-for-key1"),
+						RunAsUserName:          ptr.To("taskrun-value-for-key2"),
+					},
+					AppArmorProfile: &corev1.AppArmorProfile{
+						Type:             corev1.AppArmorProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("taskrun-value-for-key1"),
+					},
+					Sysctls: []corev1.Sysctl{{
+						Name:  "taskrun-value-for-key1",
+						Value: "taskrun-value-for-key2",
+					}},
+					FSGroupChangePolicy:      &[]corev1.PodFSGroupChangePolicy{corev1.FSGroupChangeOnRootMismatch}[0],
+					SupplementalGroupsPolicy: &[]corev1.SupplementalGroupsPolicy{corev1.SupplementalGroupsPolicyMerge}[0],
+					SeccompProfile: &corev1.SeccompProfile{
+						Type:             corev1.SeccompProfileTypeLocalhost,
+						LocalhostProfile: ptr.To("taskrun-value-for-key2"),
+					},
+					SELinuxChangePolicy: &[]corev1.PodSELinuxChangePolicy{corev1.SELinuxChangePolicyMountOption}[0],
+				},
+				Affinity: &corev1.Affinity{
+					NodeAffinity: &corev1.NodeAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+							NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+								MatchExpressions: []corev1.NodeSelectorRequirement{{
+									Key:      "taskrun-value-for-key1",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"taskrun-value-for-key2"},
+								}},
+								MatchFields: []corev1.NodeSelectorRequirement{{
+									Key:      "taskrun-value-for-key1",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"taskrun-value-for-key2"},
+								}},
+							}},
+						},
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{{
+							Weight: 1,
+							Preference: corev1.NodeSelectorTerm{
+								MatchExpressions: []corev1.NodeSelectorRequirement{{
+									Key:      "taskrun-value-for-key1",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"taskrun-value-for-key2"},
+								}},
+							},
+						}},
+					},
+					PodAffinity: &corev1.PodAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"taskrun-value-for-key1": "taskrun-value-for-key2",
+								},
+								MatchExpressions: []metav1.LabelSelectorRequirement{{
+									Key:      "taskrun-value-for-key1",
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"taskrun-value-for-key2"},
+								}},
+							},
+							TopologyKey: "taskrun-value-for-key1",
+							Namespaces:  []string{"taskrun-value-for-key2"},
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"taskrun-value-for-key1": "taskrun-value-for-key2",
+								},
+							},
+						}},
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+							Weight: 1,
+							PodAffinityTerm: corev1.PodAffinityTerm{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"taskrun-value-for-key1": "taskrun-value-for-key2",
+									},
+								},
+								TopologyKey: "taskrun-value-for-key1",
+							},
+						}},
+					},
+					PodAntiAffinity: &corev1.PodAntiAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"taskrun-value-for-key1": "taskrun-value-for-key2",
+								},
+							},
+							TopologyKey: "taskrun-value-for-key1",
+						}},
+					},
+				},
+				TopologySpreadConstraints: []corev1.TopologySpreadConstraint{{
+					MaxSkew:           1,
+					TopologyKey:       "taskrun-value-for-key1",
+					WhenUnsatisfiable: corev1.DoNotSchedule,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app": "taskrun-value-for-key2",
+						},
+					},
+				}},
+			},
+		},
+	}
 	got := resources.ApplyParameters(objectParamTaskSpec, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
+	}
+
+	// Test PodTemplate parameter substitution
+	gotTr := tr.DeepCopy()
+	gotTr.Spec.PodTemplate = resources.ApplyPodTemplateReplacements(tr.Spec.PodTemplate, tr)
+	if d := cmp.Diff(wantTr, gotTr); d != "" {
+		t.Errorf("ApplyPodTemplateParameters() got diff %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -1201,7 +2467,7 @@ func TestApplyWorkspaces(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			vols := workspace.CreateVolumes(tc.binds)
-			got := resources.ApplyWorkspaces(context.Background(), tc.spec, tc.decls, tc.binds, vols)
+			got := resources.ApplyWorkspaces(t.Context(), tc.spec, tc.decls, tc.binds, vols)
 			if d := cmp.Diff(tc.want, got); d != "" {
 				t.Errorf("TestApplyWorkspaces() got diff %s", diff.PrintWantGot(d))
 			}
@@ -1268,7 +2534,7 @@ func TestApplyWorkspaces_IsolatedWorkspaces(t *testing.T) {
 		}}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			vols := workspace.CreateVolumes(tc.binds)
 			got := resources.ApplyWorkspaces(ctx, tc.spec, tc.decls, tc.binds, vols)
 			if d := cmp.Diff(tc.want, got); d != "" {

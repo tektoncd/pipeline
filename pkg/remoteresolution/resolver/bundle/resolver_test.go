@@ -58,11 +58,70 @@ const (
 
 func TestGetSelector(t *testing.T) {
 	resolver := bundle.Resolver{}
-	sel := resolver.GetSelector(context.Background())
+	sel := resolver.GetSelector(t.Context())
 	if typ, has := sel[resolutioncommon.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
 	} else if typ != bundle.LabelValueBundleResolverType {
 		t.Fatalf("unexpected type: %q", typ)
+	}
+}
+
+func TestIsImmutable(t *testing.T) {
+	testCases := []struct {
+		name      string
+		bundleRef string
+		expected  bool
+	}{
+		{
+			name:      "digest with sha256",
+			bundleRef: "gcr.io/tekton-releases/catalog/upstream/golang-build@sha256:abc123def456",
+			expected:  true,
+		},
+		{
+			name:      "digest with sha512 (not supported)",
+			bundleRef: "myregistry.io/myimage@sha512:1234567890abcdef",
+			expected:  false,
+		},
+		{
+			name:      "digest with sha384 (not supported)",
+			bundleRef: "docker.io/library/ubuntu@sha384:fedcba098765",
+			expected:  false,
+		},
+		{
+			name:      "tag with digest",
+			bundleRef: "gcr.io/myproject/myimage:v1.0.0@sha256:abc123",
+			expected:  true,
+		},
+		{
+			name:      "only tag without digest",
+			bundleRef: "gcr.io/myproject/myimage:latest",
+			expected:  false,
+		},
+		{
+			name:      "no tag or digest",
+			bundleRef: "gcr.io/myproject/myimage",
+			expected:  false,
+		},
+		{
+			name:      "tag with colon but no digest",
+			bundleRef: "myregistry.io:8080/myimage:v2.0",
+			expected:  false,
+		},
+	}
+
+	resolver := &bundle.Resolver{}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			params := []pipelinev1.Param{{
+				Name:  bundleresolution.ParamBundle,
+				Value: *pipelinev1.NewStructuredValues(tc.bundleRef),
+			}}
+
+			result := resolver.IsImmutable(params)
+			if result != tc.expected {
+				t.Errorf("IsImmutable(%s) = %v, want %v", tc.bundleRef, result, tc.expected)
+			}
+		})
 	}
 }
 
@@ -71,7 +130,7 @@ func TestValidateParamsSecret(t *testing.T) {
 	config := map[string]string{
 		bundleresolution.ConfigServiceAccount: "default",
 	}
-	ctx := framework.InjectResolverConfigToContext(context.Background(), config)
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
 
 	paramsWithTask := []pipelinev1.Param{{
 		Name:  bundleresolution.ParamKind,
@@ -115,7 +174,7 @@ func TestValidateParamsServiceAccount(t *testing.T) {
 	config := map[string]string{
 		bundleresolution.ConfigServiceAccount: "default",
 	}
-	ctx := framework.InjectResolverConfigToContext(context.Background(), config)
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
 
 	paramsWithTask := []pipelinev1.Param{{
 		Name:  bundleresolution.ParamKind,
@@ -149,7 +208,7 @@ func TestValidateParamsServiceAccount(t *testing.T) {
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	req = v1beta1.ResolutionRequestSpec{Params: paramsWithPipeline}
-	if err := resolver.Validate(context.Background(), &req); err != nil {
+	if err := resolver.Validate(t.Context(), &req); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
 	}
 }
@@ -199,7 +258,7 @@ func TestValidateMissing(t *testing.T) {
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	req := v1beta1.ResolutionRequestSpec{Params: paramsMissingBundle}
-	err = resolver.Validate(context.Background(), &req)
+	err = resolver.Validate(t.Context(), &req)
 	if err == nil {
 		t.Fatalf("expected missing kind err")
 	}
@@ -215,14 +274,22 @@ func TestValidateMissing(t *testing.T) {
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	req = v1beta1.ResolutionRequestSpec{Params: paramsMissingName}
-	err = resolver.Validate(context.Background(), &req)
+	err = resolver.Validate(t.Context(), &req)
 	if err == nil {
 		t.Fatalf("expected missing name err")
 	}
 }
 
 func TestResolveDisabled(t *testing.T) {
+	ctx, _ := ttesting.SetupFakeContext(t)
+
 	resolver := bundle.Resolver{}
+	if err := resolver.Initialize(ctx); err != nil {
+		t.Fatalf("failed to initialize resolver: %v", err)
+	}
+
+	// Now overlay the disabled context on top
+	ctx = resolverDisabledContext()
 
 	var err error
 
@@ -240,7 +307,7 @@ func TestResolveDisabled(t *testing.T) {
 		Value: *pipelinev1.NewStructuredValues("baz"),
 	}}
 	req := v1beta1.ResolutionRequestSpec{Params: params}
-	_, err = resolver.Resolve(resolverDisabledContext(), &req)
+	_, err = resolver.Resolve(ctx, &req)
 	if err == nil {
 		t.Fatalf("expected disabled err")
 	}
@@ -273,6 +340,12 @@ func TestResolve_KeyChainError(t *testing.T) {
 				bundleresolution.ConfigKind:           "task",
 				bundleresolution.ConfigServiceAccount: "default",
 			},
+		}, {
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "resolver-cache-config",
+				Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+			},
+			Data: map[string]string{},
 		}},
 	}
 

@@ -1,0 +1,19 @@
+apiVersion: tekton.dev/v1beta1
+kind: StepAction
+metadata:
+  name: step-action
+spec:
+  image: mirror.gcr.io/alpine
+  script: |
+    echo "I am a Step Action!!!"
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: step-action-run
+spec:
+  taskSpec:
+    steps:
+      - name: action-runner
+        ref:
+          name: step-action

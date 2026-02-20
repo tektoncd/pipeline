@@ -25,6 +25,10 @@ type Step struct {
 	// Name of the Step specified as a DNS_LABEL.
 	// Each Step in a Task must have a unique name.
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
+	// DisplayName is a user-facing name of the step that may be
+	// used to populate a UI.
+	// +optional
+	DisplayName string `json:"displayName,omitempty"`
 	// Docker image name.
 	// More info: https://kubernetes.io/docs/concepts/containers/images
 	// +optional
@@ -140,11 +144,8 @@ type Step struct {
 	Ref *Ref `json:"ref,omitempty"`
 	// Params declares parameters passed to this step action.
 	// +optional
-	// +listType=atomic
 	Params Params `json:"params,omitempty"`
 	// Results declares StepResults produced by the Step.
-	//
-	// This is field is at an ALPHA stability level and gated by "enable-step-actions" feature flag.
 	//
 	// It can be used in an inlined Step when used to store Results to $(step.results.resultName.path).
 	// It cannot be used when referencing StepActions using [v1.Step.Ref].

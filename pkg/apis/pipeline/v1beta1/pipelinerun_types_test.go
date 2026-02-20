@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -268,7 +267,7 @@ func TestPipelineRunIsTimeoutConditionSet(t *testing.T) {
 }
 
 func TestPipelineRunSetTimeoutCondition(t *testing.T) {
-	ctx := config.ToContext(context.Background(), &config.Config{
+	ctx := config.ToContext(t.Context(), &config.Config{
 		Defaults: &config.Defaults{
 			DefaultTimeoutMinutes: 120,
 		},
@@ -370,7 +369,7 @@ func TestPipelineRunHasTimedOutForALongTime(t *testing.T) {
 					StartTime: &metav1.Time{Time: tc.starttime},
 				}},
 			}
-			if pr.HasTimedOutForALongTime(context.Background(), testClock) != tc.expected {
+			if pr.HasTimedOutForALongTime(t.Context(), testClock) != tc.expected {
 				t.Errorf("Expected HasTimedOut to be %t when using pipeline.timeout", tc.expected)
 			}
 		})
@@ -385,7 +384,7 @@ func TestPipelineRunHasTimedOutForALongTime(t *testing.T) {
 				}},
 			}
 
-			if pr.HasTimedOutForALongTime(context.Background(), testClock) != tc.expected {
+			if pr.HasTimedOutForALongTime(t.Context(), testClock) != tc.expected {
 				t.Errorf("Expected HasTimedOut to be %t when using pipeline.timeouts.pipeline", tc.expected)
 			}
 		})
@@ -427,7 +426,7 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 					StartTime: &metav1.Time{Time: tc.starttime},
 				}},
 			}
-			if pr.HasTimedOut(context.Background(), testClock) != tc.expected {
+			if pr.HasTimedOut(t.Context(), testClock) != tc.expected {
 				t.Errorf("Expected HasTimedOut to be %t when using pipeline.timeout", tc.expected)
 			}
 		})
@@ -442,7 +441,7 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 				}},
 			}
 
-			if pr.HasTimedOut(context.Background(), testClock) != tc.expected {
+			if pr.HasTimedOut(t.Context(), testClock) != tc.expected {
 				t.Errorf("Expected HasTimedOut to be %t when using pipeline.timeouts.pipeline", tc.expected)
 			}
 		})
@@ -457,7 +456,7 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 				}},
 			}
 
-			if pr.HaveTasksTimedOut(context.Background(), testClock) != tc.expected {
+			if pr.HaveTasksTimedOut(t.Context(), testClock) != tc.expected {
 				t.Errorf("Expected HasTimedOut to be %t when using pipeline.timeouts.pipeline", tc.expected)
 			}
 		})
@@ -473,7 +472,7 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 				}},
 			}
 
-			if pr.HasFinallyTimedOut(context.Background(), testClock) != tc.expected {
+			if pr.HasFinallyTimedOut(t.Context(), testClock) != tc.expected {
 				t.Errorf("Expected HasTimedOut to be %t when using pipeline.timeouts.pipeline", tc.expected)
 			}
 		})

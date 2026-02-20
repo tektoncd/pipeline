@@ -22,6 +22,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// +listType=atomic
+type Volumes []corev1.Volume
+
 // Template holds pod specific configuration
 // +k8s:deepcopy-gen=true
 // +k8s:openapi-gen=true
@@ -44,22 +47,30 @@ type Template struct {
 	// +listType=atomic
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
-	// If specified, the pod's scheduling constraints
+	// If specified, the pod's scheduling constraints.
+	// See Pod.spec.affinity (API version: v1)
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
 	// SecurityContext holds pod-level security attributes and common container settings.
 	// Optional: Defaults to empty.  See type description for default values of each field.
+	// See Pod.spec.securityContext (API version: v1)
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
 
 	// List of volumes that can be mounted by containers belonging to the pod.
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes
+	// See Pod.spec.volumes (API version: v1)
 	// +optional
 	// +patchMergeKey=name
 	// +patchStrategy=merge,retainKeys
-	// +listType=atomic
-	Volumes []corev1.Volume `json:"volumes,omitempty" patchMergeKey:"name" patchStrategy:"merge,retainKeys" protobuf:"bytes,1,rep,name=volumes"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	Volumes Volumes `json:"volumes,omitempty" patchMergeKey:"name" patchStrategy:"merge,retainKeys" protobuf:"bytes,1,rep,name=volumes"`
 
 	// RuntimeClassName refers to a RuntimeClass object in the node.k8s.io
 	// group, which should be used to run this pod. If no RuntimeClass resource
@@ -101,7 +112,7 @@ type Template struct {
 	// If not specified, the pod priority will be default or zero if there is no
 	// default.
 	// +optional
-	PriorityClassName *string `json:"priorityClassName,omitempty" protobuf:"bytes,7,opt,name=priorityClassName"`
+	PriorityClassName *string `json:"priorityClassName,omitempty" protobuf:"bytes,8,opt,name=priorityClassName"`
 	// SchedulerName specifies the scheduler to be used to dispatch the Pod
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty"`
@@ -120,6 +131,18 @@ type Template struct {
 	// HostNetwork specifies whether the pod may use the node network namespace
 	// +optional
 	HostNetwork bool `json:"hostNetwork,omitempty"`
+
+	// HostUsers indicates whether the pod will use the host's user namespace.
+	// Optional: Default to true.
+	// If set to true or not present, the pod will be run in the host user namespace, useful
+	// for when the pod needs a feature only available to the host user namespace, such as
+	// loading a kernel module with CAP_SYS_MODULE.
+	// When set to false, a new user namespace is created for the pod. Setting false
+	// is useful to mitigating container breakout vulnerabilities such as allowing
+	// containers to run as root without their user having root privileges on the host.
+	// This field depends on the kubernetes feature gate UserNamespacesSupport being enabled.
+	// +optional
+	HostUsers *bool `json:"hostUsers,omitempty"`
 
 	// TopologySpreadConstraints controls how Pods are spread across your cluster among
 	// failure-domains such as regions, zones, nodes, and other user-defined topology domains.
@@ -218,6 +241,9 @@ func MergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
 		if !tpl.HostNetwork && defaultTpl.HostNetwork {
 			tpl.HostNetwork = true
 		}
+		if tpl.HostUsers == nil {
+			tpl.HostUsers = defaultTpl.HostUsers
+		}
 		if tpl.TopologySpreadConstraints == nil {
 			tpl.TopologySpreadConstraints = defaultTpl.TopologySpreadConstraints
 		}
@@ -254,6 +280,9 @@ func MergeAAPodTemplateWithDefault(tpl, defaultTpl *AAPodTemplate) *AAPodTemplat
 		}
 		if tpl.PriorityClassName == nil {
 			tpl.PriorityClassName = defaultTpl.PriorityClassName
+		}
+		if tpl.ServiceAccountName == "" {
+			tpl.ServiceAccountName = defaultTpl.ServiceAccountName
 		}
 
 		return tpl

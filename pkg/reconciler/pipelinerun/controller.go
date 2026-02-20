@@ -49,6 +49,18 @@ const (
 	TracerProviderName = "pipelinerun-reconciler"
 )
 
+var pipelineRunFilterManagedBy = func(obj interface{}) bool {
+	pr, ok := obj.(*v1.PipelineRun)
+	if !ok {
+		return true
+	}
+	// Only promote PipelineRuns that are managed by this controller
+	if pr.Spec.ManagedBy != nil && *pr.Spec.ManagedBy != pipeline.ManagedBy {
+		return false
+	}
+	return true
+}
+
 // NewController instantiates a new controller.Impl from knative.dev/pkg/controller
 func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
@@ -87,8 +99,9 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		}
 		impl := pipelinerunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
 			return controller.Options{
-				AgentName:   pipeline.PipelineRunControllerName,
-				ConfigStore: configStore,
+				AgentName:         pipeline.PipelineRunControllerName,
+				ConfigStore:       configStore,
+				PromoteFilterFunc: pipelineRunFilterManagedBy,
 			}
 		})
 
@@ -96,7 +109,17 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			logging.FromContext(ctx).Panicf("Couldn't register Secret informer event handler: %w", err)
 		}
 
-		if _, err := pipelineRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
+		if _, err := pipelineRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: pipelineRunFilterManagedBy,
+			Handler:    controller.HandleAll(impl.Enqueue),
+		}); err != nil {
+			logging.FromContext(ctx).Panicf("Couldn't register PipelineRun informer event handler: %w", err)
+		}
+
+		if _, err := pipelineRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1.PipelineRun{}),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		}); err != nil {
 			logging.FromContext(ctx).Panicf("Couldn't register PipelineRun informer event handler: %w", err)
 		}
 

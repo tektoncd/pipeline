@@ -12,8 +12,28 @@ using namespace System.Security.Cryptography.X509Certificates
 # Use same parameter names as declared in eng/New-TestResources.ps1 (assume validation therein).
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param (
+    [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
+    [string] $SubscriptionId,
+
+    [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
+    [string] $TenantId,
+
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$')]
+    [string] $TestApplicationId,
+
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$')]
+    [string] $TestApplicationOid,
+
+    [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
+    [string] $Environment,
+
     [Parameter()]
-    [hashtable] $DeploymentOutputs,
+    [switch] $CI = ($null -ne $env:SYSTEM_TEAMPROJECTID),
 
     # Captures any arguments from eng/New-TestResources.ps1 not declared here (no parameter errors).
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -71,6 +91,15 @@ $([Convert]::ToBase64String($Certificate.RawData, 'InsertLineBreaks'))
 if (!$DeploymentOutputs['AZURE_MANAGEDHSM_URL']) {
     Log "Managed HSM not deployed; skipping activation"
     exit
+}
+
+if ($CI) {
+    Log "Refreshing login"
+    Connect-AzAccount -ServicePrincipal `
+                      -TenantId $TenantId `
+                      -ApplicationId $TestApplicationId `
+                      -FederatedToken $env:ARM_OIDC_TOKEN
+    Select-AzSubscription -Subscription $SubscriptionId
 }
 
 [Uri] $hsmUrl = $DeploymentOutputs['AZURE_MANAGEDHSM_URL']

@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,7 +17,6 @@ limitations under the License.
 package config_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -64,7 +63,7 @@ func TestValidateEnabledAPIFields(t *testing.T) {
 			cfg := &config.Config{
 				FeatureFlags: flags,
 			}
-			ctx := config.ToContext(context.Background(), cfg)
+			ctx := config.ToContext(t.Context(), cfg)
 			if err := config.ValidateEnabledAPIFields(ctx, "test feature", tc.wantVersion); err != nil {
 				t.Errorf("unexpected error for compatible feature gates: %q", err)
 			}
@@ -105,7 +104,7 @@ func TestValidateEnabledAPIFieldsError(t *testing.T) {
 			cfg := &config.Config{
 				FeatureFlags: flags,
 			}
-			ctx := config.ToContext(context.Background(), cfg)
+			ctx := config.ToContext(t.Context(), cfg)
 			fieldErr := config.ValidateEnabledAPIFields(ctx, "test feature", tc.wantVersion)
 
 			if fieldErr == nil {

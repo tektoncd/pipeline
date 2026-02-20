@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2023 The Tekton Authors
@@ -33,8 +32,9 @@ import (
 	knativetest "knative.dev/pkg/test"
 )
 
+// @test:execution=parallel
 func TestFailingPipelineTaskOnContinue(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{"enable-api-fields": "beta"}))

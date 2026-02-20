@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2021 The Tekton Authors
@@ -32,8 +31,9 @@ import (
 // TestHermeticTaskRun make sure that the hermetic execution mode actually drops network from a TaskRun step
 // it does this by first running the TaskRun normally to make sure it passes
 // Then, it enables hermetic mode and makes sure the same TaskRun fails because it no longer has access to a network.
+// @test:execution=parallel
 func TestHermeticTaskRun(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

@@ -6,10 +6,11 @@ weight: 405
 -->
 
 # Affinity Assistants
+
 Affinity Assistant is a feature to coschedule `PipelineRun` `pods` to the same node
 based on [kubernetes pod affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity) so that it possible for the taskruns to execute parallel while sharing volume.
 Available Affinity Assistant Modes are **coschedule workspaces**, **coschedule pipelineruns**,
-**isolate pipelinerun** and **disabled**. 
+**isolate pipelinerun** and **disabled**.
 
 > :seedling: **coschedule pipelineruns** and **isolate pipelinerun** modes are [**alpha features**](./additional-configs.md#alpha-features).
 > **coschedule workspaces** is a **stable feature**
@@ -27,10 +28,10 @@ and only one PipelineRun is allowed to run on a node at a time.
 This means that Affinity Assistant is incompatible with other affinity rules
 configured for the `TaskRun` pods (i.e. other affinity rules specified in custom [PodTemplate](pipelineruns.md#specifying-a-pod-template) will be overwritten by Affinity Assistant).
 If the `PipelineRun` has a custom [PodTemplate](pipelineruns.md#specifying-a-pod-template) configured, the `NodeSelector` and `Tolerations` fields will also be set on the Affinity Assistant pod. The Affinity Assistant
-is deleted when the `PipelineRun` is completed. 
+is deleted when the `PipelineRun` is completed.
 
-Currently, the Affinity Assistant Modes can be configured by the `disable-affinity-assistant` and `coschedule` feature flags. 
-The `disable-affinity-assistant` feature flag is now deprecated and will be removed in release `v0.60`. At the time, the Affinity Assistant Modes will be only determined by the `coschedule` feature flag. 
+The Affinity Assistant Modes are configured by the `coschedule` feature flag.
+Previously, it was also controlled by the `disable-affinity-assistant` feature flag which was deprecated and removed after release `v0.68`.
 
 The following chart summarizes the Affinity Assistant Modes with different combinations of the `disable-affinity-assistant` and `coschedule` feature flags during migration (when both feature flags are present) and after the migration (when only the `coschedule` flag is present).
 
@@ -95,7 +96,7 @@ The following chart summarizes the Affinity Assistant Modes with different combi
     </tbody>
 </table>
 
-**Note:** For users who previously accepted the default behavior (`disable-affinity-assistant`: `false`) but now want one of the new features, you need to set `disable-affinity-assistant` to "true" and then turn on the new behavior by setting the `coschedule` flag. For users who previously disabled the affinity assistant but want one of the new features, just set the `coschedule` flag accordingly.
+**Note:** After release `v0.68`, the `disable-affinity-assistant` feature flag is removed and the Affinity Assistant Modes are only controlled by the `coschedule` feature flag.
 
 **Note:** Affinity Assistant use [Inter-pod affinity and anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity)
 that require substantial amount of processing which can slow down scheduling in large clusters
@@ -104,6 +105,46 @@ significantly. We do not recommend using the affinity assistant in clusters larg
 **Note:** Pod anti-affinity requires nodes to be consistently labelled, in other words every
 node in the cluster must have an appropriate label matching `topologyKey`. If some or all nodes
 are missing the specified `topologyKey` label, it can lead to unintended behavior.
+
+## ServiceAccount Configuration
+
+By default, Affinity Assistant pods inherit the `serviceAccountName` from the PipelineRun's
+`spec.taskRunTemplate.serviceAccountName`. This ensures the Affinity Assistant has the same
+permissions as TaskRun pods, which is particularly important in security-restricted environments
+like OpenShift with Security Context Constraints (SCC).
+
+### Default Behavior
+
+When you specify a ServiceAccount in your PipelineRun, the Affinity Assistant automatically inherits it:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: example-pipelinerun
+spec:
+  taskRunTemplate:
+    serviceAccountName: my-service-account  # Affinity Assistant inherits this
+  pipelineSpec:
+    # ... pipeline definition
+```
+
+### Overriding ServiceAccount
+
+You can override the ServiceAccount for Affinity Assistant pods using the cluster-wide default configuration:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-affinity-assistant-pod-template: |
+    serviceAccountName: affinity-assistant-sa
+    nodeSelector:
+      disktype: ssd
+```
 
 **Note:** Any time during the execution of a `pipelineRun`, if the node with a placeholder Affinity Assistant pod and
 the `taskRun` pods sharing a `workspace` is `cordoned` or disabled for scheduling anything new (`tainted`), the

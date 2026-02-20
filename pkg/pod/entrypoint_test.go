@@ -29,6 +29,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
@@ -97,7 +98,7 @@ func TestOrderContainers(t *testing.T) {
 		},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers(context.Background(), []string{}, steps, nil, nil, true, false)
+	got, err := orderContainers(t.Context(), []string{}, steps, nil, nil, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -165,7 +166,7 @@ func TestOrderContainersWithResultsSidecarLogs(t *testing.T) {
 		},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers(context.Background(), []string{"-dont_send_results_to_termination_path"}, steps, nil, nil, true, false)
+	got, err := orderContainers(t.Context(), []string{"-dont_send_results_to_termination_path"}, steps, nil, nil, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -211,7 +212,7 @@ func TestOrderContainersWithNoWait(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{volumeMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers(context.Background(), []string{}, steps, nil, nil, false, false)
+	got, err := orderContainers(t.Context(), []string{}, steps, nil, nil, false, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -247,7 +248,7 @@ func TestOrderContainersWithDebugOnFailure(t *testing.T) {
 			OnFailure: "enabled",
 		},
 	}
-	got, err := orderContainers(context.Background(), []string{}, steps, nil, taskRunDebugConfig, true, false)
+	got, err := orderContainers(t.Context(), []string{}, steps, nil, taskRunDebugConfig, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -284,7 +285,7 @@ func TestTestOrderContainersWithDebugBeforeStep(t *testing.T) {
 			BeforeSteps: []string{"my-task"},
 		},
 	}
-	got, err := orderContainers(context.Background(), []string{}, steps, nil, taskRunDebugConfig, true, false)
+	got, err := orderContainers(t.Context(), []string{}, steps, nil, taskRunDebugConfig, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -323,7 +324,7 @@ func TestTestOrderContainersWithAllBreakpoints(t *testing.T) {
 			BeforeSteps: []string{"my-task"},
 		},
 	}
-	got, err := orderContainers(context.Background(), []string{}, steps, nil, taskRunDebugConfig, true, false)
+	got, err := orderContainers(t.Context(), []string{}, steps, nil, taskRunDebugConfig, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -351,7 +352,7 @@ func TestOrderContainersWithEnabelKeepPodOnCancel(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{downwardMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers(context.Background(), []string{}, steps, nil, nil, false, true)
+	got, err := orderContainers(t.Context(), []string{}, steps, nil, nil, false, true)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -426,11 +427,7 @@ func TestEntryPointStepActionResults(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{downwardMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	ctx := config.ToContext(context.Background(), &config.Config{
-		FeatureFlags: &config.FeatureFlags{
-			EnableStepActions: true,
-		},
-	})
+	ctx := t.Context()
 	got, err := orderContainers(ctx, []string{}, steps, &taskSpec, nil, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
@@ -454,7 +451,7 @@ func TestEntryPointStepWhen(t *testing.T) {
 			When:    v1.StepWhenExpressions{{Input: "foo", Operator: selection.In, Values: []string{"foo", "bar"}}},
 		},
 	}}
-	got, err := orderContainers(context.Background(), []string{}, containers, &ts, nil, true, false)
+	got, err := orderContainers(t.Context(), []string{}, containers, &ts, nil, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -549,7 +546,7 @@ func TestEntryPointResults(t *testing.T) {
 		},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers(context.Background(), []string{}, steps, &taskSpec, nil, true, false)
+	got, err := orderContainers(t.Context(), []string{}, steps, &taskSpec, nil, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -590,7 +587,7 @@ func TestEntryPointResultsSingleStep(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{downwardMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers(context.Background(), []string{}, steps, &taskSpec, nil, true, false)
+	got, err := orderContainers(t.Context(), []string{}, steps, &taskSpec, nil, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -627,7 +624,7 @@ func TestEntryPointSingleResultsSingleStep(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{downwardMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers(context.Background(), []string{}, steps, &taskSpec, nil, true, false)
+	got, err := orderContainers(t.Context(), []string{}, steps, &taskSpec, nil, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -698,7 +695,7 @@ func TestEntryPointOnError(t *testing.T) {
 		err: errors.New("task step onError must be either \"continue\" or \"stopAndFail\" but it is set to an invalid value \"invalid-on-error\""),
 	}} {
 		t.Run(tc.desc, func(t *testing.T) {
-			got, err := orderContainers(context.Background(), []string{}, steps, &tc.taskSpec, nil, true, false)
+			got, err := orderContainers(t.Context(), []string{}, steps, &tc.taskSpec, nil, true, false)
 			if len(tc.wantContainers) == 0 {
 				if err == nil {
 					t.Fatalf("expected an error for an invalid value for onError but received none")
@@ -797,7 +794,7 @@ func TestEntryPointStepOutputConfigs(t *testing.T) {
 		},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers(context.Background(), []string{}, steps, &taskSpec, nil, true, false)
+	got, err := orderContainers(t.Context(), []string{}, steps, &taskSpec, nil, true, false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -888,7 +885,7 @@ func TestUpdateReady(t *testing.T) {
 		wantPatch: false,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			kubeclient := fakek8s.NewSimpleClientset(&c.pod)
@@ -1081,7 +1078,7 @@ func TestStopSidecars(t *testing.T) {
 		wantContainers: []corev1.Container{stepContainer, sidecarContainer, injectedSidecar},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			if c.resultExtractionMethod != "" {
 				ctx = config.ToContext(ctx, &config.Config{
 					FeatureFlags: &config.FeatureFlags{
@@ -1099,6 +1096,222 @@ func TestStopSidecars(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestStopSidecarsUsesPatch verifies that StopSidecars uses PATCH instead of UPDATE.
+func TestStopSidecarsUsesPatch(t *testing.T) {
+	stepContainer := corev1.Container{
+		Name:  stepPrefix + "my-step",
+		Image: "foo",
+	}
+	sidecarContainer := corev1.Container{
+		Name:  sidecarPrefix + "my-sidecar",
+		Image: "original-sidecar-image",
+	}
+	injectedSidecar := corev1.Container{
+		Name:  "injected-sidecar",
+		Image: "original-injected-image",
+	}
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "test-pod",
+			Namespace:       "default",
+			ResourceVersion: "1000",
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{stepContainer, sidecarContainer, injectedSidecar},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: stepContainer.Name,
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 0,
+					},
+				},
+			}, {
+				Name: sidecarContainer.Name,
+				State: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{
+						StartedAt: metav1.NewTime(time.Now()),
+					},
+				},
+			}, {
+				Name: injectedSidecar.Name,
+				State: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{
+						StartedAt: metav1.NewTime(time.Now()),
+					},
+				},
+			}},
+		},
+	}
+
+	kubeclient := fakek8s.NewSimpleClientset(pod)
+
+	var patchCalled, updateCalled bool
+	var patchType string
+	var patchBytes []byte
+
+	kubeclient.PrependReactor("patch", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		patchAction := action.(k8stesting.PatchAction)
+		patchCalled = true
+		patchType = string(patchAction.GetPatchType())
+		patchBytes = patchAction.GetPatch()
+
+		patchedPod := pod.DeepCopy()
+		patchedPod.Spec.Containers[1].Image = nopImage
+		patchedPod.Spec.Containers[2].Image = nopImage
+		return true, patchedPod, nil
+	})
+	kubeclient.PrependReactor("update", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		updateCalled = true
+		return true, nil, nil
+	})
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	got, err := StopSidecars(ctx, nopImage, kubeclient, pod.Namespace, pod.Name)
+	if err != nil {
+		t.Fatalf("StopSidecars failed: %v", err)
+	}
+
+	if !patchCalled {
+		t.Error("expected PATCH to be called")
+	}
+	if updateCalled {
+		t.Error("expected UPDATE not to be called")
+	}
+
+	if patchType != "application/json-patch+json" {
+		t.Errorf("expected patch type 'application/json-patch+json', got %q", patchType)
+	}
+
+	patchStr := string(patchBytes)
+	if !containsSubstr(patchStr, "/spec/containers/1/image") {
+		t.Errorf("patch should target container 1, got: %s", patchStr)
+	}
+	if !containsSubstr(patchStr, "/spec/containers/2/image") {
+		t.Errorf("patch should target container 2, got: %s", patchStr)
+	}
+	if containsSubstr(patchStr, "/spec/containers/0/image") {
+		t.Errorf("patch should not target step container, got: %s", patchStr)
+	}
+
+	if got.Spec.Containers[1].Image != nopImage {
+		t.Errorf("expected sidecar image %q, got %q", nopImage, got.Spec.Containers[1].Image)
+	}
+	if got.Spec.Containers[2].Image != nopImage {
+		t.Errorf("expected injected sidecar image %q, got %q", nopImage, got.Spec.Containers[2].Image)
+	}
+	if got.Spec.Containers[0].Image != stepContainer.Image {
+		t.Errorf("step container should be unchanged, got %q", got.Spec.Containers[0].Image)
+	}
+}
+
+// TestStopSidecarsWithConflictSimulation simulates concurrent pod updates
+// that cause 409 conflicts with UPDATE but succeed with PATCH.
+func TestStopSidecarsWithConflictSimulation(t *testing.T) {
+	stepContainer := corev1.Container{
+		Name:  stepPrefix + "my-step",
+		Image: "foo",
+	}
+	sidecarContainer := corev1.Container{
+		Name:  sidecarPrefix + "my-sidecar",
+		Image: "original-image",
+	}
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "test-pod",
+			Namespace:       "default",
+			ResourceVersion: "1000",
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{stepContainer, sidecarContainer},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: stepContainer.Name,
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{},
+				},
+			}, {
+				Name: sidecarContainer.Name,
+				State: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{
+						StartedAt: metav1.NewTime(time.Now()),
+					},
+				},
+			}},
+		},
+	}
+
+	kubeclient := fakek8s.NewSimpleClientset(pod)
+
+	podUpdated := false
+
+	kubeclient.PrependReactor("get", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		p := pod.DeepCopy()
+		if !podUpdated {
+			p.ResourceVersion = "1000"
+			podUpdated = true
+		} else {
+			p.ResourceVersion = "1001"
+			p.Status.ContainerStatuses[0].State.Terminated.FinishedAt = metav1.NewTime(time.Now())
+		}
+		return true, p, nil
+	})
+
+	kubeclient.PrependReactor("update", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		updateAction := action.(k8stesting.UpdateAction)
+		updatedPod := updateAction.GetObject().(*corev1.Pod)
+
+		if podUpdated && updatedPod.ResourceVersion == "1000" {
+			return true, nil, k8serrors.NewConflict(
+				corev1.Resource("pods"),
+				pod.Name,
+				errors.New("the object has been modified; please apply your changes to the latest version"),
+			)
+		}
+		return false, nil, nil
+	})
+
+	kubeclient.PrependReactor("patch", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		patchedPod := pod.DeepCopy()
+		patchedPod.Spec.Containers[1].Image = nopImage
+		patchedPod.ResourceVersion = "1002"
+		return true, patchedPod, nil
+	})
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	got, err := StopSidecars(ctx, nopImage, kubeclient, pod.Namespace, pod.Name)
+	if err != nil {
+		if k8serrors.IsConflict(err) {
+			t.Fatalf("got 409 conflict, this indicates UPDATE is being used instead of PATCH: %v", err)
+		}
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.Spec.Containers[1].Image != nopImage {
+		t.Errorf("expected sidecar image %q, got %q", nopImage, got.Spec.Containers[1].Image)
+	}
+}
+
+// Helper function to check if a string contains a substring
+func containsSubstr(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 func TestCancelPod(t *testing.T) {
@@ -1138,7 +1351,7 @@ func TestCancelPod(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := CancelPod(context.Background(), kubeClient, tc.args.namespace, tc.args.podName)
+			err := CancelPod(t.Context(), kubeClient, tc.args.namespace, tc.args.podName)
 			if (err != nil) != tc.expectedErr {
 				t.Errorf("expected error: %v, but got: %v", tc.expectedErr, err)
 			}

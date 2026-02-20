@@ -257,15 +257,6 @@ To make generating stubs simple, we have harnessed the Kubernetes
 code-generation tooling to produce `injection-gen`. Similar to how you might
 ordinarily run the other `foo-gen` processed:
 
-```shell
-CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${REPO_ROOT}; ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
-
-${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
-  github.com/knative/sample-controller/pkg/client github.com/knative/sample-controller/pkg/apis \
-  "samples:v1alpha1" \
-  --go-header-file ${REPO_ROOT}/hack/boilerplate/boilerplate.go.txt
-```
-
 To run `injection-gen` you run the following (replacing the import path and api
 group):
 

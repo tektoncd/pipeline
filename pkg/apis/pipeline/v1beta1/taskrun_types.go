@@ -39,7 +39,6 @@ type TaskRunSpec struct {
 	// +optional
 	Debug *TaskRunDebug `json:"debug,omitempty"`
 	// +optional
-	// +listType=atomic
 	Params Params `json:"params,omitempty"`
 	// Deprecated: Unused, preserved only for backwards compatibility
 	// +optional
@@ -49,9 +48,12 @@ type TaskRunSpec struct {
 	// no more than one of the TaskRef and TaskSpec may be specified.
 	// +optional
 	TaskRef *TaskRef `json:"taskRef,omitempty"`
-	// Specifying PipelineSpec can be disabled by setting
-	// `disable-inline-spec` feature flag..
+	// Specifying TaskSpec can be disabled by setting
+	// `disable-inline-spec` feature flag.
+	// See Task.spec (API version: tekton.dev/v1beta1)
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 	// Used for cancelling a TaskRun (and maybe more later on)
 	// +optional
@@ -88,6 +90,12 @@ type TaskRunSpec struct {
 	SidecarOverrides []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
 	// Compute resources to use for this TaskRun
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
+	// ManagedBy indicates which controller is responsible for reconciling
+	// this resource. If unset or set to "tekton.dev/pipeline", the default
+	// Tekton controller will manage this resource.
+	// This field is immutable.
+	// +optional
+	ManagedBy *string `json:"managedBy,omitempty"`
 }
 
 // TaskRunSpecStatus defines the TaskRun spec status the user can provide
@@ -265,6 +273,9 @@ func (trs *TaskRunStatus) MarkResourceFailed(reason TaskRunReason, err error) {
 	trs.CompletionTime = &succeeded.LastTransitionTime.Inner
 }
 
+// +listType=atomic
+type RetriesStatus []TaskRunStatus
+
 // TaskRunStatusFields holds the fields of TaskRun's status.  This is defined
 // separately and inlined so that other types can readily consume these fields
 // via duck typing.
@@ -294,9 +305,11 @@ type TaskRunStatusFields struct {
 
 	// RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
 	// All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
+	// See TaskRun.status (API version: tekton.dev/v1beta1)
 	// +optional
-	// +listType=atomic
-	RetriesStatus []TaskRunStatus `json:"retriesStatus,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	RetriesStatus RetriesStatus `json:"retriesStatus,omitempty"`
 
 	// Results from Resources built during the TaskRun.
 	// This is tomb-stoned along with the removal of pipelineResources
@@ -316,6 +329,9 @@ type TaskRunStatusFields struct {
 	Sidecars []SidecarState `json:"sidecars,omitempty"`
 
 	// TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.
+	// See Task.spec (API version tekton.dev/v1beta1)
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 
 	// Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).

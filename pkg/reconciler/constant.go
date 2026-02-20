@@ -19,4 +19,7 @@ package reconciler
 const (
 	// KubectlLastAppliedAnnotationKey is the key used by kubectl to store its last applied configuration (using kubectl apply)
 	KubectlLastAppliedAnnotationKey = "kubectl.kubernetes.io/last-applied-configuration"
+
+	// KubernetesLastAppliedAnnotationKey is the key used by tools to tell who is managing an object
+	KubernetesManagedByAnnotationKey = "app.kubernetes.io/managed-by"
 )

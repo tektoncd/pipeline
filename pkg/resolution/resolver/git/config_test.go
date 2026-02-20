@@ -17,7 +17,6 @@ limitations under the License.
 package git
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -129,7 +128,7 @@ func TestGetGitResolverConfig(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := resolutionframework.InjectResolverConfigToContext(context.Background(), tc.config)
+			ctx := resolutionframework.InjectResolverConfigToContext(t.Context(), tc.config)
 			gitResolverConfig, err := GetGitResolverConfig(ctx)
 			if tc.wantErr {
 				if err == nil {

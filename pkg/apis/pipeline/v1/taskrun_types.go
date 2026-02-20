@@ -37,16 +37,18 @@ type TaskRunSpec struct {
 	// +optional
 	Debug *TaskRunDebug `json:"debug,omitempty"`
 	// +optional
-	// +listType=atomic
 	Params Params `json:"params,omitempty"`
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName"`
 	// no more than one of the TaskRef and TaskSpec may be specified.
 	// +optional
 	TaskRef *TaskRef `json:"taskRef,omitempty"`
-	// Specifying PipelineSpec can be disabled by setting
-	// `disable-inline-spec` feature flag..
+	// Specifying TaskSpec can be disabled by setting
+	// `disable-inline-spec` feature flag.
+	// See Task.spec (API version: tekton.dev/v1)
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 	// Used for cancelling a TaskRun (and maybe more later on)
 	// +optional
@@ -83,6 +85,12 @@ type TaskRunSpec struct {
 	SidecarSpecs []TaskRunSidecarSpec `json:"sidecarSpecs,omitempty"`
 	// Compute resources to use for this TaskRun
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
+	// ManagedBy indicates which controller is responsible for reconciling
+	// this resource. If unset or set to "tekton.dev/pipeline", the default
+	// Tekton controller will manage this resource.
+	// This field is immutable.
+	// +optional
+	ManagedBy *string `json:"managedBy,omitempty"`
 }
 
 // TaskRunSpecStatus defines the TaskRun spec status the user can provide
@@ -204,6 +212,10 @@ const (
 	TaskRunReasonResolvingStepActionRef = "ResolvingStepActionRef"
 	// TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled
 	TaskRunReasonImagePullFailed TaskRunReason = "TaskRunImagePullFailed"
+	// TaskRunReasonCreateContainerConfigError is the reason set when the step of a task fails due to config error (e.g., missing ConfigMap or Secret)
+	TaskRunReasonCreateContainerConfigError TaskRunReason = "CreateContainerConfigError"
+	// TaskRunReasonPodCreationFailed is the reason set when the pod backing the TaskRun fails to be created (e.g., CreateContainerError)
+	TaskRunReasonPodCreationFailed TaskRunReason = "PodCreationFailed"
 	// TaskRunReasonResultLargerThanAllowedLimit is the reason set when one of the results exceeds its maximum allowed limit of 1 KB
 	TaskRunReasonResultLargerThanAllowedLimit TaskRunReason = "TaskRunResultLargerThanAllowedLimit"
 	// TaskRunReasonStopSidecarFailed indicates that the sidecar is not properly stopped.
@@ -268,6 +280,9 @@ func (trs *TaskRunStatus) MarkResourceFailed(reason TaskRunReason, err error) {
 	trs.CompletionTime = &succeeded.LastTransitionTime.Inner
 }
 
+// +listType=atomic
+type RetriesStatus []TaskRunStatus
+
 // TaskRunStatusFields holds the fields of TaskRun's status.  This is defined
 // separately and inlined so that other types can readily consume these fields
 // via duck typing.
@@ -289,8 +304,9 @@ type TaskRunStatusFields struct {
 	// RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
 	// All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
 	// +optional
-	// +listType=atomic
-	RetriesStatus []TaskRunStatus `json:"retriesStatus,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	RetriesStatus RetriesStatus `json:"retriesStatus,omitempty"`
 
 	// Results are the list of results written out by the task's containers
 	// +optional
@@ -299,7 +315,6 @@ type TaskRunStatusFields struct {
 
 	// Artifacts are the list of artifacts written out by the task's containers
 	// +optional
-	// +listType=atomic
 	Artifacts *Artifacts `json:"artifacts,omitempty"`
 
 	// The list has one entry per sidecar in the manifest. Each entry is
@@ -405,6 +420,7 @@ type SidecarState struct {
 // used to run the steps in a Task.
 //
 // +k8s:openapi-gen=true
+// +kubebuilder:storageversion
 type TaskRun struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional

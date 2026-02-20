@@ -79,6 +79,7 @@ import (
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	clock "k8s.io/utils/clock/testing"
+	ptr "k8s.io/utils/pointer"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	cminformer "knative.dev/pkg/configmap/informer"
@@ -183,16 +184,6 @@ var (
 		},
 	}
 
-	clustertask = &v1beta1.ClusterTask{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-cluster-task"},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Name:    "simple-step",
-				Image:   "foo",
-				Command: []string{"/mycmd"},
-			}},
-		},
-	}
 	taskSidecar = &v1.Task{
 		ObjectMeta: objectMeta("test-task-sidecar", "foo"),
 		Spec: v1.TaskSpec{
@@ -479,7 +470,7 @@ spec:
 	}{{
 		name:    "success",
 		taskRun: taskRunSuccess,
-		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "bar", "foo", defaultSAName, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "bar", "foo", defaultSAName, nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "simple-step",
 			cmd:   "/mycmd",
@@ -487,7 +478,7 @@ spec:
 	}, {
 		name:    "serviceaccount",
 		taskRun: taskRunWithSaSuccess,
-		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod", "test-with-sa", "test-taskrun-with-sa-run-success", "bar", "foo", "test-sa", false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod", "test-with-sa", "test-taskrun-with-sa-run-success", "bar", "foo", "test-sa", nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "sa-step",
 			cmd:   "/mycmd",
@@ -709,17 +700,6 @@ spec:
       name: mycontainer
 `)
 
-	taskRunWithClusterTask := parse.MustParseV1TaskRun(t, `
-metadata:
-  name: test-taskrun-with-cluster-task
-  namespace: foo
-  uid: bar
-spec:
-  taskRef:
-    kind: ClusterTask
-    name: test-cluster-task
-`)
-
 	taskRunWithLabels := parse.MustParseV1TaskRun(t, `
 metadata:
   labels:
@@ -798,15 +778,13 @@ spec:
 
 	taskruns := []*v1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess, taskRunSubstitution,
-		taskRunWithTaskSpec, taskRunWithClusterTask,
-		taskRunWithLabels, taskRunWithAnnotations, taskRunWithPod,
+		taskRunWithTaskSpec, taskRunWithLabels, taskRunWithAnnotations, taskRunWithPod,
 		taskRunWithCredentialsVariable, taskRunBundle,
 	}
 
 	d := test.Data{
-		TaskRuns:     taskruns,
-		Tasks:        []*v1.Task{simpleTask, saTask, templatedTask},
-		ClusterTasks: []*v1beta1.ClusterTask{clustertask},
+		TaskRuns: taskruns,
+		Tasks:    []*v1.Task{simpleTask, saTask, templatedTask},
 	}
 	for _, tc := range []struct {
 		name       string
@@ -820,7 +798,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "bar", "foo", config.DefaultServiceAccountValue, nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "simple-step",
 			cmd:   "/mycmd",
@@ -832,7 +810,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod", "test-with-sa", "test-taskrun-with-sa-run-success", "bar", "foo", "test-sa", false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod", "test-with-sa", "test-taskrun-with-sa-run-success", "bar", "foo", "test-sa", nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "sa-step",
 			cmd:   "/mycmd",
@@ -844,7 +822,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-substitution-pod", "test-task-with-substitution", "test-taskrun-substitution", "bar", "foo", config.DefaultServiceAccountValue, false, []corev1.Volume{{
+		wantPod: expectedPod("test-taskrun-substitution-pod", "test-task-with-substitution", "test-taskrun-substitution", "bar", "foo", config.DefaultServiceAccountValue, []corev1.Volume{{
 			Name: "volume-configmap",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -880,7 +858,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-taskspec-pod", "", "test-taskrun-with-taskspec", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{
+		wantPod: expectedPod("test-taskrun-with-taskspec-pod", "", "test-taskrun-with-taskspec", "bar", "foo", config.DefaultServiceAccountValue, nil, []stepForExpectedPod{
 			{
 				name:  "mycontainer",
 				image: "myimage",
@@ -888,25 +866,13 @@ spec:
 			},
 		}),
 	}, {
-		name:    "success-with-cluster-task",
-		taskRun: taskRunWithClusterTask,
-		wantEvents: []string{
-			"Normal Started ",
-			"Normal Running Not all Steps",
-		},
-		wantPod: expectedPod("test-taskrun-with-cluster-task-pod", "test-cluster-task", "test-taskrun-with-cluster-task", "bar", "foo", config.DefaultServiceAccountValue, true, nil, []stepForExpectedPod{{
-			name:  "simple-step",
-			image: "foo",
-			cmd:   "/mycmd",
-		}}),
-	}, {
 		name:    "taskrun-with-pod",
 		taskRun: taskRunWithPod,
 		wantEvents: []string{
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-pod-pod", "test-task", "test-taskrun-with-pod", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-pod-pod", "test-task", "test-taskrun-with-pod", "bar", "foo", config.DefaultServiceAccountValue, nil, []stepForExpectedPod{{
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",
@@ -918,7 +884,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-credentials-variable-pod", "", "test-taskrun-with-credentials-variable", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-credentials-variable-pod", "", "test-taskrun-with-credentials-variable", "bar", "foo", config.DefaultServiceAccountValue, nil, []stepForExpectedPod{{
 			name:  "mycontainer",
 			image: "myimage",
 			cmd:   "/mycmd /tekton/creds",
@@ -930,7 +896,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-bundle-pod", "test-task", "test-taskrun-bundle", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-bundle-pod", "test-task", "test-taskrun-bundle", "bar", "foo", config.DefaultServiceAccountValue, nil, []stepForExpectedPod{{
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",
@@ -1044,10 +1010,9 @@ spec:
 		},
 	}}
 	d := test.Data{
-		ConfigMaps:   cms,
-		TaskRuns:     taskruns,
-		Tasks:        []*v1.Task{simpleTask, saTask, templatedTask},
-		ClusterTasks: []*v1beta1.ClusterTask{clustertask},
+		ConfigMaps: cms,
+		TaskRuns:   taskruns,
+		Tasks:      []*v1.Task{simpleTask, saTask, templatedTask},
 	}
 	for _, tc := range []struct {
 		name       string
@@ -1061,7 +1026,7 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-output-config-pod", "", "test-taskrun-with-output-config", "bar", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-output-config-pod", "", "test-taskrun-with-output-config", "bar", "foo", config.DefaultServiceAccountValue, nil, []stepForExpectedPod{{
 			name:       "mycontainer",
 			image:      "myimage",
 			stdoutPath: "stdout.txt",
@@ -1074,19 +1039,17 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: addVolumeMounts(expectedPod("test-taskrun-with-output-config-ws-pod", "", "test-taskrun-with-output-config-ws", "bar", "foo", config.DefaultServiceAccountValue, false,
-			[]corev1.Volume{{
-				Name: "ws-d872e",
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			}},
-			[]stepForExpectedPod{{
-				name:       "mycontainer",
-				image:      "myimage",
-				stdoutPath: "stdout.txt",
-				cmd:        "/mycmd",
-			}}),
+		wantPod: addVolumeMounts(expectedPod("test-taskrun-with-output-config-ws-pod", "", "test-taskrun-with-output-config-ws", "bar", "foo", config.DefaultServiceAccountValue, []corev1.Volume{{
+			Name: "ws-d872e",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		}}, []stepForExpectedPod{{
+			name:       "mycontainer",
+			image:      "myimage",
+			stdoutPath: "stdout.txt",
+			cmd:        "/mycmd",
+		}}),
 			[]corev1.VolumeMount{{
 				Name:      "ws-d872e",
 				MountPath: "/workspace/data",
@@ -1382,6 +1345,9 @@ spec:
     name: test-task
 status:
   podName: the-pod
+  taskSpec:
+    steps:
+    - image: foo
 `)
 	taskRun.Status.StartTime = &metav1.Time{Time: startTime}
 	d := test.Data{
@@ -1415,16 +1381,7 @@ spec:
   taskRef:
     name: notask
 `)
-	withWrongRef := parse.MustParseV1TaskRun(t, `
-metadata:
-  name: taskrun-with-wrong-ref
-  namespace: foo
-spec:
-  taskRef:
-    kind: ClusterTask
-    name: taskrun-with-wrong-ref
-`)
-	taskRuns := []*v1.TaskRun{noTaskRun, withWrongRef}
+	taskRuns := []*v1.TaskRun{noTaskRun}
 	tasks := []*v1.Task{simpleTask}
 
 	d := test.Data{
@@ -1440,15 +1397,6 @@ spec:
 	}{{
 		name:    "task run with no task",
 		taskRun: noTaskRun,
-		reason:  podconvert.ReasonFailedResolution,
-		wantEvents: []string{
-			"Normal Started",
-			"Warning Failed",
-			"Warning InternalError",
-		},
-	}, {
-		name:    "task run with wrong ref",
-		taskRun: withWrongRef,
 		reason:  podconvert.ReasonFailedResolution,
 		wantEvents: []string{
 			"Normal Started",
@@ -1682,7 +1630,7 @@ status:
     startTime: "2021-12-31T23:59:59Z"
     completionTime: "2022-01-01T00:00:00Z"
 `)
-		prepareError                    = errors.New("1 error occurred:\n\t* error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: tasks.tekton.dev \"test-task\" not found")
+		prepareError                    = errors.New("error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: tasks.tekton.dev \"test-task\" not found")
 		toFailOnReconcileFailureTaskRun = parse.MustParseV1TaskRun(t, `
 metadata:
   name: test-taskrun-results-type-mismatched
@@ -1724,30 +1672,30 @@ status:
     podName: "test-taskrun-results-type-mismatched-pod"
     provenance:
       featureFlags:
-        RunningInEnvWithInjectedSidecars: true
-        EnforceNonfalsifiability: "none"
-        EnableAPIFields: "alpha"
-        AwaitSidecarReadiness: true
-        VerificationNoMatchPolicy: "ignore"
-        EnableProvenanceInStatus: true
-        ResultExtractionMethod: "termination-message"
-        MaxResultSize: 4096
-        Coschedule: "workspaces"
-        DisableInlineSpec: ""
+        runningInEnvWithInjectedSidecars: true
+        enforceNonfalsifiability: "none"
+        enableAPIFields: "alpha"
+        awaitSidecarReadiness: true
+        verificationNoMatchPolicy: "ignore"
+        enableProvenanceInStatus: true
+        resultExtractionMethod: "termination-message"
+        maxResultSize: 4096
+        coschedule: "workspaces"
+        disableInlineSpec: ""
   provenance:
     featureFlags:
-      RunningInEnvWithInjectedSidecars: true
-      EnableAPIFields: "alpha"
-      EnforceNonfalsifiability: "none"
-      AwaitSidecarReadiness: true
-      VerificationNoMatchPolicy: "ignore"
-      EnableProvenanceInStatus: true
-      ResultExtractionMethod: "termination-message"
-      MaxResultSize: 4096
-      Coschedule: "workspaces"
-      DisableInlineSpec: ""
+      runningInEnvWithInjectedSidecars: true
+      enableAPIFields: "alpha"
+      enforceNonfalsifiability: "none"
+      awaitSidecarReadiness: true
+      verificationNoMatchPolicy: "ignore"
+      enableProvenanceInStatus: true
+      resultExtractionMethod: "termination-message"
+      maxResultSize: 4096
+      coschedule: "workspaces"
+      disableInlineSpec: ""
 `, pipelineErrors.UserErrorLabel, pipelineErrors.UserErrorLabel))
-		reconciliatonError = errors.New("1 error occurred:\n\t* Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
+		reconciliatonError = errors.New("Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
 		toBeRetriedTaskRun = parse.MustParseV1TaskRun(t, `
 metadata:
   name: test-taskrun-to-be-retried
@@ -1790,16 +1738,16 @@ status:
       type: Succeeded
   provenance:
     featureFlags:
-      RunningInEnvWithInjectedSidecars: true
-      EnableAPIFields: "beta"
-      EnforceNonfalsifiability: "none"
-      AwaitSidecarReadiness: true
-      VerificationNoMatchPolicy: "ignore"
-      EnableProvenanceInStatus: true
-      ResultExtractionMethod: "termination-message"
-      MaxResultSize: 4096
-      Coschedule: "workspaces"
-      DisableInlineSpec: ""
+      runningInEnvWithInjectedSidecars: true
+      enableAPIFields: "beta"
+      enforceNonfalsifiability: "none"
+      awaitSidecarReadiness: true
+      verificationNoMatchPolicy: "ignore"
+      enableProvenanceInStatus: true
+      resultExtractionMethod: "termination-message"
+      maxResultSize: 4096
+      coschedule: "workspaces"
+      disableInlineSpec: ""
 `)
 		toBeRetriedWithResultsTaskRun = parse.MustParseV1TaskRun(t, `
 metadata:
@@ -1989,9 +1937,8 @@ spec:
     name: test-task
 `)
 	d := test.Data{
-		TaskRuns:     []*v1.TaskRun{tr},
-		Tasks:        []*v1.Task{simpleTask},
-		ClusterTasks: []*v1beta1.ClusterTask{},
+		TaskRuns: []*v1.TaskRun{tr},
+		Tasks:    []*v1.Task{simpleTask},
 	}
 	for _, v := range []error{
 		errors.New("etcdserver: leader changed"),
@@ -2155,9 +2102,6 @@ spec:
 		ConfigMaps: []*corev1.ConfigMap{
 			{
 				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-				Data: map[string]string{
-					"enable-step-actions": "true",
-				},
 			},
 		},
 		ResolutionRequests: []*resolutionv1beta1.ResolutionRequest{&stepActionReq},
@@ -2270,9 +2214,6 @@ spec:
 			ConfigMaps: []*corev1.ConfigMap{
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-					Data: map[string]string{
-						"enable-step-actions": "true",
-					},
 				},
 			},
 		}
@@ -2344,7 +2285,7 @@ status:
 			" got %d. Actions: %#v", len(actions), actions)
 	}
 
-	newTr, err := clients.Pipeline.TektonV1().TaskRuns(noTaskRun.Namespace).Get(context.Background(), noTaskRun.Name, metav1.GetOptions{})
+	newTr, err := clients.Pipeline.TektonV1().TaskRuns(noTaskRun.Namespace).Get(t.Context(), noTaskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", noTaskRun.Name, err)
 	}
@@ -2905,8 +2846,8 @@ status:
 				}
 				// the error message includes the error if the pod is not found
 				if tc.podNotFound {
-					expectedStatus.Message = fmt.Sprintf(`the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever" and the pod with error: "%s."`, tc.failure, stepNumber, tc.message)
-					wantEvents[1] = fmt.Sprintf(`Warning Failed the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever" and the pod with error: "%s.`, tc.failure, stepNumber, tc.message)
+					expectedStatus.Message = fmt.Sprintf(`the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever". Failed to get pod with error: "%s."`, tc.failure, stepNumber, tc.message)
+					wantEvents[1] = fmt.Sprintf(`Warning Failed the %s "unnamed-%d" in TaskRun "test-imagepull-fail" failed to pull the image "whatever". Failed to get pod with error: "%s.`, tc.failure, stepNumber, tc.message)
 				}
 				condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
 				if d := cmp.Diff(expectedStatus, condition, ignoreLastTransitionTime); d != "" {
@@ -2916,6 +2857,132 @@ status:
 				if err != nil {
 					t.Error(err.Error())
 				}
+			}
+		})
+	}
+}
+
+func TestReconcileContainerFailures(t *testing.T) {
+	testCases := []struct {
+		name           string
+		reason         string
+		message        string
+		containerType  string
+		expectedReason v1.TaskRunReason
+	}{{
+		name:           "CreateContainerConfigError for step - missing configmap",
+		reason:         "CreateContainerConfigError",
+		message:        "configmap \"config-for-testing\" not found",
+		containerType:  "step",
+		expectedReason: "CreateContainerConfigError",
+	}, {
+		name:           "CreateContainerConfigError for sidecar - missing secret",
+		reason:         "CreateContainerConfigError",
+		message:        "secret \"secret-for-testing\" not found",
+		containerType:  "sidecar",
+		expectedReason: "CreateContainerConfigError",
+	}, {
+		name:           "CreateContainerError for step",
+		reason:         "CreateContainerError",
+		message:        "failed to create container",
+		containerType:  "step",
+		expectedReason: "PodCreationFailed",
+	}, {
+		name:           "CreateContainerError for sidecar",
+		reason:         "CreateContainerError",
+		message:        "failed to create container",
+		containerType:  "sidecar",
+		expectedReason: "PodCreationFailed",
+	}, {
+		name:           "InvalidImageName for step",
+		reason:         "InvalidImageName",
+		message:        "invalid image reference",
+		containerType:  "step",
+		expectedReason: "TaskRunImagePullFailed",
+	}, {
+		name:           "InvalidImageName for sidecar",
+		reason:         "InvalidImageName",
+		message:        "invalid image reference",
+		containerType:  "sidecar",
+		expectedReason: "TaskRunImagePullFailed",
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-container-failure
+  namespace: foo
+spec:
+  taskSpec:
+    sidecars:
+    - image: busybox
+    steps:
+    - image: alpine
+status:
+  podName: "test-pod"
+  sidecars:
+  - container: sidecar-busybox
+    name: busybox
+    imageID: docker.io/library/busybox:latest
+  steps:
+  - container: step-alpine
+    name: alpine
+    imageID: docker.io/library/alpine:latest
+`)
+
+			// Set the waiting state based on container type
+			if tc.containerType == "step" {
+				taskRun.Status.Steps[0].Waiting = &corev1.ContainerStateWaiting{
+					Reason:  tc.reason,
+					Message: tc.message,
+				}
+			} else {
+				taskRun.Status.Sidecars[0].Waiting = &corev1.ContainerStateWaiting{
+					Reason:  tc.reason,
+					Message: tc.message,
+				}
+			}
+
+			d := test.Data{
+				TaskRuns: []*v1.TaskRun{taskRun},
+			}
+
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+
+			// Reconcile the TaskRun
+			if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+				t.Fatalf("Unexpected error reconciling TaskRun: %v", err)
+			}
+
+			// Verify the TaskRun failed with the expected reason
+			reconciledTr, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(
+				testAssets.Ctx, taskRun.Name, metav1.GetOptions{},
+			)
+			if err != nil {
+				t.Fatalf("Failed to get reconciled TaskRun: %v", err)
+			}
+
+			condition := reconciledTr.Status.GetCondition(apis.ConditionSucceeded)
+			if condition == nil {
+				t.Fatal("TaskRun should have a Succeeded condition")
+			}
+
+			if condition.Status != corev1.ConditionFalse {
+				t.Errorf("Expected TaskRun to fail, but status is: %v", condition.Status)
+			}
+
+			if condition.Reason != string(tc.expectedReason) {
+				t.Errorf("Expected reason %q, got %q", tc.expectedReason, condition.Reason)
+			}
+
+			if !strings.Contains(condition.Message, tc.message) {
+				t.Errorf("Expected message to contain %q, got: %q", tc.message, condition.Message)
+			}
+
+			if !strings.Contains(condition.Message, tc.containerType) {
+				t.Errorf("Expected message to mention container type %q, got: %q", tc.containerType, condition.Message)
 			}
 		})
 	}
@@ -2991,13 +3058,25 @@ status:
 			clients := testAssets.Clients
 
 			err = c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun))
-			if err == nil {
-				t.Errorf("expected error when reconciling completed TaskRun : %v", err)
-			}
-			if isRequeueError, requeueDuration := controller.IsRequeueKey(err); !isRequeueError {
-				t.Errorf("Expected requeue error, but got: %s", err.Error())
-			} else if requeueDuration < 0 {
-				t.Errorf("Expected a positive requeue duration but got %s", requeueDuration.String())
+
+			// When timeout is explicitly disabled (set to 0), we should NOT requeue
+			// This prevents excessive reconciliation (issue #8495)
+			taskTimeout := tc.taskRun.GetTimeout(testAssets.Ctx)
+			if taskTimeout == config.NoTimeoutDuration {
+				// Timeout is disabled - should not requeue
+				if err != nil {
+					t.Errorf("expected no error when timeout is disabled, but got: %v", err)
+				}
+			} else {
+				// Timeout is enabled - should requeue
+				if err == nil {
+					t.Errorf("expected error when timeout is enabled, but got nil")
+				}
+				if isRequeueError, requeueDuration := controller.IsRequeueKey(err); !isRequeueError {
+					t.Errorf("Expected requeue error, but got: %v", err)
+				} else if requeueDuration < 0 {
+					t.Errorf("Expected a positive requeue duration but got %s", requeueDuration.String())
+				}
 			}
 			_, err = clients.Pipeline.TektonV1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
 			if err != nil {
@@ -3609,9 +3688,6 @@ spec:
 		ConfigMaps: []*corev1.ConfigMap{
 			{
 				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-				Data: map[string]string{
-					"enable-step-actions": "true",
-				},
 			},
 		},
 	}
@@ -3660,9 +3736,6 @@ spec:
 		ConfigMaps: []*corev1.ConfigMap{
 			{
 				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-				Data: map[string]string{
-					"enable-step-actions": "true",
-				},
 			},
 		},
 	}
@@ -3683,7 +3756,7 @@ spec:
 		Type:    "Succeeded",
 		Status:  "False",
 		Reason:  "TaskRunResolutionFailed",
-		Message: `stepactions.tekton.dev "noStepAction" not found`,
+		Message: `failed to resolve step ref for step "missing-step-action" (index 0): stepactions.tekton.dev "noStepAction" not found`,
 	}}
 	ignore := cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime")
 	if c := cmp.Diff(want, got, ignore); c != "" {
@@ -3955,14 +4028,6 @@ spec:
 			d := test.Data{
 				TaskRuns:    []*v1.TaskRun{tt.taskRun},
 				StepActions: []*v1beta1.StepAction{tt.stepAction},
-				ConfigMaps: []*corev1.ConfigMap{
-					{
-						ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-						Data: map[string]string{
-							"enable-step-actions": "true",
-						},
-					},
-				},
 			}
 			testAssets, cancel := getTaskRunController(t, d)
 			defer cancel()
@@ -4058,7 +4123,7 @@ spec:
 		Kind:     "Task",
 		TaskSpec: &v1.TaskSpec{Steps: simpleTask.Spec.Steps, Workspaces: simpleTask.Spec.Workspaces},
 	}
-	ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+	ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
 	workspaceVolumes := workspace.CreateVolumes(taskRun.Spec.Workspaces)
 	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, taskRun, rtr, workspaceVolumes)
 	if err != nil {
@@ -4168,7 +4233,7 @@ spec:
 	}
 
 	workspaceVolumes := workspace.CreateVolumes(taskRun.Spec.Workspaces)
-	ctx := cfgtesting.EnableAlphaAPIFields(context.Background())
+	ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
 	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, taskRun, rtr, workspaceVolumes)
 	if err != nil {
 		t.Errorf("update task spec threw an error: %v", err)
@@ -4286,6 +4351,187 @@ status:
 	}
 }
 
+// TestCreatePod_Backoff_WebhookTimeout validates the exponential backoff and retry logic in the createPod function.
+// It simulates scenarios where the creation of a Pod initially fails due to webhook timeouts (which should be retried)
+// and where it fails due to a non-retryable error (which should not be retried). The test ensures that the number of
+// creation attempts and the final outcome match expectations, confirming that the backoff strategy for Pod resources works as intended.
+func TestCreatePod_Backoff_WebhookTimeout(t *testing.T) {
+	trName := "test-tr"
+	namespace := "default"
+	tr := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    name: test-task
+`, trName, namespace))
+
+	simpleTask := parse.MustParseV1Task(t, `
+metadata:
+  name: test-task
+  namespace: default
+spec:
+  steps:
+  - command:
+    - /mycmd
+    env:
+    - name: foo
+      value: bar
+    image: foo
+    name: simple-step
+`)
+
+	// Create feature flags config with exponential backoff enabled
+	featureFlagsConfig := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+		Data: map[string]string{
+			"enable-wait-exponential-backoff": "true",
+		},
+	}
+
+	// Create wait exponential backoff config
+	waitExponentialBackoffConfig := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetWaitExponentialBackoffConfigName()},
+		Data: map[string]string{
+			"duration": "1s",
+			"factor":   "2.0",
+			"jitter":   "0.0",
+			"steps":    "10",
+			"cap":      "30s",
+		},
+	}
+
+	defaultsConfig := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetDefaultsConfigName()},
+		Data: map[string]string{
+			"default-timeout-minutes":        "60",
+			"default-managed-by-label-value": "tekton-pipeline",
+			"default-forbidden-env":          "TEKTON_POWER_MODE",
+		},
+	}
+
+	type testCase struct {
+		name        string
+		errorSeq    []error
+		expectErr   bool
+		expectCalls int
+	}
+
+	testCases := []testCase{
+		{
+			name: "retries on webhook timeout and succeeds",
+			errorSeq: []error{
+				&apierrors.StatusError{ErrStatus: metav1.Status{Code: 500, Message: "admission webhook timeout"}},
+				&apierrors.StatusError{ErrStatus: metav1.Status{Code: 500, Message: "admission webhook timeout"}},
+				nil,
+			},
+			expectErr:   false,
+			expectCalls: 3,
+		},
+		{
+			name:        "fails immediately on non-webhook error",
+			errorSeq:    []error{&apierrors.StatusError{ErrStatus: metav1.Status{Code: 400, Message: "bad request"}}},
+			expectErr:   true,
+			expectCalls: 1,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				TaskRuns:   []*v1.TaskRun{tr},
+				Tasks:      []*v1.Task{simpleTask},
+				ConfigMaps: []*corev1.ConfigMap{defaultsConfig, featureFlagsConfig, waitExponentialBackoffConfig},
+			}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, "default", tr.Namespace)
+
+			r := &Reconciler{
+				KubeClientSet:     testAssets.Clients.Kube,
+				PipelineClientSet: testAssets.Clients.Pipeline,
+				Images:            images,
+				Clock:             testClock,
+				taskRunLister:     testAssets.Informers.TaskRun.Lister(),
+				limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
+				cloudEventClient:  testAssets.Clients.CloudEvents,
+				metrics:           nil,
+				entrypointCache:   nil,
+				pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+				tracerProvider:    trace.NewNoopTracerProvider(),
+			}
+
+			callCount := 0
+			errSeq := tc.errorSeq
+			testAssets.Clients.Kube.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+				callCount++
+				idx := callCount - 1
+				if idx < len(errSeq) && errSeq[idx] != nil {
+					return true, nil, errSeq[idx]
+				}
+				createAction := action.(ktesting.CreateAction)
+				pod := createAction.GetObject().(*corev1.Pod)
+				return true, pod, nil
+			})
+
+			rtr := &resources.ResolvedTask{
+				TaskName: "test-task",
+				Kind:     "Task",
+				TaskSpec: &v1.TaskSpec{Steps: simpleTask.Spec.Steps},
+			}
+
+			workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
+			taskSpec, err := applyParamsContextsResultsAndWorkspaces(testAssets.Ctx, tr, rtr, workspaceVolumes)
+			if err != nil {
+				t.Fatalf("update task spec threw error %v", err)
+			}
+
+			// Ensure the context has the proper configuration
+			ctx := testAssets.Ctx
+			ctx = config.ToContext(ctx, &config.Config{
+				Defaults: &config.Defaults{
+					DefaultTimeoutMinutes:      60,
+					DefaultManagedByLabelValue: "tekton-pipeline",
+					DefaultForbiddenEnv:        []string{"TEKTON_POWER_MODE"},
+				},
+				FeatureFlags: &config.FeatureFlags{
+					EnableWaitExponentialBackoff: true,
+					Coschedule:                   "workspaces",
+				},
+				WaitExponentialBackoff: &config.WaitExponentialBackoff{
+					Duration: 1 * time.Second,
+					Factor:   2.0,
+					Jitter:   0.0,
+					Steps:    10,
+					Cap:      30 * time.Second,
+				},
+			})
+
+			result, err := r.createPod(ctx, taskSpec, tr, rtr, workspaceVolumes)
+			if tc.expectErr {
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				// When an error occurs, result should be nil
+				if result != nil {
+					t.Errorf("expected no Pod to be created when error occurs, got: %v", result)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("expected no error, got: %v", err)
+				}
+				if result == nil {
+					t.Fatalf("expected Pod to be created, got nil")
+				}
+			}
+			if callCount != tc.expectCalls {
+				t.Errorf("expected %d attempts, got %d", tc.expectCalls, callCount)
+			}
+		})
+	}
+}
+
 func TestReconcile_Single_SidecarState(t *testing.T) {
 	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: now}}
 	taskRun := parse.MustParseV1TaskRun(t, `
@@ -4330,7 +4576,7 @@ status:
 
 	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
 
-	err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun))
+	err := testAssets.Controller.Reconciler.Reconcile(t.Context(), getRunName(taskRun))
 	isRequeued, _ := controller.IsRequeueKey(err)
 	if err != nil && !isRequeued {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
@@ -4411,7 +4657,7 @@ status:
 
 	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
 
-	err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun))
+	err := testAssets.Controller.Reconciler.Reconcile(t.Context(), getRunName(taskRun))
 	isRequeued, _ := controller.IsRequeueKey(err)
 	if err != nil && !isRequeued {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
@@ -4472,15 +4718,14 @@ spec:
     name: test-task-with-workspace
 `)
 	d := test.Data{
-		Tasks:        []*v1.Task{taskWithWorkspace},
-		TaskRuns:     []*v1.TaskRun{taskRun},
-		ClusterTasks: nil,
+		Tasks:    []*v1.Task{taskWithWorkspace},
+		TaskRuns: []*v1.TaskRun{taskRun},
 	}
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 	clients := testAssets.Clients
 
-	err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun))
+	err := testAssets.Controller.Reconciler.Reconcile(t.Context(), getRunName(taskRun))
 	if err == nil {
 		t.Fatalf("expected error reconciling invalid TaskRun but got none")
 	}
@@ -4532,9 +4777,8 @@ spec:
     name: test-task-with-workspace
 `)
 	d := test.Data{
-		Tasks:        []*v1.Task{taskWithWorkspace},
-		TaskRuns:     []*v1.TaskRun{taskRun},
-		ClusterTasks: nil,
+		Tasks:    []*v1.Task{taskWithWorkspace},
+		TaskRuns: []*v1.TaskRun{taskRun},
 	}
 
 	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
@@ -4596,9 +4840,8 @@ spec:
     name: test-task-with-workspace
 `)
 	d := test.Data{
-		Tasks:        []*v1.Task{taskWithWorkspace},
-		TaskRuns:     []*v1.TaskRun{taskRun},
-		ClusterTasks: nil,
+		Tasks:    []*v1.Task{taskWithWorkspace},
+		TaskRuns: []*v1.TaskRun{taskRun},
 	}
 
 	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
@@ -4621,7 +4864,7 @@ spec:
 		t.Fatal(err)
 	}
 
-	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err == nil {
+	if err := testAssets.Controller.Reconciler.Reconcile(t.Context(), getRunName(taskRun)); err == nil {
 		t.Errorf("Expected error reconciling invalid TaskRun due to invalid workspace but got %v", err)
 	}
 }
@@ -4750,23 +4993,20 @@ spec:
 	}{{
 		name: "multiple PVC based Workspaces in per workspace coschedule mode - failure",
 		cfgMap: map[string]string{
-			"disable-affinity-assistant": "false",
-			"coschedule":                 "workspaces",
+			"coschedule": "workspaces",
 		},
 		expectFailureReason: v1.TaskRunReasonFailedValidation.String(),
 	}, {
 		name: "multiple PVC based Workspaces in per pipelinerun coschedule mode - success",
 		cfgMap: map[string]string{
-			"disable-affinity-assistant": "true",
-			"coschedule":                 "pipelineruns",
+			"coschedule": "pipelineruns",
 		},
 	}}
 
 	for _, tc := range tcs {
 		d := test.Data{
-			Tasks:        []*v1.Task{taskWithTwoWorkspaces},
-			TaskRuns:     []*v1.TaskRun{taskRun},
-			ClusterTasks: nil,
+			Tasks:    []*v1.Task{taskWithTwoWorkspaces},
+			TaskRuns: []*v1.TaskRun{taskRun},
 			ConfigMaps: []*corev1.ConfigMap{{
 				ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
 				Data:       tc.cfgMap,
@@ -4838,9 +5078,8 @@ spec:
         name: mypvc
 `)
 	d := test.Data{
-		Tasks:        []*v1.Task{taskWithWorkspace},
-		TaskRuns:     []*v1.TaskRun{taskRun},
-		ClusterTasks: nil,
+		Tasks:    []*v1.Task{taskWithWorkspace},
+		TaskRuns: []*v1.TaskRun{taskRun},
 	}
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
@@ -5400,7 +5639,7 @@ spec:
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// mock first reconcile
-			if err := storeTaskSpecAndMergeMeta(context.Background(), tr, tc.reconcile1Args.taskSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
+			if err := storeTaskSpecAndMergeMeta(t.Context(), tr, tc.reconcile1Args.taskSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
 			if d := cmp.Diff(tc.wantTaskRun, tr); d != "" {
@@ -5408,7 +5647,7 @@ spec:
 			}
 
 			// mock second reconcile
-			if err := storeTaskSpecAndMergeMeta(context.Background(), tr, tc.reconcile2Args.taskSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
+			if err := storeTaskSpecAndMergeMeta(t.Context(), tr, tc.reconcile2Args.taskSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
 			if d := cmp.Diff(tc.wantTaskRun, tr); d != "" {
@@ -5433,7 +5672,7 @@ func Test_storeTaskSpec_metadata(t *testing.T) {
 		ObjectMeta: &metav1.ObjectMeta{Labels: tasklabels, Annotations: taskannotations},
 	}
 
-	if err := storeTaskSpecAndMergeMeta(context.Background(), tr, &v1.TaskSpec{}, &resolvedMeta); err != nil {
+	if err := storeTaskSpecAndMergeMeta(t.Context(), tr, &v1.TaskSpec{}, &resolvedMeta); err != nil {
 		t.Errorf("storeTaskSpecAndMergeMeta error = %v", err)
 	}
 	if d := cmp.Diff(wantedlabels, tr.ObjectMeta.Labels); d != "" {
@@ -5973,7 +6212,6 @@ func podVolumeMounts(idx, totalSteps int) []corev1.VolumeMount {
 		Name:      "tekton-internal-artifacts",
 		MountPath: "/tekton/artifacts",
 	})
-
 	return mnts
 }
 
@@ -6011,7 +6249,7 @@ func podArgs(cmd string, stdoutPath string, stderrPath string, additionalArgs []
 	return args
 }
 
-func podObjectMeta(name, taskName, taskRunName, taskRunUID, ns string, isClusterTask bool) metav1.ObjectMeta {
+func podObjectMeta(name, taskName, taskRunName, taskRunUID, ns string) metav1.ObjectMeta {
 	trueB := true
 	om := metav1.ObjectMeta{
 		Name:      name,
@@ -6035,11 +6273,7 @@ func podObjectMeta(name, taskName, taskRunName, taskRunUID, ns string, isCluster
 	}
 
 	if taskName != "" {
-		if isClusterTask {
-			om.Labels[pipeline.ClusterTaskLabelKey] = taskName
-		} else {
-			om.Labels[pipeline.TaskLabelKey] = taskName
-		}
+		om.Labels[pipeline.TaskLabelKey] = taskName
 	}
 
 	return om
@@ -6057,13 +6291,13 @@ type stepForExpectedPod struct {
 	stderrPath      string
 }
 
-func expectedPod(podName, taskName, taskRunName, taskRunUID, ns, saName string, isClusterTask bool, extraVolumes []corev1.Volume, steps []stepForExpectedPod) *corev1.Pod {
+func expectedPod(podName, taskName, taskRunName, taskRunUID, ns, saName string, extraVolumes []corev1.Volume, steps []stepForExpectedPod) *corev1.Pod {
 	stepNames := make([]string, 0, len(steps))
 	for _, s := range steps {
 		stepNames = append(stepNames, "step-"+s.name)
 	}
 	p := &corev1.Pod{
-		ObjectMeta: podObjectMeta(podName, taskName, taskRunName, taskRunUID, ns, isClusterTask),
+		ObjectMeta: podObjectMeta(podName, taskName, taskRunName, taskRunUID, ns),
 		Spec: corev1.PodSpec{
 			Volumes: []corev1.Volume{
 				workspaceVolume,
@@ -6211,7 +6445,7 @@ status:
 					Phase: corev1.PodRunning,
 				},
 			}
-			pod, err := clientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+			pod, err := clientset.CoreV1().Pods(pod.Namespace).Create(t.Context(), pod, metav1.CreateOptions{})
 			if err != nil {
 				t.Errorf("Error occurred while creating pod %s: %s", pod.Name, err.Error())
 			}
@@ -6306,7 +6540,7 @@ spec:
 		}},
 	}
 
-	expectedErr := errors.New("1 error occurred:\n\t* param `param1` value: invalid is not in the enum list")
+	expectedErr := errors.New("param `param1` value: invalid is not in the enum list")
 	expectedFailureReason := "InvalidParamValue"
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
@@ -6468,13 +6702,13 @@ status:
 		name:             "taskrun results type mismatched",
 		taskRun:          taskRunResultsTypeMismatched,
 		wantFailedReason: v1.TaskRunReasonFailedValidation.String(),
-		expectedError:    errors.New("1 error occurred:\n\t* Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\", \"objectResult\": task result is expected to be \"object\" type but was initialized to a different type \"string\""),
+		expectedError:    errors.New("Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\", \"objectResult\": task result is expected to be \"object\" type but was initialized to a different type \"string\""),
 		expectedResults:  nil,
 	}, {
 		name:             "taskrun results object miss key",
 		taskRun:          taskRunResultsObjectMissKey,
 		wantFailedReason: v1.TaskRunReasonFailedValidation.String(),
-		expectedError:    errors.New("1 error occurred:\n\t* missing keys for these results which are required in TaskResult's properties map[objectResult:[commit]]"),
+		expectedError:    errors.New("missing keys for these results which are required in TaskResult's properties map[objectResult:[commit]]"),
 		expectedResults: []v1.TaskRunResult{
 			{
 				Name:  "aResult",
@@ -7258,5 +7492,555 @@ status:
 				t.Errorf("TaskRun annotations doesn't match %s", diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+// TestReconcile_PodTemplateParameterSubstitution tests that PodTemplate parameters
+// are properly substituted when a TaskRun is reconciled
+func TestReconcile_PodTemplateParameterSubstitution(t *testing.T) {
+	task := parse.MustParseV1Task(t, `
+metadata:
+  name: test-task
+  namespace: foo
+spec:
+  params:
+  - name: arch
+    type: string
+    default: amd64
+  - name: region
+    type: string
+    default: us-west-1
+  - name: selinuxuser
+    type: string
+    default: myuser
+  - name: selinuxrole
+    type: string
+    default: myrole
+  - name: gmsacredential
+    type: string  
+    default: mycredential
+  - name: apparmor
+    type: string
+    default: localhost/myprofile
+  - name: hostname
+    type: string
+    default: example.com
+  - name: volumename
+    type: string
+    default: my-volume
+  - name: disktype
+    type: string
+    default: hdd
+  steps:
+  - name: echo
+    image: busybox
+    script: echo hello
+`)
+
+	tr := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun
+  namespace: foo
+spec:
+  params:
+  - name: arch
+    value: arm64
+  - name: region
+    value: us-east-1
+  - name: selinuxuser
+    value: customuser
+  - name: selinuxrole
+    value: customrole
+  - name: gmsacredential
+    value: customcredential
+  - name: apparmor
+    value: localhost/customprofile
+  - name: hostname
+    value: custom.example.com
+  - name: volumename
+    value: custom-volume
+  - name: disktype
+    value: nvme
+  taskRef:
+    name: test-task
+  podTemplate:
+    nodeSelector:
+      kubernetes.io/arch: $(params.arch)
+      region: $(params.region)
+    tolerations:
+    - key: arch
+      operator: Equal
+      value: $(params.arch)
+      effect: NoSchedule
+    runtimeClassName: "gvisor-$(params.arch)"
+    schedulerName: "custom-scheduler-$(params.region)"
+    priorityClassName: "priority-$(params.arch)"
+    imagePullSecrets:
+    - name: "secret-$(params.region)"
+    env:
+    - name: ARCH
+      value: $(params.arch)
+    - name: REGION
+      value: $(params.region)
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: disktype
+              operator: In
+              values:
+              - $(params.disktype)
+    dnsPolicy: ClusterFirst
+    securityContext:
+      seLinuxOptions:
+        user: $(params.selinuxuser)
+        role: $(params.selinuxrole)
+        type: container_t
+        level: s0:c123,c456
+      windowsOptions:
+        gmsaCredentialSpecName: $(params.gmsacredential)
+        runAsUserName: $(params.arch)-user
+      appArmorProfile:
+        type: Localhost
+        localhostProfile: $(params.apparmor)
+      sysctls:
+      - name: kernel.$(params.arch)
+        value: $(params.region)
+    hostAliases:
+    - ip: "192.168.1.1"
+      hostnames:
+      - "$(params.hostname)"
+      - "alias.$(params.hostname)"
+    topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: zone-$(params.region)
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app: myapp-$(params.arch)
+    dnsConfig:
+      nameservers:
+      - "8.8.8.8"
+      - "$(params.arch).dns.example.com"
+      searches:
+      - "$(params.region).local"
+      options:
+      - name: ndots
+        value: "2"
+    volumes:
+    - name: $(params.volumename)
+      configMap:
+        name: config-$(params.region)
+    - name: secret-volume
+      secret:
+        secretName: secret-$(params.arch)
+        items:
+        - key: $(params.region)
+          path: secret/$(params.arch)
+    - name: projected-volume
+      projected:
+        sources:
+        - configMap:
+            name: projected-config-$(params.region)
+        - secret:
+            name: projected-secret-$(params.arch)
+        - serviceAccountToken:
+            audience: audience-$(params.region)
+    - name: csi-volume
+      csi:
+        driver: csi.example.com
+        nodePublishSecretRef:
+          name: csi-secret-$(params.arch)
+        volumeAttributes:
+          foo: $(params.region)
+`)
+
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{tr},
+		Tasks:    []*v1.Task{task},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, "default", tr.Namespace)
+
+	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+	if err == nil {
+		t.Errorf("Expected reconcile to return a requeue indicating the pod was created, but got nil")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
+		t.Errorf("Expected a requeue error, got: %v", err)
+	}
+
+	// Get the created pod and verify parameter substitution
+	pods, err := testAssets.Clients.Kube.CoreV1().Pods(tr.Namespace).List(testAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Error listing pods: %v", err)
+	}
+
+	if len(pods.Items) != 1 {
+		t.Fatalf("Expected 1 pod to be created, got %d", len(pods.Items))
+	}
+
+	pod := pods.Items[0]
+
+	// Verify nodeSelector substitution
+	expectedNodeSelector := map[string]string{
+		"kubernetes.io/arch": "arm64",
+		"region":             "us-east-1",
+	}
+	if d := cmp.Diff(expectedNodeSelector, pod.Spec.NodeSelector); d != "" {
+		t.Errorf("NodeSelector mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify tolerations substitution
+	expectedTolerations := []corev1.Toleration{{
+		Key:      "arch",
+		Operator: corev1.TolerationOpEqual,
+		Value:    "arm64",
+		Effect:   corev1.TaintEffectNoSchedule,
+	}}
+	if d := cmp.Diff(expectedTolerations, pod.Spec.Tolerations); d != "" {
+		t.Errorf("Tolerations mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify runtime class substitution
+	expectedRuntimeClassName := "gvisor-arm64"
+	if d := cmp.Diff(&expectedRuntimeClassName, pod.Spec.RuntimeClassName); d != "" {
+		t.Errorf("RuntimeClassName mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify scheduler name substitution
+	expectedSchedulerName := "custom-scheduler-us-east-1"
+	if d := cmp.Diff(expectedSchedulerName, pod.Spec.SchedulerName); d != "" {
+		t.Errorf("SchedulerName mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify priority class name substitution
+	expectedPriorityClassName := "priority-arm64"
+	if d := cmp.Diff(expectedPriorityClassName, pod.Spec.PriorityClassName); d != "" {
+		t.Errorf("PriorityClassName mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify image pull secrets substitution
+	expectedImagePullSecrets := []corev1.LocalObjectReference{{
+		Name: "secret-us-east-1",
+	}}
+	if d := cmp.Diff(expectedImagePullSecrets, pod.Spec.ImagePullSecrets); d != "" {
+		t.Errorf("ImagePullSecrets mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify environment variables substitution in all containers
+	expectedEnvVars := []corev1.EnvVar{
+		{Name: "ARCH", Value: "arm64"},
+		{Name: "REGION", Value: "us-east-1"},
+	}
+
+	for _, container := range pod.Spec.Containers {
+		// Find our added env vars
+		var actualEnvVars []corev1.EnvVar
+		for _, env := range container.Env {
+			if env.Name == "ARCH" || env.Name == "REGION" {
+				actualEnvVars = append(actualEnvVars, env)
+			}
+		}
+
+		if d := cmp.Diff(expectedEnvVars, actualEnvVars); d != "" {
+			t.Errorf("Environment variables mismatch in container %s: %s", container.Name, diff.PrintWantGot(d))
+		}
+	}
+
+	// Verify affinity substitution
+	expectedAffinity := &corev1.Affinity{
+		NodeAffinity: &corev1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+				NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+					MatchExpressions: []corev1.NodeSelectorRequirement{{
+						Key:      "disktype",
+						Operator: corev1.NodeSelectorOpIn,
+						Values:   []string{"nvme"},
+					}},
+				}},
+			},
+		},
+	}
+	if d := cmp.Diff(expectedAffinity, pod.Spec.Affinity); d != "" {
+		t.Errorf("Affinity mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify dnsPolicy substitution
+	expectedDNSPolicy := corev1.DNSClusterFirst
+	if d := cmp.Diff(expectedDNSPolicy, pod.Spec.DNSPolicy); d != "" {
+		t.Errorf("DNSPolicy mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify securityContext substitution (string fields only, excluding int/bool fields)
+	expectedSecurityContext := &corev1.PodSecurityContext{
+		SELinuxOptions: &corev1.SELinuxOptions{
+			User:  "customuser",
+			Role:  "customrole",
+			Type:  "container_t",
+			Level: "s0:c123,c456",
+		},
+		WindowsOptions: &corev1.WindowsSecurityContextOptions{
+			GMSACredentialSpecName: ptr.String("customcredential"),
+			RunAsUserName:          ptr.String("arm64-user"),
+		},
+		AppArmorProfile: &corev1.AppArmorProfile{
+			Type:             corev1.AppArmorProfileTypeLocalhost,
+			LocalhostProfile: ptr.String("localhost/customprofile"),
+		},
+		Sysctls: []corev1.Sysctl{{
+			Name:  "kernel.arm64",
+			Value: "us-east-1",
+		}},
+	}
+	if d := cmp.Diff(expectedSecurityContext, pod.Spec.SecurityContext); d != "" {
+		t.Errorf("SecurityContext mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify hostAliases substitution
+	expectedHostAliases := []corev1.HostAlias{{
+		IP:        "192.168.1.1",
+		Hostnames: []string{"custom.example.com", "alias.custom.example.com"},
+	}}
+	if d := cmp.Diff(expectedHostAliases, pod.Spec.HostAliases); d != "" {
+		t.Errorf("HostAliases mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify topologySpreadConstraints substitution
+	expectedTopologySpreadConstraints := []corev1.TopologySpreadConstraint{{
+		MaxSkew:           1,
+		TopologyKey:       "zone-us-east-1",
+		WhenUnsatisfiable: corev1.DoNotSchedule,
+		LabelSelector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app": "myapp-arm64",
+			},
+		},
+	}}
+	if d := cmp.Diff(expectedTopologySpreadConstraints, pod.Spec.TopologySpreadConstraints); d != "" {
+		t.Errorf("TopologySpreadConstraints mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify dnsConfig substitution
+	expectedDNSConfig := &corev1.PodDNSConfig{
+		Nameservers: []string{"8.8.8.8", "arm64.dns.example.com"},
+		Searches:    []string{"us-east-1.local"},
+		Options: []corev1.PodDNSConfigOption{{
+			Name:  "ndots",
+			Value: ptr.String("2"),
+		}},
+	}
+	if d := cmp.Diff(expectedDNSConfig, pod.Spec.DNSConfig); d != "" {
+		t.Errorf("DNSConfig mismatch: %s", diff.PrintWantGot(d))
+	}
+
+	// Verify volumes substitution
+	expectedVolumes := []corev1.Volume{{
+		Name: "custom-volume",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "config-us-east-1",
+				},
+			},
+		},
+	}, {
+		Name: "secret-volume",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: "secret-arm64",
+				Items: []corev1.KeyToPath{{
+					Key:  "us-east-1",
+					Path: "secret/arm64",
+				}},
+			},
+		},
+	}, {
+		Name: "projected-volume",
+		VolumeSource: corev1.VolumeSource{
+			Projected: &corev1.ProjectedVolumeSource{
+				Sources: []corev1.VolumeProjection{{
+					ConfigMap: &corev1.ConfigMapProjection{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "projected-config-us-east-1",
+						},
+					},
+				}, {
+					Secret: &corev1.SecretProjection{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "projected-secret-arm64",
+						},
+					},
+				}, {
+					ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+						Audience: "audience-us-east-1",
+					},
+				}},
+			},
+		},
+	}, {
+		Name: "csi-volume",
+		VolumeSource: corev1.VolumeSource{
+			CSI: &corev1.CSIVolumeSource{
+				Driver: "csi.example.com",
+				NodePublishSecretRef: &corev1.LocalObjectReference{
+					Name: "csi-secret-arm64",
+				},
+				VolumeAttributes: map[string]string{
+					"foo": "us-east-1",
+				},
+			},
+		},
+	}}
+
+	// Filter out system volumes (like tekton volumes) to focus on our custom volumes
+	var actualCustomVolumes []corev1.Volume
+	customVolumeNames := map[string]bool{
+		"custom-volume":    true,
+		"secret-volume":    true,
+		"projected-volume": true,
+		"csi-volume":       true,
+	}
+	for _, vol := range pod.Spec.Volumes {
+		if customVolumeNames[vol.Name] {
+			actualCustomVolumes = append(actualCustomVolumes, vol)
+		}
+	}
+
+	if d := cmp.Diff(expectedVolumes, actualCustomVolumes); d != "" {
+		t.Errorf("Custom volumes mismatch: %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestReconcile_ManagedBy(t *testing.T) {
+	namespace := "foo"
+	trManagedByTektonName := "test-tr-managed-by-tekton"
+	trManagedByOtherName := "test-tr-managed-by-other"
+
+	ts := []*v1.Task{simpleTask}
+
+	trs := []*v1.TaskRun{
+		parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    name: test-task
+`, trManagedByTektonName, namespace)),
+		parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    name: test-task
+`, trManagedByOtherName, namespace)),
+	}
+	trs[0].Spec.ManagedBy = ptr.String("tekton.dev/pipeline")
+	trs[1].Spec.ManagedBy = ptr.String("other-controller")
+
+	// This data includes all resources and will be used by the fake client.
+	d := test.Data{
+		TaskRuns: trs,
+		Tasks:    ts,
+		ServiceAccounts: []*corev1.ServiceAccount{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default",
+				Namespace: namespace,
+			},
+		}},
+		ConfigMaps: []*corev1.ConfigMap{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+				Data: map[string]string{
+					"default-timeout-minutes":        "60",
+					"default-managed-by-label-value": "tekton-pipelines",
+				},
+			},
+		},
+	}
+
+	// This data is filtered and simulates what the informer would pass to the reconciler.
+	// It only contains the TaskRun that should be reconciled.
+	filteredData := test.Data{
+		TaskRuns: []*v1.TaskRun{trs[0]}, // Only the one managed by Tekton
+		Tasks:    ts,
+		ServiceAccounts: []*corev1.ServiceAccount{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default",
+				Namespace: namespace,
+			},
+		}},
+		ConfigMaps: []*corev1.ConfigMap{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+				Data: map[string]string{
+					"default-timeout-minutes":        "60",
+					"default-managed-by-label-value": "tekton-pipelines",
+				},
+			},
+		},
+	}
+
+	// Initialize controller with filtered data for the listers
+	testAssets, cancel := getTaskRunController(t, filteredData)
+	defer cancel()
+
+	// Create clients with all the data for verification
+	ctx, _ := ttesting.SetupFakeContext(t)
+	clients, _ := test.SeedTestData(t, ctx, d)
+
+	// 1. Reconcile the TaskRun managed by "other-controller"
+	// We expect nothing to happen because it's not in the lister.
+	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(trs[1]))
+	if err != nil {
+		t.Errorf("Expected reconcile to return nil for externally managed TaskRun, but got: %v", err)
+	}
+
+	// Verify no Pods were created for the externally managed TaskRun
+	podsOther, err := testAssets.Clients.Kube.CoreV1().Pods(namespace).List(testAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Error listing pods: %v", err)
+	}
+	if len(podsOther.Items) != 0 {
+		t.Errorf("Expected no Pods for externally managed TaskRun, but found %d", len(podsOther.Items))
+	}
+
+	// Verify its status is unchanged
+	reconciledOther, err := clients.Pipeline.TektonV1().TaskRuns(namespace).Get(testAssets.Ctx, trManagedByOtherName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get externally managed TaskRun: %v", err)
+	}
+	if len(reconciledOther.Status.Conditions) != 0 {
+		t.Errorf("Expected externally managed TaskRun to have no conditions, but it did")
+	}
+
+	// 2. Reconcile the TaskRun managed by "tekton.dev/pipeline"
+	// We expect this one to be processed normally.
+	err = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(trs[0]))
+	if err == nil {
+		t.Errorf("Expected reconcile to return a requeue indicating the pod was created, but got nil")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
+		t.Errorf("Expected a requeue error, got: %v", err)
+	}
+
+	// Verify a Pod was created for the Tekton-managed TaskRun
+	podsTekton, err := testAssets.Clients.Kube.CoreV1().Pods(namespace).List(testAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Error listing pods: %v", err)
+	}
+	if len(podsTekton.Items) != 1 {
+		t.Errorf("Expected 1 Pod for Tekton-managed TaskRun, but found %d", len(podsTekton.Items))
+	}
+
+	// Verify its status was updated
+	reconciledTekton, err := clients.Pipeline.TektonV1().TaskRuns(namespace).Get(testAssets.Ctx, trManagedByTektonName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get Tekton-managed TaskRun: %v", err)
+	}
+	if !reconciledTekton.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+		t.Errorf("Expected Tekton-managed TaskRun to be running, but it was not")
 	}
 }

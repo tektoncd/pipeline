@@ -34,12 +34,12 @@ const (
 	TracerName = "PipelineRunReconciler"
 	// SpanContextAnnotation is the name of the Annotation for storing SpanContext
 	SpanContextAnnotation = "tekton.dev/pipelinerunSpanContext"
-	// TaskRunSpanContextAnnotation is the name of the Annotation used for propogating SpanContext to TaskRun
+	// TaskRunSpanContextAnnotation is the name of the Annotation used for propagating SpanContext to TaskRun
 	TaskRunSpanContextAnnotation = "tekton.dev/taskrunSpanContext"
 )
 
 // initialize tracing by creating the root span and injecting the
-// spanContext is propogated through annotations in the CR
+// spanContext is propagated through annotations in the CR
 func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, pr *v1.PipelineRun) context.Context {
 	logger := logging.FromContext(ctx)
 	pro := otel.GetTextMapPropagator()
@@ -51,7 +51,7 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, pr *v
 
 	spanContext := make(map[string]string)
 
-	// SpanContext was propogated through annotations
+	// SpanContext was propagated through annotations
 	if pr.Annotations != nil && pr.Annotations[SpanContextAnnotation] != "" {
 		err := json.Unmarshal([]byte(pr.Annotations[SpanContextAnnotation]), &spanContext)
 		if err != nil {

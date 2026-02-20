@@ -249,7 +249,7 @@ func methodReturnsValue(mt *types.Type, pkg, name string) bool {
 		return false
 	}
 	r := mt.Signature.Results[0]
-	return r.Name.Name == name && r.Name.Package == pkg
+	return r.Type.Name.Name == name && r.Type.Name.Package == pkg
 }
 
 func hasOpenAPIV3DefinitionMethod(t *types.Type) bool {

@@ -1,6 +1,6 @@
 name: ci
 
-on: [pull_request] # yamllint disable-line rule:truthy
+on: [pull_request]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull-request.number || github.ref }}
@@ -15,27 +15,92 @@ permissions:
   checks: write # Used to annotate code in the PR
 
 jobs:
+  changes:
+    name: categorize changes
+    runs-on: ubuntu-latest
+    outputs:
+      non-docs: ${{ steps.detect.outputs.non-docs }}
+      yaml: ${{ steps.detect.outputs.yaml }}
+    steps:
+    - name: Get base depth
+      id: base-depth
+      run: echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: ${{ steps.base-depth.outputs.base-depth }}
+    - name: detect
+      id: detect
+      run: |
+        git fetch origin ${{ github.base_ref }}
+        CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} | tr ' ' '\n')
+
+        echo -e "Changed files:\n${CHANGED_FILES}"
+
+        # If there are no changed files, non-docs and yaml are not set and remain false by default.
+        # This ensures that jobs depending on these outputs do not run when there are no changes.
+        if [[ -n "${CHANGED_FILES}" ]]; then
+          NON_DOCS='false'
+          YAML='false'
+
+          while read -r file; do
+            if [[ "$file" != *.md ]]; then
+              NON_DOCS='true'
+              break
+            fi
+          done <<< "${CHANGED_FILES}"
+
+          while read -r file; do
+            if [[ "$file" == *.yaml || "$file" == *.yml ]]; then
+              YAML='true'
+              break
+            fi
+          done <<< "${CHANGED_FILES}"
+
+          echo "non-docs=${NON_DOCS}" | tee -a $GITHUB_OUTPUT
+          echo "yaml=${YAML}" | tee -a $GITHUB_OUTPUT
+        fi
+
   build:
     name: build
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: ${{ needs.changes.outputs.non-docs == 'true' }}
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-    - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34  # v5.3.0
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
       with:
         go-version-file: "go.mod"
     - name: build
       run: |
         go build -v ./...
+  buildFips:
+    name: buildFips
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: ${{ needs.changes.outputs.non-docs == 'true' }}
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
+      with:
+        go-version-file: "go.mod"
+    - name: build
+      run: |
+        go build -v -tags "disable_spire,disable_tls" ./cmd/entrypoint
+        echo "Build finished with exit code: $?"
   linting:
-    needs: [build]
     name: lint
     runs-on: ubuntu-latest
+    needs: [changes]
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-    - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34  # v5.3.0
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
       with:
         go-version-file: "go.mod"
     - name: gofmt
+      if: ${{ needs.changes.outputs.non-docs == 'true' }}
       run: |
         gofmt_out=$(gofmt -d $(find * -name '*.go' ! -path 'vendor/*' ! -path 'third_party/*'))
         if [[ -n "$gofmt_out" ]]; then
@@ -43,16 +108,18 @@ jobs:
         fi
         echo "$gofmt_out"
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@2226d7cb06a077cd73e56eedd38eecad18e5d837  # v6.5.0
+      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+      if: ${{ needs.changes.outputs.non-docs == 'true' }}
       with:
-        version: v1.64.6
-        only-new-issues: true
-        args: --timeout=10m
+        version: v2.8.0
+        args: --new-from-merge-base=origin/${{ github.base_ref }} --timeout=10m
     - name: yamllint
+      if: ${{ needs.changes.outputs.yaml == 'true' }}
       run: |
-        apt update && apt install -y yamllint
-        yamllint -c .yamllint $(find . -path ./vendor -prune -o -type f -regex ".*y[a]ml" -print | tr '\n' ' ')
+        apt-get update && apt-get install -y yamllint
+        make yamllint
     - name: check-license
+      if: ${{ needs.changes.outputs.non-docs == 'true' }}
       run: |
         go install github.com/google/go-licenses@v1.0.0
         go-licenses check ./...
@@ -61,11 +128,11 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-    - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34  # v5.3.0
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
       with:
         go-version-file: "go.mod"
-    - name: build
+    - name: unit-test
       run: |
         make test-unit-verbose-and-race
   generated:
@@ -73,8 +140,8 @@ jobs:
     name: Check generated code
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-    - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34  # v5.3.0
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
       with:
         go-version-file: "go.mod"
     - name: generated
@@ -84,28 +151,60 @@ jobs:
     needs: [build]
     name: Multi-arch build
     runs-on: ubuntu-latest
+    env:
+      KOCACHE: /tmp/ko-cache
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-    - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34  # v5.3.0
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
       with:
         go-version-file: "go.mod"
-    - uses: ko-build/setup-ko@v0.8
+    - name: Cache ko build cache
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306  # v5.0.3
+      with:
+        path: /tmp/ko-cache
+        key: ${{ runner.os }}-${{ runner.arch }}-ko-${{ hashFiles('go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-ko-
+    - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
     - name: ko-resolve
       run: |
-          cat <<EOF > .ko.yaml
-          defaultBaseImage: cgr.dev/chainguard/static
-          baseImageOverrides:
-            # Use the combined base image for images that should include Windows support.
-            # NOTE: Make sure this list of images to use the combined base image is in sync with what's in tekton/publish.yaml's 'create-ko-yaml' Task.
-            github.com/tektoncd/pipeline/cmd/entrypoint: ghcr.io/tektoncd/pipeline/github.com/tektoncd/pipeline/combined-base-image:latest
-            github.com/tektoncd/pipeline/cmd/nop: ghcr.io/tektoncd/pipeline/github.com/tektoncd/pipeline/combined-base-image:latest
-            github.com/tektoncd/pipeline/cmd/workingdirinit: ghcr.io/tektoncd/pipeline/github.com/tektoncd/pipeline/combined-base-image:latest
-
-            github.com/tektoncd/pipeline/cmd/git-init: cgr.dev/chainguard/git
-          EOF
-
+          # Use the repository's .ko.yaml for consistent base images
           KO_DOCKER_REPO=example.com ko resolve -l 'app.kubernetes.io/component!=resolvers' --platform=all --push=false -R -f config 1>/dev/null
           KO_DOCKER_REPO=example.com ko resolve --platform=all --push=false -f config/resolvers 1>/dev/null
   e2e-tests:
     needs: [build]
     uses: ./.github/workflows/e2e-matrix.yml
+
+  ci-summary:
+    name: CI summary
+    needs: [build, buildFips, linting, tests, generated, multi-arch-build, e2e-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Check CI results
+      run: |
+        results=(
+          "build=${{ needs.build.result }}"
+          "buildFips=${{ needs.buildFips.result }}"
+          "linting=${{ needs.linting.result }}"
+          "tests=${{ needs.tests.result }}"
+          "generated=${{ needs.generated.result }}"
+          "multi-arch-build=${{ needs.multi-arch-build.result }}"
+          "e2e-tests=${{ needs.e2e-tests.result }}"
+        )
+        failed=0
+        for r in "${results[@]}"; do
+          name="${r%%=*}"
+          result="${r#*=}"
+          echo "${name}: ${result}"
+          if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+            failed=1
+          fi
+        done
+        if [ "$failed" -eq 1 ]; then
+          echo ""
+          echo "Some CI jobs failed or were cancelled"
+          exit 1
+        fi
+        echo ""
+        echo "All CI checks passed"

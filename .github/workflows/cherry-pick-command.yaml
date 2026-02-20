@@ -1,0 +1,32 @@
+# Cherry Pick Command Workflow
+#
+# This workflow is triggered by the /cherry-pick slash command from the slash.yml workflow.
+# It automatically cherry-picks merged PRs to the specified target branches.
+#
+# Usage: Comment `/cherry-pick <target-branch> [<target-branch> ...]` on a merged pull request
+# Example: `/cherry-pick release-v0.47.x`
+# Example: `/cherry-pick release-v0.47.x release-v1.3.x`
+#
+# Security Notes:
+# - Only users with "write" permission can trigger this command (enforced in slash.yml)
+# - Works safely with PRs from forks because it only cherry-picks already-merged commits
+# - Uses CHATOPS_TOKEN to create PRs and push to branches
+# - The action creates a new branch from the target branch, not from the fork
+
+name: Cherry Pick Command
+
+on:
+  repository_dispatch:
+    types: [cherry-pick-command]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  cherry-pick:
+    name: Cherry Pick Actions
+    uses: tektoncd/plumbing/.github/workflows/_cherry-pick-command.yaml@9f8e1781d5cc431e5c95190a9fc14dfba1cec391  # main
+    secrets:
+      CHATOPS_TOKEN: ${{ secrets.CHATOPS_TOKEN }}

@@ -42,8 +42,16 @@ import (
 )
 
 func init() {
-	sigkms.AddProvider(ReferenceScheme, func(ctx context.Context, keyResourceID string, _ crypto.Hash, _ ...signature.RPCOption) (sigkms.SignerVerifier, error) {
-		return LoadSignerVerifier(ctx, keyResourceID)
+	sigkms.AddProvider(ReferenceScheme, func(ctx context.Context, keyResourceID string, _ crypto.Hash, opts ...signature.RPCOption) (sigkms.SignerVerifier, error) {
+		clientOpts := make([]option.ClientOption, 0)
+		for _, opt := range opts {
+			if gcpOpt, ok := opt.(*requestGoogleAPIClientOption); ok {
+				var clientOpt option.ClientOption
+				gcpOpt.ApplyGoogleAPIClientOption(&clientOpt)
+				clientOpts = append(clientOpts, clientOpt)
+			}
+		}
+		return LoadSignerVerifier(ctx, keyResourceID, clientOpts...)
 	})
 }
 
@@ -209,26 +217,50 @@ func (g *gcpClient) keyVersionName(ctx context.Context) (*cryptoKeyVersion, erro
 	// as well as using the in memory Verifier to perform the verify operations.
 	switch kv.Algorithm {
 	case kmspb.CryptoKeyVersion_EC_SIGN_P256_SHA256:
-		crv.Verifier, err = signature.LoadECDSAVerifier(pubKey.(*ecdsa.PublicKey), crypto.SHA256)
+		pk, ok := pubKey.(*ecdsa.PublicKey)
+		if !ok {
+			return nil, fmt.Errorf("asserting public key type ecdsa.PublicKey")
+		}
+		crv.Verifier, err = signature.LoadECDSAVerifier(pk, crypto.SHA256)
 		crv.HashFunc = crypto.SHA256
 	case kmspb.CryptoKeyVersion_EC_SIGN_P384_SHA384:
-		crv.Verifier, err = signature.LoadECDSAVerifier(pubKey.(*ecdsa.PublicKey), crypto.SHA384)
+		pk, ok := pubKey.(*ecdsa.PublicKey)
+		if !ok {
+			return nil, fmt.Errorf("asserting public key type ecdsa.PublicKey")
+		}
+		crv.Verifier, err = signature.LoadECDSAVerifier(pk, crypto.SHA384)
 		crv.HashFunc = crypto.SHA384
 	case kmspb.CryptoKeyVersion_RSA_SIGN_PKCS1_2048_SHA256,
 		kmspb.CryptoKeyVersion_RSA_SIGN_PKCS1_3072_SHA256,
 		kmspb.CryptoKeyVersion_RSA_SIGN_PKCS1_4096_SHA256:
-		crv.Verifier, err = signature.LoadRSAPKCS1v15Verifier(pubKey.(*rsa.PublicKey), crypto.SHA256)
+		pk, ok := pubKey.(*rsa.PublicKey)
+		if !ok {
+			return nil, fmt.Errorf("asserting public key type rsa.PublicKey")
+		}
+		crv.Verifier, err = signature.LoadRSAPKCS1v15Verifier(pk, crypto.SHA256)
 		crv.HashFunc = crypto.SHA256
 	case kmspb.CryptoKeyVersion_RSA_SIGN_PKCS1_4096_SHA512:
-		crv.Verifier, err = signature.LoadRSAPKCS1v15Verifier(pubKey.(*rsa.PublicKey), crypto.SHA512)
+		pk, ok := pubKey.(*rsa.PublicKey)
+		if !ok {
+			return nil, fmt.Errorf("asserting public key type rsa.PublicKey")
+		}
+		crv.Verifier, err = signature.LoadRSAPKCS1v15Verifier(pk, crypto.SHA512)
 		crv.HashFunc = crypto.SHA512
 	case kmspb.CryptoKeyVersion_RSA_SIGN_PSS_2048_SHA256,
 		kmspb.CryptoKeyVersion_RSA_SIGN_PSS_3072_SHA256,
 		kmspb.CryptoKeyVersion_RSA_SIGN_PSS_4096_SHA256:
-		crv.Verifier, err = signature.LoadRSAPSSVerifier(pubKey.(*rsa.PublicKey), crypto.SHA256, nil)
+		pk, ok := pubKey.(*rsa.PublicKey)
+		if !ok {
+			return nil, fmt.Errorf("asserting public key type rsa.PublicKey")
+		}
+		crv.Verifier, err = signature.LoadRSAPSSVerifier(pk, crypto.SHA256, nil)
 		crv.HashFunc = crypto.SHA256
 	case kmspb.CryptoKeyVersion_RSA_SIGN_PSS_4096_SHA512:
-		crv.Verifier, err = signature.LoadRSAPSSVerifier(pubKey.(*rsa.PublicKey), crypto.SHA512, nil)
+		pk, ok := pubKey.(*rsa.PublicKey)
+		if !ok {
+			return nil, fmt.Errorf("asserting public key type rsa.PublicKey")
+		}
+		crv.Verifier, err = signature.LoadRSAPSSVerifier(pk, crypto.SHA512, nil)
 		crv.HashFunc = crypto.SHA512
 	default:
 		return nil, errors.New("unknown algorithm specified by KMS")

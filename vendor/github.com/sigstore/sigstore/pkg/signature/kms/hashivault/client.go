@@ -32,6 +32,7 @@ import (
 	"time"
 
 	vault "github.com/hashicorp/vault/api"
+	config "github.com/hashicorp/vault/api/cliconfig"
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/mitchellh/go-homedir"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
@@ -115,20 +116,42 @@ func newHashivaultClient(address, token, transitSecretEnginePath, keyResourceID 
 	if token == "" {
 		token = os.Getenv("VAULT_TOKEN")
 	}
+
 	if token == "" {
-		log.Printf("VAULT_TOKEN is not set, trying to read token from file at path ~/.vault-token")
-		homeDir, err := homedir.Dir()
-		if err != nil {
-			return nil, fmt.Errorf("get home directory: %w", err)
+		log.Printf("VAULT_TOKEN not set, trying to find token helper")
+
+		// try token helper
+		tokenHelper, err := config.DefaultTokenHelper()
+		if err == nil {
+			if t, err := tokenHelper.Get(); err == nil && t != "" {
+				token = t
+			} else {
+				log.Printf("no token found via helper, trying ~/.vault-token")
+			}
+		} else {
+			log.Printf("no token helper configured, trying ~/.vault-token")
 		}
 
-		tokenFromFile, err := os.ReadFile(filepath.Join(homeDir, ".vault-token"))
-		if err != nil {
-			return nil, fmt.Errorf("read .vault-token file: %w", err)
-		}
+		// read from ~/.vault-token
+		if token == "" {
+			homeDir, err := homedir.Dir()
+			if err != nil {
+				return nil, fmt.Errorf("get home directory: %w", err)
+			}
 
-		token = string(tokenFromFile)
+			tokenFromFile, err := os.ReadFile(filepath.Join(homeDir, ".vault-token"))
+			if err != nil {
+				return nil, fmt.Errorf("read .vault-token file: %w", err)
+			}
+
+			token = string(tokenFromFile)
+		}
 	}
+
+	if token == "" {
+		return nil, fmt.Errorf("no Vault token found in env, helper, or ~/.vault-token")
+	}
+
 	client.SetToken(token)
 
 	if transitSecretEnginePath == "" {
@@ -289,9 +312,24 @@ func (h hashivaultClient) sign(digest []byte, alg crypto.Hash, opts ...signature
 		}
 	}
 
+	prehashed := alg != crypto.Hash(0)
+
+	pub, err := h.public()
+	if err != nil {
+		return nil, fmt.Errorf("determining key type: %w", err)
+	}
+	switch pub.(type) {
+	case ed25519.PublicKey:
+		if alg == crypto.SHA512 {
+			prehashed = true
+			break
+		}
+		prehashed = false
+	}
+
 	signResult, err := client.Write(fmt.Sprintf("/%s/sign/%s%s", h.transitSecretEnginePath, h.keyPath, hashString(alg)), map[string]interface{}{
 		"input":               base64.StdEncoding.Strict().EncodeToString(digest),
-		"prehashed":           alg != crypto.Hash(0),
+		"prehashed":           prehashed,
 		"key_version":         keyVersion,
 		"signature_algorithm": "pkcs1v15",
 	})
@@ -337,10 +375,24 @@ func (h hashivaultClient) verify(sig, digest []byte, alg crypto.Hash, opts ...si
 			}
 		}
 	}
+	prehashed := alg != crypto.Hash(0)
+
+	pub, err := h.public()
+	if err != nil {
+		return fmt.Errorf("determining key type: %w", err)
+	}
+	switch pub.(type) {
+	case ed25519.PublicKey:
+		if alg == crypto.SHA512 {
+			prehashed = true
+			break
+		}
+		prehashed = false
+	}
 
 	result, err := client.Write(fmt.Sprintf("/%s/verify/%s/%s", h.transitSecretEnginePath, h.keyPath, hashString(alg)), map[string]interface{}{
 		"input":     base64.StdEncoding.EncodeToString(digest),
-		"prehashed": alg != crypto.Hash(0),
+		"prehashed": prehashed,
 		"signature": fmt.Sprintf("%s%s", vaultDataPrefix, encodedSig),
 	})
 	if err != nil {

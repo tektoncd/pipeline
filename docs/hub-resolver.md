@@ -14,7 +14,7 @@ Use resolver type `hub`.
 | Param Name       | Description                                                                   | Example Value                                              |
 |------------------|-------------------------------------------------------------------------------|------------------------------------------------------------|
 | `catalog`        | The catalog from where to pull the resource (Optional)                        | Default:  `tekton-catalog-tasks` (for `task` kind);  `tekton-catalog-pipelines` (for `pipeline` kind)                                        |
-| `type`           | The type of Hub from where to pull the resource (Optional). Either `artifact` or `tekton` | Default:  `artifact`                                         |
+| `type`           | The type of Hub from where to pull the resource (Optional). Either `artifact` or `tekton` | Default:  `artifact` (recommended). Note: `tekton` type is deprecated.                                         |
 | `kind`           | Either `task` or `pipeline` (Optional)                                        | Default: `task`                                                     |
 | `name`           | The name of the task or pipeline to fetch from the hub                        | `golang-build`                                             |
 | `version`        | Version or a Constraint (see [below](#version-constraint) of a task or a pipeline to pull in from. Wrap the number in quotes!   | `"0.5.0"`, `">= 0.5.0"`                                                    |
@@ -45,13 +45,12 @@ for the name, namespace and defaults that the resolver ships with.
 | `default-kind`              | The default object kind for references.              | `task`, `pipeline`     |
 | `default-type`              | The default hub from where to pull the resource.     | `artifact`, `tekton`   |
 
-
 ### Configuring the Hub API endpoint
 
 The Hub Resolver supports to resolve resources from the [Artifact Hub](https://artifacthub.io/) and the [Tekton Hub](https://hub.tekton.dev/),
-which can be configured by setting the `type` field of the resolver. 
+which can be configured by setting the `type` field of the resolver.
 
-*(Please note that the [Tekton Hub](https://hub.tekton.dev/) will be deprecated after [migration to the Artifact Hub](https://github.com/tektoncd/hub/issues/667) is done.)*
+** DEPRECATION NOTICE: [Tekton Hub](https://hub.tekton.dev/) is deprecated. Users should migrate to [Artifact Hub](https://artifacthub.io/) for discovering and managing Tekton resources. See the [migration guide](https://github.com/tektoncd/hub/issues/667) for more information.**
 
 When setting the `type` field to `artifact`, the resolver will hit the public hub api at https://artifacthub.io/ by default
 but you can configure your own (for example to use a private hub

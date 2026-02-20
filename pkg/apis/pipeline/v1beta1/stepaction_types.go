@@ -32,6 +32,7 @@ import (
 // The Step can only reference it from the cluster or using remote resolution.
 //
 // +k8s:openapi-gen=true
+// +kubebuilder:storageversion
 type StepAction struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -95,6 +96,9 @@ type StepActionList struct {
 	Items           []StepAction `json:"items"`
 }
 
+// +listType=atomic
+type Args []string
+
 // StepActionSpec contains the actionable components of a step.
 type StepActionSpec struct {
 	// Description is a user-facing description of the stepaction that may be
@@ -125,8 +129,7 @@ type StepActionSpec struct {
 	// of whether the variable exists or not. Cannot be updated.
 	// More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
 	// +optional
-	// +listType=atomic
-	Args []string `json:"args,omitempty" protobuf:"bytes,4,rep,name=args"`
+	Args Args `json:"args,omitempty" protobuf:"bytes,4,rep,name=args"`
 	// List of environment variables to set in the container.
 	// Cannot be updated.
 	// +optional
@@ -148,7 +151,6 @@ type StepActionSpec struct {
 	// Params is a list of input parameters required to run the stepAction.
 	// Params must be supplied as inputs in Steps unless they declare a defaultvalue.
 	// +optional
-	// +listType=atomic
 	Params v1.ParamSpecs `json:"params,omitempty"`
 	// Results are values that this StepAction can output
 	// +optional

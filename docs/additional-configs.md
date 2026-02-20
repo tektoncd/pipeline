@@ -33,6 +33,8 @@ installation.
   - [Pipelinerun with Affinity Assistant](#pipelineruns-with-affinity-assistant)
   - [TaskRuns with `imagePullBackOff` Timeout](#taskruns-with-imagepullbackoff-timeout)
   - [Disabling Inline Spec in TaskRun and PipelineRun](#disabling-inline-spec-in-taskrun-and-pipelinerun)
+  - [Exponential Backoff for TaskRun and CustomRun Creation](#exponential-backoff-for-taskrun-and-customrun-creation)
+  - [Limiting Step reference concurrency resolution](#limiting-step-reference-concurrency-resolution)
   - [Next steps](#next-steps)
 
 
@@ -217,7 +219,7 @@ data:
         memory: "128Mi"
         cpu: "500m"
   
-    default: # updates resource requirements of init-containers and containers which has empty resource resource requirements
+    default: # updates resource requirements of init-containers and containers which has empty resource requirements
       requests:
         memory: "64Mi"
         cpu: "250m"
@@ -243,6 +245,7 @@ The example below customizes the following:
 - the default maximum combinations of `Parameters` in a `Matrix` that can be used to fan out a `PipelineTask`. For
 more information, see [`Matrix`](matrix.md).
 - the default resolver type to `git`.
+- the default polling interval for the sidecar log results container via `default-sidecar-log-polling-interval`.
 
 ```yaml
 apiVersion: v1
@@ -260,7 +263,25 @@ data:
     emptyDir: {}
   default-max-matrix-combinations-count: "1024"
   default-resolver-type: "git"
+  default-sidecar-log-polling-interval: "100ms"
 ```
+
+### `default-sidecar-log-polling-interval`
+
+The `default-sidecar-log-polling-interval` key in the `config-defaults` ConfigMap specifies how frequently the Tekton
+sidecar log results container polls for step completion files written by steps in a TaskRun. Lower values (e.g., `10ms`)
+make the sidecar more responsive but may increase CPU usage; higher values (e.g., `1s`) reduce resource usage but may
+delay result collection. This value is used by the `sidecar-tekton-log-results` container and can be tuned for performance
+or test scenarios.
+
+**Example values:**
+- `100ms` (default)
+- `500ms`
+- `1s`
+- `10ms` (for fast polling in tests)
+
+**Note:** The `default-sidecar-log-polling-interval` setting is only applicable when results are created using the
+[sidecar approach](#enabling-larger-results-using-sidecar-logs).
 
 **Note:** The `_example` key in the provided [config-defaults.yaml](./../config/config-defaults.yaml)
 file lists the keys you can customize along with their default values.
@@ -274,21 +295,6 @@ To customize the behavior of the Pipelines Controller, modify the ConfigMap `fea
 that are running while the change occurs.
 
 The flags in this ConfigMap are as follows:
-
-- `disable-affinity-assistant` - set this flag to `true` to disable the [Affinity Assistant](./affinityassistants)
-  that is used to provide Node Affinity for `TaskRun` pods that share workspace volume.
-  The Affinity Assistant is incompatible with other affinity rules
-  configured for `TaskRun` pods.
-
-  **Note:** This feature flag is deprecated and will be removed in release `v0.60`. Consider using `coschedule` feature flag to configure Affinity Assistant behavior.
-
-  **Note:** Affinity Assistant use [Inter-pod affinity and anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity)
-  that require substantial amount of processing which can slow down scheduling in large clusters
-  significantly. We do not recommend using them in clusters larger than several hundred nodes
-
-  **Note:** Pod anti-affinity requires nodes to be consistently labelled, in other words every
-  node in the cluster must have an appropriate label matching `topologyKey`. If some or all nodes
-  are missing the specified `topologyKey` label, it can lead to unintended behavior.
 
 - `coschedule`: set this flag determines how PipelineRun Pods are scheduled with [Affinity Assistant](./affinityassistants).
 Acceptable values are "workspaces" (default), "pipelineruns", "isolate-pipelinerun", or "disabled".
@@ -406,7 +412,6 @@ Features currently in "beta" are:
 | [Isolated `Step` & `Sidecar` `Workspaces`](./workspaces.md#isolated-workspaces)                       | [TEP-0029](https://github.com/tektoncd/community/blob/main/teps/0029-step-workspaces.md)                 | [v0.24.0](https://github.com/tektoncd/pipeline/releases/tag/v0.24.0) | [v0.50.0](https://github.com/tektoncd/pipeline/releases/tag/v0.50.0) |                               |
 | [Matrix](./matrix.md)                                                                                 | [TEP-0090](https://github.com/tektoncd/community/blob/main/teps/0090-matrix.md)                          | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) | [v0.53.0](https://github.com/tektoncd/pipeline/releases/tag/v0.53.0) |                               |
 | [Task-level Resource Requirements](compute-resources.md#task-level-compute-resources-configuration)   | [TEP-0104](https://github.com/tektoncd/community/blob/main/teps/0104-tasklevel-resource-requirements.md) | [v0.39.0](https://github.com/tektoncd/pipeline/releases/tag/v0.39.0) | [v0.53.0](https://github.com/tektoncd/pipeline/releases/tag/v0.53.0) |                               |
-| [Reusable Steps via StepActions](./stepactions.md)                                                           | [TEP-0142](https://github.com/tektoncd/community/blob/main/teps/0142-enable-step-reusability.md)                     | [v0.54.0](https://github.com/tektoncd/pipeline/releases/tag/v0.54.0) | `enable-step-actions`                            |
 | [Larger Results via Sidecar Logs](#enabling-larger-results-using-sidecar-logs)                               | [TEP-0127](https://github.com/tektoncd/community/blob/main/teps/0127-larger-results-via-sidecar-logs.md)             | [v0.43.0](https://github.com/tektoncd/pipeline/releases/tag/v0.43.0) | [v0.61.0](https://github.com/tektoncd/pipeline/releases/tag/v0.61.0) | `results-from`                                   |
 | [Step and Sidecar Overrides](./taskruns.md#overriding-task-steps-and-sidecars)                               | [TEP-0094](https://github.com/tektoncd/community/blob/main/teps/0094-specifying-resource-requirements-at-runtime.md) | [v0.34.0](https://github.com/tektoncd/pipeline/releases/tag/v0.34.0) |                                                  | [v0.61.0](https://github.com/tektoncd/pipeline/releases/tag/v0.61.0)  | |
 | [Ignore Task Failure](./pipelines.md#using-the-onerror-field)                                                | [TEP-0050](https://github.com/tektoncd/community/blob/main/teps/0050-ignore-task-failures.md)                        |    [v0.55.0](https://github.com/tektoncd/pipeline/releases/tag/v0.55.0)                                                              | [v0.62.0](https://github.com/tektoncd/pipeline/releases/tag/v0.62.0)                                                 | N/A |
@@ -414,7 +419,7 @@ Features currently in "beta" are:
 ## Enabling larger results using sidecar logs
 
 **Note**: The maximum size of a Task's results is limited by the container termination message feature of Kubernetes,
-as results are passed back to the controller via this mechanism. At present, the limit is per task is “4096 bytes”. All
+as results are passed back to the controller via this mechanism. At present, the limit is per task is "4096 bytes". All
 results produced by the task share this upper limit.
 
 To exceed this limit of 4096 bytes, you can enable larger results using sidecar logs. By enabling this feature, you will
@@ -481,7 +486,6 @@ The controller and webhook components are currently built for:
 
 - linux/amd64
 - linux/arm64
-- linux/arm (Arm v7)
 - linux/ppc64le (PowerPC)
 - linux/s390x (IBM Z)
 
@@ -727,6 +731,86 @@ data:
 Inline specifications can be disabled for specific resources only. To achieve that, set the disable-inline-spec flag to a comma-separated list of the desired resources. Valid values are pipeline, pipelinerun and taskrun.
 
 The default value of disable-inline-spec is "", which means inline specification is enabled in all cases.
+
+## Exponential Backoff for TaskRun and CustomRun Creation
+
+By default, when Tekton Pipelines attempts to create a TaskRun or CustomRun resource and encounters an error, the controller will requeue the PipelineRun for another reconciliation attempt after a short delay. However, this may not be sufficient in a heavily loaded or busy cluster, where transient errors such as webhook timeouts or network issues are more likely to occur.
+
+To improve robustness in environments where webhook timeouts or network errors are possible, you can enable an **exponential backoff retry strategy** for TaskRun and CustomRun creation by setting the `enable-wait-exponential-backoff` feature flag to `"true"` in the `feature-flags` ConfigMap:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags
+  namespace: tekton-pipelines
+data:
+  enable-wait-exponential-backoff: "true"
+```
+
+When this flag is enabled, the controller will retry TaskRun and CustomRun creation using an exponential backoff strategy if it encounters admission webhook timeouts (e.g., `"timeout"`).
+
+This helps mitigate failures due to temporary unavailability of webhooks or network disruptions.
+
+### Backoff Configuration
+
+You can further customize the backoff parameters (such as initial duration, factor, steps, and cap) using the `wait-exponential-backoff` ConfigMap:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wait-exponential-backoff
+  namespace: tekton-pipelines
+data:
+  duration: "1s"
+  factor: "2.0"
+  jitter: "0.0"
+  steps: "10"
+  cap: "30s"
+```
+
+- **duration**: Initial wait time before the first retry.
+- **factor**: Multiplier for each subsequent retry interval.
+- **steps**: Maximum number of retry attempts.
+- **cap**: Maximum wait time between retries.
+
+### Default Behavior
+
+If `enable-wait-exponential-backoff` is not set or is set to `"false"`, the controller will rely on its standard reconcilation loop to retry TaskRun or CustomRun creation after a short delay when failures occur due to webhook or network errors.
+
+---
+
+**Note:** This feature is especially useful in clusters where webhook services (such as Kyverno, OPA, or custom admission controllers) may be temporarily unavailable or slow to respond.
+
+## Limiting Step reference concurrency resolution
+
+You can control the maximum number of concurrent goroutines that the Tekton controller uses to resolve steps referencing a `StepAction` via the `step.ref` field.
+
+When a `TaskRun` is processed, any step that uses a `ref` to a remote `StepAction` (e.g., one stored in a git repository or an OCI registry) triggers a fetch request. If a `Task` contains many such steps, the controller will attempt to resolve them all in parallel. This can lead to a "thundering herd" problem, potentially overwhelming remote servers, hitting API rate limits, saturating network resources, or placing excessive load on the Kubernetes API server and the Tekton controller itself.
+
+To mitigate this, Tekton Pipelines includes a configurable concurrency limit. By default, a sensible limit is already in place to ensure stability.
+
+#### Default Behavior
+
+If the `default-step-ref-concurrency-limit` key is not set in the `config-defaults` ConfigMap, Tekton Pipelines defaults to a concurrency limit of **5**. This provides a safe, built-in throttle without requiring any initial configuration.
+
+#### Overriding the Default
+
+You can override this default to better suit your environment's capacity (e.g., a high-capacity, self-hosted git server might allow for a higher limit). To change the limit, set the `default-step-ref-concurrency-limit` key in your `config-defaults` `ConfigMap`.
+
+**Example**: To increase the concurrency limit to 20:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-step-ref-concurrency-limit: "20"
+```
+
+---
 
 ## Next steps
 

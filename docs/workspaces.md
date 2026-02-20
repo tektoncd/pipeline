@@ -486,7 +486,7 @@ Using a `configMap` as a `Workspace` has the following limitations:
 ```yaml
 workspaces:
   - name: myworkspace
-    configmap:
+    configMap:
       name: my-configmap
 ```
 
@@ -509,7 +509,6 @@ workspaces:
 ##### `projected`
 
 The `projected` field references a [`projected` volume](https://kubernetes.io/docs/concepts/storage/projected-volumes).
-`projected` volume workspaces are a [beta feature](./additional-configs.md#beta-features).
 Using a `projected` volume has the following limitations:
 
 - `projected` volume sources are always mounted as read-only. `Steps` cannot write to them and will error out if they try.
@@ -530,7 +529,6 @@ workspaces:
 ##### `csi`
 
 The `csi` field references a [`csi` volume](https://kubernetes.io/docs/concepts/storage/volumes/#csi).
-`csi` workspaces are a [beta feature](./additional-configs.md#beta-features).
 Using a `csi` volume has the following limitations:
 <!-- wokeignore:rule=master --> 
 - `csi` volume sources require a volume driver to use, which must correspond to the value by the CSI driver as defined in the [CSI spec](https://github.com/container-storage-interface/spec/blob/master/spec.md#getplugininfo).

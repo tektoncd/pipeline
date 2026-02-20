@@ -98,7 +98,7 @@ func generateSecret(host string, username string, password string) *corev1.Secre
 }
 
 func TestGetImageWithImagePullSecrets(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

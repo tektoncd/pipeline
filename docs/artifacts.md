@@ -106,54 +106,6 @@ spec:
           EOF
 ```
 
-The content is written by the `Step` to a file `$(artifacts.path)`:
-
-```yaml
-apiVersion: tekton.dev/v1
-kind: TaskRun
-metadata:
-  generateName: step-artifacts-
-spec:
-  taskSpec:
-    description: |
-      A simple task that populates artifacts to TaskRun stepState
-    steps:
-      - name: artifacts-producer
-        image: bash:latest
-        script: |
-          cat > $(artifacts.path) << EOF
-          {
-            "inputs":[
-              {
-                "name":"source",
-                "values":[
-                  {
-                    "uri":"pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c",
-                    "digest":{
-                      "sha256":"b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"
-                    }
-                  }
-                ]
-              }
-            ],
-            "outputs":[
-              {
-                "name":"image",
-                "values":[
-                  {
-                    "uri":"pkg:oci/nginx:stable-alpine3.17-slim?repository_url=docker.io/library",
-                    "digest":{
-                      "sha256":"df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48",
-                      "sha1":"95588b8f34c31eb7d62c92aaa4e6506639b06ef2"
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-          EOF
-```
-
 It is recommended to use [purl format](https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst) for artifacts uri as shown in the example. 
 
 ### Output Artifacts in SLSA Provenance
@@ -499,29 +451,28 @@ Upon resolution and execution of the `TaskRun`, the `Status` will look something
     "podName": "pipelinerun-consume-tasks-a41ee44e4f964e95adfd3aea417d52f90-pod",
     "provenance": {
       "featureFlags": {
-        "AwaitSidecarReadiness": true,
-        "Coschedule": "workspaces",
-        "DisableAffinityAssistant": false,
-        "DisableCredsInit": false,
-        "DisableInlineSpec": "",
-        "EnableAPIFields": "beta",
-        "EnableArtifacts": true,
-        "EnableCELInWhenExpression": false,
-        "EnableConciseResolverSyntax": false,
-        "EnableKeepPodOnCancel": false,
-        "EnableParamEnum": false,
-        "EnableProvenanceInStatus": true,
-        "EnableStepActions": true,
-        "EnableTektonOCIBundles": false,
-        "EnforceNonfalsifiability": "none",
-        "MaxResultSize": 4096,
-        "RequireGitSSHSecretKnownHosts": false,
-        "ResultExtractionMethod": "termination-message",
-        "RunningInEnvWithInjectedSidecars": true,
-        "ScopeWhenExpressionsToTask": false,
-        "SendCloudEventsForRuns": false,
-        "SetSecurityContext": false,
-        "VerificationNoMatchPolicy": "ignore"
+        "awaitSidecarReadiness": true,
+        "coschedule": "workspaces",
+        "disableCredsInit": false,
+        "disableInlineSpec": "",
+        "enableAPIFields": "beta",
+        "enableArtifacts": true,
+        "enableCELInWhenExpression": false,
+        "enableConciseResolverSyntax": false,
+        "enableKeepPodOnCancel": false,
+        "enableParamEnum": false,
+        "enableProvenanceInStatus": true,
+        "enableStepActions": true,
+        "enableTektonOCIBundles": false,
+        "enforceNonfalsifiability": "none",
+        "maxResultSize": 4096,
+        "requireGitSSHSecretKnownHosts": false,
+        "resultExtractionMethod": "termination-message",
+        "runningInEnvWithInjectedSidecars": true,
+        "scopeWhenExpressionsToTask": false,
+        "sendCloudEventsForRuns": false,
+        "setSecurityContext": false,
+        "verificationNoMatchPolicy": "ignore"
       }
     },
     "startTime": "2024-05-28T14:10:48Z",

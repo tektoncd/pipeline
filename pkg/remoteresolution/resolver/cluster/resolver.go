@@ -18,79 +18,86 @@ package cluster
 
 import (
 	"context"
-	"errors"
 
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
-	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
+	clusterresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
 
 const (
 	// LabelValueClusterResolverType is the value to use for the
 	// resolution.tekton.dev/type label on resource requests
-	LabelValueClusterResolverType string = "cluster"
+	LabelValueClusterResolverType = "cluster"
 
 	// ClusterResolverName is the name that the cluster resolver should be
 	// associated with
-	ClusterResolverName string = "Cluster"
-
-	configMapName = "cluster-resolver-config"
+	ClusterResolverName = "Cluster"
 )
 
-var _ framework.Resolver = &Resolver{}
+var _ framework.Resolver = (*Resolver)(nil)
+var _ resolutionframework.ConfigWatcher = (*Resolver)(nil)
+var _ cache.ImmutabilityChecker = (*Resolver)(nil)
 
-// ResolverV2 implements a framework.Resolver that can fetch resources from other namespaces.
+// Resolver implements a framework.Resolver that can fetch resources from the same cluster.
 type Resolver struct {
-	pipelineClientSet clientset.Interface
+	pipelineClientSet versioned.Interface
 }
 
-// Initialize performs any setup required by the cluster resolver.
+// Initialize sets up any dependencies needed by the Resolver.
 func (r *Resolver) Initialize(ctx context.Context) error {
 	r.pipelineClientSet = pipelineclient.Get(ctx)
 	return nil
 }
 
-// GetName returns the string name that the cluster resolver should be
-// associated with.
+// GetName returns a string name to refer to this Resolver by.
 func (r *Resolver) GetName(_ context.Context) string {
 	return ClusterResolverName
 }
 
-// GetSelector returns the labels that resource requests are required to have for
-// the cluster resolver to process them.
+// GetSelector returns a map of labels to match against tasks requesting
+// resolution from this Resolver.
 func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 	return map[string]string{
 		resolutioncommon.LabelKeyResolverType: LabelValueClusterResolverType,
 	}
 }
 
-// Validate returns an error if the given parameter map is not
-// valid for a resource request targeting the cluster resolver.
-func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestSpec) error {
-	if len(req.Params) > 0 {
-		return cluster.ValidateParams(ctx, req.Params)
-	}
-	// Remove this error once validate url has been implemented.
-	return errors.New("cannot validate request. the Validate method has not been implemented.")
-}
-
-// Resolve performs the work of fetching a resource from a namespace with the given
-// resolution spec.
-func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
-	if len(req.Params) > 0 {
-		return cluster.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
-	}
-	// Remove this error once resolution of url has been implemented.
-	return nil, errors.New("the Resolve method has not been implemented.")
-}
-
-var _ resolutionframework.ConfigWatcher = &Resolver{}
-
 // GetConfigName returns the name of the cluster resolver's configmap.
-func (r *Resolver) GetConfigName(context.Context) string {
-	return configMapName
+func (r *Resolver) GetConfigName(_ context.Context) string {
+	return clusterresolution.ConfigMapName
+}
+
+// Validate ensures parameters from a request are as expected.
+func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestSpec) error {
+	return clusterresolution.ValidateParams(ctx, req.Params)
+}
+
+// IsImmutable implements ImmutabilityChecker.IsImmutable
+// Returns false because cluster resources don't have immutable references
+func (r *Resolver) IsImmutable([]v1.Param) bool {
+	// Cluster resources (Tasks, Pipelines, etc.) don't have immutable references
+	// like Git commit hashes or bundle digests, so we always return false
+	return false
+}
+
+// Resolve uses the given params to resolve the requested file or resource.
+func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
+	if cache.ShouldUse(ctx, r, req.Params, LabelValueClusterResolverType) {
+		return cache.GetFromCacheOrResolve(
+			ctx,
+			req.Params,
+			LabelValueClusterResolverType,
+			func() (resolutionframework.ResolvedResource, error) {
+				return clusterresolution.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
+			},
+		)
+	}
+
+	return clusterresolution.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
 }

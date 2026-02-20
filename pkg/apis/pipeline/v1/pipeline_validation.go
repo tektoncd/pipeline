@@ -188,18 +188,9 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	taskKinds := map[TaskKind]bool{
 		"":                 true,
 		NamespacedTaskKind: true,
-		ClusterTaskRefKind: true,
 	}
 
-	if pt.OnError != "" {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "OnError", config.BetaAPIFields))
-		if pt.OnError != PipelineTaskContinue && pt.OnError != PipelineTaskStopAndFail {
-			errs = errs.Also(apis.ErrInvalidValue(pt.OnError, "OnError", "PipelineTask OnError must be either \"continue\" or \"stopAndFail\""))
-		}
-		if pt.OnError == PipelineTaskContinue && pt.Retries > 0 {
-			errs = errs.Also(apis.ErrGeneric("PipelineTask OnError cannot be set to \"continue\" when Retries is greater than 0"))
-		}
-	}
+	errs = errs.Also(pt.ValidateOnError(ctx))
 
 	// Pipeline task having taskRef/taskSpec with APIVersion is classified as custom task
 	switch {
@@ -213,6 +204,20 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(pt.validateCustomTask())
 	default:
 		errs = errs.Also(pt.validateTask(ctx))
+	}
+	return errs
+}
+
+// ValidateOnError validates the OnError field of a PipelineTask
+func (pt PipelineTask) ValidateOnError(ctx context.Context) (errs *apis.FieldError) {
+	if pt.OnError != "" && !isParamRefs(string(pt.OnError)) {
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "OnError", config.BetaAPIFields))
+		if pt.OnError != PipelineTaskContinue && pt.OnError != PipelineTaskStopAndFail {
+			errs = errs.Also(apis.ErrInvalidValue(pt.OnError, "OnError", "PipelineTask OnError must be either \"continue\" or \"stopAndFail\""))
+		}
+		if pt.OnError == PipelineTaskContinue && pt.Retries > 0 {
+			errs = errs.Also(apis.ErrGeneric("PipelineTask OnError cannot be set to \"continue\" when Retries is greater than 0"))
+		}
 	}
 	return errs
 }
@@ -331,6 +336,19 @@ func (pt PipelineTask) validateRefOrSpec(ctx context.Context) (errs *apis.FieldE
 	return errs
 }
 
+// isValidAPIVersion validates the format of an apiVersion string.
+// Valid formats are "group/version" where both group and version are non-empty.
+// For custom tasks, apiVersion must always be in the "group/version" format.
+func isValidAPIVersion(apiVersion string) bool {
+	parts := strings.Split(apiVersion, "/")
+	if len(parts) != 2 {
+		return false
+	}
+	group := parts[0]
+	version := parts[1]
+	return group != "" && version != ""
+}
+
 // validateCustomTask validates custom task specifications - checking kind and fail if not yet supported features specified
 func (pt PipelineTask) validateCustomTask() (errs *apis.FieldError) {
 	if pt.TaskRef != nil && pt.TaskRef.Kind == "" {
@@ -339,10 +357,19 @@ func (pt PipelineTask) validateCustomTask() (errs *apis.FieldError) {
 	if pt.TaskSpec != nil && pt.TaskSpec.Kind == "" {
 		errs = errs.Also(apis.ErrInvalidValue("custom task spec must specify kind", "taskSpec.kind"))
 	}
-	if pt.TaskRef != nil && pt.TaskRef.APIVersion == "" {
+	// Validate apiVersion format for custom tasks
+	if pt.TaskRef != nil && pt.TaskRef.APIVersion != "" {
+		if !isValidAPIVersion(pt.TaskRef.APIVersion) {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid apiVersion format %q, must be in the format \"group/version\"", pt.TaskRef.APIVersion), "taskRef.apiVersion"))
+		}
+	} else if pt.TaskRef != nil {
 		errs = errs.Also(apis.ErrInvalidValue("custom task ref must specify apiVersion", "taskRef.apiVersion"))
 	}
-	if pt.TaskSpec != nil && pt.TaskSpec.APIVersion == "" {
+	if pt.TaskSpec != nil && pt.TaskSpec.APIVersion != "" {
+		if !isValidAPIVersion(pt.TaskSpec.APIVersion) {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid apiVersion format %q, must be in the format \"group/version\"", pt.TaskSpec.APIVersion), "taskSpec.apiVersion"))
+		}
+	} else if pt.TaskSpec != nil {
 		errs = errs.Also(apis.ErrInvalidValue("custom task spec must specify apiVersion", "taskSpec.apiVersion"))
 	}
 	return errs
