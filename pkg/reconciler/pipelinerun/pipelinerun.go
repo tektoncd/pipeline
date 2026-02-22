@@ -26,6 +26,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -1172,6 +1173,8 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 
 	if rpt.PipelineTask.Timeout != nil {
 		tr.Spec.Timeout = rpt.PipelineTask.Timeout
+	} else if timeout := pipelineRunTimeout(ctx, pr, rpt, facts); timeout != nil {
+		tr.Spec.Timeout = timeout
 	}
 
 	// taskRunSpec timeout overrides pipeline task timeout
@@ -1280,6 +1283,9 @@ func (c *Reconciler) createCustomRun(ctx context.Context, runName string, params
 	params = append(params, rpt.PipelineTask.Params...)
 
 	taskTimeout := rpt.PipelineTask.Timeout
+	if taskTimeout == nil {
+		taskTimeout = pipelineRunTimeout(ctx, pr, rpt, facts)
+	}
 	// taskRunSpec timeout overrides pipeline task timeout
 	if taskRunSpec.Timeout != nil {
 		taskTimeout = taskRunSpec.Timeout
@@ -1510,6 +1516,33 @@ func (c *Reconciler) taskWorkspaceByWorkspaceVolumeSource(ctx context.Context, p
 	}
 
 	return binding
+}
+
+// pipelineRunTimeout returns the applicable PipelineRun-level timeout for a task,
+// based on whether it is a regular task or a finally task.
+// It only returns a value when the PipelineRun timeout exceeds the global default
+// (or is explicitly zero, meaning no timeout)
+func pipelineRunTimeout(ctx context.Context, pr *v1.PipelineRun, rpt *resources.ResolvedPipelineTask, facts *resources.PipelineRunFacts) *metav1.Duration {
+	var prTimeout *metav1.Duration
+	if facts.FinalTasksGraph != nil && rpt.IsFinalTask(facts) {
+		prTimeout = pr.FinallyTimeout()
+	} else {
+		prTimeout = pr.TasksTimeout()
+	}
+
+	if prTimeout == nil {
+		return nil
+	}
+
+	if prTimeout.Duration == config.NoTimeoutDuration {
+		return prTimeout
+	}
+
+	defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute
+	if prTimeout.Duration > defaultTimeout {
+		return prTimeout
+	}
+	return nil
 }
 
 // combinedSubPath returns the combined value of the optional subPath from workspaceBinding and the optional

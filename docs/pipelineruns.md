@@ -1398,10 +1398,15 @@ or `finally` Tasks, and the PipelineRun will fail.
 To specify a timeout for an individual Task, use `pipeline.spec.tasks[].timeout`.
 When `timeouts.tasks` has elapsed, any running child TaskRuns will be canceled, finally Tasks will run if `timeouts.finally` is specified,
 and the PipelineRun will fail.
+When `timeouts.tasks` exceeds the global default timeout, it is also used as the individual TaskRun timeout
+for tasks that do not have an explicit timeout set via `pipeline.spec.tasks[].timeout` or `taskRunSpecs[].timeout`.
+This prevents individual TaskRuns from being prematurely canceled at the global default timeout.
 - `finally`: the timeout for the cumulative time taken by `finally` Tasks specified in `pipeline.spec.finally`.
 (Since all `finally` Tasks run in parallel, this is functionally equivalent to the timeout for any `finally` Task.)
 When `timeouts.finally` has elapsed, any running `finally` TaskRuns will be canceled,
 and the PipelineRun will fail.
+Similar to `timeouts.tasks`, when `timeouts.finally` exceeds the global default timeout,
+it is used as the individual timeout for `finally` TaskRuns that do not have an explicit timeout.
 
 For example:
 
