@@ -35,6 +35,7 @@ installation.
   - [Disabling Inline Spec in TaskRun and PipelineRun](#disabling-inline-spec-in-taskrun-and-pipelinerun)
   - [Exponential Backoff for TaskRun and CustomRun Creation](#exponential-backoff-for-taskrun-and-customrun-creation)
   - [Limiting Step reference concurrency resolution](#limiting-step-reference-concurrency-resolution)
+  - [Injecting Trusted CA Certificates into TaskRun Pods](#injecting-trusted-ca-certificates-into-taskrun-pods)
   - [Next steps](#next-steps)
 
 
@@ -166,6 +167,30 @@ spec:
 
 _In the above example the environment variable `TEST_TEKTON` will not be overriden by value specified in podTemplate, because the `config-default` option `default-forbidden-env` is configured with value `TEST_TEKTON`._
 
+## Configuring proxy environment variables
+
+Set `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` via `podTemplate.Env` to propagate
+proxy settings to all steps and sidecars. To apply them cluster-wide, use
+`default-pod-template` in `config-defaults`:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-pod-template: |
+    env:
+      - name: HTTP_PROXY
+        value: "http://proxy.example.com:3128"
+      - name: HTTPS_PROXY
+        value: "http://proxy.example.com:3128"
+      - name: NO_PROXY
+        value: "localhost,127.0.0.1,.cluster.local"
+```
+
+To override per TaskRun, set `podTemplate.Env` directly on the `TaskRun`.
 
 ## Configuring default resources requirements
 
@@ -809,6 +834,98 @@ metadata:
 data:
   default-step-ref-concurrency-limit: "20"
 ```
+
+---
+
+## Injecting Trusted CA Certificates into TaskRun Pods
+
+By default, Tekton TaskRun pods trust only the CA certificates shipped with the container
+image. In environments that use private or self-signed certificate authorities (e.g., an
+internal container registry, a private Git server, or a corporate proxy), steps may fail
+with TLS verification errors.
+
+The `enable-trusted-ca-certs` feature flag lets you inject a custom CA bundle into every
+TaskRun pod automatically, without modifying individual Task definitions.
+
+### How It Works
+
+When `enable-trusted-ca-certs` is `"true"`, the Pipeline controller:
+
+1. Mounts the CA cert ConfigMap as a volume at `/tekton/certs` in every TaskRun pod.
+2. Sets `SSL_CERT_FILE=/tekton/certs/ca-bundle.crt` in each step and sidecar container.
+
+> **Note:** `SSL_CERT_FILE` is respected by OpenSSL-based tools (Go, curl, git, OpenSSL).
+> Not all runtimes use it — see [below](#runtimes-that-dont-respect-ssl_cert_file).
+> Programs that scan `/etc/ssl/certs` directly won't see the injected CA. If you need
+> both system and custom CAs, concatenate them in the ConfigMap value.
+
+### Step 1: Create the CA Cert ConfigMap
+
+Create a ConfigMap named `config-ca-cert` (or a custom name; see below) in **each
+namespace where TaskRuns execute**. The ConfigMap must contain a key named
+`ca-bundle.crt` with one or more PEM-encoded CA certificates:
+
+```bash
+kubectl create configmap config-ca-cert \
+  --from-file=ca-bundle.crt=/path/to/your/ca-bundle.pem \
+  -n <taskrun-namespace>
+```
+
+Or declaratively:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-ca-cert
+  namespace: <taskrun-namespace>
+data:
+  ca-bundle.crt: |
+    -----BEGIN CERTIFICATE-----
+    <your PEM-encoded CA certificate>
+    -----END CERTIFICATE-----
+```
+
+> **Important:** The ConfigMap must exist in every namespace where TaskRuns run.
+> If the ConfigMap is missing, TaskRun pods will remain `Pending` with a `FailedMount` event.
+
+### Step 2: Enable the Feature Flag
+
+Set `enable-trusted-ca-certs` to `"true"` in the `feature-flags` ConfigMap:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags
+  namespace: tekton-pipelines
+data:
+  enable-trusted-ca-certs: "true"
+```
+
+### Step 3 (Optional): Customize the ConfigMap Name
+
+If you prefer a different ConfigMap name, set `trusted-ca-cert-configmap-name`:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags
+  namespace: tekton-pipelines
+data:
+  enable-trusted-ca-certs: "true"
+  trusted-ca-cert-configmap-name: "my-custom-ca-certs"
+```
+
+The default name is `config-ca-cert`.
+
+### Runtimes that don't respect `SSL_CERT_FILE`
+
+`SSL_CERT_FILE` is respected by OpenSSL-based TLS stacks (Go, curl, git, OpenSSL).
+Some runtimes (e.g., Node.js, Python, Java) use their own CA configuration.
+Use `podTemplate.Env` to set runtime-specific variables — refer to your
+runtime's documentation for details.
 
 ---
 
