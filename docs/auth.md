@@ -32,6 +32,7 @@ on the ServiceAccount for that. See the Kubernetes documentation:
   - [Configuring `basic-auth` authentication for Git](#configuring-basic-auth-authentication-for-git)
   - [Configuring `ssh-auth` authentication for Git](#configuring-ssh-auth-authentication-for-git)
   - [Using a custom port for SSH authentication](#using-a-custom-port-for-ssh-authentication)
+  - [Using multiple SSH credentials for different repositories on the same host](#using-multiple-ssh-credentials-for-different-repositories-on-the-same-host)
   - [Using SSH authentication in `git` type `Tasks`](#using-ssh-authentication-in-git-type-tasks)
 - [Configuring authentication for Docker](#configuring-authentication-for-docker)
   - [Configuring `basic-auth` authentication for Docker](#configuring-basic-auth-authentication-for-docker)
@@ -410,6 +411,94 @@ stringData:
   known_hosts: <known-hosts>
 ```
 
+#### Using multiple SSH credentials for different repositories on the same host
+
+When you need to access multiple repositories on the same Git server (e.g., `github.com/org/repo1` and `github.com/org/repo2`) with different SSH keys, you must include the repository path in the annotation URL:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: repo1-ssh-key
+  annotations:
+    tekton.dev/git-0: github.com/org/repo1  # Full path including repo
+type: kubernetes.io/ssh-auth
+stringData:
+  ssh-privatekey: <repo1-private-key>
+  known_hosts: <known-hosts>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: repo2-ssh-key
+  annotations:
+    tekton.dev/git-0: github.com/org/repo2  # Full path including repo
+type: kubernetes.io/ssh-auth
+stringData:
+  ssh-privatekey: <repo2-private-key>
+  known_hosts: <known-hosts>
+```
+
+When the annotation URL includes a path (e.g., `github.com/org/repo1`), Tekton creates an SSH `Host` alias in `~/.ssh/config` and adds `insteadOf` URL rewriting rules in `~/.gitconfig`. This ensures Git redirects the repository URL through the alias, selecting the correct SSH key.
+
+**Why host-only annotations don't work for this case:**
+
+Using the same host-only annotation (e.g., `tekton.dev/git-0: github.com`) for multiple secrets
+with different SSH keys will **fail**. In this configuration, all keys are listed under a single
+`Host github.com` block, and SSH tries them in order. Git hosting services like GitHub authenticate
+the *first valid key* and then check repository access. If the first key authenticates successfully
+but does not have access to the target repository, the server rejects with "Repository not found"
+instead of allowing SSH to try the next key. This means only the first repository will clone
+successfully, and subsequent repositories using different deploy keys will fail.
+
+To avoid this, include the repository path in the annotation URL for each secret. This instructs
+Tekton to create separate SSH Host aliases and Git URL rewriting rules, ensuring each repository
+uses its dedicated SSH key directly without relying on key ordering.
+
+You can also mix repo-specific credentials (with path) and host-wide credentials (without path). The host-wide credential will be used as a fallback for any repository on that host that doesn't have a specific SSH key:
+
+```yaml
+# Repo-specific SSH key for a private repository
+apiVersion: v1
+kind: Secret
+metadata:
+  name: private-repo-ssh-key
+  annotations:
+    tekton.dev/git-0: github.com/secret-org/private-repo
+type: kubernetes.io/ssh-auth
+stringData:
+  ssh-privatekey: <private-repo-key>
+  known_hosts: <known-hosts>
+---
+# Host-wide SSH key for all other repositories on github.com
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-default-ssh-key
+  annotations:
+    tekton.dev/git-0: github.com  # No path = works for all repos
+type: kubernetes.io/ssh-auth
+stringData:
+  ssh-privatekey: <default-key>
+  known_hosts: <known-hosts>
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: build-bot
+secrets:
+  - name: private-repo-ssh-key
+  - name: github-default-ssh-key
+```
+
+**How it works:**
+- When cloning `github.com/secret-org/private-repo`, Git rewrites the URL to use the repo-specific SSH Host alias and uses the dedicated SSH key
+- When cloning any other repository on `github.com`, Git uses the host-wide SSH key as a fallback
+
+**Note:** The order of secrets in the ServiceAccount does not affect credential matching. Tekton automatically orders SSH config entries so that host-wide credentials appear first (as fallbacks) and repo-specific credentials appear after.
+
+For a complete example, see [`git-ssh-auth-multiple-repos.yaml`](../examples/v1/taskruns/no-ci/git-ssh-auth-multiple-repos.yaml).
+
 ### Using SSH authentication in `git` type `Tasks`
 
 You can use SSH authentication as described earlier in this document when invoking `git` commands
@@ -660,6 +749,39 @@ Host url2.com
 {contents of known_hosts2}
 ...
 ```
+
+**Note:** If the annotation URL includes a path (e.g., `github.com/org/repo`), Tekton creates SSH Host aliases and Git URL rewriting rules:
+
+```
+=== ~/.ssh/config ===
+Host github.com
+    HostName github.com
+    Port 22
+    IdentityFile ~/.ssh/id_host_wide_key
+Host github.com-org-repo1
+    HostName github.com
+    Port 22
+    IdentityFile ~/.ssh/id_repo1_key
+Host github.com-org-repo2
+    HostName github.com
+    Port 22
+    IdentityFile ~/.ssh/id_repo2_key
+...
+=== ~/.gitconfig (appended) ===
+[url "git@github.com-org-repo1:org/repo1"]
+    insteadOf = git@github.com:org/repo1
+[url "ssh://github.com-org-repo1/org/repo1"]
+    insteadOf = ssh://github.com/org/repo1
+[url "git@github.com-org-repo2:org/repo2"]
+    insteadOf = git@github.com:org/repo2
+[url "ssh://github.com-org-repo2/org/repo2"]
+    insteadOf = ssh://github.com/org/repo2
+...
+```
+
+This enables Git to redirect repository-specific SSH URLs through a Host alias that maps to the correct SSH key, while host-wide credentials serve as fallbacks.
+
+**SSH config ordering:** Host-wide entries (without path) are always placed before repo-specific entries (with path) to ensure proper fallback behavior. The order of secrets in the ServiceAccount does not affect this.
 
 ### `basic-auth` for Docker
 
