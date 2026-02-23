@@ -64,6 +64,11 @@ const (
 	// SpiffeCsiDriver is the CSI storage plugin needed for injection of SPIFFE workload api.
 	SpiffeCsiDriver = "csi.spiffe.io"
 
+	trustedCACertsVolumeName = "ca-certs"
+	trustedCACertsMountPath  = "/tekton/certs"
+	trustedCACertsBundlePath = "/tekton/certs/ca-bundle.crt"
+	sslCertFileEnvName       = "SSL_CERT_FILE"
+
 	// OsSelectorLabel is the label Kubernetes uses for OS-specific workloads (https://kubernetes.io/docs/reference/labels-annotations-taints/#kubernetes-io-os)
 	OsSelectorLabel = "kubernetes.io/os"
 
@@ -422,6 +427,13 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		}
 	}
 
+	// Inject trusted CA certs into step and sidecar containers. Init containers
+	// (prepare, place-scripts, working-dir-initializer) perform local filesystem
+	// ops and make no TLS calls, so they are skipped.
+	if featureFlags.EnableTrustedCACerts && !windows {
+		volumes, stepContainers, sidecarContainers = injectTrustedCACerts(featureFlags.TrustedCACertConfigMapName, volumes, stepContainers, sidecarContainers)
+	}
+
 	mergedPodContainers := stepContainers
 	mergedPodInitContainers := initContainers
 
@@ -548,6 +560,40 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	}
 
 	return newPod, nil
+}
+
+func injectTrustedCACerts(configMapName string, volumes []corev1.Volume, steps, sidecars []corev1.Container) ([]corev1.Volume, []corev1.Container, []corev1.Container) {
+	volumes = append(volumes, corev1.Volume{
+		Name: trustedCACertsVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: configMapName,
+				},
+			},
+		},
+	})
+
+	mount := corev1.VolumeMount{
+		Name:      trustedCACertsVolumeName,
+		MountPath: trustedCACertsMountPath,
+		ReadOnly:  true,
+	}
+	env := corev1.EnvVar{
+		Name:  sslCertFileEnvName,
+		Value: trustedCACertsBundlePath,
+	}
+
+	for i := range steps {
+		steps[i].VolumeMounts = append(steps[i].VolumeMounts, mount)
+		steps[i].Env = append(steps[i].Env, env)
+	}
+	for i := range sidecars {
+		sidecars[i].VolumeMounts = append(sidecars[i].VolumeMounts, mount)
+		sidecars[i].Env = append(sidecars[i].Env, env)
+	}
+
+	return volumes, steps, sidecars
 }
 
 // makeLabels constructs the labels we will propagate from TaskRuns to Pods.
