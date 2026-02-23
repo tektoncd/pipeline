@@ -1876,6 +1876,7 @@ spec:
                             This field is not used and can be removed in a future release
                             once we're confident old PipelineRuns have been cleaned up.
                             See issue #8359 for context.
+                        enableTrustedCACerts:
                           type: boolean
                         enableWaitExponentialBackoff:
                           type: boolean
@@ -1895,6 +1896,8 @@ spec:
                           type: boolean
                         setSecurityContextReadOnlyRootFilesystem:
                           type: boolean
+                        trustedCACertConfigMapName:
+                          type: string
                         verificationNoMatchPolicy:
                           description: |-
                             VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
@@ -2147,6 +2150,7 @@ spec:
                                   This field is not used and can be removed in a future release
                                   once we're confident old PipelineRuns have been cleaned up.
                                   See issue #8359 for context.
+                              enableTrustedCACerts:
                                 type: boolean
                               enableWaitExponentialBackoff:
                                 type: boolean
@@ -2166,6 +2170,8 @@ spec:
                                 type: boolean
                               setSecurityContextReadOnlyRootFilesystem:
                                 type: boolean
+                              trustedCACertConfigMapName:
+                                type: string
                               verificationNoMatchPolicy:
                                 description: |-
                                   VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
@@ -4007,6 +4013,7 @@ spec:
                             This field is not used and can be removed in a future release
                             once we're confident old PipelineRuns have been cleaned up.
                             See issue #8359 for context.
+                        enableTrustedCACerts:
                           type: boolean
                         enableWaitExponentialBackoff:
                           type: boolean
@@ -4026,6 +4033,8 @@ spec:
                           type: boolean
                         setSecurityContextReadOnlyRootFilesystem:
                           type: boolean
+                        trustedCACertConfigMapName:
+                          type: string
                         verificationNoMatchPolicy:
                           description: |-
                             VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
@@ -4270,6 +4279,7 @@ spec:
                                   This field is not used and can be removed in a future release
                                   once we're confident old PipelineRuns have been cleaned up.
                                   See issue #8359 for context.
+                              enableTrustedCACerts:
                                 type: boolean
                               enableWaitExponentialBackoff:
                                 type: boolean
@@ -4289,6 +4299,8 @@ spec:
                                 type: boolean
                               setSecurityContextReadOnlyRootFilesystem:
                                 type: boolean
+                              trustedCACertConfigMapName:
+                                type: string
                               verificationNoMatchPolicy:
                                 description: |-
                                   VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
