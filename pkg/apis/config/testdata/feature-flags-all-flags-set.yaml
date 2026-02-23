@@ -38,3 +38,5 @@ data:
   disable-inline-spec: "pipeline,pipelinerun,taskrun"
   enable-concise-resolver-syntax: "true"
   enable-kubernetes-sidecar: "true"
+  enable-trusted-ca-certs: "true"
+  trusted-ca-cert-configmap-name: "my-custom-ca-certs"
