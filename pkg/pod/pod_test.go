@@ -2729,6 +2729,127 @@ _EOF_
 	}
 }
 
+func TestPodBuild_CACertInjection(t *testing.T) {
+	const (
+		caConfigMapName = "config-ca-cert"
+		caMountPath     = "/tekton/certs"
+		caBundlePath    = "/tekton/certs/ca-bundle.crt"
+	)
+
+	wantMount := corev1.VolumeMount{Name: "ca-certs", MountPath: caMountPath, ReadOnly: true}
+	wantEnv := corev1.EnvVar{Name: "SSL_CERT_FILE", Value: caBundlePath}
+
+	tests := []struct {
+		name        string
+		flagEnabled bool
+		windows     bool
+		sidecars    []v1.Sidecar
+		wantCACerts bool
+	}{{
+		name:        "enabled",
+		flagEnabled: true,
+		wantCACerts: true,
+	}, {
+		name:        "disabled",
+		flagEnabled: false,
+		wantCACerts: false,
+	}, {
+		name:        "skipped on windows",
+		flagEnabled: true,
+		windows:     true,
+		wantCACerts: false,
+	}, {
+		name:        "enabled with sidecars",
+		flagEnabled: true,
+		sidecars:    []v1.Sidecar{{Name: "my-sidecar", Image: "sidecar-image", Command: []string{"/sidecar-cmd"}}},
+		wantCACerts: true,
+	}}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			names.TestingSeed()
+
+			featureData := map[string]string{}
+			if tc.flagEnabled {
+				featureData["enable-trusted-ca-certs"] = "true"
+			}
+
+			store := config.NewStore(logtesting.TestLogger(t))
+			store.OnConfigChanged(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+				Data:       featureData,
+			})
+
+			kubeclient := fakek8s.NewSimpleClientset(
+				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
+			)
+
+			tr := &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "taskrun-name",
+					Namespace:   "default",
+					Annotations: map[string]string{ReleaseAnnotation: fakeVersion},
+				},
+			}
+			if tc.windows {
+				tr.Spec.PodTemplate = &pod.Template{
+					NodeSelector: map[string]string{"kubernetes.io/os": "windows"},
+				}
+			}
+
+			ts := v1.TaskSpec{
+				Steps:    []v1.Step{{Name: "step", Image: "step-image", Command: []string{"/cmd"}}},
+				Sidecars: tc.sidecars,
+			}
+
+			builder := Builder{Images: images, KubeClient: kubeclient, EntrypointCache: fakeCache{}}
+			got, err := builder.Build(store.ToContext(t.Context()), tr, ts)
+			if err != nil {
+				t.Fatalf("builder.Build: %v", err)
+			}
+
+			// Check volume
+			hasCAVolume := false
+			for _, v := range got.Spec.Volumes {
+				if v.ConfigMap != nil && v.ConfigMap.Name == caConfigMapName {
+					hasCAVolume = true
+					break
+				}
+			}
+			if tc.wantCACerts && !hasCAVolume {
+				t.Fatalf("expected CA cert volume, got volumes: %#v", got.Spec.Volumes)
+			}
+			if !tc.wantCACerts && hasCAVolume {
+				t.Fatalf("expected no CA cert volume, but found one")
+			}
+
+			// Check step containers
+			step := findContainerByPrefix(got.Spec.Containers, "step-")
+			if step == nil {
+				t.Fatalf("expected at least one step container, got: %v", containerNames(got.Spec.Containers))
+			}
+			if tc.wantCACerts {
+				assertContainerHasCACerts(t, step, wantMount, wantEnv)
+			} else {
+				assertContainerNoCACerts(t, step)
+			}
+
+			// Check sidecar containers
+			if len(tc.sidecars) > 0 {
+				sidecar := findContainerByPrefix(got.Spec.Containers, "sidecar-")
+				if sidecar == nil {
+					t.Fatalf("expected sidecar container, got: %v", containerNames(got.Spec.Containers))
+				}
+				if tc.wantCACerts {
+					assertContainerHasCACerts(t, sidecar, wantMount, wantEnv)
+				} else {
+					assertContainerNoCACerts(t, sidecar)
+				}
+			}
+		})
+	}
+}
+
 func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 	placeScriptsContainer := corev1.Container{
 		Name:         "place-scripts",
@@ -4060,5 +4181,69 @@ func TestCreateResultsSidecarWithWaitForever(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func containerNames(cs []corev1.Container) []string {
+	names := make([]string, len(cs))
+	for i, c := range cs {
+		names[i] = c.Name
+	}
+	return names
+}
+
+func findContainerByPrefix(containers []corev1.Container, prefix string) *corev1.Container {
+	for i := range containers {
+		if strings.HasPrefix(containers[i].Name, prefix) {
+			return &containers[i]
+		}
+	}
+	return nil
+}
+
+func assertContainerHasCACerts(t *testing.T, container *corev1.Container, wantMount corev1.VolumeMount, wantEnv corev1.EnvVar) {
+	t.Helper()
+
+	var gotMount *corev1.VolumeMount
+	for i := range container.VolumeMounts {
+		if container.VolumeMounts[i].Name == wantMount.Name {
+			gotMount = &container.VolumeMounts[i]
+			break
+		}
+	}
+	if gotMount == nil {
+		gotMount = &corev1.VolumeMount{} // zero value triggers diff below
+	}
+	if d := cmp.Diff(wantMount, *gotMount); d != "" {
+		t.Errorf("container %q CA cert VolumeMount (-want +got):\n%s", container.Name, d)
+	}
+
+	var gotEnv *corev1.EnvVar
+	for i := range container.Env {
+		if container.Env[i].Name == wantEnv.Name {
+			gotEnv = &container.Env[i]
+			break
+		}
+	}
+	if gotEnv == nil {
+		gotEnv = &corev1.EnvVar{} // zero value triggers diff below
+	}
+	if d := cmp.Diff(wantEnv, *gotEnv); d != "" {
+		t.Errorf("container %q CA cert EnvVar (-want +got):\n%s", container.Name, d)
+	}
+}
+
+func assertContainerNoCACerts(t *testing.T, container *corev1.Container) {
+	t.Helper()
+
+	for _, vm := range container.VolumeMounts {
+		if vm.Name == "ca-certs" {
+			t.Errorf("container %q should not have ca-certs VolumeMount, got: %#v", container.Name, vm)
+		}
+	}
+	for _, env := range container.Env {
+		if env.Name == "SSL_CERT_FILE" {
+			t.Errorf("container %q should not have SSL_CERT_FILE env var, got: %#v", container.Name, env)
+		}
 	}
 }
