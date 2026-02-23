@@ -300,10 +300,16 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 			filteredEnvs = append(filteredEnvs, e)
 		}
 	}
-	if len(podTemplate.Env) > 0 {
+	if len(filteredEnvs) > 0 {
 		for i, s := range stepContainers {
 			env := append(s.Env, filteredEnvs...) //nolint:gocritic
 			stepContainers[i].Env = env
+		}
+		// podTemplate.Env also applies to sidecars; injectTrustedCACerts (called
+		// later) takes precedence for any overlapping vars such as SSL_CERT_FILE.
+		for i, s := range sidecarContainers {
+			env := append(s.Env, filteredEnvs...) //nolint:gocritic
+			sidecarContainers[i].Env = env
 		}
 	}
 	// Add env var if hermetic execution was requested & if the alpha API is enabled

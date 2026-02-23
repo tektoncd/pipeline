@@ -2729,6 +2729,159 @@ _EOF_
 	}
 }
 
+func TestBuild_SidecarContainersReceivePodTemplateEnvVars(t *testing.T) {
+	// Given: a TaskSpec with a sidecar that already has its own env var,
+	//        and a TaskRunSpec with podTemplate.Env containing HTTP_PROXY.
+	names.TestingSeed()
+
+	store := config.NewStore(logtesting.TestLogger(t))
+	store.OnConfigChanged(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+		Data:       map[string]string{},
+	})
+	store.OnConfigChanged(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+		Data:       map[string]string{},
+	})
+
+	kubeclient := fakek8s.NewSimpleClientset(
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
+	)
+
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "taskrun-name",
+			Namespace:   "default",
+			Annotations: map[string]string{ReleaseAnnotation: fakeVersion},
+		},
+		Spec: v1.TaskRunSpec{
+			PodTemplate: &pod.Template{
+				Env: []corev1.EnvVar{
+					{Name: "HTTP_PROXY", Value: "http://proxy:8080"},
+				},
+			},
+		},
+	}
+
+	ts := v1.TaskSpec{
+		Steps: []v1.Step{{
+			Name:    "step",
+			Image:   "step-image",
+			Command: []string{"/cmd"}, // avoid entrypoint lookup
+		}},
+		Sidecars: []v1.Sidecar{{
+			Name:  "sc-name",
+			Image: "sidecar-image",
+			Env:   []corev1.EnvVar{{Name: "SIDECAR_ENV", Value: "sidecar_val"}},
+		}},
+	}
+
+	builder := Builder{Images: images, KubeClient: kubeclient, EntrypointCache: fakeCache{}}
+
+	// When: Build() creates the pod spec.
+	got, err := builder.Build(store.ToContext(t.Context()), tr, ts)
+	if err != nil {
+		t.Fatalf("builder.Build: %v", err)
+	}
+
+	// Then: the sidecar container has both its own env var AND the podTemplate env var.
+	sidecar := findContainerByPrefix(got.Spec.Containers, "sidecar-")
+	if sidecar == nil {
+		t.Fatalf("expected sidecar container, got: %v", containerNames(got.Spec.Containers))
+	}
+
+	wantEnv := []corev1.EnvVar{
+		{Name: "SIDECAR_ENV", Value: "sidecar_val"},
+		{Name: "HTTP_PROXY", Value: "http://proxy:8080"},
+	}
+	if d := cmp.Diff(wantEnv, sidecar.Env); d != "" {
+		t.Errorf("sidecar env vars mismatch (-want +got):\n%s", d)
+	}
+}
+
+func TestBuild_NativeSidecarInitContainersReceivePodTemplateEnvVars(t *testing.T) {
+	// Given: a TaskSpec with a sidecar that already has its own env var,
+	//        a TaskRunSpec with podTemplate.Env containing HTTP_PROXY,
+	//        and the enable-kubernetes-sidecar feature flag set to "true"
+	//        with K8s server version 1.29 (supports native sidecars).
+	names.TestingSeed()
+
+	store := config.NewStore(logtesting.TestLogger(t))
+	store.OnConfigChanged(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+		Data:       map[string]string{"enable-kubernetes-sidecar": "true"},
+	})
+	store.OnConfigChanged(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+		Data:       map[string]string{},
+	})
+
+	kubeclient := fakek8s.NewSimpleClientset(
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
+	)
+	fakeDisc, _ := kubeclient.Discovery().(*fakediscovery.FakeDiscovery)
+	fakeDisc.FakedServerVersion = &version.Info{
+		Major: "1",
+		Minor: "29",
+	}
+
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "taskrun-name",
+			Namespace:   "default",
+			Annotations: map[string]string{ReleaseAnnotation: fakeVersion},
+		},
+		Spec: v1.TaskRunSpec{
+			PodTemplate: &pod.Template{
+				Env: []corev1.EnvVar{
+					{Name: "HTTP_PROXY", Value: "http://proxy:8080"},
+				},
+			},
+		},
+	}
+
+	ts := v1.TaskSpec{
+		Steps: []v1.Step{{
+			Name:    "step",
+			Image:   "step-image",
+			Command: []string{"/cmd"}, // avoid entrypoint lookup
+		}},
+		Sidecars: []v1.Sidecar{{
+			Name:  "sc-name",
+			Image: "sidecar-image",
+			Env:   []corev1.EnvVar{{Name: "SIDECAR_ENV", Value: "sidecar_val"}},
+		}},
+	}
+
+	builder := Builder{Images: images, KubeClient: kubeclient, EntrypointCache: fakeCache{}}
+
+	// When: Build() creates the pod spec.
+	got, err := builder.Build(store.ToContext(t.Context()), tr, ts)
+	if err != nil {
+		t.Fatalf("builder.Build: %v", err)
+	}
+
+	// Then: the sidecar appears in InitContainers (native sidecar mode) with its own env var
+	//       AND the podTemplate HTTP_PROXY env var appended.
+	sidecar := findContainerByPrefix(got.Spec.InitContainers, "sidecar-")
+	if sidecar == nil {
+		t.Fatalf("expected sidecar in InitContainers, got: %v", containerNames(got.Spec.InitContainers))
+	}
+
+	restartAlways := corev1.ContainerRestartPolicyAlways
+	if sidecar.RestartPolicy == nil || *sidecar.RestartPolicy != restartAlways {
+		t.Errorf("expected sidecar RestartPolicy Always, got: %v", sidecar.RestartPolicy)
+	}
+
+	wantEnv := []corev1.EnvVar{
+		{Name: "SIDECAR_ENV", Value: "sidecar_val"},
+		{Name: "HTTP_PROXY", Value: "http://proxy:8080"},
+	}
+	if d := cmp.Diff(wantEnv, sidecar.Env); d != "" {
+		t.Errorf("native sidecar init container env vars mismatch (-want +got):\n%s", d)
+	}
+}
+
 func TestPodBuild_CACertInjection(t *testing.T) {
 	const (
 		caConfigMapName = "config-ca-cert"
