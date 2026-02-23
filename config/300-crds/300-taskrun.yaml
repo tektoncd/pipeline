@@ -1876,6 +1876,7 @@ spec:
                             This field is not used and can be removed in a future release
                             once we're confident old PipelineRuns have been cleaned up.
                             See issue #8359 for context.
+                          type: boolean
                         enableTrustedCACerts:
                           type: boolean
                         enableWaitExponentialBackoff:
@@ -2150,6 +2151,7 @@ spec:
                                   This field is not used and can be removed in a future release
                                   once we're confident old PipelineRuns have been cleaned up.
                                   See issue #8359 for context.
+                                type: boolean
                               enableTrustedCACerts:
                                 type: boolean
                               enableWaitExponentialBackoff:
@@ -4013,6 +4015,7 @@ spec:
                             This field is not used and can be removed in a future release
                             once we're confident old PipelineRuns have been cleaned up.
                             See issue #8359 for context.
+                          type: boolean
                         enableTrustedCACerts:
                           type: boolean
                         enableWaitExponentialBackoff:
@@ -4279,6 +4282,7 @@ spec:
                                   This field is not used and can be removed in a future release
                                   once we're confident old PipelineRuns have been cleaned up.
                                   See issue #8359 for context.
+                                type: boolean
                               enableTrustedCACerts:
                                 type: boolean
                               enableWaitExponentialBackoff:

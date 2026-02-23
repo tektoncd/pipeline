@@ -136,7 +136,21 @@ data:
   # If set to "false", exponential backoff will be disabled.
   # For advanced tuning of backoff parameters, update the 'wait-exponential-backoff' ConfigMap.
   enable-wait-exponential-backoff: "false"
-  # Setting this flag to "true" enables trusted CA cert injection into TaskRun pods.
+  # Setting this flag to "true" enables automatic injection of trusted CA certificates
+  # into TaskRun pods. When enabled, the controller mounts a ConfigMap containing CA
+  # certificates as a volume at /tekton/certs and sets SSL_CERT_FILE=/tekton/certs/ca-bundle.crt
+  # in each step and sidecar container, allowing them to trust custom or private CA
+  # authorities without modifying task definitions.
+  #
+  # Prerequisites:
+  #   - A ConfigMap with the CA certificate bundle must exist in every namespace where
+  #     TaskRuns execute (see trusted-ca-cert-configmap-name below).
+  #   - The ConfigMap must contain a key named "ca-bundle.crt" with PEM-encoded certs.
+  #
+  # See docs/additional-configs.md#injecting-trusted-ca-certificates-into-taskrun-pods
   enable-trusted-ca-certs: "false"
-  # Name of the ConfigMap containing trusted CA certificates.
+  # Name of the ConfigMap containing trusted CA certificates to mount into TaskRun pods.
+  # Only used when enable-trusted-ca-certs is "true".
+  # The ConfigMap must exist in each namespace where TaskRuns execute.
+  # Defaults to "config-ca-cert".
   trusted-ca-cert-configmap-name: "config-ca-cert"
