@@ -2175,6 +2175,8 @@ spec:
                         enableStepActions:
                           description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
+                        enableTrustedCACerts:
+                          type: boolean
                         enableWaitExponentialBackoff:
                           type: boolean
                         enforceNonfalsifiability:
@@ -2193,6 +2195,8 @@ spec:
                           type: boolean
                         setSecurityContextReadOnlyRootFilesystem:
                           type: boolean
+                        trustedCACertConfigMapName:
+                          type: string
                         verificationNoMatchPolicy:
                           description: |-
                             VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
@@ -2547,6 +2551,8 @@ spec:
                                   enableStepActions:
                                     description: EnableStepActions is a no-op flag since StepActions are stable
                                     type: boolean
+                                  enableTrustedCACerts:
+                                    type: boolean
                                   enableWaitExponentialBackoff:
                                     type: boolean
                                   enforceNonfalsifiability:
@@ -2565,6 +2571,8 @@ spec:
                                     type: boolean
                                   setSecurityContextReadOnlyRootFilesystem:
                                     type: boolean
+                                  trustedCACertConfigMapName:
+                                    type: string
                                   verificationNoMatchPolicy:
                                     description: |-
                                       VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
@@ -2810,6 +2818,8 @@ spec:
                                         enableStepActions:
                                           description: EnableStepActions is a no-op flag since StepActions are stable
                                           type: boolean
+                                        enableTrustedCACerts:
+                                          type: boolean
                                         enableWaitExponentialBackoff:
                                           type: boolean
                                         enforceNonfalsifiability:
@@ -2828,6 +2838,8 @@ spec:
                                           type: boolean
                                         setSecurityContextReadOnlyRootFilesystem:
                                           type: boolean
+                                        trustedCACertConfigMapName:
+                                          type: string
                                         verificationNoMatchPolicy:
                                           description: |-
                                             VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
@@ -5050,6 +5062,8 @@ spec:
                         enableStepActions:
                           description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
+                        enableTrustedCACerts:
+                          type: boolean
                         enableWaitExponentialBackoff:
                           type: boolean
                         enforceNonfalsifiability:
@@ -5068,6 +5082,8 @@ spec:
                           type: boolean
                         setSecurityContextReadOnlyRootFilesystem:
                           type: boolean
+                        trustedCACertConfigMapName:
+                          type: string
                         verificationNoMatchPolicy:
                           description: |-
                             VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"

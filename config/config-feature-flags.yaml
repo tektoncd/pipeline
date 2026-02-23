@@ -136,3 +136,7 @@ data:
   # If set to "false", exponential backoff will be disabled.
   # For advanced tuning of backoff parameters, update the 'wait-exponential-backoff' ConfigMap.
   enable-wait-exponential-backoff: "false"
+  # Setting this flag to "true" enables trusted CA cert injection into TaskRun pods.
+  enable-trusted-ca-certs: "false"
+  # Name of the ConfigMap containing trusted CA certificates.
+  trusted-ca-cert-configmap-name: "config-ca-cert"
