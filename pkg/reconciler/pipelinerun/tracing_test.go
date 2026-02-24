@@ -85,6 +85,90 @@ func TestInitTracing(t *testing.T) {
 		tracerProvider:          trace.NewNoopTracerProvider(),
 		expectSpanContextStatus: false,
 		expectValidSpanContext:  false,
+	}, {
+		name: "with-traceparent-annotation",
+		pipelineRun: &v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "testns",
+				Annotations: map[string]string{
+					"tekton.dev/traceparent": "00-0f57e147e992b304d977436289d10628-73d5909e31793992-01",
+				},
+			},
+		},
+		tracerProvider:          tracesdk.NewTracerProvider(),
+		expectSpanContextStatus: true,
+		expectValidSpanContext:  true,
+		parentTraceID:           "00-0f57e147e992b304d977436289d10628-73d5909e31793992-01",
+	}, {
+		name: "with-traceparent-and-tracestate-annotations",
+		pipelineRun: &v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "testns",
+				Annotations: map[string]string{
+					"tekton.dev/traceparent": "00-0f57e147e992b304d977436289d10628-73d5909e31793992-01",
+					"tekton.dev/tracestate":  "vendorname=opaqueValue",
+				},
+			},
+		},
+		tracerProvider:          tracesdk.NewTracerProvider(),
+		expectSpanContextStatus: true,
+		expectValidSpanContext:  true,
+		parentTraceID:           "00-0f57e147e992b304d977436289d10628-73d5909e31793992-01",
+	}, {
+		name: "with-invalid-traceparent-annotation",
+		pipelineRun: &v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "testns",
+				Annotations: map[string]string{
+					"tekton.dev/traceparent": "invalid-traceparent",
+				},
+			},
+		},
+		tracerProvider:          tracesdk.NewTracerProvider(),
+		expectSpanContextStatus: true,
+		expectValidSpanContext:  true,
+	}, {
+		name: "status-spancontext-takes-precedence-over-both-annotations",
+		pipelineRun: &v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "testns",
+				Annotations: map[string]string{
+					"tekton.dev/pipelinerunSpanContext": "{\"traceparent\":\"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1-bbbbbbbbbbbbbbbb-01\"}",
+					"tekton.dev/traceparent":            "00-ccccccccccccccccccccccccccccccc2-dddddddddddddddd-01",
+				},
+			},
+			Status: v1.PipelineRunStatus{
+				PipelineRunStatusFields: v1.PipelineRunStatusFields{
+					SpanContext: map[string]string{
+						"traceparent": "00-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee3-ffffffffffffffff-01",
+					},
+				},
+			},
+		},
+		tracerProvider:          tracesdk.NewTracerProvider(),
+		expectSpanContextStatus: true,
+		expectValidSpanContext:  true,
+		parentTraceID:           "00-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee3-ffffffffffffffff-01",
+	}, {
+		name: "pipelinerun-spancontext-takes-precedence-over-traceparent",
+		pipelineRun: &v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "testns",
+				Annotations: map[string]string{
+					"tekton.dev/pipelinerunSpanContext": "{\"traceparent\":\"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1-bbbbbbbbbbbbbbbb-01\"}",
+					"tekton.dev/traceparent":            "00-ccccccccccccccccccccccccccccccc2-dddddddddddddddd-01",
+				},
+			},
+		},
+		tracerProvider:          tracesdk.NewTracerProvider(),
+		expectSpanContextStatus: true,
+		expectValidSpanContext:  true,
+		parentTraceID:           "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1-bbbbbbbbbbbbbbbb-01",
 	}}
 
 	for _, tc := range testcases {
@@ -105,13 +189,13 @@ func TestInitTracing(t *testing.T) {
 					t.Fatalf("spanContext not added to annotations")
 				}
 
-				parentID := pr.Status.SpanContext["traceparent"]
-				if len(parentID) != 55 {
-					t.Errorf("invalid trace Id")
+				traceparent := pr.Status.SpanContext["traceparent"]
+				if len(traceparent) != 55 {
+					t.Errorf("invalid traceparent length: got %d, want 55", len(traceparent))
 				}
 
-				if tc.parentTraceID != "" && parentID != tc.parentTraceID {
-					t.Errorf("invalid trace Id propagated, %s", parentID)
+				if tc.parentTraceID != "" && traceparent != tc.parentTraceID {
+					t.Errorf("traceparent mismatch: got %s, want %s", traceparent, tc.parentTraceID)
 				}
 			}
 		})
