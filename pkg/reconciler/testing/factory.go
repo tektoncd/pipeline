@@ -94,6 +94,8 @@ spec:
         - name: mystep
           image: mirror.gcr.io/busybox
           script: 'echo "Hello from child PipelineRun 1!"'
+  taskRunTemplate:
+    serviceAccountName: default
 `, childPipelineTaskName1),
 	)
 
@@ -115,6 +117,8 @@ spec:
     - name: %s
       taskRef:
         name: %s
+  taskRunTemplate:
+    serviceAccountName: default
 `, childPipelineTaskName2, taskName),
 	)
 
@@ -179,10 +183,92 @@ spec:
         - name: mystep
           image: mirror.gcr.io/busybox
           script: 'echo "Hello from child PipelineRun!"'
+  taskRunTemplate:
+    serviceAccountName: default
 `, childPipelineTaskName),
 	)
 
 	return parentPipeline, parentPipelineRun, expectedChildPipelineRun
+}
+
+// OnePipelineRefInPipeline creates a standalone child Pipeline and a parent Pipeline that references
+// the child via pipelineRef (instead of inline pipelineSpec). It also creates the according PipelineRun
+// for it and the expected child PipelineRun against which the test will validate.
+func OnePipelineRefInPipeline(t *testing.T, namespace, parentPipelineRunName string) (*v1.Pipeline, *v1.Pipeline, *v1.PipelineRun, *v1.PipelineRun) {
+	t.Helper()
+	uid := "bar"
+	parentPipelineName := "parent-pipeline"
+	childPipelineName := "child-pipeline"
+	childPipelineTaskName := "child-pipeline-task"
+
+	childPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: %s
+    taskSpec:
+      steps:
+      - name: mystep
+        image: mirror.gcr.io/busybox
+        script: 'echo "Hello from child PipelineRun!"'
+`, childPipelineName, namespace, childPipelineTaskName))
+
+	parentPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: %s
+    pipelineRef:
+      name: %s
+`, parentPipelineName, namespace, childPipelineName, childPipelineName))
+
+	parentPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+  uid: %s
+spec:
+  pipelineRef:
+    name: %s
+`, parentPipelineRunName, namespace, uid, parentPipelineName))
+
+	expectedName := parentPipelineRunName + "-" + childPipelineName
+	childObjectMeta := childPipelineRunWithObjectMeta(
+		expectedName,
+		namespace,
+		parentPipelineRunName,
+		parentPipelineName,
+		childPipelineName,
+		uid,
+	)
+	// Add cycle-detection ancestry annotations (set by the reconciler for PipelineRef tasks).
+	childObjectMeta.Annotations = map[string]string{
+		pipeline.PipelinePIPAncestryAnnotationKey: parentPipelineName,
+		pipeline.PipelinePIPNameAnnotationKey:     childPipelineName,
+	}
+	expectedChildPipelineRun := parse.MustParseChildPipelineRunWithObjectMeta(
+		t,
+		childObjectMeta,
+		fmt.Sprintf(`
+spec:
+  pipelineSpec:
+    tasks:
+    - name: %s
+      taskSpec:
+        steps:
+        - name: mystep
+          image: mirror.gcr.io/busybox
+          script: 'echo "Hello from child PipelineRun!"'
+  taskRunTemplate:
+    serviceAccountName: default
+`, childPipelineTaskName),
+	)
+
+	return childPipeline, parentPipeline, parentPipelineRun, expectedChildPipelineRun
 }
 
 func WithAnnotationAndLabel(pr *v1.PipelineRun, withUnused bool) *v1.PipelineRun {
@@ -301,6 +387,8 @@ spec:
             - name: mystep
               image: mirror.gcr.io/busybox
               script: 'echo "Hello from grandchild Pipeline!"'
+  taskRunTemplate:
+    serviceAccountName: default
 `, grandchildPipelineName, grandchildPipelineTaskName),
 	)
 
@@ -326,6 +414,8 @@ spec:
         - name: mystep
           image: mirror.gcr.io/busybox
           script: 'echo "Hello from grandchild Pipeline!"'
+  taskRunTemplate:
+    serviceAccountName: default
 `, grandchildPipelineTaskName),
 	)
 

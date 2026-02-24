@@ -59,6 +59,14 @@ const (
 	// ManagedBy is the value of the "managedBy" field for resources
 	// managed by the Tekton Pipeline controller.
 	ManagedBy = GroupName + "/pipeline"
+
+	// PipelinePIPAncestryAnnotationKey tracks the ancestry chain of resolved pipeline names
+	// for pipeline-in-pipeline execution, used for cycle detection.
+	PipelinePIPAncestryAnnotationKey = GroupName + "/pinp-ancestry"
+
+	// PipelinePIPNameAnnotationKey stores the resolved pipeline name being executed
+	// by a child PipelineRun in pipeline-in-pipeline execution.
+	PipelinePIPNameAnnotationKey = GroupName + "/pinp-pipeline-name"
 )
 
 var (
