@@ -42,6 +42,25 @@ func (c *Client) ListRepoActionSecret(user, repo string, opt ListRepoActionSecre
 	return secrets, resp, err
 }
 
+// ListRepoActionVariableOption lists RepoActionVariable options
+type ListRepoActionVariableOption struct {
+	ListOptions
+}
+
+// ListRepoActionVariable lists a repository's action variables
+func (c *Client) ListRepoActionVariable(user, repo string, opt ListRepoActionVariableOption) ([]*RepoActionVariable, *Response, error) {
+	if err := escapeValidatePathSegments(&user, &repo); err != nil {
+		return nil, nil, err
+	}
+	opt.setDefaults()
+	variables := make([]*RepoActionVariable, 0, opt.PageSize)
+
+	link, _ := url.Parse(fmt.Sprintf("/repos/%s/%s/actions/variables", user, repo))
+	link.RawQuery = opt.getURLQuery().Encode()
+	resp, err := c.getParsedResponse("GET", link.String(), jsonHeader, nil, &variables)
+	return variables, resp, err
+}
+
 // CreateRepoActionSecret creates a secret for the specified repository in the Gitea Actions.
 // It takes the organization name and the secret options as parameters.
 // The function returns the HTTP response and an error, if any.
@@ -84,8 +103,7 @@ func (c *Client) DeleteRepoActionSecret(user, repo, secretName string) (*Respons
 		return nil, err
 	}
 
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/actions/secrets/%s", user, repo, secretName), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/actions/secrets/%s", user, repo, secretName), nil, nil)
 }
 
 // GetRepoActionVariable returns a repository variable in the Gitea Actions.
@@ -117,8 +135,7 @@ func (c *Client) CreateRepoActionVariable(user, repo, variableName, value string
 		return nil, err
 	}
 
-	_, resp, err := c.getResponse("POST", fmt.Sprintf("/repos/%s/%s/actions/variables/%s", user, repo, variableName), jsonHeader, bytes.NewReader(body))
-	return resp, err
+	return c.doRequestWithStatusHandle("POST", fmt.Sprintf("/repos/%s/%s/actions/variables/%s", user, repo, variableName), jsonHeader, bytes.NewReader(body))
 }
 
 // UpdateRepoActionVariable updates a repository variable in the Gitea Actions.
@@ -139,8 +156,7 @@ func (c *Client) UpdateRepoActionVariable(user, repo, variableName, value string
 		return nil, err
 	}
 
-	_, resp, err := c.getResponse("PUT", fmt.Sprintf("/repos/%s/%s/actions/variables/%s", user, repo, variableName), jsonHeader, bytes.NewReader(body))
-	return resp, err
+	return c.doRequestWithStatusHandle("PUT", fmt.Sprintf("/repos/%s/%s/actions/variables/%s", user, repo, variableName), jsonHeader, bytes.NewReader(body))
 }
 
 // DeleteRepoActionVariable deletes a repository variable in the Gitea Actions.
@@ -151,6 +167,5 @@ func (c *Client) DeleteRepoActionVariable(user, reponame, variableName string) (
 		return nil, err
 	}
 
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/actions/variables/%s", user, reponame, variableName), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/actions/variables/%s", user, reponame, variableName), nil, nil)
 }

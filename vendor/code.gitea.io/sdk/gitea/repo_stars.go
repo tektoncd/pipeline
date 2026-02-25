@@ -47,7 +47,7 @@ func (c *Client) IsRepoStarring(user, repo string) (bool, *Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo); err != nil {
 		return false, nil, err
 	}
-	_, resp, err := c.getResponse("GET", fmt.Sprintf("/user/starred/%s/%s", user, repo), jsonHeader, nil)
+	resp, err := c.doRequestWithStatusHandle("GET", fmt.Sprintf("/user/starred/%s/%s", user, repo), jsonHeader, nil)
 	if resp != nil {
 		switch resp.StatusCode {
 		case http.StatusNotFound:
@@ -66,7 +66,7 @@ func (c *Client) StarRepo(user, repo string) (*Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("PUT", fmt.Sprintf("/user/starred/%s/%s", user, repo), jsonHeader, nil)
+	resp, err := c.doRequestWithStatusHandle("PUT", fmt.Sprintf("/user/starred/%s/%s", user, repo), jsonHeader, nil)
 	if resp != nil {
 		switch resp.StatusCode {
 		case http.StatusNoContent:
@@ -83,7 +83,7 @@ func (c *Client) UnStarRepo(user, repo string) (*Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/user/starred/%s/%s", user, repo), jsonHeader, nil)
+	resp, err := c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/user/starred/%s/%s", user, repo), jsonHeader, nil)
 	if resp != nil {
 		switch resp.StatusCode {
 		case http.StatusNoContent:
