@@ -489,7 +489,7 @@ spec:
           image: mirror.gcr.io/library/memcached:1.6
           imagePullPolicy: "IfNotPresent"
           args:
-            - /run.sh
+            - memcached
           env:
             - name: BITNAMI_DEBUG
               value: "false"
