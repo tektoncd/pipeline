@@ -136,3 +136,13 @@ data:
   # If set to "false", exponential backoff will be disabled.
   # For advanced tuning of backoff parameters, update the 'wait-exponential-backoff' ConfigMap.
   enable-wait-exponential-backoff: "false"
+  # Controls whether informer cache transforms are enabled. When enabled (default),
+  # the controller strips unnecessary fields from PipelineRuns, TaskRuns, CustomRuns,
+  # and Pods stored in the informer cache to reduce memory usage. This can significantly
+  # reduce memory consumption for clusters with many completed runs.
+  #
+  # Set to "false" to disable if you encounter issues with missing data in cached objects.
+  # Changes require a controller restart to take effect.
+  #
+  # See https://github.com/tektoncd/pipeline/issues/7691 for more info.
+  enable-informer-cache-transforms: "true"
