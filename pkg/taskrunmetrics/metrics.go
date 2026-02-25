@@ -18,127 +18,69 @@ package taskrunmetrics
 
 import (
 	"context"
-	"encoding/hex"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/pod"
-	"go.opencensus.io/stats"
-	"go.opencensus.io/stats/view"
-	"go.opencensus.io/tag"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/blake2b"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
-	"knative.dev/pkg/metrics"
 )
 
 const anonymous = "anonymous"
 
-var (
-	pipelinerunTag = tag.MustNewKey("pipelinerun")
-	pipelineTag    = tag.MustNewKey("pipeline")
-	taskrunTag     = tag.MustNewKey("taskrun")
-	taskTag        = tag.MustNewKey("task")
-	namespaceTag   = tag.MustNewKey("namespace")
-	statusTag      = tag.MustNewKey("status")
-	reasonTag      = tag.MustNewKey("reason")
-	podTag         = tag.MustNewKey("pod")
-
-	trDurationView                             *view.View
-	prTRDurationView                           *view.View
-	trTotalView                                *view.View
-	runningTRsView                             *view.View
-	runningTRsThrottledByQuotaView             *view.View
-	runningTRsThrottledByNodeView              *view.View
-	runningTRsWaitingOnTaskResolutionCountView *view.View
-	podLatencyView                             *view.View
-
-	trDuration = stats.Float64(
-		"taskrun_duration_seconds",
-		"The taskrun's execution time in seconds",
-		stats.UnitDimensionless)
-
-	prTRDuration = stats.Float64(
-		"pipelinerun_taskrun_duration_seconds",
-		"The pipelinerun's taskrun execution time in seconds",
-		stats.UnitDimensionless)
-
-	trTotal = stats.Float64("taskrun_total",
-		"Number of taskruns",
-		stats.UnitDimensionless)
-
-	runningTRs = stats.Float64("running_taskruns",
-		"Number of taskruns executing currently",
-		stats.UnitDimensionless)
-
-	runningTRsWaitingOnTaskResolutionCount = stats.Float64("running_taskruns_waiting_on_task_resolution_count",
-		"Number of taskruns executing currently that are waiting on resolution requests for their task references.",
-		stats.UnitDimensionless)
-
-	runningTRsThrottledByQuota = stats.Float64("running_taskruns_throttled_by_quota",
-		"Number of taskruns executing currently, but whose underlying Pods or Containers are suspended by k8s because of defined ResourceQuotas.  Such suspensions can occur as part of initial scheduling of the Pod, or scheduling of any of the subsequent Container(s) in the Pod after the first Container is started",
-		stats.UnitDimensionless)
-
-	runningTRsThrottledByNode = stats.Float64("running_taskruns_throttled_by_node",
-		"Number of taskruns executing currently, but whose underlying Pods or Containers are suspended by k8s because of Node level constraints. Such suspensions can occur as part of initial scheduling of the Pod, or scheduling of any of the subsequent Container(s) in the Pod after the first Container is started",
-		stats.UnitDimensionless)
-
-	podLatency = stats.Float64("taskruns_pod_latency_milliseconds",
-		"scheduling latency for the taskruns pods",
-		stats.UnitMilliseconds)
-)
-
-// Recorder is used to actually record TaskRun metrics
+// Recorder holds OpenTelemetry instruments for TaskRun metrics
 type Recorder struct {
 	mutex       sync.Mutex
 	initialized bool
 	cfg         *config.Metrics
 
-	ReportingPeriod time.Duration
+	meter metric.Meter
 
-	insertTaskTag func(task,
-		taskrun string) []tag.Mutator
+	trDurationHistogram                    metric.Float64Histogram
+	prTRDurationHistogram                  metric.Float64Histogram
+	trDurationGauge                        metric.Float64Gauge
+	prTRDurationGauge                      metric.Float64Gauge
+	trTotalCounter                         metric.Int64Counter
+	runningTRsGauge                        metric.Int64ObservableGauge
+	runningTRsWaitingOnTaskResolutionGauge metric.Int64ObservableGauge
+	runningTRsThrottledByQuotaGauge        metric.Int64ObservableGauge
+	runningTRsThrottledByNodeGauge         metric.Int64ObservableGauge
+	podLatencyGauge                        metric.Float64Gauge
 
-	insertPipelineTag func(pipeline,
-		pipelinerun string) []tag.Mutator
-
-	hash string
+	insertTaskTag     func(task, taskrun string) []attribute.KeyValue
+	insertPipelineTag func(pipeline, pipelinerun string) []attribute.KeyValue
 }
 
-// We cannot register the view multiple times, so NewRecorder lazily
-// initializes this singleton and returns the same recorder across any
-// subsequent invocations.
 var (
 	once           sync.Once
 	r              *Recorder
 	errRegistering error
 )
 
-// NewRecorder creates a new metrics recorder instance
-// to log the TaskRun related metrics
+// NewRecorder creates a new OpenTelemetry-based metrics recorder instance
 func NewRecorder(ctx context.Context) (*Recorder, error) {
 	once.Do(func() {
 		cfg := config.FromContextOrDefaults(ctx)
 		r = &Recorder{
 			initialized: true,
 			cfg:         cfg.Metrics,
-
-			// Default to reporting metrics every 30s.
-			ReportingPeriod: 30 * time.Second,
 		}
 
-		errRegistering = viewRegister(cfg.Metrics)
+		errRegistering = r.configure(cfg.Metrics)
 		if errRegistering != nil {
 			r.initialized = false
 			return
@@ -148,233 +90,151 @@ func NewRecorder(ctx context.Context) (*Recorder, error) {
 	return r, errRegistering
 }
 
-func viewRegister(cfg *config.Metrics) error {
+func (r *Recorder) configure(cfg *config.Metrics) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	var prunTag []tag.Key
-	switch cfg.PipelinerunLevel {
-	case config.PipelinerunLevelAtPipelinerun:
-		prunTag = []tag.Key{pipelineTag, pipelinerunTag}
-		r.insertPipelineTag = pipelinerunInsertTag
-	case config.PipelinerunLevelAtPipeline:
-		prunTag = []tag.Key{pipelineTag}
-		r.insertPipelineTag = pipelineInsertTag
-	case config.PipelinerunLevelAtNS:
-		prunTag = []tag.Key{}
-		r.insertPipelineTag = nilInsertTag
-	default:
-		return errors.New("invalid config for PipelinerunLevel: " + cfg.PipelinerunLevel)
+	if r.meter == nil {
+		r.meter = otel.GetMeterProvider().Meter("tekton_pipelines_controller")
 	}
 
-	var trunTag []tag.Key
 	switch cfg.TaskrunLevel {
 	case config.TaskrunLevelAtTaskrun:
-		trunTag = []tag.Key{taskTag, taskrunTag}
 		r.insertTaskTag = taskrunInsertTag
 	case config.TaskrunLevelAtTask:
-		trunTag = []tag.Key{taskTag}
 		r.insertTaskTag = taskInsertTag
-	case config.PipelinerunLevelAtNS:
-		trunTag = []tag.Key{}
+	case config.TaskrunLevelAtNS:
 		r.insertTaskTag = nilInsertTag
 	default:
 		return errors.New("invalid config for TaskrunLevel: " + cfg.TaskrunLevel)
 	}
 
-	distribution := view.Distribution(10, 30, 60, 300, 900, 1800, 3600, 5400, 10800, 21600, 43200, 86400)
-
-	if cfg.TaskrunLevel == config.TaskrunLevelAtTaskrun ||
-		cfg.PipelinerunLevel == config.PipelinerunLevelAtPipelinerun {
-		distribution = view.LastValue()
-	} else {
-		switch cfg.DurationTaskrunType {
-		case config.DurationTaskrunTypeHistogram:
-		case config.DurationTaskrunTypeLastValue:
-			distribution = view.LastValue()
-		default:
-			return errors.New("invalid config for DurationTaskrunType: " + cfg.DurationTaskrunType)
-		}
-	}
-
-	if cfg.CountWithReason {
-		trunTag = append(trunTag, reasonTag)
-	}
-
-	trDurationView = &view.View{
-		Description: trDuration.Description(),
-		Measure:     trDuration,
-		Aggregation: distribution,
-		TagKeys:     append([]tag.Key{statusTag, namespaceTag}, trunTag...),
-	}
-	prTRDurationView = &view.View{
-		Description: prTRDuration.Description(),
-		Measure:     prTRDuration,
-		Aggregation: distribution,
-		TagKeys:     append([]tag.Key{statusTag, namespaceTag}, append(trunTag, prunTag...)...),
-	}
-
-	trTotalView = &view.View{
-		Description: trTotal.Description(),
-		Measure:     trTotal,
-		Aggregation: view.Count(),
-		TagKeys:     []tag.Key{statusTag},
-	}
-
-	runningTRsView = &view.View{
-		Description: runningTRs.Description(),
-		Measure:     runningTRs,
-		Aggregation: view.LastValue(),
-	}
-	runningTRsWaitingOnTaskResolutionCountView = &view.View{
-		Description: runningTRsWaitingOnTaskResolutionCount.Description(),
-		Measure:     runningTRsWaitingOnTaskResolutionCount,
-		Aggregation: view.LastValue(),
-	}
-
-	throttleViewTags := []tag.Key{}
-	if cfg.ThrottleWithNamespace {
-		throttleViewTags = append(throttleViewTags, namespaceTag)
-	}
-	runningTRsThrottledByQuotaView = &view.View{
-		Description: runningTRsThrottledByQuota.Description(),
-		Measure:     runningTRsThrottledByQuota,
-		Aggregation: view.LastValue(),
-		TagKeys:     throttleViewTags,
-	}
-	runningTRsThrottledByNodeView = &view.View{
-		Description: runningTRsThrottledByNode.Description(),
-		Measure:     runningTRsThrottledByNode,
-		Aggregation: view.LastValue(),
-		TagKeys:     throttleViewTags,
-	}
-	podLatencyView = &view.View{
-		Description: podLatency.Description(),
-		Measure:     podLatency,
-		Aggregation: view.LastValue(),
-		TagKeys:     append([]tag.Key{namespaceTag, podTag}, trunTag...),
-	}
-	return view.Register(
-		trDurationView,
-		prTRDurationView,
-		trTotalView,
-		runningTRsView,
-		runningTRsWaitingOnTaskResolutionCountView,
-		runningTRsThrottledByQuotaView,
-		runningTRsThrottledByNodeView,
-		podLatencyView,
-	)
-}
-
-func viewUnregister() {
-	view.Unregister(
-		trDurationView,
-		prTRDurationView,
-		trTotalView,
-		runningTRsView,
-		runningTRsWaitingOnTaskResolutionCountView,
-		runningTRsThrottledByQuotaView,
-		runningTRsThrottledByNodeView,
-		podLatencyView,
-	)
-}
-
-// OnStore returns a function that checks if metrics are configured for a config.Store, and registers it if so
-func OnStore(logger *zap.SugaredLogger, r *Recorder) func(name string, value interface{}) {
-	return func(name string, value interface{}) {
-		if name == config.GetMetricsConfigName() {
-			cfg, ok := value.(*config.Metrics)
-			if !ok {
-				logger.Error("Failed to do type insertion for extracting metrics config")
-				return
-			}
-			updated := r.updateConfig(cfg)
-			if !updated {
-				return
-			}
-			// Update metrics according to the configuration
-			viewUnregister()
-			err := viewRegister(cfg)
-			if err != nil {
-				logger.Errorf("Failed to register View %v ", err)
-				return
-			}
-		}
-	}
-}
-
-func pipelinerunInsertTag(pipeline, pipelinerun string) []tag.Mutator {
-	return []tag.Mutator{
-		tag.Insert(pipelineTag, pipeline),
-		tag.Insert(pipelinerunTag, pipelinerun),
-	}
-}
-
-func pipelineInsertTag(pipeline, pipelinerun string) []tag.Mutator {
-	return []tag.Mutator{tag.Insert(pipelineTag, pipeline)}
-}
-
-func taskrunInsertTag(task, taskrun string) []tag.Mutator {
-	return []tag.Mutator{
-		tag.Insert(taskTag, task),
-		tag.Insert(taskrunTag, taskrun),
-	}
-}
-
-func taskInsertTag(task, taskrun string) []tag.Mutator {
-	return []tag.Mutator{tag.Insert(taskTag, task)}
-}
-
-func nilInsertTag(task, taskrun string) []tag.Mutator {
-	return []tag.Mutator{}
-}
-
-func getTaskTagName(tr *v1.TaskRun) string {
-	taskName := anonymous
-	switch {
-	case tr.Spec.TaskRef != nil && len(tr.Spec.TaskRef.Name) > 0:
-		taskName = tr.Spec.TaskRef.Name
-	case tr.Spec.TaskSpec != nil:
-		pipelineTaskTable, hasPipelineTaskTable := tr.Labels[pipeline.PipelineTaskLabelKey]
-		if hasPipelineTaskTable && len(pipelineTaskTable) > 0 {
-			taskName = pipelineTaskTable
-		}
+	switch cfg.PipelinerunLevel {
+	case config.PipelinerunLevelAtPipelinerun:
+		r.insertPipelineTag = pipelinerunInsertTag
+	case config.PipelinerunLevelAtPipeline:
+		r.insertPipelineTag = pipelineInsertTag
+	case config.PipelinerunLevelAtNS:
+		r.insertPipelineTag = nilInsertTag
 	default:
-		if len(tr.Labels) > 0 {
-			taskLabel, hasTaskLabel := tr.Labels[pipeline.TaskLabelKey]
-			if hasTaskLabel && len(taskLabel) > 0 {
-				taskName = taskLabel
+		return errors.New("invalid config for PipelinerunLevel: " + cfg.PipelinerunLevel)
+	}
+
+	// Configure Duration Measure
+	if cfg.DurationTaskrunType == config.DurationTaskrunTypeLastValue {
+		if r.trDurationGauge == nil {
+			trDurationGauge, err := r.meter.Float64Gauge(
+				"tekton_pipelines_controller_taskrun_duration_seconds",
+				metric.WithDescription("The taskrun's execution time in seconds"),
+				metric.WithUnit("s"),
+			)
+			if err != nil {
+				return fmt.Errorf("failed to create taskrun duration gauge: %w", err)
 			}
+			r.trDurationGauge = trDurationGauge
 		}
+		if r.prTRDurationGauge == nil {
+			prTRDurationGauge, err := r.meter.Float64Gauge(
+				"tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds",
+				metric.WithDescription("The pipelinerun's taskrun execution time in seconds"),
+				metric.WithUnit("s"),
+			)
+			if err != nil {
+				return fmt.Errorf("failed to create pipelinerun taskrun duration gauge: %w", err)
+			}
+			r.prTRDurationGauge = prTRDurationGauge
+		}
+		r.trDurationHistogram = nil
+		r.prTRDurationHistogram = nil
+	} else {
+		if r.trDurationHistogram == nil {
+			trDurationHistogram, err := r.meter.Float64Histogram(
+				"tekton_pipelines_controller_taskrun_duration_seconds",
+				metric.WithDescription("The taskrun's execution time in seconds"),
+				metric.WithUnit("s"),
+				metric.WithExplicitBucketBoundaries(10, 30, 60, 300, 900, 1800, 3600, 5400, 10800, 21600, 43200, 86400),
+			)
+			if err != nil {
+				return fmt.Errorf("failed to create taskrun duration histogram: %w", err)
+			}
+			r.trDurationHistogram = trDurationHistogram
+		}
+		if r.prTRDurationHistogram == nil {
+			prTRDurationHistogram, err := r.meter.Float64Histogram(
+				"tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds",
+				metric.WithDescription("The pipelinerun's taskrun execution time in seconds"),
+				metric.WithUnit("s"),
+				metric.WithExplicitBucketBoundaries(10, 30, 60, 300, 900, 1800, 3600, 5400, 10800, 21600, 43200, 86400),
+			)
+			if err != nil {
+				return fmt.Errorf("failed to create pipelinerun taskrun duration histogram: %w", err)
+			}
+			r.prTRDurationHistogram = prTRDurationHistogram
+		}
+		r.trDurationGauge = nil
+		r.prTRDurationGauge = nil
 	}
 
-	return taskName
-}
-
-func (r *Recorder) updateConfig(cfg *config.Metrics) bool {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	var hash string
-	if cfg != nil {
-		s := fmt.Sprintf("%v", *cfg)
-		sum := blake2b.Sum256([]byte(s))
-		hash = hex.EncodeToString(sum[:])
+	trTotalCounter, err := r.meter.Int64Counter(
+		"tekton_pipelines_controller_taskrun_total",
+		metric.WithDescription("Number of taskruns"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create taskrun total counter: %w", err)
 	}
+	r.trTotalCounter = trTotalCounter
 
-	if r.hash == hash {
-		return false
+	runningTRsGauge, err := r.meter.Int64ObservableGauge(
+		"tekton_pipelines_controller_running_taskruns",
+		metric.WithDescription("Number of taskruns executing currently"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create running taskruns gauge: %w", err)
 	}
+	r.runningTRsGauge = runningTRsGauge
 
-	r.cfg = cfg
-	r.hash = hash
+	runningTRsWaitingOnTaskResolutionGauge, err := r.meter.Int64ObservableGauge(
+		"tekton_pipelines_controller_running_taskruns_waiting_on_task_resolution_count",
+		metric.WithDescription("Number of taskruns executing currently that are waiting on resolution requests for their task references."),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create running taskruns waiting on task resolution gauge: %w", err)
+	}
+	r.runningTRsWaitingOnTaskResolutionGauge = runningTRsWaitingOnTaskResolutionGauge
 
-	return true
+	runningTRsThrottledByQuotaGauge, err := r.meter.Int64ObservableGauge(
+		"tekton_pipelines_controller_running_taskruns_throttled_by_quota",
+		metric.WithDescription("Number of taskruns executing currently, but whose underlying Pods or Containers are suspended by k8s because of defined ResourceQuotas."),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create running taskruns throttled by quota gauge: %w", err)
+	}
+	r.runningTRsThrottledByQuotaGauge = runningTRsThrottledByQuotaGauge
+
+	runningTRsThrottledByNodeGauge, err := r.meter.Int64ObservableGauge(
+		"tekton_pipelines_controller_running_taskruns_throttled_by_node",
+		metric.WithDescription("Number of taskruns executing currently, but whose underlying Pods or Containers are suspended by k8s because of Node level constraints."),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create running taskruns throttled by node gauge: %w", err)
+	}
+	r.runningTRsThrottledByNodeGauge = runningTRsThrottledByNodeGauge
+
+	podLatencyGauge, err := r.meter.Float64Gauge(
+		"tekton_pipelines_controller_taskruns_pod_latency_milliseconds",
+		metric.WithDescription("scheduling latency for the taskrun pods"),
+		metric.WithUnit("ms"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create taskrun pod latency gauge: %w", err)
+	}
+	r.podLatencyGauge = podLatencyGauge
+
+	return nil
 }
 
 // DurationAndCount logs the duration of TaskRun execution and
 // count for number of TaskRuns succeed or failed
-// returns an error if its failed to log the metrics
 func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition) error {
 	if !r.initialized {
 		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", tr.Name)
@@ -388,9 +248,12 @@ func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1.TaskRun, beforeC
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	duration := time.Since(tr.Status.StartTime.Time)
-	if tr.Status.CompletionTime != nil {
-		duration = tr.Status.CompletionTime.Sub(tr.Status.StartTime.Time)
+	duration := time.Duration(0)
+	if tr.Status.StartTime != nil {
+		duration = time.Since(tr.Status.StartTime.Time)
+		if tr.Status.CompletionTime != nil {
+			duration = tr.Status.CompletionTime.Sub(tr.Status.StartTime.Time)
+		}
 	}
 
 	taskName := getTaskTagName(tr)
@@ -399,147 +262,128 @@ func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1.TaskRun, beforeC
 	status := "success"
 	if cond.Status == corev1.ConditionFalse {
 		status = "failed"
+		if cond.Reason == v1.TaskRunReasonCancelled.String() {
+			status = "cancelled"
+		}
 	}
 	reason := cond.Reason
 
-	durationStat := trDuration
-	tags := []tag.Mutator{tag.Insert(namespaceTag, tr.Namespace), tag.Insert(statusTag, status), tag.Insert(reasonTag, reason)}
+	attrs := []attribute.KeyValue{
+		attribute.String("namespace", tr.Namespace),
+		attribute.String("status", status),
+	}
+
+	if r.cfg.CountWithReason {
+		attrs = append(attrs, attribute.String("reason", reason))
+	}
+
+	attrs = append(attrs, r.insertTaskTag(taskName, tr.Name)...)
+
 	if ok, pipeline, pipelinerun := IsPartOfPipeline(tr); ok {
-		durationStat = prTRDuration
-		tags = append(tags, r.insertPipelineTag(pipeline, pipelinerun)...)
+		attrs = append(attrs, r.insertPipelineTag(pipeline, pipelinerun)...)
+		if r.prTRDurationGauge != nil {
+			r.prTRDurationGauge.Record(ctx, duration.Seconds(), metric.WithAttributes(attrs...))
+		} else if r.prTRDurationHistogram != nil {
+			r.prTRDurationHistogram.Record(ctx, duration.Seconds(), metric.WithAttributes(attrs...))
+		}
+	} else {
+		if r.trDurationGauge != nil {
+			r.trDurationGauge.Record(ctx, duration.Seconds(), metric.WithAttributes(attrs...))
+		} else if r.trDurationHistogram != nil {
+			r.trDurationHistogram.Record(ctx, duration.Seconds(), metric.WithAttributes(attrs...))
+		}
 	}
-	tags = append(tags, r.insertTaskTag(taskName, tr.Name)...)
 
-	ctx, err := tag.New(ctx, tags...)
-	if err != nil {
-		return err
-	}
-
-	metrics.Record(ctx, durationStat.M(duration.Seconds()))
-	metrics.Record(ctx, trTotal.M(1))
+	r.trTotalCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("status", status)))
 
 	return nil
 }
 
-// RunningTaskRuns logs the number of TaskRuns running right now
-// returns an error if its failed to log the metrics
-func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLister) error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
+// observeRunningTaskRuns logs the number of TaskRuns running right now
+func (r *Recorder) observeRunningTaskRuns(ctx context.Context, o metric.Observer, lister listers.TaskRunLister) error {
 	if !r.initialized {
 		return errors.New("ignoring the metrics recording, failed to initialize the metrics recorder")
 	}
 
+	r.mutex.Lock()
+	cfg := r.cfg
+	runningTRsGauge := r.runningTRsGauge
+	waitingOnTaskGauge := r.runningTRsWaitingOnTaskResolutionGauge
+	throttledByQuotaGauge := r.runningTRsThrottledByQuotaGauge
+	throttledByNodeGauge := r.runningTRsThrottledByNodeGauge
+	r.mutex.Unlock()
+
 	trs, err := lister.List(labels.Everything())
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to list taskruns: %w", err)
 	}
 
-	addNamespaceLabelToQuotaThrottleMetric := r.cfg != nil && r.cfg.ThrottleWithNamespace
+	addNamespaceLabelToThrottleMetric := cfg != nil && cfg.ThrottleWithNamespace
 
-	var runningTrs int
-	trsThrottledByQuota := map[string]int{}
-	trsThrottledByNode := map[string]int{}
-	var trsWaitResolvingTaskRef int
-	for _, pr := range trs {
-		// initialize metrics with namespace tag to zero if unset; will then update as needed below
-		_, ok := trsThrottledByQuota[pr.Namespace]
-		if !ok {
-			trsThrottledByQuota[pr.Namespace] = 0
-		}
-		_, ok = trsThrottledByNode[pr.Namespace]
-		if !ok {
-			trsThrottledByNode[pr.Namespace] = 0
-		}
+	runningTrs := 0
+	trsThrottledByQuota := make(map[attribute.Set]int64)
+	trsThrottledByNode := make(map[attribute.Set]int64)
+	var trsWaitResolvingTaskRef int64
 
-		if pr.IsDone() {
-			continue
-		}
-		runningTrs++
+	for _, tr := range trs {
+		if !tr.IsDone() {
+			runningTrs++
+			succeedCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
+			if succeedCondition != nil && succeedCondition.Status == corev1.ConditionUnknown {
+				var attrs []attribute.KeyValue
+				if addNamespaceLabelToThrottleMetric {
+					attrs = append(attrs, attribute.String("namespace", tr.Namespace))
+				}
+				attrSet := attribute.NewSet(attrs...)
 
-		succeedCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
-		if succeedCondition != nil && succeedCondition.Status == corev1.ConditionUnknown {
-			switch succeedCondition.Reason {
-			case pod.ReasonExceededResourceQuota:
-				cnt := trsThrottledByQuota[pr.Namespace]
-				cnt++
-				trsThrottledByQuota[pr.Namespace] = cnt
-			case pod.ReasonExceededNodeResources:
-				cnt := trsThrottledByNode[pr.Namespace]
-				cnt++
-				trsThrottledByNode[pr.Namespace] = cnt
-			case v1.TaskRunReasonResolvingTaskRef:
-				trsWaitResolvingTaskRef++
+				switch succeedCondition.Reason {
+				case pod.ReasonExceededResourceQuota:
+					trsThrottledByQuota[attrSet]++
+				case pod.ReasonExceededNodeResources:
+					trsThrottledByNode[attrSet]++
+				case v1.TaskRunReasonResolvingTaskRef:
+					trsWaitResolvingTaskRef++
+				}
 			}
 		}
 	}
 
-	ctx, err = tag.New(ctx)
-	if err != nil {
-		return err
+	o.ObserveInt64(runningTRsGauge, int64(runningTrs))
+	o.ObserveInt64(waitingOnTaskGauge, trsWaitResolvingTaskRef)
+	for attrSet, value := range trsThrottledByQuota {
+		o.ObserveInt64(throttledByQuotaGauge, value, metric.WithAttributes(attrSet.ToSlice()...))
 	}
-	metrics.Record(ctx, runningTRs.M(float64(runningTrs)))
-	metrics.Record(ctx, runningTRsWaitingOnTaskResolutionCount.M(float64(trsWaitResolvingTaskRef)))
+	for attrSet, value := range trsThrottledByNode {
+		o.ObserveInt64(throttledByNodeGauge, value, metric.WithAttributes(attrSet.ToSlice()...))
+	}
 
-	for ns, cnt := range trsThrottledByQuota {
-		var mutators []tag.Mutator
-		if addNamespaceLabelToQuotaThrottleMetric {
-			mutators = []tag.Mutator{tag.Insert(namespaceTag, ns)}
-		}
-		ctx, err := tag.New(ctx, mutators...)
-		if err != nil {
-			return err
-		}
-		metrics.Record(ctx, runningTRsThrottledByQuota.M(float64(cnt)))
-	}
-	for ns, cnt := range trsThrottledByNode {
-		var mutators []tag.Mutator
-		if addNamespaceLabelToQuotaThrottleMetric {
-			mutators = []tag.Mutator{tag.Insert(namespaceTag, ns)}
-		}
-		ctx, err := tag.New(ctx, mutators...)
-		if err != nil {
-			return err
-		}
-		metrics.Record(ctx, runningTRsThrottledByNode.M(float64(cnt)))
-	}
 	return nil
 }
 
-// ReportRunningTaskRuns invokes RunningTaskRuns on our configured PeriodSeconds
+// ReportRunningTaskRuns invokes observeRunningTaskRuns on our configured PeriodSeconds
 // until the context is cancelled.
 func (r *Recorder) ReportRunningTaskRuns(ctx context.Context, lister listers.TaskRunLister) {
 	logger := logging.FromContext(ctx)
-	for {
-		delay := time.NewTimer(r.ReportingPeriod)
-		select {
-		case <-ctx.Done():
-			// When the context is cancelled, stop reporting.
-			if !delay.Stop() {
-				<-delay.C
-			}
-			return
 
-		case <-delay.C:
-			// Every 30s surface a metric for the number of running tasks, as well as those running tasks that are currently throttled by k8s,
-			// and those running tasks waiting on task reference resolution
-			if err := r.RunningTaskRuns(ctx, lister); err != nil {
-				logger.Warnf("Failed to log the metrics : %v", err)
-			}
-		}
+	_, err := r.meter.RegisterCallback(func(ctx context.Context, o metric.Observer) error {
+		return r.observeRunningTaskRuns(ctx, o, lister)
+	}, r.runningTRsGauge, r.runningTRsWaitingOnTaskResolutionGauge, r.runningTRsThrottledByQuotaGauge, r.runningTRsThrottledByNodeGauge)
+	if err != nil {
+		logger.Errorf("failed to register callback for running taskruns: %v", err)
+		return
 	}
+
+	<-ctx.Done()
 }
 
 // RecordPodLatency logs the duration required to schedule the pod for TaskRun
-// returns an error if its failed to log the metrics
 func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1.TaskRun) error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
 	if !r.initialized {
 		return errors.New("ignoring the metrics recording for pod , failed to initialize the metrics recorder")
 	}
+
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 
 	scheduledTime := getScheduledTime(pod)
 	if scheduledTime.IsZero() {
@@ -549,32 +393,71 @@ func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1
 	latency := scheduledTime.Sub(pod.CreationTimestamp.Time)
 	taskName := getTaskTagName(tr)
 
-	ctx, err := tag.New(
-		ctx,
-		append([]tag.Mutator{
-			tag.Insert(namespaceTag, tr.Namespace),
-			tag.Insert(podTag, pod.Name),
-		},
-			r.insertTaskTag(taskName, tr.Name)...)...)
-	if err != nil {
-		return err
+	attrs := []attribute.KeyValue{
+		attribute.String("namespace", tr.Namespace),
+		attribute.String("pod", pod.Name),
 	}
+	attrs = append(attrs, r.insertTaskTag(taskName, tr.Name)...)
 
-	metrics.Record(ctx, podLatency.M(float64(latency.Milliseconds())))
+	r.podLatencyGauge.Record(ctx, float64(latency.Milliseconds()), metric.WithAttributes(attrs...))
 
 	return nil
+}
+
+// Helper functions for tag insertion
+
+func pipelinerunInsertTag(pipeline, pipelinerun string) []attribute.KeyValue {
+	return []attribute.KeyValue{
+		attribute.String("pipeline", pipeline),
+		attribute.String("pipelinerun", pipelinerun),
+	}
+}
+
+func pipelineInsertTag(pipeline, pipelinerun string) []attribute.KeyValue {
+	return []attribute.KeyValue{
+		attribute.String("pipeline", pipeline),
+	}
+}
+
+func taskrunInsertTag(task, taskrun string) []attribute.KeyValue {
+	return []attribute.KeyValue{
+		attribute.String("task", task),
+		attribute.String("taskrun", taskrun),
+	}
+}
+
+func taskInsertTag(task, taskrun string) []attribute.KeyValue {
+	return []attribute.KeyValue{
+		attribute.String("task", task),
+	}
+}
+
+func nilInsertTag(task, taskrun string) []attribute.KeyValue {
+	return []attribute.KeyValue{}
+}
+
+func getTaskTagName(tr *v1.TaskRun) string {
+	taskName := anonymous
+	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Name != "" {
+		taskName = tr.Spec.TaskRef.Name
+	} else if tr.Spec.TaskSpec != nil {
+		if pipelineTask, ok := tr.Labels[pipeline.PipelineTaskLabelKey]; ok {
+			taskName = pipelineTask
+		}
+	} else if task, ok := tr.Labels[pipeline.TaskLabelKey]; ok {
+		taskName = task
+	}
+	return taskName
 }
 
 // IsPartOfPipeline return true if TaskRun is a part of a Pipeline.
 // It also return the name of Pipeline and PipelineRun
 func IsPartOfPipeline(tr *v1.TaskRun) (bool, string, string) {
-	pipelineLabel, hasPipelineLabel := tr.Labels[pipeline.PipelineLabelKey]
-	pipelineRunLabel, hasPipelineRunLabel := tr.Labels[pipeline.PipelineRunLabelKey]
-
-	if hasPipelineLabel && hasPipelineRunLabel {
-		return true, pipelineLabel, pipelineRunLabel
+	if pipelineName, ok := tr.Labels[pipeline.PipelineLabelKey]; ok {
+		if pipelineRun, ok := tr.Labels[pipeline.PipelineRunLabelKey]; ok {
+			return true, pipelineName, pipelineRun
+		}
 	}
-
 	return false, "", ""
 }
 
@@ -584,6 +467,39 @@ func getScheduledTime(pod *corev1.Pod) metav1.Time {
 			return c.LastTransitionTime
 		}
 	}
-
 	return metav1.Time{}
+}
+
+// updateConfig atomically checks whether cfg differs from the current config and,
+// if so, commits it. It returns the committed cfg so the caller can pass the
+// exact same value to configure, eliminating the window between the two calls.
+// Returns nil when the config is unchanged.
+func (r *Recorder) updateConfig(cfg *config.Metrics) *config.Metrics {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if equality.Semantic.DeepEqual(r.cfg, cfg) {
+		return nil
+	}
+	r.cfg = cfg
+	return cfg
+}
+
+// OnStore returns a function that can be passed to a configmap watcher for dynamic updates
+func OnStore(logger *zap.SugaredLogger, recorder *Recorder) func(name string, value interface{}) {
+	return func(name string, value interface{}) {
+		if name != config.GetMetricsConfigName() {
+			return
+		}
+		cfg, ok := value.(*config.Metrics)
+		if !ok {
+			logger.Errorw("failed to convert value to metrics config", "value", value)
+			return
+		}
+		if accepted := recorder.updateConfig(cfg); accepted != nil {
+			if err := recorder.configure(accepted); err != nil {
+				logger.Errorw("failed to configure recorder", "error", err)
+			}
+		}
+	}
 }

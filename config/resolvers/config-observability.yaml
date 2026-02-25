@@ -1,4 +1,4 @@
-# Copyright 2022 The Tekton Authors
+# Copyright 2019 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,13 +16,12 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: config-observability
-  namespace: tekton-pipelines-resolvers
+  namespace: tekton-pipelines
   labels:
-    app.kubernetes.io/component: resolvers
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-
 data:
+  metrics-protocol: prometheus
   _example: |
     ################################
     #                              #
@@ -39,24 +38,41 @@ data:
     # this example block and unindented to be in the data block
     # to actually change the configuration.
 
-    # metrics.backend-destination field specifies the system metrics destination.
-    # It supports either prometheus (the default) or stackdriver.
-    # Note: Using stackdriver will incur additional charges
-    metrics.backend-destination: prometheus
+    # OpenTelemetry Metrics Configuration
+    # Protocol for metrics export (prometheus, grpc, http/protobuf, none)
+    # Default if not specified: "none"
+    metrics-protocol: prometheus
 
-    # metrics.request-metrics-backend-destination specifies the request metrics
-    # destination. If non-empty, it enables queue proxy to send request metrics.
-    # Currently supported values: prometheus, stackdriver.
-    metrics.request-metrics-backend-destination: prometheus
+    # Metrics endpoint (for grpc/http protocols)
+    # Default: empty (uses default OTLP endpoint)
+    metrics-endpoint: ""
 
-    # metrics.stackdriver-project-id field specifies the stackdriver project ID. This
-    # field is optional. When running on GCE, application default credentials will be
-    # used if this field is not provided.
-    metrics.stackdriver-project-id: "<your stackdriver project id>"
+    # Metrics export interval (e.g., "30s", "1m")
+    # Default: empty (uses default interval)
+    metrics-export-interval: ""
 
-    # metrics.allow-stackdriver-custom-metrics indicates whether it is allowed to send metrics to
-    # Stackdriver using "global" resource type and custom metric type if the
-    # metrics are not supported by "knative_revision" resource type. Setting this
-    # flag to "true" could cause extra Stackdriver charge.
-    # If metrics.backend-destination is not Stackdriver, this is ignored.
-    metrics.allow-stackdriver-custom-metrics: "false"
+    # OpenTelemetry Tracing Configuration
+    # Protocol for tracing export (grpc, http/protobuf, none, stdout)
+    # Default: none
+    tracing-protocol: none
+
+    # Tracing endpoint (for grpc/http protocols)
+    # Default: empty
+    tracing-endpoint: ""
+
+    # Tracing sampling rate (0.0 to 1.0)
+    # Default: 1.0 (100% sampling)
+    tracing-sampling-rate: "1.0"
+
+    # Runtime Configuration
+    # Enable profiling (enabled, disabled)
+    # Default: disabled
+    runtime-profiling: disabled
+
+    # Runtime export interval (e.g., "15s")
+    # Default: 15s
+    runtime-export-interval: "15s"
+
+    # Note: Legacy OpenCensus configuration (metrics.backend-destination, etc.) has been
+    # removed as OpenCensus support is no longer provided by the underlying infrastructure.
+    # Please use the OpenTelemetry configuration options above.
