@@ -21,6 +21,7 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 data:
+  metrics-protocol: prometheus
   _example: |
     ################################
     #                              #
@@ -37,23 +38,46 @@ data:
     # this example block and unindented to be in the data block
     # to actually change the configuration.
 
-    # metrics.backend-destination field specifies the system metrics destination.
-    # It supports either prometheus (the default) or stackdriver.
-    # Note: Using Stackdriver will incur additional charges.
-    metrics.backend-destination: prometheus
+    # OpenTelemetry Metrics Configuration
+    # Protocol for metrics export (prometheus, grpc, http/protobuf, none)
+    # Default if not specified: "none"
+    metrics-protocol: prometheus
 
-    # metrics.stackdriver-project-id field specifies the Stackdriver project ID. This
-    # field is optional. When running on GCE, application default credentials will be
-    # used and metrics will be sent to the cluster's project if this field is
-    # not provided.
-    metrics.stackdriver-project-id: "<your stackdriver project id>"
+    # Metrics endpoint (for grpc/http protocols)
+    # Default: empty (uses default OTLP endpoint)
+    metrics-endpoint: ""
 
-    # metrics.allow-stackdriver-custom-metrics indicates whether it is allowed
-    # to send metrics to Stackdriver using "global" resource type and custom
-    # metric type. Setting this flag to "true" could cause extra Stackdriver
-    # charge.  If metrics.backend-destination is not Stackdriver, this is
-    # ignored.
-    metrics.allow-stackdriver-custom-metrics: "false"
+    # Metrics export interval (e.g., "30s", "1m")
+    # Default: empty (uses default interval)
+    metrics-export-interval: ""
+
+    # OpenTelemetry Tracing Configuration
+    # Protocol for tracing export (grpc, http/protobuf, none, stdout)
+    # Default: none
+    tracing-protocol: none
+
+    # Tracing endpoint (for grpc/http protocols)
+    # Default: empty
+    tracing-endpoint: ""
+
+    # Tracing sampling rate (0.0 to 1.0)
+    # Default: 1.0 (100% sampling)
+    tracing-sampling-rate: "1.0"
+
+    # Runtime Configuration
+    # Enable profiling (enabled, disabled)
+    # Default: disabled
+    runtime-profiling: disabled
+
+    # Runtime export interval (e.g., "15s")
+    # Default: 15s
+    runtime-export-interval: "15s"
+
+    # Note: Legacy OpenCensus configuration (metrics.backend-destination, etc.) has been
+    # removed as OpenCensus support is no longer provided by the underlying infrastructure.
+    # Please use the OpenTelemetry configuration options above.
+
+    # Tekton-specific metrics configuration
     metrics.taskrun.level: "task"
     metrics.taskrun.duration-type: "histogram"
     metrics.pipelinerun.level: "pipeline"
