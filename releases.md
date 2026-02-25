@@ -65,12 +65,6 @@ Further documentation available:
 - **End of Life**: 2026-04-29
 - **Patch Releases**: [v1.0.0][v1.0-0]
 
-### v0.68 (LTS)
-- **Latest Release**: [v0.68.1][v0.68-1] (2025-03-20) ([docs][v0.68-1-docs], [examples][v0.68-1-examples])
-- **Initial Release**: [v0.68.0][v0.68-0] (2025-01-30)
-- **End of Life**: 2026-01-30
-- **Patch Releases**: [v0.68.0][v0.68-0], [v0.68.1][v0.68-1]
-
 ## End of Life Releases
 
 ### v1.7
@@ -114,6 +108,12 @@ Further documentation available:
 - **Initial Release**: [v0.69.0][v0.69-0] (2025-03-07)
 - **End of Life**: 2025-03-28
 - **Patch Releases**: [v0.69.0][v0.69-0]
+
+### v0.68 (LTS)
+- **Latest Release**: [v0.68.1][v0.68-1] (2025-03-20) ([docs][v0.68-1-docs], [examples][v0.68-1-examples])
+- **Initial Release**: [v0.68.0][v0.68-0] (2025-01-30)
+- **End of Life**: 2026-01-30
+- **Patch Releases**: [v0.68.0][v0.68-0], [v0.68.1][v0.68-1]
 
 ### v0.66
 - **Latest Release**: [v0.66.0][v0.66-0] (2024-12-04) ([docs][v0.66-0-docs], [examples][v0.66-0-examples])
