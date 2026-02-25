@@ -111,6 +111,14 @@ const (
 	EnableWaitExponentialBackoff = "enable-wait-exponential-backoff"
 	// DefaultEnableWaitExponentialBackoff is the default value for EnableWaitExponentialBackoff
 	DefaultEnableWaitExponentialBackoff = false
+	// EnableTrustedCACerts is the flag to enable trusted CA cert injection.
+	EnableTrustedCACerts = "enable-trusted-ca-certs"
+	// DefaultEnableTrustedCACerts is the default value for EnableTrustedCACerts.
+	DefaultEnableTrustedCACerts = false
+	// TrustedCACertConfigMapName is the key for the trusted CA cert ConfigMap name.
+	TrustedCACertConfigMapName = "trusted-ca-cert-configmap-name"
+	// DefaultTrustedCACertConfigMapName is the default value for TrustedCACertConfigMapName.
+	DefaultTrustedCACertConfigMapName = "config-ca-cert"
 
 	// EnableStepActions is the flag to enable step actions (no-op since it's stable)
 	EnableStepActions = "enable-step-actions"
@@ -210,6 +218,8 @@ type FeatureFlags struct {
 	EnableConciseResolverSyntax  bool   `json:"enableConciseResolverSyntax,omitempty"`
 	EnableKubernetesSidecar      bool   `json:"enableKubernetesSidecar,omitempty"`
 	EnableWaitExponentialBackoff bool   `json:"enableWaitExponentialBackoff,omitempty"`
+	EnableTrustedCACerts         bool   `json:"enableTrustedCACerts,omitempty"`
+	TrustedCACertConfigMapName   string `json:"trustedCACertConfigMapName,omitempty"`
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -316,6 +326,14 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	}
 	if err := setFeature(EnableWaitExponentialBackoff, DefaultEnableWaitExponentialBackoff, &tc.EnableWaitExponentialBackoff); err != nil {
 		return nil, err
+	}
+	if err := setFeature(EnableTrustedCACerts, DefaultEnableTrustedCACerts, &tc.EnableTrustedCACerts); err != nil {
+		return nil, err
+	}
+	if cfg, ok := cfgMap[TrustedCACertConfigMapName]; ok && cfg != "" {
+		tc.TrustedCACertConfigMapName = cfg
+	} else {
+		tc.TrustedCACertConfigMapName = DefaultTrustedCACertConfigMapName
 	}
 
 	return &tc, nil
