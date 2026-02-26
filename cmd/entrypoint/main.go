@@ -56,6 +56,7 @@ var (
 		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps.")
 	stepMetadataDir        = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
 	resultExtractionMethod = flag.String("result_from", entrypoint.ResultExtractionMethodTerminationMessage, "The method using which to extract results from tasks. Default is using the termination message.")
+	secretMaskFile         = flag.String("secret_mask_file", "", "If specified, file containing base64-encoded secrets to mask in stdout/stderr (one per line)")
 )
 
 const (
@@ -135,8 +136,9 @@ func main() {
 		TerminationPath: *terminationPath,
 		Waiter:          &realWaiter{waitPollingInterval: defaultWaitPollingInterval, breakpointOnFailure: *breakpointOnFailure},
 		Runner: &realRunner{
-			stdoutPath: *stdoutPath,
-			stderrPath: *stderrPath,
+			stdoutPath:     *stdoutPath,
+			stderrPath:     *stderrPath,
+			secretMaskFile: *secretMaskFile,
 		},
 		PostWriter:             &realPostWriter{},
 		Results:                strings.Split(*results, ","),

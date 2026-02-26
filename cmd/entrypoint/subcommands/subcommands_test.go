@@ -17,6 +17,9 @@ limitations under the License.
 package subcommands
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"errors"
 	"os"
 	"path/filepath"
@@ -77,6 +80,22 @@ func TestProcessSuccessfulSubcommands(t *testing.T) {
 			t.Errorf("unexpected return value from step-init command w/ params: %v", returnValue)
 		}
 	})
+
+	t.Run(SecretMaskInitCommand, func(t *testing.T) {
+		// Encode test data
+		var buf bytes.Buffer
+		zw := gzip.NewWriter(&buf)
+		zw.Write([]byte("test-secret\n"))
+		zw.Close()
+		encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
+		t.Setenv(SecretMaskDataEnvVar, encoded)
+
+		filePath := filepath.Join(tmp, "secret-mask", "secrets")
+		returnValue := Process([]string{SecretMaskInitCommand, filePath})
+		if !errors.As(returnValue, &ok) {
+			t.Errorf("unexpected return value from secret-mask-init command: %v", returnValue)
+		}
+	})
 }
 
 // TestProcessIgnoresNonSubcommands checks that any input to Process which
@@ -107,6 +126,16 @@ func TestProcessIgnoresNonSubcommands(t *testing.T) {
 		}
 
 		if err := Process([]string{DecodeScriptCommand, "foo.txt", "bar.txt"}); err != nil {
+			t.Errorf("unexpected error processing command with invalid number of args: %v", err)
+		}
+	})
+
+	t.Run(SecretMaskInitCommand, func(t *testing.T) {
+		if err := Process([]string{SecretMaskInitCommand}); err != nil {
+			t.Errorf("unexpected error processing command with 0 additional args: %v", err)
+		}
+
+		if err := Process([]string{SecretMaskInitCommand, "a", "b"}); err != nil {
 			t.Errorf("unexpected error processing command with invalid number of args: %v", err)
 		}
 	})

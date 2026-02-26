@@ -80,6 +80,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				DisableInlineSpec:                        "pipeline,pipelinerun,taskrun",
 				EnableConciseResolverSyntax:              true,
 				EnableKubernetesSidecar:                  true,
+				EnableSecretMasking:                      true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},

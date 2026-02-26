@@ -369,7 +369,16 @@ to run in namespaces with `restricted` pod security admission. By default, this 
 - `set-security-context-read-only-root-filesystem`: Set this flag to `true` to enable `readOnlyRootFilesystem` in the
   security context for containers injected by Tekton. This makes the root filesystem of the container read-only,
   enhancing security. Note that this requires `set-security-context` to be enabled. By default, this flag is set
-  to `false`. Note: This feature does not work in windows as it is not supported there, [Comparison with linux](https://kubernetes.io/docs/concepts/windows/intro/#compatibility-linux-similarities). 
+  to `false`. Note: This feature does not work in windows as it is not supported there, [Comparison with linux](https://kubernetes.io/docs/concepts/windows/intro/#compatibility-linux-similarities).
+
+- `enable-secret-masking`: Set this flag to `"true"` to enable masking of secret values in step stdout/stderr.
+  Secret values from `secretKeyRef` environment variables and secret volumes will be replaced with `***` in the logs.
+  To reduce payload size, Tekton passes the internal secret mask data to the init container as a gzip-compressed, base64-encoded value.
+  By default, this is set to `false`. This is an `alpha` feature.
+  Current limitation: stream-safe masking buffers up to `largest-secret-size - 1` bytes to avoid leaking values split across
+  write boundaries. For large secrets, this can delay log visibility. The entrypoint emits a warning when the largest secret
+  is large enough to cause noticeable delay. A Kubernetes Secret object can be up to 1 MiB total data.
+  Note: This feature is not supported on Windows.
 
 ### Alpha Features
 
@@ -395,6 +404,7 @@ Features currently in "alpha" are:
 | [keep pod on cancel](./taskruns.md#cancelling-a-taskrun)                                                     | N/A                                                                                                                  | [v0.52.0](https://github.com/tektoncd/pipeline/releases/tag/v0.52.0) | `keep-pod-on-cancel`                             |
 | [CEL in WhenExpression](./pipelines.md#use-cel-expression-in-whenexpression)                                                  | [TEP-0145](https://github.com/tektoncd/community/blob/main/teps/0145-cel-in-whenexpression.md)                       | [v0.53.0](https://github.com/tektoncd/pipeline/releases/tag/v0.53.0) | `enable-cel-in-whenexpression`                   |
 | [Param Enum](./taskruns.md#parameter-enums)                                                                  | [TEP-0144](https://github.com/tektoncd/community/blob/main/teps/0144-param-enum.md)                                  | [v0.54.0](https://github.com/tektoncd/pipeline/releases/tag/v0.54.0) | `enable-param-enum`                              |
+| Secret Masking                                                                                               | N/A                                                                                                                  | N/A                                                                  | `enable-secret-masking`                          |
 
 ### Beta Features
 
