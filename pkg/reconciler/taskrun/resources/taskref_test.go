@@ -805,7 +805,7 @@ func TestGetStepActionFunc_Local(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			tektonclient := fake.NewSimpleClientset(tc.localStepActions...)
-			fn := resources.GetStepActionFunc(tektonclient, nil, nil, tc.taskRun, *tc.taskRun.Spec.TaskSpec, &tc.taskRun.Spec.TaskSpec.Steps[0])
+			fn := resources.GetStepActionFunc(tektonclient, nil, nil, tc.taskRun, *tc.taskRun.Spec.TaskSpec, &tc.taskRun.Spec.TaskSpec.Steps[0], tc.taskRun.Namespace)
 
 			stepAction, refSource, err := fn(ctx, tc.taskRun.Spec.TaskSpec.Steps[0].Ref.Name)
 			if err != nil {
@@ -866,7 +866,7 @@ func TestGetStepActionFunc_RemoteResolution_Success(t *testing.T) {
 				},
 			}
 			tektonclient := fake.NewSimpleClientset()
-			fn := resources.GetStepActionFunc(tektonclient, nil, requester, tr, *tr.Spec.TaskSpec, &tr.Spec.TaskSpec.Steps[0])
+			fn := resources.GetStepActionFunc(tektonclient, nil, requester, tr, *tr.Spec.TaskSpec, &tr.Spec.TaskSpec.Steps[0], tr.Namespace)
 
 			resolvedStepAction, resolvedRefSource, err := fn(ctx, tr.Spec.TaskSpec.Steps[0].Ref.Name)
 			if tc.wantErr {
@@ -927,7 +927,7 @@ func TestGetStepActionFunc_RemoteResolution_Error(t *testing.T) {
 				},
 			}
 			tektonclient := fake.NewSimpleClientset()
-			fn := resources.GetStepActionFunc(tektonclient, nil, requester, tr, *tr.Spec.TaskSpec, &tr.Spec.TaskSpec.Steps[0])
+			fn := resources.GetStepActionFunc(tektonclient, nil, requester, tr, *tr.Spec.TaskSpec, &tr.Spec.TaskSpec.Steps[0], tr.Namespace)
 			if _, _, err := fn(ctx, tr.Spec.TaskSpec.Steps[0].Ref.Name); err == nil {
 				t.Fatalf("expected error due to invalid pipeline data but saw none")
 			}

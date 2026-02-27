@@ -123,7 +123,17 @@ func hasStepRefs(taskSpec *v1.TaskSpec) bool {
 func resolveStepRef(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.TaskRun, tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester, step *v1.Step) (*v1.Step, *v1.RefSource, error) {
 	resolvedStep := step.DeepCopy()
 
-	getStepAction := GetStepActionFunc(tekton, k8s, requester, taskRun, taskSpec, resolvedStep)
+	// Get the task's namespace - if this is a referenced Task, use its namespace
+	taskNamespace := taskRun.Namespace
+	if taskRun.Spec.TaskRef != nil && taskRun.Spec.TaskRef.Name != "" {
+		// Get the Task to find its namespace
+		task, err := tekton.TektonV1().Tasks(taskRun.Namespace).Get(ctx, taskRun.Spec.TaskRef.Name, metav1.GetOptions{})
+		if err == nil {
+			taskNamespace = task.Namespace
+		}
+	}
+
+	getStepAction := GetStepActionFunc(tekton, k8s, requester, taskRun, taskSpec, resolvedStep, taskNamespace)
 	stepAction, source, err := getStepAction(ctx, resolvedStep.Ref.Name)
 	if err != nil {
 		return nil, nil, err
