@@ -1293,7 +1293,7 @@ spec:
         type: Socket
 ```
 
-#### Mounting multiple `Volumes`
+### Mounting multiple `Volumes`
 
 The example below illustrates mounting multiple `Volumes`:
 
@@ -1321,7 +1321,7 @@ spec:
       emptyDir: {}
 ```
 
-#### Mounting a `ConfigMap` as a `Volume` source
+### Mounting a `ConfigMap` as a `Volume` source
 
 The example below illustrates how to mount a `ConfigMap` to act as a `Volume` source:
 
@@ -1349,10 +1349,12 @@ spec:
         name: "$(params.CFGNAME)"
 ```
 
-#### Using a `Secret` as an environment source
+### Using a `Secret` as an environment source
 
-The example below illustrates how to use a `Secret` as an environment source:
+The two examples below illustrate how to use a `Secret` as an environment source. 
 
+#### Using `env`
+The secret can be referenced in the `env` section of the `Container`-spec:
 ```yaml
 apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Task
@@ -1386,8 +1388,45 @@ spec:
               name: $(params.github-token-secret)
               key: bot-token
 ```
+#### Using `envFrom` 
+All values present in a secret can be mounted in fewer lines by using `envFrom`.
 
-#### Using a `Sidecar` in a `Task`
+> Note: Using `envFrom` will inject _all_ variables directly as env-variables in the pod running the `Task`, and this may be a source of unexpected behavior.
+> Using `env` rather than `envFrom` will provide more fine-grained control when designing tasks for other developers to (re)use.
+```yaml
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: goreleaser
+spec:
+  params:
+    - name: package
+      type: string
+      description: base package to build in
+    - name: gitea-basic-auth-secret
+      type: string
+      description: name of the secret holding the github-token
+      default: gitea-basic-auth
+  workspaces:
+  - name: source
+  steps:
+    - name: release
+      image: goreleaser/goreleaser
+      workingDir: $(workspaces.source.path)/$(params.package)
+      command:
+        - goreleaser
+      args:
+        - release
+      envFrom:
+        - secretRef:
+            name: $(params.gitea-basic-auth-secret)
+      env:
+        - name: GOPATH
+          value: /workspace
+```
+
+
+### Using a `Sidecar` in a `Task`
 
 The example below illustrates how to use a `Sidecar` in your `Task`:
 
