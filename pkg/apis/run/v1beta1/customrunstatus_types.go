@@ -18,11 +18,11 @@ package v1beta1
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/clock"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -89,10 +89,10 @@ func (r *CustomRunStatus) GetCondition(t apis.ConditionType) *apis.Condition {
 
 // InitializeConditions will set all conditions in customRunCondSet to unknown
 // and set the started time to the current time
-func (r *CustomRunStatus) InitializeConditions() {
+func (r *CustomRunStatus) InitializeConditions(c clock.PassiveClock) {
 	started := false
 	if r.StartTime.IsZero() {
-		r.StartTime = &metav1.Time{Time: time.Now()}
+		r.StartTime = &metav1.Time{Time: c.Now()}
 		started = true
 	}
 	conditionManager := customRunCondSet.Manage(r)

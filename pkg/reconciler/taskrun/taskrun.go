@@ -140,7 +140,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	// If the TaskRun is just starting, this will also set the starttime,
 	// from which the timeout will immediately begin counting down.
 	if !tr.HasStarted() {
-		tr.Status.InitializeConditions()
+		tr.Status.InitializeConditions(c.Clock)
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
 		if tr.Status.StartTime.Sub(tr.CreationTimestamp.Time) < 0 {
 			logger.Warnf("TaskRun %s createTimestamp %s is after the taskRun started %s", tr.GetNamespacedName().String(), tr.CreationTimestamp, tr.Status.StartTime)

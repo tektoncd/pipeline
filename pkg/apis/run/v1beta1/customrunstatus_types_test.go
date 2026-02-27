@@ -28,8 +28,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+)
+
+var (
+	now       = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
+	testClock = clock.NewFakePassiveClock(now)
 )
 
 func TestFromRunStatus(t *testing.T) {
@@ -116,5 +122,33 @@ func TestFromRunStatus(t *testing.T) {
 
 	if d := cmp.Diff(expectedCustomRunResult, v1beta1.FromRunStatus(runStatus)); d != "" {
 		t.Errorf("expected converted RunStatus to equal expected CustomRunStatus. Diff %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestInitializeCustomRunConditions(t *testing.T) {
+	runStatus := &v1beta1.CustomRunStatus{}
+	runStatus.InitializeConditions(testClock)
+
+	if runStatus.StartTime.IsZero() || !runStatus.StartTime.Time.Equal(now) {
+		t.Fatalf("CustomRun StartTime not initialized correctly")
+	}
+
+	condition := runStatus.GetCondition(apis.ConditionSucceeded)
+	if condition.Reason != "Started" {
+		t.Fatalf("CustomRun initialize reason should be Started, got %s instead", condition.Reason)
+	}
+
+	// Change the reason before we initialize again
+	runStatus.SetCondition(&apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionUnknown,
+		Reason:  "not just started",
+		Message: "hello",
+	})
+	runStatus.InitializeConditions(testClock)
+
+	newCondition := runStatus.GetCondition(apis.ConditionSucceeded)
+	if newCondition.Reason != "not just started" {
+		t.Fatalf("CustomRun initialize reset the condition reason to %s", newCondition.Reason)
 	}
 }

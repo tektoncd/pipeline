@@ -375,10 +375,10 @@ func (trs *TaskRunStatus) GetCondition(t apis.ConditionType) *apis.Condition {
 
 // InitializeConditions will set all conditions in taskRunCondSet to unknown for the TaskRun
 // and set the started time to the current time
-func (trs *TaskRunStatus) InitializeConditions() {
+func (trs *TaskRunStatus) InitializeConditions(c clock.PassiveClock) {
 	started := false
 	if trs.StartTime.IsZero() {
-		trs.StartTime = &metav1.Time{Time: time.Now()}
+		trs.StartTime = &metav1.Time{Time: c.Now()}
 		started = true
 	}
 	conditionManager := taskRunCondSet.Manage(trs)
