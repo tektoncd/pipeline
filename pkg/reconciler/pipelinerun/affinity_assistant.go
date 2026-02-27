@@ -47,6 +47,12 @@ const (
 	// ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSet indicates that a PipelineRun uses workspaces with PersistentVolumeClaim
 	// as a volume source and expect an Assistant StatefulSet in AffinityAssistantPerWorkspace behavior, but couldn't create a StatefulSet.
 	ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSet = "ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSet"
+
+	// AutoCleanupPVCAnnotation enables optional PVC cleanup in AffinityAssistantPerWorkspace mode.
+	// When set to "true", PVCs created from volumeClaimTemplates are deleted on PipelineRun completion.
+	// This annotation only affects volumeClaimTemplate workspaces; user-provided persistentVolumeClaim
+	// workspaces are never deleted.
+	AutoCleanupPVCAnnotation = "tekton.dev/auto-cleanup-pvc"
 )
 
 var (
@@ -211,12 +217,23 @@ func (c *Reconciler) cleanupAffinityAssistantsAndPVCs(ctx context.Context, pr *v
 	var errs []error
 	switch aaBehavior {
 	case aa.AffinityAssistantPerWorkspace:
-		// TODO (#5776): support optional PVC deletion behavior for per-workspace mode
+		// Check if auto-cleanup annotation is enabled
+		autoCleanup := pr.Annotations != nil && pr.Annotations[AutoCleanupPVCAnnotation] == "true"
+
 		for _, w := range pr.Spec.Workspaces {
 			if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
 				affinityAssistantName := GetAffinityAssistantName(w.Name, pr.Name)
 				if err := c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Delete(ctx, affinityAssistantName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 					errs = append(errs, fmt.Errorf("failed to delete StatefulSet %s: %w", affinityAssistantName, err))
+				}
+			}
+
+			// Delete PVCs from volumeClaimTemplate if auto-cleanup is enabled.
+			// User-provided persistentVolumeClaim workspaces are never deleted.
+			if w.VolumeClaimTemplate != nil && autoCleanup {
+				pvcName := volumeclaim.GeneratePVCNameFromWorkspaceBinding(w.VolumeClaimTemplate.Name, w, *kmeta.NewControllerRef(pr))
+				if err := c.pvcHandler.PurgeFinalizerAndDeletePVCForWorkspace(ctx, pvcName, pr.Namespace); err != nil {
+					errs = append(errs, err)
 				}
 			}
 		}

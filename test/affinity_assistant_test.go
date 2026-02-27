@@ -245,3 +245,73 @@ func resetFeatureFlagAndCleanup(ctx context.Context, t *testing.T, c *clients, n
 	}
 	tearDown(ctx, t, c, namespace)
 }
+
+// TestAffinityAssistant_PerWorkspace_AutoCleanupPVC tests that PVCs from volumeClaimTemplates are
+// automatically deleted when the PipelineRun completes and the tekton.dev/auto-cleanup-pvc annotation is set.
+// @test:execution=parallel
+func TestAffinityAssistant_PerWorkspace_AutoCleanupPVC(t *testing.T) {
+	ctx := t.Context()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	prName := "my-pipelinerun-auto-cleanup"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+  annotations:
+    tekton.dev/auto-cleanup-pvc: "true"
+spec:
+  pipelineSpec:
+    workspaces:
+    - name: my-workspace
+    tasks:
+    - name: foo
+      workspaces:
+      - name: my-workspace
+      taskSpec:
+        steps:
+        - image: mirror.gcr.io/busybox
+          script: echo hello foo
+    - name: bar
+      workspaces:
+      - name: my-workspace
+      taskSpec:
+        steps:
+        - image: mirror.gcr.io/busybox
+          script: echo hello bar
+  workspaces:
+  - name: my-workspace
+    volumeClaimTemplate:
+      metadata:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 16Mi
+`, prName, namespace))
+
+	if _, err := c.V1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create PipelineRun: %s", err)
+	}
+
+	// wait for PipelineRun to finish
+	t.Logf("Waiting for PipelineRun in namespace %s to finish", namespace)
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSucceeded", v1Version); err != nil {
+		t.Errorf("Error waiting for PipelineRun to finish: %s", err)
+	}
+
+	// wait and check PVCs are deleted
+	t.Logf("Waiting for PVC in namespace %s to be deleted", namespace)
+	if err := WaitForPVCIsDeleted(ctx, c, timeout, prName, namespace, "PVCDeleted"); err != nil {
+		t.Errorf("Error waiting for PVC to be deleted: %s", err)
+	}
+
+	// validate PipelineRun pods sharing the same PVC are scheduled to the same node
+	podNames := []string{fmt.Sprintf("%v-foo-pod", prName), fmt.Sprintf("%v-bar-pod", prName)}
+	validatePodAffinity(t, ctx, podNames, namespace, c.KubeClient)
+}
