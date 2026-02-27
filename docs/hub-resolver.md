@@ -18,6 +18,7 @@ Use resolver type `hub`.
 | `kind`           | Either `task` or `pipeline` (Optional)                                        | Default: `task`                                                     |
 | `name`           | The name of the task or pipeline to fetch from the hub                        | `golang-build`                                             |
 | `version`        | Version or a Constraint (see [below](#version-constraint) of a task or a pipeline to pull in from. Wrap the number in quotes!   | `"0.5.0"`, `">= 0.5.0"`                                                    |
+| `url`            | Custom hub API endpoint to query instead of the cluster-configured default (Optional). Must be an absolute HTTP or HTTPS URL. Overrides `ARTIFACT_HUB_API` or `TEKTON_HUB_API` based on `type`. | `https://internal-hub.example.com`                        |
 
 The Catalogs in the Artifact Hub follows the semVer (i.e.` <major-version>.<minor-version>.0`) and the Catalogs in the Tekton Hub follows the simplified semVer (i.e. `<major-version>.<minor-version>`). Both full and simplified semantic versioning will be accepted by the `version` parameter. The Hub Resolver will map the version to the format expected by the target Hub `type`.
 
@@ -127,6 +128,37 @@ spec:
   # Resolution of the pipeline will succeed but the PipelineRun
   # overall will not succeed without those parameters.
 ```
+
+### Task Resolution from a Private Hub
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: private-hub-task-reference
+spec:
+  taskRef:
+    resolver: hub
+    params:
+    - name: url
+      value: https://internal-hub.example.com
+    - name: catalog
+      value: my-team-catalog
+    - name: type
+      value: artifact
+    - name: kind
+      value: task
+    - name: name
+      value: my-task
+    - name: version
+      value: "1.0.0"
+```
+
+When the `url` parameter is not specified, the resolver falls back to the
+cluster-configured default (`ARTIFACT_HUB_API` or `TEKTON_HUB_API` environment
+variable). This allows Pipeline authors to explicitly choose which hub instance
+to query on a per-resolution basis, which is useful in multi-team environments
+or air-gapped deployments where resources are hosted on private hub instances.
 
 ### Version constraint
 

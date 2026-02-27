@@ -53,6 +53,7 @@ func TestValidateParams(t *testing.T) {
 		catalog      string
 		resourceName string
 		hubType      string
+		hubURL       string
 		expectedErr  error
 	}{
 		{
@@ -80,6 +81,64 @@ func TestValidateParams(t *testing.T) {
 			hubType:      TektonHubType,
 			expectedErr:  errors.New("failed to validate params: please configure TEKTON_HUB_API env variable to use tekton type"),
 		},
+		{
+			testName:     "tekton type with url override bypasses env var check",
+			kind:         "task",
+			resourceName: "foo",
+			version:      "bar",
+			catalog:      "baz",
+			hubType:      TektonHubType,
+			hubURL:       "https://custom-tekton-hub.example.com",
+		},
+		{
+			testName:     "artifact type with url override",
+			kind:         "task",
+			resourceName: "foo",
+			version:      "bar",
+			catalog:      "baz",
+			hubType:      ArtifactHubType,
+			hubURL:       "https://internal-hub.example.com",
+		},
+		{
+			testName:     "invalid url param",
+			kind:         "task",
+			resourceName: "foo",
+			version:      "bar",
+			catalog:      "baz",
+			hubType:      ArtifactHubType,
+			hubURL:       "not-a-url",
+			expectedErr:  errors.New("failed to validate params: url param must be a valid absolute URL: not-a-url"),
+		},
+		{
+			testName:     "file scheme rejected",
+			kind:         "task",
+			resourceName: "foo",
+			version:      "bar",
+			catalog:      "baz",
+			hubType:      ArtifactHubType,
+			hubURL:       "file:///etc/passwd",
+			expectedErr:  errors.New("failed to validate params: url param must be a valid absolute URL: file:///etc/passwd"),
+		},
+		{
+			testName:     "ftp scheme rejected",
+			kind:         "task",
+			resourceName: "foo",
+			version:      "bar",
+			catalog:      "baz",
+			hubType:      ArtifactHubType,
+			hubURL:       "ftp://example.com",
+			expectedErr:  errors.New("failed to validate params: url param must be a valid http(s) URL: ftp://example.com"),
+		},
+		{
+			testName:     "gopher scheme rejected",
+			kind:         "task",
+			resourceName: "foo",
+			version:      "bar",
+			catalog:      "baz",
+			hubType:      ArtifactHubType,
+			hubURL:       "gopher://example.com",
+			expectedErr:  errors.New("failed to validate params: url param must be a valid http(s) URL: gopher://example.com"),
+		},
 	}
 
 	for _, tc := range testCases {
@@ -91,6 +150,9 @@ func TestValidateParams(t *testing.T) {
 				ParamVersion: tc.version,
 				ParamCatalog: tc.catalog,
 				ParamType:    tc.hubType,
+			}
+			if tc.hubURL != "" {
+				params[ParamURL] = tc.hubURL
 			}
 
 			err := resolver.ValidateParams(contextWithConfig(), toParams(params))
@@ -619,6 +681,259 @@ func TestResolve(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestResolveURLParamOverride(t *testing.T) {
+	testCases := []struct {
+		name         string
+		kind         string
+		imageName    string
+		version      string
+		catalog      string
+		hubType      string
+		input        string
+		expectedRes  []byte
+		expectedPath string
+	}{
+		{
+			name:         "url param overrides artifact hub default",
+			kind:         "task",
+			imageName:    "foo",
+			version:      "baz",
+			catalog:      "Tekton",
+			hubType:      ArtifactHubType,
+			input:        `{"data":{"manifestRaw":"from custom hub"}}`,
+			expectedRes:  []byte("from custom hub"),
+			expectedPath: "/" + fmt.Sprintf(ArtifactHubYamlEndpoint, "task", "Tekton", "foo", "baz"),
+		},
+		{
+			name:         "url param overrides tekton hub default",
+			kind:         "task",
+			imageName:    "foo",
+			version:      "baz",
+			catalog:      "Tekton",
+			hubType:      TektonHubType,
+			input:        `{"data":{"yaml":"from custom tekton hub"}}`,
+			expectedRes:  []byte("from custom tekton hub"),
+			expectedPath: "/" + fmt.Sprintf(TektonHubYamlEndpoint, "Tekton", "task", "foo", "baz"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			overrideSvr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != tc.expectedPath {
+					t.Errorf("expected request path %s but got %s", tc.expectedPath, r.URL.Path)
+				}
+				fmt.Fprint(w, tc.input)
+			}))
+			defer overrideSvr.Close()
+
+			defaultSvr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				t.Fatal("default server should not be called when url param is set")
+			}))
+			defer defaultSvr.Close()
+
+			resolver := &Resolver{
+				TektonHubURL:   defaultSvr.URL,
+				ArtifactHubURL: defaultSvr.URL,
+			}
+
+			params := map[string]string{
+				ParamKind:    tc.kind,
+				ParamName:    tc.imageName,
+				ParamVersion: tc.version,
+				ParamCatalog: tc.catalog,
+				ParamType:    tc.hubType,
+				ParamURL:     overrideSvr.URL,
+			}
+
+			output, err := resolver.Resolve(contextWithConfig(), toParams(params))
+			if err != nil {
+				t.Fatalf("unexpected error resolving: %v", err)
+			}
+			if d := cmp.Diff(tc.expectedRes, output.Data()); d != "" {
+				t.Errorf("unexpected resource from Resolve: %s", diff.PrintWantGot(d))
+			}
+
+			// Fix 5: Verify RefSource URI starts with override server URL
+			if output.RefSource() == nil {
+				t.Fatal("expected non-nil RefSource")
+			}
+			if !strings.HasPrefix(output.RefSource().URI, overrideSvr.URL) {
+				t.Errorf("expected RefSource URI to start with override URL %s but got %s", overrideSvr.URL, output.RefSource().URI)
+			}
+		})
+	}
+}
+
+func TestResolveURLParamWithNoDefaultTektonHub(t *testing.T) {
+	overrideSvr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"data":{"yaml":"from override"}}`)
+	}))
+	defer overrideSvr.Close()
+
+	resolver := &Resolver{
+		TektonHubURL:   "",
+		ArtifactHubURL: "https://artifacthub.io",
+	}
+
+	params := map[string]string{
+		ParamKind:    "task",
+		ParamName:    "foo",
+		ParamVersion: "baz",
+		ParamCatalog: "Tekton",
+		ParamType:    TektonHubType,
+		ParamURL:     overrideSvr.URL,
+	}
+
+	output, err := resolver.Resolve(contextWithConfig(), toParams(params))
+	if err != nil {
+		t.Fatalf("unexpected error: should resolve with url param even when TEKTON_HUB_API is empty: %v", err)
+	}
+	if d := cmp.Diff([]byte("from override"), output.Data()); d != "" {
+		t.Errorf("unexpected resource from Resolve: %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestResolveURLParamWithVersionConstraint(t *testing.T) {
+	testCases := []struct {
+		name                string
+		kind                string
+		taskName            string
+		version             string
+		catalog             string
+		hubType             string
+		resultList          any
+		resultTask          any
+		expectedRes         string
+		expectedTaskVersion string
+	}{
+		{
+			name:     "artifact hub version constraint with URL override",
+			kind:     "task",
+			taskName: "something",
+			version:  ">= 0.1",
+			catalog:  "Tekton",
+			hubType:  ArtifactHubType,
+			resultList: &artifactHubListResult{
+				AvailableVersions: []artifactHubavailableVersionsResults{
+					{Version: "0.1.0"},
+					{Version: "0.2.0"},
+				},
+			},
+			resultTask: &artifactHubResponse{
+				Data: artifactHubDataResponse{
+					YAML: "from override",
+				},
+			},
+			expectedRes:         "from override",
+			expectedTaskVersion: "0.2.0",
+		},
+		{
+			name:     "tekton hub version constraint with URL override",
+			kind:     "task",
+			taskName: "something",
+			version:  ">= 0.1",
+			catalog:  "Tekton",
+			hubType:  TektonHubType,
+			resultList: &tektonHubListResult{
+				Data: tektonHubListDataResult{
+					Versions: []tektonHubListResultVersion{
+						{Version: "0.1"},
+						{Version: "0.2"},
+					},
+				},
+			},
+			resultTask: &tektonHubResponse{
+				Data: tektonHubDataResponse{
+					YAML: "from override",
+				},
+			},
+			expectedRes:         "from override",
+			expectedTaskVersion: "0.2",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			overrideSvr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var ret any
+				listURL := fmt.Sprintf(ArtifactHubListTasksEndpoint, tc.kind, tc.catalog, tc.taskName)
+				if tc.hubType == TektonHubType {
+					listURL = fmt.Sprintf(TektonHubListTasksEndpoint, tc.catalog, tc.kind, tc.taskName)
+				}
+				if r.URL.Path == "/"+listURL {
+					ret = tc.resultList
+				} else {
+					ret = tc.resultTask
+				}
+				output, _ := json.Marshal(ret)
+				fmt.Fprint(w, string(output))
+			}))
+			defer overrideSvr.Close()
+
+			defaultSvr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				t.Fatal("default server should not be called when url param is set")
+			}))
+			defer defaultSvr.Close()
+
+			resolver := &Resolver{
+				TektonHubURL:   defaultSvr.URL,
+				ArtifactHubURL: defaultSvr.URL,
+			}
+
+			params := map[string]string{
+				ParamKind:    tc.kind,
+				ParamName:    tc.taskName,
+				ParamVersion: tc.version,
+				ParamCatalog: tc.catalog,
+				ParamType:    tc.hubType,
+				ParamURL:     overrideSvr.URL,
+			}
+
+			output, err := resolver.Resolve(contextWithConfig(), toParams(params))
+			if err != nil {
+				t.Fatalf("unexpected error resolving: %v", err)
+			}
+			if d := cmp.Diff(tc.expectedRes, string(output.Data())); d != "" {
+				t.Errorf("unexpected resource from Resolve: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestResolveURLParamTrailingSlash(t *testing.T) {
+	overrideSvr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify no double slashes in the path
+		if strings.Contains(r.URL.Path, "//") {
+			t.Errorf("request path contains double slash: %s", r.URL.Path)
+		}
+		fmt.Fprint(w, `{"data":{"manifestRaw":"from override"}}`)
+	}))
+	defer overrideSvr.Close()
+
+	resolver := &Resolver{
+		TektonHubURL:   "https://should-not-be-used.example.com",
+		ArtifactHubURL: "https://should-not-be-used.example.com",
+	}
+
+	params := map[string]string{
+		ParamKind:    "task",
+		ParamName:    "foo",
+		ParamVersion: "baz",
+		ParamCatalog: "Tekton",
+		ParamType:    ArtifactHubType,
+		ParamURL:     overrideSvr.URL + "/",
+	}
+
+	output, err := resolver.Resolve(contextWithConfig(), toParams(params))
+	if err != nil {
+		t.Fatalf("unexpected error resolving: %v", err)
+	}
+	if d := cmp.Diff([]byte("from override"), output.Data()); d != "" {
+		t.Errorf("unexpected resource from Resolve: %s", diff.PrintWantGot(d))
 	}
 }
 

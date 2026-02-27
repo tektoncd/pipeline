@@ -48,3 +48,9 @@ const ParamCatalog = "catalog"
 
 // ParamType is the parameter defining what the hub type to pull the resource from.
 const ParamType = "type"
+
+// ParamURL is the parameter defining a custom hub API endpoint to use
+// instead of the cluster-configured default. When specified, it overrides
+// the ARTIFACT_HUB_API or TEKTON_HUB_API environment variable based on the
+// resolution type.
+const ParamURL = resource.ParamURL
