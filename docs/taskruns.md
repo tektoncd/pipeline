@@ -776,6 +776,18 @@ fully-qualified name of the container image, and the corresponding digest.
 **Note:** If any `Pods` have been [`OOMKilled`](https://kubernetes.io/docs/tasks/administer-cluster/out-of-resource/)
 by Kubernetes, the `TaskRun` is marked as failed even if its exit code is 0.
 
+When a `TaskRun` fails due to a pod-level issue, the `reason` field in the `Succeeded` condition
+indicates the specific failure type:
+
+| Reason | Description |
+|--------|-------------|
+| `PodEvicted` | The pod was evicted by Kubernetes (e.g. ephemeral storage limit exceeded). |
+| `StepOOM` | A step container was terminated due to an out-of-memory condition (`OOMKilled`). |
+| `StepFailed` | A step container exited with a non-zero exit code (not OOM). |
+| `SidecarOOM` | A sidecar container was terminated due to an out-of-memory condition (`OOMKilled`). |
+| `SidecarFailed` | A sidecar container exited with a non-zero exit code (not OOM). |
+| `Failed` | Default fallback for other failures. |
+
 The following example shows the `status` field of a `TaskRun` that has executed successfully:
 
 ```yaml

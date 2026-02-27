@@ -234,6 +234,21 @@ const (
 	// TaskRunReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,
 	// it could be the content has changed, signature is invalid or public key is invalid
 	TaskRunReasonResourceVerificationFailed TaskRunReason = "ResourceVerificationFailed"
+	// TaskRunReasonPodEvicted indicates that the TaskRun's pod was evicted
+	// (e.g., due to exceeding ephemeral storage limits or node pressure).
+	TaskRunReasonPodEvicted TaskRunReason = "PodEvicted"
+	// TaskRunReasonStepOOM indicates a step container was killed due to
+	// running out of memory (OOMKilled).
+	TaskRunReasonStepOOM TaskRunReason = "StepOOM"
+	// TaskRunReasonStepFailed indicates a step container failed (non-OOM),
+	// e.g., bad image, crash, or non-zero exit code.
+	TaskRunReasonStepFailed TaskRunReason = "StepFailed"
+	// TaskRunReasonSidecarOOM indicates a sidecar container was killed due
+	// to running out of memory (OOMKilled).
+	TaskRunReasonSidecarOOM TaskRunReason = "SidecarOOM"
+	// TaskRunReasonSidecarFailed indicates a sidecar container failed
+	// (non-OOM), e.g., bad image or crash.
+	TaskRunReasonSidecarFailed TaskRunReason = "SidecarFailed"
 	// TaskRunReasonFailureIgnored is the reason set when the Taskrun has failed due to pod execution error and the failure is ignored for the owning PipelineRun.
 	// TaskRuns failed due to reconciler/validation error should not use this reason.
 	TaskRunReasonFailureIgnored TaskRunReason = "FailureIgnored"
