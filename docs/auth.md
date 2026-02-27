@@ -236,7 +236,11 @@ This section describes how to configure an `ssh-auth` type `Secret` for use with
 before executing any `Steps` in the `Run`, Tekton creates a `~/.ssh/config` file containing the SSH key
 specified in the `Secret`.
 
-1. In `secret.yaml`, define a `Secret` that specifies your SSH private key:
+1. Generate a new SSH key with `ssh-keygen` command (optionally specify the file path in which the key will be saved, default is `~/.ssh/<key-name>`)
+
+2. View public key with `cat ~/.ssh/<key-name>.pub` and add it to GitHub (under Settings > SSH and GPG Keys > New SSH key)
+
+3. In `secret.yaml`, define a `Secret` containing your SSH private key:
 
    ```yaml
    apiVersion: v1
@@ -247,23 +251,26 @@ specified in the `Secret`.
        tekton.dev/git-0: github.com # Described below
    type: kubernetes.io/ssh-auth
    stringData:
-     ssh-privatekey: <private-key>
-     # This is non-standard, but its use is encouraged to make this more secure.
+     ssh-privatekey: |
+       -----BEGIN OPENSSH PRIVATE KEY-----
+       b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAA...
+       ...
+       -----END OPENSSH PRIVATE KEY-----
+     # known-hosts is not mandatory, but its use is strongly encouraged for security reasons.
      # If it is not provided then the git server's public key will be requested
      # when the repo is first fetched.
-     known_hosts: <known-hosts>
+     known_hosts: |
+       github.com ssh-rsa AAAAB3NzaC1yc2EA...
+       github.com ecdsa-sha2-nistp256 AAAAE2VjZHNh...
+       github.com ssh-ed25519 AAAAC3NzaC1l...
    ```
 
    In the above example, the value for `tekton.dev/git-0` specifies the URL for which Tekton will use this `Secret`,
    as described in [Understanding credential selection](#understanding-credential-selection).
+   
+   You can view your private key with `cat ~/.ssh/<key-name>` and get GitHub's public key with `ssh-keyscan github.com`
 
-1. Generate the `ssh-privatekey` value. For example:
-
-   `cat ~/.ssh/id_rsa`
-
-1. Set the value of the `known_hosts` field to the generated `ssh-privatekey` value from the previous step.
-
-1. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
+5. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
 
    ```yaml
    apiVersion: v1
@@ -274,7 +281,7 @@ specified in the `Secret`.
      - name: ssh-key
    ```
 
-1. In `run.yaml`, associate the `ServiceAccount` with your `Run` by doing one of the following:
+6. In `run.yaml`, associate the `ServiceAccount` with your `Run` by doing one of the following:
 
    - Associate the `ServiceAccount` with your `TaskRun`:
 
@@ -303,7 +310,7 @@ specified in the `Secret`.
        name: demo-pipeline
    ```
 
-1. Execute the `Run`:
+7. Execute the `Run`:
 
    ```shell
    kubectl apply --filename secret.yaml,serviceaccount.yaml,run.yaml
