@@ -25,10 +25,10 @@ require (
 	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0
-	k8s.io/api v0.34.4
-	k8s.io/apimachinery v0.34.4
-	k8s.io/client-go v0.34.4
-	k8s.io/code-generator v0.34.3
+	k8s.io/api v0.34.5
+	k8s.io/apimachinery v0.34.5
+	k8s.io/client-go v0.34.5
+	k8s.io/code-generator v0.34.5
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20250710124328-f3f2b991d03b
 	knative.dev/hack v0.0.0-20260120115810-bf6758cba446 // indirect
@@ -230,7 +230,7 @@ require (
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.34.3
+	k8s.io/apiextensions-apiserver v0.34.5
 	k8s.io/gengo v0.0.0-20240404160639-a0386bf69313 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
