@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -133,6 +134,17 @@ func Resolve(ctx context.Context, params []pipelinev1.Param, tektonHubURL, artif
 	}
 	if err := validateParams(ctx, paramsMap, tektonHubURL); err != nil {
 		return nil, fmt.Errorf("failed to validate params: %w", err)
+	}
+
+	// Allow per-resolution URL override via the url param.
+	if paramURL := paramsMap[ParamURL]; paramURL != "" {
+		override := strings.TrimSuffix(paramURL, "/")
+		switch paramsMap[ParamType] {
+		case ArtifactHubType:
+			artifactHubURL = override
+		case TektonHubType:
+			tektonHubURL = override
+		}
 	}
 
 	if constraint, err := goversion.NewConstraint(paramsMap[ParamVersion]); err == nil {
@@ -367,12 +379,24 @@ func validateParams(ctx context.Context, paramsMap map[string]string, tektonHubU
 			return fmt.Errorf("kind param must be one of: %s", strings.Join(supportedKinds, ", "))
 		}
 	}
+
+	if paramURL, ok := paramsMap[ParamURL]; ok && paramURL != "" {
+		u, err := url.ParseRequestURI(paramURL)
+		if err != nil || u.Scheme == "" || u.Host == "" {
+			return fmt.Errorf("url param must be a valid absolute URL: %s", paramURL)
+		}
+		if u.Scheme != "http" && u.Scheme != "https" {
+			return fmt.Errorf("url param must be a valid http(s) URL: %s", paramURL)
+		}
+	}
+
+	hasURLOverride := paramsMap[ParamURL] != ""
 	if hubType, ok := paramsMap[ParamType]; ok {
 		if hubType != ArtifactHubType && hubType != TektonHubType {
 			return fmt.Errorf("type param must be %s or %s", ArtifactHubType, TektonHubType)
 		}
 
-		if hubType == TektonHubType && tektonHubURL == "" {
+		if hubType == TektonHubType && tektonHubURL == "" && !hasURLOverride {
 			return errors.New("please configure TEKTON_HUB_API env variable to use tekton type")
 		}
 	}
