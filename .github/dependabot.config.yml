@@ -1,0 +1,125 @@
+# Dependabot configuration
+# This file defines the base configuration and branches for dependabot updates.
+# The actual .github/dependabot.yml is generated from this file.
+#
+# Automated regeneration:
+# - A GitHub Actions workflow runs weekly to regenerate dependabot.yml
+# - If changes are detected, it automatically creates a PR
+# - See: .github/workflows/dependabot-regen.yml
+#
+# Manual regeneration:
+# 1. Edit the 'ecosystems' section to change what packages to monitor
+# 2. Edit the 'release-branches' section to add/remove branches
+# 3. Run: ./hack/generate-dependabot.sh
+
+# List of release branches to monitor (in addition to main branch)
+# These should be active LTS release branches
+# Check releases.md for the current list of supported releases
+release-branches:
+  - release-v1.6.x
+  - release-v1.3.x
+  - release-v1.0.x
+  - release-v0.68.x
+
+# Package ecosystems to monitor
+# Each ecosystem will be configured for:
+# - main branch: all updates (major, minor, patch)
+# - release branches: patch updates only
+ecosystems:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: daily
+    labels:
+      - ok-to-test
+      - dependencies
+      - release-note-none
+      - kind/misc
+    ignore:
+      - dependency-name: "k8s.io/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+
+  - package-ecosystem: gomod
+    directory: /tools
+    schedule:
+      interval: daily
+    labels:
+      - ok-to-test
+      - dependencies
+      - release-note-none
+      - kind/misc
+    ignore:
+      - dependency-name: "k8s.io/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+
+  - package-ecosystem: gomod
+    directory: /test/custom-task-ctrls/wait-task-alpha
+    schedule:
+      interval: daily
+    labels:
+      - ok-to-test
+      - dependencies
+      - release-note-none
+      - kind/misc
+    ignore:
+      - dependency-name: "k8s.io/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+
+  - package-ecosystem: gomod
+    directory: /test/custom-task-ctrls/wait-task-beta
+    schedule:
+      interval: daily
+    labels:
+      - ok-to-test
+      - dependencies
+      - release-note-none
+      - kind/misc
+    ignore:
+      - dependency-name: "k8s.io/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - ok-to-test
+      - dependencies
+      - release-note-none
+      - kind/misc
+
+  - package-ecosystem: docker
+    directory: /tekton
+    schedule:
+      interval: weekly
+    labels:
+      - ok-to-test
+      - dependencies
+      - release-note-none
+      - kind/misc
+    groups:
+      all:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - ok-to-test
+      - dependencies
+      - release-note-none
+      - kind/misc
+    groups:
+      all:
+        patterns:
+          - "*"

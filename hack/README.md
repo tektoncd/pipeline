@@ -12,4 +12,5 @@ Tekton Pipelines.
 - [`update-reference-docs.sh`](./update-reference-docs.sh) and related files: Generates [`docs/pipeline-api.md`](../docs/pipeline-api.md).
   - [`reference-docs-gen-config.json`](./reference-docs-gen-config.json) is the configuration file for the [`gen-api-reference-docs`](https://github.com/tektoncd/ahmetb-gen-crd-api-reference-docs) binary.
   - [`reference-docs-template`](./reference-docs-template) contains Go templates for the generated Markdown.
+- [`generate-dependabot.sh`](./generate-dependabot.sh): Generates [`.github/dependabot.yml`](../.github/dependabot.yml) from [`.github/dependabot.config.yml`](../.github/dependabot.config.yml). This allows monitoring dependencies on multiple release branches with a single configuration file. A [GitHub Actions workflow](../.github/workflows/dependabot-regen.yml) automatically regenerates this file weekly and creates a PR if changes are detected.
 - Release docs have been moved to [the top-level `tekton` dir](../tekton)
