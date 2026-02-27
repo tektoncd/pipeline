@@ -19,11 +19,13 @@ import (
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	resolution "github.com/tektoncd/pipeline/pkg/remote/resolution"
 	remoteresource "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
 	resource "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"knative.dev/pkg/kmeta"
 )
 
@@ -59,7 +61,10 @@ func (resolver *Resolver) Get(ctx context.Context, _, _ string) (runtime.Object,
 		return nil, nil, fmt.Errorf("error building request for remote resource: %w", err)
 	}
 	resolved, err := resolver.requester.Submit(ctx, resolverName, req)
-	return resolution.ResolvedRequest(resolved, err)
+	decoder := serializer.
+		NewCodecFactory(scheme.Scheme, serializer.EnableStrict).
+		UniversalDeserializer()
+	return resolution.ResolvedRequest(resolved, decoder, err)
 }
 
 // List implements remote.Resolver but is unused for remote resolution.

@@ -71,3 +71,21 @@ func (e *DataAccessError) Unwrap() error {
 func (e *DataAccessError) Is(that error) bool {
 	return errors.As(that, &e)
 }
+
+// UnsupportedObjectTypeError is returned when a resolved resource
+// does not implement metav1.Object and cannot have annotations attached.
+type UnsupportedObjectTypeError struct {
+	ObjectType string
+}
+
+var _ error = &UnsupportedObjectTypeError{}
+
+// Error returns the string representation of this error.
+func (e *UnsupportedObjectTypeError) Error() string {
+	return fmt.Sprintf("resolved resource type %q does not support annotations", e.ObjectType)
+}
+
+// Is returns true if the given error coerces into an error of this type.
+func (e *UnsupportedObjectTypeError) Is(that error) bool {
+	return errors.As(that, &e)
+}

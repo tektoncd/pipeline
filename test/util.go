@@ -107,10 +107,17 @@ func header(t *testing.T, text string) {
 
 func tearDown(ctx context.Context, t *testing.T, cs *clients, namespace string) {
 	t.Helper()
+
 	if cs.KubeClient == nil {
 		return
 	}
+
 	if t.Failed() {
+		if os.Getenv("TEST_NO_DUMP") != "" {
+			t.Log("Not dumping objects or logs")
+			return
+		}
+
 		header(t, "Dumping objects from "+namespace)
 		bs, err := getCRDYaml(ctx, cs, namespace)
 		if err != nil {
@@ -118,6 +125,7 @@ func tearDown(ctx context.Context, t *testing.T, cs *clients, namespace string) 
 		} else {
 			t.Log(string(bs))
 		}
+
 		header(t, "Dumping logs from Pods in the "+namespace)
 		taskRuns, err := cs.V1TaskRunClient.List(ctx, metav1.ListOptions{})
 		if err != nil {
@@ -128,16 +136,20 @@ func tearDown(ctx context.Context, t *testing.T, cs *clients, namespace string) 
 				CollectPodLogs(ctx, cs, tr.Status.PodName, namespace, t.Logf)
 			}
 		}
+
+		return
 	}
 
-	if os.Getenv("TEST_KEEP_NAMESPACES") == "" && !t.Failed() {
+	if os.Getenv("TEST_KEEP_NAMESPACES") == "" {
 		t.Logf("Deleting namespace %s", namespace)
 		if err := cs.KubeClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{}); err != nil {
 			t.Errorf("Failed to delete namespace %s: %s", namespace, err)
 		}
-	} else {
-		t.Logf("Not deleting namespace %s", namespace)
+
+		return
 	}
+
+	t.Logf("Not deleting namespace %s", namespace)
 }
 
 func initializeLogsAndMetrics(t *testing.T) {

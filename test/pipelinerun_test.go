@@ -21,6 +21,7 @@ package test
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -936,7 +937,8 @@ func assertAnnotationsMatch(t *testing.T, expectedAnnotations, actualAnnotations
 	t.Helper()
 	for key, expectedVal := range expectedAnnotations {
 		if actualVal := actualAnnotations[key]; actualVal != expectedVal {
-			t.Errorf("Expected annotations containing %s=%s but annotations were %v", key, expectedVal, actualAnnotations)
+			actualAsJSON, _ := json.MarshalIndent(actualAnnotations, "", "  ")
+			t.Errorf("Expected annotations containing %s=%s but annotations were %v", key, expectedVal, actualAsJSON)
 		}
 	}
 }
