@@ -84,9 +84,10 @@ func getRegistryService(namespace string) *corev1.Service {
 			Name:      "registry",
 		},
 		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{{
-				Port: 5000,
-			}},
+			Ports: []corev1.ServicePort{
+				{Name: "registry", Port: 5000},
+				{Name: "metrics", Port: 5001},
+			},
 			Selector: map[string]string{
 				"app": "registry",
 			},
@@ -102,4 +103,24 @@ func getRegistryServiceIP(ctx context.Context, t *testing.T, c *clients, namespa
 		t.Fatalf("failed to lookup registry service: %q", err)
 	}
 	return svc.Spec.ClusterIP
+}
+
+func getRegistryPodName(ctx context.Context, t *testing.T, c *clients, namespace string) string {
+	t.Helper()
+
+	podList, err := c.KubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: "app=registry"})
+	if err != nil {
+		t.Fatalf("failed to get the registry pod: %q", err)
+	}
+
+	if len(podList.Items) != 1 {
+		t.Fatalf("expected to find one registry pod, got %d", len(podList.Items))
+	}
+
+	registryPod := podList.Items[0]
+	if registryPod.Status.Phase != corev1.PodRunning {
+		t.Fatalf("expected registry to be 'Running', got %s", registryPod.Status.Phase)
+	}
+
+	return registryPod.Name
 }
