@@ -35,7 +35,34 @@ For support in contributing to specific areas, contact the relevant [Tekton Pipe
 
 ## Slash Commands
 
-The project includes GitHub slash commands to automate common workflows:
+The project includes GitHub slash commands to automate common workflows.
+All commands require **write** access to the repository and must be placed at
+the beginning of a comment line.
+
+### `/retest`
+
+Re-runs failed GitHub Actions checks on a pull request.
+
+**Usage**: `/retest`
+
+**Requirements**:
+- User must be a maintainer or the PR author
+- Comment on the PR
+
+Use this when CI has failed due to flakes or transient issues and you want to
+re-run the failed jobs without pushing a new commit.
+
+### `/e2e-extras`
+
+Runs extra end-to-end tests that are not part of the default CI matrix.
+
+**Usage**: `/e2e-extras`
+
+**Requirements**:
+- User must have write permissions
+
+Use this when you need broader e2e coverage (e.g. different Kubernetes versions
+or feature flags) before merging.
 
 ### `/cherry-pick`
 
