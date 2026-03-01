@@ -123,6 +123,24 @@ func TestTaskRun_Invalidate(t *testing.T) {
 			Paths:   []string{"spec.task-words.properties"},
 		},
 		wc: cfgtesting.EnableAlphaAPIFields,
+	}, {
+		name: "taskrun pending while running",
+		taskRun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{Name: "mytask"},
+				Status:  v1.TaskRunSpecStatusPending,
+			},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					StartTime: &metav1.Time{Time: time.Now()},
+				},
+			},
+		},
+		want: &apis.FieldError{
+			Message: "invalid value: TaskRun cannot be Pending after it is started",
+			Paths:   []string{"spec.status"},
+		},
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -144,6 +162,15 @@ func TestTaskRun_Validate(t *testing.T) {
 		taskRun *v1.TaskRun
 		wc      func(context.Context) context.Context
 	}{{
+		name: "valid pending taskrun",
+		taskRun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{Name: "mytask"},
+				Status:  v1.TaskRunSpecStatusPending,
+			},
+		},
+	}, {
 		name: "propagating params with taskrun",
 		taskRun: &v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
@@ -614,7 +641,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 			Status: "TaskRunCancell",
 		},
-		wantErr: apis.ErrInvalidValue("TaskRunCancell should be TaskRunCancelled", "status"),
+		wantErr: apis.ErrInvalidValue("TaskRunCancell should be TaskRunCancelled or TaskRunPending", "status"),
 	}, {
 		name: "incorrectly set statusMesage",
 		spec: v1.TaskRunSpec{
