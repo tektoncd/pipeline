@@ -34,6 +34,7 @@ weight: 202
     - [Monitoring `Steps`](#monitoring-steps)
     - [Steps](#steps)
     - [Monitoring `Results`](#monitoring-results)
+- [Pending `TaskRun`s](#pending-taskruns)
 - [Cancelling a `TaskRun`](#cancelling-a-taskrun)
 - [Debugging a `TaskRun`](#debugging-a-taskrun)
     - [Breakpoint on Failure](#breakpoint-on-failure)
@@ -872,6 +873,41 @@ Status:
     Value:  1579796946
 
 ```
+
+## Pending `TaskRun`s
+
+You can create a `TaskRun` in a pending state so that it does not start execution immediately.
+This is useful for:
+
+- **External scheduling**: Create TaskRuns in advance and start them based on external triggers
+- **Approval workflows**: Require manual approval before task execution
+- **Resource management**: Queue tasks and start them when resources are available
+- **Batch operations**: Create multiple TaskRuns and start them simultaneously
+
+When pending:
+
+- The `TaskRun` is created but no Pod is created
+- `status.startTime` is not set
+- The condition is set to `Unknown` with reason `TaskRunPending`
+- Clearing `spec.status` (or setting it to empty) starts execution
+- Setting `spec.status: TaskRunCancelled` cancels without running
+
+**Note:** A `TaskRun` can only be marked "pending" before it has started; this setting is invalid after the `TaskRun` has started.
+
+To create a pending `TaskRun`, set `.spec.status` to `TaskRunPending`:
+
+```yaml
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: my-taskrun
+spec:
+  taskRef:
+    name: my-task
+  status: "TaskRunPending"
+```
+
+To start the TaskRun, clear the `.spec.status` field. Alternatively, update the value to `TaskRunCancelled` to cancel it.
 
 ## Cancelling a `TaskRun`
 
