@@ -12,6 +12,18 @@ This document describes how Tekton handles authentication when executing
 apply to both of those entities in the same manner, this document collectively
 refers to `TaskRuns` and `PipelineRuns` as `Runs` for the sake of brevity.
 
+**What this document covers:** How to provide credentials to the processes that
+run *inside* the Pod created by a Run. These credentials allow Steps to perform
+actions such as cloning from a private Git repository, pushing images with `kaniko`,
+pulling images with `podman`, or performing OCI operations with `skopeo`.
+
+**What this document does NOT cover:** Pulling the Step container images themselves
+from a private registry. That happens on the Node when the Pod is scheduled, before
+any Step runs. Use Kubernetes
+[`imagePullSecrets`](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
+on the ServiceAccount for that. See the Kubernetes documentation:
+[Configure a Pod to Use a Private Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/).
+
 - [Overview](#overview)
 - [Understanding credential selection](#understanding-credential-selection)
 - [Using `Secrets` as a non-root user](#using-secrets-as-a-non-root-user)
@@ -418,10 +430,16 @@ the credentials specified in the `Secret`.
 ## Configuring `docker*` authentication for Docker
 
 This section describes how to configure authentication using the `dockercfg` and `dockerconfigjson` type
-`Secrets` for use with Docker. In the example below, before executing any `Steps` in the `Run`, Tekton creates
-a `~/.docker/config.json` file containing the credentials specified in the `Secret`. When the `Steps` execute,
-Tekton uses those credentials to access the target Docker registry.
-f
+`Secrets` for use with Docker. Before any `Steps` run, Tekton creates a `~/.docker/config.json` file
+in the Pod containing the credentials specified in the `Secret`. When the process *inside* each Step
+container runs (for example, `kaniko` pushing an image, `podman` pulling an image, or `skopeo` copying
+images), that process uses these credentials to authenticate with the Docker registry.
+
+**Note:** These credentials are for tools running *inside* the Step container. They do not affect how
+Kubernetes pulls the Step's container image. For pulling Step images from a private registry, use
+[`imagePullSecrets`](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
+on the ServiceAccount.
+
 **Note:** If you specify both the Tekton `basic-auth` and the above Kubernetes `Secrets`, Tekton merges all
 credentials from all specified `Secrets` but Tekton's `basic-auth` `Secret` overrides either of the
 Kubernetes `Secrets`.
