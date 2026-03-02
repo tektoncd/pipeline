@@ -18,6 +18,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -71,6 +73,104 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	resolutionv1alpha1.SchemeGroupVersion.WithKind("ResolutionRequest"): &resolutionv1alpha1.ResolutionRequest{},
 	// v1beta1
 	resolutionv1beta1.SchemeGroupVersion.WithKind("ResolutionRequest"): &resolutionv1beta1.ResolutionRequest{},
+}
+
+// parseTLSMinVersion converts environment variable string ("1.2" or "1.3") to tls.VersionTLS constant.
+// Returns 0 if envValue is empty (use webhook default).
+func parseTLSMinVersion(envValue string) (uint16, error) {
+	switch envValue {
+	case "1.2":
+		return tls.VersionTLS12, nil
+	case "1.3":
+		return tls.VersionTLS13, nil
+	case "":
+		return 0, nil // Use webhook default
+	default:
+		return 0, fmt.Errorf("invalid TLS_MIN_VERSION: %s (expected 1.2 or 1.3)", envValue)
+	}
+}
+
+// parseCipherSuites converts comma-separated cipher suite names to their uint16 identifiers.
+// Returns nil if envValue is empty (use webhook defaults).
+func parseCipherSuites(envValue string) ([]uint16, error) {
+	if envValue == "" {
+		return nil, nil // Use webhook defaults
+	}
+
+	// Map cipher suite names to their constants.
+	// support all OpenShift TLS profiles (Modern, Intermediate, Old, Custom).
+	cipherMap := map[string]uint16{
+		// TLS 1.2 cipher suites - GCM modes (strongest, recommended)
+		"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256":     tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+		"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256":       tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384":     tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+		"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384":       tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256": tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+		"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305":      tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+
+		// TLS 1.2 - CBC modes (less preferred than GCM)
+		"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256": tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+		"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256":   tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+
+		// TLS 1.2 - RSA key exchange (legacy, but in Intermediate/Old profiles)
+		"TLS_RSA_WITH_AES_128_GCM_SHA256": tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+		"TLS_RSA_WITH_AES_256_GCM_SHA384": tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+		"TLS_RSA_WITH_AES_128_CBC_SHA256": tls.TLS_RSA_WITH_AES_128_CBC_SHA256,
+
+		// TLS 1.0/1.1 - CBC modes (old, but in Old profile for legacy clients)
+		"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA": tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+		"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA":   tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+		"TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA": tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+		"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA":   tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+
+		// SSL 3 / TLS 1.0 - Legacy ciphers (very old, but in Old profile)
+		"TLS_RSA_WITH_AES_128_CBC_SHA":  tls.TLS_RSA_WITH_AES_128_CBC_SHA,
+		"TLS_RSA_WITH_AES_256_CBC_SHA":  tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+		"TLS_RSA_WITH_3DES_EDE_CBC_SHA": tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+	}
+
+	names := strings.Split(envValue, ",")
+	ciphers := make([]uint16, 0, len(names))
+
+	for _, name := range names {
+		name = strings.TrimSpace(name)
+		if cipher, ok := cipherMap[name]; ok {
+			ciphers = append(ciphers, cipher)
+		} else {
+			return nil, fmt.Errorf("unknown cipher suite: %s", name)
+		}
+	}
+
+	return ciphers, nil
+}
+
+// parseCurvePreferences converts comma-separated elliptic curve names to their tls.CurveID identifiers.
+// Returns nil if envValue is empty (use webhook defaults).
+func parseCurvePreferences(envValue string) ([]tls.CurveID, error) {
+	if envValue == "" {
+		return nil, nil // Use webhook defaults
+	}
+
+	curveMap := map[string]tls.CurveID{
+		"X25519":    tls.X25519,
+		"CurveP256": tls.CurveP256,
+		"CurveP384": tls.CurveP384,
+		"CurveP521": tls.CurveP521,
+	}
+
+	names := strings.Split(envValue, ",")
+	curves := make([]tls.CurveID, 0, len(names))
+
+	for _, name := range names {
+		name = strings.TrimSpace(name)
+		if curve, ok := curveMap[name]; ok {
+			curves = append(curves, curve)
+		} else {
+			return nil, fmt.Errorf("unknown elliptic curve: %s", name)
+		}
+	}
+
+	return curves, nil
 }
 
 func newDefaultingAdmissionController(name string) func(context.Context, configmap.Watcher) *controller.Impl {
@@ -244,14 +344,45 @@ func main() {
 		webhookName = "webhook.pipeline.tekton.dev"
 	}
 
+	// Parse TLS configuration from environment variables
+	baseCtx := signals.NewContext()
+	logger := logging.FromContext(baseCtx)
+	minVersion, err := parseTLSMinVersion(os.Getenv("TLS_MIN_VERSION"))
+	if err != nil {
+		logger.Warnf("Invalid TLS_MIN_VERSION: %v, using webhook default", err)
+		minVersion = 0
+	}
+
+	cipherSuites, err := parseCipherSuites(os.Getenv("TLS_CIPHER_SUITES"))
+	if err != nil {
+		logger.Warnf("Invalid TLS_CIPHER_SUITES: %v, using webhook default", err)
+		cipherSuites = nil
+	}
+
+	curvePrefs, err := parseCurvePreferences(os.Getenv("TLS_CURVE_PREFERENCES"))
+	if err != nil {
+		logger.Warnf("Invalid TLS_CURVE_PREFERENCES: %v, using webhook default", err)
+		curvePrefs = nil
+	}
+
+	// Log TLS configuration if any was provided
+	if minVersion != 0 || len(cipherSuites) > 0 || len(curvePrefs) > 0 {
+		logger.Infof("Applying TLS configuration: MinVersion=%d, CipherSuites=%d, CurvePreferences=%d",
+			minVersion, len(cipherSuites), len(curvePrefs))
+	}
+
 	// Scope informers to the webhook's namespace instead of cluster-wide
-	ctx := injection.WithNamespaceScope(signals.NewContext(), system.Namespace())
+	ctx := injection.WithNamespaceScope(baseCtx, system.Namespace())
 
 	// Set up a signal context with our webhook options
 	ctx = webhook.WithOptions(ctx, webhook.Options{
 		ServiceName: serviceName,
 		Port:        webhook.PortFromEnv(8443),
 		SecretName:  secretName,
+
+		TLSMinVersion:       minVersion,
+		TLSCipherSuites:     cipherSuites,
+		TLSCurvePreferences: curvePrefs,
 	})
 
 	mux := http.NewServeMux()
