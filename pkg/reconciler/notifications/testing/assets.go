@@ -35,24 +35,16 @@ import (
 
 // Reconciler implements the Reconciler interface from the notification package
 type FakeReconciler struct {
-	cloudEventClient cloudevent.CEClient
-	cacheClient      *lru.Cache
+	CloudEventClient cloudevent.CEClient
+	CacheClient      *lru.Cache
 }
 
 func (c *FakeReconciler) GetCloudEventsClient() cloudevent.CEClient {
-	return c.cloudEventClient
+	return c.CloudEventClient
 }
 
 func (c *FakeReconciler) GetCacheClient() *lru.Cache {
-	return c.cacheClient
-}
-
-func (c *FakeReconciler) SetCloudEventsClient(client cloudevent.CEClient) {
-	c.cloudEventClient = client
-}
-
-func (c *FakeReconciler) SetCacheClient(client *lru.Cache) {
-	c.cacheClient = client
+	return c.CacheClient
 }
 
 func configFromConfigMap(d test.Data) config.Config {
@@ -78,8 +70,12 @@ func configFromConfigMap(d test.Data) config.Config {
 //
 //	testAssets, cancel := rtesting.InitializeTestAssets(t, &d)
 //	defer cancel()
-//	reconciler := &rtesting.FakeReconciler{}
-//	notifications.ReconcilerFromContext(testAssets.Ctx, reconciler)
+//	ceClient, cacheClient := controller.EventClientsFromContext(testAssets.Ctx)
+//	reconciler := &rtesting.FakeReconciler{
+//		cloudEventClient: ceClient,
+//		cacheClient:      cacheClient,
+//	}
+//	notifications.ReconcileRunObject(testAssets.Ctx, reconciler, readOnlyRun)
 func InitializeTestAssets(t *testing.T, d *test.Data) (test.Assets, func()) {
 	t.Helper()
 	names.TestingSeed()

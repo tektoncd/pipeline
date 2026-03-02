@@ -30,25 +30,23 @@ import (
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
-// Reconciler implements controller.Reconciler for Configuration resources.
-type Reconciler interface {
+// EventClientsProvider provides read access to cloud event dependencies
+type EventClientsProvider interface {
 	GetCloudEventsClient() cloudevent.CEClient
 	GetCacheClient() *lru.Cache
-	SetCloudEventsClient(client cloudevent.CEClient)
-	SetCacheClient(client *lru.Cache)
 }
 
-// ReconcileRuntimeObject observes a v1beta1.RunObject and triggers notifications
-func ReconcileRuntimeObject(ctx context.Context, c Reconciler, readOnlyRun v1beta1.RunObject) pkgreconciler.Event {
+// ReconcileRunObject observes a v1beta1.RunObject and triggers notifications
+func ReconcileRunObject(ctx context.Context, e EventClientsProvider, readOnlyRun v1beta1.RunObject) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 	configs := config.FromContextOrDefaults(ctx)
-	ctx = cloudevent.ToContext(ctx, c.GetCloudEventsClient())
-	ctx = cache.ToContext(ctx, c.GetCacheClient())
+	ctx = cloudevent.ToContext(ctx, e.GetCloudEventsClient())
+	ctx = cache.ToContext(ctx, e.GetCacheClient())
 
 	logger.Infof("reconciling %s", readOnlyRun.GetObjectMeta().GetName())
 
 	condition := readOnlyRun.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
-	logger.Debugf("customRun %s, condition: %s", readOnlyRun.GetObjectMeta().GetName(), condition)
+	logger.Debugf("%s %s, condition: %s", readOnlyRun.GetObjectKind().GroupVersionKind().Kind, readOnlyRun.GetObjectMeta().GetName(), condition)
 
 	if configs.FeatureFlags.SendCloudEventsForRuns {
 		events.EmitCloudEvents(ctx, readOnlyRun)

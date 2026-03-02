@@ -34,9 +34,9 @@ import (
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 
-// TestReconcileRuntimeObject runs reconcile with a cloud event sink configured
+// TestReconcileRunObject runs reconcile with a cloud event sink configured
 // and ensures that the event logic is correctly invoked for all supported types
-func TestReconcileRuntimeObject(t *testing.T) {
+func TestReconcileRunObject(t *testing.T) {
 	cms := []*corev1.ConfigMap{
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetEventsConfigName(), Namespace: system.Namespace()},
@@ -130,10 +130,14 @@ func TestReconcileRuntimeObject(t *testing.T) {
 			testAssets, cancel := ntesting.InitializeTestAssets(t, &d)
 			defer cancel()
 			clients := testAssets.Clients
-			reconciler := &ntesting.FakeReconciler{}
-			notifications.ReconcilerFromContext(testAssets.Ctx, reconciler)
 
-			if err := notifications.ReconcileRuntimeObject(testAssets.Ctx, reconciler, tc.runObject); err != nil {
+			ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
+			reconciler := &ntesting.FakeReconciler{
+				CloudEventClient: ceClient,
+				CacheClient:      cacheClient,
+			}
+
+			if err := notifications.ReconcileRunObject(testAssets.Ctx, reconciler, tc.runObject); err != nil {
 				t.Errorf("didn't expect an error, but got one: %v", err)
 			}
 
@@ -144,13 +148,13 @@ func TestReconcileRuntimeObject(t *testing.T) {
 				}
 			}
 
-			ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-			ceClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCEs)
+			ceClientFake := ceClient.(cloudevent.FakeClient)
+			ceClientFake.CheckCloudEventsUnordered(t, tc.name, tc.wantCEs)
 		})
 	}
 }
 
-func TestReconcileRuntimeObject_Disabled(t *testing.T) {
+func TestReconcileRunObject_Disabled(t *testing.T) {
 	cmSinkOn := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: config.GetEventsConfigName(), Namespace: system.Namespace()},
 		Data:       map[string]string{"sink": "http://synk:8080"},
@@ -191,16 +195,18 @@ func TestReconcileRuntimeObject_Disabled(t *testing.T) {
 			d := test.Data{ConfigMaps: tc.cms}
 			testAssets, cancel := ntesting.InitializeTestAssets(t, &d)
 			defer cancel()
-			clients := testAssets.Clients
-			reconciler := &ntesting.FakeReconciler{}
-			notifications.ReconcilerFromContext(testAssets.Ctx, reconciler)
+			ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
+			reconciler := &ntesting.FakeReconciler{
+				CloudEventClient: ceClient,
+				CacheClient:      cacheClient,
+			}
 
-			if err := notifications.ReconcileRuntimeObject(testAssets.Ctx, reconciler, customRun); err != nil {
+			if err := notifications.ReconcileRunObject(testAssets.Ctx, reconciler, customRun); err != nil {
 				t.Fatalf("didn't expect an error, but got one: %v", err)
 			}
 
-			ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-			ceClient.CheckCloudEventsUnordered(t, tc.name, []string{})
+			ceClientFake := ceClient.(cloudevent.FakeClient)
+			ceClientFake.CheckCloudEventsUnordered(t, tc.name, []string{})
 		})
 	}
 }

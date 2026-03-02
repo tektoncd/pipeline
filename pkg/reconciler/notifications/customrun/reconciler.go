@@ -33,6 +33,14 @@ type Reconciler struct {
 	cacheClient      *lru.Cache
 }
 
+// NewReconciler creates a new Reconciler with the given clients.
+func NewReconciler(ceClient cloudevent.CEClient, cacheClient *lru.Cache) *Reconciler {
+	return &Reconciler{
+		cloudEventClient: ceClient,
+		cacheClient:      cacheClient,
+	}
+}
+
 func (c *Reconciler) GetCloudEventsClient() cloudevent.CEClient {
 	return c.cloudEventClient
 }
@@ -59,5 +67,5 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, customRun *v1beta1.Custo
 	// Custom task controllers may be sending events for "CustomRuns" associated
 	// to the custom tasks they control. To avoid sending duplicate events,
 	// CloudEvents for "CustomRuns" are only sent when enabled
-	return notifications.ReconcileRuntimeObject(ctx, c, customRun)
+	return notifications.ReconcileRunObject(ctx, c, customRun)
 }

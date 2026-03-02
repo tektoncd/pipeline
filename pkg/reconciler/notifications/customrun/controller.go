@@ -27,7 +27,7 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-const ControllerName = "CustomRunEvents"
+const controllerName = "CustomRunEvents"
 
 // NewController instantiates a new controller.Impl from knative.dev/pkg/controller
 // This is a read-only controller, hence the SkipStatusUpdates set to true
@@ -35,10 +35,10 @@ func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		configStore := notifications.ConfigStoreFromContext(ctx, cmw)
 
-		c := &Reconciler{}
-		notifications.ReconcilerFromContext(ctx, c)
+		ceClient, cacheClient := notifications.EventClientsFromContext(ctx)
+		c := NewReconciler(ceClient, cacheClient)
 
-		impl := customrunreconciler.NewImpl(ctx, c, notifications.ControllerOptions(ControllerName, configStore))
+		impl := customrunreconciler.NewImpl(ctx, c, notifications.ControllerOptions(controllerName, configStore))
 
 		customRunInformer := customruninformer.Get(ctx)
 		if _, err := customRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
