@@ -46,20 +46,16 @@ aliases:
   - dprotaso
   - dsimansk
   - evankanderson
-  - gauron99
   - knative-automation
   - knative-prow-releaser-robot
   - knative-prow-robot
   - knative-prow-updater-robot
   - knative-test-reporter-robot
-  - linkvt
   - matzew
   - upodroid
   knative-release-leads:
   - dprotaso
   - dsimansk
-  - gauron99
-  - linkvt
   knative-robots:
   - knative-automation
   - knative-prow-releaser-robot

@@ -60,7 +60,7 @@ func (p *Producer) Produce(context.Context) ([]metricdata.ScopeMetrics, error) {
 		{
 			Scope: instrumentation.Scope{
 				Name:    ScopeName,
-				Version: Version(),
+				Version: Version,
 			},
 			Metrics: []metricdata.Metrics{
 				{
