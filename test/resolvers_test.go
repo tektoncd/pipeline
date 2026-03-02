@@ -197,6 +197,222 @@ spec:
 }
 
 // @test:execution=parallel
+func TestHubResolver_URLParam(t *testing.T) {
+	ctx := t.Context()
+	c, namespace := setup(ctx, t, hubFeatureFlags)
+
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	prName := helpers.ObjectNameForTest(t)
+
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  workspaces:
+    - name: output
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  pipelineSpec:
+    workspaces:
+      - name: output
+    tasks:
+      - name: task1
+        workspaces:
+          - name: output
+        taskRef:
+          resolver: hub
+          params:
+          - name: kind
+            value: task
+          - name: name
+            value: git-clone
+          - name: version
+            value: "0.10"
+          - name: url
+            value: https://artifacthub.io
+        params:
+          - name: url
+            value: https://github.com/tektoncd/pipeline
+          - name: deleteExisting
+            value: "true"
+`, prName, namespace))
+
+	_, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1Version); err != nil {
+		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
+	}
+}
+
+// @test:execution=parallel
+func TestHubResolver_URLParam_Failure(t *testing.T) {
+	ctx := t.Context()
+	c, namespace := setup(ctx, t, hubFeatureFlags)
+
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	prName := helpers.ObjectNameForTest(t)
+
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+      - name: task1
+        taskRef:
+          resolver: hub
+          params:
+          - name: kind
+            value: task
+          - name: name
+            value: git-clone
+          - name: version
+            value: "0.10"
+          - name: url
+            value: https://bad-hub.invalid
+`, prName, namespace))
+
+	_, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout,
+		Chain(
+			FailedWithReason(v1.PipelineRunReasonCouldntGetTask.String(), prName),
+			FailedWithMessage("fail to fetch Artifact Hub resource", prName),
+		), "PipelineRunFailed", v1Version); err != nil {
+		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
+	}
+}
+
+// @test:execution=parallel
+func TestHubResolver_VersionConstraint(t *testing.T) {
+	ctx := t.Context()
+	c, namespace := setup(ctx, t, hubFeatureFlags)
+
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	prName := helpers.ObjectNameForTest(t)
+
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  workspaces:
+    - name: output
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  pipelineSpec:
+    workspaces:
+      - name: output
+    tasks:
+      - name: task1
+        workspaces:
+          - name: output
+        taskRef:
+          resolver: hub
+          params:
+          - name: kind
+            value: task
+          - name: name
+            value: git-clone
+          - name: version
+            value: ">= 0.7.0"
+        params:
+          - name: url
+            value: https://github.com/tektoncd/pipeline
+          - name: deleteExisting
+            value: "true"
+`, prName, namespace))
+
+	_, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1Version); err != nil {
+		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
+	}
+}
+
+// @test:execution=parallel
+func TestHubResolver_VersionConstraint_Failure(t *testing.T) {
+	ctx := t.Context()
+	c, namespace := setup(ctx, t, hubFeatureFlags)
+
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	prName := helpers.ObjectNameForTest(t)
+
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+      - name: task1
+        taskRef:
+          resolver: hub
+          params:
+          - name: kind
+            value: task
+          - name: name
+            value: git-clone
+          - name: version
+            value: ">= 999.0.0"
+`, prName, namespace))
+
+	_, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout,
+		Chain(
+			FailedWithReason(v1.PipelineRunReasonCouldntGetTask.String(), prName),
+			FailedWithMessage("no version found for constraint", prName),
+		), "PipelineRunFailed", v1Version); err != nil {
+		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
+	}
+}
+
+// @test:execution=parallel
 func TestGitResolver_Clone(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, gitFeatureFlags)
