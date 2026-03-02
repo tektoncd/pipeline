@@ -57,7 +57,7 @@ func NewResolutionRequestInformer(client versioned.Interface, namespace string, 
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredResolutionRequestInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
@@ -82,7 +82,7 @@ func NewFilteredResolutionRequestInformer(client versioned.Interface, namespace 
 				}
 				return client.ResolutionV1alpha1().ResolutionRequests(namespace).Watch(ctx, options)
 			},
-		},
+		}, client),
 		&apisresolutionv1alpha1.ResolutionRequest{},
 		resyncPeriod,
 		indexers,
