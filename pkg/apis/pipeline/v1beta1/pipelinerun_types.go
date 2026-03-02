@@ -84,8 +84,8 @@ func (pr *PipelineRun) HasStarted() bool {
 }
 
 // IsSuccessful returns true if the TaskRun's status indicates that it has succeeded.
-func (tr *PipelineRun) IsSuccessful() bool {
-	return tr != nil && tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+func (pr *PipelineRun) IsSuccessful() bool {
+	return pr != nil && pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 }
 
 // IsCancelled returns true if the PipelineRun's spec status is set to Cancelled state
