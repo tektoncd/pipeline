@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Tekton Authors
+Copyright 2026 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package notifications
 import (
 	"context"
 
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cacheclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
@@ -35,10 +36,9 @@ func ConfigStoreFromContext(ctx context.Context, cmw configmap.Watcher) *config.
 	return configStore
 }
 
-// ReconcilerFromContext initialises a Reconciler from the context
-func ReconcilerFromContext(ctx context.Context, c Reconciler) {
-	c.SetCloudEventsClient(cloudeventclient.Get(ctx))
-	c.SetCacheClient(cacheclient.Get(ctx))
+// EventClientsFromContext extracts the cloud event clients from the context.
+func EventClientsFromContext(ctx context.Context) (cloudeventclient.CEClient, *lru.Cache) {
+	return cloudeventclient.Get(ctx), cacheclient.Get(ctx)
 }
 
 // ControllerOptions returns a function that returns options for a controller implementation

@@ -40,7 +40,7 @@ type RunObject interface {
 	IsDone() bool
 }
 
-// RunObject is implemented by Run and CustomRun
+// RunObjectWithRetries is implemented by Run and CustomRun
 type RunObjectWithRetries interface {
 	RunObject
 

@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/notifications"
+	"github.com/tektoncd/pipeline/pkg/reconciler/notifications/customrun"
 	ntesting "github.com/tektoncd/pipeline/pkg/reconciler/notifications/testing"
 	"github.com/tektoncd/pipeline/test"
 	corev1 "k8s.io/api/core/v1"
@@ -32,7 +33,6 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/system"
-	// _ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 
 // TestReconcileKind_CloudEvents runs reconcile with a cloud event sink configured
@@ -118,10 +118,10 @@ func TestReconcileKind_CloudEvents(t *testing.T) {
 			testAssets, cancel := ntesting.InitializeTestAssets(t, &d)
 			defer cancel()
 			clients := testAssets.Clients
-			reconciler := &ntesting.FakeReconciler{}
-			notifications.ReconcilerFromContext(testAssets.Ctx, reconciler)
+			ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
+			reconciler := customrun.NewReconciler(ceClient, cacheClient)
 
-			if err := notifications.ReconcileRuntimeObject(testAssets.Ctx, reconciler, &customRun); err != nil {
+			if err := reconciler.ReconcileKind(testAssets.Ctx, &customRun); err != nil {
 				t.Errorf("didn't expect an error, but got one: %v", err)
 			}
 
@@ -141,14 +141,14 @@ func TestReconcileKind_CloudEvents(t *testing.T) {
 				t.Errorf("CustomRun should not have changed, got %v instead", d)
 			}
 
-			ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-			ceClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
+			ceClientFake := ceClient.(cloudevent.FakeClient)
+			ceClientFake.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
 
 			// Try and reconcile again - expect no event
-			if err := notifications.ReconcileRuntimeObject(testAssets.Ctx, reconciler, &customRun); err != nil {
+			if err := reconciler.ReconcileKind(testAssets.Ctx, &customRun); err != nil {
 				t.Errorf("didn't expect an error, but got one: %v", err)
 			}
-			ceClient.CheckCloudEventsUnordered(t, tc.name, []string{})
+			ceClientFake.CheckCloudEventsUnordered(t, tc.name, []string{})
 		})
 	}
 }
@@ -222,10 +222,10 @@ func TestReconcile_CloudEvents_Disabled(t *testing.T) {
 			testAssets, cancel := ntesting.InitializeTestAssets(t, &d)
 			defer cancel()
 			clients := testAssets.Clients
-			reconciler := &ntesting.FakeReconciler{}
-			notifications.ReconcilerFromContext(testAssets.Ctx, reconciler)
+			ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
+			reconciler := customrun.NewReconciler(ceClient, cacheClient)
 
-			if err := notifications.ReconcileRuntimeObject(testAssets.Ctx, reconciler, &customRun); err != nil {
+			if err := reconciler.ReconcileKind(testAssets.Ctx, &customRun); err != nil {
 				t.Fatalf("didn't expect an error, but got one: %v", err)
 			}
 
@@ -238,8 +238,8 @@ func TestReconcile_CloudEvents_Disabled(t *testing.T) {
 				t.Fatalf("CustomRun should not have changed, got %v instead", d)
 			}
 
-			ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-			ceClient.CheckCloudEventsUnordered(t, tc.name, []string{})
+			ceClientFake := ceClient.(cloudevent.FakeClient)
+			ceClientFake.CheckCloudEventsUnordered(t, tc.name, []string{})
 		})
 	}
 }
