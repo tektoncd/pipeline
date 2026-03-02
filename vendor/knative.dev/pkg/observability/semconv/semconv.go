@@ -18,7 +18,7 @@ package semconv
 
 import (
 	"go.opentelemetry.io/otel/attribute"
-	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.39.0"
 )
 
 const (
@@ -66,4 +66,8 @@ func ServiceInstanceID(val string) attribute.KeyValue {
 
 func HTTPResponseStatusCode(val int) attribute.KeyValue {
 	return semconv.HTTPResponseStatusCode(val)
+}
+
+func HTTPRoute(r string) attribute.KeyValue {
+	return semconv.HTTPRoute(r)
 }

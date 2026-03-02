@@ -54,10 +54,12 @@ func (dif *TypedInformerFactory) Get(ctx context.Context, gvr schema.GroupVersio
 	}
 
 	listObj := dif.Type.GetListType()
-	lw := &cache.ListWatch{
+	rawLW := &cache.ListWatch{
 		ListWithContextFunc:  asStructuredLister(dif.Client.Resource(gvr).List, listObj),
 		WatchFuncWithContext: AsStructuredWatcher(dif.Client.Resource(gvr).Watch, dif.Type),
 	}
+	// Wrap with standard K8s function to properly handle WatchList semantics detection
+	lw := cache.ToListWatcherWithWatchListSemantics(rawLW, dif.Client)
 	inf := cache.NewSharedIndexInformer(lw, dif.Type, dif.ResyncPeriod, cache.Indexers{
 		cache.NamespaceIndex: cache.MetaNamespaceIndexFunc,
 	})

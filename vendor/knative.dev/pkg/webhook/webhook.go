@@ -33,8 +33,10 @@ import (
 	kubeinformerfactory "knative.dev/pkg/injection/clients/namespacedkube/informers/factory"
 	"knative.dev/pkg/network"
 	"knative.dev/pkg/network/handlers"
+	"knative.dev/pkg/observability/semconv"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
@@ -250,11 +252,11 @@ func New(
 		switch c := controller.(type) {
 		case AdmissionController:
 			handler := admissionHandler(webhook, c, syncCtx.Done())
-			webhook.mux.Handle(c.Path(), otelhttp.WithRouteTag(c.Path(), handler))
+			webhook.mux.Handle(c.Path(), handler)
 
 		case ConversionController:
 			handler := conversionHandler(webhook, c)
-			webhook.mux.Handle(c.Path(), otelhttp.WithRouteTag(c.Path(), handler))
+			webhook.mux.Handle(c.Path(), handler)
 
 		default:
 			return nil, fmt.Errorf("unknown webhook controller type:  %T", controller)
@@ -296,6 +298,14 @@ func (wh *Webhook) Run(stop <-chan struct{}) error {
 		otelhttp.WithMeterProvider(wh.Options.MeterProvider),
 		otelhttp.WithTracerProvider(wh.Options.TracerProvider),
 		otelhttp.WithPropagators(wh.Options.TextMapPropagator),
+		otelhttp.WithMetricAttributesFn(func(r *http.Request) []attribute.KeyValue {
+			if r.URL.Path == "" {
+				return nil
+			}
+			return []attribute.KeyValue{
+				semconv.HTTPRoute(r.URL.Path),
+			}
+		}),
 		otelhttp.WithFilter(func(r *http.Request) bool {
 			// Don't trace kubelet probes
 			return !network.IsKubeletProbe(r)
