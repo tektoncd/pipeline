@@ -23,11 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
-	"github.com/tektoncd/pipeline/pkg/pod"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -38,6 +33,12 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
+
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/pod"
 )
 
 const anonymous = "anonymous"
@@ -326,25 +327,25 @@ func (r *Recorder) observeRunningTaskRuns(ctx context.Context, o metric.Observer
 	var trsWaitResolvingTaskRef int64
 
 	for _, tr := range trs {
-		if !tr.IsDone() {
-			runningTrs++
-			succeedCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
-			if succeedCondition != nil && succeedCondition.Status == corev1.ConditionUnknown {
-				var attrs []attribute.KeyValue
-				if addNamespaceLabelToThrottleMetric {
-					attrs = append(attrs, attribute.String("namespace", tr.Namespace))
-				}
-				attrSet := attribute.NewSet(attrs...)
+		succeedCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
+		if succeedCondition == nil || !succeedCondition.IsUnknown() {
+			continue
+		}
+		runningTrs++
 
-				switch succeedCondition.Reason {
-				case pod.ReasonExceededResourceQuota:
-					trsThrottledByQuota[attrSet]++
-				case pod.ReasonExceededNodeResources:
-					trsThrottledByNode[attrSet]++
-				case v1.TaskRunReasonResolvingTaskRef:
-					trsWaitResolvingTaskRef++
-				}
-			}
+		var attrs []attribute.KeyValue
+		if addNamespaceLabelToThrottleMetric {
+			attrs = append(attrs, attribute.String("namespace", tr.Namespace))
+		}
+		attrSet := attribute.NewSet(attrs...)
+
+		switch succeedCondition.Reason {
+		case pod.ReasonExceededResourceQuota:
+			trsThrottledByQuota[attrSet]++
+		case pod.ReasonExceededNodeResources:
+			trsThrottledByNode[attrSet]++
+		case v1.TaskRunReasonResolvingTaskRef:
+			trsWaitResolvingTaskRef++
 		}
 	}
 
