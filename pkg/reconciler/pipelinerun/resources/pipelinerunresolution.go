@@ -121,7 +121,7 @@ func (t *ResolvedPipelineTask) EvaluateCEL() error {
 				if ok {
 					t.EvaluatedCEL[we.CEL] = b
 				} else {
-					return fmt.Errorf("The CEL expression %s is not evaluated to a boolean", we.CEL)
+					return fmt.Errorf("the CEL expression %s is not evaluated to a boolean", we.CEL)
 				}
 			}
 		}
@@ -755,9 +755,9 @@ func (t *ResolvedPipelineTask) setChildPipelineRunsAndResolvedPipeline(
 	case pipelineTask.PipelineSpec != nil:
 		rp.PipelineSpec = pipelineTask.PipelineSpec
 	case pipelineTask.PipelineRef != nil:
-		return fmt.Errorf("PipelineRef for PipelineTask %q is not yet implemented", pipelineTask.Name)
+		return fmt.Errorf("pipelineRef for PipelineTask %q is not yet implemented", pipelineTask.Name)
 	default:
-		return fmt.Errorf("PipelineSpec in PipelineTask %q missing", pipelineTask.Name)
+		return fmt.Errorf("pipelineSpec in PipelineTask %q missing", pipelineTask.Name)
 	}
 
 	t.ResolvedPipeline = rp
@@ -993,11 +993,11 @@ func CheckMissingResultReferences(pipelineRunState PipelineRunState, target *Res
 	for _, resultRef := range v1.PipelineTaskResultRefs(target.PipelineTask) {
 		referencedPipelineTask, ok := pipelineRunState.ToMap()[resultRef.PipelineTask]
 		if !ok {
-			return fmt.Errorf("Result reference error: Could not find ref \"%s\" in internal pipelineRunState", resultRef.PipelineTask)
+			return fmt.Errorf("result reference error: could not find ref \"%s\" in internal pipelineRunState", resultRef.PipelineTask)
 		}
 		if referencedPipelineTask.IsCustomTask() {
 			if len(referencedPipelineTask.CustomRuns) == 0 {
-				return fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length CustomRuns", resultRef.PipelineTask)
+				return fmt.Errorf("result reference error: internal result ref \"%s\" has zero-length CustomRuns", resultRef.PipelineTask)
 			}
 			customRun := referencedPipelineTask.CustomRuns[0]
 			_, err := findRunResultForParam(customRun, resultRef)
@@ -1006,7 +1006,7 @@ func CheckMissingResultReferences(pipelineRunState PipelineRunState, target *Res
 			}
 		} else {
 			if len(referencedPipelineTask.TaskRuns) == 0 {
-				return fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length TaskRuns", resultRef.PipelineTask)
+				return fmt.Errorf("result reference error: internal result ref \"%s\" has zero-length TaskRuns", resultRef.PipelineTask)
 			}
 			taskRun := referencedPipelineTask.TaskRuns[0]
 			_, err := findTaskResultForParam(taskRun, resultRef)
