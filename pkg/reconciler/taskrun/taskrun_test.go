@@ -1659,14 +1659,14 @@ status:
   - reason: ToBeRetried
     status: Unknown
     type: Succeeded
-    message: "%sProvided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\""
+    message: "%sprovided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\""
   sideCars:
   retriesStatus:
   - conditions:
     - reason: TaskRunValidationFailed
       status: "False"
       type: "Succeeded"
-      message: "%sProvided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\""
+      message: "%sprovided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\""
     startTime: "2021-12-31T23:59:59Z"
     completionTime: "2022-01-01T00:00:00Z"
     podName: "test-taskrun-results-type-mismatched-pod"
@@ -1695,7 +1695,7 @@ status:
       coschedule: "workspaces"
       disableInlineSpec: ""
 `, pipelineErrors.UserErrorLabel, pipelineErrors.UserErrorLabel))
-		reconciliatonError = errors.New("Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
+		reconciliatonError = errors.New("provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
 		toBeRetriedTaskRun = parse.MustParseV1TaskRun(t, `
 metadata:
   name: test-taskrun-to-be-retried
@@ -6702,7 +6702,7 @@ status:
 		name:             "taskrun results type mismatched",
 		taskRun:          taskRunResultsTypeMismatched,
 		wantFailedReason: v1.TaskRunReasonFailedValidation.String(),
-		expectedError:    errors.New("Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\", \"objectResult\": task result is expected to be \"object\" type but was initialized to a different type \"string\""),
+		expectedError:    errors.New("provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\", \"objectResult\": task result is expected to be \"object\" type but was initialized to a different type \"string\""),
 		expectedResults:  nil,
 	}, {
 		name:             "taskrun results object miss key",
