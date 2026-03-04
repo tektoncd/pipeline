@@ -85,8 +85,8 @@ A `PipelineRun` definition supports the following fields:
     object that supplies specific execution credentials for the `Pipeline`.
   - [`status`](#cancelling-a-pipelinerun) - Specifies options for cancelling a `PipelineRun`.
   - [`taskRunSpecs`](#specifying-taskrunspecs) - Specifies a list of `PipelineTaskRunSpec` which allows for setting `ServiceAccountName`, [`Pod` template](./podtemplates.md), and `Metadata` for each task. This overrides the `Pod` template set for the entire `Pipeline`.
-  - [`timeout`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails. `timeout` is deprecated and will eventually be removed, so consider using `timeouts` instead.
-  - [`timeouts`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails. `timeouts` allows more granular timeout configuration, at the pipeline, tasks, and finally levels
+  - [`timeout`](#configuring-a-failure-timeout) - **Deprecated.** Specifies the timeout before the `PipelineRun` fails. Use [`timeouts`](#configuring-a-failure-timeout) instead.
+  - [`timeouts`](#configuring-a-failure-timeout) - **Recommended.** Specifies the timeout before the `PipelineRun` fails. `timeouts` allows more granular timeout configuration, at the pipeline, tasks, and finally levels.
   - [`podTemplate`](#specifying-a-pod-template) - Specifies a [`Pod` template](./podtemplates.md) to use as the basis for the configuration of the `Pod` that executes each `Task`.
   - [`workspaces`](#specifying-workspaces) - Specifies a set of workspace bindings which must match the names of workspaces declared in the pipeline being used.
   - [`managedBy`](#delegating-reconciliation) - Specifies the controller responsible for managing this PipelineRun's lifecycle.
