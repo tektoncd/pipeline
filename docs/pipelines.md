@@ -2000,7 +2000,7 @@ If the `taskSpec` is not supported, the custom task controller should produce pr
 
 Please take a look at the
 developer guide for custom controllers supporting `taskSpec`:
-- [guidance for `Run`](runs.md#developer-guide-for-custom-controllers-supporting-spec)
+- [guidance for `Run`](customruns.md#developer-guide-for-custom-controllers-supporting-customspec)
 - [guidance for `CustomRun`](customruns.md#developer-guide-for-custom-controllers-supporting-customspec)
 
 `taskSpec` support for `pipelineRun` was designed and discussed in
@@ -2106,7 +2106,7 @@ If the custom task produces results, you can reference them in a Pipeline using 
 ### Specifying `Timeout`
 
 #### `v1alpha1.Run`
-If the custom task supports it as [we recommended](runs.md#developer-guide-for-custom-controllers-supporting-timeout), you can provide `timeout` to specify the maximum running time of a `CustomRun` (including all retry attempts or other operations).
+If the custom task supports it as [we recommended](customruns.md#developer-guide-for-custom-controllers-supporting-timeout), you can provide `timeout` to specify the maximum running time of a `CustomRun` (including all retry attempts or other operations).
 
 #### `v1beta1.CustomRun`
 If the custom task supports it as [we recommended](customruns.md#developer-guide-for-custom-controllers-supporting-timeout), you can provide `timeout` to specify the maximum running time of one `CustomRun` execution.
