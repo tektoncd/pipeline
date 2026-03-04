@@ -10,36 +10,44 @@ weight: 204
 <!-- toc -->
 - [PipelineRuns](#pipelineruns)
   - [Overview](#overview)
-  - [Configuring a <code>PipelineRun</code>](#configuring-a-pipelinerun)
-    - [Specifying the target <code>Pipeline</code>](#specifying-the-target-pipeline)
+  - [Configuring a `PipelineRun`](#configuring-a-pipelinerun)
+    - [Specifying the target `Pipeline`](#specifying-the-target-pipeline)
       - [Tekton Bundles](#tekton-bundles)
       - [Remote Pipelines](#remote-pipelines)
     - [Specifying Task-level `ComputeResources`](#specifying-task-level-computeresources)
-    - [Specifying <code>Parameters</code>](#specifying-parameters)
+    - [Specifying `Parameters`](#specifying-parameters)
+      - [Parameter Enums](#parameter-enums)
       - [Propagated Parameters](#propagated-parameters)
         - [Scope and Precedence](#scope-and-precedence)
         - [Default Values](#default-values)
+        - [Referenced Resources](#referenced-resources)
         - [Object Parameters](#object-parameters)
-    - [Specifying custom <code>ServiceAccount</code> credentials](#specifying-custom-serviceaccount-credentials)
-    - [Mapping <code>ServiceAccount</code> credentials to <code>Tasks</code>](#mapping-serviceaccount-credentials-to-tasks)
-    - [Specifying a <code>Pod</code> template](#specifying-a-pod-template)
+    - [Specifying custom `ServiceAccount` credentials](#specifying-custom-serviceaccount-credentials)
+    - [Mapping `ServiceAccount` credentials to `Tasks`](#mapping-serviceaccount-credentials-to-tasks)
+      - [Propagated Results](#propagated-results)
+    - [Specifying a `Pod` template](#specifying-a-pod-template)
     - [Specifying taskRunSpecs](#specifying-taskrunspecs)
       - [Parameter Substitution in taskRunSpecs](#parameter-substitution-in-taskrunspecs)
       - [Matrix Support with taskRunSpecs](#matrix-support-with-taskrunspecs)
-    - [Specifying <code>Workspaces</code>](#specifying-workspaces)
+    - [Specifying `Workspaces`](#specifying-workspaces)
       - [Propagated Workspaces](#propagated-workspaces)
-        - [Referenced TaskRuns within Embedded PipelineRuns](#referenced-taskruns-within-embedded-pipelineruns)
-    - [Specifying <code>LimitRange</code> values](#specifying-limitrange-values)
+        - [Workspace Referenced Resources](#workspace-referenced-resources)
+      - [Referenced TaskRuns within Embedded PipelineRuns](#referenced-taskruns-within-embedded-pipelineruns)
+    - [Specifying `LimitRange` values](#specifying-limitrange-values)
     - [Configuring a failure timeout](#configuring-a-failure-timeout)
-  - [<code>PipelineRun</code> status](#pipelinerun-status)
-    - [The <code>status</code> field](#the-status-field)
+      - [Overriding Individual Task Timeouts](#overriding-individual-task-timeouts)
+  - [`PipelineRun` status](#pipelinerun-status)
+    - [The `status` field](#the-status-field)
     - [Monitoring execution status](#monitoring-execution-status)
     - [Marking off user errors](#marking-off-user-errors)
   - [Delegating reconciliation](#delegating-reconciliation)
-  - [Cancelling a <code>PipelineRun</code>](#cancelling-a-pipelinerun)
-  - [Gracefully cancelling a <code>PipelineRun</code>](#gracefully-cancelling-a-pipelinerun)
-  - [Gracefully stopping a <code>PipelineRun</code>](#gracefully-stopping-a-pipelinerun)
-  - [Pending <code>PipelineRuns</code>](#pending-pipelineruns)
+    - [Example](#example)
+    - [Behavior](#behavior)
+    - [External controller responsibilities](#external-controller-responsibilities)
+  - [Cancelling a `PipelineRun`](#cancelling-a-pipelinerun)
+  - [Gracefully cancelling a `PipelineRun`](#gracefully-cancelling-a-pipelinerun)
+  - [Gracefully stopping a `PipelineRun`](#gracefully-stopping-a-pipelinerun)
+  - [Pending `PipelineRuns`](#pending-pipelineruns)
 <!-- /toc -->
 
 
@@ -1388,6 +1396,16 @@ object(s), if present. Any `Request` or `Limit` specified by the user (on `Task`
 For more information, see the [`LimitRange` support in Pipeline](./compute-resources.md#limitrange-support).
 
 ### Configuring a failure timeout
+
+All timeout configurations are summarized below:
+
+| config | description | default | priority |
+| ------ | ----------- | ------- | -------- |
+| Global default timeout | Set via `default-timeout-minutes` in [`config/config-defaults.yaml`](./../config/config-defaults.yaml). Applies when no other timeout is specified. | 60 minutes | 4 (lowest) |
+| PipelineRun-level timeouts | Set via `timeouts.pipeline`, `timeouts.tasks`, and `timeouts.finally` on the `PipelineRun`. | Global default timeout | 3 |
+| Per-task timeouts | Set via `pipeline.spec.tasks[].timeout` in the `Pipeline` definition. | PipelineRun-level timeout | 2 |
+| Per-task overrides via `taskRunSpecs` | Set via `taskRunSpecs[].timeout` on the `PipelineRun`. Overrides the Pipeline spec timeout at runtime without modifying the Pipeline definition. | Per-task timeout | 1 (highest) |
+
 
 You can use the `timeouts` field to set the `PipelineRun's` desired timeout value in minutes.
 There are three sub-fields:
