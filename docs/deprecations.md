@@ -31,7 +31,7 @@ The following features are deprecated but have not yet been removed.
 ### v1beta1 deprecation
 
 The v1beta1 versions of Task, TaskRun, Pipeline, and PipelineRun are deprecated in favor of the v1 versions of these APIs,
-as of release v0.50.0. Following the [beta CRD compatibility policy](../api_compatibility_policy.md#beta-crds),
+as of release v0.50.0. Following the [beta CRD compatibility policy](https://github.com/tektoncd/pipeline/blob/main/api_compatibility_policy.md#beta-crds),
 the earliest release the v1beta1 versions of these CRDs may be removed is 1 year later, or v0.62.0 (LTS).
 The v1beta1 client libraries will be retained until v0.62.0 has reached its end of life, 1 year later.
 Therefore, the earliest release the client libraries may be removed is v0.74.0, 12 months after v0.62.0.

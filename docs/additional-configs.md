@@ -398,7 +398,7 @@ Features currently in "alpha" are:
 
 ### Beta Features
 
-Beta features are fields of stable CRDs that follow our "beta" [compatibility policy](../api_compatibility_policy.md).
+Beta features are fields of stable CRDs that follow our "beta" [compatibility policy](https://github.com/tektoncd/pipeline/blob/main/api_compatibility_policy.md).
 To enable these features, set the `enable-api-fields` feature flag to `"beta"` in
 the `feature-flags` ConfigMap alongside your Tekton Pipelines deployment via
 `kubectl patch cm feature-flags -n tekton-pipelines -p '{"data":{"enable-api-fields":"beta"}}'`.
