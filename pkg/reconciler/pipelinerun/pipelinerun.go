@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	nsconfig "github.com/tektoncd/pipeline/pkg/apis/config/namespace"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -177,6 +178,7 @@ type Reconciler struct {
 	pvcHandler               volumeclaim.PvcHandler
 	resolutionRequester      resolution.Requester
 	tracerProvider           trace.TracerProvider
+	namespaceConfigCache     *nsconfig.NamespaceConfigCache
 }
 
 var (
@@ -190,6 +192,7 @@ var (
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) (reconcileErr pkgreconciler.Event) {
 	logger := logging.FromContext(ctx)
+	ctx = nsconfig.WithNamespaceConfig(ctx, c.namespaceConfigCache, pr.Namespace, logger)
 	ctx, rootSpan := initTracing(ctx, c.tracerProvider, pr)
 	defer rootSpan.End()
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "PipelineRun:ReconcileKind")
