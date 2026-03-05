@@ -173,8 +173,8 @@ will then run that `Task` without registering it in the cluster allowing multipl
 of the same named `Task` to be run at once.
 
 `Tekton Bundles` may be constructed with any toolsets that produces valid OCI image artifacts so long as
-the artifact adheres to the [contract](tekton-bundle-contracts.md). Additionally, you may also use the `tkn`
-cli *(coming soon)*.
+the artifact adheres to the [contract](tekton-bundle-contracts.md). Additionally, you may also use the [`tkn bundle`](https://github.com/tektoncd/cli/blob/main/docs/cmd/tkn_bundle.md)
+CLI command.
 
 #### Remote Tasks
 
