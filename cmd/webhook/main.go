@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	defaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
+	nsconfig "github.com/tektoncd/pipeline/pkg/apis/config/namespace"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -32,6 +33,7 @@ import (
 	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
@@ -78,6 +80,17 @@ func newDefaultingAdmissionController(name string) func(context.Context, configm
 		// Decorate contexts with the current state of the config.
 		store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
 		store.WatchConfigs(cmw)
+
+		// TEP-0085: Create filtered informer for per-namespace defaulting.
+		// The webhook's injection context is namespace-scoped (tekton-pipelines),
+		// but we need a cluster-scoped informer to read namespace ConfigMaps.
+		kubeclientset := kubeclient.Get(ctx)
+		nsConfigFactory, nsConfigCMInformer := nsconfig.NewNamespaceConfigInformer(kubeclientset, nsconfig.DefaultResyncPeriod)
+		nsConfigCMInformer.Informer().AddEventHandler(nsconfig.LogEventHandlers(logging.FromContext(ctx).Named("ns-config"))) //nolint:errcheck
+		nsConfigFactory.Start(ctx.Done())
+		nsConfigFactory.WaitForCacheSync(ctx.Done())
+		nsConfigCache := nsconfig.NewNamespaceConfigCache(nsConfigCMInformer.Lister())
+
 		return defaulting.NewAdmissionController(ctx,
 
 			// Name of the resource webhook, it is the value of the environment variable WEBHOOK_ADMISSION_CONTROLLER_NAME
@@ -92,7 +105,10 @@ func newDefaultingAdmissionController(name string) func(context.Context, configm
 
 			// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 			func(ctx context.Context) context.Context {
-				return store.ToContext(ctx)
+				ctx = store.ToContext(ctx)
+				// TEP-0085: Inject namespace config cache into context for SetDefaults
+				ctx = nsconfig.ToContext(ctx, nsConfigCache)
+				return ctx
 			},
 
 			// Whether to disallow unknown fields.

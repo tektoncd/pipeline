@@ -2387,6 +2387,19 @@ spec:
                           type: string
                         maxResultSize:
                           type: integer
+                        namespaceConfigCacheSize:
+                          description: NamespaceConfigCacheSize is the max number of namespace configs held in the LRU cache.
+                          type: integer
+                        nonOverridableFields:
+                          description: |-
+                            NonOverridableFields is a comma-separated list of additional fields that operators
+                            can lock from being overridden per namespace.
+                          type: string
+                        perNamespaceConfiguration:
+                          description: |-
+                            PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
+                            are honored (TEP-0085). Default: false.
+                          type: boolean
                         requireGitSSHSecretKnownHosts:
                           type: boolean
                         resultExtractionMethod:
@@ -2767,6 +2780,19 @@ spec:
                                     type: string
                                   maxResultSize:
                                     type: integer
+                                  namespaceConfigCacheSize:
+                                    description: NamespaceConfigCacheSize is the max number of namespace configs held in the LRU cache.
+                                    type: integer
+                                  nonOverridableFields:
+                                    description: |-
+                                      NonOverridableFields is a comma-separated list of additional fields that operators
+                                      can lock from being overridden per namespace.
+                                    type: string
+                                  perNamespaceConfiguration:
+                                    description: |-
+                                      PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
+                                      are honored (TEP-0085). Default: false.
+                                    type: boolean
                                   requireGitSSHSecretKnownHosts:
                                     type: boolean
                                   resultExtractionMethod:
@@ -3040,6 +3066,19 @@ spec:
                                           type: string
                                         maxResultSize:
                                           type: integer
+                                        namespaceConfigCacheSize:
+                                          description: NamespaceConfigCacheSize is the max number of namespace configs held in the LRU cache.
+                                          type: integer
+                                        nonOverridableFields:
+                                          description: |-
+                                            NonOverridableFields is a comma-separated list of additional fields that operators
+                                            can lock from being overridden per namespace.
+                                          type: string
+                                        perNamespaceConfiguration:
+                                          description: |-
+                                            PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
+                                            are honored (TEP-0085). Default: false.
+                                          type: boolean
                                         requireGitSSHSecretKnownHosts:
                                           type: boolean
                                         resultExtractionMethod:
@@ -5486,6 +5525,19 @@ spec:
                           type: string
                         maxResultSize:
                           type: integer
+                        namespaceConfigCacheSize:
+                          description: NamespaceConfigCacheSize is the max number of namespace configs held in the LRU cache.
+                          type: integer
+                        nonOverridableFields:
+                          description: |-
+                            NonOverridableFields is a comma-separated list of additional fields that operators
+                            can lock from being overridden per namespace.
+                          type: string
+                        perNamespaceConfiguration:
+                          description: |-
+                            PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
+                            are honored (TEP-0085). Default: false.
+                          type: boolean
                         requireGitSSHSecretKnownHosts:
                           type: boolean
                         resultExtractionMethod:

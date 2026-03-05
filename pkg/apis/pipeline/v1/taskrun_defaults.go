@@ -21,10 +21,12 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	nsconfig "github.com/tektoncd/pipeline/pkg/apis/config/namespace"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/kmap"
+	"knative.dev/pkg/logging"
 )
 
 var _ apis.Defaultable = (*TaskRun)(nil)
@@ -35,6 +37,15 @@ const ManagedByLabelKey = "app.kubernetes.io/managed-by"
 // SetDefaults implements apis.Defaultable
 func (tr *TaskRun) SetDefaults(ctx context.Context) {
 	ctx = apis.WithinParent(ctx, tr.ObjectMeta)
+
+	// TEP-0085: Merge namespace-scoped config overrides into context for defaulting
+	if tr.Namespace != "" {
+		if cache := nsconfig.FromContext(ctx); cache != nil {
+			logger := logging.FromContext(ctx)
+			ctx = nsconfig.WithNamespaceConfig(ctx, cache, tr.Namespace, logger)
+		}
+	}
+
 	tr.Spec.SetDefaults(ctx)
 
 	// Silently filtering out Tekton Reserved annotations at creation
