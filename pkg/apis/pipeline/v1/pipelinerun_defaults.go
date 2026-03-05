@@ -22,11 +22,13 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	nsconfig "github.com/tektoncd/pipeline/pkg/apis/config/namespace"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/kmap"
+	"knative.dev/pkg/logging"
 )
 
 var (
@@ -36,6 +38,14 @@ var (
 
 // SetDefaults implements apis.Defaultable
 func (pr *PipelineRun) SetDefaults(ctx context.Context) {
+	// TEP-0085: Merge namespace-scoped config overrides into context for defaulting
+	if pr.Namespace != "" {
+		if cache := nsconfig.FromContext(ctx); cache != nil {
+			logger := logging.FromContext(ctx)
+			ctx = nsconfig.WithNamespaceConfig(ctx, cache, pr.Namespace, logger)
+		}
+	}
+
 	pr.Spec.SetDefaults(ctx)
 
 	// Silently filtering out Tekton Reserved annotations at creation
