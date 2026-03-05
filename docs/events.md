@@ -134,7 +134,7 @@ of the event. Inside the root key, the whole `spec` and `status` of the resource
       "params": [
         {
           "name": "url",
-          "value": "https://api.hub.tekton.dev/resource/96"
+          "value": "https://artifacthub.io/packages/tekton-task/tekton-catalog-tasks/git-clone"
         }
       ],
       "resources": {},
