@@ -159,7 +159,7 @@ func ExtractStepResultName(value string) (string, string, error) {
 	re := regexp.MustCompile(`\$\(steps\.(.*?)\.results\.(.*?)\)`)
 	rs := re.FindStringSubmatch(value)
 	if len(rs) != 3 {
-		return "", "", fmt.Errorf("Could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got \"%v\"", value)
+		return "", "", fmt.Errorf("could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got \"%v\"", value)
 	}
 	return rs[1], rs[2], nil
 }

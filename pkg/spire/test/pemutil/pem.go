@@ -128,7 +128,7 @@ func parseBlock(pemBytes []byte, pemType string) (interface{}, []byte, bool, err
 	case keyType:
 		object, err = x509.ParsePKCS8PrivateKey(pemBlock.Bytes)
 	default:
-		err = fmt.Errorf("PEM type not supported: %q", pemType)
+		err = fmt.Errorf("pem type not supported: %q", pemType)
 	}
 
 	if err != nil {

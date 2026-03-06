@@ -64,7 +64,7 @@ func (r *resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 		return err
 	}
 	if u.Scheme != "demoscheme" {
-		return fmt.Errorf("Invalid Scheme. Want %s, Got %s", "demoscheme", u.Scheme)
+		return fmt.Errorf("invalid scheme. Want %s, Got %s", "demoscheme", u.Scheme)
 	}
 	return nil
 }

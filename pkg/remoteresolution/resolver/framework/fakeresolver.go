@@ -63,7 +63,7 @@ func (r *FakeResolver) Validate(_ context.Context, req *v1beta1.ResolutionReques
 		return framework.ValidateParams(req.Params)
 	}
 	if req.URL != FakeUrl {
-		return fmt.Errorf("Wrong url. Expected: %s,  Got: %s", FakeUrl, req.URL)
+		return fmt.Errorf("wrong url. Expected: %s,  Got: %s", FakeUrl, req.URL)
 	}
 	return nil
 }

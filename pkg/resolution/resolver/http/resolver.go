@@ -226,7 +226,7 @@ func compareSHA(expectedSHA string, computedSHA []byte) error {
 
 	match := subtle.ConstantTimeCompare(expectedBytes, computedSHA)
 	if match != 1 {
-		return fmt.Errorf("SHA mismatch, expected %s, got %s", expectedSHA, hex.EncodeToString(computedSHA))
+		return fmt.Errorf("sha mismatch, expected %s, got %s", expectedSHA, hex.EncodeToString(computedSHA))
 	}
 
 	return nil
