@@ -142,7 +142,6 @@ func getMatchedPolicies(resourceName string, source string, policies []*v1alpha1
 //     Alternatively, if the resource only matches policies in "warn" mode, it will still pass verification and only log a warning if these policies are not satisfied.
 //  2. To pass one policy, the resource can pass any public keys in the policy. We use OR logic on public keys of one policy.
 //
-// TODO(#6683): return all failed policies in error.
 func verifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.Interface, signature []byte, matchedPolicies []*v1alpha1.VerificationPolicy) VerificationResult {
 	logger := logging.FromContext(ctx)
 	var warnPolicies []*v1alpha1.VerificationPolicy

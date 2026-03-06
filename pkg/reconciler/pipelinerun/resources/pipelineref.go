@@ -107,7 +107,6 @@ type LocalPipelineRefResolver struct {
 // return an error if it can't find an appropriate Pipeline for any reason.
 // TODO: if we want to set RefSource for in-cluster pipeline, set it here.
 // https://github.com/tektoncd/pipeline/issues/5522
-// TODO(#6666): Support local resources verification
 func (l *LocalPipelineRefResolver) GetPipeline(ctx context.Context, name string) (*v1.Pipeline, *v1.RefSource, *trustedresources.VerificationResult, error) {
 	// If we are going to resolve this reference locally, we need a namespace scope.
 	if l.Namespace == "" {
@@ -146,7 +145,6 @@ func resolvePipeline(ctx context.Context, resolver remote.Resolver, name string,
 // An error is returned if the given object is not a
 // PipelineObject or if there is an error validating or upgrading an
 // older PipelineObject into its v1beta1 equivalent.
-// TODO(#5541): convert v1beta1 obj to v1 once we use v1 as the stored version
 func readRuntimeObjectAsPipeline(ctx context.Context, namespace string, obj runtime.Object, k8s kubernetes.Interface, tekton clientset.Interface, refSource *v1.RefSource, verificationPolicies []*v1alpha1.VerificationPolicy) (*v1.Pipeline, *trustedresources.VerificationResult, error) {
 	switch obj := obj.(type) {
 	case *v1beta1.Pipeline:
