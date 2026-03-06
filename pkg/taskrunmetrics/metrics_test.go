@@ -1091,6 +1091,52 @@ func TestObserveRunningTaskRunsResolvingTaskRef(t *testing.T) {
 	t.Error("waiting_on_task_resolution metric not found")
 }
 
+func TestObserveRunningTaskRunsNoSucceededCondition(t *testing.T) {
+	resetMetrics()
+	ctx := getConfigContext(false, false)
+	reader := sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	otel.SetMeterProvider(provider)
+
+	r, err := NewRecorder(ctx)
+	if err != nil {
+		t.Fatalf("NewRecorder: %v", err)
+	}
+
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "taskrun-no-condition", Namespace: "ns"},
+		Status:     v1.TaskRunStatus{},
+	}
+	mockLister := &mockTaskRunLister{trs: []*v1.TaskRun{tr}}
+
+	_, err = r.meter.RegisterCallback(func(ctx context.Context, o metric.Observer) error {
+		return r.observeRunningTaskRuns(ctx, o, mockLister)
+	}, r.runningTRsGauge, r.runningTRsWaitingOnTaskResolutionGauge, r.runningTRsThrottledByQuotaGauge, r.runningTRsThrottledByNodeGauge)
+	if err != nil {
+		t.Fatalf("RegisterCallback: %v", err)
+	}
+
+	var rm metricdata.ResourceMetrics
+	if err := reader.Collect(ctx, &rm); err != nil {
+		t.Fatalf("Collect error: %v", err)
+	}
+
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name == "tekton_pipelines_controller_running_taskruns" {
+				gauge, ok := m.Data.(metricdata.Gauge[int64])
+				if !ok {
+					t.Fatalf("Expected Gauge[int64], got %T", m.Data)
+				}
+				if len(gauge.DataPoints) > 0 && gauge.DataPoints[0].Value != 0 {
+					t.Errorf("TaskRun with no Succeeded condition should not be counted as running, got %d", gauge.DataPoints[0].Value)
+				}
+				return
+			}
+		}
+	}
+}
+
 func TestObserveRunningTaskRunsListerError(t *testing.T) {
 	resetMetrics()
 	ctx := getConfigContext(false, false)
