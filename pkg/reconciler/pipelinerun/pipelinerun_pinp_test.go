@@ -458,3 +458,36 @@ func reconcileWithError(
 
 	return reconciledRun
 }
+
+// TestReconcile_ChildPipelineRunPipelineRef verifies that a PipelineTask with a pipelineRef (instead
+// of inline pipelineSpec) is correctly resolved and creates a child PipelineRun with the resolved spec.
+func TestReconcile_ChildPipelineRunPipelineRef(t *testing.T) {
+	names.TestingSeed()
+	namespace := "foo"
+	parentPipelineRunName := "parent-pipeline-run"
+
+	childPipeline, parentPipeline, parentPipelineRun, expectedChildPipelineRun :=
+		th.OnePipelineRefInPipeline(t, namespace, parentPipelineRunName)
+
+	testData := test.Data{
+		PipelineRuns: []*v1.PipelineRun{parentPipelineRun},
+		Pipelines:    []*v1.Pipeline{parentPipeline, childPipeline},
+		ConfigMaps:   th.NewAlphaFeatureFlagsConfigMapInSlice(),
+	}
+
+	reconciledRun, childPipelineRuns := reconcileOncePinP(
+		t,
+		testData,
+		namespace,
+		parentPipelineRunName,
+		[]string{"Normal Started", "Normal Running Tasks Completed: 0"},
+	)
+
+	validatePinP(
+		t,
+		reconciledRun.Status,
+		reconciledRun.Name,
+		childPipelineRuns,
+		[]*v1.PipelineRun{expectedChildPipelineRun},
+	)
+}
