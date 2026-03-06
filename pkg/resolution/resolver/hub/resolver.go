@@ -30,6 +30,7 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"knative.dev/pkg/logging"
 )
 
 const (
@@ -135,12 +136,34 @@ func Resolve(ctx context.Context, params []pipelinev1.Param, tektonHubURL, artif
 		return nil, fmt.Errorf("failed to validate params: %w", err)
 	}
 
+	// Determine ordered list of hub URLs to try.
+	// Precedence: url param > ConfigMap YAML list > env var URL.
+	var urls []string
+	if paramURL := paramsMap[ParamURL]; paramURL != "" {
+		// Per-resolution URL override takes highest precedence.
+		urls = []string{strings.TrimSuffix(paramURL, "/")}
+	} else {
+		conf := framework.GetResolverConfigFromContext(ctx)
+		switch paramsMap[ParamType] {
+		case ArtifactHubType:
+			urls = resolveHubURLs(ctx, conf, artifactHubURL, ConfigArtifactHubURLs)
+		case TektonHubType:
+			urls = resolveHubURLs(ctx, conf, tektonHubURL, ConfigTektonHubURLs)
+		}
+	}
+
+	if len(urls) == 0 {
+		return nil, fmt.Errorf("no hub URL configured for type %s", paramsMap[ParamType])
+	}
+
 	if constraint, err := goversion.NewConstraint(paramsMap[ParamVersion]); err == nil {
-		chosen, err := resolveVersionConstraint(ctx, paramsMap, constraint, artifactHubURL, tektonHubURL)
+		chosen, constraintURL, err := resolveVersionConstraintWithFallback(ctx, paramsMap, constraint, urls)
 		if err != nil {
 			return nil, err
 		}
 		paramsMap[ParamVersion] = chosen.String()
+		// Pin subsequent fetch to the same hub that satisfied the constraint.
+		urls = []string{constraintURL}
 	}
 
 	resVer, err := resolveVersion(paramsMap[ParamVersion], paramsMap[ParamType])
@@ -149,33 +172,7 @@ func Resolve(ctx context.Context, params []pipelinev1.Param, tektonHubURL, artif
 	}
 	paramsMap[ParamVersion] = resVer
 
-	// call hub API
-	switch paramsMap[ParamType] {
-	case ArtifactHubType:
-		url := fmt.Sprintf(fmt.Sprintf("%s/%s", artifactHubURL, ArtifactHubYamlEndpoint),
-			paramsMap[ParamKind], paramsMap[ParamCatalog], paramsMap[ParamName], paramsMap[ParamVersion])
-		resp := artifactHubResponse{}
-		if err := fetchHubResource(ctx, url, &resp); err != nil {
-			return nil, fmt.Errorf("fail to fetch Artifact Hub resource: %w", err)
-		}
-		return &ResolvedHubResource{
-			URL:     url,
-			Content: []byte(resp.Data.YAML),
-		}, nil
-	case TektonHubType:
-		url := fmt.Sprintf(fmt.Sprintf("%s/%s", tektonHubURL, TektonHubYamlEndpoint),
-			paramsMap[ParamCatalog], paramsMap[ParamKind], paramsMap[ParamName], paramsMap[ParamVersion])
-		resp := tektonHubResponse{}
-		if err := fetchHubResource(ctx, url, &resp); err != nil {
-			return nil, fmt.Errorf("fail to fetch Tekton Hub resource: %w", err)
-		}
-		return &ResolvedHubResource{
-			URL:     url,
-			Content: []byte(resp.Data.YAML),
-		}, nil
-	}
-
-	return nil, fmt.Errorf("hub resolver type: %s is not supported", paramsMap[ParamType])
+	return fetchResourceWithFallback(ctx, paramsMap, urls)
 }
 
 // ResolvedHubResource wraps the data we want to return to Pipelines
@@ -367,13 +364,25 @@ func validateParams(ctx context.Context, paramsMap map[string]string, tektonHubU
 			return fmt.Errorf("kind param must be one of: %s", strings.Join(supportedKinds, ", "))
 		}
 	}
+
+	if paramURL, ok := paramsMap[ParamURL]; ok && paramURL != "" {
+		if err := validateHubURL(paramURL); err != nil {
+			return fmt.Errorf("invalid url param: %w", err)
+		}
+	}
+
+	hasURLOverride := paramsMap[ParamURL] != ""
 	if hubType, ok := paramsMap[ParamType]; ok {
 		if hubType != ArtifactHubType && hubType != TektonHubType {
 			return fmt.Errorf("type param must be %s or %s", ArtifactHubType, TektonHubType)
 		}
 
-		if hubType == TektonHubType && tektonHubURL == "" {
-			return errors.New("please configure TEKTON_HUB_API env variable to use tekton type")
+		if hubType == TektonHubType && tektonHubURL == "" && !hasURLOverride {
+			conf := framework.GetResolverConfigFromContext(ctx)
+			configURLs, _ := parseURLList(conf[ConfigTektonHubURLs])
+			if len(configURLs) == 0 {
+				return errors.New("please configure TEKTON_HUB_API env variable to use tekton type")
+			}
 		}
 	}
 
@@ -384,10 +393,76 @@ func validateParams(ctx context.Context, paramsMap map[string]string, tektonHubU
 	return nil
 }
 
-func resolveVersionConstraint(ctx context.Context, paramsMap map[string]string, constraint goversion.Constraints, artifactHubURL, tektonHubURL string) (*goversion.Version, error) {
+// resolveHubURLs returns the ordered list of hub URLs to try.
+// Precedence: ConfigMap YAML list > env var URL.
+func resolveHubURLs(ctx context.Context, conf map[string]string, envVarURL, configKey string) []string {
+	if yamlStr, ok := conf[configKey]; ok && strings.TrimSpace(yamlStr) != "" {
+		urls, err := parseURLList(yamlStr)
+		if err != nil {
+			logger := logging.FromContext(ctx)
+			logger.Warnf("failed to parse %s ConfigMap value, falling back to env var URL: %v", configKey, err)
+		} else if len(urls) > 0 {
+			return urls
+		}
+	}
+	if envVarURL != "" {
+		return []string{envVarURL}
+	}
+	return nil
+}
+
+// fetchResourceFromURL fetches a resource from a single hub URL.
+func fetchResourceFromURL(ctx context.Context, paramsMap map[string]string, baseURL string) (framework.ResolvedResource, error) {
+	switch paramsMap[ParamType] {
+	case ArtifactHubType:
+		url := fmt.Sprintf(fmt.Sprintf("%s/%s", baseURL, ArtifactHubYamlEndpoint),
+			paramsMap[ParamKind], paramsMap[ParamCatalog], paramsMap[ParamName], paramsMap[ParamVersion])
+		resp := artifactHubResponse{}
+		if err := fetchHubResource(ctx, url, &resp); err != nil {
+			return nil, fmt.Errorf("fail to fetch Artifact Hub resource: %w", err)
+		}
+		return &ResolvedHubResource{
+			URL:     url,
+			Content: []byte(resp.Data.YAML),
+		}, nil
+	case TektonHubType:
+		url := fmt.Sprintf(fmt.Sprintf("%s/%s", baseURL, TektonHubYamlEndpoint),
+			paramsMap[ParamCatalog], paramsMap[ParamKind], paramsMap[ParamName], paramsMap[ParamVersion])
+		resp := tektonHubResponse{}
+		if err := fetchHubResource(ctx, url, &resp); err != nil {
+			return nil, fmt.Errorf("fail to fetch Tekton Hub resource: %w", err)
+		}
+		return &ResolvedHubResource{
+			URL:     url,
+			Content: []byte(resp.Data.YAML),
+		}, nil
+	}
+	return nil, fmt.Errorf("hub resolver type: %s is not supported", paramsMap[ParamType])
+}
+
+// fetchResourceWithFallback tries each URL in order, returns the first successful result.
+// When there is only one URL, error messages are preserved exactly as before.
+func fetchResourceWithFallback(ctx context.Context, paramsMap map[string]string, urls []string) (framework.ResolvedResource, error) {
+	var errs []error
+	for _, baseURL := range urls {
+		result, err := fetchResourceFromURL(ctx, paramsMap, baseURL)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		return result, nil
+	}
+	if len(errs) == 1 {
+		return nil, errs[0]
+	}
+	return nil, fmt.Errorf("failed to fetch resource from any configured hub URL: %w", errors.Join(errs...))
+}
+
+// resolveVersionConstraintFromURL resolves a version constraint from a single hub URL.
+func resolveVersionConstraintFromURL(ctx context.Context, paramsMap map[string]string, constraint goversion.Constraints, baseURL string) (*goversion.Version, error) {
 	var ret *goversion.Version
 	if paramsMap[ParamType] == ArtifactHubType {
-		allVersionsURL := fmt.Sprintf("%s/%s", artifactHubURL, fmt.Sprintf(
+		allVersionsURL := fmt.Sprintf("%s/%s", baseURL, fmt.Sprintf(
 			ArtifactHubListTasksEndpoint,
 			paramsMap[ParamKind], paramsMap[ParamCatalog], paramsMap[ParamName]))
 		resp := artifactHubListResult{}
@@ -409,12 +484,11 @@ func resolveVersionConstraint(ctx context.Context, paramsMap map[string]string, 
 				if ret != nil && ret.GreaterThan(checkV) {
 					continue
 				}
-				// TODO(chmouel): log constraint result in controller
 				ret = checkV
 			}
 		}
 	} else if paramsMap[ParamType] == TektonHubType {
-		allVersionsURL := fmt.Sprintf("%s/%s", tektonHubURL,
+		allVersionsURL := fmt.Sprintf("%s/%s", baseURL,
 			fmt.Sprintf(TektonHubListTasksEndpoint,
 				paramsMap[ParamCatalog], paramsMap[ParamKind], paramsMap[ParamName]))
 		resp := tektonHubListResult{}
@@ -433,7 +507,6 @@ func resolveVersionConstraint(ctx context.Context, paramsMap map[string]string, 
 				if ret != nil && ret.GreaterThan(checkV) {
 					continue
 				}
-				// TODO(chmouel): log constraint result in controller
 				ret = checkV
 			}
 		}
@@ -442,6 +515,26 @@ func resolveVersionConstraint(ctx context.Context, paramsMap map[string]string, 
 		return nil, fmt.Errorf("no version found for constraint %s", paramsMap[ParamVersion])
 	}
 	return ret, nil
+}
+
+// resolveVersionConstraintWithFallback tries each URL in order for version constraint resolution.
+// Returns the resolved version and the URL that satisfied the constraint, so the caller can
+// pin subsequent fetches to the same hub.
+// When there is only one URL, error messages are preserved exactly as before.
+func resolveVersionConstraintWithFallback(ctx context.Context, paramsMap map[string]string, constraint goversion.Constraints, urls []string) (*goversion.Version, string, error) {
+	var errs []error
+	for _, baseURL := range urls {
+		ver, err := resolveVersionConstraintFromURL(ctx, paramsMap, constraint, baseURL)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		return ver, baseURL, nil
+	}
+	if len(errs) == 1 {
+		return nil, "", errs[0]
+	}
+	return nil, "", fmt.Errorf("failed to resolve version constraint from any configured hub URL: %w", errors.Join(errs...))
 }
 
 func isSupportedKind(kindValue string) bool {
