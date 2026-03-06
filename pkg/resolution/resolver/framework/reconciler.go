@@ -89,7 +89,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return controller.NewPermanentError(err)
 	}
 
-	if rr.IsDone() {
+	if rr.IsResolved() || rr.IsDone() {
 		return nil
 	}
 
