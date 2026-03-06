@@ -1,8 +1,10 @@
 aliases:
   pipeline-approvers:
   - afrittoli
+  - aThorp96
   - dibyom
   - ImJasonH
+  - khrm
   - vdemeester
   - pritidesai
   - jerop
@@ -16,6 +18,7 @@ aliases:
 
   pipeline-reviewers:
   - afrittoli
+  - aThorp96
   - dibyom
   - vdemeester
   - pritidesai
