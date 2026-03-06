@@ -112,6 +112,17 @@ const (
 	// DefaultEnableWaitExponentialBackoff is the default value for EnableWaitExponentialBackoff
 	DefaultEnableWaitExponentialBackoff = false
 
+	// PerNamespaceConfigurationKey is the flag to enable per-namespace configuration overrides (TEP-0085).
+	PerNamespaceConfigurationKey = "per-namespace-configuration"
+	// DefaultPerNamespaceConfiguration is the default value for per-namespace-configuration.
+	DefaultPerNamespaceConfiguration = false
+	// NamespaceConfigCacheSizeKey is the flag to set the LRU cache size for namespace configs.
+	NamespaceConfigCacheSizeKey = "namespace-config-cache-size"
+	// DefaultNamespaceConfigCacheSize is the default cache size for namespace configs.
+	DefaultNamespaceConfigCacheSize = 1000
+	// NonOverridableFieldsKey is the flag for operator-locked fields.
+	NonOverridableFieldsKey = "non-overridable-fields"
+
 	// EnableStepActions is the flag to enable step actions (no-op since it's stable)
 	EnableStepActions = "enable-step-actions"
 
@@ -217,6 +228,14 @@ type FeatureFlags struct {
 	EnableConciseResolverSyntax  bool   `json:"enableConciseResolverSyntax,omitempty"`
 	EnableKubernetesSidecar      bool   `json:"enableKubernetesSidecar,omitempty"`
 	EnableWaitExponentialBackoff bool   `json:"enableWaitExponentialBackoff,omitempty"`
+	// PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
+	// are honored (TEP-0085). Default: false.
+	PerNamespaceConfiguration bool `json:"perNamespaceConfiguration,omitempty"`
+	// NamespaceConfigCacheSize is the max number of namespace configs held in the LRU cache.
+	NamespaceConfigCacheSize int `json:"namespaceConfigCacheSize,omitempty"`
+	// NonOverridableFields is a comma-separated list of additional fields that operators
+	// can lock from being overridden per namespace.
+	NonOverridableFields string `json:"nonOverridableFields,omitempty"`
 	// DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
 	// to allow deletion of PipelineRuns created before v0.62.x.
 	// This field is not used and can be removed in a future release
@@ -329,6 +348,24 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	}
 	if err := setFeature(EnableWaitExponentialBackoff, DefaultEnableWaitExponentialBackoff, &tc.EnableWaitExponentialBackoff); err != nil {
 		return nil, err
+	}
+
+	// TEP-0085: Per-namespace configuration fields
+	if err := setFeature(PerNamespaceConfigurationKey, DefaultPerNamespaceConfiguration, &tc.PerNamespaceConfiguration); err != nil {
+		return nil, err
+	}
+
+	tc.NamespaceConfigCacheSize = DefaultNamespaceConfigCacheSize
+	if cfg, ok := cfgMap[NamespaceConfigCacheSizeKey]; ok {
+		v, err := strconv.Atoi(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing feature flags config %q: %w", NamespaceConfigCacheSizeKey, err)
+		}
+		tc.NamespaceConfigCacheSize = v
+	}
+
+	if cfg, ok := cfgMap[NonOverridableFieldsKey]; ok {
+		tc.NonOverridableFields = cfg
 	}
 
 	return &tc, nil

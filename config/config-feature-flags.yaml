@@ -136,3 +136,19 @@ data:
   # If set to "false", exponential backoff will be disabled.
   # For advanced tuning of backoff parameters, update the 'wait-exponential-backoff' ConfigMap.
   enable-wait-exponential-backoff: "false"
+  # TEP-0085: Per-namespace configuration.
+  # Setting this flag to "true" enables namespace-scoped ConfigMap overrides for config-defaults
+  # and feature-flags. Namespace administrators can create ConfigMaps named "tekton-config-defaults"
+  # and "tekton-feature-flags" with labels:
+  #   app.kubernetes.io/part-of: tekton-pipelines
+  #   tekton.dev/pipeline-config: "true"
+  # to override specific configuration fields for their namespace.
+  # Default: "false" (namespace overrides are ignored).
+  per-namespace-configuration: "false"
+  # Maximum number of namespace configs held in the LRU cache.
+  # Tune for clusters with many namespaces.
+  # namespace-config-cache-size: "1000"
+  # Comma-separated list of additional fields that operators can lock from being
+  # overridden per namespace (beyond the built-in non-overridable set).
+  # Example: "coschedule,enable-step-actions"
+  # non-overridable-fields: ""
