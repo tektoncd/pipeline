@@ -172,7 +172,7 @@ roleRef:
 # Affinity Assistant Pod templates
 
 The Pod templates specified in the `TaskRuns` and `PipelineRuns `also apply to
-the [affinity assistant Pods](#./workspaces.md#specifying-workspace-order-in-a-pipeline-and-affinity-assistants)
+the [affinity assistant Pods](./workspaces.md#specifying-workspace-order-in-a-pipeline-and-affinity-assistants)
 that are created when using Workspaces, but only on selected fields.
 
 The supported fields for affinity assistant pods are: `tolerations`, `nodeSelector`, `securityContext`, 
