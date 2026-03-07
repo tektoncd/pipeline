@@ -11,9 +11,32 @@ can not be executed by `kubectl apply`.  Please use `kubectl create` instead.
 In few examples to demonstrate tasks that push image to registry, sample URL
 `gcr.io/christiewilson-catfactory` is used. To run these examples yourself, you
 will need to change the values of this sample registry URL to a registry you can
-push to from inside your cluster. If you are following instructions
-[here](../DEVELOPMENT.md#getting-started) to setup then use the value of
-`$KO_DOCKER_REPO` instead of `gcr.io/christiewilson-catfactory`.
+push to from inside your cluster.
+
+## Using the run-example.sh Helper Script
+
+We provide a helper script to automatically substitute the registry URL before
+applying examples. This is useful for:
+- Using local registries to avoid rate limiting
+- Testing in air-gapped environments
+- Speeding up development with cached images
+
+Set the `KO_DOCKER_REPO` environment variable to your registry and use the script:
+
+```bash
+# Set your registry
+export KO_DOCKER_REPO=kind.local
+# or: export KO_DOCKER_REPO=localhost:5000
+# or: export KO_DOCKER_REPO=your-registry.example.com
+
+# Run examples using the helper script
+./hack/run-example.sh examples/v1/pipelineruns/pipelinerun.yaml
+./hack/run-example.sh examples/v1beta1/taskruns/task-output-image.yaml
+```
+
+## Manual Application
+
+Alternatively, you can manually apply examples with `kubectl apply`:
 
 ```bash
 # To invoke the build-push Task only
@@ -28,6 +51,9 @@ kubectl apply -f examples/v1beta1/pipelineruns/output-pipelinerun.yaml
 # To invoke the TaskRun with embedded Resource spec and task Spec
 kubectl apply -f examples/v1beta1/taskruns/git-resource.yaml
 ```
+
+**Note:** When using manual application with examples that contain registry URLs,
+you'll need to edit the files or use `sed` to substitute the registry before applying.
 
 ## Results
 
