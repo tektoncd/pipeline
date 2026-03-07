@@ -1401,6 +1401,27 @@ For more information, see the [`LimitRange` support in Pipeline](./compute-resou
 ### Configuring a failure timeout
 
 All timeout configurations are summarized below:
+You can use the `timeouts` field to set the `PipelineRun's` desired timeout value in minutes.
+There are three sub-fields:
+- `pipeline`: specifies the timeout for the entire PipelineRun. Defaults to to the global configurable default timeout of 60 minutes.
+When `timeouts.pipeline` has elapsed, any running child TaskRuns will be canceled, regardless of whether they are normal Tasks
+or `finally` Tasks, and the PipelineRun will fail.
+- `tasks`: specifies the timeout for the cumulative time taken by non-`finally` Tasks specified in `pipeline.spec.tasks`.
+To specify a timeout for an individual Task, use `pipeline.spec.tasks[].timeout`.
+When `timeouts.tasks` has elapsed, any running child TaskRuns will be canceled, finally Tasks will run if `timeouts.finally` is specified,
+and the PipelineRun will fail.
+When `timeouts.tasks` exceeds the global default timeout, it is also used as the individual TaskRun timeout
+for tasks that do not have an explicit timeout set via `pipeline.spec.tasks[].timeout` or `taskRunSpecs[].timeout`.
+This prevents individual TaskRuns from being prematurely canceled at the global default timeout.
+This also applies to computed tasks timeouts (e.g., `pipeline: 2h` minus `finally: 10m` = `1h50m`).
+When the computed or explicit tasks timeout is smaller than the global default, the global default is used
+for individual TaskRuns and the PipelineRun's cumulative enforcement handles cancellation.
+- `finally`: the timeout for the cumulative time taken by `finally` Tasks specified in `pipeline.spec.finally`.
+(Since all `finally` Tasks run in parallel, this is functionally equivalent to the timeout for any `finally` Task.)
+When `timeouts.finally` has elapsed, any running `finally` TaskRuns will be canceled,
+and the PipelineRun will fail.
+Similar to `timeouts.tasks`, when `timeouts.finally` exceeds the global default timeout,
+it is used as the individual timeout for `finally` TaskRuns that do not have an explicit timeout.
 
 | Config | Description | Default | Priority |
 | ------ | ----------- | ------- | -------- |
