@@ -76,7 +76,6 @@ any `Steps` in the `Run`. During credential initialization, Tekton accesses each
 aggregates them into a `/tekton/creds` directory. Tekton then copies or symlinks files from this directory into the user's
 `$HOME` directory.
 
-TODO(#5357): Update docs to explain recommended methods of passing secrets in via workspaces
 
 ## Understanding credential selection
 
