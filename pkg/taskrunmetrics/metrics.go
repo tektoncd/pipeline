@@ -251,8 +251,8 @@ func viewRegister(cfg *config.Metrics) error {
 	podLatencyView = &view.View{
 		Description: podLatency.Description(),
 		Measure:     podLatency,
-		Aggregation: view.LastValue(),
-		TagKeys:     append([]tag.Key{namespaceTag, podTag}, trunTag...),
+		Aggregation: view.Distribution(5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000),
+		TagKeys:     append([]tag.Key{namespaceTag}, trunTag...),
 	}
 	return view.Register(
 		trDurationView,
@@ -551,7 +551,6 @@ func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1
 		ctx,
 		append([]tag.Mutator{
 			tag.Insert(namespaceTag, tr.Namespace),
-			tag.Insert(podTag, pod.Name),
 		},
 			r.insertTaskTag(taskName, tr.Name)...)...)
 	if err != nil {
