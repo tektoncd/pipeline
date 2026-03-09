@@ -154,7 +154,7 @@ jobs:
         name: extra-tests-${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}
         path: ${{ env.ARTIFACTS }}
 
-    - uses: chainguard-dev/actions/kind-diag@71714a76c3df10b544595a2294c16649dc3472e5 # v1.6.5
+    - uses: chainguard-dev/actions/kind-diag@5e84f02889db0de213947c80a5d75b51bb899048 # v1.6.7
       if: ${{ failure() }}
       with:
         artifact-name: extra-tests-${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}-logs
