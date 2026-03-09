@@ -1,4 +1,4 @@
-defaultBaseImage: cgr.dev/chainguard/static@sha256:ea695a20a7bfb81bdc4acb2cf94588eb1e85d29fcd699cce1f8cee8fbeb4ce8a
+defaultBaseImage: cgr.dev/chainguard/static@sha256:d6a97eb401cbc7c6d48be76ad81d7899b94303580859d396b52b67bc84ea7345
 baseImageOverrides:
   # Use the combined base image for images that should include Windows support.
   # The :latest tag is automatically replaced with the actual digest during releases by tekton/publish.yaml.
