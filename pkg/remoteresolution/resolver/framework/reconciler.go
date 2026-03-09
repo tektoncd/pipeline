@@ -99,7 +99,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return controller.NewPermanentError(err)
 	}
 
-	if rr.IsDone() {
+	// If the pipelines controller has a deep queue, resolvers may reprocess
+	// a ResolutionRequest before the pipelines controller marks the resolved
+	// request as Done.
+	if rr.IsResolved() || rr.IsDone() {
 		return nil
 	}
 
