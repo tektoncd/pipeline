@@ -31,6 +31,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/bundle"
 
 	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,9 +44,13 @@ import (
 )
 
 const (
-	cacheAnnotationKey   = "resolution.tekton.dev/cached"
-	cacheResolverTypeKey = "resolution.tekton.dev/cache-resolver-type"
-	cacheValueTrue       = "true"
+	cacheAnnotationKey     = "resolution.tekton.dev/cached"
+	cacheTimestampKey      = "resolution.tekton.dev/cache-timestamp"
+	cacheResolverTypeKey   = "resolution.tekton.dev/cache-resolver-type"
+	cacheOperationKey      = "resolution.tekton.dev/cache-operation"
+	cacheValueTrue         = "true"
+	cacheOperationStore    = "store"
+	cacheOperationRetrieve = "retrieve"
 )
 
 var cacheResolverFeatureFlags = requireAllGates(map[string]string{
@@ -74,10 +79,42 @@ func TestBundleResolverCache(t *testing.T) {
 	repoName := "test-" + task.Name
 	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/" + repoName
 	parallelTaskRuns := newBundleTaskRuns(t, namespace, repo, task.Name, taskRunCount, "parallel")
+	expectedAnnotations := map[string]string{
+		cacheAnnotationKey:   cacheValueTrue,
+		cacheResolverTypeKey: bundle.LabelValueBundleResolverType,
+	}
+	expectedStoreCount := expectedRequests
+	expectedRetrieveCount := taskRunCount - expectedRequests
 	setupBundle(ctx, t, c, namespace, repo, task, nil)
 
 	// WHEN
 	createTaskRunsInParallelAndWait(ctx, t, c, parallelTaskRuns)
+
+	// THEN
+	actualParallelTrs := fetchTaskRunsByName(ctx, t, c, parallelTaskRuns)
+	actualStoreCount := 0
+	actualRetrieveCount := 0
+	for _, actualParallelTr := range actualParallelTrs {
+		annotations := actualParallelTr.GetAnnotations()
+		if annotations[cacheOperationKey] == cacheOperationStore {
+			actualStoreCount++
+		}
+
+		if annotations[cacheOperationKey] == cacheOperationRetrieve {
+			actualRetrieveCount++
+		}
+
+		assertCacheAnnotations(t, actualParallelTr.GetAnnotations(), expectedAnnotations)
+	}
+
+	if actualStoreCount != expectedStoreCount || actualRetrieveCount != expectedRetrieveCount {
+		t.Errorf("\nCache store operations:    expected=%d, actual=%d\n"+
+			"Cache retrieve operations: expected=%d, actual=%d",
+			expectedStoreCount, actualStoreCount,
+			expectedRetrieveCount, actualRetrieveCount)
+	} else {
+		t.Logf("For %d TaskRuns cache store=%d and cache retrieve=%d", taskRunCount, actualStoreCount, actualRetrieveCount)
+	}
 
 	// THEN
 	assertRegistryRequestCount(ctx, t, c, namespace, repoName, expectedRequests, taskRunCount, replicas)
@@ -110,6 +147,28 @@ func TestBundleResolverCacheWithFourResolverReplicas(t *testing.T) {
 
 	// THEN
 	assertRegistryRequestCount(ctx, t, c, namespace, repoName, expectedRequests, taskRunCount, replicas)
+}
+
+func fetchTaskRunsByName(ctx context.Context, t *testing.T, c *clients, taskRuns []*v1.TaskRun) []*v1.TaskRun {
+	t.Helper()
+
+	var result []*v1.TaskRun
+	for _, parallelTaskRun := range taskRuns {
+		actual := fetchTaskRunByName(ctx, t, c, parallelTaskRun.Name)
+		result = append(result, actual)
+	}
+	return result
+}
+
+func fetchTaskRunByName(ctx context.Context, t *testing.T, c *clients, taskRunName string) *v1.TaskRun {
+	t.Helper()
+
+	result, err := c.V1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Could not fetch actual TaskRun %s: %s", taskRunName, err)
+	}
+
+	return result
 }
 
 func newHelloWorldTask(t *testing.T, taskName string, namespace string) *v1beta1.Task {
@@ -155,6 +214,17 @@ func createTaskRunAndWait(ctx context.Context, c *clients, tr *v1.TaskRun) error
 	}
 
 	return WaitForTaskRunState(ctx, c, tr.Name, TaskRunSucceed(tr.Name), "TaskRunSuccess", v1Version)
+}
+
+func assertCacheAnnotations(t *testing.T, actual, expected map[string]string) {
+	t.Helper()
+
+	assertAnnotationsMatch(t, expected, actual)
+
+	// in e2e tests timestamp can only be tested for existence
+	if _, exist := actual[cacheTimestampKey]; !exist {
+		t.Errorf("Expected cache timestamp annotation, got: %v", actual[cacheTimestampKey])
+	}
 }
 
 func newBundleTaskRuns(t *testing.T, namespace string, repo string, taskName string, count int, prefix string) []*v1.TaskRun {
@@ -243,8 +313,8 @@ func assertRegistryRequestCount(ctx context.Context, t *testing.T, c *clients, n
 	}
 
 	t.Logf("%s summary: taskRuns=%d, resolverReplicas=%d\n"+
-		"  Registry GETs from logs:    expected=%d, actual=%d\n"+
-		"  Registry GETs from metrics: expected=%d, actual=%d",
+		"Registry GETs from logs:    expected=%d, actual=%d\n"+
+		"Registry GETs from metrics: expected=%d, actual=%d",
 		t.Name(),
 		taskRunCount, replicas,
 		expectedRequests, actualRequestsFromLogs,
