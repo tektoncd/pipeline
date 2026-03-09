@@ -459,6 +459,59 @@ func TestReconcile(t *testing.T) {
 			reconcilerTimeout: 1 * time.Second,
 			expectedErr:       errors.New("context deadline exceeded"),
 			transient:         true,
+		}, {
+			name: "resolved but not yet done should skip re-resolution",
+			inputRequest: &v1beta1.ResolutionRequest{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "resolution.tekton.dev/v1beta1",
+					Kind:       "ResolutionRequest",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "rr",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.Time{Time: time.Now()},
+					Labels: map[string]string{
+						resolutioncommon.LabelKeyResolverType: resolutionframework.LabelValueFakeResolverType,
+					},
+				},
+				Spec: v1beta1.ResolutionRequestSpec{
+					Params: []pipelinev1.Param{{
+						Name:  resolutionframework.FakeParamName,
+						Value: *pipelinev1.NewStructuredValues("bar"),
+					}},
+				},
+				Status: v1beta1.ResolutionRequestStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						}},
+					},
+					ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
+						Data: base64.StdEncoding.Strict().EncodeToString(
+							[]byte(`{"apiVersion": "tekton.dev/v1", "kind": "Pipeline"}`),
+						),
+					},
+				},
+			},
+			paramMap: map[string]*resolutionframework.FakeResolvedResource{
+				"bar": {
+					ErrorWith: "resolver should not have been called",
+				},
+			},
+			expectedStatus: &v1beta1.ResolutionRequestStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+					}},
+				},
+				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
+					Data: base64.StdEncoding.Strict().EncodeToString(
+						[]byte(`{"apiVersion": "tekton.dev/v1", "kind": "Pipeline"}`),
+					),
+				},
+			},
 		},
 	}
 

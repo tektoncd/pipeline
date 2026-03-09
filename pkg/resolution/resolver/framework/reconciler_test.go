@@ -36,6 +36,7 @@ import (
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -208,6 +209,59 @@ func TestReconcile(t *testing.T) {
 			},
 			reconcilerTimeout: 1 * time.Second,
 			expectedErr:       errors.New("context deadline exceeded"),
+		}, {
+			name: "resolved but not yet done should skip re-resolution",
+			inputRequest: &v1beta1.ResolutionRequest{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "resolution.tekton.dev/v1beta1",
+					Kind:       "ResolutionRequest",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "rr",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.Time{Time: time.Now()},
+					Labels: map[string]string{
+						resolutioncommon.LabelKeyResolverType: framework.LabelValueFakeResolverType,
+					},
+				},
+				Spec: v1beta1.ResolutionRequestSpec{
+					Params: []pipelinev1.Param{{
+						Name:  framework.FakeParamName,
+						Value: *pipelinev1.NewStructuredValues("bar"),
+					}},
+				},
+				Status: v1beta1.ResolutionRequestStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						}},
+					},
+					ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
+						Data: base64.StdEncoding.Strict().EncodeToString(
+							[]byte(`{"apiVersion": "tekton.dev/v1", "kind": "Pipeline"}`),
+						),
+					},
+				},
+			},
+			paramMap: map[string]*framework.FakeResolvedResource{
+				"bar": {
+					ErrorWith: "resolver should not have been called",
+				},
+			},
+			expectedStatus: &v1beta1.ResolutionRequestStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+					}},
+				},
+				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
+					Data: base64.StdEncoding.Strict().EncodeToString(
+						[]byte(`{"apiVersion": "tekton.dev/v1", "kind": "Pipeline"}`),
+					),
+				},
+			},
 		},
 	}
 
