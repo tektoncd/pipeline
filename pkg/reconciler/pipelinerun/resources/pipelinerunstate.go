@@ -76,6 +76,12 @@ type PipelineRunFacts struct {
 	// the case of failing at the validation is during CheckMissingResultReferences method
 	// Tasks in ValidationFailedTask is added in method runNextSchedulableTask
 	ValidationFailedTask []*ResolvedPipelineTask
+
+	// ValidationFailedErrors maps pipeline task name to the error message for tasks
+	// that failed validation. These messages are included in the PipelineRun status
+	// condition to help users understand why specific tasks were not executed
+	// (e.g. missing result references).
+	ValidationFailedErrors map[string]string
 }
 
 // PipelineRunTimeoutsState records information about start times and timeouts for the PipelineRun, so that the PipelineRunFacts
@@ -577,9 +583,20 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 			message = fmt.Sprintf("Tasks Completed: %d (Failed: %d, Cancelled %d), Skipped: %d",
 				cmTasks, totalFailedTasks, s.Cancelled, s.Skipped)
 		}
-		// append validation failed count in the message
+		// append validation failed count and details in the message
 		if s.ValidationFailed > 0 {
 			message += fmt.Sprintf(", Failed Validation: %d", s.ValidationFailed)
+			if len(facts.ValidationFailedErrors) > 0 {
+				var errors []string
+				for _, errMsg := range facts.ValidationFailedErrors {
+					errors = append(errors, errMsg)
+				}
+				errMsg := strings.Join(errors, "; ")
+				if len(errMsg) > 1024 {
+					errMsg = errMsg[:1024] + "..."
+				}
+				message += fmt.Sprintf(" (%s)", errMsg)
+			}
 		}
 		// Set reason to ReasonCompleted - At least one is skipped
 		if s.Skipped > 0 {

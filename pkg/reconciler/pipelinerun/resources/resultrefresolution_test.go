@@ -747,14 +747,14 @@ func TestCheckMissingResultReferences(t *testing.T) {
 		targets: PipelineRunState{
 			pipelineRunState[3],
 		},
-		wantErr: "Invalid task result reference: Could not find result with name missingResult for pipeline task aTask",
+		wantErr: `task "aTask" completed successfully but did not emit the result "missingResult", which is referenced by task "bTask"`,
 	}, {
 		name:             "Test unsuccessful result references resolution - params",
 		pipelineRunState: pipelineRunState,
 		targets: PipelineRunState{
 			pipelineRunState[4],
 		},
-		wantErr: "Invalid task result reference: Could not find result with name missingResult for pipeline task aTask",
+		wantErr: `task "aTask" completed successfully but did not emit the result "missingResult", which is referenced by task "bTask"`,
 	}, {
 		name:             "Valid: Test successful result references resolution - params - Run",
 		pipelineRunState: pipelineRunState,
@@ -791,14 +791,14 @@ func TestCheckMissingResultReferences(t *testing.T) {
 		targets: PipelineRunState{
 			pipelineRunState[13],
 		},
-		wantErr: "Invalid task result reference: Could not find result with name iDoNotExist for pipeline task dTask",
+		wantErr: `task "dTask" completed successfully but did not emit the result "iDoNotExist", which is referenced by task "iTask"`,
 	}, {
 		name:             "Invalid: Test result references resolution - matrix custom task - missing references to string replacements",
 		pipelineRunState: pipelineRunState,
 		targets: PipelineRunState{
 			pipelineRunState[14],
 		},
-		wantErr: "Invalid task result reference: Could not find result with name iDoNotExist for pipeline task aCustomPipelineTask",
+		wantErr: `task "aCustomPipelineTask" completed successfully but did not emit the result "iDoNotExist", which is referenced by task "jTask"`,
 	}, {
 		name:             "Invalid: Test result references where ref does not exist in pipelineRunState map",
 		pipelineRunState: pipelineRunState,
@@ -828,6 +828,223 @@ func TestCheckMissingResultReferences(t *testing.T) {
 			}
 			if err == nil && tt.wantErr != "" {
 				t.Fatalf("Expecting error %v, but did not get an error", tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestCheckMissingResultReferences_UninitializedResults tests the specific scenario
+// described in SRVKP-6982: when a completed (successful) task doesn't emit a result
+// that downstream tasks reference, the error message should clearly indicate which
+// result was missing and from which task.
+func TestCheckMissingResultReferences_UninitializedResults(t *testing.T) {
+	for _, tt := range []struct {
+		name             string
+		pipelineRunState PipelineRunState
+		target           *ResolvedPipelineTask
+		wantErr          string
+	}{{
+		name: "successful task missing referenced result produces clear error",
+		pipelineRunState: PipelineRunState{{
+			TaskRunNames: []string{"producer-taskrun"},
+			TaskRuns: []*v1.TaskRun{{
+				ObjectMeta: metav1.ObjectMeta{Name: "producer-taskrun"},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{successCondition},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						// Task succeeded but didn't emit "expected-result"
+						Results: []v1.TaskRunResult{},
+					},
+				},
+			}},
+			PipelineTask: &v1.PipelineTask{
+				Name:    "producer",
+				TaskRef: &v1.TaskRef{Name: "producer-task"},
+			},
+		}},
+		target: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumer",
+				TaskRef: &v1.TaskRef{Name: "consumer-task"},
+				Params: []v1.Param{{
+					Name:  "input",
+					Value: *v1.NewStructuredValues("$(tasks.producer.results.expected-result)"),
+				}},
+			},
+		},
+		wantErr: `task "producer" completed successfully but did not emit the result "expected-result", which is referenced by task "consumer"`,
+	}, {
+		name: "failed task missing referenced result uses original error",
+		pipelineRunState: PipelineRunState{{
+			TaskRunNames: []string{"producer-taskrun"},
+			TaskRuns: []*v1.TaskRun{{
+				ObjectMeta: metav1.ObjectMeta{Name: "producer-taskrun"},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{failedCondition},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						Results: []v1.TaskRunResult{},
+					},
+				},
+			}},
+			PipelineTask: &v1.PipelineTask{
+				Name:    "producer",
+				TaskRef: &v1.TaskRef{Name: "producer-task"},
+			},
+		}},
+		target: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumer",
+				TaskRef: &v1.TaskRef{Name: "consumer-task"},
+				Params: []v1.Param{{
+					Name:  "input",
+					Value: *v1.NewStructuredValues("$(tasks.producer.results.expected-result)"),
+				}},
+			},
+		},
+		// Failed tasks use the original ErrInvalidTaskResultReference message
+		wantErr: "Invalid task result reference: Could not find result with name expected-result for pipeline task producer",
+	}, {
+		name: "successful task with result present does not error",
+		pipelineRunState: PipelineRunState{{
+			TaskRunNames: []string{"producer-taskrun"},
+			TaskRuns: []*v1.TaskRun{{
+				ObjectMeta: metav1.ObjectMeta{Name: "producer-taskrun"},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{successCondition},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						Results: []v1.TaskRunResult{{
+							Name:  "expected-result",
+							Value: *v1.NewStructuredValues("some-value"),
+						}},
+					},
+				},
+			}},
+			PipelineTask: &v1.PipelineTask{
+				Name:    "producer",
+				TaskRef: &v1.TaskRef{Name: "producer-task"},
+			},
+		}},
+		target: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumer",
+				TaskRef: &v1.TaskRef{Name: "consumer-task"},
+				Params: []v1.Param{{
+					Name:  "input",
+					Value: *v1.NewStructuredValues("$(tasks.producer.results.expected-result)"),
+				}},
+			},
+		},
+		wantErr: "",
+	}, {
+		name: "successful custom task missing referenced result produces clear error",
+		pipelineRunState: PipelineRunState{{
+			CustomTask:     true,
+			CustomRunNames: []string{"producer-run"},
+			CustomRuns: []*v1beta1.CustomRun{{
+				ObjectMeta: metav1.ObjectMeta{Name: "producer-run"},
+				Status: v1beta1.CustomRunStatus{
+					Status: duckv1.Status{
+						Conditions: []apis.Condition{successCondition},
+					},
+					CustomRunStatusFields: v1beta1.CustomRunStatusFields{
+						Results: []v1beta1.CustomRunResult{},
+					},
+				},
+			}},
+			PipelineTask: &v1.PipelineTask{
+				Name:    "custom-producer",
+				TaskRef: &v1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: "custom-task"},
+			},
+		}},
+		target: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumer",
+				TaskRef: &v1.TaskRef{Name: "consumer-task"},
+				Params: []v1.Param{{
+					Name:  "input",
+					Value: *v1.NewStructuredValues("$(tasks.custom-producer.results.custom-result)"),
+				}},
+			},
+		},
+		wantErr: `task "custom-producer" completed successfully but did not emit the result "custom-result", which is referenced by task "consumer"`,
+	}, {
+		name: "successful task with partial results - only missing result errors",
+		pipelineRunState: PipelineRunState{{
+			TaskRunNames: []string{"producer-taskrun"},
+			TaskRuns: []*v1.TaskRun{{
+				ObjectMeta: metav1.ObjectMeta{Name: "producer-taskrun"},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{successCondition},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						Results: []v1.TaskRunResult{{
+							Name:  "result-a",
+							Value: *v1.NewStructuredValues("value-a"),
+						}},
+					},
+				},
+			}},
+			PipelineTask: &v1.PipelineTask{
+				Name:    "producer",
+				TaskRef: &v1.TaskRef{Name: "producer-task"},
+			},
+		}},
+		target: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumer",
+				TaskRef: &v1.TaskRef{Name: "consumer-task"},
+				Params: []v1.Param{{
+					Name:  "input-a",
+					Value: *v1.NewStructuredValues("$(tasks.producer.results.result-a)"),
+				}, {
+					Name:  "input-b",
+					Value: *v1.NewStructuredValues("$(tasks.producer.results.result-b)"),
+				}},
+			},
+		},
+		wantErr: `task "producer" completed successfully but did not emit the result "result-b", which is referenced by task "consumer"`,
+	}, {
+		name: "zero-length TaskRuns still produces original error",
+		pipelineRunState: PipelineRunState{{
+			TaskRunNames: []string{"producer-taskrun"},
+			TaskRuns:     []*v1.TaskRun{},
+			PipelineTask: &v1.PipelineTask{
+				Name:    "producer",
+				TaskRef: &v1.TaskRef{Name: "producer-task"},
+			},
+		}},
+		target: &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumer",
+				TaskRef: &v1.TaskRef{Name: "consumer-task"},
+				Params: []v1.Param{{
+					Name:  "input",
+					Value: *v1.NewStructuredValues("$(tasks.producer.results.some-result)"),
+				}},
+			},
+		},
+		wantErr: `Result reference error: Internal result ref "producer" has zero-length TaskRuns`,
+	}} {
+		t.Run(tt.name, func(t *testing.T) {
+			err := CheckMissingResultReferences(tt.pipelineRunState, tt.target)
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Errorf("CheckMissingResultReferences() unexpected error: %v", err)
+				}
+			} else {
+				if err == nil {
+					t.Fatalf("CheckMissingResultReferences() expected error %q but got nil", tt.wantErr)
+				}
+				if err.Error() != tt.wantErr {
+					t.Errorf("CheckMissingResultReferences() error = %q, want %q", err.Error(), tt.wantErr)
+				}
 			}
 		})
 	}
