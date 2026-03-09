@@ -59,7 +59,7 @@ type Recorder struct {
 	runningTRsWaitingOnTaskResolutionGauge metric.Int64ObservableGauge
 	runningTRsThrottledByQuotaGauge        metric.Int64ObservableGauge
 	runningTRsThrottledByNodeGauge         metric.Int64ObservableGauge
-	podLatencyGauge                        metric.Float64Gauge
+	podLatencyHistogram                    metric.Float64Histogram
 
 	insertTaskTag     func(task, taskrun string) []attribute.KeyValue
 	insertPipelineTag func(pipeline, pipelinerun string) []attribute.KeyValue
@@ -220,15 +220,16 @@ func (r *Recorder) configure(cfg *config.Metrics) error {
 	}
 	r.runningTRsThrottledByNodeGauge = runningTRsThrottledByNodeGauge
 
-	podLatencyGauge, err := r.meter.Float64Gauge(
+	podLatencyHistogram, err := r.meter.Float64Histogram(
 		"tekton_pipelines_controller_taskruns_pod_latency_milliseconds",
 		metric.WithDescription("scheduling latency for the taskrun pods"),
 		metric.WithUnit("ms"),
+		metric.WithExplicitBucketBoundaries(5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create taskrun pod latency gauge: %w", err)
+		return fmt.Errorf("failed to create taskrun pod latency histogram: %w", err)
 	}
-	r.podLatencyGauge = podLatencyGauge
+	r.podLatencyHistogram = podLatencyHistogram
 
 	return nil
 }
@@ -395,11 +396,10 @@ func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1
 
 	attrs := []attribute.KeyValue{
 		attribute.String("namespace", tr.Namespace),
-		attribute.String("pod", pod.Name),
 	}
 	attrs = append(attrs, r.insertTaskTag(taskName, tr.Name)...)
 
-	r.podLatencyGauge.Record(ctx, float64(latency.Milliseconds()), metric.WithAttributes(attrs...))
+	r.podLatencyHistogram.Record(ctx, float64(latency.Milliseconds()), metric.WithAttributes(attrs...))
 
 	return nil
 }

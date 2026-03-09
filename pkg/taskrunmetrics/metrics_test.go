@@ -1242,6 +1242,10 @@ func TestRecordPodLatency(t *testing.T) {
 		t.Run(td.name, func(t *testing.T) {
 			resetMetrics()
 			ctx := getConfigContext(false, false)
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+			otel.SetMeterProvider(provider)
+
 			metrics, err := NewRecorder(ctx)
 			if err != nil {
 				t.Fatalf("NewRecorder: %v", err)
@@ -1251,8 +1255,52 @@ func TestRecordPodLatency(t *testing.T) {
 				t.Error("RecordPodLatency wanted error, got nil")
 			} else if !td.expectingError {
 				if err != nil {
-					t.Errorf("RecordPodLatency: %v", err)
+					t.Fatalf("RecordPodLatency: %v", err)
 				}
+
+				var rm metricdata.ResourceMetrics
+				if err := reader.Collect(ctx, &rm); err != nil {
+					t.Fatalf("Collect error: %v", err)
+				}
+
+				for _, sm := range rm.ScopeMetrics {
+					for _, m := range sm.Metrics {
+						if m.Name == "tekton_pipelines_controller_taskruns_pod_latency_milliseconds" {
+							hist, ok := m.Data.(metricdata.Histogram[float64])
+							if !ok {
+								t.Fatalf("Expected Histogram[float64], got %T", m.Data)
+							}
+							if len(hist.DataPoints) != 1 {
+								t.Fatalf("Expected 1 data point, got %d", len(hist.DataPoints))
+							}
+							dp := hist.DataPoints[0]
+
+							// Verify latency value (4 seconds = 4000 ms)
+							if dp.Sum != 4000 {
+								t.Errorf("Expected latency sum 4000ms, got %v", dp.Sum)
+							}
+
+							// Verify attributes: namespace, task, taskrun should be present; pod should NOT
+							gotAttrs := make(map[string]string)
+							for _, kv := range dp.Attributes.ToSlice() {
+								gotAttrs[string(kv.Key)] = kv.Value.AsString()
+							}
+							if _, hasPod := gotAttrs["pod"]; hasPod {
+								t.Error("pod label should not be present on pod latency metric")
+							}
+							expectedAttrs := map[string]string{
+								"namespace": "foo",
+								"task":      "task-1",
+								"taskrun":   "test-taskrun",
+							}
+							if d := cmp.Diff(expectedAttrs, gotAttrs); d != "" {
+								t.Errorf("Attributes diff (-want, +got): %s", d)
+							}
+							return
+						}
+					}
+				}
+				t.Error("pod latency metric not found")
 			}
 		})
 	}
