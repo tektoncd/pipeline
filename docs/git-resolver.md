@@ -20,13 +20,14 @@ This Resolver responds to type `git`.
 | `org`         | The organization to find the repository in. Default can be set in [configuration](#configuration).                                                                         | `tektoncd`, `kubernetes`                                    |
 | `token`       | An optional secret name in the `PipelineRun` namespace to fetch the token from. Defaults to empty, meaning it will try to use the configuration from the global configmap. | `secret-name`, (empty)                                      |
 | `tokenKey`    | An optional key in the token secret name in the `PipelineRun` namespace to fetch the token from. Defaults to `token`.                                                      | `token`                                                     |
-| `gitToken`       | An optional secret name in the `PipelineRun` namespace to fetch the token from when doing opration with the `git clone`. When empty it will use anonymous cloning. | `secret-gitauth-token` |
-| `gitTokenKey` | An optional key in the token secret name in the `PipelineRun` namespace to fetch the token from when using the `git clone`. Defaults to `token`.                                                      | `token`                                                     |
-| `revision`    | Git revision to checkout a file from. This can be commit SHA (SHA-1 or SHA-256), branch or tag.                                                                                               | `aeb957601cf41c012be462827053a21a420befca` `main` `v0.38.2` |
+| `gitToken`    | An optional secret name in the `PipelineRun` namespace to fetch the token from when doing opration with the `git clone`. When empty it will use anonymous cloning.         | `secret-gitauth-token` |
+| `gitTokenKey` | An optional key in the token secret name in the `PipelineRun` namespace to fetch the token from when using the `git clone`. Defaults to `token`.                           | `token`                                                     |
+| `username`    | An optional key in the token secret name in the `PipelineRun` namespace to fetch the username from. Defaults to `username`.                                                |                                                             |
+| `revision`    | Git revision to checkout a file from. This can be commit SHA (SHA-1 or SHA-256), branch or tag.                                                                            | `aeb957601cf41c012be462827053a21a420befca` `main` `v0.38.2` |
 | `pathInRepo`  | Where to find the file in the repo.                                                                                                                                        | `task/golang-build/0.3/golang-build.yaml`                   |
 | `serverURL`   | An optional server URL (that includes the https:// prefix) to connect for API operations                                                                                   | `https:/github.mycompany.com`                               |
 | `scmType`     | An optional SCM type to use for API operations                                                                                                                             | `github`, `gitlab`, `gitea`                                 |
-| `cache`       | Controls caching behavior for the resolved resource                                                                                                                         | `always`, `never`, `auto`                                   |
+| `cache`       | Controls caching behavior for the resolved resource                                                                                                                        | `always`, `never`, `auto`                                   |
 
 ## Requirements
 
@@ -44,17 +45,18 @@ for the name, namespace and defaults that the resolver ships with.
 
 ### Options
 
-| Option Name                  | Description                                                                                                                                                   | Example Values                                                   |
-|------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|
-| `default-revision`           | The default git revision to use if none is specified                                                                                                          | `main`                                                           |
-| `fetch-timeout`              | The maximum time any single git clone resolution may take. **Note**: a global maximum timeout of 1 minute is currently enforced on _all_ resolution requests. | `1m`, `2s`, `700ms`                                              |
-| `default-url`                | The default git repository URL to use for anonymous cloning if none is specified.                                                                             | `https://github.com/tektoncd/catalog.git`                        |
+| Option Name                  | Description                                                                                                                                                   | Example Values                                                 |
+|------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
+| `default-revision`           | The default git revision to use if none is specified                                                                                                          | `main`                                                         |
+| `fetch-timeout`              | The maximum time any single git clone resolution may take. **Note**: a global maximum timeout of 1 minute is currently enforced on _all_ resolution requests. | `1m`, `2s`, `700ms`                                            |
+| `default-url`                | The default git repository URL to use for anonymous cloning if none is specified.                                                                             | `https://github.com/tektoncd/catalog.git`                      |
 | `scm-type`                   | The SCM provider type. Required if using the authenticated API with `org` and `repo`.                                                                         | `github`, `gitlab`, `gitea`, `bitbucketcloud`, `bitbucketserver` |
-| `server-url`                 | The SCM provider's base URL for use with the authenticated API. Not needed if using github.com, gitlab.com, or BitBucket Cloud                                | `api.internal-github.com`                                        |
-| `api-token-secret-name`      | The Kubernetes secret containing the SCM provider API token. Required if using the authenticated API with `org` and `repo`.                                   | `bot-token-secret`                                               |
-| `api-token-secret-key`       | The key within the token secret containing the actual secret. Required if using the authenticated API with `org` and `repo`.                                  | `oauth`, `token`                                                 |
-| `api-token-secret-namespace` | The namespace containing the token secret, if not `default`.                                                                                                  | `other-namespace`                                                |
-| `default-org`                | The default organization to look for repositories under when using the authenticated API, if not specified in the resolver parameters. Optional.              | `tektoncd`, `kubernetes`                                         |
+| `server-url`                 | The SCM provider's base URL for use with the authenticated API. Not needed if using github.com, gitlab.com, or BitBucket Cloud                                | `api.internal-github.com`                                      |
+| `api-token-secret-name`      | The Kubernetes secret containing the SCM provider API token. Required if using the authenticated API with `org` and `repo`.                                   | `bot-token-secret`                                             |
+| `api-token-secret-key`       | The key within the token secret containing the actual secret. Required if using the authenticated API with `org` and `repo`.                                  | `oauth`, `token`                                               |
+| `api-username-secret-key`    | They key within the token secret containing the username.                                                                                                     | `username`                                                     |
+| `api-token-secret-namespace` | The namespace containing the token secret, if not `default`.                                                                                                  | `other-namespace`                                              |
+| `default-org`                | The default organization to look for repositories under when using the authenticated API, if not specified in the resolver parameters. Optional.              | `tektoncd`, `kubernetes`                                       |
 
 ### Caching Options
 
@@ -147,6 +149,8 @@ spec:
     #   value: "secret-with-token"
     # - name: gitTokenKey (optional, defaults to "token")
     #   value: "token"
+    # - name: usernameKey (optional, defaults to "username")
+    #   value: "username"
 ```
 
 #### Pipeline resolution
@@ -171,6 +175,11 @@ spec:
     #   value: "secret-with-token"
     # - name: gitTokenKey (optional, defaults to "token")
     #   value: "token"
+    # Depending on the git provider you need to specify a username.
+    # The default username used to clone a repository is "git"
+    # For example cloning a repository from Bitbucket Cloud requires the username to be "x-token-auth" 
+    # - name: usernameKey (optional, defaults to "username")
+    #   value: "username"
   params:
   - name: name
     value: Ranni
@@ -231,11 +240,13 @@ spec:
       value: task/git-clone/0.6/git-clone.yaml
     # my-secret-token should be created in the namespace where the
     # pipelinerun is created and contain a GitHub personal access
-    # token in the token key of the secret.
+    # token in the token key of the secret and a username depending on the git provider.
     - name: token
       value: my-secret-token
     - name: tokenKey
       value: token
+    - name: usernameKey
+      value: username
     - name: scmType
       value: github
     - name: serverURL
@@ -300,6 +311,7 @@ data:
   server-url: ""
   api-token-secret-name: ""
   api-token-secret-key: ""
+  api-username-secret-key: "username"
   api-token-secret-namespace: "default"
   default-org: ""
 
@@ -311,6 +323,7 @@ data:
   test1.server-url: "api.internal-github.com"
   test1.api-token-secret-name: "test1-secret"
   test1.api-token-secret-key: "token"
+  test1.api-username-secret-key: "test1"
   test1.api-token-secret-namespace: "test1"
   test1.default-org: "tektoncd"
 
@@ -322,6 +335,7 @@ data:
   test2.server-url: "api.internal-gitlab.com"
   test2.api-token-secret-name: "test2-secret"
   test2.api-token-secret-key: "pat"
+  test2.api-username-secret-key: "test2"
   test2.api-token-secret-namespace: "test2"
   test2.default-org: "tektoncd-infra"
 ```
