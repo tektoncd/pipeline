@@ -791,7 +791,6 @@ func TestRecordPodLatency(t *testing.T) {
 			},
 		},
 		expectedTags: map[string]string{
-			"pod":       "test-taskrun-pod-123456",
 			"task":      "task-1",
 			"taskrun":   "test-taskrun",
 			"namespace": "foo",
@@ -814,7 +813,6 @@ func TestRecordPodLatency(t *testing.T) {
 			},
 		},
 		expectedTags: map[string]string{
-			"pod":       "test-taskrun-pod-123456",
 			"task":      "task-remote",
 			"taskrun":   "test-taskrun",
 			"namespace": "foo",
@@ -837,7 +835,6 @@ func TestRecordPodLatency(t *testing.T) {
 			},
 		},
 		expectedTags: map[string]string{
-			"pod":       "test-taskrun-pod-123456",
 			"task":      anonymous,
 			"taskrun":   "test-taskrun",
 			"namespace": "foo",
@@ -870,9 +867,9 @@ func TestRecordPodLatency(t *testing.T) {
 				t.Error("RecordPodLatency wanted error, got nil")
 			} else if !td.expectingError {
 				if err != nil {
-					t.Errorf("RecordPodLatency: %v", err)
+					t.Fatalf("RecordPodLatency: %v", err)
 				}
-				metricstest.CheckLastValueData(t, "taskruns_pod_latency_milliseconds", td.expectedTags, td.expectedValue)
+				metricstest.CheckDistributionData(t, "taskruns_pod_latency_milliseconds", td.expectedTags, 1, td.expectedValue, td.expectedValue)
 			}
 		})
 	}
