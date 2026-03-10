@@ -620,10 +620,11 @@ func (g *GitResolver) getAuthenticationCredentials(ctx context.Context, apiSecre
 	}
 
 	username, ok := secret.Data[apiSecret.usernameKey]
-	if !ok {
+	if ok {
+		credentials.username = username
+	} else {
 		g.Logger.Debugf("Cannot get username, key %s not found in secret %s in namespace %s", apiSecret.usernameKey, apiSecret.name, apiSecret.ns)
 	}
-	credentials.username = username
 
 	return credentials, nil
 }
