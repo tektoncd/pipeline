@@ -111,6 +111,14 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
+			name: "leading slash is stripped",
+			params: map[string]string{
+				UrlParam:      "https://foo/bar/hello/moto",
+				PathParam:     "/task/git-clone/0.10/git-clone.yaml",
+				RevisionParam: "baz",
+			},
+		},
+		{
 			name: "bad url",
 			params: map[string]string{
 				UrlParam:      "foo://bar",
@@ -193,6 +201,38 @@ func TestValidateParams_Failure(t *testing.T) {
 				RepoParam:     "foo",
 			},
 			expectedErr: "'org' is required when 'repo' is specified",
+		}, {
+			name: "path traversal with dot-dot",
+			params: map[string]string{
+				RevisionParam: "abcd1234",
+				PathParam:     "../../etc/passwd",
+				UrlParam:      "https://github.com/tektoncd/catalog",
+			},
+			expectedErr: `invalid path "../../etc/passwd": must not contain '..' components`,
+		}, {
+			name: "path traversal deeply nested",
+			params: map[string]string{
+				RevisionParam: "abcd1234",
+				PathParam:     "../../../../var/run/secrets/kubernetes.io/serviceaccount/token",
+				UrlParam:      "https://github.com/tektoncd/catalog",
+			},
+			expectedErr: `invalid path "../../../../var/run/secrets/kubernetes.io/serviceaccount/token": must not contain '..' components`,
+		}, {
+			name: "path traversal with leading dot-dot",
+			params: map[string]string{
+				RevisionParam: "abcd1234",
+				PathParam:     "../secret",
+				UrlParam:      "https://github.com/tektoncd/catalog",
+			},
+			expectedErr: `invalid path "../secret": must not contain '..' components`,
+		}, {
+			name: "path traversal embedded dot-dot",
+			params: map[string]string{
+				RevisionParam: "abcd1234",
+				PathParam:     "foo/../../../etc/passwd",
+				UrlParam:      "https://github.com/tektoncd/catalog",
+			},
+			expectedErr: `invalid path "foo/../../../etc/passwd": must not contain '..' components`,
 		},
 	}
 
