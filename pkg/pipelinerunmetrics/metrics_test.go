@@ -655,7 +655,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 						}
 
 						// Verify attributes for count (status only)
-						expectedCountTags := map[string]string{"status": test.expectedTags["status"]}
+						expectedCountTags := map[string]string{"namespace": test.pipelineRun.Namespace, "status": test.expectedTags["status"]}
 						gotAttrs := make(map[string]string)
 						for _, kv := range dp.Attributes.ToSlice() {
 							gotAttrs[string(kv.Key)] = kv.Value.AsString()
