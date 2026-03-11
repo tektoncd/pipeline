@@ -294,7 +294,10 @@ func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1.TaskRun, beforeC
 		}
 	}
 
-	r.trTotalCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("status", status)))
+	r.trTotalCounter.Add(ctx, 1, metric.WithAttributes(
+		attribute.String("namespace", tr.Namespace),
+		attribute.String("status", status),
+	))
 
 	return nil
 }
