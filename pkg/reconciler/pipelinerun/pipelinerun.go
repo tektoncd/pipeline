@@ -928,6 +928,12 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 			nextRpts = nil
 			logger.Infof("Adding the task %q to the validation failed list", rpt.ResolvedTask)
 			pipelineRunFacts.ValidationFailedTask = append(pipelineRunFacts.ValidationFailedTask, rpt)
+			// Preserve the error details so they can be surfaced in the PipelineRun status condition.
+			// See https://github.com/tektoncd/pipeline/issues/9100
+			if pipelineRunFacts.ValidationFailedErrors == nil {
+				pipelineRunFacts.ValidationFailedErrors = make(map[string]string)
+			}
+			pipelineRunFacts.ValidationFailedErrors[rpt.PipelineTask.Name] = err.Error()
 		}
 	}
 	// GetFinalTasks only returns final tasks when a DAG is complete
