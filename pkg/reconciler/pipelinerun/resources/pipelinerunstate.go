@@ -80,7 +80,7 @@ type PipelineRunFacts struct {
 	// ValidationFailedErrors stores the specific error messages for tasks that failed runtime
 	// result-reference validation, keyed by pipeline task name. This allows surfacing actionable
 	// error details in the PipelineRun status condition instead of only a generic count.
-	// See https://github.com/tektoncd/pipeline/issues/9100
+	
 	ValidationFailedErrors map[string]string
 }
 
