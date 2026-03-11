@@ -276,11 +276,15 @@ func TestGitResolver_Clone_Failure(t *testing.T) {
 		}, {
 			name:        "path does not exist",
 			pathInRepo:  "/task/banana/55.55/banana.yaml",
-			expectedErr: "error opening file \"/task/banana/55.55/banana.yaml\": file does not exist",
+			expectedErr: "error opening file \"task/banana/55.55/banana.yaml\": file does not exist",
 		}, {
 			name:        "commit does not exist",
 			commit:      "abcd0123",
 			expectedErr: "git fetch error: fatal: couldn't find remote ref abcd0123: exit status 128",
+		}, {
+			name:        "path traversal with dot-dot",
+			pathInRepo:  "../../../../etc/passwd",
+			expectedErr: `invalid path "../../../../etc/passwd": must not contain '..' components`,
 		},
 	}
 
