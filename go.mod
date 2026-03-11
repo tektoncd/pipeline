@@ -20,7 +20,6 @@ require (
 	github.com/spiffe/go-spiffe/v2 v2.6.0
 	github.com/spiffe/spire-api-sdk v1.14.1
 	github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb
-	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
@@ -185,7 +184,6 @@ require (
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/gobuffalo/flect v1.0.3 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
-	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/hashicorp/go-version v1.8.0
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect

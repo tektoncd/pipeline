@@ -418,9 +418,6 @@ github.com/golang-jwt/jwt/v4
 # github.com/golang-jwt/jwt/v5 v5.3.0
 ## explicit; go 1.21
 github.com/golang-jwt/jwt/v5
-# github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
-## explicit; go 1.20
-github.com/golang/groupcache/lru
 # github.com/google/cel-go v0.27.0
 ## explicit; go 1.23.0
 github.com/google/cel-go/cel
@@ -797,13 +794,6 @@ github.com/vbatts/tar-split/archive/tar
 # github.com/x448/float16 v0.8.4
 ## explicit; go 1.11
 github.com/x448/float16
-# go.opencensus.io v0.24.0
-## explicit; go 1.13
-go.opencensus.io
-go.opencensus.io/internal
-go.opencensus.io/trace
-go.opencensus.io/trace/internal
-go.opencensus.io/trace/tracestate
 # go.opentelemetry.io/auto/sdk v1.2.1
 ## explicit; go 1.24.0
 go.opentelemetry.io/auto/sdk
