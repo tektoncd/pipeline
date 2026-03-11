@@ -228,7 +228,10 @@ func (r *Recorder) DurationAndCount(ctx context.Context, pr *v1.PipelineRun, bef
 	} else if r.prDurationHistogram != nil {
 		r.prDurationHistogram.Record(ctx, duration.Seconds(), metric.WithAttributes(attrs...))
 	}
-	r.prTotalCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("status", status)))
+	r.prTotalCounter.Add(ctx, 1, metric.WithAttributes(
+		attribute.String("namespace", pr.Namespace),
+		attribute.String("status", status),
+	))
 
 	return nil
 }
