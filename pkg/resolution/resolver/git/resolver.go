@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -155,6 +156,17 @@ func validateRepoURL(url string) bool {
 	pattern := `^(/|[^@]+@[^:]+|(git|https?)://)`
 	re := regexp.MustCompile(pattern)
 	return re.MatchString(url)
+}
+
+// containsDotDot checks if a path contains ".." components that could be
+// used for path traversal. It handles both Unix and Windows separators.
+func containsDotDot(path string) bool {
+	for _, part := range strings.Split(filepath.ToSlash(path), "/") {
+		if part == ".." {
+			return true
+		}
+	}
+	return false
 }
 
 type GitResolver struct {
@@ -399,7 +411,16 @@ func PopulateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[
 		return nil, fmt.Errorf("invalid git repository url: %s", paramsMap[UrlParam])
 	}
 
-	// TODO(sbwsg): validate pathInRepo is valid relative pathInRepo
+	// Validate pathInRepo cannot escape the repository directory via
+	// traversal (e.g. "../../etc/passwd"). Leading slashes are stripped
+	// for backwards compatibility — filepath.Join already handles them
+	// safely by treating them as relative to the base directory.
+	pathValue := paramsMap[PathParam]
+	pathValue = strings.TrimLeft(pathValue, "/")
+	paramsMap[PathParam] = pathValue
+	if containsDotDot(pathValue) {
+		return nil, fmt.Errorf("invalid path %q: must not contain '..' components", pathValue)
+	}
 	return paramsMap, nil
 }
 

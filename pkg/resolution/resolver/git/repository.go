@@ -134,11 +134,52 @@ func (repo *repository) execGit(ctx context.Context, subCmd string, args ...stri
 	return out, err
 }
 
-func (repo *repository) getFileContent(path string) ([]byte, error) {
+func (repo *repository) getFileContent(givenPath string) ([]byte, error) {
 	if _, err := os.Stat(repo.directory); errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("repository clone no longer exists, used after cleaned? %w", err)
 	}
-	fileContents, err := os.ReadFile(filepath.Join(repo.directory, path))
+
+	// Resolve repo.directory itself so that filepath.Rel produces correct
+	// results on platforms where the temp directory is a symlink (e.g.
+	// macOS /tmp -> /private/tmp).
+	repoDir, err := filepath.EvalSymlinks(repo.directory)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve repository directory: %w", err)
+	}
+
+	absPath, err := filepath.Abs(filepath.Join(repoDir, givenPath))
+	if err != nil {
+		return nil, err
+	}
+
+	// Resolve symlinks so that in-repo symlinks work correctly while
+	// symlinks that escape the repo are caught by the containment check.
+	resolvedPath, err := filepath.EvalSymlinks(absPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, errors.New("file does not exist")
+		}
+		return nil, err
+	}
+
+	absPath, err = filepath.Abs(resolvedPath)
+	if err != nil {
+		return nil, err
+	}
+
+	relativePath, err := filepath.Rel(repoDir, absPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve relative path: %w", err)
+	}
+
+	// Detect path traversal attempts — the relative path should never
+	// start with ".." after symlink resolution. Log a specific message
+	// so administrators can set up alerts for attempted exploits.
+	if containsDotDot(relativePath) {
+		return nil, fmt.Errorf("path %q attempts to escape the repository directory (possible path traversal attack)", givenPath)
+	}
+
+	fileContents, err := os.ReadFile(absPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, errors.New("file does not exist")
