@@ -56,6 +56,50 @@ The bundle resolver supports caching of resolved resources to improve performanc
 | `never` | Never cache resolved resources. This disables caching completely. |
 | `auto` | Caching will only occur for bundles pulled by digest. (default) |
 
+**Note**: The cache parameter must be under `pipelineRef.params` or `taskRef.params`, not `spec.params`.
+
+Example:
+
+Per-run cache override for `TaskRun`:
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: remote-task-reference
+spec:
+  taskRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: docker.io/ptasci67/example-oci@sha256:053a6cb9f3711d4527dd0d37ac610e8727ec0288a898d5dfbd79b25bcaa29828
+    - name: name
+      value: hello-world
+    - name: kind
+      value: task
+    - name: cache   # cache param under spec.taskRef.params
+      value: always
+```
+
+Per-run cache override for `PipelineRun`:
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: bundle-demo
+spec:
+  pipelineRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: 10.96.190.208:5000/simple/pipeline:latest
+    - name: name
+      value: hello-pipeline
+    - name: kind
+      value: pipeline
+    - name: cache   # cache param under spec.pipelineRef.params
+      value: always
+```
+
 ### Cache Configuration
 
 The resolver cache can be configured globally using the `resolver-cache-config` ConfigMap. This ConfigMap controls the cache size and TTL (time-to-live) for all resolvers.
