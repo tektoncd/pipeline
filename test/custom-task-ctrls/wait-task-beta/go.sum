@@ -120,8 +120,8 @@ github.com/stretchr/objx v0.5.2/go.mod h1:FRsXN1f5AsAjCGJKqEizvkpNtU+EGNCLh3NxZ/
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-github.com/tektoncd/pipeline v1.10.0 h1:UlVEIs8cxBAmGEYJe7qMr9D79crBKijt6uHtuAH1wt8=
-github.com/tektoncd/pipeline v1.10.0/go.mod h1:KEXGPxGN/Mj9miXTXf2EA15+049xTxmmuHk8Nx44Sjg=
+github.com/tektoncd/pipeline v1.10.1 h1:Dh3p5h3ZKOzbL8a344OkGVq23CedjKUSVcTTaLNKCjQ=
+github.com/tektoncd/pipeline v1.10.1/go.mod h1:KEXGPxGN/Mj9miXTXf2EA15+049xTxmmuHk8Nx44Sjg=
 github.com/x448/float16 v0.8.4 h1:qLwI1I70+NjRFUR3zs1JPUCgaCXSh3SW62uAKT1mSBM=
 github.com/x448/float16 v0.8.4/go.mod h1:14CWIYCyZA/cWjXOioeEpHeN/83MdbZDRQHoFcYsOfg=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
