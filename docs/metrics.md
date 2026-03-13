@@ -22,6 +22,10 @@ We expose several kinds of exporters, including Prometheus, Google Stackdriver, 
 | `tekton_pipelines_controller_running_taskruns` | Gauge |                                                 | experimental |
 | `tekton_pipelines_controller_running_taskruns_throttled_by_quota` | Gauge | <br> `namespace`=&lt;pipelinerun-namespace&gt; | experimental |
 | `tekton_pipelines_controller_running_taskruns_throttled_by_node`  | Gauge | <br> `namespace`=&lt;pipelinerun-namespace&gt; | experimental |
+| `tekton_pipelines_controller_running_pipelineruns_waiting_on_pipeline_resolution` | Gauge | | experimental |
+| `tekton_pipelines_controller_running_pipelineruns_waiting_on_task_resolution` | Gauge | | experimental |
+| `tekton_pipelines_controller_running_taskruns_waiting_on_task_resolution_count` | Gauge | | experimental |
+| `tekton_pipelines_controller_taskruns_pod_latency_milliseconds` | Gauge | `pod`=&lt;pod_name&gt; (unbounded cardinality, see [#9393](https://github.com/tektoncd/pipeline/issues/9393)) | experimental |
 | `tekton_pipelines_controller_client_latency_[bucket, sum, count]` | Histogram |                                                 | experimental |
 
 The Labels/Tag marked as "*" are optional. And there's a choice between Histogram and LastValue(Gauge) for pipelinerun and taskrun duration metrics.
