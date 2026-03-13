@@ -258,7 +258,7 @@ func (r *Recorder) observeRunningPipelineRuns(ctx context.Context, o metric.Obse
 
 	for _, pr := range prs {
 		succeedCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
-		if succeedCondition.IsUnknown() {
+		if succeedCondition != nil && succeedCondition.IsUnknown() {
 			// Handle waiting metrics (these are cluster-wide, no extra attributes).
 			switch succeedCondition.Reason {
 			case v1.PipelineRunReasonResolvingPipelineRef.String():
