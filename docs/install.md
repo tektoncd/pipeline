@@ -44,7 +44,7 @@ To install Tekton Pipelines on a Kubernetes cluster:
    - **Latest official release:**
 
      ```bash
-     kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+     kubectl apply --filename https://infra.tekton.dev/tekton-releases/pipeline/latest/release.yaml
      ```
      
       Note: These instructions are ideal as a quick start installation guide with Tekton Pipelines and not meant for the production use. Please refer to the [operator](https://github.com/tektoncd/operator) to install, upgrade and manage Tekton projects. 
@@ -52,13 +52,13 @@ To install Tekton Pipelines on a Kubernetes cluster:
    - **Nightly release:**
 
      ```bash
-     kubectl apply --filename https://storage.googleapis.com/tekton-releases-nightly/pipeline/latest/release.yaml
+     kubectl apply --filename https://infra.tekton.dev/tekton-releases-nightly/pipeline/latest/release.yaml
      ```
 
    - **Specific release:**
 
      ```bash
-      kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/previous/<version_number>/release.yaml
+      kubectl apply --filename https://infra.tekton.dev/tekton-releases/pipeline/previous/<version_number>/release.yaml
      ```
 
      Replace `<version_number>` with the numbered version you want to install.
@@ -69,7 +69,7 @@ To install Tekton Pipelines on a Kubernetes cluster:
      If your container runtime does not support `image-reference:tag@digest`:
 
      ```bash
-     kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.notags.yaml
+     kubectl apply --filename https://infra.tekton.dev/tekton-releases/pipeline/latest/release.notags.yaml
      ```
 
 Multi-tenant installation is only partially supported today, read the [guide](./developers/multi-tenant-support.md)
