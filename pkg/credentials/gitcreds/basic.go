@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/credentials/common"
@@ -70,6 +71,15 @@ func (dc *basicGitConfig) Set(value string) error {
 	return nil
 }
 
+// urlHasPath returns true if the URL has a non-empty path component
+func urlHasPath(u string) bool {
+	parsed, err := url.Parse(u)
+	if err != nil {
+		return false
+	}
+	return parsed.Path != "" && parsed.Path != "/"
+}
+
 // Write builds a .gitconfig file from dc.entries and writes it to disk
 // in the directory provided. If dc.entries is empty then nothing is
 // written.
@@ -90,9 +100,21 @@ func (dc *basicGitConfig) Write(directory string) error {
 		return err
 	}
 
+	// For .git-credentials, we need to order entries so that:
+	// 1. Host-only (no path) credentials come FIRST - these serve as fallbacks
+	// 2. Repo-specific (with path) credentials come LAST
+	credentialOrder := make([]string, len(dc.order))
+	copy(credentialOrder, dc.order)
+	sort.SliceStable(credentialOrder, func(i, j int) bool {
+		hasPathI := urlHasPath(credentialOrder[i])
+		hasPathJ := urlHasPath(credentialOrder[j])
+		// Host-only (no path) should come before repo-specific (with path)
+		return !hasPathI && hasPathJ
+	})
+
 	gitCredentialsPath := filepath.Join(directory, ".git-credentials")
 	var gitCredentials []string
-	for _, k := range dc.order {
+	for _, k := range credentialOrder {
 		v := dc.entries[k]
 		gitCredentials = append(gitCredentials, v.authURL.String())
 	}
@@ -111,6 +133,18 @@ type basicEntry struct {
 }
 
 func (be *basicEntry) configBlurb(u string) string {
+	// Parse the URL to check if it contains a path component
+	parsedURL, err := url.Parse(u)
+	useHttpPath := false
+	if err == nil && parsedURL.Path != "" && parsedURL.Path != "/" {
+		// Git credential contexts with useHttpPath=true are required
+		// for repository-specific credentials on the same host to work correctly.
+		useHttpPath = true
+	}
+
+	if useHttpPath {
+		return fmt.Sprintf("[credential %q]\n	username = %s\n	useHttpPath = true\n", u, be.escapedUsername())
+	}
 	return fmt.Sprintf("[credential %q]\n	username = %s\n", u, be.escapedUsername())
 }
 
