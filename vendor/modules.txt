@@ -50,8 +50,8 @@ code.gitea.io/sdk/gitea
 # fortio.org/safecast v1.2.0
 ## explicit; go 1.20
 fortio.org/safecast
-# github.com/42wim/httpsig v1.2.2
-## explicit; go 1.18
+# github.com/42wim/httpsig v1.2.3
+## explicit; go 1.23.0
 github.com/42wim/httpsig
 # github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
 ## explicit

@@ -39,12 +39,12 @@ kind: Secret
 metadata:
   name: gitea-inline-config
   labels:
-    helm.sh/chart: gitea-6.0.0
+    helm.sh/chart: gitea-12.5.0
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: gitea
-    app.kubernetes.io/version: "1.17.1"
-    version: "1.17.1"
+    app.kubernetes.io/version: "1.25.4"
+    version: "1.25.4"
     app.kubernetes.io/managed-by: Helm
 type: Opaque
 stringData:
@@ -79,12 +79,12 @@ kind: Secret
 metadata:
   name: gitea
   labels:
-    helm.sh/chart: gitea-6.0.0
+    helm.sh/chart: gitea-12.5.0
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: gitea
-    app.kubernetes.io/version: "1.17.1"
-    version: "1.17.1"
+    app.kubernetes.io/version: "1.25.4"
+    version: "1.25.4"
     app.kubernetes.io/managed-by: Helm
 type: Opaque
 stringData:
@@ -125,14 +125,14 @@ stringData:
       env2ini::log "    + '${setting}'"
 
       if [[ -z "${section}" ]]; then
-        export "ENV_TO_INI____${setting^^}=${value}"                           # '^^' makes the variable content uppercase
+        export "GITEA____${setting^^}=${value}"                                 # '^^' makes the variable content uppercase
         return
       fi
 
       local masked_section="${section//./_0X2E_}"                            # '//' instructs to replace all matches
       masked_section="${masked_section//-/_0X2D_}"
 
-      export "ENV_TO_INI__${masked_section^^}__${setting^^}=${value}"        # '^^' makes the variable content uppercase
+      export "GITEA__${masked_section^^}__${setting^^}=${value}"             # '^^' makes the variable content uppercase
     }
 
     function env2ini::reload_preset_envs() {
@@ -206,15 +206,15 @@ stringData:
       #   - initially used to set up Gitea
       # Anyway, they won't harm existing app.ini files
 
-      export ENV_TO_INI__SECURITY__INTERNAL_TOKEN=$(gitea generate secret INTERNAL_TOKEN)
-      export ENV_TO_INI__SECURITY__SECRET_KEY=$(gitea generate secret SECRET_KEY)
-      export ENV_TO_INI__OAUTH2__JWT_SECRET=$(gitea generate secret JWT_SECRET)
-      export ENV_TO_INI__SERVER__LFS_JWT_SECRET=$(gitea generate secret LFS_JWT_SECRET)
+      export GITEA__SECURITY__INTERNAL_TOKEN=$(gitea generate secret INTERNAL_TOKEN)
+      export GITEA__SECURITY__SECRET_KEY=$(gitea generate secret SECRET_KEY)
+      export GITEA__OAUTH2__JWT_SECRET=$(gitea generate secret JWT_SECRET)
+      export GITEA__SERVER__LFS_JWT_SECRET=$(gitea generate secret LFS_JWT_SECRET)
 
       env2ini::log "...Initial secrets generated\n"
     }
 
-    env | (grep ENV_TO_INI || [[ $? == 1 ]]) > /tmp/existing-envs
+    env | (grep GITEA__ || [[ $? == 1 ]]) > /tmp/existing-envs
 
     # MUST BE CALLED BEFORE OTHER CONFIGURATION
     env2ini::generate_initial_secrets
@@ -235,13 +235,13 @@ stringData:
       env2ini::log '  - oauth2.JWT_SECRET'
       env2ini::log '  - server.LFS_JWT_SECRET'
 
-      unset ENV_TO_INI__SECURITY__INTERNAL_TOKEN
-      unset ENV_TO_INI__SECURITY__SECRET_KEY
-      unset ENV_TO_INI__OAUTH2__JWT_SECRET
-      unset ENV_TO_INI__SERVER__LFS_JWT_SECRET
+      unset GITEA__SECURITY__INTERNAL_TOKEN
+      unset GITEA__SECURITY__SECRET_KEY
+      unset GITEA__OAUTH2__JWT_SECRET
+      unset GITEA__SERVER__LFS_JWT_SECRET
     fi
 
-    environment-to-ini -o $GITEA_APP_INI -p ENV_TO_INI
+    environment-to-ini -o $GITEA_APP_INI
 ---
 # Source: gitea/templates/gitea/init.yaml
 apiVersion: v1
@@ -249,12 +249,12 @@ kind: Secret
 metadata:
   name: gitea-init
   labels:
-    helm.sh/chart: gitea-6.0.0
+    helm.sh/chart: gitea-12.5.0
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: gitea
-    app.kubernetes.io/version: "1.17.1"
-    version: "1.17.1"
+    app.kubernetes.io/version: "1.25.4"
+    version: "1.25.4"
     app.kubernetes.io/managed-by: Helm
 type: Opaque
 stringData:
@@ -282,20 +282,20 @@ stringData:
     echo '==== BEGIN GITEA CONFIGURATION ===='
 
     { # try
-      gitea migrate
+      gitea migrate --config ${GITEA_APP_INI}
     } || { # catch
       echo "Gitea migrate might fail due to database connection...This init-container will try again in a few seconds"
       exit 1
     }
     function configure_admin_user() {
-      local ACCOUNT_ID=$(gitea admin user list --admin | grep -e "\s\+${GITEA_ADMIN_USERNAME}\s\+" | awk -F " " "{printf \$1}")
+      local ACCOUNT_ID=$(gitea admin user list --admin --config ${GITEA_APP_INI} | grep -e "\s\+${GITEA_ADMIN_USERNAME}\s\+" | awk -F " " "{printf \$1}")
       if [[ -z "${ACCOUNT_ID}" ]]; then
         echo "No admin user '${GITEA_ADMIN_USERNAME}' found. Creating now..."
-        gitea admin user create --admin --username "${GITEA_ADMIN_USERNAME}" --password "${GITEA_ADMIN_PASSWORD}" --email "gitea@local.domain" --must-change-password=false
+        gitea admin user create --admin --username "${GITEA_ADMIN_USERNAME}" --password "${GITEA_ADMIN_PASSWORD}" --email "gitea@local.domain" --must-change-password=false --config ${GITEA_APP_INI}
         echo '...created.'
       else
         echo "Admin account '${GITEA_ADMIN_USERNAME}' already exist. Running update to sync password..."
-        gitea admin user change-password --username "${GITEA_ADMIN_USERNAME}" --password "${GITEA_ADMIN_PASSWORD}"
+        gitea admin user change-password --username "${GITEA_ADMIN_USERNAME}" --password "${GITEA_ADMIN_PASSWORD}" --config ${GITEA_APP_INI}
         echo '...password sync done.'
       fi
     }
@@ -397,12 +397,12 @@ kind: Service
 metadata:
   name: gitea-http
   labels:
-    helm.sh/chart: gitea-6.0.0
+    helm.sh/chart: gitea-12.5.0
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: gitea
-    app.kubernetes.io/version: "1.17.1"
-    version: "1.17.1"
+    app.kubernetes.io/version: "1.25.4"
+    version: "1.25.4"
     app.kubernetes.io/managed-by: Helm
   annotations:
     {}
@@ -422,12 +422,12 @@ kind: Service
 metadata:
   name: gitea-ssh
   labels:
-    helm.sh/chart: gitea-6.0.0
+    helm.sh/chart: gitea-12.5.0
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: gitea
-    app.kubernetes.io/version: "1.17.1"
-    version: "1.17.1"
+    app.kubernetes.io/version: "1.25.4"
+    version: "1.25.4"
     app.kubernetes.io/managed-by: Helm
   annotations:
     {}
@@ -673,12 +673,12 @@ kind: StatefulSet
 metadata:
   name: gitea
   labels:
-    helm.sh/chart: gitea-6.0.0
+    helm.sh/chart: gitea-12.5.0
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: gitea
-    app.kubernetes.io/version: "1.17.1"
-    version: "1.17.1"
+    app.kubernetes.io/version: "1.25.4"
+    version: "1.25.4"
     app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
@@ -692,21 +692,21 @@ spec:
       annotations:
         checksum/config: 209703c6b25e9ee0efedb8a8dc69015a7ab053bec72a36e5d881edb9b02ec6c7
       labels:
-        helm.sh/chart: gitea-6.0.0
+        helm.sh/chart: gitea-12.5.0
         app: gitea
         app.kubernetes.io/name: gitea
         app.kubernetes.io/instance: gitea
-        app.kubernetes.io/version: "1.17.1"
-        version: "1.17.1"
+        app.kubernetes.io/version: "1.25.4"
+        version: "1.25.4"
         app.kubernetes.io/managed-by: Helm
     spec:
       securityContext:
         fsGroup: 1000
       initContainers:
         - name: init-directories
-          image: "mirror.gcr.io/gitea/gitea:1.17.1"
+          image: "mirror.gcr.io/gitea/gitea:1.25.4"
           imagePullPolicy: Always
-          command: ["/usr/sbin/init_directory_structure.sh"]
+          command: ["/usr/sbinx/init_directory_structure.sh"]
           env:
             - name: GITEA_APP_INI
               value: /data/gitea/conf/app.ini
@@ -718,7 +718,7 @@ spec:
               value: /tmp/gitea
           volumeMounts:
             - name: init
-              mountPath: /usr/sbin
+              mountPath: /usr/sbinx
             - name: temp
               mountPath: /tmp
             - name: data
@@ -727,9 +727,9 @@ spec:
           securityContext:
             {}
         - name: init-app-ini
-          image: "mirror.gcr.io/gitea/gitea:1.17.1"
+          image: "mirror.gcr.io/gitea/gitea:1.25.4"
           imagePullPolicy: Always
-          command: ["/usr/sbin/config_environment.sh"]
+          command: ["/usr/sbinx/config_environment.sh"]
           env:
             - name: GITEA_APP_INI
               value: /data/gitea/conf/app.ini
@@ -739,9 +739,13 @@ spec:
               value: /data
             - name: GITEA_TEMP
               value: /tmp/gitea
+            - name: TMP_EXISTING_ENVS_FILE
+              value: /tmp/existing-envs
+            - name: ENV_TO_INI_MOUNT_POINT
+              value: /env-to-ini-mounts
           volumeMounts:
             - name: config
-              mountPath: /usr/sbin
+              mountPath: /usr/sbinx
             - name: temp
               mountPath: /tmp
             - name: data
@@ -752,8 +756,8 @@ spec:
           securityContext:
             {}
         - name: configure-gitea
-          image: "mirror.gcr.io/gitea/gitea:1.17.1"
-          command: ["/usr/sbin/configure_gitea.sh"]
+          image: "mirror.gcr.io/gitea/gitea:1.25.4"
+          command: ["/usr/sbinx/configure_gitea.sh"]
           imagePullPolicy: Always
           securityContext:
             runAsUser: 1000
@@ -772,7 +776,7 @@ spec:
               value: "giteaPassword1234"
           volumeMounts:
             - name: init
-              mountPath: /usr/sbin
+              mountPath: /usr/sbinx
             - name: temp
               mountPath: /tmp
             - name: data
@@ -781,7 +785,7 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: gitea
-          image: "mirror.gcr.io/gitea/gitea:1.17.1"
+          image: "mirror.gcr.io/gitea/gitea:1.25.4"
           imagePullPolicy: Always
           env:
             # SSH Port values have to be set here as well for openssh configuration
