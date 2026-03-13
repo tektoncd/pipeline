@@ -1308,7 +1308,7 @@ status:
           image: busybox
           script: 'exit 0'
   conditions:
-  - message: "Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0, Failed Validation: 1"
+  - message: 'Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0, Failed Validation: 1 (task "task2": Invalid task result reference: Could not find result with name result2 for pipeline task task1)'
     reason: PipelineValidationFailed
     status: "False"
     type: Succeeded
