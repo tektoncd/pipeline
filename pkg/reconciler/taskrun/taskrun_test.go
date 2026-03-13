@@ -1372,6 +1372,48 @@ status:
 	}
 }
 
+func TestReconcileOnPendingTaskRun(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-pending
+  namespace: foo
+spec:
+  taskRef:
+    name: test-task
+  status: TaskRunPending
+`)
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Tasks:    []*v1.Task{simpleTask},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, "default", "foo")
+
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+		t.Errorf("expected no error reconciling pending TaskRun but got %v", err)
+	}
+
+	updatedTR, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	condition := updatedTR.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil || condition.Status != corev1.ConditionUnknown {
+		t.Errorf("Expected pending TaskRun to have condition status Unknown, but had %v", condition)
+	}
+	if condition != nil && condition.Reason != v1.TaskRunReasonPending.String() {
+		t.Errorf("Expected reason %q but was %q", v1.TaskRunReasonPending, condition.Reason)
+	}
+	if updatedTR.Status.StartTime != nil {
+		t.Errorf("Start time should be nil for pending TaskRun, not: %s", updatedTR.Status.StartTime)
+	}
+	if updatedTR.Status.PodName != "" {
+		t.Errorf("Pod should not be created for pending TaskRun, but PodName was %q", updatedTR.Status.PodName)
+	}
+}
+
 func TestReconcileInvalidTaskRuns(t *testing.T) {
 	noTaskRun := parse.MustParseV1TaskRun(t, `
 metadata:
