@@ -584,7 +584,7 @@ status:
   conditions:
     - type: "Succeeded"
       status: "False"
-      reason: "Failed"
+      reason: "StepFailed"
   podName: larger-results-sidecar-logs-failed-task-pod
   taskSpec:
     results:
