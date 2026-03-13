@@ -1308,7 +1308,7 @@ status:
           image: busybox
           script: 'exit 0'
   conditions:
-  - message: "Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0, Failed Validation: 1"
+  - message: 'Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0, Failed Validation: 1 (task "task1" completed successfully but did not emit the result "result2", which is referenced by task "task2")'
     reason: PipelineValidationFailed
     status: "False"
     type: Succeeded
@@ -1325,7 +1325,12 @@ status:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-missing-results", []string{}, false)
+	wantEvents := []string{
+		"Normal Started",
+		"Warning ResultValidationFailed",
+		"Warning Failed",
+	}
+	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-missing-results", wantEvents, false)
 	if reconciledRun.Status.CompletionTime == nil {
 		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
 	}

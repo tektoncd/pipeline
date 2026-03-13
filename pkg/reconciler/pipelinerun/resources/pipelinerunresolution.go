@@ -1002,6 +1002,10 @@ func CheckMissingResultReferences(pipelineRunState PipelineRunState, target *Res
 			customRun := referencedPipelineTask.CustomRuns[0]
 			_, err := findRunResultForParam(customRun, resultRef)
 			if err != nil {
+				if referencedPipelineTask.isSuccessful() {
+					return fmt.Errorf("task %q completed successfully but did not emit the result %q, which is referenced by task %q",
+						resultRef.PipelineTask, resultRef.Result, target.PipelineTask.Name)
+				}
 				return err
 			}
 		} else {
@@ -1011,6 +1015,10 @@ func CheckMissingResultReferences(pipelineRunState PipelineRunState, target *Res
 			taskRun := referencedPipelineTask.TaskRuns[0]
 			_, err := findTaskResultForParam(taskRun, resultRef)
 			if err != nil {
+				if referencedPipelineTask.isSuccessful() {
+					return fmt.Errorf("task %q completed successfully but did not emit the result %q, which is referenced by task %q",
+						resultRef.PipelineTask, resultRef.Result, target.PipelineTask.Name)
+				}
 				return err
 			}
 		}
