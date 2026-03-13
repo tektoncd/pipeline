@@ -97,6 +97,43 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 	}
 }
 
+// GetChildPipelineFunc is a factory function that will use the given PipelineRef from a PipelineTask
+// to return a valid GetPipeline function that looks up the pipeline. It handles both local cluster
+// and remote resolution.
+func GetChildPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, pipelineRun *v1.PipelineRun, pipelineRef *v1.PipelineRef, verificationPolicies []*v1alpha1.VerificationPolicy) rprp.GetPipeline {
+	namespace := pipelineRun.Namespace
+
+	switch {
+	case pipelineRef != nil && pipelineRef.Resolver != "" && requester != nil:
+		return func(ctx context.Context, name string) (*v1.Pipeline, *v1.RefSource, *trustedresources.VerificationResult, error) {
+			stringReplacements, arrayReplacements, objectReplacements := paramsFromPipelineRun(pipelineRun)
+			for k, v := range GetContextReplacements("", pipelineRun) {
+				stringReplacements[k] = v
+			}
+			replacedParams := pipelineRef.Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)
+			var url string
+			if err := v1.RefNameLikeUrl(pipelineRef.Name); err == nil {
+				pipelineRef.Name = substitution.ApplyReplacements(pipelineRef.Name, stringReplacements)
+				url = pipelineRef.Name
+			}
+			resolverPayload := remoteresource.ResolverPayload{
+				ResolutionSpec: &resolutionV1beta1.ResolutionRequestSpec{
+					Params: replacedParams,
+					URL:    url,
+				},
+			}
+			resolver := resolution.NewResolver(requester, pipelineRun, string(pipelineRef.Resolver), resolverPayload)
+			return resolvePipeline(ctx, resolver, name, namespace, k8s, tekton, verificationPolicies)
+		}
+	default:
+		local := &LocalPipelineRefResolver{
+			Namespace:    namespace,
+			Tektonclient: tekton,
+		}
+		return local.GetPipeline
+	}
+}
+
 // LocalPipelineRefResolver uses the current cluster to resolve a pipeline reference.
 type LocalPipelineRefResolver struct {
 	Namespace    string
