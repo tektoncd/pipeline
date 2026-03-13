@@ -196,13 +196,20 @@ func TestDurationAndCountCancelledTaskRun(t *testing.T) {
 					t.Fatalf("Expected 1 total data point, got %d", len(sum.DataPoints))
 				}
 				gotStatus := ""
+				gotNamespace := ""
 				for _, kv := range sum.DataPoints[0].Attributes.ToSlice() {
 					if kv.Key == "status" {
 						gotStatus = kv.Value.AsString()
 					}
+					if kv.Key == "namespace" {
+						gotNamespace = kv.Value.AsString()
+					}
 				}
 				if gotStatus != "cancelled" {
 					t.Errorf("Expected status=cancelled, got %q", gotStatus)
+				}
+				if gotNamespace != "ns" {
+					t.Errorf("Expected namespace=ns, got %q", gotNamespace)
 				}
 				return
 			}
@@ -740,7 +747,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 						}
 
 						// Verify attributes for count (should only have status)
-						expectedCountTags := map[string]string{"status": c.expectedTags["status"]}
+						expectedCountTags := map[string]string{"namespace": c.expectedTags["namespace"], "status": c.expectedTags["status"]}
 						gotAttrs := make(map[string]string)
 						for _, kv := range dp.Attributes.ToSlice() {
 							gotAttrs[string(kv.Key)] = kv.Value.AsString()
