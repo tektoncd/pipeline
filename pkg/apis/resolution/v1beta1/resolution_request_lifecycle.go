@@ -48,6 +48,11 @@ func (rr *ResolutionRequest) IsDone() bool {
 	return !finalStateIsUnknown
 }
 
+// Resolved returns whether a ResolutionRequest data has been resolved by the resolver
+func (rr *ResolutionRequest) IsResolved() bool {
+	return rr.Status.Data != ""
+}
+
 // InitializeConditions set ths initial values of the conditions.
 func (s *ResolutionRequestStatus) InitializeConditions() {
 	resolutionRequestCondSet.Manage(s).InitializeConditions()
