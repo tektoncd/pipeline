@@ -240,7 +240,7 @@ spec:
       value: task/git-clone/0.6/git-clone.yaml
     # my-secret-token should be created in the namespace where the
     # pipelinerun is created and contain a GitHub personal access
-    # token in the token key of the secret and a username depending on the git provider.
+    # token in the token key of the secret and, if required by the git provider, a username.
     - name: token
       value: my-secret-token
     - name: tokenKey
