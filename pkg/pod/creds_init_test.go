@@ -120,7 +120,7 @@ func TestCredsInit(t *testing.T) {
 			"-basic-git=my-creds=gitlab.com",
 		},
 		wantVolumeMounts: []corev1.VolumeMount{{
-			Name:      "tekton-internal-secret-volume-bb404",
+			Name:      "tekton-creds-bb4044db",
 			MountPath: "/tekton/creds-secrets/my-creds",
 		}},
 		ctx: t.Context(),
@@ -153,7 +153,7 @@ func TestCredsInit(t *testing.T) {
 			"-docker-config=my-docker-creds",
 		},
 		wantVolumeMounts: []corev1.VolumeMount{{
-			Name:      "tekton-internal-secret-volume-f2d45",
+			Name:      "tekton-creds-f2d456c2",
 			MountPath: "/tekton/creds-secrets/my-docker-creds",
 		}},
 		ctx: t.Context(),
@@ -192,7 +192,7 @@ func TestCredsInit(t *testing.T) {
 			"-basic-git=my-creds=gitlab.com",
 		},
 		wantVolumeMounts: []corev1.VolumeMount{{
-			Name:      "tekton-internal-secret-volume-bb404",
+			Name:      "tekton-creds-bb4044db",
 			MountPath: "/tekton/creds-secrets/my-creds",
 		}},
 		ctx: t.Context(),
@@ -256,7 +256,7 @@ func TestCredsInit(t *testing.T) {
 		envVars:  []corev1.EnvVar{},
 		wantArgs: []string{"-basic-docker=foo.bar.com=https://docker.io"},
 		wantVolumeMounts: []corev1.VolumeMount{{
-			Name:      "tekton-internal-secret-volume-b18d2",
+			Name:      "tekton-creds-b18d27f0",
 			MountPath: "/tekton/creds-secrets/foo.bar.com",
 		}},
 		ctx: t.Context(),
@@ -289,7 +289,7 @@ func TestCredsInit(t *testing.T) {
 			"-basic-git=my-creds=github.com",
 		},
 		wantVolumeMounts: []corev1.VolumeMount{{
-			Name:      "tekton-internal-secret-volume-bb404",
+			Name:      "tekton-creds-bb4044db",
 			MountPath: "/tekton/creds-secrets/my-creds",
 		}},
 		ctx: t.Context(),
@@ -324,7 +324,7 @@ func TestCredsInit(t *testing.T) {
 			"-basic-git=my-creds=github.com",
 		},
 		wantVolumeMounts: []corev1.VolumeMount{{
-			Name:      "tekton-internal-secret-volume-bb404",
+			Name:      "tekton-creds-bb4044db",
 			MountPath: "/tekton/creds-secrets/my-creds",
 		}},
 		events: []string{
@@ -363,7 +363,7 @@ func TestCredsInit(t *testing.T) {
 	}
 }
 
-// TestCredentialVolumeNameUniqueness is a regression test for SRVKP-6798: when a
+// TestCredentialVolumeNameUniqueness is a regression test: when a
 // namespace has 118+ annotated secrets with similar prefixes, the old random-suffix
 // naming scheme could produce volume name collisions. The hashed scheme using
 // names.GenerateHashedName (FNV-32a) produces unique names for each distinct input.

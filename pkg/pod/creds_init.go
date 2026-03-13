@@ -41,8 +41,8 @@ import (
 const (
 	credsInitHomeMountPrefix       = "tekton-creds-init-home" // #nosec
 	sshKnownHosts                  = "known_hosts"
-	credentialVolumeNamePrefix     = "tekton-internal-secret-volume" // #nosec G101 -- not a credential
-	credentialVolumeNameHashLength = 5
+	credentialVolumeNamePrefix     = "tekton-creds" // #nosec G101 -- not a credential
+	credentialVolumeNameHashLength = 8
 )
 
 // credsInit reads secrets available to the given service account and
