@@ -544,7 +544,7 @@ func TestCompareSHA(t *testing.T) {
 			name:        "valid/mismatch",
 			expectedSHA: "666f6f", // hex for "foo"
 			computedSHA: []byte("bar"),
-			expectedErr: "sha mismatch, expected 666f6f, got 626172",
+			expectedErr: "SHA mismatch, expected 666f6f, got 626172",
 		},
 		{
 			name:        "invalid/expected hex",
@@ -615,12 +615,12 @@ func TestValidateDigest(t *testing.T) {
 		{
 			name:        "invalid/mismatch_sha256",
 			digest:      "sha256:deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-			expectedErr: "sha mismatch",
+			expectedErr: "SHA mismatch",
 		},
 		{
 			name:        "invalid/mismatch_sha512",
 			digest:      "sha512:deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-			expectedErr: "sha mismatch",
+			expectedErr: "SHA mismatch",
 		},
 		{
 			name:        "invalid/length_sha256",

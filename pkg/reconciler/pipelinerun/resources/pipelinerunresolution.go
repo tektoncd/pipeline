@@ -755,9 +755,9 @@ func (t *ResolvedPipelineTask) setChildPipelineRunsAndResolvedPipeline(
 	case pipelineTask.PipelineSpec != nil:
 		rp.PipelineSpec = pipelineTask.PipelineSpec
 	case pipelineTask.PipelineRef != nil:
-		return fmt.Errorf("pipelineRef for PipelineTask %q is not yet implemented", pipelineTask.Name)
+		return fmt.Errorf("PipelineRef for PipelineTask %q is not yet implemented", pipelineTask.Name)
 	default:
-		return fmt.Errorf("pipelineSpec in PipelineTask %q missing", pipelineTask.Name)
+		return fmt.Errorf("PipelineSpec in PipelineTask %q missing", pipelineTask.Name)
 	}
 
 	t.ResolvedPipeline = rp

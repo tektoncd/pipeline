@@ -283,7 +283,7 @@ func validateTaskRunResults(tr *v1.TaskRun, resolvedTaskSpec *v1.TaskSpec) error
 			s = append(s, fmt.Sprintf(" \"%v\": %v", k, v))
 		}
 		sort.Strings(s)
-		return pipelineErrors.WrapUserError(fmt.Errorf("provided results don't match declared results; may be invalid JSON or missing result declaration: %v", strings.Join(s, ",")))
+		return pipelineErrors.WrapUserError(fmt.Errorf("Provided results don't match declared results; may be invalid JSON or missing result declaration: %v", strings.Join(s, ",")))
 	}
 
 	// When get the results, for object value need to check if they have missing keys.
