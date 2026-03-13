@@ -740,7 +740,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 						}
 
 						// Verify attributes for count (should only have status)
-						expectedCountTags := map[string]string{"status": c.expectedTags["status"]}
+						expectedCountTags := map[string]string{"namespace": c.expectedTags["namespace"], "status": c.expectedTags["status"]}
 						gotAttrs := make(map[string]string)
 						for _, kv := range dp.Attributes.ToSlice() {
 							gotAttrs[string(kv.Key)] = kv.Value.AsString()
