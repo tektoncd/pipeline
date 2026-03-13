@@ -936,9 +936,7 @@ func TestResolve(t *testing.T) {
 					secretName, secretTokenKey, secretNamespace = tc.config[tc.configIdentifer+APISecretNameKey], tc.config[tc.configIdentifer+APISecretKeyKey], tc.config[tc.configIdentifer+APISecretNamespaceKey]
 				}
 
-				if tc.config[tc.configIdentifer+APIUsernameSecretKey] != "" {
-					secretUsernameKey = tc.config[tc.configIdentifer+APIUsernameSecretKey]
-				}
+				secretUsernameKey = tc.config[tc.configIdentifer+APIUsernameSecretKey]
 
 				if tc.args.token != "" && tc.args.namespace != "" && tc.args.tokenKey != "" {
 					secretName, secretTokenKey, secretNamespace = tc.args.token, tc.args.tokenKey, tc.args.namespace
