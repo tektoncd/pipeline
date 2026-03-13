@@ -164,7 +164,7 @@ spec:
       value: Task
 ```
 
-A working example can be found [here](../examples/v1beta1/taskruns/no-ci/tekton-bundles.yaml).
+A working example can be found [here](../examples/v1/taskruns/beta/bundles-resolver.yaml).
 
 Any of the above options will fetch the image using the `ImagePullSecrets` attached to the
 `ServiceAccount` specified in the `TaskRun`. See the [Service Account](#service-account)
