@@ -51,7 +51,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.40.0
 	go.opentelemetry.io/otel/trace v1.41.0
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
-	knative.dev/pkg v0.0.0-20260225113719-b239e967f175
+	knative.dev/pkg v0.0.0-20260310013839-5504026dd1b6
 )
 
 require (
@@ -213,8 +213,8 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/mod v0.33.0 // indirect
-	golang.org/x/net v0.50.0 // indirect
-	golang.org/x/sync v0.19.0
+	golang.org/x/net v0.51.0 // indirect
+	golang.org/x/sync v0.20.0
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
 	golang.org/x/text v0.34.0 // indirect

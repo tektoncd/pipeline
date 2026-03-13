@@ -72,6 +72,8 @@ func SecretNameFromEnv(defaultSecretName string) string {
 	return secret
 }
 
+// Deprecated: Use knative.dev/pkg/network/tls.DefaultConfigFromEnv instead.
+// TLS configuration is now read automatically inside webhook.New via the shared tls package.
 func TLSMinVersionFromEnv(defaultTLSMinVersion uint16) uint16 {
 	switch tlsMinVersion := os.Getenv(tlsMinVersionEnvKey); tlsMinVersion {
 	case "1.2":
