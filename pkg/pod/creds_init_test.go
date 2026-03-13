@@ -18,12 +18,14 @@ package pod
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/test/diff"
-	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -118,7 +120,7 @@ func TestCredsInit(t *testing.T) {
 			"-basic-git=my-creds=gitlab.com",
 		},
 		wantVolumeMounts: []corev1.VolumeMount{{
-			Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
+			Name:      "tekton-creds-bb4044db",
 			MountPath: "/tekton/creds-secrets/my-creds",
 		}},
 		ctx: t.Context(),
@@ -151,7 +153,7 @@ func TestCredsInit(t *testing.T) {
 			"-docker-config=my-docker-creds",
 		},
 		wantVolumeMounts: []corev1.VolumeMount{{
-			Name:      "tekton-internal-secret-volume-my-docker-creds-9l9zj",
+			Name:      "tekton-creds-f2d456c2",
 			MountPath: "/tekton/creds-secrets/my-docker-creds",
 		}},
 		ctx: t.Context(),
@@ -190,7 +192,7 @@ func TestCredsInit(t *testing.T) {
 			"-basic-git=my-creds=gitlab.com",
 		},
 		wantVolumeMounts: []corev1.VolumeMount{{
-			Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
+			Name:      "tekton-creds-bb4044db",
 			MountPath: "/tekton/creds-secrets/my-creds",
 		}},
 		ctx: t.Context(),
@@ -254,7 +256,7 @@ func TestCredsInit(t *testing.T) {
 		envVars:  []corev1.EnvVar{},
 		wantArgs: []string{"-basic-docker=foo.bar.com=https://docker.io"},
 		wantVolumeMounts: []corev1.VolumeMount{{
-			Name:      "tekton-internal-secret-volume-foo-bar-com-9l9zj",
+			Name:      "tekton-creds-b18d27f0",
 			MountPath: "/tekton/creds-secrets/foo.bar.com",
 		}},
 		ctx: t.Context(),
@@ -287,7 +289,7 @@ func TestCredsInit(t *testing.T) {
 			"-basic-git=my-creds=github.com",
 		},
 		wantVolumeMounts: []corev1.VolumeMount{{
-			Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
+			Name:      "tekton-creds-bb4044db",
 			MountPath: "/tekton/creds-secrets/my-creds",
 		}},
 		ctx: t.Context(),
@@ -322,7 +324,7 @@ func TestCredsInit(t *testing.T) {
 			"-basic-git=my-creds=github.com",
 		},
 		wantVolumeMounts: []corev1.VolumeMount{{
-			Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
+			Name:      "tekton-creds-bb4044db",
 			MountPath: "/tekton/creds-secrets/my-creds",
 		}},
 		events: []string{
@@ -331,7 +333,6 @@ func TestCredsInit(t *testing.T) {
 		ctx: t.Context(),
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			names.TestingSeed()
 			eventObj := &corev1.Event{}
 			kubeclient := fakek8s.NewSimpleClientset(c.objs...)
 			recorder := record.NewFakeRecorder(1000)
@@ -359,6 +360,39 @@ func TestCredsInit(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestCredentialVolumeNameUniqueness is a regression test: when a
+// namespace has 118+ annotated secrets with similar prefixes, the old random-suffix
+// naming scheme could produce volume name collisions. The hashed scheme using
+// names.GenerateHashedName (FNV-32a) produces unique names for each distinct input.
+func TestCredentialVolumeNameUniqueness(t *testing.T) {
+	const numSecrets = 150
+	seen := make(map[string]string, numSecrets)
+
+	for i := range numSecrets {
+		secretName := fmt.Sprintf("my-company-production-application-secret-number-%04d", i)
+		volumeName := names.GenerateHashedName(credentialVolumeNamePrefix, secretName, credentialVolumeNameHashLength)
+
+		if prev, ok := seen[volumeName]; ok {
+			t.Fatalf("volume name collision: %q produced by both %q and %q", volumeName, prev, secretName)
+		}
+		seen[volumeName] = secretName
+
+		if len(volumeName) > 63 {
+			t.Errorf("volume name too long: %q (len=%d)", volumeName, len(volumeName))
+		}
+	}
+}
+
+// TestCredentialVolumeNameLength verifies that even the longest possible Kubernetes
+// secret name (253 chars) produces a volume name within the 63-char DNS label limit.
+func TestCredentialVolumeNameLength(t *testing.T) {
+	longName := strings.Repeat("a", 253)
+	got := names.GenerateHashedName(credentialVolumeNamePrefix, longName, credentialVolumeNameHashLength)
+	if len(got) > 63 {
+		t.Errorf("GenerateHashedName produced name longer than 63 chars: %q (len=%d)", got, len(got))
 	}
 }
 

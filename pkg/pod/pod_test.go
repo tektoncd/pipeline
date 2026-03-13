@@ -80,7 +80,7 @@ func init() {
 
 func TestPodBuild(t *testing.T) {
 	secretsVolume := corev1.Volume{
-		Name:         "tekton-internal-secret-volume-multi-creds-9l9zj",
+		Name:         "tekton-creds-8e736f4e",
 		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "multi-creds"}},
 	}
 	runtimeClassName := "gvisor"
@@ -285,7 +285,7 @@ func TestPodBuild(t *testing.T) {
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, append(append([]corev1.VolumeMount{}, implicitVolumeMounts...), corev1.VolumeMount{
-						Name:      "tekton-internal-secret-volume-multi-creds-9l9zj",
+						Name:      "tekton-creds-8e736f4e",
 						MountPath: "/tekton/creds-secrets/multi-creds",
 					})...),
 					TerminationMessagePath: "/tekton/termination",
