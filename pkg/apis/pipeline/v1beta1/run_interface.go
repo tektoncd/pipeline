@@ -23,7 +23,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-// RunObject is implemented by CustomRun and Run
+// RunObject is implemented by Run, CustomRun, TaskRun and PipelineRun
 type RunObject interface {
 	// Object requires GetObjectKind() and DeepCopyObject()
 	runtime.Object
@@ -38,6 +38,11 @@ type RunObject interface {
 	IsCancelled() bool
 	HasStarted() bool
 	IsDone() bool
+}
+
+// RunObject is implemented by Run and CustomRun
+type RunObjectWithRetries interface {
+	RunObject
 
 	GetRetryCount() int
 }
