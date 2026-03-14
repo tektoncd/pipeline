@@ -16,6 +16,10 @@ jobs:
   run-if-requested:
     runs-on: ubuntu-latest
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+      with:
+        egress-policy: audit
     - name: Show Github Object
       run: |
         cat <<'EOF'
@@ -104,6 +108,10 @@ jobs:
       ARTIFACTS: ${{ github.workspace }}/artifacts
       KOCACHE: /tmp/ko-cache
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+      with:
+        egress-policy: audit
     - name: Report tests check
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       id: check-run
