@@ -117,9 +117,9 @@ spec:
       fi
 
       # Combine our static base image with Windows base images for cross-platform support.
-      # The static base image is built from images/static-base/apko.yaml and published to GHCR.
+      # The static base image is built from tektoncd/plumbing images/static-base/apko.yaml.
       COMBINED_BASE_IMAGE=$(go run ./vendor/github.com/tektoncd/plumbing/cmd/combine/main.go \
-        ghcr.io/tektoncd/pipeline/static-base:latest \
+        ghcr.io/tektoncd/plumbing/static-base:latest \
         mcr.microsoft.com/windows/nanoserver:ltsc2019 \
         mcr.microsoft.com/windows/nanoserver:ltsc2022 \
         ${COMBINED_BASE_IMAGE_BASE}/combined-base-image:latest)

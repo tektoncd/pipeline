@@ -1,6 +1,6 @@
-# Built from images/static-base/apko.yaml, published weekly by .github/workflows/build-static-base-image.yaml
-# To update the digest: run the workflow, then pin the new digest here.
-defaultBaseImage: ghcr.io/tektoncd/pipeline/static-base:latest
+# Built from tektoncd/plumbing images/static-base/apko.yaml, published weekly.
+# To update the digest: check ghcr.io/tektoncd/plumbing/static-base for the latest.
+defaultBaseImage: ghcr.io/tektoncd/plumbing/static-base:latest
 baseImageOverrides:
   # Use the combined base image for images that should include Windows support.
   # The :latest tag is automatically replaced with the actual digest during releases by tekton/publish.yaml.
