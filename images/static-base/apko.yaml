@@ -1,0 +1,27 @@
+contents:
+  repositories:
+    - https://dl-cdn.alpinelinux.org/alpine/v3.21/main
+  packages:
+    - ca-certificates-bundle
+    - tzdata
+    - alpine-baselayout-data
+
+accounts:
+  groups:
+    - groupname: nonroot
+      gid: 65532
+  users:
+    - username: nonroot
+      uid: 65532
+      gid: 65532
+  run-as: 65532
+
+archs:
+  - amd64
+  - arm64
+  - s390x
+  - ppc64le
+
+environment:
+  PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
