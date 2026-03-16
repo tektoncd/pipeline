@@ -21,6 +21,56 @@ This Resolver responds to type `bundles`.
 | `kind`           | The resource kind to pull out of the bundle                                   | `task`                                                     |
 | `cache`          | Controls caching behavior for the resolved resource                           | `always`, `never`, `auto`                                  |
 
+### Per-run cache override
+
+To override cache behavior for a specific run, set `cache` under resolver parameters:
+- `spec.taskRef.params` for `TaskRun`
+- `spec.pipelineRef.params` for `PipelineRun`
+
+> `cache` under `spec.params` is a runtime parameter and is **not** passed to resolvers.
+
+TaskRun example (`cache: never`):
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: remote-task-reference-no-cache
+spec:
+  taskRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: docker.io/ptasci67/example-oci@sha256:053a6cb9f3711d4527dd0d37ac610e8727ec0288a898d5dfbd79b25bcaa29828
+    - name: name
+      value: hello-world
+    - name: kind
+      value: task
+    - name: cache
+      value: never
+```
+
+PipelineRun example (`cache: never`):
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: bundle-demo-no-cache
+spec:
+  pipelineRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: 10.96.190.208:5000/simple/pipeline:latest
+    - name: name
+      value: hello-pipeline
+    - name: kind
+      value: pipeline
+    - name: cache
+      value: never
+```
+
 ## Requirements
 
 - A cluster running Tekton Pipeline v0.41.0 or later.

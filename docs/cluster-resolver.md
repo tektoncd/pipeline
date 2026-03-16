@@ -61,6 +61,33 @@ data:
   default-cache-mode: "never"  # Never cache by default (since cluster resources are mutable)
 ```
 
+### Per-run cache override for PipelineRun
+
+To override cache behavior for a specific pipeline run, set `cache` under `spec.pipelineRef.params`.
+
+> `cache` under `spec.params` is a runtime parameter and is **not** passed to resolvers.
+
+PipelineRun example (`cache: never`):
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: remote-pipeline-reference-no-cache
+spec:
+  pipelineRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: pipeline
+    - name: name
+      value: some-pipeline
+    - name: namespace
+      value: namespace-containing-pipeline
+    - name: cache
+      value: never
+```
+
 ## Requirements
 
 - A cluster running Tekton Pipeline v0.41.0 or later.

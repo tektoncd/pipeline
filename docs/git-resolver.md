@@ -28,6 +28,56 @@ This Resolver responds to type `git`.
 | `scmType`     | An optional SCM type to use for API operations                                                                                                                             | `github`, `gitlab`, `gitea`                                 |
 | `cache`       | Controls caching behavior for the resolved resource                                                                                                                         | `always`, `never`, `auto`                                   |
 
+### Per-run cache override
+
+To override cache behavior for a specific run, set `cache` under resolver parameters:
+- `spec.taskRef.params` for `TaskRun`
+- `spec.pipelineRef.params` for `PipelineRun`
+
+> `cache` under `spec.params` is a runtime parameter and is **not** passed to resolvers.
+
+TaskRun example (`cache: never`):
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: git-clone-demo-tr-no-cache
+spec:
+  taskRef:
+    resolver: git
+    params:
+    - name: url
+      value: https://github.com/tektoncd/catalog.git
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: task/git-clone/0.6/git-clone.yaml
+    - name: cache
+      value: never
+```
+
+PipelineRun example (`cache: never`):
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: git-clone-demo-pr-no-cache
+spec:
+  pipelineRef:
+    resolver: git
+    params:
+    - name: url
+      value: https://github.com/tektoncd/catalog.git
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: pipeline/simple/0.1/simple.yaml
+    - name: cache
+      value: never
+```
+
 ## Requirements
 
 - A cluster running Tekton Pipeline v0.41.0 or later.
