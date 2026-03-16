@@ -58,7 +58,7 @@ jobs:
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
-        uses: fgrosse/go-coverage-report@8c1d1a09864211d258937b1b1a5b849f7e4f2682 # v1.2.0
+        uses: fgrosse/go-coverage-report@cbeb2ab2e32591d690337146ba02a911cc566f3f # v1.3.0
         continue-on-error: true # This may fail if artifact on main branch does not exist (first run or expired)
         env:
           GITHUB_TOKEN: ${{ secrets.CHATOPS_TOKEN }}
