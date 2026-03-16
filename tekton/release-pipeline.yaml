@@ -305,4 +305,4 @@ spec:
               BASE_URL="https://infra.tekton.dev/${RELEASE_BUCKET}/${REPO_NAME}/previous/${VERSION_TAG}"
 
               echo "${BASE_URL}/release.yaml" > $(results.release.path)
-              echo "${BASE_URL}/release.notag.yaml" > $(results.release-no-tag.path)
+              echo "${BASE_URL}/release.notags.yaml" > $(results.release-no-tag.path)

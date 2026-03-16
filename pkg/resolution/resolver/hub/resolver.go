@@ -223,6 +223,7 @@ func fetchHubResource(ctx context.Context, apiEndpoint string, v interface{}) er
 		return fmt.Errorf("constructing request: %w", err)
 	}
 
+	// #nosec G704 -- URL cannot be constant in this case.
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("requesting resource from Hub: %w", err)

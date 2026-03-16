@@ -84,7 +84,7 @@ the pipelines repo, a terminal window and a text editor.
    ```
 
 1. Execute the release pipeline (takes ~45 mins).
-    
+
     **The minimum required tkn version is v0.30.0 or later**
 
     **If you are back-porting include this flag: `--param=releaseAsLatest="false"`**
@@ -124,7 +124,7 @@ the pipelines repo, a terminal window and a text editor.
     NAME                    VALUE
     ∙ commit-sha            ff6d7abebde12460aecd061ab0f6fd21053ba8a7
     ∙ release-file           https://infra.tekton.dev/tekton-releases/pipeline/previous/v0.13.0/release.yaml
-    ∙ release-file-no-tag    https://infra.tekton.dev/tekton-releases/pipeline/previous/v0.13.0/release.notag.yaml
+    ∙ release-file-no-tag    https://infra.tekton.dev/tekton-releases/pipeline/previous/v0.13.0/release.notags.yaml
 
     (...)
     ```
@@ -236,7 +236,7 @@ Congratulations, you're done!
 1. Configure `kubectl` to connect to
    [the dogfooding cluster](https://github.com/tektoncd/plumbing/blob/main/docs/dogfooding.md):
 
-   The dogfooding cluster is currently an OKE cluster in oracle cloud. we need the Oracle Cloud CLI client. Install oracle cloud cli (https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm) 
+   The dogfooding cluster is currently an OKE cluster in oracle cloud. we need the Oracle Cloud CLI client. Install oracle cloud cli (https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm)
 
     ```bash
     oci ce cluster create-kubeconfig --cluster-id <CLUSTER-OCID> --file $HOME/.kube/config --region <CLUSTER-REGION> --token-version 2.0.0  --kube-endpoint PUBLIC_ENDPOINT

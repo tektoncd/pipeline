@@ -160,6 +160,7 @@ func getAPIFeatureGate() (string, error) {
 		ns = "tekton-pipelines"
 	}
 
+	// #nosec G702 -- no command injection here with well-defined command and arguments
 	cmd := exec.Command("kubectl", "get", "configmap", "feature-flags", "-n", ns, "-o", `jsonpath="{.data['enable-api-fields']}"`)
 	output, err := cmd.Output()
 	if err != nil {

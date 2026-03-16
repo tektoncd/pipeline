@@ -56,20 +56,32 @@ func NewCSINodeInformer(client kubernetes.Interface, resyncPeriod time.Duration,
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredCSINodeInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StorageV1().CSINodes().List(context.TODO(), options)
+				return client.StorageV1().CSINodes().List(context.Background(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StorageV1().CSINodes().Watch(context.TODO(), options)
+				return client.StorageV1().CSINodes().Watch(context.Background(), options)
 			},
-		},
+			ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.StorageV1().CSINodes().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.StorageV1().CSINodes().Watch(ctx, options)
+			},
+		}, client),
 		&apistoragev1.CSINode{},
 		resyncPeriod,
 		indexers,

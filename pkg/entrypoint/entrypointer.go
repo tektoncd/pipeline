@@ -867,6 +867,7 @@ func writeToTempFile(v string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
+	// #nosec G703 -- no path traversal with that path that comes from CreateTemp()
 	err = os.Chmod(tmp.Name(), 0o755)
 	if err != nil {
 		return nil, err

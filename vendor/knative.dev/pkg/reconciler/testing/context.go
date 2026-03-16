@@ -18,6 +18,7 @@ package testing
 
 import (
 	"context"
+	"os"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -36,6 +37,15 @@ import (
 	"knative.dev/pkg/injection"
 	logtesting "knative.dev/pkg/logging/testing"
 )
+
+func init() {
+	// Disable WatchListClient feature in tests to work around K8s 1.35 issue where
+	// kubernetes.Interface doesn't expose IsWatchListSemanticsUnSupported(), preventing
+	// fake clients from being detected. This causes tests to timeout waiting for bookmark
+	// events that fake clients don't send.
+	// See: https://github.com/kubernetes/enhancements/blob/master/keps/sig-api-machinery/3157-watch-list/README.md
+	os.Setenv("KUBE_FEATURE_WatchListClient", "false")
+}
 
 // SetupFakeContext sets up the the Context and the fake informers for the tests.
 // The optional fs() can be used to edit ctx before the SetupInformer steps

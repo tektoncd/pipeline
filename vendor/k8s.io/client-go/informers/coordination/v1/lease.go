@@ -57,20 +57,32 @@ func NewLeaseInformer(client kubernetes.Interface, namespace string, resyncPerio
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredLeaseInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CoordinationV1().Leases(namespace).List(context.TODO(), options)
+				return client.CoordinationV1().Leases(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CoordinationV1().Leases(namespace).Watch(context.TODO(), options)
+				return client.CoordinationV1().Leases(namespace).Watch(context.Background(), options)
 			},
-		},
+			ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.CoordinationV1().Leases(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.CoordinationV1().Leases(namespace).Watch(ctx, options)
+			},
+		}, client),
 		&apicoordinationv1.Lease{},
 		resyncPeriod,
 		indexers,

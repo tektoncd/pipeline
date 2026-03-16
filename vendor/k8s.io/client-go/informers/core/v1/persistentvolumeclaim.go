@@ -57,20 +57,32 @@ func NewPersistentVolumeClaimInformer(client kubernetes.Interface, namespace str
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredPersistentVolumeClaimInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CoreV1().PersistentVolumeClaims(namespace).List(context.TODO(), options)
+				return client.CoreV1().PersistentVolumeClaims(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CoreV1().PersistentVolumeClaims(namespace).Watch(context.TODO(), options)
+				return client.CoreV1().PersistentVolumeClaims(namespace).Watch(context.Background(), options)
 			},
-		},
+			ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.CoreV1().PersistentVolumeClaims(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.CoreV1().PersistentVolumeClaims(namespace).Watch(ctx, options)
+			},
+		}, client),
 		&apicorev1.PersistentVolumeClaim{},
 		resyncPeriod,
 		indexers,

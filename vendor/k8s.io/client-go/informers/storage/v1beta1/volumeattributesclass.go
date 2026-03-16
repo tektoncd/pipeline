@@ -56,20 +56,32 @@ func NewVolumeAttributesClassInformer(client kubernetes.Interface, resyncPeriod 
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredVolumeAttributesClassInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StorageV1beta1().VolumeAttributesClasses().List(context.TODO(), options)
+				return client.StorageV1beta1().VolumeAttributesClasses().List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StorageV1beta1().VolumeAttributesClasses().Watch(context.TODO(), options)
+				return client.StorageV1beta1().VolumeAttributesClasses().Watch(context.Background(), options)
 			},
-		},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.StorageV1beta1().VolumeAttributesClasses().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.StorageV1beta1().VolumeAttributesClasses().Watch(ctx, options)
+			},
+		}, client),
 		&apistoragev1beta1.VolumeAttributesClass{},
 		resyncPeriod,
 		indexers,

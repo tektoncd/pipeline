@@ -56,20 +56,32 @@ func NewValidatingWebhookConfigurationInformer(client kubernetes.Interface, resy
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredValidatingWebhookConfigurationInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(context.TODO(), options)
+				return client.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(context.Background(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Watch(context.TODO(), options)
+				return client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Watch(context.Background(), options)
 			},
-		},
+			ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Watch(ctx, options)
+			},
+		}, client),
 		&apiadmissionregistrationv1.ValidatingWebhookConfiguration{},
 		resyncPeriod,
 		indexers,

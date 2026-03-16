@@ -56,20 +56,32 @@ func NewPriorityClassInformer(client kubernetes.Interface, resyncPeriod time.Dur
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredPriorityClassInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.SchedulingV1alpha1().PriorityClasses().List(context.TODO(), options)
+				return client.SchedulingV1alpha1().PriorityClasses().List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.SchedulingV1alpha1().PriorityClasses().Watch(context.TODO(), options)
+				return client.SchedulingV1alpha1().PriorityClasses().Watch(context.Background(), options)
 			},
-		},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.SchedulingV1alpha1().PriorityClasses().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.SchedulingV1alpha1().PriorityClasses().Watch(ctx, options)
+			},
+		}, client),
 		&apischedulingv1alpha1.PriorityClass{},
 		resyncPeriod,
 		indexers,

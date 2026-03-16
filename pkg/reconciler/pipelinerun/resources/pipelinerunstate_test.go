@@ -3188,6 +3188,50 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 			},
 		}},
 	}, {
+		// Cancelled task with results - isFailure() returns true for cancelled tasks
+		// (ConditionSucceeded=False), so these results should be included.
+		TaskRunNames: []string{"cancelled-task"},
+		PipelineTask: &v1.PipelineTask{
+			Name: "cancelled-task-1",
+		},
+		TaskRuns: []*v1.TaskRun{{
+			Status: v1.TaskRunStatus{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+					Reason: v1.TaskRunReasonCancelled.String(),
+				}}},
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Results: []v1.TaskRunResult{{
+						Name:  "cancel-foo",
+						Value: *v1.NewStructuredValues("cancel-oof"),
+					}},
+				},
+			},
+		}},
+	}, {
+		// Timed-out task with results - isFailure() returns true for timed-out tasks
+		// (ConditionSucceeded=False), so these results should be included.
+		TaskRunNames: []string{"timedout-task"},
+		PipelineTask: &v1.PipelineTask{
+			Name: "timedout-task-1",
+		},
+		TaskRuns: []*v1.TaskRun{{
+			Status: v1.TaskRunStatus{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+					Reason: v1.TaskRunReasonTimedOut.String(),
+				}}},
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Results: []v1.TaskRunResult{{
+						Name:  "timeout-foo",
+						Value: *v1.NewStructuredValues("timeout-oof"),
+					}},
+				},
+			},
+		}},
+	}, {
 		TaskRunNames: []string{"incomplete-task"},
 		PipelineTask: &v1.PipelineTask{
 			Name: "incomplete-task-1",
@@ -3253,6 +3297,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 			}},
 	}, {
 		CustomRunNames: []string{"failed-run"},
+		CustomTask:     true,
 		PipelineTask: &v1.PipelineTask{
 			Name: "failed-run-1",
 		},
@@ -3498,6 +3543,20 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 			Name:  "bar",
 			Value: *v1.NewStructuredValues("rab"),
 		}},
+		"failed-task-1": {{
+			Name:  "fail-foo",
+			Value: *v1.NewStructuredValues("fail-oof"),
+		}},
+		// Cancelled and timed-out tasks are included because isFailure() returns true
+		// for all ConditionSucceeded=False states. This is intentional.
+		"cancelled-task-1": {{
+			Name:  "cancel-foo",
+			Value: *v1.NewStructuredValues("cancel-oof"),
+		}},
+		"timedout-task-1": {{
+			Name:  "timeout-foo",
+			Value: *v1.NewStructuredValues("timeout-oof"),
+		}},
 	}
 	expectedRunResults := map[string][]v1beta1.CustomRunResult{
 		"successful-run-without-results-1": nil,
@@ -3507,6 +3566,10 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 		}, {
 			Name:  "bar",
 			Value: "rab",
+		}},
+		"failed-run-1": {{
+			Name:  "fail-foo",
+			Value: "fail-oof",
 		}},
 	}
 
@@ -3607,7 +3670,7 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 			}},
 		},
 		{
-			name: "Skip retrieving artifacts from unsuccessful task",
+			name: "Include artifacts from failed task",
 			state: PipelineRunState{{
 				TaskRunNames: []string{"unsuccessful-task-with-artifacts"},
 				PipelineTask: &v1.PipelineTask{
@@ -3627,10 +3690,13 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 						}},
 				}},
 			}},
-			expectedArtifacts: map[string]*v1.Artifacts{},
+			expectedArtifacts: map[string]*v1.Artifacts{"unsuccessful-task-with-artifacts-1": {
+				Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+			}},
 		},
 		{
-			name: "One successful task and one failed task, only retrieving artifacts from the successful one",
+			name: "Both successful and failed tasks contribute artifacts",
 			state: PipelineRunState{
 				{
 					TaskRunNames: []string{"successful-task-with-artifacts"},
@@ -3670,10 +3736,16 @@ func TestPipelineRunState_GetTaskRunsArtifacts(t *testing.T) {
 							}},
 					}},
 				}},
-			expectedArtifacts: map[string]*v1.Artifacts{"successful-task-with-artifacts-1": {
-				Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
-				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
-			}},
+			expectedArtifacts: map[string]*v1.Artifacts{
+				"successful-task-with-artifacts-1": {
+					Inputs:  []v1.Artifact{{Name: "source", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+					Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+				},
+				"unsuccessful-task-with-artifacts-1": {
+					Inputs:  []v1.Artifact{{Name: "source0", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "pkg:example.github.com/inputs"}}}},
+					Outputs: []v1.Artifact{{Name: "image0", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2"}, Uri: "pkg:github/package-url/purl-spec@244fd47e07d1004f0aed9c"}}}},
+				},
+			},
 		},
 		{
 			name: "One standard successful taskRun with artifacts and one custom task, custom task has no effect",

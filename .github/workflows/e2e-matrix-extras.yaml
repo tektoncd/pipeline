@@ -114,7 +114,7 @@ jobs:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       with:
         ref: ${{ needs.run-if-requested.outputs.sha }}
-    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
+    - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417  # v6.3.0
       with:
         go-version-file: "go.mod"
     - name: Cache ko build cache
@@ -149,12 +149,12 @@ jobs:
           --e2e-env ./test/e2e-tests-kind-${{ matrix.feature-flags }}.env
 
     - name: Upload test results
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: extra-tests-${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}
         path: ${{ env.ARTIFACTS }}
 
-    - uses: chainguard-dev/actions/kind-diag@0cf1221da92242205c2d9f8a63add344ebd6b304 # v1.6.1
+    - uses: chainguard-dev/actions/kind-diag@5e84f02889db0de213947c80a5d75b51bb899048 # v1.6.7
       if: ${{ failure() }}
       with:
         artifact-name: extra-tests-${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}-logs

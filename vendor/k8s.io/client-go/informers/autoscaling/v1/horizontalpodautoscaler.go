@@ -57,20 +57,32 @@ func NewHorizontalPodAutoscalerInformer(client kubernetes.Interface, namespace s
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredHorizontalPodAutoscalerInformer(client kubernetes.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AutoscalingV1().HorizontalPodAutoscalers(namespace).List(context.TODO(), options)
+				return client.AutoscalingV1().HorizontalPodAutoscalers(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AutoscalingV1().HorizontalPodAutoscalers(namespace).Watch(context.TODO(), options)
+				return client.AutoscalingV1().HorizontalPodAutoscalers(namespace).Watch(context.Background(), options)
 			},
-		},
+			ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.AutoscalingV1().HorizontalPodAutoscalers(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.AutoscalingV1().HorizontalPodAutoscalers(namespace).Watch(ctx, options)
+			},
+		}, client),
 		&apiautoscalingv1.HorizontalPodAutoscaler{},
 		resyncPeriod,
 		indexers,
