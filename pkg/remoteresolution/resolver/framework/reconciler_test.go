@@ -69,30 +69,6 @@ func TestReconcile(t *testing.T) {
 		transient         bool
 	}{
 		{
-			name: "unknown value",
-			inputRequest: &v1beta1.ResolutionRequest{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "resolution.tekton.dev/v1beta1",
-					Kind:       "ResolutionRequest",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "rr",
-					Namespace:         "foo",
-					CreationTimestamp: metav1.Time{Time: time.Now()},
-					Labels: map[string]string{
-						resolutioncommon.LabelKeyResolverType: resolutionframework.LabelValueFakeResolverType,
-					},
-				},
-				Spec: v1beta1.ResolutionRequestSpec{
-					Params: []pipelinev1.Param{{
-						Name:  resolutionframework.FakeParamName,
-						Value: *pipelinev1.NewStructuredValues("bar"),
-					}},
-				},
-				Status: v1beta1.ResolutionRequestStatus{},
-			},
-			expectedErr: errors.New("error getting \"Fake\" \"foo/rr\": couldn't find resource for param value bar"),
-		}, {
 			name: "known value",
 			inputRequest: &v1beta1.ResolutionRequest{
 				TypeMeta: metav1.TypeMeta{
@@ -117,7 +93,7 @@ func TestReconcile(t *testing.T) {
 			},
 			paramMap: map[string]*resolutionframework.FakeResolvedResource{
 				"bar": {
-					Content:       "some content",
+					Content:       "{\"apiVersion\": \"tekton.dev/v1\", \"kind\": \"Pipeline\"}",
 					AnnotationMap: map[string]string{"foo": "bar"},
 					ContentSource: &pipelinev1.RefSource{
 						URI: "https://abc.com",
@@ -135,7 +111,7 @@ func TestReconcile(t *testing.T) {
 					},
 				},
 				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
-					Data: base64.StdEncoding.Strict().EncodeToString([]byte("some content")),
+					Data: base64.StdEncoding.Strict().EncodeToString([]byte("{\"apiVersion\": \"tekton.dev/v1\", \"kind\": \"Pipeline\"}")),
 					RefSource: &pipelinev1.RefSource{
 						URI: "https://abc.com",
 						Digest: map[string]string{
@@ -152,6 +128,141 @@ func TestReconcile(t *testing.T) {
 					},
 				},
 			},
+		}, {
+			name: "known invalid value",
+			inputRequest: &v1beta1.ResolutionRequest{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "resolution.tekton.dev/v1beta1",
+					Kind:       "ResolutionRequest",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "rr",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.Time{Time: time.Now()},
+					Labels: map[string]string{
+						resolutioncommon.LabelKeyResolverType: resolutionframework.LabelValueFakeResolverType,
+					},
+				},
+				Spec: v1beta1.ResolutionRequestSpec{
+					Params: []pipelinev1.Param{{
+						Name:  resolutionframework.FakeParamName,
+						Value: *pipelinev1.NewStructuredValues("bar"),
+					}},
+				},
+				Status: v1beta1.ResolutionRequestStatus{},
+			},
+			paramMap: map[string]*resolutionframework.FakeResolvedResource{
+				"bar": {
+					Content:       "foo: bar\nbax: baz",
+					AnnotationMap: map[string]string{"foo": "bar"},
+					ContentSource: &pipelinev1.RefSource{
+						URI: "https://abc.com",
+						Digest: map[string]string{
+							"sha1": "xyz",
+						},
+						EntryPoint: "foo/bar",
+					},
+				},
+			},
+			expectedErr: errors.New("error getting \"Fake\" \"foo/rr\": resolved resource validation error: resolved data is not of a supported type, must be of Group: tekton.dev, Kinds: [Pipeline Task StepAction]"),
+		}, {
+			name: "known value invalid type",
+			inputRequest: &v1beta1.ResolutionRequest{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "resolution.tekton.dev/v1beta1",
+					Kind:       "ResolutionRequest",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "rr",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.Time{Time: time.Now()},
+					Labels: map[string]string{
+						resolutioncommon.LabelKeyResolverType: resolutionframework.LabelValueFakeResolverType,
+					},
+				},
+				Spec: v1beta1.ResolutionRequestSpec{
+					Params: []pipelinev1.Param{{
+						Name:  resolutionframework.FakeParamName,
+						Value: *pipelinev1.NewStructuredValues("bar"),
+					}},
+				},
+				Status: v1beta1.ResolutionRequestStatus{},
+			},
+			paramMap: map[string]*resolutionframework.FakeResolvedResource{
+				"bar": {
+					Content:       "{\"apiVersion\": \"tekton.dev/v1\", \"kind\": \"PipelineRun\"}",
+					AnnotationMap: map[string]string{"foo": "bar"},
+					ContentSource: &pipelinev1.RefSource{
+						URI: "https://abc.com",
+						Digest: map[string]string{
+							"sha1": "xyz",
+						},
+						EntryPoint: "foo/bar",
+					},
+				},
+			},
+			expectedErr: errors.New("error getting \"Fake\" \"foo/rr\": resolved resource validation error: resolved data is not of a supported type, must be of Group: tekton.dev, Kinds: [Pipeline Task StepAction]"),
+		}, {
+			name: "known value unknown type",
+			inputRequest: &v1beta1.ResolutionRequest{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "resolution.tekton.dev/v1beta1",
+					Kind:       "ResolutionRequest",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "rr",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.Time{Time: time.Now()},
+					Labels: map[string]string{
+						resolutioncommon.LabelKeyResolverType: resolutionframework.LabelValueFakeResolverType,
+					},
+				},
+				Spec: v1beta1.ResolutionRequestSpec{
+					Params: []pipelinev1.Param{{
+						Name:  resolutionframework.FakeParamName,
+						Value: *pipelinev1.NewStructuredValues("bar"),
+					}},
+				},
+				Status: v1beta1.ResolutionRequestStatus{},
+			},
+			paramMap: map[string]*resolutionframework.FakeResolvedResource{
+				"bar": {
+					Content:       "{\"apiVersion\": \"other/type\", \"kind\": \"NonTekton\"}",
+					AnnotationMap: map[string]string{"foo": "bar"},
+					ContentSource: &pipelinev1.RefSource{
+						URI: "https://abc.com",
+						Digest: map[string]string{
+							"sha1": "xyz",
+						},
+						EntryPoint: "foo/bar",
+					},
+				},
+			},
+			expectedErr: errors.New("error getting \"Fake\" \"foo/rr\": resolved resource validation error: resolved data is not of a supported type, must be of Group: tekton.dev, Kinds: [Pipeline Task StepAction]"),
+		}, {
+			name: "unknown value",
+			inputRequest: &v1beta1.ResolutionRequest{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "resolution.tekton.dev/v1beta1",
+					Kind:       "ResolutionRequest",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "rr",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.Time{Time: time.Now()},
+					Labels: map[string]string{
+						resolutioncommon.LabelKeyResolverType: resolutionframework.LabelValueFakeResolverType,
+					},
+				},
+				Spec: v1beta1.ResolutionRequestSpec{
+					Params: []pipelinev1.Param{{
+						Name:  resolutionframework.FakeParamName,
+						Value: *pipelinev1.NewStructuredValues("bar"),
+					}},
+				},
+				Status: v1beta1.ResolutionRequestStatus{},
+			},
+			expectedErr: errors.New("error getting \"Fake\" \"foo/rr\": couldn't find resource for param value bar"),
 		}, {
 			name: "unknown url",
 			inputRequest: &v1beta1.ResolutionRequest{
@@ -195,7 +306,7 @@ func TestReconcile(t *testing.T) {
 			},
 			paramMap: map[string]*resolutionframework.FakeResolvedResource{
 				framework.FakeUrl: {
-					Content:       "some content",
+					Content:       "{\"apiVersion\": \"tekton.dev/v1\", \"kind\": \"Pipeline\"}",
 					AnnotationMap: map[string]string{"foo": "bar"},
 					ContentSource: &pipelinev1.RefSource{
 						URI: "https://abc.com",
@@ -213,7 +324,7 @@ func TestReconcile(t *testing.T) {
 					},
 				},
 				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
-					Data: base64.StdEncoding.Strict().EncodeToString([]byte("some content")),
+					Data: base64.StdEncoding.Strict().EncodeToString([]byte("{\"apiVersion\": \"tekton.dev/v1\", \"kind\": \"Pipeline\"}")),
 					RefSource: &pipelinev1.RefSource{
 						URI: "https://abc.com",
 						Digest: map[string]string{
