@@ -1,0 +1,31 @@
+name: PR Welcome Comment
+
+on:
+  pull_request_target:
+    types: [opened]
+
+jobs:
+  welcome-comment:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Post slash commands comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            Thanks for opening a pull request!
+
+            The following slash commands are available for maintainers (requires write access):
+
+            | Command | Description |
+            |---|---|
+            | `/retest` | Re-trigger workflows that failed on this PR |
+            | `/e2e-extras` | Run extra e2e tests on this PR |
+            | `/cherry-pick <branch>` | Cherry-pick the merged PR to the specified branch |
+            | `/rebase` | Rebase the PR branch against its base branch |
+
+            Note: Slash commands must be placed at the very beginning of the first line of a comment.
+
+            For more details, see the [slash command docs](https://github.com/peter-evans/slash-command-dispatch/tree/main?tab=readme-ov-file#how-comments-are-parsed-for-slash-commands).
