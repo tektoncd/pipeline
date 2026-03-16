@@ -1389,27 +1389,37 @@ For more information, see the [`LimitRange` support in Pipeline](./compute-resou
 
 ### Configuring a failure timeout
 
-You can use the `timeouts` field to set the `PipelineRun's` desired timeout value in minutes.
-There are three sub-fields:
-- `pipeline`: specifies the timeout for the entire PipelineRun. Defaults to to the global configurable default timeout of 60 minutes.
-When `timeouts.pipeline` has elapsed, any running child TaskRuns will be canceled, regardless of whether they are normal Tasks
-or `finally` Tasks, and the PipelineRun will fail.
-- `tasks`: specifies the timeout for the cumulative time taken by non-`finally` Tasks specified in `pipeline.spec.tasks`.
-To specify a timeout for an individual Task, use `pipeline.spec.tasks[].timeout`.
-When `timeouts.tasks` has elapsed, any running child TaskRuns will be canceled, finally Tasks will run if `timeouts.finally` is specified,
-and the PipelineRun will fail.
-When `timeouts.tasks` exceeds the global default timeout, it is also used as the individual TaskRun timeout
-for tasks that do not have an explicit timeout set via `pipeline.spec.tasks[].timeout` or `taskRunSpecs[].timeout`.
-This prevents individual TaskRuns from being prematurely canceled at the global default timeout.
-This also applies to computed tasks timeouts (e.g., `pipeline: 2h` minus `finally: 10m` = `1h50m`).
-When the computed or explicit tasks timeout is smaller than the global default, the global default is used
-for individual TaskRuns and the PipelineRun's cumulative enforcement handles cancellation.
-- `finally`: the timeout for the cumulative time taken by `finally` Tasks specified in `pipeline.spec.finally`.
-(Since all `finally` Tasks run in parallel, this is functionally equivalent to the timeout for any `finally` Task.)
-When `timeouts.finally` has elapsed, any running `finally` TaskRuns will be canceled,
-and the PipelineRun will fail.
-Similar to `timeouts.tasks`, when `timeouts.finally` exceeds the global default timeout,
-it is used as the individual timeout for `finally` TaskRuns that do not have an explicit timeout.
+Use the `timeouts` field to control timeout behavior at different levels.
+
+| Timeout control | Where to set it | Scope | Default |
+|---|---|---|---|
+| Global default timeout | `config-defaults` ConfigMap (`default-timeout-minutes`) | Cluster-wide default for PipelineRuns/TaskRuns | `60m` |
+| PipelineRun timeout | `spec.timeouts.pipeline` | Entire PipelineRun (including `finally`) | Global default |
+| Non-`finally` cumulative timeout | `spec.timeouts.tasks` | Sum of execution time for `pipeline.spec.tasks` | Derived from `spec.timeouts.pipeline`/global default |
+| `finally` cumulative timeout | `spec.timeouts.finally` | Cumulative time for `pipeline.spec.finally` | Derived from `spec.timeouts.pipeline`/global default |
+| Per-task timeout in Pipeline | `pipeline.spec.tasks[].timeout` | Individual task declared in Pipeline spec | Falls back to task-level effective default |
+| Per-task runtime override | `spec.taskRunSpecs[].timeout` | Individual task at PipelineRun runtime | Highest priority per-task timeout |
+| Deprecated timeout field | `spec.timeout` | Entire PipelineRun | Deprecated: use `spec.timeouts` |
+
+There are three `spec.timeouts` sub-fields:
+- `pipeline`: timeout for the entire PipelineRun. Defaults to the global configurable default timeout of 60 minutes.
+  When `timeouts.pipeline` has elapsed, any running child TaskRuns are canceled (including `finally` TaskRuns), and the PipelineRun fails.
+- `tasks`: timeout for the cumulative time taken by non-`finally` Tasks in `pipeline.spec.tasks`.
+  To set timeout for an individual Task, use `pipeline.spec.tasks[].timeout` or `spec.taskRunSpecs[].timeout`.
+  When `timeouts.tasks` has elapsed, running non-`finally` TaskRuns are canceled, `finally` Tasks run if `timeouts.finally` is specified, and the PipelineRun fails.
+  When `timeouts.tasks` exceeds the global default timeout, it is also used as the individual timeout for tasks that do not have an explicit per-task timeout.
+  This also applies to computed task timeout (for example: `pipeline: 2h` minus `finally: 10m` = `1h50m`).
+  When the computed or explicit tasks timeout is smaller than the global default, the global default is used for individual TaskRuns and cumulative enforcement happens at PipelineRun level.
+- `finally`: timeout for the cumulative time taken by `finally` Tasks in `pipeline.spec.finally`.
+  Since `finally` Tasks run in parallel, this is functionally equivalent to the timeout for the slowest `finally` Task.
+  When `timeouts.finally` has elapsed, running `finally` TaskRuns are canceled and the PipelineRun fails.
+  Similar to `timeouts.tasks`, when `timeouts.finally` exceeds the global default timeout, it is used as the individual timeout for `finally` TaskRuns without explicit per-task timeout.
+
+Per-task timeout precedence (highest to lowest):
+1. `spec.taskRunSpecs[].timeout`
+2. `pipeline.spec.tasks[].timeout`
+3. Effective task-level timeout derived from `spec.timeouts.tasks` / `spec.timeouts.pipeline`
+4. Global default timeout (`default-timeout-minutes`)
 
 For example:
 
@@ -1426,6 +1436,15 @@ All three sub-fields are optional, and will be automatically processed according
 Each `timeout` field is a `duration` conforming to Go's
 [`ParseDuration`](https://golang.org/pkg/time/#ParseDuration) format. For example, valid
 values are `1h30m`, `1h`, `1m`, and `60s`.
+
+#### Common timeout scenarios
+
+- **I want the whole PipelineRun to finish within 30 minutes**
+  - Set `spec.timeouts.pipeline: "30m"`.
+- **I want regular tasks to finish in 20 minutes, but reserve 10 minutes for cleanup in `finally`**
+  - Set `spec.timeouts.pipeline: "30m"`, `spec.timeouts.tasks: "20m"`, and `spec.timeouts.finally: "10m"`.
+- **I want one specific task to run longer than others without changing the Pipeline definition**
+  - Set `spec.taskRunSpecs[].timeout` for that task in the PipelineRun.
 
 If any of the sub-fields are set to "0", there is no timeout for that section of the PipelineRun,
 meaning that it will run until it completes successfully or encounters an error.
