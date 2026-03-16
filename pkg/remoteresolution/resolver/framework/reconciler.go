@@ -167,6 +167,14 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 			}
 			return
 		}
+		if err := framework.ValidateResolvedResource(resource); err != nil {
+			errChan <- &resolutioncommon.GetResourceError{
+				ResolverName: r.resolver.GetName(resolutionCtx),
+				Key:          key,
+				Original:     fmt.Errorf("resolved resource validation error: %w", err),
+			}
+			return
+		}
 		resourceChan <- resource
 	}()
 
