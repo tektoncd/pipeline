@@ -141,14 +141,16 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 		defer ceClient.decreaseCount()
 		wasIn <- nil
 		logger.Debugf("Sending cloudevent of type %q", event.Type())
+		recorder := controller.GetEventRecorder(ctx)
 		if result := ceClient.Send(cloudevents.ContextWithRetriesExponentialBackoff(ctx, 10*time.Millisecond, 10), *event); !cloudevents.IsACK(result) {
 			logger.Warnf("Failed to send cloudevent: %s", result.Error())
-			recorder := controller.GetEventRecorder(ctx)
 			if recorder == nil {
 				logger.Warnf("No recorder in context, cannot emit error event")
 				return
 			}
-			recorder.Event(runObject, corev1.EventTypeWarning, "Cloud Event Failure", result.Error())
+			recorder.Event(runObject, corev1.EventTypeWarning, "CloudEventFailed", result.Error())
+		} else if recorder != nil {
+			recorder.Eventf(runObject, corev1.EventTypeNormal, "CloudEventSent", "Sent %s", event.Type())
 		}
 	}()
 

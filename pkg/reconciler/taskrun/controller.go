@@ -29,7 +29,6 @@ import (
 	resolutionclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client"
 	resolutioninformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
 	"github.com/tektoncd/pipeline/pkg/pod"
-	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolution "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
 	"github.com/tektoncd/pipeline/pkg/spire"
@@ -100,7 +99,6 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			taskRunLister:            taskRunInformer.Lister(),
 			limitrangeLister:         limitrangeInformer.Lister(),
 			verificationPolicyLister: verificationpolicyInformer.Lister(),
-			cloudEventClient:         cloudeventclient.Get(ctx),
 			metrics:                  taskrunmetricsRecorder,
 			entrypointCache:          entrypointCache,
 			podLister:                podInformer.Lister(),

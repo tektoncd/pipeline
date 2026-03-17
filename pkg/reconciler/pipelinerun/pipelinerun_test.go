@@ -8561,22 +8561,19 @@ spec:
 	}
 	t.Logf("config maps: %s", cms)
 
-	wantEvents := []string{
-		"Normal Started",
-		"Normal Running Tasks Completed: 0",
-	}
-
 	d := test.Data{
 		PipelineRuns:            prs,
 		Pipelines:               ps,
 		Tasks:                   ts,
 		ConfigMaps:              cms,
-		ExpectedCloudEventCount: len(wantEvents),
+		ExpectedCloudEventCount: 2,
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipelinerun", wantEvents, false)
+	// Reconcile without checking k8s events yet — cloud events are sent asynchronously
+	// and their "CloudEventSent" k8s recorder events may interleave with status events.
+	reconciledRun, clients := prt.reconcileRun("foo", "test-pipelinerun", nil, false)
 
 	// This PipelineRun is in progress now and the status should reflect that
 	th.CheckPipelineRunConditionStatusAndReason(t, reconciledRun.Status, corev1.ConditionUnknown, v1.PipelineRunReasonRunning.String())
@@ -8588,7 +8585,19 @@ spec:
 		`(?s)dev.tekton.event.pipelinerun.running.v1.*test-pipelinerun`,
 	}
 	ceClient := clients.CloudEvents.(cloudevent.FakeClient)
+	// Wait for all cloud event goroutines to finish before checking k8s events,
+	// so that "CloudEventSent" recorder events are already in the channel.
 	ceClient.CheckCloudEventsUnordered(t, "reconcile-cloud-events", wantCloudEvents)
+
+	wantEvents := []string{
+		"Normal Started",
+		"Normal CloudEventSent Sent dev.tekton.event.pipelinerun.started.v1",
+		"Normal Running Tasks Completed: 0",
+		"Normal CloudEventSent Sent dev.tekton.event.pipelinerun.running.v1",
+	}
+	if err := k8sevent.CheckEventsOrdered(t, prt.TestAssets.Recorder.Events, "test-pipelinerun", wantEvents); err != nil {
+		t.Error(err.Error())
+	}
 }
 
 // this test validates taskSpec metadata is embedded into task run
