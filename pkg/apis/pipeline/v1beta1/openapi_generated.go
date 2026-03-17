@@ -5606,7 +5606,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunStatus(ref common.ReferenceCallback
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "CloudEvents describe the state of each cloud event requested via a CloudEventResource.\n\nDeprecated: Removed in v0.44.0.",
+							Description: "CloudEvents describe the state of each cloud event requested via a CloudEventResource.\n\nDeprecated: No content written to it. To be Removed (since v0.44.0). Use kubectl describe (CloudEventSent/CloudEventFailed k8s Events) or the tekton_events_sent_total Prometheus metric for delivery visibility instead.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -5779,7 +5779,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunStatusFields(ref common.ReferenceCa
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "CloudEvents describe the state of each cloud event requested via a CloudEventResource.\n\nDeprecated: Removed in v0.44.0.",
+							Description: "CloudEvents describe the state of each cloud event requested via a CloudEventResource.\n\nDeprecated: No content written to it. To be Removed (since v0.44.0). Use kubectl describe (CloudEventSent/CloudEventFailed k8s Events) or the tekton_events_sent_total Prometheus metric for delivery visibility instead.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

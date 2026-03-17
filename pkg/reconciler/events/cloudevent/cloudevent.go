@@ -51,6 +51,9 @@ const (
 	TaskRunSuccessfulEventV1 TektonEventType = "dev.tekton.event.taskrun.successful.v1"
 	// TaskRunFailedEventV1 is sent for TaskRuns with "ConditionSucceeded" "False"
 	TaskRunFailedEventV1 TektonEventType = "dev.tekton.event.taskrun.failed.v1"
+	// PipelineRunQueuedEventV1 is sent for PipelineRuns that have been created but not yet
+	// picked up by the core PipelineRun reconciler (no condition set yet)
+	PipelineRunQueuedEventV1 TektonEventType = "dev.tekton.event.pipelinerun.queued.v1"
 	// PipelineRunStartedEventV1 is sent for PipelineRuns with "ConditionSucceeded" "Unknown"
 	// the first time they are picked up by the reconciler
 	PipelineRunStartedEventV1 TektonEventType = "dev.tekton.event.pipelinerun.started.v1"
@@ -186,6 +189,9 @@ func getEventType(runObject v1beta1.RunObject) (*TektonEventType, error) {
 		case *v1.TaskRun, *v1beta1.TaskRun:
 			eventType = TaskRunQueuedEventV1
 			return &eventType, nil
+		case *v1.PipelineRun, *v1beta1.PipelineRun:
+			eventType = PipelineRunQueuedEventV1
+			return &eventType, nil
 		case *v1beta1.CustomRun:
 			eventType = CustomRunStartedEventV1
 			return &eventType, nil
@@ -272,7 +278,10 @@ func getEventType(runObject v1beta1.RunObject) (*TektonEventType, error) {
 }
 
 // GetCloudEventDeliveryCompareOptions returns compare options to sort
-// and compare a list of CloudEventDelivery
+// and compare a list of CloudEventDelivery.
+//
+// Deprecated: status.cloudEvents is no longer populated as of TEP-0137.
+// This function will be removed once the CloudEventDelivery field is removed from the API.
 func GetCloudEventDeliveryCompareOptions() []cmp.Option {
 	// Setup cmp options
 	cloudDeliveryStateCompare := func(x, y v1beta1.CloudEventDeliveryState) bool {
