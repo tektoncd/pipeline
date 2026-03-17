@@ -75,7 +75,7 @@ spec:
                 type: string
               IMAGE_DIGEST:
                 type: string
-        image: mirror.gcr.io/alpine
+        image: mirror.gcr.io/alpine@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
         script: |
           echo -n "[\"image1\", \"image2\", \"image3\"]" | tee $(step.results.result1.path)
           echo -n "foo" | tee $(step.results.result2.path)
