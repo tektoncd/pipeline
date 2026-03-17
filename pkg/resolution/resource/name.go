@@ -59,7 +59,7 @@ func GetNameAndNamespace(resolverName string, owner kmeta.OwnerRefable, name str
 		namespace = owner.GetObjectMeta().GetNamespace()
 	}
 	if namespace == "" {
-		return "", "", fmt.Errorf("namespace is required for resolution request but was empty (resolver: %s, owner: %s)", resolverName, name)
+		return "", "", fmt.Errorf("namespace is required for resolution request but was empty (resolver: %s, resource: %s)", resolverName, name)
 	}
 	// Generating a deterministic name for the resource request
 	// prevents multiple requests being issued for the same
