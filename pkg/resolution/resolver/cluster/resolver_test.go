@@ -182,6 +182,48 @@ func TestValidateParamsFailure(t *testing.T) {
 				cluster.BlockedNamespacesKey: "*",
 				cluster.AllowedNamespacesKey: "foo",
 			},
+		}, {
+			name: "whitespace in allowed namespaces",
+			params: map[string]string{
+				cluster.KindParam:      "task",
+				cluster.NamespaceParam: "bar",
+				cluster.NameParam:      "baz",
+			},
+			conf: map[string]string{
+				cluster.AllowedNamespacesKey: "foo, bar",
+			},
+		}, {
+			name: "whitespace in blocked namespaces",
+			params: map[string]string{
+				cluster.KindParam:      "task",
+				cluster.NamespaceParam: "prod",
+				cluster.NameParam:      "baz",
+			},
+			conf: map[string]string{
+				cluster.BlockedNamespacesKey: "prod , staging",
+			},
+			expectedErr: "access to specified namespace prod is blocked",
+		}, {
+			name: "combined wildcard in blocked namespaces",
+			params: map[string]string{
+				cluster.KindParam:      "task",
+				cluster.NamespaceParam: "foo",
+				cluster.NameParam:      "baz",
+			},
+			conf: map[string]string{
+				cluster.BlockedNamespacesKey: "*,kube-system",
+			},
+			expectedErr: "only explicit allowed access to namespaces is allowed",
+		}, {
+			name: "empty string default namespace",
+			params: map[string]string{
+				cluster.KindParam: "task",
+				cluster.NameParam: "baz",
+			},
+			conf: map[string]string{
+				cluster.DefaultNamespaceKey: "",
+			},
+			expectedErr: "missing required cluster resolver params: namespace",
 		},
 	}
 
