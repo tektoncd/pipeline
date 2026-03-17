@@ -728,12 +728,12 @@ func TestResolve(t *testing.T) {
 		config: map[string]string{
 			gitresolution.ServerURLKey:          "fake",
 			gitresolution.SCMTypeKey:            "fake",
-			gitresolution.APISecretNameKey:      "token-secret",
+			gitresolution.APISecretNameKey:      "token-secret-nonexistent",
 			gitresolution.APISecretKeyKey:       "token",
 			gitresolution.APISecretNamespaceKey: system.Namespace(),
 		},
 		expectedStatus: resolution.CreateResolutionRequestFailureStatus(),
-		expectedErr:    createError("cannot get API token, secret token-secret not found in namespace " + system.Namespace()),
+		expectedErr:    createError("cannot get API token, secret token-secret-nonexistent not accessible in namespace " + system.Namespace()),
 	}, {
 		name: "api: token secret name not specified",
 		args: &params{
