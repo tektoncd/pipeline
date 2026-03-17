@@ -36,6 +36,7 @@ func TestGetNameAndNamespace(t *testing.T) {
 		inputNS      string
 		expectErr    bool
 		expectErrMsg string
+		expectNS     string
 	}{
 		{
 			name:         "uses owner namespace when name is empty",
@@ -45,6 +46,7 @@ func TestGetNameAndNamespace(t *testing.T) {
 			inputName:    "",
 			inputNS:      "",
 			expectErr:    false,
+			expectNS:     "my-ns",
 		},
 		{
 			name:         "explicit name and namespace succeeds",
@@ -54,6 +56,17 @@ func TestGetNameAndNamespace(t *testing.T) {
 			inputName:    "explicit-name",
 			inputNS:      "explicit-ns",
 			expectErr:    false,
+			expectNS:     "explicit-ns",
+		},
+		{
+			name:         "explicit name and namespace ignores owner namespace",
+			resolverName: "git",
+			ownerName:    "my-run",
+			ownerNS:      "owner-ns",
+			inputName:    "explicit-name",
+			inputNS:      "explicit-ns",
+			expectErr:    false,
+			expectNS:     "explicit-ns",
 		},
 		{
 			name:         "errors on empty namespace with explicit name",
@@ -106,8 +119,8 @@ func TestGetNameAndNamespace(t *testing.T) {
 			if gotName == "" {
 				t.Error("expected non-empty name")
 			}
-			if gotNS == "" {
-				t.Error("expected non-empty namespace")
+			if gotNS != tt.expectNS {
+				t.Errorf("expected namespace %q, got %q", tt.expectNS, gotNS)
 			}
 		})
 	}
