@@ -998,8 +998,8 @@ source mounted into /workspace.</p>
 <td>
 <code>volumes</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volume-v1-core">
-[]Kubernetes core/v1.Volume
+<a href="#tekton.dev/v1.Volumes">
+Volumes
 </a>
 </em>
 </td>
@@ -1255,8 +1255,8 @@ Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https
 <td>
 <code>podTemplate</code><br/>
 <em>
-<a href="#tekton.dev/unversioned.Template">
-Template
+<a href="#tekton.dev/unversioned.PodTemplate">
+PodTemplate
 </a>
 </em>
 </td>
@@ -1351,11 +1351,11 @@ TaskRunStatus
 <h3 id="tekton.dev/v1.Artifact">Artifact
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.Artifacts">Artifacts</a>, <a href="#tekton.dev/v1.StepState">StepState</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.Artifacts">Artifacts</a>)
 </p>
 <div>
-<p>TaskRunStepArtifact represents an artifact produced or used by a step within a task run.
-It directly uses the Artifact type for its structure.</p>
+<p>Artifact represents an artifact within a system, potentially containing multiple values
+associated with it.</p>
 </div>
 <table>
 <thead>
@@ -1581,7 +1581,9 @@ string
 <td>
 <code>spec</code><br/>
 <em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/runtime#RawExtension">
 k8s.io/apimachinery/pkg/runtime.RawExtension
+</a>
 </em>
 </td>
 <td>
@@ -1606,7 +1608,9 @@ k8s.io/apimachinery/pkg/runtime.RawExtension
 <td>
 <code>-</code><br/>
 <em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/runtime#Object">
 k8s.io/apimachinery/pkg/runtime.Object
+</a>
 </em>
 </td>
 <td>
@@ -1934,10 +1938,12 @@ Used to distinguish between a single string and an array of strings.</p>
 <h3 id="tekton.dev/v1.ParamValue">ParamValue
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.Param">Param</a>, <a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1.PipelineRunResult">PipelineRunResult</a>, <a href="#tekton.dev/v1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.Param">Param</a>, <a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>)
 </p>
 <div>
-<p>ResultValue is a type alias of ParamValue</p>
+<p>ParamValue is a type that can hold a single string, string array, or string map.
+Used in JSON unmarshalling so that a single JSON field can accept
+either an individual string or an array of strings.</p>
 </div>
 <table>
 <thead>
@@ -2115,8 +2121,8 @@ string
 <td>
 <code>value</code><br/>
 <em>
-<a href="#tekton.dev/v1.ParamValue">
-ParamValue
+<a href="#tekton.dev/v1.ResultValue">
+ResultValue
 </a>
 </em>
 </td>
@@ -2298,8 +2304,8 @@ string
 <td>
 <code>value</code><br/>
 <em>
-<a href="#tekton.dev/v1.ParamValue">
-ParamValue
+<a href="#tekton.dev/v1.ResultValue">
+ResultValue
 </a>
 </em>
 </td>
@@ -3264,8 +3270,8 @@ string
 <td>
 <code>podTemplate</code><br/>
 <em>
-<a href="#tekton.dev/unversioned.Template">
-Template
+<a href="#tekton.dev/unversioned.PodTemplate">
+PodTemplate
 </a>
 </em>
 </td>
@@ -3344,8 +3350,8 @@ Kubernetes core/v1.ResourceRequirements
 <td>
 <code>podTemplate</code><br/>
 <em>
-<a href="#tekton.dev/unversioned.Template">
-Template
+<a href="#tekton.dev/unversioned.PodTemplate">
+PodTemplate
 </a>
 </em>
 </td>
@@ -3372,9 +3378,8 @@ string
 (<em>Appears on:</em><a href="#tekton.dev/v1.PipelineSpec">PipelineSpec</a>)
 </p>
 <div>
-<p>WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun
+<p>PipelineWorkspaceDeclaration creates a named slot in a Pipeline that a PipelineRun
 is expected to populate with a workspace binding.</p>
-<p>Deprecated: use PipelineWorkspaceDeclaration type instead</p>
 </div>
 <table>
 <thead>
@@ -3594,7 +3599,7 @@ string
 <td>
 <p>EntryPoint identifies the entry point into the build. This is often a path to a
 build definition file and/or a target label within that file.
-Example: &ldquo;task/git-clone/0.8/git-clone.yaml&rdquo;</p>
+Example: &ldquo;task/git-clone/0.10/git-clone.yaml&rdquo;</p>
 </td>
 </tr>
 </tbody>
@@ -3715,6 +3720,14 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.ResultValue">ResultValue
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1.PipelineRunResult">PipelineRunResult</a>, <a href="#tekton.dev/v1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>)
+</p>
+<div>
+<p>ResultValue is a type alias of ParamValue</p>
+</div>
 <h3 id="tekton.dev/v1.ResultsType">ResultsType
 (<code>string</code> alias)</h3>
 <p>
@@ -3742,6 +3755,13 @@ this ResultsType.</p>
 <td></td>
 </tr></tbody>
 </table>
+<h3 id="tekton.dev/v1.RetriesStatus">RetriesStatus
+(<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
+</p>
+<div>
+</div>
 <h3 id="tekton.dev/v1.Sidecar">Sidecar
 </h3>
 <p>
@@ -4689,8 +4709,8 @@ The Results declared by the StepActions will be stored here instead.</p>
 <td>
 <code>when</code><br/>
 <em>
-<a href="#tekton.dev/v1.WhenExpressions">
-WhenExpressions
+<a href="#tekton.dev/v1.StepWhenExpressions">
+StepWhenExpressions
 </a>
 </em>
 </td>
@@ -4865,8 +4885,8 @@ string
 <td>
 <code>results</code><br/>
 <em>
-<a href="#tekton.dev/v1.TaskRunResult">
-[]TaskRunResult
+<a href="#tekton.dev/v1.TaskRunStepResult">
+[]TaskRunStepResult
 </a>
 </em>
 </td>
@@ -4899,8 +4919,8 @@ string
 <td>
 <code>inputs</code><br/>
 <em>
-<a href="#tekton.dev/v1.Artifact">
-[]Artifact
+<a href="#tekton.dev/v1.TaskRunStepArtifact">
+[]TaskRunStepArtifact
 </a>
 </em>
 </td>
@@ -4911,8 +4931,8 @@ string
 <td>
 <code>outputs</code><br/>
 <em>
-<a href="#tekton.dev/v1.Artifact">
-[]Artifact
+<a href="#tekton.dev/v1.TaskRunStepArtifact">
+[]TaskRunStepArtifact
 </a>
 </em>
 </td>
@@ -5118,6 +5138,13 @@ More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/sec
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.StepWhenExpressions">StepWhenExpressions
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.Step">Step</a>)
+</p>
+<div>
+</div>
 <h3 id="tekton.dev/v1.TaskBreakpoints">TaskBreakpoints
 </h3>
 <p>
@@ -5325,8 +5352,8 @@ string
 <td>
 <code>value</code><br/>
 <em>
-<a href="#tekton.dev/v1.ParamValue">
-ParamValue
+<a href="#tekton.dev/v1.ResultValue">
+ResultValue
 </a>
 </em>
 </td>
@@ -5468,10 +5495,10 @@ that task failed runtime validation</p>
 <h3 id="tekton.dev/v1.TaskRunResult">TaskRunResult
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.StepState">StepState</a>, <a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
 </p>
 <div>
-<p>TaskRunStepResult is a type alias of TaskRunResult</p>
+<p>TaskRunResult used to describe the results of a task</p>
 </div>
 <table>
 <thead>
@@ -5511,8 +5538,8 @@ is currently &ldquo;string&rdquo; and will support &ldquo;array&rdquo; in follow
 <td>
 <code>value</code><br/>
 <em>
-<a href="#tekton.dev/v1.ParamValue">
-ParamValue
+<a href="#tekton.dev/v1.ResultValue">
+ResultValue
 </a>
 </em>
 </td>
@@ -5706,8 +5733,8 @@ Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https
 <td>
 <code>podTemplate</code><br/>
 <em>
-<a href="#tekton.dev/unversioned.Template">
-Template
+<a href="#tekton.dev/unversioned.PodTemplate">
+PodTemplate
 </a>
 </em>
 </td>
@@ -5813,7 +5840,7 @@ TaskRun was a part of has been cancelled.</p>
 <h3 id="tekton.dev/v1.TaskRunStatus">TaskRunStatus
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRun">TaskRun</a>, <a href="#tekton.dev/v1.PipelineRunTaskRunStatus">PipelineRunTaskRunStatus</a>, <a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRun">TaskRun</a>, <a href="#tekton.dev/v1.PipelineRunTaskRunStatus">PipelineRunTaskRunStatus</a>)
 </p>
 <div>
 <p>TaskRunStatus defines the observed state of TaskRun</p>
@@ -5932,8 +5959,8 @@ Kubernetes meta/v1.Time
 <td>
 <code>retriesStatus</code><br/>
 <em>
-<a href="#tekton.dev/v1.TaskRunStatus">
-[]TaskRunStatus
+<a href="#tekton.dev/v1.RetriesStatus">
+RetriesStatus
 </a>
 </em>
 </td>
@@ -6025,6 +6052,23 @@ map[string]string
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.TaskRunStepArtifact">TaskRunStepArtifact
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.StepState">StepState</a>)
+</p>
+<div>
+<p>TaskRunStepArtifact represents an artifact produced or used by a step within a task run.
+It directly uses the Artifact type for its structure.</p>
+</div>
+<h3 id="tekton.dev/v1.TaskRunStepResult">TaskRunStepResult
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.StepState">StepState</a>)
+</p>
+<div>
+<p>TaskRunStepResult is a type alias of TaskRunResult</p>
+</div>
 <h3 id="tekton.dev/v1.TaskRunStepSpec">TaskRunStepSpec
 </h3>
 <p>
@@ -6143,8 +6187,8 @@ source mounted into /workspace.</p>
 <td>
 <code>volumes</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volume-v1-core">
-[]Kubernetes core/v1.Volume
+<a href="#tekton.dev/v1.Volumes">
+Volumes
 </a>
 </em>
 </td>
@@ -6267,6 +6311,13 @@ Kubernetes meta/v1.Duration
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.Volumes">Volumes
+(<code>[]k8s.io/api/core/v1.Volume</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskSpec">TaskSpec</a>)
+</p>
+<div>
+</div>
 <h3 id="tekton.dev/v1.WhenExpression">WhenExpression
 </h3>
 <p>
@@ -6299,7 +6350,9 @@ string
 <td>
 <code>operator</code><br/>
 <em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/selection#Operator">
 k8s.io/apimachinery/pkg/selection.Operator
+</a>
 </em>
 </td>
 <td>
@@ -6337,7 +6390,7 @@ More info about CEL syntax: <a href="https://github.com/google/cel-spec/blob/mas
 <h3 id="tekton.dev/v1.WhenExpressions">WhenExpressions
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.Step">Step</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
 </p>
 <div>
 <p>WhenExpressions are used to specify whether a Task should be executed or skipped
@@ -6565,6 +6618,13 @@ this field is false and so declared workspaces are required.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.WorkspacePipelineDeclaration">WorkspacePipelineDeclaration
+</h3>
+<div>
+<p>WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun
+is expected to populate with a workspace binding.</p>
+<p>Deprecated: use PipelineWorkspaceDeclaration type instead</p>
+</div>
 <h3 id="tekton.dev/v1.WorkspacePipelineTaskBinding">WorkspacePipelineTaskBinding
 </h3>
 <p>
@@ -6835,8 +6895,8 @@ string
 <td>
 <code>podTemplate</code><br/>
 <em>
-<a href="#tekton.dev/unversioned.Template">
-Template
+<a href="#tekton.dev/unversioned.PodTemplate">
+PodTemplate
 </a>
 </em>
 </td>
@@ -7315,7 +7375,9 @@ used to populate a UI.</p>
 <td>
 <code>type</code><br/>
 <em>
-string
+<a href="#tekton.dev/v1alpha1.PipelineResourceType">
+PipelineResourceType
+</a>
 </em>
 </td>
 <td>
@@ -7442,7 +7504,9 @@ PipelineTaskMetadata
 <td>
 <code>spec</code><br/>
 <em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/runtime#RawExtension">
 k8s.io/apimachinery/pkg/runtime.RawExtension
+</a>
 </em>
 </td>
 <td>
@@ -7467,7 +7531,9 @@ k8s.io/apimachinery/pkg/runtime.RawExtension
 <td>
 <code>-</code><br/>
 <em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/runtime#Object">
 k8s.io/apimachinery/pkg/runtime.Object
+</a>
 </em>
 </td>
 <td>
@@ -7609,6 +7675,11 @@ Hub resource: <a href="https://artifacthub.io/*">https://artifacthub.io/*</a>,</
 <div>
 <p>RunReason is an enum used to store all Run reason for the Succeeded condition that are controlled by the Run itself.</p>
 </div>
+<h3 id="tekton.dev/v1alpha1.RunResult">RunResult
+</h3>
+<div>
+<p>RunResult used to describe the results of a task</p>
+</div>
 <h3 id="tekton.dev/v1alpha1.RunSpec">RunSpec
 </h3>
 <p>
@@ -7724,8 +7795,8 @@ string
 <td>
 <code>podTemplate</code><br/>
 <em>
-<a href="#tekton.dev/unversioned.Template">
-Template
+<a href="#tekton.dev/unversioned.PodTemplate">
+PodTemplate
 </a>
 </em>
 </td>
@@ -7780,6 +7851,21 @@ Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https
 </p>
 <div>
 <p>RunSpecStatusMessage defines human readable status messages for the TaskRun.</p>
+</div>
+<h3 id="tekton.dev/v1alpha1.RunStatus">RunStatus
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.Run">Run</a>)
+</p>
+<div>
+<p>RunStatus defines the observed state of Run.</p>
+</div>
+<h3 id="tekton.dev/v1alpha1.RunStatusFields">RunStatusFields
+</h3>
+<div>
+<p>RunStatusFields holds the fields of Run&rsquo;s status.  This is defined
+separately and inlined so that other types can readily consume these fields
+via duck typing.</p>
 </div>
 <h3 id="tekton.dev/v1alpha1.StepActionObject">StepActionObject
 </h3>
@@ -8069,7 +8155,9 @@ used to populate a UI.</p>
 <td>
 <code>type</code><br/>
 <em>
-string
+<a href="#tekton.dev/v1alpha1.PipelineResourceType">
+PipelineResourceType
+</a>
 </em>
 </td>
 <td>
@@ -8113,11 +8201,19 @@ string
 do not have a status</p>
 <p>Deprecated: Unused, preserved only for backwards compatibility</p>
 </div>
-<h3 id="tekton.dev/v1alpha1.ResourceDeclaration">ResourceDeclaration
+<h3 id="tekton.dev/v1alpha1.PipelineResourceType">PipelineResourceType
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskResource">TaskResource</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.PipelineResourceSpec">PipelineResourceSpec</a>, <a href="#tekton.dev/v1alpha1.ResourceDeclaration">ResourceDeclaration</a>)
 </p>
+<div>
+<p>PipelineResourceType represents the type of endpoint the pipelineResource is, so that the
+controller will know this pipelineResource shouldx be fetched and optionally what
+additional metatdata should be provided for it.</p>
+<p>Deprecated: Unused, preserved only for backwards compatibility</p>
+</div>
+<h3 id="tekton.dev/v1alpha1.ResourceDeclaration">ResourceDeclaration
+</h3>
 <div>
 <p>ResourceDeclaration defines an input or output PipelineResource declared as a requirement
 by another type such as a Task or Condition. The Name field will be used to refer to these
@@ -8151,7 +8247,9 @@ Task&rsquo;s steps.</p>
 <td>
 <code>type</code><br/>
 <em>
-string
+<a href="#tekton.dev/v1alpha1.PipelineResourceType">
+PipelineResourceType
+</a>
 </em>
 </td>
 <td>
@@ -8332,7 +8430,7 @@ string
 <h3 id="tekton.dev/v1alpha1.RunStatus">RunStatus
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.Run">Run</a>, <a href="#tekton.dev/v1alpha1.RunStatusFields">RunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunStatusFields">RunStatusFields</a>)
 </p>
 <div>
 <p>RunStatus defines the observed state of Run</p>
@@ -8457,7 +8555,9 @@ tasks in a pipeline.</p>
 <td>
 <code>extraFields</code><br/>
 <em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/runtime#RawExtension">
 k8s.io/apimachinery/pkg/runtime.RawExtension
+</a>
 </em>
 </td>
 <td>
@@ -9045,8 +9145,8 @@ Refer to Go&rsquo;s ParseDuration documentation for expected format: <a href="ht
 <td>
 <code>podTemplate</code><br/>
 <em>
-<a href="#tekton.dev/unversioned.Template">
-Template
+<a href="#tekton.dev/unversioned.PodTemplate">
+PodTemplate
 </a>
 </em>
 </td>
@@ -9211,7 +9311,9 @@ More info: <a href="https://kubernetes.io/docs/tasks/inject-data-application/def
 <td>
 <code>args</code><br/>
 <em>
-[]string
+<a href="#tekton.dev/v1beta1.Args">
+Args
+</a>
 </em>
 </td>
 <td>
@@ -9476,8 +9578,8 @@ source mounted into /workspace.</p>
 <td>
 <code>volumes</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volume-v1-core">
-[]Kubernetes core/v1.Volume
+<a href="#tekton.dev/v1beta1.Volumes">
+Volumes
 </a>
 </em>
 </td>
@@ -9748,8 +9850,8 @@ Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https
 <td>
 <code>podTemplate</code><br/>
 <em>
-<a href="#tekton.dev/unversioned.Template">
-Template
+<a href="#tekton.dev/unversioned.PodTemplate">
+PodTemplate
 </a>
 </em>
 </td>
@@ -9841,14 +9943,27 @@ TaskRunStatus
 <div>
 <p>Algorithm Standard cryptographic hash algorithm</p>
 </div>
+<h3 id="tekton.dev/v1beta1.Args">Args
+(<code>[]string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.StepActionSpec">StepActionSpec</a>)
+</p>
+<div>
+</div>
+<h3 id="tekton.dev/v1beta1.ArrayOrString">ArrayOrString
+</h3>
+<div>
+<p>ArrayOrString is deprecated, this is to keep backward compatibility</p>
+<p>Deprecated: Use ParamValue instead.</p>
+</div>
 <h3 id="tekton.dev/v1beta1.Artifact">Artifact
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Artifacts">Artifacts</a>, <a href="#tekton.dev/v1beta1.StepState">StepState</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Artifacts">Artifacts</a>)
 </p>
 <div>
-<p>TaskRunStepArtifact represents an artifact produced or used by a step within a task run.
-It directly uses the Artifact type for its structure.</p>
+<p>Artifact represents an artifact within a system, potentially containing multiple values
+associated with it.</p>
 </div>
 <table>
 <thead>
@@ -10220,7 +10335,7 @@ string
 <td>
 <p>EntryPoint identifies the entry point into the build. This is often a path to a
 build definition file and/or a target label within that file.
-Example: &ldquo;task/git-clone/0.8/git-clone.yaml&rdquo;</p>
+Example: &ldquo;task/git-clone/0.10/git-clone.yaml&rdquo;</p>
 </td>
 </tr>
 </tbody>
@@ -10229,6 +10344,11 @@ Example: &ldquo;task/git-clone/0.8/git-clone.yaml&rdquo;</p>
 (<code>string</code> alias)</h3>
 <div>
 <p>CustomRunReason is an enum used to store all Run reason for the Succeeded condition that are controlled by the CustomRun itself.</p>
+</div>
+<h3 id="tekton.dev/v1beta1.CustomRunResult">CustomRunResult
+</h3>
+<div>
+<p>CustomRunResult used to describe the results of a task</p>
 </div>
 <h3 id="tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec
 </h3>
@@ -10384,6 +10504,21 @@ Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https
 <div>
 <p>CustomRunSpecStatusMessage defines human readable status messages for the TaskRun.</p>
 </div>
+<h3 id="tekton.dev/v1beta1.CustomRunStatus">CustomRunStatus
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>, <a href="#tekton.dev/v1beta1.PipelineRunRunStatus">PipelineRunRunStatus</a>)
+</p>
+<div>
+<p>CustomRunStatus defines the observed state of CustomRun.</p>
+</div>
+<h3 id="tekton.dev/v1beta1.CustomRunStatusFields">CustomRunStatusFields
+</h3>
+<div>
+<p>CustomRunStatusFields holds the fields of CustomRun&rsquo;s status.  This is defined
+separately and inlined so that other types can readily consume these fields
+via duck typing.</p>
+</div>
 <h3 id="tekton.dev/v1beta1.EmbeddedCustomRunSpec">EmbeddedCustomRunSpec
 </h3>
 <p>
@@ -10417,7 +10552,9 @@ PipelineTaskMetadata
 <td>
 <code>spec</code><br/>
 <em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/runtime#RawExtension">
 k8s.io/apimachinery/pkg/runtime.RawExtension
+</a>
 </em>
 </td>
 <td>
@@ -10442,7 +10579,9 @@ k8s.io/apimachinery/pkg/runtime.RawExtension
 <td>
 <code>-</code><br/>
 <em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/runtime#Object">
 k8s.io/apimachinery/pkg/runtime.Object
+</a>
 </em>
 </td>
 <td>
@@ -10475,7 +10614,9 @@ structs.</p>
 <td>
 <code>spec</code><br/>
 <em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/runtime#RawExtension">
 k8s.io/apimachinery/pkg/runtime.RawExtension
+</a>
 </em>
 </td>
 <td>
@@ -10500,7 +10641,9 @@ k8s.io/apimachinery/pkg/runtime.RawExtension
 <td>
 <code>-</code><br/>
 <em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/runtime#Object">
 k8s.io/apimachinery/pkg/runtime.Object
+</a>
 </em>
 </td>
 <td>
@@ -10850,10 +10993,12 @@ Used to distinguish between a single string and an array of strings.</p>
 <h3 id="tekton.dev/v1beta1.ParamValue">ParamValue
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Param">Param</a>, <a href="#tekton.dev/v1beta1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1beta1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1beta1.PipelineRunResult">PipelineRunResult</a>, <a href="#tekton.dev/v1beta1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1beta1.TaskRunResult">TaskRunResult</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Param">Param</a>, <a href="#tekton.dev/v1beta1.ParamSpec">ParamSpec</a>)
 </p>
 <div>
-<p>ResultValue is a type alias of ParamValue</p>
+<p>ParamValue is a type that can hold a single string or string array.
+Used in JSON unmarshalling so that a single JSON field can accept
+either an individual string or an array of strings.</p>
 </div>
 <table>
 <thead>
@@ -10953,7 +11098,9 @@ PipelineResources that will be bound in the PipelineRun.</p>
 <td>
 <code>type</code><br/>
 <em>
-string
+<a href="#tekton.dev/v1beta1.PipelineResourceType">
+PipelineResourceType
+</a>
 </em>
 </td>
 <td>
@@ -11160,6 +11307,26 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.PipelineResourceResult">PipelineResourceResult
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
+</p>
+<div>
+<p>PipelineResourceResult has been deprecated with the migration of PipelineResources
+Deprecated: Use RunResult instead</p>
+</div>
+<h3 id="tekton.dev/v1beta1.PipelineResourceType">PipelineResourceType
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineDeclaredResource">PipelineDeclaredResource</a>)
+</p>
+<div>
+<p>PipelineResourceType represents the type of endpoint the pipelineResource is, so that the
+controller will know this pipelineResource should be fetched and optionally what
+additional metatdata should be provided for it.</p>
+<p>Deprecated: Unused, preserved only for backwards compatibility</p>
+</div>
 <h3 id="tekton.dev/v1beta1.PipelineResult">PipelineResult
 </h3>
 <p>
@@ -11218,8 +11385,8 @@ string
 <td>
 <code>value</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.ParamValue">
-ParamValue
+<a href="#tekton.dev/v1beta1.ResultValue">
+ResultValue
 </a>
 </em>
 </td>
@@ -11265,8 +11432,8 @@ string
 <td>
 <code>value</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.ParamValue">
-ParamValue
+<a href="#tekton.dev/v1beta1.ResultValue">
+ResultValue
 </a>
 </em>
 </td>
@@ -11470,8 +11637,8 @@ Refer to Go&rsquo;s ParseDuration documentation for expected format: <a href="ht
 <td>
 <code>podTemplate</code><br/>
 <em>
-<a href="#tekton.dev/unversioned.Template">
-Template
+<a href="#tekton.dev/unversioned.PodTemplate">
+PodTemplate
 </a>
 </em>
 </td>
@@ -12473,8 +12640,8 @@ string
 <td>
 <code>taskPodTemplate</code><br/>
 <em>
-<a href="#tekton.dev/unversioned.Template">
-Template
+<a href="#tekton.dev/unversioned.PodTemplate">
+PodTemplate
 </a>
 </em>
 </td>
@@ -12539,9 +12706,8 @@ Kubernetes core/v1.ResourceRequirements
 (<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineSpec">PipelineSpec</a>)
 </p>
 <div>
-<p>WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun
+<p>PipelineWorkspaceDeclaration creates a named slot in a Pipeline that a PipelineRun
 is expected to populate with a workspace binding.</p>
-<p>Deprecated: use PipelineWorkspaceDeclaration type instead</p>
 </div>
 <table>
 <thead>
@@ -12774,7 +12940,7 @@ string
 <td>
 <p>EntryPoint identifies the entry point into the build. This is often a path to a
 build definition file and/or a target label within that file.
-Example: &ldquo;task/git-clone/0.8/git-clone.yaml&rdquo;</p>
+Example: &ldquo;task/git-clone/0.10/git-clone.yaml&rdquo;</p>
 </td>
 </tr>
 </tbody>
@@ -12839,6 +13005,26 @@ the chosen resolver.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.ResourceDeclaration">ResourceDeclaration
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskResource">TaskResource</a>)
+</p>
+<div>
+<p>ResourceDeclaration defines an input or output PipelineResource declared as a requirement
+by another type such as a Task or Condition. The Name field will be used to refer to these
+PipelineResources within the type&rsquo;s definition, and when provided as an Input, the Name will be the
+path to the volume mounted containing this PipelineResource as an input (e.g.
+an input Resource named <code>workspace</code> will be mounted at <code>/workspace</code>).</p>
+<p>Deprecated: Unused, preserved only for backwards compatibility</p>
+</div>
+<h3 id="tekton.dev/v1beta1.ResourceParam">ResourceParam
+</h3>
+<div>
+<p>ResourceParam declares a string value to use for the parameter called Name, and is used in
+the specific context of PipelineResources.</p>
+<p>Deprecated: Unused, preserved only for backwards compatibility</p>
+</div>
 <h3 id="tekton.dev/v1beta1.ResultRef">ResultRef
 </h3>
 <div>
@@ -12894,6 +13080,20 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.ResultType">ResultType
+</h3>
+<div>
+<p>ResultType of PipelineResourceResult has been deprecated with the migration of PipelineResources
+Deprecated: v1beta1.ResultType is only kept for backward compatibility</p>
+</div>
+<h3 id="tekton.dev/v1beta1.ResultValue">ResultValue
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1beta1.PipelineRunResult">PipelineRunResult</a>, <a href="#tekton.dev/v1beta1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1beta1.TaskRunResult">TaskRunResult</a>)
+</p>
+<div>
+<p>ResultValue is a type alias of ParamValue</p>
+</div>
 <h3 id="tekton.dev/v1beta1.ResultsType">ResultsType
 (<code>string</code> alias)</h3>
 <p>
@@ -12906,10 +13106,23 @@ Note that there is ResultType used to find out whether a
 RunResult is from a task result or not, which is different from
 this ResultsType.</p>
 </div>
+<h3 id="tekton.dev/v1beta1.RetriesStatus">RetriesStatus
+(<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStatus</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
+</p>
+<div>
+</div>
 <h3 id="tekton.dev/v1beta1.RunObject">RunObject
 </h3>
 <div>
 <p>RunObject is implemented by CustomRun and Run</p>
+</div>
+<h3 id="tekton.dev/v1beta1.RunResult">RunResult
+</h3>
+<div>
+<p>RunResult is used to write key/value pairs to TaskRun pod termination messages.
+It has been migrated to the result package and kept for backward compatibility</p>
 </div>
 <h3 id="tekton.dev/v1beta1.Sidecar">Sidecar
 </h3>
@@ -13984,8 +14197,8 @@ The Results declared by the StepActions will be stored here instead.</p>
 <td>
 <code>when</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.WhenExpressions">
-WhenExpressions
+<a href="#tekton.dev/v1beta1.StepWhenExpressions">
+StepWhenExpressions
 </a>
 </em>
 </td>
@@ -14064,7 +14277,9 @@ More info: <a href="https://kubernetes.io/docs/tasks/inject-data-application/def
 <td>
 <code>args</code><br/>
 <em>
-[]string
+<a href="#tekton.dev/v1beta1.Args">
+Args
+</a>
 </em>
 </td>
 <td>
@@ -14280,8 +14495,8 @@ string
 <td>
 <code>results</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.TaskRunResult">
-[]TaskRunResult
+<a href="#tekton.dev/v1beta1.TaskRunStepResult">
+[]TaskRunStepResult
 </a>
 </em>
 </td>
@@ -14304,8 +14519,8 @@ Provenance
 <td>
 <code>inputs</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.Artifact">
-[]Artifact
+<a href="#tekton.dev/v1beta1.TaskRunStepArtifact">
+[]TaskRunStepArtifact
 </a>
 </em>
 </td>
@@ -14316,8 +14531,8 @@ Provenance
 <td>
 <code>outputs</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.Artifact">
-[]Artifact
+<a href="#tekton.dev/v1beta1.TaskRunStepArtifact">
+[]TaskRunStepArtifact
 </a>
 </em>
 </td>
@@ -14707,6 +14922,13 @@ Default is false.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.StepWhenExpressions">StepWhenExpressions
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Step">Step</a>)
+</p>
+<div>
+</div>
 <h3 id="tekton.dev/v1beta1.TaskBreakpoints">TaskBreakpoints
 </h3>
 <p>
@@ -14880,7 +15102,7 @@ an input Resource named <code>workspace</code> will be mounted at <code>/workspa
 <td>
 <code>ResourceDeclaration</code><br/>
 <em>
-<a href="#tekton.dev/v1alpha1.ResourceDeclaration">
+<a href="#tekton.dev/v1beta1.ResourceDeclaration">
 ResourceDeclaration
 </a>
 </em>
@@ -15062,8 +15284,8 @@ string
 <td>
 <code>value</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.ParamValue">
-ParamValue
+<a href="#tekton.dev/v1beta1.ResultValue">
+ResultValue
 </a>
 </em>
 </td>
@@ -15237,10 +15459,10 @@ reasons that emerge from underlying resources are not included here</p>
 <h3 id="tekton.dev/v1beta1.TaskRunResult">TaskRunResult
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.StepState">StepState</a>, <a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
 </p>
 <div>
-<p>TaskRunStepResult is a type alias of TaskRunResult</p>
+<p>TaskRunResult used to describe the results of a task</p>
 </div>
 <table>
 <thead>
@@ -15280,8 +15502,8 @@ is currently &ldquo;string&rdquo; and will support &ldquo;array&rdquo; in follow
 <td>
 <code>value</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.ParamValue">
-ParamValue
+<a href="#tekton.dev/v1beta1.ResultValue">
+ResultValue
 </a>
 </em>
 </td>
@@ -15489,8 +15711,8 @@ Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https
 <td>
 <code>podTemplate</code><br/>
 <em>
-<a href="#tekton.dev/unversioned.Template">
-Template
+<a href="#tekton.dev/unversioned.PodTemplate">
+PodTemplate
 </a>
 </em>
 </td>
@@ -15580,7 +15802,7 @@ Kubernetes core/v1.ResourceRequirements
 <h3 id="tekton.dev/v1beta1.TaskRunStatus">TaskRunStatus
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRun">TaskRun</a>, <a href="#tekton.dev/v1beta1.PipelineRunTaskRunStatus">PipelineRunTaskRunStatus</a>, <a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRun">TaskRun</a>, <a href="#tekton.dev/v1beta1.PipelineRunTaskRunStatus">PipelineRunTaskRunStatus</a>)
 </p>
 <div>
 <p>TaskRunStatus defines the observed state of TaskRun</p>
@@ -15715,8 +15937,8 @@ CloudEventResource.</p>
 <td>
 <code>retriesStatus</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.TaskRunStatus">
-[]TaskRunStatus
+<a href="#tekton.dev/v1beta1.RetriesStatus">
+RetriesStatus
 </a>
 </em>
 </td>
@@ -15731,7 +15953,9 @@ See TaskRun.status (API version: tekton.dev/v1beta1)</p>
 <td>
 <code>resourcesResult</code><br/>
 <em>
-[]github.com/tektoncd/pipeline/pkg/result.RunResult
+<a href="#tekton.dev/v1beta1.PipelineResourceResult">
+[]PipelineResourceResult
+</a>
 </em>
 </td>
 <td>
@@ -15810,6 +16034,15 @@ map[string]string
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.TaskRunStepArtifact">TaskRunStepArtifact
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.StepState">StepState</a>)
+</p>
+<div>
+<p>TaskRunStepArtifact represents an artifact produced or used by a step within a task run.
+It directly uses the Artifact type for its structure.</p>
+</div>
 <h3 id="tekton.dev/v1beta1.TaskRunStepOverride">TaskRunStepOverride
 </h3>
 <p>
@@ -15852,6 +16085,14 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.TaskRunStepResult">TaskRunStepResult
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.StepState">StepState</a>)
+</p>
+<div>
+<p>TaskRunStepResult is a type alias of TaskRunResult</p>
+</div>
 <h3 id="tekton.dev/v1beta1.TaskSpec">TaskSpec
 </h3>
 <p>
@@ -15945,8 +16186,8 @@ source mounted into /workspace.</p>
 <td>
 <code>volumes</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volume-v1-core">
-[]Kubernetes core/v1.Volume
+<a href="#tekton.dev/v1beta1.Volumes">
+Volumes
 </a>
 </em>
 </td>
@@ -16069,6 +16310,13 @@ Kubernetes meta/v1.Duration
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.Volumes">Volumes
+(<code>[]k8s.io/api/core/v1.Volume</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskSpec">TaskSpec</a>)
+</p>
+<div>
+</div>
 <h3 id="tekton.dev/v1beta1.WhenExpression">WhenExpression
 </h3>
 <p>
@@ -16101,7 +16349,9 @@ string
 <td>
 <code>operator</code><br/>
 <em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/selection#Operator">
 k8s.io/apimachinery/pkg/selection.Operator
+</a>
 </em>
 </td>
 <td>
@@ -16139,7 +16389,7 @@ More info about CEL syntax: <a href="https://github.com/google/cel-spec/blob/mas
 <h3 id="tekton.dev/v1beta1.WhenExpressions">WhenExpressions
 (<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WhenExpression</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.Step">Step</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>)
 </p>
 <div>
 <p>WhenExpressions are used to specify whether a Task should be executed or skipped
@@ -16367,6 +16617,13 @@ this field is false and so declared workspaces are required.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.WorkspacePipelineDeclaration">WorkspacePipelineDeclaration
+</h3>
+<div>
+<p>WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun
+is expected to populate with a workspace binding.</p>
+<p>Deprecated: use PipelineWorkspaceDeclaration type instead</p>
+</div>
 <h3 id="tekton.dev/v1beta1.WorkspacePipelineTaskBinding">WorkspacePipelineTaskBinding
 </h3>
 <p>
@@ -16507,7 +16764,7 @@ string
 <h3 id="tekton.dev/v1beta1.CustomRunStatus">CustomRunStatus
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>, <a href="#tekton.dev/v1.PipelineRunRunStatus">PipelineRunRunStatus</a>, <a href="#tekton.dev/v1beta1.PipelineRunRunStatus">PipelineRunRunStatus</a>, <a href="#tekton.dev/v1beta1.CustomRunStatusFields">CustomRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunRunStatus">PipelineRunRunStatus</a>, <a href="#tekton.dev/v1beta1.CustomRunStatusFields">CustomRunStatusFields</a>)
 </p>
 <div>
 <p>CustomRunStatus defines the observed state of CustomRun</p>
@@ -16633,7 +16890,9 @@ See CustomRun.status (API version: tekton.dev/v1beta1)</p>
 <td>
 <code>extraFields</code><br/>
 <em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/runtime#RawExtension">
 k8s.io/apimachinery/pkg/runtime.RawExtension
+</a>
 </em>
 </td>
 <td>
