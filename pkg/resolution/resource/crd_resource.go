@@ -132,10 +132,11 @@ func appendOwnerReference(rr *v1beta1.ResolutionRequest, ownerRef metav1.OwnerRe
 }
 
 func ownerRefsAreEqual(a, b metav1.OwnerReference) bool {
-	// pointers values cannot be directly compared.
-	if (a.Controller == nil && b.Controller != nil) ||
-		(a.Controller != nil && b.Controller == nil) ||
-		(*a.Controller != *b.Controller) {
+	if a.Controller == nil && b.Controller == nil {
+		// both nil is a match, fall through to other comparisons
+	} else if a.Controller == nil || b.Controller == nil {
+		return false
+	} else if *a.Controller != *b.Controller {
 		return false
 	}
 	return a.APIVersion == b.APIVersion && a.Kind == b.Kind && a.Name == b.Name && a.UID == b.UID

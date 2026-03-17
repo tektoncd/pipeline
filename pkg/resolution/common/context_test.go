@@ -63,3 +63,19 @@ func TestRequestName(t *testing.T) {
 		t.Fatalf("expected empty namespace returned if no value was previously injected")
 	}
 }
+
+func TestRequestNameAfterNamespace(t *testing.T) {
+	namespace := "my-namespace"
+	name := "my-name"
+
+	ctx := t.Context()
+	ctx = common.InjectRequestNamespace(ctx, namespace)
+	ctx = common.InjectRequestName(ctx, name)
+
+	if got := common.RequestNamespace(ctx); got != namespace {
+		t.Fatalf("expected namespace %q but got %q", namespace, got)
+	}
+	if got := common.RequestName(ctx); got != name {
+		t.Fatalf("expected name %q but got %q", name, got)
+	}
+}
