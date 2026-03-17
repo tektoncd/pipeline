@@ -18,6 +18,10 @@ package common
 
 import "context"
 
+// namespaceContextKey and nameContextKey must be distinct types.
+// context.WithValue uses interface equality (type + value) for key lookup.
+// Two zero-value empty structs of the same type are always equal in Go,
+// so using a single type would cause key collision.
 type namespaceContextKey struct{}
 type nameContextKey struct{}
 
