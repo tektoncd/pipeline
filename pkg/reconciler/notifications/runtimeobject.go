@@ -36,7 +36,7 @@ type EventClientsProvider interface {
 	GetCacheClient() *bc.BigCache
 }
 
-// ReconcileRunObject observes a v1beta1.RunObject and triggers notifications
+// ReconcileRunObject observes a v1beta1.RunObject and triggers notifications.
 func ReconcileRunObject(ctx context.Context, e EventClientsProvider, readOnlyRun v1beta1.RunObject) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 	configs := config.FromContextOrDefaults(ctx)

@@ -96,11 +96,14 @@ func (c CloudClient) StartReceiver(ctx context.Context, fn interface{}) error {
 }
 
 // Get extracts the cloudEventClient client from the context.
+// Returns nil if no client is present. A nil result is not an error: it means
+// CloudEvent emission is intentionally disabled for this reconciler (no client
+// was injected into the context).
 func Get(ctx context.Context) CEClient {
 	untyped := ctx.Value(ceKey{})
 	if untyped == nil {
-		logging.FromContext(ctx).Errorf(
-			"Unable to fetch client from context.")
+		logging.FromContext(ctx).Debugf(
+			"No cloud events client in context; CE emission is disabled for this reconciler.")
 		return nil
 	}
 	return untyped.(CEClient)
