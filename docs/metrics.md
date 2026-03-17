@@ -17,14 +17,18 @@ We expose several kinds of exporters, including Prometheus, Google Stackdriver, 
 | `tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds_[bucket, sum, count]` | Histogram/LastValue(Gauge) | `*pipeline`=&lt;pipeline_name&gt; <br> `*pipelinerun`=&lt;pipelinerun_name&gt; <br> `status`=&lt;status&gt; <br> `*task`=&lt;task_name&gt; <br> `*taskrun`=&lt;taskrun_name&gt;<br> `namespace`=&lt;pipelineruns-taskruns-namespace&gt;  <br> `*reason`=&lt;reason&gt; | experimental |
 | `tekton_pipelines_controller_pipelinerun_total` | Counter | `status`=&lt;status&gt;                         | experimental |
 | `tekton_pipelines_controller_running_pipelineruns` | Gauge |                                                 | experimental |
+| `tekton_pipelines_controller_running_pipelineruns_waiting_on_pipeline_resolution` | Gauge |                                                 | experimental |
+| `tekton_pipelines_controller_running_pipelineruns_waiting_on_task_resolution` | Gauge |                                                 | experimental |
 | `tekton_pipelines_controller_taskrun_duration_seconds_[bucket, sum, count]` | Histogram/LastValue(Gauge) | `status`=&lt;status&gt; <br> `*task`=&lt;task_name&gt; <br> `*taskrun`=&lt;taskrun_name&gt;<br> `namespace`=&lt;pipelineruns-taskruns-namespace&gt; <br> `*reason`=&lt;reason&gt; | experimental |
 | `tekton_pipelines_controller_taskrun_total` | Counter | `status`=&lt;status&gt;                         | experimental |
 | `tekton_pipelines_controller_running_taskruns` | Gauge |                                                 | experimental |
+| `tekton_pipelines_controller_running_taskruns_waiting_on_task_resolution_count` | Gauge |                                                 | experimental |
 | `tekton_pipelines_controller_running_taskruns_throttled_by_quota` | Gauge | <br> `namespace`=&lt;pipelinerun-namespace&gt; | experimental |
 | `tekton_pipelines_controller_running_taskruns_throttled_by_node`  | Gauge | <br> `namespace`=&lt;pipelinerun-namespace&gt; | experimental |
+| `tekton_pipelines_controller_taskruns_pod_latency_milliseconds` | Gauge | `namespace`=&lt;taskrun-namespace&gt; <br> `pod`=&lt;pod_name&gt; <br> `*task`=&lt;task_name&gt; <br> `*taskrun`=&lt;taskrun_name&gt; | experimental |
 | `tekton_pipelines_controller_client_latency_[bucket, sum, count]` | Histogram |                                                 | experimental |
 
-The Labels/Tag marked as "*" are optional. And there's a choice between Histogram and LastValue(Gauge) for pipelinerun and taskrun duration metrics.
+The Labels/Tag marked as "*" are optional. And there's a choice between Histogram and LastValue(Gauge) for pipelinerun and taskrun duration metrics. Note that `tekton_pipelines_controller_taskruns_pod_latency_milliseconds` includes a `pod` label, which can significantly increase cardinality (see [#9393](https://github.com/tektoncd/pipeline/issues/9393)).
 
 
 ## Configuring Metrics using `config-observability` configmap
