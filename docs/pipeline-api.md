@@ -16152,7 +16152,9 @@ Kubernetes meta/v1.Time
 <em>(Optional)</em>
 <p>CloudEvents describe the state of each cloud event requested via a
 CloudEventResource.</p>
-<p>Deprecated: Removed in v0.44.0.</p>
+<p>Deprecated: No content written to it. To be Removed (since v0.44.0).
+Use kubectl describe (CloudEventSent/CloudEventFailed k8s Events) or the
+tekton_events_sent_total Prometheus metric for delivery visibility instead.</p>
 </td>
 </tr>
 <tr>

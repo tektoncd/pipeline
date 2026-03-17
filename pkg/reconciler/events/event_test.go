@@ -74,19 +74,19 @@ func TestEmit(t *testing.T) {
 		name:            "with sink in events",
 		defaults:        map[string]string{},
 		events:          map[string]string{"sink": "http://mysink"},
-		wantEvents:      []string{"Normal Started"},
+		wantEvents:      []string{"Normal Started", "Normal CloudEventSent"},
 		wantCloudEvents: []string{`(?s)dev.tekton.event.pipelinerun.started.v1.*test1`},
 	}, {
 		name:            "with sink in defaults",
 		defaults:        map[string]string{"default-cloud-events-sink": "http://mysink"},
 		events:          map[string]string{},
-		wantEvents:      []string{"Normal Started"},
+		wantEvents:      []string{"Normal Started", "Normal CloudEventSent"},
 		wantCloudEvents: []string{`(?s)dev.tekton.event.pipelinerun.started.v1.*test1`},
 	}, {
 		name:            "with sink in both",
 		defaults:        map[string]string{"default-cloud-events-sink": "http://mysink.defaults"},
 		events:          map[string]string{"sink": "http://mysink.events"},
-		wantEvents:      []string{"Normal Started"},
+		wantEvents:      []string{"Normal Started", "Normal CloudEventSent"},
 		wantCloudEvents: []string{`(?s)dev.tekton.event.pipelinerun.started.v1.*test1`},
 	}}
 

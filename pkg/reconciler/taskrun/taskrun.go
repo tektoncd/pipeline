@@ -44,7 +44,6 @@ import (
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
-	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/remote"
@@ -89,7 +88,6 @@ type Reconciler struct {
 	limitrangeLister         corev1Listers.LimitRangeLister
 	podLister                corev1Listers.PodLister
 	verificationPolicyLister alphalisters.VerificationPolicyLister
-	cloudEventClient         cloudevent.CEClient
 	entrypointCache          podconvert.EntrypointCache
 	metrics                  *taskrunmetrics.Recorder
 	pvcHandler               volumeclaim.PvcHandler
@@ -125,7 +123,6 @@ var (
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
-	ctx = cloudevent.ToContext(ctx, c.cloudEventClient)
 	ctx = initTracing(ctx, c.tracerProvider, tr)
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:ReconcileKind")
 	defer span.End()
@@ -146,7 +143,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 			logger.Warnf("TaskRun %s createTimestamp %s is after the taskRun started %s", tr.GetNamespacedName().String(), tr.CreationTimestamp, tr.Status.StartTime)
 			tr.Status.StartTime = &tr.CreationTimestamp
 		}
-		// Emit events. During the first reconcile the status of the TaskRun may change twice
+		// Emit k8s events. During the first reconcile the status of the TaskRun may change twice
 		// from not Started to Started and then to Running, so we need to sent the event here
 		// and at the end of 'Reconcile' again.
 		// We also want to send the "Started" event as soon as possible for anyone who may be waiting
@@ -429,7 +426,6 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 		retryTaskRun(tr, afterCondition.Message)
 		afterCondition = tr.Status.GetCondition(apis.ConditionSucceeded)
 	}
-	// Send k8s events and cloud events (when configured)
 	events.Emit(ctx, beforeCondition, afterCondition, tr)
 
 	errs := []error{previousError}

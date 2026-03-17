@@ -282,7 +282,6 @@ status:
 				Clock:             testClock,
 				taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 				limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
-				cloudEventClient:  testAssets.Clients.CloudEvents,
 				metrics:           nil, // Not used
 				entrypointCache:   nil, // Not used
 				pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),

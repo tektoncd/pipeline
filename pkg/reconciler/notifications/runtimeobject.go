@@ -20,7 +20,6 @@ import (
 	"context"
 
 	bc "github.com/allegro/bigcache/v3"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
@@ -36,10 +35,9 @@ type EventClientsProvider interface {
 	GetCacheClient() *bc.BigCache
 }
 
-// ReconcileRunObject observes a v1beta1.RunObject and triggers notifications
+// ReconcileRunObject observes a v1beta1.RunObject and triggers notifications.
 func ReconcileRunObject(ctx context.Context, e EventClientsProvider, readOnlyRun v1beta1.RunObject) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
-	configs := config.FromContextOrDefaults(ctx)
 	ctx = cloudevent.ToContext(ctx, e.GetCloudEventsClient())
 	ctx = cache.ToContext(ctx, e.GetCacheClient())
 
@@ -48,8 +46,6 @@ func ReconcileRunObject(ctx context.Context, e EventClientsProvider, readOnlyRun
 	condition := readOnlyRun.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 	logger.Debugf("%s %s, condition: %s", readOnlyRun.GetObjectKind().GroupVersionKind().Kind, readOnlyRun.GetObjectMeta().GetName(), condition)
 
-	if configs.FeatureFlags.SendCloudEventsForRuns {
-		events.EmitCloudEvents(ctx, readOnlyRun)
-	}
+	events.EmitCloudEvents(ctx, readOnlyRun)
 	return nil
 }
