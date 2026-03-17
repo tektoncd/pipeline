@@ -7,9 +7,9 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: mirror.gcr.io/ubuntu
+    - image: mirror.gcr.io/ubuntu@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
       script: exit 0
-    - image: mirror.gcr.io/ubuntu
+    - image: mirror.gcr.io/ubuntu@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
       script: |
         set +e # dont fail the script on error
 
@@ -19,7 +19,7 @@ spec:
           echo "able to write to run directory of non-current step"
           exit 1
         fi
-    - image: mirror.gcr.io/ubuntu
+    - image: mirror.gcr.io/ubuntu@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
       script: |
         set +e # dont fail the script on error
 
