@@ -5,8 +5,8 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: mirror.gcr.io/busybox
+    - image: mirror.gcr.io/busybox@sha256:b3255e7dfbcd10cb367af0d409747d511aeb66dfac98cf30e97e87e4207dd76f
       # NB: command is not set, so it must be looked up from the registry.
       args: ['-c', 'sleep 3 && touch foo']
-    - image: mirror.gcr.io/busybox
+    - image: mirror.gcr.io/busybox@sha256:b3255e7dfbcd10cb367af0d409747d511aeb66dfac98cf30e97e87e4207dd76f
       args: ['-c', 'ls', 'foo']
