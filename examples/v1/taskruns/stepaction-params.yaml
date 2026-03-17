@@ -59,7 +59,7 @@ spec:
       value: $(params.enum-param.v2)
     - name: enumparamkey3
       value: $(params.enum-param.v3)
-  image: mirror.gcr.io/ubuntu
+  image: mirror.gcr.io/ubuntu@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
   script: |
     #!/bin/bash
     ARRAYVALUE=("${arrayparam0}" "${arrayparam1}" "${arrayparam2}" "${stringparam}" "${objectparamkey1}" "${objectparamkey2}" "${objectparamkey3}" "${enumparamkey1}" "${enumparamkey2}" "${enumparamkey3}")

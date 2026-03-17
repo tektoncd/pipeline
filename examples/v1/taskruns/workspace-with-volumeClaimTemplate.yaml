@@ -6,7 +6,7 @@ spec:
   taskSpec:
     steps:
       - name: list-files
-        image: mirror.gcr.io/ubuntu
+        image: mirror.gcr.io/ubuntu@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
         script: ls $(workspaces.read-allowed.path)
     workspaces:
       - name: read-allowed
