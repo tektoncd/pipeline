@@ -101,6 +101,14 @@ func TestGenerateDeterministicName(t *testing.T) {
 			args: golden,
 			want: "prefix-ba2f256f318de7f4154da577c283cb9e",
 		},
+		{
+			name: "long prefix with nil params truncates prefix preserving hash",
+			args: args{
+				prefix: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", // 31 chars
+				base:   "default/my-taskrun",
+			},
+			want: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2d162955e9c9fcfef736fd389e7fd796",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -200,6 +208,62 @@ func TestGenerateDeterministicNameFromSpec(t *testing.T) {
 			name: "contain all fields",
 			args: golden,
 			want: "prefix-ff25bd24688ab610bdc530a5ab3aabbd",
+		},
+		{
+			name: "long prefix at exactly max length is not truncated",
+			args: args{
+				prefix: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", // 30 chars, name = 30+1+32 = 63 = maxLength
+				base:   "default/my-taskrun",
+				params: []v1.Param{{
+					Name:  "foo",
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "bar"},
+				}},
+			},
+			want: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-da9d0a4501a276745547b4b4b21a2e77", // exactly 63, fits
+		},
+		{
+			name: "long prefix exceeding max length truncates prefix not hash",
+			args: args{
+				prefix: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", // 31 chars, would be 64 > maxLength
+				base:   "default/my-taskrun",
+				params: []v1.Param{{
+					Name:  "foo",
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "bar"},
+				}},
+			},
+			want: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-da9d0a4501a276745547b4b4b21a2e77", // prefix trimmed to 30, hash preserved
+		},
+		{
+			name: "very long prefix truncates prefix preserving hash",
+			args: args{
+				prefix: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", // 50 chars
+				base:   "default/my-taskrun",
+			},
+			want: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2d162955e9c9fcfef736fd389e7fd796", // prefix trimmed to 30, hash preserved
+		},
+		{
+			name: "different inputs with same long prefix produce different names",
+			args: args{
+				prefix: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", // 31 chars
+				base:   "default/other-taskrun",
+				params: []v1.Param{{
+					Name:  "baz",
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "qux"},
+				}},
+			},
+			want: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-5592e5f983640b4274071dbe1c09068d", // same prefix length, different hash
+		},
+		{
+			name: "prefix under max length returns full name",
+			args: args{
+				prefix: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaa", // 29 chars, name = 62 chars
+				base:   "default/my-taskrun",
+				params: []v1.Param{{
+					Name:  "foo",
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "bar"},
+				}},
+			},
+			want: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaa-da9d0a4501a276745547b4b4b21a2e77", // 62 chars, no truncation
 		},
 	}
 	for _, tt := range tests {
