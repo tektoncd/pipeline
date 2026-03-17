@@ -39,6 +39,23 @@ The project includes GitHub slash commands to automate common workflows.
 All commands require **write** access to the repository and must be placed at
 the beginning of a comment line.
 
+### `/kind`
+
+Sets the kind label for a pull request (for example, `kind/bug`, `kind/feature`, or `kind/documentation`).
+
+**Usage**: `/kind <type>`
+
+**Examples**:
+- `/kind bug`
+- `/kind feature`
+- `/kind documentation`
+
+**Requirements**:
+- User must have write permissions
+- Comment on the PR
+
+Use this to categorize the type of change being made so it matches the PR template checklist.
+
 ### `/retest`
 
 Re-runs failed GitHub Actions checks on a pull request.
