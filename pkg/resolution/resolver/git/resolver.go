@@ -553,7 +553,7 @@ func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey
 
 	secretVal, ok := secret.Data[apiSecret.key]
 	if !ok {
-		g.Logger.Debugf("secret key not found: ns=%s name=%s key=%s", apiSecret.ns, apiSecret.name, apiSecret.key)
+		g.Logger.Debugf("secret key not found in secret: ns=%s name=%s", apiSecret.ns, apiSecret.name)
 		return nil, fmt.Errorf("cannot get API token, secret %s not accessible in namespace %s", apiSecret.name, apiSecret.ns)
 	}
 	if cacheSecret {
