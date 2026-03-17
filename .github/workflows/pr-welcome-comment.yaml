@@ -1,8 +1,30 @@
+# This workflow posts a welcome comment on newly opened pull requests listing
+# all available slash commands for maintainers.
+#
+# SECURITY: This workflow uses pull_request_target to post comments on fork PRs.
+# It is safe because it does NOT checkout PR code and only posts a static comment.
+# Do NOT add actions/checkout or run untrusted code in this workflow.
+#
+# pull_request_target runs in the context of the base branch (not the PR branch),
+# so it has access to repository secrets and elevated permissions. Adding any step
+# that executes code from the PR would create a critical security vulnerability.
+#
+# Available slash commands posted in the welcome comment:
+# - /kind <type>: add a kind label to the PR
+# - /retest: re-trigger workflows that failed on a given PR
+# - /e2e-extras: run extra e2e tests on a given PR
+# - /cherry-pick <branch>: cherry-picks the merged PR to the specified branch
+# - /rebase: rebase a PR branch against its base branch
+#
+# Slash commands must be placed at the very beginning of the first line of a comment.
+
 name: PR Welcome Comment
 
 on:
   pull_request_target:
     types: [opened]
+
+permissions: {}
 
 jobs:
   welcome-comment:
@@ -10,10 +32,16 @@ jobs:
     permissions:
       pull-requests: write
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+
       - name: Post slash commands comment
-        uses: peter-evans/create-or-update-comment@v5
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
+          comment-tag: tekton-slash-commands
           body: |
             Thanks for opening a pull request!
 
@@ -21,6 +49,7 @@ jobs:
 
             | Command | Description |
             |---|---|
+            | `/kind <type>` | Add a kind label (bug, cleanup, design, documentation, feature, flake, misc, question, tep) |
             | `/retest` | Re-trigger workflows that failed on this PR |
             | `/e2e-extras` | Run extra e2e tests on this PR |
             | `/cherry-pick <branch>` | Cherry-pick the merged PR to the specified branch |
