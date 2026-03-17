@@ -51,10 +51,19 @@ func stepInit(steps []string) error {
 
 	for i, s := range steps {
 		run := filepath.Join(tektonRoot, "run", strconv.Itoa(i), "status")
-		if err := os.Symlink(run, filepath.Join(stepDir, s)); err != nil {
+
+		// Remove old symlinks if they exist from a previous container start.
+		// If a container restarts within a pod (e.g. OOM, eviction), the
+		// symlinks from the previous run persist on the emptyDir volume.
+		nameLink := filepath.Join(stepDir, s)
+		indexLink := filepath.Join(stepDir, strconv.Itoa(i))
+		os.Remove(nameLink)
+		os.Remove(indexLink)
+
+		if err := os.Symlink(run, nameLink); err != nil {
 			return err
 		}
-		if err := os.Symlink(run, filepath.Join(stepDir, strconv.Itoa(i))); err != nil {
+		if err := os.Symlink(run, indexLink); err != nil {
 			return err
 		}
 	}
