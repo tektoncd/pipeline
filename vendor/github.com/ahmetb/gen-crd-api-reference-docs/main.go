@@ -498,7 +498,8 @@ func typeDisplayName(t *types.Type, c generatorConfig, typePkgMap map[*types.Typ
 		types.Alias,
 		types.Pointer,
 		types.Slice,
-		types.Builtin:
+		types.Builtin,
+		types.Unsupported: // Go type aliases (type X = Y) are parsed as Unsupported by gengo
 		// noop
 	case types.Map:
 		// return original name
