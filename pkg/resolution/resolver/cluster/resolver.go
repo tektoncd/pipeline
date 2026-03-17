@@ -281,7 +281,9 @@ func populateParamsWithDefaults(ctx context.Context, origParams []pipelinev1.Par
 
 func isInCommaSeparatedList(checkVal string, commaList string) bool {
 	for _, s := range strings.Split(commaList, ",") {
-		if strings.TrimSpace(s) == checkVal {
+		// TrimSpace on list entries only; Kubernetes namespace names cannot contain whitespace.
+		s = strings.TrimSpace(s)
+		if s != "" && s == checkVal {
 			return true
 		}
 	}
