@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/tektoncd/pipeline/pkg/reconciler/notifications/customrun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/notifications/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/notifications/taskrun"
 	"knative.dev/pkg/injection/sharedmain"
 )
@@ -50,7 +51,8 @@ func main() {
 	// start the events controllers
 	sharedmain.Main(eventsControllerName,
 		customrun.NewController(),
-		taskrun.NewController())
+		taskrun.NewController(),
+		pipelinerun.NewController())
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {

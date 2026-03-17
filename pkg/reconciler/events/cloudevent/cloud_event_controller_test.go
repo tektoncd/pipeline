@@ -128,14 +128,19 @@ func TestSendCloudEventWithRetriesQueued(t *testing.T) {
 	}
 }
 
-// TestSendCloudEventWithRetriesInvalid verifies that objects with no condition
-// and no queued event type defined return an error.
-func TestSendCloudEventWithRetriesInvalid(t *testing.T) {
-	// PipelineRun with nil condition has no queued event type defined yet.
-	ctx := setupFakeContext(t, cloudevent.FakeClientBehaviour{SendSuccessfully: true}, true, 0)
-	err := cloudevent.SendCloudEventWithRetries(ctx, &v1.PipelineRun{Status: v1.PipelineRunStatus{}})
-	if err == nil {
-		t.Fatalf("Expected an error sending cloud events for PipelineRun with no condition, got none")
+// TestSendCloudEventWithRetriesQueuedPipelineRun verifies that a PipelineRun with no condition
+// (not yet picked up by the core reconciler) sends a queued event successfully.
+func TestSendCloudEventWithRetriesQueuedPipelineRun(t *testing.T) {
+	ctx := setupFakeContext(t, cloudevent.FakeClientBehaviour{SendSuccessfully: true}, true, 1)
+	object := &v1.PipelineRun{Status: v1.PipelineRunStatus{}}
+	if err := cloudevent.SendCloudEventWithRetries(ctx, object); err != nil {
+		t.Fatalf("Unexpected error sending queued cloud event: %v", err)
+	}
+	ceClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
+	ceClient.CheckCloudEventsUnordered(t, "queued pipelinerun", []string{"Context Attributes,"})
+	recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
+	if err := k8sevent.CheckEventsOrdered(t, recorder.Events, "queued pipelinerun", []string{"Normal CloudEventSent"}); err != nil {
+		t.Fatal(err.Error())
 	}
 }
 
