@@ -17,6 +17,7 @@ limitations under the License.
 package subcommands
 
 import (
+	"errors"
 	"log"
 	"os"
 	"path/filepath"
@@ -57,8 +58,12 @@ func stepInit(steps []string) error {
 		// symlinks from the previous run persist on the emptyDir volume.
 		nameLink := filepath.Join(stepDir, s)
 		indexLink := filepath.Join(stepDir, strconv.Itoa(i))
-		os.Remove(nameLink)
-		os.Remove(indexLink)
+		if err := os.Remove(nameLink); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		if err := os.Remove(indexLink); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
 
 		if err := os.Symlink(run, nameLink); err != nil {
 			return err
