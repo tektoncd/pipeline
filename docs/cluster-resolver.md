@@ -35,48 +35,6 @@ The `cache` parameter controls whether the cluster resolver caches resolved reso
 
 **Note**: The cache parameter must be under `pipelineRef.params` or `taskRef.params`, not `spec.params`.
 
-Example:
-
-Per-run cache override for `TaskRun`:
-```yaml
-apiVersion: tekton.dev/v1beta1
-kind: TaskRun
-metadata:
-  name: remote-task-reference-cached
-spec:
-  taskRef:
-    resolver: cluster
-    params:
-    - name: kind
-      value: task
-    - name: name
-      value: some-task
-    - name: namespace
-      value: namespace-containing-task
-    - name: cache   # cache param under spec.taskRef.params
-      value: always
-```
-
-Per-run cache override for `PipelineRun`:
-```yaml
-apiVersion: tekton.dev/v1beta1
-kind: PipelineRun
-metadata:
-  name: remote-pipeline-reference
-spec:
-  pipelineRef:
-    resolver: cluster
-    params:
-    - name: kind
-      value: pipeline
-    - name: name
-      value: some-pipeline
-    - name: namespace
-      value: namespace-containing-pipeline
-    - name: cache   # cache param under spec.pipelineRef.params
-      value: always
-```
-
 ### Cache Configuration
 
 The resolver cache can be configured globally using the `resolver-cache-config` ConfigMap. This ConfigMap controls the cache size and TTL (time-to-live) for all resolvers.
@@ -149,6 +107,48 @@ spec:
       value: namespace-containing-task
 ```
 
+### Task Resolution with Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: remote-task-reference-cached
+spec:
+  taskRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: task
+    - name: name
+      value: some-task
+    - name: namespace
+      value: namespace-containing-task
+    - name: cache   # cache param under spec.taskRef.params
+      value: always
+```
+
+### Task Resolution without Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: remote-task-reference-no-cache
+spec:
+  taskRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: task
+    - name: name
+      value: some-task
+    - name: namespace
+      value: namespace-containing-task
+    - name: cache   # cache param under spec.taskRef.params
+      value: never
+```
+
 ### StepAction Resolution
 
 ```yaml
@@ -187,6 +187,48 @@ spec:
       value: some-pipeline
     - name: namespace
       value: namespace-containing-pipeline
+```
+
+### Pipeline Resolution with Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: remote-pipeline-reference
+spec:
+  pipelineRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: pipeline
+    - name: name
+      value: some-pipeline
+    - name: namespace
+      value: namespace-containing-pipeline
+    - name: cache   # cache param under spec.pipelineRef.params
+      value: always
+```
+
+### Pipeline Resolution without Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: remote-pipeline-reference
+spec:
+  pipelineRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: pipeline
+    - name: name
+      value: some-pipeline
+    - name: namespace
+      value: namespace-containing-pipeline
+    - name: cache   # cache param under spec.pipelineRef.params
+      value: never
 ```
 
 ## `ResolutionRequest` Status
