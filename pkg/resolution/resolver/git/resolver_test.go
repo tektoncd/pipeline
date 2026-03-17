@@ -542,7 +542,7 @@ func TestResolve(t *testing.T) {
 			gitToken:    "non-existent",
 			gitTokenKey: "token",
 		},
-		expectedErr: createError(`cannot get API token, secret non-existent not found in namespace foo`),
+		expectedErr: createError(`cannot get API token, secret non-existent not accessible in namespace foo`),
 	}, {
 		name: "clone: revision does not exist",
 		args: &params{
@@ -778,7 +778,7 @@ func TestResolve(t *testing.T) {
 			APISecretNamespaceKey: system.Namespace(),
 		},
 		expectedStatus: resolution.CreateResolutionRequestFailureStatus(),
-		expectedErr:    createError("cannot get API token, secret token-secret not found in namespace " + system.Namespace()),
+		expectedErr:    createError("cannot get API token, secret token-secret not accessible in namespace " + system.Namespace()),
 	}, {
 		name: "api: token secret name not specified",
 		args: &params{
