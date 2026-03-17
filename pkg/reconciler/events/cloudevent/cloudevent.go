@@ -35,6 +35,9 @@ import (
 type TektonEventType string
 
 const (
+	// TaskRunQueuedEventV1 is sent for TaskRuns that have been created but not yet
+	// picked up by the core TaskRun reconciler (no condition set yet)
+	TaskRunQueuedEventV1 TektonEventType = "dev.tekton.event.taskrun.queued.v1"
 	// TaskRunStartedEventV1 is sent for TaskRuns with "ConditionSucceeded" "Unknown"
 	// the first time they are picked up by the reconciler
 	TaskRunStartedEventV1 TektonEventType = "dev.tekton.event.taskrun.started.v1"
@@ -176,10 +179,13 @@ func getEventType(runObject v1beta1.RunObject) (*TektonEventType, error) {
 	var eventType TektonEventType
 	c := runObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 	if c == nil {
-		// When the `Run` is created, it may not have any condition until it's
-		// picked up by the `Run` reconciler. In that case we consider the run
-		// as started. In all other cases, conditions have to be initialised
+		// When a resource is created, it may not have any condition until it's
+		// picked up by the core reconciler. We send a "queued" or "started" event
+		// depending on the resource type.
 		switch runObject.(type) {
+		case *v1.TaskRun, *v1beta1.TaskRun:
+			eventType = TaskRunQueuedEventV1
+			return &eventType, nil
 		case *v1beta1.CustomRun:
 			eventType = CustomRunStartedEventV1
 			return &eventType, nil

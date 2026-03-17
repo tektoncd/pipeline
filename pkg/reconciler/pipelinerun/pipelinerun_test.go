@@ -8429,7 +8429,9 @@ spec:
 
 	wantEvents := []string{
 		"Normal Started",
+		"Normal CloudEventSent Sent dev.tekton.event.pipelinerun.started.v1",
 		"Normal Running Tasks Completed: 0",
+		"Normal CloudEventSent Sent dev.tekton.event.pipelinerun.running.v1",
 	}
 
 	d := test.Data{
@@ -8437,7 +8439,7 @@ spec:
 		Pipelines:               ps,
 		Tasks:                   ts,
 		ConfigMaps:              cms,
-		ExpectedCloudEventCount: len(wantEvents),
+		ExpectedCloudEventCount: 2,
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()

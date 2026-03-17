@@ -48,7 +48,6 @@ import (
 	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
-	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -544,9 +543,10 @@ spec:
 	}
 }
 
-// TestReconcile_CloudEvents runs reconcile with a cloud event sink configured
-// to ensure that events are sent in different cases
-func TestReconcile_CloudEvents(t *testing.T) {
+// TestReconcile_K8sEventsEmitted verifies that the core TaskRun reconciler emits k8s events.
+// Cloud events are now sent exclusively by the dedicated tekton-events-controller (TEP-0137);
+// the core reconciler has no cloudEventClient field and does not inject a CE client into context.
+func TestReconcile_K8sEventsEmitted(t *testing.T) {
 	task := parse.MustParseV1Task(t, `
 metadata:
   name: test-task
@@ -573,23 +573,10 @@ spec:
 	d := test.Data{
 		Tasks:    []*v1.Task{task},
 		TaskRuns: []*v1.TaskRun{taskRun},
+		// No CE sink configured: the core reconciler no longer injects a CE client,
+		// so no cloud events should be sent even if the test infra wires one up.
+		ExpectedCloudEventCount: 0,
 	}
-
-	d.ConfigMaps = []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"default-cloud-events-sink": "http://synk:8080",
-			},
-		},
-	}
-
-	wantEvents := []string{
-		"Normal Start",
-		"Normal Running",
-	}
-
-	d.ExpectedCloudEventCount = len(wantEvents)
 
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
@@ -626,17 +613,15 @@ spec:
 		t.Errorf("Expected reason %q but was %s", v1.TaskRunReasonRunning.String(), condition.Reason)
 	}
 
-	err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, "reconcile-cloud-events", wantEvents)
-	if !(err == nil) {
+	// K8s events are still emitted by the core reconciler
+	wantK8sEvents := []string{
+		"Normal Start",
+		"Normal Running",
+	}
+	err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, "reconcile-k8s-events", wantK8sEvents)
+	if err != nil {
 		t.Error(err.Error())
 	}
-
-	wantCloudEvents := []string{
-		`(?s)dev.tekton.event.taskrun.started.v1.*test-taskrun-not-started`,
-		`(?s)dev.tekton.event.taskrun.running.v1.*test-taskrun-not-started`,
-	}
-	ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-	ceClient.CheckCloudEventsUnordered(t, "reconcile-cloud-events", wantCloudEvents)
 }
 
 func TestReconcile(t *testing.T) {
@@ -4111,7 +4096,6 @@ spec:
 		Clock:             testClock,
 		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
-		cloudEventClient:  testAssets.Clients.CloudEvents,
 		metrics:           nil, // Not used
 		entrypointCache:   nil, // Not used
 		pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
@@ -4219,7 +4203,6 @@ spec:
 		Clock:             testClock,
 		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
-		cloudEventClient:  testAssets.Clients.CloudEvents,
 		metrics:           nil, // Not used
 		entrypointCache:   nil, // Not used
 		pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
@@ -4272,7 +4255,6 @@ status:
 		Clock:             testClock,
 		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
-		cloudEventClient:  testAssets.Clients.CloudEvents,
 		metrics:           nil, // Not used
 		entrypointCache:   nil, // Not used
 		pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
@@ -4455,7 +4437,6 @@ spec:
 				Clock:             testClock,
 				taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 				limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
-				cloudEventClient:  testAssets.Clients.CloudEvents,
 				metrics:           nil,
 				entrypointCache:   nil,
 				pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
@@ -5527,7 +5508,6 @@ status:
 				Clock:             testClock,
 				taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 				limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
-				cloudEventClient:  testAssets.Clients.CloudEvents,
 				metrics:           nil, // Not used
 				entrypointCache:   nil, // Not used
 				pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
