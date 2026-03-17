@@ -23,7 +23,95 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func TestGetNameAndNamespace(t *testing.T) {
+	tests := []struct {
+		name         string
+		resolverName string
+		ownerName    string
+		ownerNS      string
+		inputName    string
+		inputNS      string
+		expectErr    bool
+		expectErrMsg string
+	}{
+		{
+			name:         "uses owner namespace when name is empty",
+			resolverName: "git",
+			ownerName:    "my-run",
+			ownerNS:      "my-ns",
+			inputName:    "",
+			inputNS:      "",
+			expectErr:    false,
+		},
+		{
+			name:         "explicit name and namespace succeeds",
+			resolverName: "git",
+			ownerName:    "my-run",
+			ownerNS:      "my-ns",
+			inputName:    "explicit-name",
+			inputNS:      "explicit-ns",
+			expectErr:    false,
+		},
+		{
+			name:         "errors on empty namespace with explicit name",
+			resolverName: "git",
+			ownerName:    "my-run",
+			ownerNS:      "my-ns",
+			inputName:    "explicit-name",
+			inputNS:      "",
+			expectErr:    true,
+			expectErrMsg: "namespace is required",
+		},
+		{
+			name:         "errors on empty namespace from owner",
+			resolverName: "git",
+			ownerName:    "my-run",
+			ownerNS:      "",
+			inputName:    "",
+			inputNS:      "",
+			expectErr:    true,
+			expectErrMsg: "namespace is required",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			owner := &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      tt.ownerName,
+					Namespace: tt.ownerNS,
+				},
+			}
+			req := &v1beta1.ResolutionRequestSpec{
+				Params: v1.Params{{
+					Name:  "foo",
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "bar"},
+				}},
+			}
+			gotName, gotNS, err := resource.GetNameAndNamespace(tt.resolverName, owner, tt.inputName, tt.inputNS, req)
+			if tt.expectErr {
+				if err == nil {
+					t.Fatalf("expected error containing %q but got nil", tt.expectErrMsg)
+				}
+				if !strings.Contains(err.Error(), tt.expectErrMsg) {
+					t.Errorf("expected error containing %q, got: %v", tt.expectErrMsg, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if gotName == "" {
+				t.Error("expected non-empty name")
+			}
+			if gotNS == "" {
+				t.Error("expected non-empty namespace")
+			}
+		})
+	}
+}
 
 func TestGenerateDeterministicName(t *testing.T) {
 	type args struct {

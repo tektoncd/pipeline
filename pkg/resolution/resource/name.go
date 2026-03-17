@@ -50,7 +50,8 @@ func GenerateDeterministicName(prefix, base string, params v1.Params) (string, e
 }
 
 // GetNameAndNamespace determines the name and namespace for a resource request.
-// It prioritizes explicit values, falling back to the owning object and "default" namespace.
+// It prioritizes explicit values, falling back to the owning object's name and namespace.
+// An error is returned if the namespace is empty after resolution.
 // If needed, it generates a deterministic name to prevent duplicate requests within a context.
 func GetNameAndNamespace(resolverName string, owner kmeta.OwnerRefable, name string, namespace string, req *v1beta1.ResolutionRequestSpec) (string, string, error) {
 	if name == "" {
@@ -58,7 +59,7 @@ func GetNameAndNamespace(resolverName string, owner kmeta.OwnerRefable, name str
 		namespace = owner.GetObjectMeta().GetNamespace()
 	}
 	if namespace == "" {
-		namespace = "default"
+		return "", "", fmt.Errorf("namespace is required for resolution request but was empty (resolver: %s, owner: %s)", resolverName, name)
 	}
 	// Generating a deterministic name for the resource request
 	// prevents multiple requests being issued for the same
@@ -66,7 +67,7 @@ func GetNameAndNamespace(resolverName string, owner kmeta.OwnerRefable, name str
 	remoteResourceBaseName := namespace + "/" + name
 	name, err := GenerateDeterministicNameFromSpec(resolverName, remoteResourceBaseName, req)
 	if err != nil {
-		return "", "", fmt.Errorf("error generating name for taskrun %s/%s: %w", namespace, name, err)
+		return "", "", fmt.Errorf("error generating name for resource %s/%s: %w", namespace, name, err)
 	}
 	return name, namespace, nil
 }
