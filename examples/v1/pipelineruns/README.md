@@ -6,117 +6,6 @@ These files are intended as reference implementations to help users understand h
 
 ---
 
-# Example Categories
-
-## Basic Examples
-
-Simple PipelineRun examples demonstrating basic pipeline execution.
-
-- `pipelinerun.yaml`
-- `6139-regression.yaml`
-- `using_context_variables.yaml`
-
----
-
-## Parameters and Results
-
-Examples demonstrating how parameters and results are passed between pipelines and tasks.
-
-- `pipelinerun-with-params.yaml`
-- `pipelinerun-with-extra-params.yaml`
-- `pipelinerun-param-array-indexing.yaml`
-- `pipelinerun-array-results-substitution.yaml`
-- `pipelinerun-results.yaml`
-- `pipelinerun-results-with-params.yaml`
-- `pipeline-object-param-and-result.yaml`
-- `pipeline-object-results.yaml`
-- `task_results_example.yaml`
-- `propagating_params_implicit_parameters.yaml`
-- `propagating_params_in_pipeline.yaml`
-- `propagating_params_with_scope_precedence.yaml`
-- `propagating_params_with_scope_precedence_default_only.yaml`
-- `propagating_results_implicit_resultref.yaml`
-
----
-
-## Workspaces
-
-Examples demonstrating how workspaces are used to share data between tasks.
-
-- `workspaces.yaml`
-- `workspaces-projected.yaml`
-- `mapping-workspaces.yaml`
-- `optional-workspaces.yaml`
-- `propagating-workspaces.yaml`
-- `propagating-workspaces-in-pipelines.yaml`
-- `propagating_workspaces_with_referenced_resources.yaml`
-- `pipelinerun-using-different-subpaths-of-workspace.yaml`
-- `pipelinerun-using-parameterized-subpath-of-workspace.yaml`
-- `workspace-from-volumeclaimtemplate.yaml`
-- `pipelinerun-with-parallel-tasks-using-pvc.yaml`
-
----
-
-## Conditional Execution (When Expressions)
-
-Examples showing how to conditionally run tasks based on `when` expressions.
-
-- `pipelinerun-with-when-expressions.yaml`
-- `using-optional-workspaces-in-when-expressions.yaml`
-
----
-
-## Pipeline Specification Examples
-
-Examples demonstrating inline pipeline or task specifications.
-
-- `pipelinerun-with-pipelinespec.yaml`
-- `pipelinerun-with-pipelinespec-and-taskspec.yaml`
-
----
-
-## Execution Behavior and Status
-
-Examples illustrating pipeline execution behavior and reporting.
-
-- `pipelinerun-task-execution-status.yaml`
-- `ignore-step-error.yaml`
-
----
-
-## Final Tasks and Results
-
-Examples demonstrating the use of final tasks and pipeline results.
-
-- `pipelinerun-with-final-results.yaml`
-- `pipelinerun-with-final-tasks.yaml`
-
----
-
-## StepActions
-
-Examples demonstrating the use of StepActions.
-
-- `stepaction-params.yaml`
-
----
-
-## Display Name
-
-Examples demonstrating display name usage.
-
-- `pipeline-with-displayname.yaml`
-
----
-
-## Regression / Edge Case Examples
-
-Examples created to validate bug fixes or regression scenarios.
-
-- `4808-regression.yaml`
-
----
-
 ## Prerequisites
 
 Before running these examples, ensure the following components are installed and configured:
@@ -187,8 +76,51 @@ tkn pipelinerun logs <name> -f
 
 ---
 
+## Example Categories
+
+### Basic Examples
+
+Simple PipelineRun examples demonstrating basic pipeline execution.
+
+### Parameters and Results
+
+Examples demonstrating how parameters and results are passed between pipelines and tasks.
+
+### Workspaces
+
+Examples demonstrating how workspaces are used to share data between tasks.
+
+### Conditional Execution (When Expressions)
+
+Examples showing how to conditionally run tasks based on `when` expressions.
+
+### Pipeline Specification Examples
+
+Examples demonstrating inline pipeline or task specifications.
+
+### Execution Behavior and Status
+
+Examples illustrating pipeline execution behavior and reporting.
+
+### Final Tasks and Results
+
+Examples demonstrating the use of final tasks and pipeline results.
+
+### StepActions
+
+Examples demonstrating the use of StepActions.
+
+### Display Name
+
+Examples demonstrating display name usage.
+
+### Regression / Edge Case Examples
+
+Examples created to validate bug fixes or regression scenarios.
+
+---
+
 ## Additional Resources
 
 - Tekton Pipelines documentation (https://tekton.dev/docs/pipelines/)
-
 - Tekton GitHub repository (https://github.com/tektoncd/pipeline)
