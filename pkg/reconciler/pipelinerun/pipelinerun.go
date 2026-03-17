@@ -1624,23 +1624,27 @@ func createChildResourceLabels(pr *v1.PipelineRun, pipelineTaskName string, incl
 	if pipelineTaskName != "" {
 		labels[pipeline.PipelineTaskLabelKey] = pipelineTaskName
 	}
-	if pr.Status.PipelineSpec != nil {
-		// check if a task is part of the "tasks" section, add a label to identify it during the runtime
-		for _, f := range pr.Status.PipelineSpec.Tasks {
-			if pipelineTaskName == f.Name {
-				labels[pipeline.MemberOfLabelKey] = v1.PipelineTasks
-				break
-			}
-		}
-		// check if a task is part of the "finally" section, add a label to identify it during the runtime
-		for _, f := range pr.Status.PipelineSpec.Finally {
-			if pipelineTaskName == f.Name {
-				labels[pipeline.MemberOfLabelKey] = v1.PipelineFinallyTasks
-				break
-			}
-		}
+	if memberOf := memberOfLookup(pr.Status.PipelineSpec, pipelineTaskName); memberOf != "" {
+		labels[pipeline.MemberOfLabelKey] = memberOf
 	}
 	return labels
+}
+
+func memberOfLookup(ps *v1.PipelineSpec, name string) string {
+	if ps == nil {
+		return ""
+	}
+	for _, t := range ps.Tasks {
+		if name == t.Name {
+			return v1.PipelineTasks
+		}
+	}
+	for _, t := range ps.Finally {
+		if name == t.Name {
+			return v1.PipelineFinallyTasks
+		}
+	}
+	return ""
 }
 
 func combineTaskRunAndTaskSpecLabels(pr *v1.PipelineRun, pipelineTask *v1.PipelineTask) map[string]string {

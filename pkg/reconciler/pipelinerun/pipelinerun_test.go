@@ -19156,3 +19156,60 @@ spec:
 		t.Errorf("Expected Tekton-managed PipelineRun to be running, but it was not")
 	}
 }
+
+func TestMemberOfLookup(t *testing.T) {
+	tcs := []struct {
+		name     string
+		spec     *v1.PipelineSpec
+		taskName string
+		expected string
+	}{
+		{
+			name: "task found in tasks list",
+			spec: &v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{Name: "my-task"}, {Name: "other-task"}},
+			},
+			taskName: "my-task",
+			expected: v1.PipelineTasks,
+		},
+		{
+			name: "task found in finally list",
+			spec: &v1.PipelineSpec{
+				Tasks:   []v1.PipelineTask{{Name: "my-task"}},
+				Finally: []v1.PipelineTask{{Name: "my-finally-task"}},
+			},
+			taskName: "my-finally-task",
+			expected: v1.PipelineFinallyTasks,
+		},
+		{
+			name: "task not found",
+			spec: &v1.PipelineSpec{
+				Tasks:   []v1.PipelineTask{{Name: "some-task"}},
+				Finally: []v1.PipelineTask{{Name: "some-finally-task"}},
+			},
+			taskName: "missing-task",
+			expected: "",
+		},
+		{
+			name:     "nil pipeline spec does not panic",
+			spec:     nil,
+			taskName: "any-task",
+			expected: "",
+		},
+		{
+			name:     "empty pipeline spec",
+			spec:     &v1.PipelineSpec{},
+			taskName: "any-task",
+			expected: "",
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := memberOfLookup(tc.spec, tc.taskName)
+			if actual != tc.expected {
+				t.Errorf("memberOfLookup() = %q, expected %q", actual, tc.expected)
+			}
+		})
+	}
+}
