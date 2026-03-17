@@ -42,7 +42,6 @@ import (
 	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
-	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
@@ -156,7 +155,6 @@ func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipeline.Options) (test.Assets, func()) {
 	t.Helper()
 	ctx, _ := th.SetupFakeContext(t)
-	ctx = th.SetupFakeCloudClientContext(ctx, d.ExpectedCloudEventCount)
 	ctx, cancel := context.WithCancel(ctx)
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
@@ -8508,97 +8506,6 @@ func getTaskRunStatus(t string, status corev1.ConditionStatus) *v1.PipelineRunTa
 	}
 }
 
-// TestReconcile_CloudEvents runs reconcile with a cloud event sink configured
-// to ensure that events are sent in different cases
-func TestReconcile_CloudEvents(t *testing.T) {
-	names.TestingSeed()
-
-	prs := []*v1.PipelineRun{
-		parse.MustParseV1PipelineRun(t, `
-metadata:
-  name: test-pipelinerun
-  namespace: foo
-  selfLink: /pipeline/1234
-spec:
-  pipelineRef:
-    name: test-pipeline
-`),
-	}
-	ps := []*v1.Pipeline{
-		parse.MustParseV1Pipeline(t, `
-metadata:
-  name: test-pipeline
-  namespace: foo
-spec:
-  tasks:
-    - name: test-1
-      taskRef:
-        name: test-task
-`),
-	}
-	ts := []*v1.Task{
-		parse.MustParseV1Task(t, `
-metadata:
-  name: test-task
-  namespace: foo
-spec:
-  steps:
-    - name: simple-step
-      image: foo
-      command: ["/mycmd"]
-      env:
-       - name: foo
-         value: bar
-`),
-	}
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"default-cloud-events-sink": "http://synk:8080",
-			},
-		},
-	}
-	t.Logf("config maps: %s", cms)
-
-	d := test.Data{
-		PipelineRuns:            prs,
-		Pipelines:               ps,
-		Tasks:                   ts,
-		ConfigMaps:              cms,
-		ExpectedCloudEventCount: 2,
-	}
-	prt := newPipelineRunTest(t, d)
-	defer prt.Cancel()
-
-	// Reconcile without checking k8s events yet — cloud events are sent asynchronously
-	// and their "CloudEventSent" k8s recorder events may interleave with status events.
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipelinerun", nil, false)
-
-	// This PipelineRun is in progress now and the status should reflect that
-	th.CheckPipelineRunConditionStatusAndReason(t, reconciledRun.Status, corev1.ConditionUnknown, v1.PipelineRunReasonRunning.String())
-
-	th.VerifyTaskRunStatusesCount(t, reconciledRun.Status, 1)
-
-	wantCloudEvents := []string{
-		`(?s)dev.tekton.event.pipelinerun.started.v1.*test-pipelinerun`,
-		`(?s)dev.tekton.event.pipelinerun.running.v1.*test-pipelinerun`,
-	}
-	ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-	// Wait for all cloud event goroutines to finish before checking k8s events,
-	// so that "CloudEventSent" recorder events are already in the channel.
-	ceClient.CheckCloudEventsUnordered(t, "reconcile-cloud-events", wantCloudEvents)
-
-	wantEvents := []string{
-		"Normal Started",
-		"Normal CloudEventSent Sent dev.tekton.event.pipelinerun.started.v1",
-		"Normal Running Tasks Completed: 0",
-		"Normal CloudEventSent Sent dev.tekton.event.pipelinerun.running.v1",
-	}
-	if err := k8sevent.CheckEventsOrdered(t, prt.TestAssets.Recorder.Events, "test-pipelinerun", wantEvents); err != nil {
-		t.Error(err.Error())
-	}
-}
 
 // this test validates taskSpec metadata is embedded into task run
 func TestReconcilePipeline_TaskSpecMetadata(t *testing.T) {
