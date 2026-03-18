@@ -26,8 +26,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/google/go-cmp/cmp"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
@@ -522,5 +525,61 @@ func checkExpectedErr(t *testing.T, expectedErr, actualErr error) {
 	}
 	if d := cmp.Diff(expectedErr.Error(), actualErr.Error()); d != "" {
 		t.Fatalf("expected err '%v' but got '%v'", expectedErr, actualErr)
+	}
+}
+
+func TestFetchHttpResourceMaxBodySize(t *testing.T) {
+	tests := []struct {
+		name        string
+		bodySize    int
+		expectedErr string
+	}{
+		{
+			name:     "response within limit",
+			bodySize: 1024,
+		},
+		{
+			name:     "response exactly at limit",
+			bodySize: maxResponseBodySize,
+		},
+		{
+			name:        "response exceeds limit",
+			bodySize:    maxResponseBodySize + 1,
+			expectedErr: fmt.Sprintf("response body exceeds maximum allowed size of %d bytes", maxResponseBodySize),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			body := strings.Repeat("x", tc.bodySize)
+			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, body)
+			}))
+			defer svr.Close()
+
+			params := map[string]string{
+				UrlParam: svr.URL,
+			}
+
+			ctx := contextWithConfig(defaultHttpTimeoutValue)
+			logger, _ := zap.NewDevelopment()
+			result, err := FetchHttpResource(ctx, params, nil, logger.Sugar())
+
+			if tc.expectedErr != "" {
+				if err == nil {
+					t.Fatalf("expected error %q but got nil", tc.expectedErr)
+				}
+				if !strings.Contains(err.Error(), tc.expectedErr) {
+					t.Fatalf("expected error to contain %q but got %q", tc.expectedErr, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if string(result.Data()) != body {
+					t.Fatalf("expected body length %d but got %d", len(body), len(result.Data()))
+				}
+			}
+		})
 	}
 }
