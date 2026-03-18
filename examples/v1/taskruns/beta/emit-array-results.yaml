@@ -12,7 +12,7 @@ spec:
       description: The array results
   steps:
     - name: write-array
-      image: mirror.gcr.io/bash
+      image: mirror.gcr.io/bash@sha256:e320b40b14abc61f053286705070342c46034a549a276b798e64541457c4af92
       script: |
         #!/usr/bin/env bash
         echo -n "[\"hello\",\"world\"]" | tee $(results.array-results.path)
