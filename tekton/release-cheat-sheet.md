@@ -152,8 +152,6 @@ the pipelines repo, a terminal window and a text editor.
         cat <<'EOF' > $POD_TEMPLATE
         securityContext:
           fsGroup: 65532
-          runAsUser: 65532
-          runAsNonRoot: true
         EOF
         ```
 

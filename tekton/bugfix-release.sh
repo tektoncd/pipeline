@@ -45,30 +45,36 @@ tkn pipeline start pipeline-release \
   --param=imageRegistryRegions="" \
   --param=imageRegistryPath=tektoncd/pipeline \
   --param=imageRegistryUser=tekton-robot \
-  --param=serviceAccountPath=release.json \
   --param serviceAccountImagesPath=credentials \
   --param=versionTag="${TEKTON_VERSION}" \
-  --param=releaseBucket=gs://tekton-releases/pipeline \
+  --param=releaseBucket=tekton-releases \
   --param=koExtraArgs=" " \
   --param=releaseAsLatest="${LATEST}" \
-  --workspace name=release-secret,secret=release-secret \
+  --workspace name=release-secret,secret=oci-credentials \
   --workspace name=release-images-secret,secret=ghcr-creds \
-  --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml --use-param-defaults --pipeline-timeout 3h --showlog
+  --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml --use-param-defaults --pipeline-timeout 3h --tasks-timeout 2h --showlog
 
 RELEASE_FILE=https://infra.tekton.dev/tekton-releases/pipeline/previous/${TEKTON_VERSION}/release.yaml
-CONTROLLER_IMAGE_SHA=$(curl $RELEASE_FILE | egrep 'ghcr.io.*controller' | cut -d'@' -f2)
+CONTROLLER_IMAGE_SHA=$(curl -L $RELEASE_FILE | sed -n 's/"//g;s/.*ghcr\.io.*controller.*@//p;')
 REKOR_UUID=$(rekor-cli search --sha $CONTROLLER_IMAGE_SHA | grep -v Found | head -1)
 echo -e "CONTROLLER_IMAGE_SHA: ${CONTROLLER_IMAGE_SHA}\nREKOR_UUID: ${REKOR_UUID}"
 
+cat <<EOF > pod-template.yaml
+securityContext:
+  fsGroup: 65532
+EOF
+
 echo "> Starting the release-draft pipeline"
-tkn pipeline start release-draft \
+tkn pipeline start release-draft-oci \
+  --pod-template pod-template.yaml \
   --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
-  --workspace name=credentials,secret=release-secret \
+  --workspace name=credentials,secret=oci-credentials \
   -p package="tektoncd/pipeline" \
   -p git-revision="${TEKTON_RELEASE_GIT_SHA}" \
   -p release-tag="${TEKTON_VERSION}" \
   -p previous-release-tag="${TEKTON_OLD_VERSION}" \
   -p release-name="${TEKTON_RELEASE_NAME}" \
-  -p bucket="gs://tekton-releases/pipeline" \
+  -p bucket="tekton-releases" \
+  -p repo-name="pipeline" \
   -p rekor-uuid="$REKOR_UUID" \
   --showlog
