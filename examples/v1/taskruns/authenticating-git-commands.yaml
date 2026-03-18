@@ -63,7 +63,7 @@ spec:
       emptyDir: {}
     sidecars:
     - name: server
-      image: mirror.gcr.io/alpine/git:v2.26.2
+      image: mirror.gcr.io/alpine/git@sha256:23618034b0be9205d9cc0846eb711b12ba4c9b468efdd8a59aac1d7b1a23363f
       securityContext:
         runAsUser: 0
       volumeMounts:
@@ -106,7 +106,7 @@ spec:
     - name: setup
       # This Step is only necessary as part of the test, it's not something you'll
       # ever need in a real-world scenario involving an external git repo.
-      image: mirror.gcr.io/alpine/git:v2.26.2
+      image: mirror.gcr.io/alpine/git@sha256:23618034b0be9205d9cc0846eb711b12ba4c9b468efdd8a59aac1d7b1a23363f
       securityContext:
         runAsUser: 0
       volumeMounts:
@@ -125,7 +125,7 @@ spec:
           sleep 1
         done
     - name: git-clone-and-push
-      image: mirror.gcr.io/alpine/git:v2.26.2
+      image: mirror.gcr.io/alpine/git@sha256:23618034b0be9205d9cc0846eb711b12ba4c9b468efdd8a59aac1d7b1a23363f
       securityContext:
         runAsUser: 0
       workingDir: /root
