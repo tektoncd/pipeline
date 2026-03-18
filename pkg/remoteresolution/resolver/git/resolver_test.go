@@ -639,7 +639,7 @@ func TestResolve(t *testing.T) {
 			gitresolution.APISecretNamespaceKey: system.Namespace(),
 		},
 		expectedStatus: resolution.CreateResolutionRequestFailureStatus(),
-		expectedErr:    createError("cannot get API token, secret token-secret-nonexistent not accessible in namespace " + system.Namespace()),
+		expectedErr:    createError("cannot get API token, secret not accessible in namespace " + system.Namespace()),
 	}, {
 		name: "api: token secret name not specified",
 		args: &params{

@@ -527,7 +527,7 @@ func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey
 			// namespace. This prevents silent privilege escalation from the
 			// user's namespace to the system namespace when RequestNamespace
 			// is not available in the context.
-			return nil, fmt.Errorf("cannot determine namespace for user-specified secret %q: request namespace not available in context", apiSecret.name)
+			return nil, fmt.Errorf("cannot get API token, secret not accessible: request namespace not available in context")
 		}
 		// Config-sourced secret: admin controls all values, fallback is safe
 		apiSecret.ns = conf.APISecretNamespace
@@ -548,13 +548,13 @@ func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey
 		// Use a single generic error message for all secret access failures
 		// to prevent secret enumeration via distinct error strings.
 		g.Logger.Debugf("secret lookup failed: ns=%s name=%s err=%v", apiSecret.ns, apiSecret.name, err)
-		return nil, fmt.Errorf("cannot get API token, secret %s not accessible in namespace %s", apiSecret.name, apiSecret.ns)
+		return nil, fmt.Errorf("cannot get API token, secret not accessible in namespace %s", apiSecret.ns)
 	}
 
 	secretVal, ok := secret.Data[apiSecret.key]
 	if !ok {
 		g.Logger.Debugf("secret key not found in secret: ns=%s name=%s", apiSecret.ns, apiSecret.name)
-		return nil, fmt.Errorf("cannot get API token, secret %s not accessible in namespace %s", apiSecret.name, apiSecret.ns)
+		return nil, fmt.Errorf("cannot get API token, secret not accessible in namespace %s", apiSecret.ns)
 	}
 	if cacheSecret {
 		g.Cache.Add(*apiSecret, secretVal, ttl)
