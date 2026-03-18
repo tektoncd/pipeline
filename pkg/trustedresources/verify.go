@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -117,9 +118,14 @@ func VerifyPipeline(ctx context.Context, pipelineObj *v1beta1.Pipeline, k8s kube
 // getMatchedPolicies filters out the policies by checking if the resource url (source) is matching any of the `patterns` in the `resources` list.
 func getMatchedPolicies(resourceName string, source string, policies []*v1alpha1.VerificationPolicy) ([]*v1alpha1.VerificationPolicy, error) {
 	matchedPolicies := []*v1alpha1.VerificationPolicy{}
+	// Strip known resolver prefixes before matching so that patterns
+	// written without the prefix (e.g. "https://github.com/…") still
+	// work after we anchor them for full-string matching.
+	normalizedSource := stripResolverPrefix(source)
 	for _, p := range policies {
 		for _, r := range p.Spec.Resources {
-			matching, err := regexp.MatchString(r.Pattern, source)
+			pattern := anchorPattern(r.Pattern)
+			matching, err := regexp.MatchString(pattern, normalizedSource)
 			if err != nil {
 				// FixMe: changing %v to %w breaks integration tests.
 				return matchedPolicies, fmt.Errorf("%v: %w", err, ErrRegexMatch) //nolint:errorlint
@@ -134,6 +140,42 @@ func getMatchedPolicies(resourceName string, source string, policies []*v1alpha1
 		return matchedPolicies, fmt.Errorf("%w: no matching policies are found for resource: %s against source: %s", ErrNoMatchedPolicies, resourceName, source)
 	}
 	return matchedPolicies, nil
+}
+
+// anchorPattern wraps a pattern with ^(?:…)$ when it is not already
+// anchored.  This forces full-string matching so that unanchored
+// patterns cannot be bypassed by embedding the trusted URL as a
+// substring of a malicious source URI.
+func anchorPattern(pattern string) string {
+	hasStart := strings.HasPrefix(pattern, "^")
+	hasEnd := strings.HasSuffix(pattern, "$")
+	if hasStart && hasEnd {
+		return pattern
+	}
+	if !hasStart {
+		pattern = "^(?:" + pattern
+	} else {
+		// Already has ^, wrap the rest in a non-capturing group.
+		pattern = "^(?:" + pattern[1:]
+	}
+	if !hasEnd {
+		pattern = pattern + ")$"
+	} else {
+		// Already has $, close the group before it.
+		pattern = pattern[:len(pattern)-1] + ")$"
+	}
+	return pattern
+}
+
+// stripResolverPrefix removes known URI scheme prefixes added by
+// resolvers before policy matching.  The git resolver prepends "git+"
+// per the SPDX convention (see spdxGit in
+// pkg/resolution/resolver/git/resolver.go).
+func stripResolverPrefix(uri string) string {
+	if strings.HasPrefix(uri, "git+") {
+		return uri[4:]
+	}
+	return uri
 }
 
 // verifyResource verifies resource which implements metav1.Object by provided signature and public keys from verification policies.
