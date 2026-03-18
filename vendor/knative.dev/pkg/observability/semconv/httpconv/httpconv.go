@@ -18,7 +18,7 @@ package httpconv
 
 import (
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/semconv/v1.39.0/httpconv"
+	"go.opentelemetry.io/otel/semconv/v1.40.0/httpconv"
 )
 
 type (

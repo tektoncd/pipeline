@@ -33,10 +33,10 @@ import (
 	kubeinformerfactory "knative.dev/pkg/injection/clients/namespacedkube/informers/factory"
 	"knative.dev/pkg/network"
 	"knative.dev/pkg/network/handlers"
+	knativetls "knative.dev/pkg/network/tls"
 	"knative.dev/pkg/observability/semconv"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
@@ -48,7 +48,15 @@ import (
 	"knative.dev/pkg/system"
 )
 
-// Options contains the configuration for the webhook
+// Options contains the configuration for the webhook.
+//
+// TLS fields (TLSMinVersion, TLSMaxVersion, TLSCipherSuites, TLSCurvePreferences)
+// are resolved with the following precedence:
+//  1. Values set explicitly in Options (programmatic).
+//  2. WEBHOOK_TLS_* environment variables (WEBHOOK_TLS_MIN_VERSION,
+//     WEBHOOK_TLS_MAX_VERSION, WEBHOOK_TLS_CIPHER_SUITES, WEBHOOK_TLS_CURVE_PREFERENCES).
+//  3. Defaults (TLS 1.3 minimum version; zero values for the rest, meaning the
+//     Go standard library picks its defaults).
 type Options struct {
 	// TLSMinVersion contains the minimum TLS version that is acceptable to communicate with the API server.
 	// TLS 1.3 is the minimum version if not specified otherwise.
@@ -182,11 +190,29 @@ func New(
 
 	logger := logging.FromContext(ctx)
 
-	defaultTLSMinVersion := uint16(tls.VersionTLS13)
-	if opts.TLSMinVersion == 0 {
-		opts.TLSMinVersion = TLSMinVersionFromEnv(defaultTLSMinVersion)
-	} else if opts.TLSMinVersion != tls.VersionTLS12 && opts.TLSMinVersion != tls.VersionTLS13 {
-		return nil, fmt.Errorf("unsupported TLS version: %d", opts.TLSMinVersion)
+	tlsCfg, err := knativetls.DefaultConfigFromEnv("WEBHOOK_")
+	if err != nil {
+		return nil, fmt.Errorf("reading TLS configuration from environment: %w", err)
+	}
+
+	if opts.TLSMinVersion != 0 {
+		tlsCfg.MinVersion = opts.TLSMinVersion
+	}
+	if opts.TLSMaxVersion != 0 {
+		tlsCfg.MaxVersion = opts.TLSMaxVersion
+	}
+	if opts.TLSCipherSuites != nil {
+		tlsCfg.CipherSuites = opts.TLSCipherSuites
+	}
+	if opts.TLSCurvePreferences != nil {
+		tlsCfg.CurvePreferences = opts.TLSCurvePreferences
+	}
+
+	if tlsCfg.MinVersion != tls.VersionTLS12 && tlsCfg.MinVersion != tls.VersionTLS13 {
+		return nil, fmt.Errorf("unsupported TLS minimum version %d: must be TLS 1.2 or TLS 1.3", tlsCfg.MinVersion)
+	}
+	if tlsCfg.MaxVersion != 0 && tlsCfg.MinVersion > tlsCfg.MaxVersion {
+		return nil, fmt.Errorf("TLS minimum version (%#x) is greater than maximum version (%#x)", tlsCfg.MinVersion, tlsCfg.MaxVersion)
 	}
 
 	syncCtx, cancel := context.WithCancel(context.Background())
@@ -206,42 +232,35 @@ func New(
 		// a new secret informer from it.
 		secretInformer := kubeinformerfactory.Get(ctx).Core().V1().Secrets()
 
-		//nolint:gosec // operator configures TLS min version (default is 1.3)
-		webhook.tlsConfig = &tls.Config{
-			MinVersion:       opts.TLSMinVersion,
-			MaxVersion:       opts.TLSMaxVersion,
-			CipherSuites:     opts.TLSCipherSuites,
-			CurvePreferences: opts.TLSCurvePreferences,
-
-			// If we return (nil, error) the client sees - 'tls: internal error"
-			// If we return (nil, nil) the client sees - 'tls: no certificates configured'
-			//
-			// We'll return (nil, nil) when we don't find a certificate
-			GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-				secret, err := secretInformer.Lister().Secrets(system.Namespace()).Get(opts.SecretName)
-				if err != nil {
-					logger.Errorw("failed to fetch secret", zap.Error(err))
-					return nil, nil
-				}
-				webOpts := GetOptions(ctx)
-				sKey, sCert := getSecretDataKeyNamesOrDefault(webOpts.ServerPrivateKeyName, webOpts.ServerCertificateName)
-				serverKey, ok := secret.Data[sKey]
-				if !ok {
-					logger.Warn("server key missing")
-					return nil, nil
-				}
-				serverCert, ok := secret.Data[sCert]
-				if !ok {
-					logger.Warn("server cert missing")
-					return nil, nil
-				}
-				cert, err := tls.X509KeyPair(serverCert, serverKey)
-				if err != nil {
-					return nil, err
-				}
-				return &cert, nil
-			},
+		// If we return (nil, error) the client sees - 'tls: internal error'
+		// If we return (nil, nil) the client sees - 'tls: no certificates configured'
+		//
+		// We'll return (nil, nil) when we don't find a certificate
+		tlsCfg.GetCertificate = func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+			secret, err := secretInformer.Lister().Secrets(system.Namespace()).Get(opts.SecretName)
+			if err != nil {
+				logger.Errorw("failed to fetch secret", zap.Error(err))
+				return nil, nil
+			}
+			webOpts := GetOptions(ctx)
+			sKey, sCert := getSecretDataKeyNamesOrDefault(webOpts.ServerPrivateKeyName, webOpts.ServerCertificateName)
+			serverKey, ok := secret.Data[sKey]
+			if !ok {
+				logger.Warn("server key missing")
+				return nil, nil
+			}
+			serverCert, ok := secret.Data[sCert]
+			if !ok {
+				logger.Warn("server cert missing")
+				return nil, nil
+			}
+			cert, err := tls.X509KeyPair(serverCert, serverKey)
+			if err != nil {
+				return nil, err
+			}
+			return &cert, nil
 		}
+		webhook.tlsConfig = tlsCfg
 	}
 
 	webhook.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -293,19 +312,11 @@ func (wh *Webhook) Run(stop <-chan struct{}) error {
 	}
 
 	otelHandler := otelhttp.NewHandler(
-		drainer,
+		&routeLabeler{next: drainer},
 		wh.Options.ServiceName, // Note this service is k8s service name
 		otelhttp.WithMeterProvider(wh.Options.MeterProvider),
 		otelhttp.WithTracerProvider(wh.Options.TracerProvider),
 		otelhttp.WithPropagators(wh.Options.TextMapPropagator),
-		otelhttp.WithMetricAttributesFn(func(r *http.Request) []attribute.KeyValue {
-			if r.URL.Path == "" {
-				return nil
-			}
-			return []attribute.KeyValue{
-				semconv.HTTPRoute(r.URL.Path),
-			}
-		}),
 		otelhttp.WithFilter(func(r *http.Request) bool {
 			// Don't trace kubelet probes
 			return !network.IsKubeletProbe(r)
@@ -385,4 +396,17 @@ func (wh *Webhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	wh.mux.ServeHTTP(w, r)
+}
+
+type routeLabeler struct {
+	next http.Handler
+}
+
+func (rl *routeLabeler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "" {
+		labeler, _ := otelhttp.LabelerFromContext(r.Context())
+		labeler.Add(semconv.HTTPRoute(r.URL.Path))
+	}
+
+	rl.next.ServeHTTP(w, r)
 }
