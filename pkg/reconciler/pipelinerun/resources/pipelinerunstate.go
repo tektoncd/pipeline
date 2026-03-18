@@ -76,11 +76,6 @@ type PipelineRunFacts struct {
 	// the case of failing at the validation is during CheckMissingResultReferences method
 	// Tasks in ValidationFailedTask is added in method runNextSchedulableTask
 	ValidationFailedTask []*ResolvedPipelineTask
-
-	// ValidationFailedErrors stores the specific error messages for tasks that failed runtime
-	// result-reference validation, keyed by pipeline task name. This allows surfacing actionable
-	// error details in the PipelineRun status condition instead of only a generic count.
-	ValidationFailedErrors map[string]string
 }
 
 // PipelineRunTimeoutsState records information about start times and timeouts for the PipelineRun, so that the PipelineRunFacts
@@ -586,8 +581,8 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 		if s.ValidationFailed > 0 {
 			var errDetails []string
 			for _, rpt := range facts.ValidationFailedTask {
-				if errMsg, ok := facts.ValidationFailedErrors[rpt.PipelineTask.Name]; ok {
-					errDetails = append(errDetails, fmt.Sprintf("task %q: %s", rpt.PipelineTask.Name, errMsg))
+				if err := CheckMissingResultReferences(facts.State, rpt); err != nil {
+					errDetails = append(errDetails, fmt.Sprintf("task %q: %s", rpt.PipelineTask.Name, err))
 				}
 			}
 			if len(errDetails) > 0 {

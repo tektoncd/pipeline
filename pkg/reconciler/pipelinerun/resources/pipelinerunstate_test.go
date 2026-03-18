@@ -18,6 +18,7 @@ package resources
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -2141,6 +2142,63 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 				t.Fatalf("Mismatch in condition %s", diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+func TestGetPipelineConditionStatus_WithValidationFailureDetails(t *testing.T) {
+	pr := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "somepipelinerun",
+		},
+	}
+
+	validatedTask := &ResolvedPipelineTask{
+		PipelineTask: &pts[14],
+		ResolvedTask: &resources.ResolvedTask{TaskSpec: &task.Spec},
+	}
+
+	state := PipelineRunState{{
+		TaskRunNames: []string{"successfulTaskRun"},
+		PipelineTask: &pts[0],
+		TaskRuns:     []*v1.TaskRun{makeSucceeded(trs[0])},
+		ResolvedTask: &resources.ResolvedTask{TaskSpec: &task.Spec},
+	}, {
+		PipelineTask: validatedTask.PipelineTask,
+		ResolvedTask: validatedTask.ResolvedTask,
+	}}
+
+	d, err := dagFromState(state)
+	if err != nil {
+		t.Fatalf("Unexpected error while building DAG for state %v: %v", state, err)
+	}
+
+	facts := PipelineRunFacts{
+		State:                state,
+		TasksGraph:           d,
+		FinalTasksGraph:      &dag.Graph{},
+		ValidationFailedTask: []*ResolvedPipelineTask{validatedTask},
+		TimeoutsState: PipelineRunTimeoutsState{
+			Clock: testClock,
+		},
+	}
+
+	condition := facts.GetPipelineConditionStatus(t.Context(), pr, zap.NewNop().Sugar(), testClock)
+	if condition.Reason != v1.PipelineRunReasonFailedValidation.String() {
+		t.Fatalf("unexpected reason, got %q want %q", condition.Reason, v1.PipelineRunReasonFailedValidation.String())
+	}
+	if condition.Status != corev1.ConditionFalse {
+		t.Fatalf("unexpected status, got %q want %q", condition.Status, corev1.ConditionFalse)
+	}
+
+	wantParts := []string{
+		"Failed Validation: 1 (",
+		"task \"mytask15\": Invalid task result reference:",
+		"Could not find result with name result1 for pipeline task mytask1",
+	}
+	for _, want := range wantParts {
+		if !strings.Contains(condition.Message, want) {
+			t.Fatalf("expected condition message to contain %q, got %q", want, condition.Message)
+		}
 	}
 }
 
