@@ -71,7 +71,7 @@ spec:
         print("Hello from Python!")
 
     - name: perl
-      image: mirror.gcr.io/perl:@sha256:e1ec4246c431a86d251de5b5966983d0782ba5a9be955c530d85cfc5ebec2ca2
+      image: mirror.gcr.io/perl@sha256:e1ec4246c431a86d251de5b5966983d0782ba5a9be955c530d85cfc5ebec2ca2
       script: |
         #!/usr/bin/perl
         print "Hello from Perl!"
