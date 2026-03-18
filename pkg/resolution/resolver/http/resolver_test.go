@@ -46,6 +46,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fakekubeclient "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing"
@@ -349,7 +350,7 @@ func TestResolverReconcileBasicAuth(t *testing.T) {
 				authUsername: "user",
 				url:          "https://blah/blah.com",
 			},
-			expectedErr: errors.New(`error getting "Http" "foo/rr": cannot get API token, secret notcreate not found in namespace foo`),
+			expectedErr: errors.New(`error getting "Http" "foo/rr": cannot get API token, secret not accessible in namespace foo`),
 		},
 		{
 			name: "bad/no valid secret key",
@@ -359,7 +360,7 @@ func TestResolverReconcileBasicAuth(t *testing.T) {
 				authSecretKey: wrongSecretKey,
 				url:           "https://blah/blah",
 			},
-			expectedErr: errors.New(`error getting "Http" "foo/rr": cannot get API token, key wrongsecretk not found in secret shhhhh in namespace foo`),
+			expectedErr: errors.New(`error getting "Http" "foo/rr": cannot get API token, secret not accessible in namespace foo`),
 		},
 		{
 			name: "bad/missing username params for secret with params",
@@ -493,6 +494,71 @@ func TestGetName(t *testing.T) {
 	}
 	if d := cmp.Diff(configMapName, resolver.GetConfigName(ctx)); d != "" {
 		t.Errorf("invalid config map name: %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestGetBasicAuthSecretEmptyNamespace(t *testing.T) {
+	logger, _ := logging.NewLogger("", "")
+	params := map[string]string{
+		HttpBasicAuthSecret:   "my-secret",
+		HttpBasicAuthUsername: "user",
+	}
+	// Context without RequestNamespace injected — simulates missing namespace
+	ctx := context.Background()
+	_, err := getBasicAuthSecret(ctx, params, nil, logger)
+	if err == nil {
+		t.Fatal("expected error when namespace is empty, got nil")
+	}
+	expectedErr := "cannot get API token, secret not accessible: request namespace not available in context"
+	if err.Error() != expectedErr {
+		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
+	}
+}
+
+func TestGetBasicAuthSecretNotFound(t *testing.T) {
+	logger, _ := logging.NewLogger("", "")
+	params := map[string]string{
+		HttpBasicAuthSecret:   "nonexistent-secret",
+		HttpBasicAuthUsername: "user",
+	}
+	ctx := common.InjectRequestNamespace(context.Background(), "test-ns")
+	kubeclient := fakekubeclient.NewSimpleClientset()
+	_, err := getBasicAuthSecret(ctx, params, kubeclient, logger)
+	if err == nil {
+		t.Fatal("expected error when secret not found, got nil")
+	}
+	expectedErr := "cannot get API token, secret not accessible in namespace test-ns"
+	if err.Error() != expectedErr {
+		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
+	}
+	if strings.Contains(err.Error(), "nonexistent-secret") {
+		t.Error("error message should not contain the secret name")
+	}
+}
+
+func TestGetBasicAuthSecretWrongKey(t *testing.T) {
+	logger, _ := logging.NewLogger("", "")
+	params := map[string]string{
+		HttpBasicAuthSecret:    "real-secret",
+		HttpBasicAuthUsername:  "user",
+		HttpBasicAuthSecretKey: "wrong-key",
+	}
+	ctx := common.InjectRequestNamespace(context.Background(), "test-ns")
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "real-secret", Namespace: "test-ns"},
+		Data:       map[string][]byte{"correct-key": []byte("token-value")},
+	}
+	kubeclient := fakekubeclient.NewSimpleClientset(secret)
+	_, err := getBasicAuthSecret(ctx, params, kubeclient, logger)
+	if err == nil {
+		t.Fatal("expected error when secret key not found, got nil")
+	}
+	expectedErr := "cannot get API token, secret not accessible in namespace test-ns"
+	if err.Error() != expectedErr {
+		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
+	}
+	if strings.Contains(err.Error(), "real-secret") || strings.Contains(err.Error(), "wrong-key") {
+		t.Error("error message should not contain secret name or key name")
 	}
 }
 

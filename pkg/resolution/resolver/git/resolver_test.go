@@ -23,10 +23,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"go.uber.org/zap"
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/driver/fake"
 	"github.com/jenkins-x/go-scm/scm/factory"
@@ -42,6 +44,8 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/cache"
+	fakekubeclient "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing"
 )
@@ -542,7 +546,7 @@ func TestResolve(t *testing.T) {
 			gitToken:    "non-existent",
 			gitTokenKey: "token",
 		},
-		expectedErr: createError(`cannot get API token, secret non-existent not accessible in namespace foo`),
+		expectedErr: createError(`cannot get API token, secret not accessible in namespace foo`),
 	}, {
 		name: "clone: revision does not exist",
 		args: &params{
@@ -778,7 +782,7 @@ func TestResolve(t *testing.T) {
 			APISecretNamespaceKey: system.Namespace(),
 		},
 		expectedStatus: resolution.CreateResolutionRequestFailureStatus(),
-		expectedErr:    createError("cannot get API token, secret token-secret not accessible in namespace " + system.Namespace()),
+		expectedErr:    createError("cannot get API token, secret not accessible in namespace " + system.Namespace()),
 	}, {
 		name: "api: token secret name not specified",
 		args: &params{
@@ -1045,6 +1049,68 @@ func toParams(m map[string]string) []pipelinev1.Param {
 	}
 
 	return params
+}
+
+func TestGetAPITokenUserSpecifiedEmptyNamespace(t *testing.T) {
+	ctx := framework.InjectResolverConfigToContext(t.Context(), map[string]string{
+		ServerURLKey:     "fake",
+		SCMTypeKey:       "fake",
+		APISecretNameKey: "config-secret",
+		APISecretKeyKey:  "token",
+	})
+	resolver := &GitResolver{
+		Logger: zap.NewNop().Sugar(),
+		Cache:  cache.NewLRUExpireCache(10),
+		TTL:    1 * time.Minute,
+		Params: map[string]string{},
+	}
+	// User-specified secret with empty namespace — simulates RequestNamespace returning ""
+	apiSecret := &secretCacheKey{
+		name: "user-secret",
+		key:  "token",
+		ns:   "",
+	}
+	_, err := resolver.getAPIToken(ctx, apiSecret, "token")
+	if err == nil {
+		t.Fatal("expected error when user-specified secret has empty namespace, got nil")
+	}
+	expectedErr := "cannot get API token, secret not accessible: request namespace not available in context"
+	if err.Error() != expectedErr {
+		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
+	}
+	if strings.Contains(err.Error(), "user-secret") {
+		t.Error("error message should not contain the secret name")
+	}
+}
+
+func TestGetAPITokenConfigSourcedFallback(t *testing.T) {
+	ctx := framework.InjectResolverConfigToContext(t.Context(), map[string]string{
+		ServerURLKey:          "fake",
+		SCMTypeKey:            "fake",
+		APISecretNameKey:      "config-secret",
+		APISecretKeyKey:       "token",
+		APISecretNamespaceKey: "config-ns",
+	})
+	resolver := &GitResolver{
+		Logger:     zap.NewNop().Sugar(),
+		Cache:      cache.NewLRUExpireCache(10),
+		TTL:        1 * time.Minute,
+		KubeClient: fakekubeclient.NewSimpleClientset(),
+		Params:     map[string]string{},
+	}
+	// Config-sourced secret (apiSecret == nil) — should fall back to config namespace
+	_, err := resolver.getAPIToken(ctx, nil, "token")
+	if err == nil {
+		t.Fatal("expected error (secret not found), got nil")
+	}
+	// Should use the config namespace, not error about missing namespace
+	expectedErr := "cannot get API token, secret not accessible in namespace config-ns"
+	if err.Error() != expectedErr {
+		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
+	}
+	if strings.Contains(err.Error(), "config-secret") {
+		t.Error("error message should not contain the secret name")
+	}
 }
 
 func TestGetScmConfigForParamConfigKey(t *testing.T) {
