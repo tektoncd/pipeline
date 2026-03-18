@@ -14,13 +14,13 @@ spec:
       - name: result5
     steps:
       - name: step1
-        image: mirror.gcr.io/bash
+        image: mirror.gcr.io/bash@sha256:e320b40b14abc61f053286705070342c46034a549a276b798e64541457c4af92
         script: |
           #!/usr/bin/env bash
           cat /dev/urandom | head -c 2500 | base64 | tee $(results.result1.path) #about 1 K result
           cat /dev/urandom | head -c 2500 | base64 | tee $(results.result2.path) #about 4 K result
       - name: step2
-        image: mirror.gcr.io/bash
+        image: mirror.gcr.io/bash@sha256:e320b40b14abc61f053286705070342c46034a549a276b798e64541457c4af92
         script: |
           #!/usr/bin/env bash
           cat /dev/urandom | head -c 2500 | base64 | tee $(results.result3.path) #about 1 K result

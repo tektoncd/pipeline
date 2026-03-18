@@ -28,7 +28,7 @@ spec:
       # This step redirects stdout and stderr to the path for the Task
       # result `combined`.
       - name: error
-        image: mirror.gcr.io/bash
+        image: mirror.gcr.io/bash@sha256:e320b40b14abc61f053286705070342c46034a549a276b798e64541457c4af92
         onError: continue
         script: echo "combined message" && nonsense
         stdoutConfig:
@@ -38,7 +38,7 @@ spec:
       # This step prints out the contents of the task results
       # if they exist
       - name: log-results
-        image: mirror.gcr.io/bash
+        image: mirror.gcr.io/bash@sha256:e320b40b14abc61f053286705070342c46034a549a276b798e64541457c4af92
         script: |
           if [[ -f $(results.digest.path) ]]
           then
