@@ -23,7 +23,6 @@ spec:
             - name: node-type
           steps:
             - name: build-and-push
-              displayName: "Build and push"
               image: mirror.gcr.io/ubuntu
               script: |
                 echo "building on $(params.node-type)"

@@ -30,6 +30,21 @@ jobs:
         - alpha
         # - prow-feature-flags  - this is tested today as a periodic job, but we could integrate it here
 
+        # Run beta and alpha only on oldest and latest k8s to reduce CI load
+        exclude:
+        - k8s-name: k8s-latest-minus-three
+          feature-flags: beta
+        - k8s-name: k8s-latest-minus-three
+          feature-flags: alpha
+        - k8s-name: k8s-latest-minus-two
+          feature-flags: beta
+        - k8s-name: k8s-latest-minus-two
+          feature-flags: alpha
+        - k8s-name: k8s-latest-minus-one
+          feature-flags: beta
+        - k8s-name: k8s-latest-minus-one
+          feature-flags: alpha
+
         include:
         - k8s-name: k8s-oldest
           k8s-version: v1.28.x
