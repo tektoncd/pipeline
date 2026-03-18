@@ -536,8 +536,6 @@ func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey
 		return nil, err
 	}
 
-	ok := false
-
 	// NOTE(chmouel): only cache secrets when user hasn't passed params in their resolver configuration
 	// Track whether the secret was user-specified (via resolver params) before
 	// the nil check mutates apiSecret. This determines whether namespace
