@@ -4931,3 +4931,98 @@ func TestGetIndexingReferencesToArrayParams(t *testing.T) {
 		})
 	}
 }
+
+func TestValidatePipelineRefResultReferencesDisallowed(t *testing.T) {
+	// happy path: a PinP task that is not consumed by any result reference is allowed.
+	t.Run("pipelineRef task not referenced", func(t *testing.T) {
+		tasks := []PipelineTask{
+			{
+				Name:        "child",
+				PipelineRef: &PipelineRef{Name: "child-pipeline"},
+			},
+			{
+				Name:    "consumer",
+				TaskRef: &TaskRef{Name: "echo"},
+				Params: Params{{
+					Name:  "msg",
+					Value: *NewStructuredValues("hello"),
+				}},
+			},
+		}
+		if err := validatePipelineRefResultReferencesDisallowed(tasks, nil); err != nil {
+			t.Errorf("unexpected error for non-referencing pipeline: %v", err)
+		}
+	})
+
+	tests := []struct {
+		desc    string
+		tasks   []PipelineTask
+		finally []PipelineTask
+		wantMsg string
+	}{{
+		desc: "task params reference a pipelineRef task result",
+		tasks: []PipelineTask{
+			{
+				Name:        "child",
+				PipelineRef: &PipelineRef{Name: "child-pipeline"},
+			},
+			{
+				Name:    "consumer",
+				TaskRef: &TaskRef{Name: "echo"},
+				Params: Params{{
+					Name:  "msg",
+					Value: *NewStructuredValues("$(tasks.child.results.out)"),
+				}},
+			},
+		},
+		wantMsg: `invalid value: result reference to pipelineTask "child" is not supported: referenced task uses pipelineRef or pipelineSpec and result propagation from child Pipelines is not yet implemented: tasks[1]`,
+	}, {
+		desc: "task when expression references a pipelineSpec task result",
+		tasks: []PipelineTask{
+			{
+				Name:         "child",
+				PipelineSpec: &PipelineSpec{},
+			},
+			{
+				Name:    "consumer",
+				TaskRef: &TaskRef{Name: "echo"},
+				WhenExpressions: WhenExpressions{{
+					Input:    "$(tasks.child.results.out)",
+					Operator: "in",
+					Values:   []string{"go"},
+				}},
+			},
+		},
+		wantMsg: `invalid value: result reference to pipelineTask "child" is not supported: referenced task uses pipelineRef or pipelineSpec and result propagation from child Pipelines is not yet implemented: tasks[1]`,
+	}, {
+		desc: "finally task references a pipelineRef task result",
+		tasks: []PipelineTask{
+			{
+				Name:        "child",
+				PipelineRef: &PipelineRef{Name: "child-pipeline"},
+			},
+		},
+		finally: []PipelineTask{
+			{
+				Name:    "notify",
+				TaskRef: &TaskRef{Name: "notify"},
+				Params: Params{{
+					Name:  "msg",
+					Value: *NewStructuredValues("$(tasks.child.results.out)"),
+				}},
+			},
+		},
+		wantMsg: `invalid value: result reference to pipelineTask "child" is not supported: referenced task uses pipelineRef or pipelineSpec and result propagation from child Pipelines is not yet implemented: finally[0]`,
+	}}
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			err := validatePipelineRefResultReferencesDisallowed(tc.tasks, tc.finally)
+			if err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+			if d := cmp.Diff(tc.wantMsg, err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("unexpected error diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
