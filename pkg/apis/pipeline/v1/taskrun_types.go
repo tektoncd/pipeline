@@ -249,6 +249,14 @@ const (
 	// TaskRunReasonSidecarFailed indicates a sidecar container failed
 	// (non-OOM), e.g., bad image or crash.
 	TaskRunReasonSidecarFailed TaskRunReason = "SidecarFailed"
+	// TaskRunReasonInitContainerOOM indicates an internal Tekton init
+	// container (prepare, place-scripts, working-dir-initializer) was
+	// killed due to running out of memory (OOMKilled).
+	TaskRunReasonInitContainerOOM TaskRunReason = "InitContainerOOM"
+	// TaskRunReasonInitContainerFailed indicates an internal Tekton init
+	// container (prepare, place-scripts, working-dir-initializer) failed
+	// (non-OOM), e.g., due to node memory pressure or runtime errors.
+	TaskRunReasonInitContainerFailed TaskRunReason = "InitContainerFailed"
 	// TaskRunReasonFailureIgnored is the reason set when the Taskrun has failed due to pod execution error and the failure is ignored for the owning PipelineRun.
 	// TaskRuns failed due to reconciler/validation error should not use this reason.
 	TaskRunReasonFailureIgnored TaskRunReason = "FailureIgnored"

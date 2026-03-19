@@ -781,6 +781,8 @@ indicates the specific failure type:
 | Reason | Description |
 |--------|-------------|
 | `PodEvicted` | The pod was evicted by Kubernetes (e.g. ephemeral storage limit exceeded). |
+| `InitContainerOOM` | An internal Tekton init container (`prepare`, `place-scripts`, `working-dir-initializer`) was terminated due to an out-of-memory condition. |
+| `InitContainerFailed` | An internal Tekton init container failed (e.g. node memory pressure caused the container runtime to kill it). |
 | `StepOOM` | A step container was terminated due to an out-of-memory condition (`OOMKilled`). |
 | `StepFailed` | A step container exited with a non-zero exit code (not OOM). |
 | `SidecarOOM` | A sidecar container was terminated due to an out-of-memory condition (`OOMKilled`). |

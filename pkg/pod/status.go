@@ -760,22 +760,24 @@ func checkContainersCompleted(pod *corev1.Pod, nameFilters []containerNameFilter
 //
 // Priority order (sidecar failures surface before step failures
 // because a crashed sidecar is likely the root cause):
-//  1. PodEvicted    - pod-level eviction (ephemeral storage, node pressure)
-//  2. SidecarOOM    - sidecar OOMKilled
-//  3. StepOOM       - step OOMKilled
-//  4. SidecarFailed - sidecar failed non-OOM
-//  5. StepFailed    - step failed non-OOM
-//  6. Failed        - generic fallthrough (internal init containers, unknown)
+//  1. PodEvicted            - pod-level eviction (ephemeral storage, node pressure)
+//  2. InitContainerOOM      - internal Tekton init container OOMKilled
+//  3. InitContainerFailed   - internal Tekton init container failed (non-OOM)
+//  4. SidecarOOM            - sidecar OOMKilled
+//  5. StepOOM               - step OOMKilled
+//  6. SidecarFailed         - sidecar failed non-OOM
+//  7. StepFailed            - step failed non-OOM
+//  8. Failed                - generic fallthrough (unknown)
 func getFailureReason(pod *corev1.Pod) v1.TaskRunReason {
 	// Check pod-level eviction first, this is authoritative.
 	if pod.Status.Reason == evicted {
 		return v1.TaskRunReasonPodEvicted
 	}
 
-	// Check init containers. These run sequentially, so at most one will
-	// have a terminated state. Init containers include steps (step-*),
-	// native sidecars (sidecar-*), and internal Tekton containers
-	// (prepare, place-scripts, working-dir-initializer).
+	// Check init containers. Init containers include native sidecars
+	// (sidecar-*, with restartPolicy: Always) and internal Tekton
+	// containers (prepare, place-scripts, working-dir-initializer).
+	// Note: steps are regular containers, not init containers.
 	for _, s := range pod.Status.InitContainerStatuses {
 		if s.State.Terminated == nil {
 			continue
@@ -784,17 +786,13 @@ func getFailureReason(pod *corev1.Pod) v1.TaskRunReason {
 			if IsContainerSidecar(s.Name) {
 				return v1.TaskRunReasonSidecarOOM
 			}
-			if IsContainerStep(s.Name) {
-				return v1.TaskRunReasonStepOOM
-			}
+			return v1.TaskRunReasonInitContainerOOM
 		}
 		if s.State.Terminated.ExitCode != 0 {
 			if IsContainerSidecar(s.Name) {
 				return v1.TaskRunReasonSidecarFailed
 			}
-			if IsContainerStep(s.Name) {
-				return v1.TaskRunReasonStepFailed
-			}
+			return v1.TaskRunReasonInitContainerFailed
 		}
 	}
 

@@ -2007,7 +2007,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			},
 		},
 		want: v1.TaskRunStatus{
-			Status: statusFailure(v1.TaskRunReasonFailed.String(), "init container failed, \"init-A\" exited with code 1"),
+			Status: statusFailure(v1.TaskRunReasonInitContainerFailed.String(), "init container failed, \"init-A\" exited with code 1"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
@@ -2175,6 +2175,112 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Name:      "logging",
 					Container: "sidecar-logging",
 				}},
+				Artifacts:      &v1.Artifacts{},
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
+		desc: "report InitContainerFailed reason when prepare init container fails",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod",
+				Namespace: "foo",
+			},
+			Spec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name: "prepare",
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-A",
+				}},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				InitContainerStatuses: []corev1.ContainerStatus{{
+					Name: "prepare",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 255,
+							Reason:   "Error",
+						},
+					},
+				}},
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "step-A",
+					State: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason: "PodInitializing",
+						},
+					},
+				}},
+			},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusFailure(v1.TaskRunReasonInitContainerFailed.String(), `init container failed, "prepare" exited with code 255: Error`),
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason: "PodInitializing",
+						},
+					},
+					Name:      "A",
+					Container: "step-A",
+				}},
+				Sidecars:       []v1.SidecarState{},
+				Artifacts:      &v1.Artifacts{},
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
+		desc: "report InitContainerOOM reason when prepare init container is OOM-killed",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod",
+				Namespace: "foo",
+			},
+			Spec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name: "prepare",
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-A",
+				}},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				InitContainerStatuses: []corev1.ContainerStatus{{
+					Name: "prepare",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 137,
+							Reason:   "OOMKilled",
+						},
+					},
+				}},
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "step-A",
+					State: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason: "PodInitializing",
+						},
+					},
+				}},
+			},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusFailure(v1.TaskRunReasonInitContainerOOM.String(), `init container failed, "prepare" exited with code 137: OOMKilled`),
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason: "PodInitializing",
+						},
+					},
+					Name:      "A",
+					Container: "step-A",
+				}},
+				Sidecars:       []v1.SidecarState{},
 				Artifacts:      &v1.Artifacts{},
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
