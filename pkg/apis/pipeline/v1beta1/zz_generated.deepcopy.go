@@ -1232,6 +1232,25 @@ func (in *PipelineTask) DeepCopyInto(out *PipelineTask) {
 		*out = new(PipelineSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.StepSpecs != nil {
+		in, out := &in.StepSpecs, &out.StepSpecs
+		*out = make([]pipelinev1.TaskRunStepSpec, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.SidecarSpecs != nil {
+		in, out := &in.SidecarSpecs, &out.SidecarSpecs
+		*out = make([]pipelinev1.TaskRunSidecarSpec, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.ComputeResources != nil {
+		in, out := &in.ComputeResources, &out.ComputeResources
+		*out = new(corev1.ResourceRequirements)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
