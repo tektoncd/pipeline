@@ -1,7 +1,24 @@
 name: Tekton Integration
 # Adapted from https://github.com/mattmoor/mink/blob/master/.github/workflows/minkind.yaml
 
-on: [workflow_call]
+on:
+  workflow_call:
+    inputs:
+      k8s-versions:
+        description: 'JSON array of k8s versions e.g. ["v1.28.x","v1.34.x"]'
+        type: string
+        required: false
+        default: '["v1.28.x", "v1.34.x"]'
+      arm64-k8s-version:
+        description: 'k8s version to run on arm64 with stable'
+        type: string
+        required: false
+        default: 'v1.34.x'
+      feature-flags:
+        description: 'JSON array of feature flags e.g. ["stable","beta","alpha"]'
+        type: string
+        required: false
+        default: '["stable", "beta", "alpha"]'
 
 permissions:
   contents: read
@@ -14,7 +31,7 @@ defaults:
 jobs:
   e2e-tests:
     concurrency:
-      group: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.k8s-name }}-${{ matrix.feature-flags }}-${{ github.event.pull_request.number || github.ref }}
+      group: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
     name: e2e tests
     runs-on: ${{ matrix.os }}
@@ -25,31 +42,18 @@ jobs:
         - ubuntu-latest     # amd64
         - ubuntu-24.04-arm  # arm64
 
-        k8s-name:
-        - k8s-oldest             # 1.28
-        - k8s-latest             # 1.34
+        k8s-version: ${{ fromJSON(inputs.k8s-versions) }}
 
-        feature-flags:
-        - stable
-        - beta
-        - alpha
-
-        include:
-        - k8s-name: k8s-oldest
-          k8s-version: v1.28.x
-        - k8s-name: k8s-latest
-          k8s-version: v1.34.x
+        feature-flags: ${{ fromJSON(inputs.feature-flags) }}
 
         # Limit arm64: only run k8s-latest on arm64 (alpha and beta), skip oldest on arm64
         exclude:
-        - k8s-name: k8s-oldest
-          os: ubuntu-24.04-arm
-        - k8s-name: k8s-latest
-          os: ubuntu-24.04-arm
-          feature-flags: beta
-        - k8s-name: k8s-latest
-          os: ubuntu-24.04-arm
-          feature-flags: alpha
+        - os: ubuntu-24.04-arm
+
+        include:
+        - os: ubuntu-24.04-arm
+          k8s-version: ${{ inputs.arm64-k8s-version }}
+          feature-flags: stable
     env:
       KO_DOCKER_REPO: registry.local:5000/tekton
       CLUSTER_DOMAIN: c${{ github.run_id }}.local
