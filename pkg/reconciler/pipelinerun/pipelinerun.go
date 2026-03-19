@@ -405,9 +405,43 @@ func (c *Reconciler) resolvePipelineState(
 		)
 
 		getTaskRunFunc := func(name string) (*v1.TaskRun, error) {
-			return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
+			tr, err := c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
+			if err != nil {
+				return nil, err
+			}
+			// If the informer cache shows the TaskRun as Failed with a reason that
+			// could be caused by pod eviction, verify against the API server to guard
+			// against stale cache data causing premature PipelineRun failure.
+			// This addresses a race condition where a TaskRun transiently fails
+			// (e.g., pod eviction) and recovers, but the PipelineRun controller
+			// reads the stale Failed status.
+			// Only eviction-related reasons are verified; all other failure reasons
+			// (Cancelled, TimedOut, ImagePullFailed, ValidationFailed, etc.) are
+			// deterministic and cannot recover.
+			if cond := tr.Status.GetCondition(apis.ConditionSucceeded); cond != nil && cond.IsFalse() &&
+				(cond.Reason == v1.TaskRunReasonFailed.String() || cond.Reason == v1.TaskRunReasonPodEvicted.String()) {
+				freshTR, freshErr := c.PipelineClientSet.TektonV1().TaskRuns(pr.Namespace).Get(ctx, name, metav1.GetOptions{})
+				if freshErr != nil {
+					// If the TaskRun is not found on the API server, it was deleted;
+					// fall back to the cached status since retrying won't help.
+					if apierrors.IsNotFound(freshErr) {
+						return tr, nil
+					}
+					return nil, fmt.Errorf("cannot verify TaskRun %s failure status against API server: %w", name, freshErr)
+				}
+				freshCond := freshTR.Status.GetCondition(apis.ConditionSucceeded)
+				// Treat nil condition (status not yet set) as non-terminal;
+				// the TaskRun may still be initializing after being rescheduled.
+				if freshCond == nil || !freshCond.IsFalse() {
+					logging.FromContext(ctx).Infof("TaskRun %s appears failed in cache but is not failed in API server; using API server status", name)
+					return freshTR, nil
+				}
+			}
+			return tr, nil
 		}
 
+		// CustomRuns don't create pods directly — they delegate to external controllers,
+		// so they are not subject to pod eviction and don't need stale-cache verification.
 		getCustomRunFunc := func(name string) (*v1beta1.CustomRun, error) {
 			r, err := c.customRunLister.CustomRuns(pr.Namespace).Get(name)
 			if err != nil {
