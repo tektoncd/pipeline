@@ -1146,6 +1146,22 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask, pr.Status, facts)
 	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
 	params = append(params, rpt.PipelineTask.Params...)
+
+	// Apply Pipeline-level overrides first, then PipelineRun-level overrides
+	// take precedence. This gives the chain: Task defaults < Pipeline < PipelineRun.
+	stepSpecs := rpt.PipelineTask.StepSpecs
+	if len(taskRunSpec.StepSpecs) > 0 {
+		stepSpecs = taskRunSpec.StepSpecs
+	}
+	sidecarSpecs := rpt.PipelineTask.SidecarSpecs
+	if len(taskRunSpec.SidecarSpecs) > 0 {
+		sidecarSpecs = taskRunSpec.SidecarSpecs
+	}
+	computeResources := rpt.PipelineTask.ComputeResources
+	if taskRunSpec.ComputeResources != nil {
+		computeResources = taskRunSpec.ComputeResources
+	}
+
 	tr := &v1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            taskRunName,
@@ -1159,9 +1175,9 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 			Params:             params,
 			ServiceAccountName: taskRunSpec.ServiceAccountName,
 			PodTemplate:        taskRunSpec.PodTemplate,
-			StepSpecs:          taskRunSpec.StepSpecs,
-			SidecarSpecs:       taskRunSpec.SidecarSpecs,
-			ComputeResources:   taskRunSpec.ComputeResources,
+			StepSpecs:          stepSpecs,
+			SidecarSpecs:       sidecarSpecs,
+			ComputeResources:   computeResources,
 		},
 	}
 

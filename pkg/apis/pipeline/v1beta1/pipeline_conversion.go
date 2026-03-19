@@ -190,6 +190,9 @@ func (pt PipelineTask) convertTo(ctx context.Context, sink *v1.PipelineTask, met
 	}
 
 	sink.Timeout = pt.Timeout
+	sink.StepSpecs = pt.StepSpecs
+	sink.SidecarSpecs = pt.SidecarSpecs
+	sink.ComputeResources = pt.ComputeResources
 	return nil
 }
 
@@ -239,6 +242,9 @@ func (pt *PipelineTask) convertFrom(ctx context.Context, source v1.PipelineTask,
 	}
 
 	pt.Timeout = source.Timeout
+	pt.StepSpecs = source.StepSpecs
+	pt.SidecarSpecs = source.SidecarSpecs
+	pt.ComputeResources = source.ComputeResources
 	return nil
 }
 

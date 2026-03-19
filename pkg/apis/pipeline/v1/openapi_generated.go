@@ -2044,11 +2044,55 @@ func schema_pkg_apis_pipeline_v1_PipelineTask(ref common.ReferenceCallback) comm
 							Format:      "",
 						},
 					},
+					"stepSpecs": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "StepSpecs is used to override the compute resources of steps in the referenced Task at the Pipeline level. These values take precedence over the Task's step resources but can be overridden by PipelineRun's taskRunSpecs[].stepSpecs.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec"),
+									},
+								},
+							},
+						},
+					},
+					"sidecarSpecs": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "SidecarSpecs is used to override the compute resources of sidecars in the referenced Task at the Pipeline level. These values take precedence over the Task's sidecar resources but can be overridden by PipelineRun's taskRunSpecs[].sidecarSpecs.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec"),
+									},
+								},
+							},
+						},
+					},
+					"computeResources": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Compute resources to use for this PipelineTask. These values take precedence over the Task's compute resources but can be overridden by PipelineRun's taskRunSpecs[].computeResources.",
+							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.EmbeddedTask", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Matrix", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspacePipelineTaskBinding", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.EmbeddedTask", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Matrix", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspacePipelineTaskBinding", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 

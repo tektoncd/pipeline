@@ -1292,6 +1292,10 @@
       "description": "PipelineTask defines a task in a Pipeline, passing inputs from both Params and from the output of previous tasks.",
       "type": "object",
       "properties": {
+        "computeResources": {
+          "description": "Compute resources to use for this PipelineTask.",
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "description": {
           "description": "Description is the description of this task within the context of a Pipeline. This description may be used to populate a UI.",
           "type": "string"
@@ -1343,6 +1347,24 @@
           "items": {
             "type": "string",
             "default": ""
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "sidecarSpecs": {
+          "description": "SidecarSpecs is used to override the compute resources of sidecars in the referenced Task at the Pipeline level.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TaskRunSidecarSpec"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "stepSpecs": {
+          "description": "StepSpecs is used to override the compute resources of steps in the referenced Task at the Pipeline level.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TaskRunStepSpec"
           },
           "x-kubernetes-list-type": "atomic"
         },
