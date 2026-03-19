@@ -9,6 +9,21 @@ on:
         required: false
         default: false
         type: boolean
+      k8s-versions:
+        description: 'JSON array of k8s versions e.g. ["v1.28.x","v1.34.x"]'
+        type: string
+        required: false
+        default: '["v1.28.x", "v1.34.x"]'
+      arm64-k8s-version:
+        description: 'k8s version to run on arm64 with stable'
+        type: string
+        required: false
+        default: 'v1.34.x'
+      feature-flags:
+        description: 'JSON array of feature flags e.g. ["stable","beta","alpha"]'
+        type: string
+        required: false
+        default: '["stable", "beta", "alpha"]'
 
 permissions:
   contents: read
@@ -44,13 +59,30 @@ jobs:
   e2e-tests:
     needs: [compute-matrix]
     concurrency:
-      group: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.k8s-name }}-${{ matrix.feature-flags }}-${{ github.event.pull_request.number || github.ref }}
+      group: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
     name: e2e tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false # Keep running if one leg fails.
-      matrix: ${{ fromJSON(needs.compute-matrix.outputs.matrix) }}
+      matrix:
+        os:
+        - ubuntu-latest     # amd64
+        - ubuntu-24.04-arm  # arm64
+
+        k8s-version: ${{ fromJSON(inputs.k8s-versions) }}
+
+        feature-flags: ${{ fromJSON(inputs.feature-flags) }}
+
+        # arm64: exclude all generated combinations, then include back
+        # exactly one (arm64-k8s-version + stable) via the include block below
+        exclude:
+        - os: ubuntu-24.04-arm
+
+        include:
+          - os: ubuntu-24.04-arm
+            k8s-version: ${{ inputs.arm64-k8s-version }}
+            feature-flags: stable
     env:
       KO_DOCKER_REPO: registry.local:5000/tekton
       CLUSTER_DOMAIN: c${{ github.run_id }}.local
