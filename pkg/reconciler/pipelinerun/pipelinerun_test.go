@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -8352,8 +8353,7 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 
 			for _, action := range actions {
 				if action != nil {
-					resource := action.GetResource().Resource
-					if resource == "taskruns" {
+					if action.GetVerb() == "create" && action.GetResource().Resource == "taskruns" {
 						t.Fatalf("Expected client to not have created a TaskRun for the PipelineRun, but it did for %s", tt.name)
 					}
 				}
@@ -19116,5 +19116,518 @@ func TestMemberOfLookup(t *testing.T) {
 				t.Errorf("memberOfLookup() = %q, expected %q", actual, tc.expected)
 			}
 		})
+	}
+}
+
+// TestReconcile_DeferFailureWhenTaskRunRecoveredInAPIServer tests that when the informer
+// cache shows a TaskRun as Failed but the API server shows it as Running, the PipelineRun
+// failure is deferred — the PipelineRun stays Running.
+func TestReconcile_DeferFailureWhenTaskRunRecoveredInAPIServer(t *testing.T) {
+	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-run-defer-failure"
+	trName := "test-pipeline-run-defer-failure-hello-world-1"
+
+	// TaskRun in informer cache is Failed due to pod eviction
+	trs := []*v1.TaskRun{createHelloWorldTaskRunWithStatusTaskLabel(t, trName, namespace,
+		prName, "test-pipeline", "", "hello-world-1",
+		apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1.TaskRunReasonPodEvicted.String(),
+			Message: "pod eviction",
+		})}
+
+	// PipelineRun is Running
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+status:
+  conditions:
+  - type: Succeeded
+    status: Unknown
+    reason: Running
+  startTime: "2022-01-01T00:00:00Z"
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: %s
+    pipelineTaskName: hello-world-1
+`, prName, namespace, trName))}
+
+	ps := []*v1.Pipeline{simpleHelloWorldPipeline}
+	ts := []*v1.Task{simpleHelloWorldTask}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	// Override the fake client to return a Running TaskRun when queried from API server
+	recoveredTR := trs[0].DeepCopy()
+	recoveredTR.Status.SetCondition(&apis.Condition{
+		Type:   apis.ConditionSucceeded,
+		Status: corev1.ConditionUnknown,
+		Reason: "Running",
+	})
+	prt.TestAssets.Clients.Pipeline.PrependReactor("get", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		getAction := action.(ktesting.GetAction)
+		if getAction.GetName() == trName {
+			return true, recoveredTR, nil
+		}
+		return false, nil, nil
+	})
+
+	reconciledRun, _ := prt.reconcileRun(namespace, prName, nil, false)
+
+	// PipelineRun should remain Running (failure deferred)
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil {
+		t.Fatal("Expected condition on PipelineRun, got nil")
+	}
+	if !condition.IsUnknown() {
+		t.Errorf("Expected PipelineRun to remain Running (Unknown), got status %s reason %s", condition.Status, condition.Reason)
+	}
+}
+
+// TestReconcile_ConfirmFailureWhenTaskRunFailedInAPIServer tests that when both the
+// informer cache and API server show the TaskRun as Failed, the PipelineRun is marked Failed.
+func TestReconcile_ConfirmFailureWhenTaskRunFailedInAPIServer(t *testing.T) {
+	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-run-confirm-failure"
+	trName := "test-pipeline-run-confirm-failure-hello-world-1"
+
+	// TaskRun is Failed due to pod eviction in informer cache
+	trs := []*v1.TaskRun{createHelloWorldTaskRunWithStatusTaskLabel(t, trName, namespace,
+		prName, "test-pipeline", "", "hello-world-1",
+		apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1.TaskRunReasonPodEvicted.String(),
+			Message: "pod eviction",
+		})}
+
+	// PipelineRun is Running
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+status:
+  conditions:
+  - type: Succeeded
+    status: Unknown
+    reason: Running
+  startTime: "2022-01-01T00:00:00Z"
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: %s
+    pipelineTaskName: hello-world-1
+`, prName, namespace, trName))}
+
+	ps := []*v1.Pipeline{simpleHelloWorldPipeline}
+	ts := []*v1.Task{simpleHelloWorldTask}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	// API server also shows Failed with PodEvicted (default fake client behavior returns what's in the store)
+	reconciledRun, _ := prt.reconcileRun(namespace, prName, nil, false)
+
+	// PipelineRun should be marked Failed since API server confirmed the eviction failure
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil {
+		t.Fatal("Expected condition on PipelineRun, got nil")
+	}
+	if !condition.IsFalse() {
+		t.Errorf("Expected PipelineRun to be marked Failed, got status %s reason %s", condition.Status, condition.Reason)
+	}
+}
+
+// TestReconcile_APIServerErrorReturnsError tests that when the API server returns
+// an error during TaskRun verification, the reconciler returns an error to trigger
+// a retry instead of acting on potentially stale cached data.
+func TestReconcile_APIServerErrorReturnsError(t *testing.T) {
+	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-run-api-error"
+	trName := "test-pipeline-run-api-error-hello-world-1"
+
+	// TaskRun is Failed due to pod eviction in informer cache
+	trs := []*v1.TaskRun{createHelloWorldTaskRunWithStatusTaskLabel(t, trName, namespace,
+		prName, "test-pipeline", "", "hello-world-1",
+		apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1.TaskRunReasonPodEvicted.String(),
+			Message: "pod eviction",
+		})}
+
+	// PipelineRun is Running
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+status:
+  conditions:
+  - type: Succeeded
+    status: Unknown
+    reason: Running
+  startTime: "2022-01-01T00:00:00Z"
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: %s
+    pipelineTaskName: hello-world-1
+`, prName, namespace, trName))}
+
+	ps := []*v1.Pipeline{simpleHelloWorldPipeline}
+	ts := []*v1.Task{simpleHelloWorldTask}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	// Make API server Get for TaskRuns return an error
+	prt.TestAssets.Clients.Pipeline.PrependReactor("get", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		getAction := action.(ktesting.GetAction)
+		if getAction.GetName() == trName {
+			return true, nil, errors.New("etcdserver: leader changed")
+		}
+		return false, nil, nil
+	})
+
+	// Reconcile should return an error, triggering a retry
+	c := prt.TestAssets.Controller
+	reconcileErr := c.Reconciler.Reconcile(prt.TestAssets.Ctx, namespace+"/"+prName)
+	if reconcileErr == nil {
+		t.Fatal("Expected reconcile to return an error when API server is unavailable, got nil")
+	}
+	if !strings.Contains(reconcileErr.Error(), "cannot verify TaskRun") {
+		t.Errorf("Expected error about TaskRun verification, got: %v", reconcileErr)
+	}
+}
+
+// TestReconcile_TaskRunNotFoundFallsBackToCache tests that when the API server returns
+// NotFound for a TaskRun during verification (e.g., TaskRun was deleted), the cached
+// Failed status is used and the PipelineRun is marked Failed.
+func TestReconcile_TaskRunNotFoundFallsBackToCache(t *testing.T) {
+	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-run-notfound"
+	trName := "test-pipeline-run-notfound-hello-world-1"
+
+	// TaskRun is Failed due to pod eviction in informer cache
+	trs := []*v1.TaskRun{createHelloWorldTaskRunWithStatusTaskLabel(t, trName, namespace,
+		prName, "test-pipeline", "", "hello-world-1",
+		apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1.TaskRunReasonPodEvicted.String(),
+			Message: "pod eviction",
+		})}
+
+	// PipelineRun is Running
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+status:
+  conditions:
+  - type: Succeeded
+    status: Unknown
+    reason: Running
+  startTime: "2022-01-01T00:00:00Z"
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: %s
+    pipelineTaskName: hello-world-1
+`, prName, namespace, trName))}
+
+	ps := []*v1.Pipeline{simpleHelloWorldPipeline}
+	ts := []*v1.Task{simpleHelloWorldTask}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	// Make API server Get for TaskRuns return NotFound
+	prt.TestAssets.Clients.Pipeline.PrependReactor("get", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		getAction := action.(ktesting.GetAction)
+		if getAction.GetName() == trName {
+			return true, nil, apierrors.NewNotFound(action.GetResource().GroupResource(), trName)
+		}
+		return false, nil, nil
+	})
+
+	reconciledRun, _ := prt.reconcileRun(namespace, prName, nil, false)
+
+	// PipelineRun should be Failed (falls back to cached eviction failure since API server returned NotFound)
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil {
+		t.Fatal("Expected condition on PipelineRun, got nil")
+	}
+	if !condition.IsFalse() {
+		t.Errorf("Expected PipelineRun to be marked Failed (fallback to cache on NotFound), got status %s reason %s", condition.Status, condition.Reason)
+	}
+}
+
+// TestReconcile_CancelledTaskRunNoFalsePositive tests that when a TaskRun is cancelled
+// (reason != "Failed"), no API server verification is performed and the PipelineRun is
+// correctly marked Failed.
+func TestReconcile_CancelledTaskRunNoFalsePositive(t *testing.T) {
+	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-run-cancelled-tr"
+	trName := "test-pipeline-run-cancelled-tr-hello-world-1"
+
+	// TaskRun is Failed with reason TaskRunCancelled in informer cache
+	trs := []*v1.TaskRun{createHelloWorldTaskRunWithStatusTaskLabel(t, trName, namespace,
+		prName, "test-pipeline", "", "hello-world-1",
+		apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1.TaskRunReasonCancelled.String(),
+			Message: "TaskRun was cancelled",
+		})}
+
+	// PipelineRun is Running
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+status:
+  conditions:
+  - type: Succeeded
+    status: Unknown
+    reason: Running
+  startTime: "2022-01-01T00:00:00Z"
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: %s
+    pipelineTaskName: hello-world-1
+`, prName, namespace, trName))}
+
+	ps := []*v1.Pipeline{simpleHelloWorldPipeline}
+	ts := []*v1.Task{simpleHelloWorldTask}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	// API server also shows the TaskRun as cancelled (default fake client behavior)
+	reconciledRun, _ := prt.reconcileRun(namespace, prName, nil, false)
+
+	// PipelineRun should be marked Failed — cancelled TaskRun is a legitimate failure
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil {
+		t.Fatal("Expected condition on PipelineRun, got nil")
+	}
+	if !condition.IsFalse() {
+		t.Errorf("Expected PipelineRun to be marked Failed for cancelled TaskRun, got status %s reason %s", condition.Status, condition.Reason)
+	}
+}
+
+// TestReconcile_TimedOutTaskRunNoFalsePositive tests that when a TaskRun has timed out
+// (reason != "Failed"), no API server verification is performed and the PipelineRun is
+// correctly marked Failed.
+func TestReconcile_TimedOutTaskRunNoFalsePositive(t *testing.T) {
+	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-run-timedout-tr"
+	trName := "test-pipeline-run-timedout-tr-hello-world-1"
+
+	// TaskRun is Failed with reason TaskRunTimeout in informer cache
+	trs := []*v1.TaskRun{createHelloWorldTaskRunWithStatusTaskLabel(t, trName, namespace,
+		prName, "test-pipeline", "", "hello-world-1",
+		apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1.TaskRunReasonTimedOut.String(),
+			Message: "TaskRun timed out",
+		})}
+
+	// PipelineRun is Running
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+status:
+  conditions:
+  - type: Succeeded
+    status: Unknown
+    reason: Running
+  startTime: "2022-01-01T00:00:00Z"
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: %s
+    pipelineTaskName: hello-world-1
+`, prName, namespace, trName))}
+
+	ps := []*v1.Pipeline{simpleHelloWorldPipeline}
+	ts := []*v1.Task{simpleHelloWorldTask}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	// API server also shows the TaskRun as timed out (default fake client behavior)
+	reconciledRun, _ := prt.reconcileRun(namespace, prName, nil, false)
+
+	// PipelineRun should be marked Failed — timed out TaskRun is a legitimate failure
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil {
+		t.Fatal("Expected condition on PipelineRun, got nil")
+	}
+	if !condition.IsFalse() {
+		t.Errorf("Expected PipelineRun to be marked Failed for timed out TaskRun, got status %s reason %s", condition.Status, condition.Reason)
+	}
+}
+
+// TestReconcile_GenericFailedTaskRunSkipsAPIVerification tests that when a TaskRun
+// fails with the generic "Failed" reason (e.g., script exit code 1, init container crash),
+// no API server verification is performed — the PipelineRun is marked Failed directly
+// using the cached status. Only PodEvicted triggers API server verification.
+func TestReconcile_GenericFailedTaskRunSkipsAPIVerification(t *testing.T) {
+	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-run-generic-failed"
+	trName := "test-pipeline-run-generic-failed-hello-world-1"
+
+	// TaskRun is Failed with generic "Failed" reason in informer cache
+	trs := []*v1.TaskRun{createHelloWorldTaskRunWithStatusTaskLabel(t, trName, namespace,
+		prName, "test-pipeline", "", "hello-world-1",
+		apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1.TaskRunReasonFailed.String(),
+			Message: "init container failed",
+		})}
+
+	// PipelineRun is Running
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+status:
+  conditions:
+  - type: Succeeded
+    status: Unknown
+    reason: Running
+  startTime: "2022-01-01T00:00:00Z"
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: %s
+    pipelineTaskName: hello-world-1
+`, prName, namespace, trName))}
+
+	ps := []*v1.Pipeline{simpleHelloWorldPipeline}
+	ts := []*v1.Task{simpleHelloWorldTask}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	// No reactor needed — generic "Failed" should NOT trigger API server verification.
+	// The PipelineRun should be marked Failed using the cached status directly.
+	reconciledRun, clients := prt.reconcileRun(namespace, prName, nil, false)
+
+	// Verify no GET was issued for the TaskRun via the Pipeline clientset
+	for _, action := range clients.Pipeline.Actions() {
+		if action.GetVerb() == "get" && action.GetResource().Resource == "taskruns" {
+			t.Errorf("Expected no API server GET for TaskRun with generic Failed reason, but got one")
+		}
+	}
+
+	// PipelineRun should be marked Failed — generic failure is deterministic
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil {
+		t.Fatal("Expected condition on PipelineRun, got nil")
+	}
+	if !condition.IsFalse() {
+		t.Errorf("Expected PipelineRun to be marked Failed for generic failed TaskRun, got status %s reason %s", condition.Status, condition.Reason)
 	}
 }
