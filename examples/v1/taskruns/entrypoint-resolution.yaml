@@ -8,21 +8,21 @@ spec:
     # Multi-arch image with no command defined. We should look up the command
     # for each platform-specific image and pass it to the Pod, which selects
     # the right command at runtime based on the node's runtime platform.
-    - image: ghcr.io/tektoncd/pipeline/nop-8eac7c133edad5df719dc37b36b62482:latest
+    - image: ghcr.io/tektoncd/pipeline/nop-8eac7c133edad5df719dc37b36b62482@sha256:5a587635b5b355d51def6380ba344ff42a52fa7c60013f405df3bba80b0702e4
 
     # Multi-arch image with no command defined, but with args. We'll look
     # up the commands and pass it to the entrypoint binary via env var, then
     # append the specified args.
-    - image: mirror.gcr.io/ubuntu
+    - image: mirror.gcr.io/ubuntu@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
       args: ['-c', 'echo', 'hello']
 
     # Multi-arch image, but since we specify `script` we don't need to look it
     # up and pass it down.
-    - image: mirror.gcr.io/ubuntu
+    - image: mirror.gcr.io/ubuntu@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
       script: echo hello
 
     # Multi-arch image, but since we specify `command` and `args` we don't
     # need to look it up and pass it down.
-    - image: mirror.gcr.io/ubuntu
+    - image: mirror.gcr.io/ubuntu@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
       command: ['sh', '-c']
       args: ['echo hello']

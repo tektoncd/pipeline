@@ -74,7 +74,7 @@ kubectl create clusterrolebinding cluster-admin-binding-someusername \
 
 # Example, Tekton v0.9.1
 export TEKTON_VERSION=0.9.1
-kubectl apply --filename  https://storage.googleapis.com/tekton-releases/pipeline/previous/v${TEKTON_VERSION}/release.yaml
+kubectl apply --filename  https://infra.tekton.dev/tekton-releases/pipeline/previous/v${TEKTON_VERSION}/release.yaml
 ```
 
 ### Install tasks and pipelines

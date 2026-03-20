@@ -367,6 +367,13 @@ func (c *Reconciler) resolvePipelineState(
 ) (resources.PipelineRunState, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "resolvePipelineState")
 	defer span.End()
+
+	// List VerificationPolicies once per reconcile for trusted resources (used by all pipeline tasks).
+	vp, err := c.verificationPolicyLister.VerificationPolicies(pr.Namespace).List(labels.Everything())
+	if err != nil {
+		return nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", pr.Namespace, err)
+	}
+
 	// Resolve each pipeline task individually because they each could have a different reference context (remote or local).
 	for _, pipelineTask := range pipelineTasks {
 		// We need the TaskRun name to ensure that we don't perform an additional remote resolution request for a PipelineTask
@@ -376,12 +383,6 @@ func (c *Reconciler) resolvePipelineState(
 			pipelineTask.Name,
 			pr.Name,
 		)
-
-		// list VerificationPolicies for trusted resources
-		vp, err := c.verificationPolicyLister.VerificationPolicies(pr.Namespace).List(labels.Everything())
-		if err != nil {
-			return nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", pr.Namespace, err)
-		}
 
 		getChildPipelineRunFunc := func(name string) (*v1.PipelineRun, error) {
 			return c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(name)

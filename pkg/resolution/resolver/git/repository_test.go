@@ -20,7 +20,9 @@ package git
 import (
 	"context"
 	"encoding/base64"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"testing"
@@ -169,4 +171,204 @@ func TestCheckout(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetFileContent(t *testing.T) {
+	// Create a file outside any repo to simulate a sensitive target.
+	sensitiveDir := t.TempDir()
+	sensitiveFile := filepath.Join(sensitiveDir, "sa-token")
+	if err := os.WriteFile(sensitiveFile, []byte("stolen-credential"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a real git repository with a tracked file.
+	// Resolve the temp dir so filepath.Rel works on platforms where /tmp
+	// is a symlink (e.g. macOS /tmp -> /private/tmp).
+	repoDir, _ := createTestRepo(t, []commitForRepo{
+		{Dir: "tasks", Filename: "example.yaml", Content: "valid content"},
+	})
+	// Add a symlink that escapes and commit it.
+	gitCmd := getGitCmd(t, repoDir)
+	if err := os.Symlink(sensitiveFile, filepath.Join(repoDir, "escape-link")); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := gitCmd("add", "escape-link").Output(); err != nil {
+		t.Fatalf("git add symlink: %q: %v", out, err)
+	}
+	// Add a nested symlink escape.
+	nestedDir := filepath.Join(repoDir, "subdir")
+	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(sensitiveFile, filepath.Join(nestedDir, "nested-link")); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := gitCmd("add", "subdir/nested-link").Output(); err != nil {
+		t.Fatalf("git add nested symlink: %q: %v", out, err)
+	}
+	if out, err := gitCmd("commit", "-m", "add symlinks").Output(); err != nil {
+		t.Fatalf("git commit: %q: %v", out, err)
+	}
+
+	repo := &repository{directory: repoDir}
+
+	tests := []struct {
+		name    string
+		path    string
+		wantErr bool
+	}{
+		{
+			name: "valid relative path",
+			path: "tasks/example.yaml",
+		},
+		{
+			name:    "path traversal with dot-dot",
+			path:    "../../etc/passwd",
+			wantErr: true,
+		},
+		{
+			name:    "path traversal to parent",
+			path:    "../secret",
+			wantErr: true,
+		},
+		{
+			name:    "path traversal deeply nested",
+			path:    "../../../../var/run/secrets/kubernetes.io/serviceaccount/token",
+			wantErr: true,
+		},
+		{
+			name:    "path traversal embedded",
+			path:    "tasks/../../../../../../etc/passwd",
+			wantErr: true,
+		},
+		{
+			name:    "non-existent file",
+			path:    "does-not-exist.yaml",
+			wantErr: true,
+		},
+		{
+			name:    "symlink escaping repo directory",
+			path:    "escape-link",
+			wantErr: true,
+		},
+		{
+			name:    "symlink in subdirectory escaping repo",
+			path:    filepath.Join("subdir", "nested-link"),
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			content, err := repo.getFileContent(tc.path)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got nil (content: %q)", string(content))
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			}
+		})
+	}
+}
+
+// TestGetFileContent_SymlinkEscape_RealGitRepo creates a real git
+// repository with a committed symlink that points outside the repo,
+// clones it, checks out the revision, and verifies that getFileContent
+// rejects the symlink path. This exercises the full clone → checkout →
+// read flow with an actual git repository.
+func TestGetFileContent_SymlinkEscape_RealGitRepo(t *testing.T) {
+	// Create a sensitive file outside any repo to simulate a target.
+	sensitiveDir := t.TempDir()
+	sensitiveFile := filepath.Join(sensitiveDir, "sa-token")
+	if err := os.WriteFile(sensitiveFile, []byte("stolen-credential"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a git repository with a normal file and a symlink escape.
+	repoDir, _ := createTestRepo(t, []commitForRepo{
+		{Filename: "task.yaml", Content: "apiVersion: tekton.dev/v1\nkind: Task"},
+	})
+
+	// Add a symlink that points to the sensitive file and commit it.
+	gitCmd := getGitCmd(t, repoDir)
+	symlinkPath := filepath.Join(repoDir, "escape-link")
+	if err := os.Symlink(sensitiveFile, symlinkPath); err != nil {
+		t.Fatalf("failed to create symlink: %v", err)
+	}
+	if out, err := gitCmd("add", "escape-link").Output(); err != nil {
+		t.Fatalf("git add symlink failed: %q: %v", out, err)
+	}
+	if out, err := gitCmd("commit", "-m", "add symlink escape").Output(); err != nil {
+		t.Fatalf("git commit symlink failed: %q: %v", out, err)
+	}
+
+	// Also add a symlink in a subdirectory.
+	subdir := filepath.Join(repoDir, "configs")
+	if err := os.MkdirAll(subdir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	nestedSymlink := filepath.Join(subdir, "nested-escape")
+	if err := os.Symlink(sensitiveFile, nestedSymlink); err != nil {
+		t.Fatalf("failed to create nested symlink: %v", err)
+	}
+	if out, err := gitCmd("add", "configs/nested-escape").Output(); err != nil {
+		t.Fatalf("git add nested symlink failed: %q: %v", out, err)
+	}
+	if out, err := gitCmd("commit", "-m", "add nested symlink escape").Output(); err != nil {
+		t.Fatalf("git commit nested symlink failed: %q: %v", out, err)
+	}
+
+	// Clone the repo (as the resolver would) and checkout main.
+	ctx := t.Context()
+	repo, cleanup, err := remote{url: repoDir}.clone(ctx)
+	if err != nil {
+		t.Fatalf("failed to clone test repo: %v", err)
+	}
+	defer cleanup()
+
+	if err := repo.checkout(ctx, "main"); err != nil {
+		t.Fatalf("failed to checkout main: %v", err)
+	}
+
+	// Verify a normal file can be read.
+	content, err := repo.getFileContent("task.yaml")
+	if err != nil {
+		t.Fatalf("expected to read normal file, got error: %v", err)
+	}
+	if !contains(string(content), "tekton.dev") {
+		t.Fatalf("unexpected content: %s", content)
+	}
+
+	// Verify the symlink escape is blocked.
+	tests := []struct {
+		name string
+		path string
+	}{
+		{name: "top-level symlink escape", path: "escape-link"},
+		{name: "nested symlink escape", path: "configs/nested-escape"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			content, err := repo.getFileContent(tc.path)
+			if err == nil {
+				t.Fatalf("symlink escape was NOT blocked — read %d bytes: %q", len(content), string(content))
+			}
+		})
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && searchSubstring(s, substr)
+}
+
+func searchSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

@@ -14,7 +14,7 @@ spec:
       optional: true
     steps:
     - name: check-workspaces
-      image: mirror.gcr.io/alpine
+      image: mirror.gcr.io/alpine@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
       script: |
         if [ "$(workspaces.source-code.bound)" == "true" ]; then
           printf "Source code workspace was provided at %s!\n" "$(workspaces.source-code.path)"

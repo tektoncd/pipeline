@@ -3,6 +3,10 @@ name: Tekton Integration
 
 on: [workflow_call]
 
+permissions:
+  contents: read
+  checks: write
+
 defaults:
   run:
     shell: bash
@@ -111,7 +115,7 @@ jobs:
         name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}
         path: ${{ env.ARTIFACTS }}
 
-    - uses: chainguard-dev/actions/kind-diag@5e84f02889db0de213947c80a5d75b51bb899048 # v1.6.7
+    - uses: chainguard-dev/actions/kind-diag@7440e20e3e0bb180a2f6e330bcd53504e2ac8980 # v1.6.8
       if: ${{ failure() }}
       with:
         artifact-name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}-logs

@@ -734,3 +734,43 @@ func TestPipelineRun_GetTaskRunSpec(t *testing.T) {
 		}
 	}
 }
+
+func TestPipelineRunIsSuccessful(t *testing.T) {
+	tcs := []struct {
+		name        string
+		pipelineRun *v1beta1.PipelineRun
+		want        bool
+	}{{
+		name: "nil pipelinerun",
+		want: false,
+	}, {
+		name: "still running",
+		pipelineRun: &v1beta1.PipelineRun{Status: v1beta1.PipelineRunStatus{Status: v1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		}}}}},
+		want: false,
+	}, {
+		name: "succeeded",
+		pipelineRun: &v1beta1.PipelineRun{Status: v1beta1.PipelineRunStatus{Status: v1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
+		}}}}},
+		want: true,
+	}, {
+		name: "failed",
+		pipelineRun: &v1beta1.PipelineRun{Status: v1beta1.PipelineRunStatus{Status: v1.Status{Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+		}}}}},
+		want: false,
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.pipelineRun.IsSuccessful()
+			if tc.want != got {
+				t.Errorf("wanted IsSuccessful to be %t but was %t", tc.want, got)
+			}
+		})
+	}
+}
