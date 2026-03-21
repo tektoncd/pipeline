@@ -176,6 +176,8 @@ func TestCacheTTLExpiration(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 
+	// cacheOperationStore proves this is a fresh resolution, not a cache hit
+	// (a cache hit would produce cacheOperationRetrieve instead)
 	if resource.Annotations()[cacheOperationKey] != cacheOperationStore {
 		t.Fatalf("expected cache miss and cache operation 'store', got %s", resource.Annotations()[cacheOperationKey])
 	}
@@ -395,7 +397,7 @@ func TestGetCachedOrResolveFromRemote(t *testing.T) {
 
 		// THEN
 		if cachePopulationResult == nil {
-			t.Error("expected resolved recourse, got nil")
+			t.Error("expected resolved resource, got nil")
 		}
 
 		if cachePopulationErr != nil {
@@ -408,6 +410,59 @@ func TestGetCachedOrResolveFromRemote(t *testing.T) {
 
 		if castingFailedErr == nil {
 			t.Fatal("expected casting error, got nil")
+		}
+	})
+
+	t.Run("corrupted cache entry is removed and subsequent resolution succeeds", func(t *testing.T) {
+		// GIVEN
+		resolveFn := func() (resolutionframework.ResolvedResource, error) {
+			return &mockResolvedResource{data: []byte("test data")}, nil
+		}
+		cacheWrapper := newResolverCache(100, 1*time.Hour)
+		key := generateCacheKey(bundleresolution.LabelValueBundleResolverType, params)
+		defer cacheWrapper.Clear()
+
+		// WHEN
+		firstAttemptResult, firstAttemptErr := cacheWrapper.GetCachedOrResolveFromRemote(
+			params,
+			bundleresolution.LabelValueBundleResolverType,
+			resolveFn,
+		)
+		cacheWrapper.cache.Add(key, "poisoned-resource", cacheWrapper.TTL())
+		secondAttemptResult, castingFailedErr := cacheWrapper.GetCachedOrResolveFromRemote(
+			params,
+			bundleresolution.LabelValueBundleResolverType,
+			resolveFn,
+		)
+		thirdAttemptResult, thirdAttemptErr := cacheWrapper.GetCachedOrResolveFromRemote(
+			params,
+			bundleresolution.LabelValueBundleResolverType,
+			resolveFn,
+		)
+
+		// THEN
+		if firstAttemptResult == nil {
+			t.Error("expected initial cache population to return a resource, got nil")
+		}
+
+		if firstAttemptErr != nil {
+			t.Fatalf("unexpected cache population error: %v", firstAttemptErr)
+		}
+
+		if secondAttemptResult != nil {
+			t.Errorf("expected nil in second attempt, got %v", secondAttemptResult)
+		}
+
+		if castingFailedErr == nil {
+			t.Fatal("expected casting error, got nil")
+		}
+
+		if thirdAttemptResult == nil {
+			t.Error("expected fresh resolution to succeed after corrupted entry removal, got nil")
+		}
+
+		if thirdAttemptErr != nil {
+			t.Fatalf("expected fresh resolution to succeed, got error: %v", thirdAttemptErr)
 		}
 	})
 }

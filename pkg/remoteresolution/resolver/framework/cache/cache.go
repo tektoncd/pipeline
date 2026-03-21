@@ -92,7 +92,8 @@ func (c *resolverCache) GetCachedOrResolveFromRemote(
 	if untyped, found := c.cache.Get(key); found {
 		cached, ok := untyped.(resolutionframework.ResolvedResource)
 		if !ok {
-			c.infow("Failed casting cached resource", "key", key)
+			c.cache.Remove(key)
+			c.infow("Removed corrupted cache entry: type assertion failed", "key", key)
 			return nil, errors.New("failed casting cached resource")
 		}
 
