@@ -48,6 +48,8 @@ func init() {
 func TestMain(m *testing.M) {
 	flag.Parse()
 
+	fmt.Fprintf(os.Stderr, "Using kubeconfig at `%s` with cluster `%s`\n", knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster)
+
 	// Parse test annotations from source files with strict requirements
 	opts := annotation.DefaultScanOptions()
 	manifest, err := annotation.ScanTestAnnotations(".", opts)
@@ -67,7 +69,6 @@ func TestMain(m *testing.M) {
 	runFlag := flag.Lookup("test.run")
 	if runFlag != nil && runFlag.Value.String() != "" {
 		exitCode := m.Run()
-		fmt.Fprintf(os.Stderr, "Using kubeconfig at `%s` with cluster `%s`\n", knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster)
 		os.Exit(exitCode)
 	}
 
@@ -96,7 +97,6 @@ func TestMain(m *testing.M) {
 			exitCode = m.Run()
 			if exitCode != 0 {
 				fmt.Fprintf(os.Stderr, "Serial tests failed with exit code %d\n", exitCode)
-				fmt.Fprintf(os.Stderr, "Using kubeconfig at `%s` with cluster `%s`\n", knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster)
 				os.Exit(exitCode)
 			}
 		}
@@ -108,7 +108,6 @@ func TestMain(m *testing.M) {
 			exitCode = m.Run()
 			if exitCode != 0 {
 				fmt.Fprintf(os.Stderr, "Parallel tests failed with exit code %d\n", exitCode)
-				fmt.Fprintf(os.Stderr, "Using kubeconfig at `%s` with cluster `%s`\n", knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster)
 				os.Exit(exitCode)
 			}
 		}
@@ -118,7 +117,6 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	fmt.Fprintf(os.Stderr, "Using kubeconfig at `%s` with cluster `%s`\n", knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster)
 	os.Exit(exitCode)
 }
 
