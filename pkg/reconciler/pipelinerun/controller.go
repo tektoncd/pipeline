@@ -31,11 +31,11 @@ import (
 	resolutionclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client"
 	resolutioninformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
 	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
+	"github.com/tektoncd/pipeline/pkg/reconciler"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolution "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
 	"github.com/tektoncd/pipeline/pkg/tracing"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/clock"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -60,16 +60,6 @@ var pipelineRunFilterManagedBy = func(obj interface{}) bool {
 		return false
 	}
 	return true
-}
-
-// stripManagedFields removes metadata.managedFields from objects on cache insertion.
-// ManagedFields can be 30-70% of an object's serialized size but are never read
-// by the controller, so stripping them reduces informer cache memory and DeepCopy cost.
-func stripManagedFields(obj interface{}) (interface{}, error) {
-	if accessor, ok := obj.(metav1.ObjectMetaAccessor); ok {
-		accessor.GetObjectMeta().SetManagedFields(nil)
-	}
-	return obj, nil
 }
 
 // NewController instantiates a new controller.Impl from knative.dev/pkg/controller
@@ -116,8 +106,8 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			}
 		})
 
-		if err := pipelineRunInformer.Informer().SetTransform(stripManagedFields); err != nil {
-			logging.FromContext(ctx).Warnf("Failed to set PipelineRun informer transform: %v", err)
+		if err := pipelineRunInformer.Informer().SetTransform(reconciler.StripManagedFields); err != nil {
+			logging.FromContext(ctx).Panicf("Failed to set PipelineRun informer transform: %v", err)
 		}
 
 		if _, err := secretinformer.Informer().AddEventHandler(controller.HandleAll(tracerProvider.Handler)); err != nil {
