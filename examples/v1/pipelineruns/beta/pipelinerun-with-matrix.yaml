@@ -32,7 +32,6 @@ spec:
             - name: platform
               value:
                 - linux
-                - mac
             - name: browser
               value:
                 - chrome
@@ -45,7 +44,6 @@ spec:
             - name: platform
               value:
                 - linux
-                - mac
         params:
           - name: browser
             value: chrome
@@ -81,7 +79,6 @@ spec:
             - name: version
               value:
                 - "1"
-                - "2"
         taskSpec:
           params:
             - name: version
@@ -100,7 +97,6 @@ spec:
             - name: version
               value:
                 - "1"
-                - "2"
         taskSpec:
           params:
             - name: version
