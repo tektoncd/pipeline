@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -60,6 +61,13 @@ const (
 	ProjectsModeAll ProjectsMode = "all"
 )
 
+// RepoTransfer represents a pending repository transfer
+type RepoTransfer struct {
+	Doer      *User   `json:"doer"`
+	Recipient *User   `json:"recipient"`
+	Teams     []*Team `json:"teams"`
+}
+
 // Repository represents a repository
 type Repository struct {
 	ID                            int64            `json:"id"`
@@ -74,7 +82,11 @@ type Repository struct {
 	Parent                        *Repository      `json:"parent"`
 	Mirror                        bool             `json:"mirror"`
 	Size                          int              `json:"size"`
+	Language                      string           `json:"language"`
+	LanguagesURL                  string           `json:"languages_url"`
 	HTMLURL                       string           `json:"html_url"`
+	URL                           string           `json:"url"`
+	Link                          string           `json:"link"`
 	SSHURL                        string           `json:"ssh_url"`
 	CloneURL                      string           `json:"clone_url"`
 	OriginalURL                   string           `json:"original_url"`
@@ -87,10 +99,12 @@ type Repository struct {
 	Releases                      int              `json:"release_counter"`
 	DefaultBranch                 string           `json:"default_branch"`
 	Archived                      bool             `json:"archived"`
+	ArchivedAt                    time.Time        `json:"archived_at"`
 	Created                       time.Time        `json:"created_at"`
 	Updated                       time.Time        `json:"updated_at"`
 	Permissions                   *Permission      `json:"permissions,omitempty"`
 	HasIssues                     bool             `json:"has_issues"`
+	HasCode                       bool             `json:"has_code"`
 	InternalTracker               *InternalTracker `json:"internal_tracker,omitempty"`
 	ExternalTracker               *ExternalTracker `json:"external_tracker,omitempty"`
 	HasWiki                       bool             `json:"has_wiki"`
@@ -105,7 +119,9 @@ type Repository struct {
 	AllowMerge                    bool             `json:"allow_merge_commits"`
 	AllowRebase                   bool             `json:"allow_rebase"`
 	AllowRebaseMerge              bool             `json:"allow_rebase_explicit"`
+	AllowRebaseUpdate             bool             `json:"allow_rebase_update"`
 	AllowSquash                   bool             `json:"allow_squash_merge"`
+	DefaultAllowMaintainerEdit    bool             `json:"default_allow_maintainer_edit"`
 	AvatarURL                     string           `json:"avatar_url"`
 	Internal                      bool             `json:"internal"`
 	MirrorInterval                string           `json:"mirror_interval"`
@@ -114,6 +130,9 @@ type Repository struct {
 	ProjectsMode                  *ProjectsMode    `json:"projects_mode"`
 	DefaultDeleteBranchAfterMerge bool             `json:"default_delete_branch_after_merge"`
 	ObjectFormatName              string           `json:"object_format_name"`
+	Topics                        []string         `json:"topics"`
+	Licenses                      []string         `json:"licenses"`
+	RepoTransfer                  *RepoTransfer    `json:"repo_transfer,omitempty"`
 }
 
 // RepoType represent repo type
@@ -259,10 +278,10 @@ func (opt *SearchRepoOptions) QueryEncode() string {
 
 	// Repo Attributes
 	if opt.IsPrivate != nil {
-		query.Add("is_private", fmt.Sprintf("%v", opt.IsPrivate))
+		query.Add("is_private", fmt.Sprintf("%t", *opt.IsPrivate))
 	}
 	if opt.IsArchived != nil {
-		query.Add("archived", fmt.Sprintf("%v", opt.IsArchived))
+		query.Add("archived", fmt.Sprintf("%t", *opt.IsArchived))
 	}
 	if opt.ExcludeTemplate {
 		query.Add("template", "false")
@@ -506,8 +525,7 @@ func (c *Client) DeleteRepo(owner, repo string) (*Response, error) {
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s", owner, repo), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s", owner, repo), nil, nil)
 }
 
 // MirrorSync adds a mirrored repository to the mirror sync queue.
@@ -515,8 +533,7 @@ func (c *Client) MirrorSync(owner, repo string) (*Response, error) {
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("POST", fmt.Sprintf("/repos/%s/%s/mirror-sync", owner, repo), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("POST", fmt.Sprintf("/repos/%s/%s/mirror-sync", owner, repo), nil, nil)
 }
 
 // GetRepoLanguages return language stats of a repo
@@ -575,4 +592,47 @@ func (c *Client) GetArchiveReader(owner, repo, ref string, ext ArchiveType) (io.
 	}
 
 	return resp.Body, resp, nil
+}
+
+// UpdateRepoAvatarOption options for updating repository avatar
+type UpdateRepoAvatarOption struct {
+	Image string `json:"image"` // base64 encoded image
+}
+
+// UpdateRepoAvatar updates a repository's avatar
+func (c *Client) UpdateRepoAvatar(owner, repo string, opt UpdateRepoAvatarOption) (*Response, error) {
+	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
+		return nil, err
+	}
+	body, err := json.Marshal(&opt)
+	if err != nil {
+		return nil, err
+	}
+	status, resp, err := c.getStatusCode("POST",
+		fmt.Sprintf("/repos/%s/%s/avatar", owner, repo),
+		jsonHeader, bytes.NewReader(body))
+	if err != nil {
+		return resp, err
+	}
+	if status != http.StatusNoContent {
+		return resp, fmt.Errorf("unexpected status: %d", status)
+	}
+	return resp, nil
+}
+
+// DeleteRepoAvatar deletes a repository's avatar
+func (c *Client) DeleteRepoAvatar(owner, repo string) (*Response, error) {
+	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
+		return nil, err
+	}
+	status, resp, err := c.getStatusCode("DELETE",
+		fmt.Sprintf("/repos/%s/%s/avatar", owner, repo),
+		jsonHeader, nil)
+	if err != nil {
+		return resp, err
+	}
+	if status != http.StatusNoContent {
+		return resp, fmt.Errorf("unexpected status: %d", status)
+	}
+	return resp, nil
 }

@@ -8,6 +8,7 @@ package gitea
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -74,9 +75,10 @@ func (c *Client) ListRepoBranches(user, repo string, opt ListRepoBranchesOptions
 
 // GetRepoBranch get one branch's information of one repository
 func (c *Client) GetRepoBranch(user, repo, branch string) (*Branch, *Response, error) {
-	if err := escapeValidatePathSegments(&user, &repo, &branch); err != nil {
+	if err := escapeValidatePathSegments(&user, &repo); err != nil {
 		return nil, nil, err
 	}
+	branch = pathEscapeSegments(branch)
 	b := new(Branch)
 	resp, err := c.getParsedResponse("GET", fmt.Sprintf("/repos/%s/%s/branches/%s", user, repo, branch), nil, nil, &b)
 	if err != nil {
@@ -87,9 +89,10 @@ func (c *Client) GetRepoBranch(user, repo, branch string) (*Branch, *Response, e
 
 // DeleteRepoBranch delete a branch in a repository
 func (c *Client) DeleteRepoBranch(user, repo, branch string) (bool, *Response, error) {
-	if err := escapeValidatePathSegments(&user, &repo, &branch); err != nil {
+	if err := escapeValidatePathSegments(&user, &repo); err != nil {
 		return false, nil, err
 	}
+	branch = pathEscapeSegments(branch)
 	if err := c.checkServerVersionGreaterThanOrEqual(version1_12_0); err != nil {
 		return false, nil, err
 	}
@@ -98,6 +101,92 @@ func (c *Client) DeleteRepoBranch(user, repo, branch string) (bool, *Response, e
 		return false, resp, err
 	}
 	return status == 204, resp, nil
+}
+
+type UpdateRepoBranchOption struct {
+	Name string `json:"name"`
+}
+
+func (opt UpdateRepoBranchOption) Validate() error {
+	if len(opt.Name) == 0 {
+		return errors.New("empty Name field")
+	}
+
+	return nil
+}
+
+// RenameRepoBranchOption renames a repository branch.
+type RenameRepoBranchOption struct {
+	Name string `json:"name"`
+}
+
+// Validate checks whether the rename payload is valid.
+func (opt RenameRepoBranchOption) Validate() error {
+	if len(opt.Name) == 0 {
+		return errors.New("empty Name field")
+	}
+	return nil
+}
+
+// UpdateRepoBranchRefOption updates a branch ref to point to a new commit.
+type UpdateRepoBranchRefOption struct {
+	NewCommitID string `json:"new_commit_id"`
+	OldCommitID string `json:"old_commit_id"`
+	Force       bool   `json:"force"`
+}
+
+// Validate checks whether the branch update payload is valid.
+func (opt UpdateRepoBranchRefOption) Validate() error {
+	if len(opt.NewCommitID) == 0 {
+		return errors.New("empty NewCommitID field")
+	}
+	return nil
+}
+
+// RenameRepoBranch renames a branch in a repository.
+func (c *Client) RenameRepoBranch(user, repo, branch string, opt RenameRepoBranchOption) (successful bool, resp *Response, err error) {
+	if err := escapeValidatePathSegments(&user, &repo); err != nil {
+		return false, nil, err
+	}
+	branch = pathEscapeSegments(branch)
+	if err := c.checkServerVersionGreaterThanOrEqual(version1_24_0); err != nil {
+		return false, nil, err
+	}
+	if err := opt.Validate(); err != nil {
+		return false, nil, err
+	}
+	body, err := json.Marshal(&opt)
+	if err != nil {
+		return false, nil, err
+	}
+	status, resp, err := c.getStatusCode("PATCH", fmt.Sprintf("/repos/%s/%s/branches/%s", user, repo, branch), jsonHeader, bytes.NewReader(body))
+	return status == 204, resp, err
+}
+
+// UpdateRepoBranchRef updates the commit a branch points to.
+// This endpoint is not yet available in any released Gitea version.
+func (c *Client) UpdateRepoBranchRef(user, repo, branch string, opt UpdateRepoBranchRefOption) (successful bool, resp *Response, err error) {
+	if err := escapeValidatePathSegments(&user, &repo); err != nil {
+		return false, nil, err
+	}
+	branch = pathEscapeSegments(branch)
+	if err := opt.Validate(); err != nil {
+		return false, nil, err
+	}
+	body, err := json.Marshal(&opt)
+	if err != nil {
+		return false, nil, err
+	}
+	status, resp, err := c.getStatusCode("PUT", fmt.Sprintf("/repos/%s/%s/branches/%s", user, repo, branch), jsonHeader, bytes.NewReader(body))
+	return status == 204, resp, err
+}
+
+// UpdateRepoBranch renames a branch in a repository.
+//
+// Deprecated: Use RenameRepoBranch instead (identical behavior, clearer name).
+// For updating the commit a branch points to, use UpdateRepoBranchRef (PUT).
+func (c *Client) UpdateRepoBranch(user, repo, branch string, opt UpdateRepoBranchOption) (sucessful bool, resp *Response, err error) {
+	return c.RenameRepoBranch(user, repo, branch, RenameRepoBranchOption(opt))
 }
 
 // CreateBranchOption options when creating a branch in a repository
