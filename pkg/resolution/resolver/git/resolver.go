@@ -569,7 +569,7 @@ func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey
 			// namespace. This prevents silent privilege escalation from the
 			// user's namespace to the system namespace when RequestNamespace
 			// is not available in the context.
-			return nil, fmt.Errorf("cannot get API token, secret not accessible: request namespace not available in context")
+			return nil, errors.New("cannot get API token, secret not accessible: request namespace not available in context")
 		}
 		// Config-sourced secret: admin controls all values, fallback is safe
 		apiSecret.ns = conf.APISecretNamespace
