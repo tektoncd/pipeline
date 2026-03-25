@@ -110,6 +110,10 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			logging.FromContext(ctx).Panicf("Failed to set PipelineRun informer transform: %v", err)
 		}
 
+		if err := taskRunInformer.Informer().SetTransform(reconciler.StripManagedFields); err != nil {
+			logging.FromContext(ctx).Panicf("Failed to set TaskRun informer transform: %v", err)
+		}
+
 		if _, err := secretinformer.Informer().AddEventHandler(controller.HandleAll(tracerProvider.Handler)); err != nil {
 			logging.FromContext(ctx).Panicf("Couldn't register Secret informer event handler: %w", err)
 		}
