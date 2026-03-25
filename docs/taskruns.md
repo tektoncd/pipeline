@@ -890,6 +890,7 @@ When pending:
 - The condition is set to `Unknown` with reason `TaskRunPending`
 - Clearing `spec.status` (or setting it to empty) starts execution
 - Setting `spec.status: TaskRunCancelled` cancels without running
+- The timeout clock does not start while the TaskRun is pending because `HasTimedOut()` returns false when `status.startTime` is unset. The timeout begins only after pending is cleared and `status.startTime` is set.
 
 **Note:** A `TaskRun` can only be marked "pending" before it has started; this setting is invalid after the `TaskRun` has started.
 
