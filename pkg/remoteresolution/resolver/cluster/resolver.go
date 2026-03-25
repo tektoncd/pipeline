@@ -90,6 +90,7 @@ func (r *Resolver) IsImmutable([]v1.Param) bool {
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
 	if cache.ShouldUse(ctx, r, req.Params) {
 		return cache.Get(ctx).GetCachedOrResolveFromRemote(
+			ctx,
 			req.Params,
 			LabelValueClusterResolverType,
 			func() (resolutionframework.ResolvedResource, error) {

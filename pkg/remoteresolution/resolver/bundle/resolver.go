@@ -111,6 +111,7 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 
 	if cache.ShouldUse(ctx, r, req.Params) {
 		return cache.Get(ctx).GetCachedOrResolveFromRemote(
+			ctx,
 			req.Params,
 			LabelValueBundleResolverType,
 			func() (resolutionframework.ResolvedResource, error) {

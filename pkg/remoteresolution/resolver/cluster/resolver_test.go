@@ -636,7 +636,7 @@ func TestResolveWithCacheHit(t *testing.T) {
 	resolveFn := func() (framework.ResolvedResource, error) {
 		return mockResource, nil
 	}
-	cache.Get(ctx).GetCachedOrResolveFromRemote(params, cluster.LabelValueClusterResolverType, resolveFn)
+	cache.Get(ctx).GetCachedOrResolveFromRemote(ctx, params, cluster.LabelValueClusterResolverType, resolveFn)
 
 	// create request with same parameters
 	req := &v1beta1.ResolutionRequestSpec{Params: params}
