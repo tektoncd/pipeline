@@ -527,12 +527,13 @@ func TestGetBasicAuthSecretNotFound(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when secret not found, got nil")
 	}
-	expectedErr := "cannot get API token, secret not accessible in namespace test-ns"
-	if err.Error() != expectedErr {
-		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
-	}
-	if strings.Contains(err.Error(), "nonexistent-secret") {
+	gotErr := err.Error()
+	if strings.Contains(gotErr, params[HttpBasicAuthSecret]) {
 		t.Error("error message should not contain the secret name")
+	}
+	expectedErr := "cannot get API token, secret not accessible in namespace test-ns"
+	if gotErr != expectedErr {
+		t.Errorf("expected error %q, got %q", expectedErr, gotErr)
 	}
 }
 
@@ -553,12 +554,13 @@ func TestGetBasicAuthSecretWrongKey(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when secret key not found, got nil")
 	}
-	expectedErr := "cannot get API token, secret not accessible in namespace test-ns"
-	if err.Error() != expectedErr {
-		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
-	}
-	if strings.Contains(err.Error(), "real-secret") || strings.Contains(err.Error(), "wrong-key") {
+	gotErr := err.Error()
+	if strings.Contains(gotErr, params[HttpBasicAuthSecret]) || strings.Contains(gotErr, params[HttpBasicAuthSecretKey]) {
 		t.Error("error message should not contain secret name or key name")
+	}
+	expectedErr := "cannot get API token, secret not accessible in namespace test-ns"
+	if gotErr != expectedErr {
+		t.Errorf("expected error %q, got %q", expectedErr, gotErr)
 	}
 }
 
