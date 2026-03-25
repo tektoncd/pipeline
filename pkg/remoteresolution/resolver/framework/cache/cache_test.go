@@ -156,7 +156,7 @@ func TestCacheTTLExpiration(t *testing.T) {
 	// WHEN
 	cache := newResolverCacheWithClock(100, ttl, &fc).withLogger(zaptest.NewLogger(t).Sugar())
 	defer cache.Clear()
-	resource, err := cache.GetCachedOrResolveFromRemote(params, resolverType, resolveFn)
+	resource, err := cache.GetCachedOrResolveFromRemote(t.Context(), params, resolverType, resolveFn)
 
 	// THEN
 	if err != nil {
@@ -169,7 +169,7 @@ func TestCacheTTLExpiration(t *testing.T) {
 
 	// WHEN
 	fc.Advance(ttl + time.Second)
-	resource, err = cache.GetCachedOrResolveFromRemote(params, resolverType, resolveFn)
+	resource, err = cache.GetCachedOrResolveFromRemote(t.Context(), params, resolverType, resolveFn)
 
 	// THEN: Verify entry is no longer in cache after TTL expiration
 	if err != nil {
@@ -228,11 +228,11 @@ func TestCacheMaxSizeLRUEviction(t *testing.T) {
 				data: []byte(entry.name),
 			}, nil
 		}
-		cache.GetCachedOrResolveFromRemote(entry.params, resolverType, resolveFn)
+		cache.GetCachedOrResolveFromRemote(t.Context(), entry.params, resolverType, resolveFn)
 	}
 
 	// Access entry1 to make it recently used (entry2 becomes LRU)
-	if _, err := cache.GetCachedOrResolveFromRemote(entries[0].params, resolverType, resolveFnErr); err != nil {
+	if _, err := cache.GetCachedOrResolveFromRemote(t.Context(), entries[0].params, resolverType, resolveFnErr); err != nil {
 		t.Errorf("Expected cache hit for entry1, but got error %v", err)
 	}
 
@@ -245,25 +245,25 @@ func TestCacheMaxSizeLRUEviction(t *testing.T) {
 			data: []byte("entry4"),
 		}, nil
 	}
-	cache.GetCachedOrResolveFromRemote(entry4Params, resolverType, resolveFnEntry4)
+	cache.GetCachedOrResolveFromRemote(t.Context(), entry4Params, resolverType, resolveFnEntry4)
 
 	// Verify entry2 (LRU after entry1 was accessed) was evicted
-	if _, err := cache.GetCachedOrResolveFromRemote(entries[1].params, resolverType, resolveFnErr); err == nil {
+	if _, err := cache.GetCachedOrResolveFromRemote(t.Context(), entries[1].params, resolverType, resolveFnErr); err == nil {
 		t.Error("Expected entry2 to be evicted (LRU), but it was still in cache")
 	}
 
 	// Verify entry1 (accessed recently) is still in cache
-	if _, err := cache.GetCachedOrResolveFromRemote(entries[0].params, resolverType, resolveFnErr); err != nil {
+	if _, err := cache.GetCachedOrResolveFromRemote(t.Context(), entries[0].params, resolverType, resolveFnErr); err != nil {
 		t.Errorf("Expected entry1 to still be in cache after being accessed, but got cache miss and error %v", err)
 	}
 
 	// Verify entry3 is still in cache
-	if _, err := cache.GetCachedOrResolveFromRemote(entries[2].params, resolverType, resolveFnErr); err != nil {
+	if _, err := cache.GetCachedOrResolveFromRemote(t.Context(), entries[2].params, resolverType, resolveFnErr); err != nil {
 		t.Errorf("Expected entry3 to still be in cache, but got cache miss and error %v", err)
 	}
 
 	// Verify entry4 is in cache
-	if _, err := cache.GetCachedOrResolveFromRemote(entry4Params, resolverType, resolveFnErr); err != nil {
+	if _, err := cache.GetCachedOrResolveFromRemote(t.Context(), entry4Params, resolverType, resolveFnErr); err != nil {
 		t.Errorf("Expected entry4 to be in cache, but got cache miss and error %v", err)
 	}
 }
@@ -291,12 +291,14 @@ func TestGetCachedOrResolveFromRemote(t *testing.T) {
 
 		// WHEN
 		cachePopulationResult, cachePopulationErr := cache.GetCachedOrResolveFromRemote(
+			t.Context(),
 			params,
 			bundleresolution.LabelValueBundleResolverType,
 			resolveFn,
 		)
 
 		cacheHitResult, cacheHitErr := cache.GetCachedOrResolveFromRemote(
+			t.Context(),
 			params,
 			bundleresolution.LabelValueBundleResolverType,
 			resolveFn,
@@ -336,11 +338,13 @@ func TestGetCachedOrResolveFromRemote(t *testing.T) {
 
 		// WHEN
 		result, firstTryErr := cache.GetCachedOrResolveFromRemote(
+			t.Context(),
 			params,
 			bundleresolution.LabelValueBundleResolverType,
 			resolveErrFn,
 		)
 		retryResult, retryErr := cache.GetCachedOrResolveFromRemote(
+			t.Context(),
 			params,
 			bundleresolution.LabelValueBundleResolverType,
 			resolveSuccessFn,
@@ -384,12 +388,14 @@ func TestGetCachedOrResolveFromRemote(t *testing.T) {
 
 		// WHEN
 		cachePopulationResult, cachePopulationErr := cacheWrapper.GetCachedOrResolveFromRemote(
+			t.Context(),
 			params,
 			bundleresolution.LabelValueBundleResolverType,
 			resolveFn,
 		)
 		cacheWrapper.cache.Add(key, "poisoned-resource", cacheWrapper.TTL())
 		result, castingFailedErr := cacheWrapper.GetCachedOrResolveFromRemote(
+			t.Context(),
 			params,
 			bundleresolution.LabelValueBundleResolverType,
 			resolveFn,
@@ -424,17 +430,20 @@ func TestGetCachedOrResolveFromRemote(t *testing.T) {
 
 		// WHEN
 		firstAttemptResult, firstAttemptErr := cacheWrapper.GetCachedOrResolveFromRemote(
+			t.Context(),
 			params,
 			bundleresolution.LabelValueBundleResolverType,
 			resolveFn,
 		)
 		cacheWrapper.cache.Add(key, "poisoned-resource", cacheWrapper.TTL())
 		secondAttemptResult, castingFailedErr := cacheWrapper.GetCachedOrResolveFromRemote(
+			t.Context(),
 			params,
 			bundleresolution.LabelValueBundleResolverType,
 			resolveFn,
 		)
 		thirdAttemptResult, thirdAttemptErr := cacheWrapper.GetCachedOrResolveFromRemote(
+			t.Context(),
 			params,
 			bundleresolution.LabelValueBundleResolverType,
 			resolveFn,
