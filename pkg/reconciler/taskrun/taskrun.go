@@ -451,9 +451,8 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 // error but it does not sync updates back to etcd. It does not emit events.
 // All errors returned by `prepare` are always handled by `Reconcile`, so they don't cause
 // the key to be re-queued directly.
-// `prepare` returns spec and resources. In future we might store
-// them in the TaskRun.Status so we don't need to re-run `prepare` at every
-// reconcile (see https://github.com/tektoncd/pipeline/issues/2473).
+// `prepare` returns spec and resources. The resolved TaskSpec is stored in the
+// TaskRun.Status so we don't need to re-fetch and re-validate it at every reconcile.
 func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec, *resources.ResolvedTask, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "prepare")
 	defer span.End()
