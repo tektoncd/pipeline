@@ -925,7 +925,8 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 		if err != nil {
 			// Use Errorf when a task succeeded but didn't emit a result (surprising),
 			// Infof when the referenced task failed (expected that results are missing).
-			if strings.Contains(err.Error(), "completed successfully") {
+			var missingResultErr *resources.ErrMissingResultFromCompletedTask
+			if errors.As(err, &missingResultErr) {
 				logger.Errorf("Failed to resolve task result reference for %q with error %v", pr.Name, err)
 			} else {
 				logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)

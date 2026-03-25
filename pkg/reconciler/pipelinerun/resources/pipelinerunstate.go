@@ -19,6 +19,7 @@ package resources
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -587,9 +588,14 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 		if s.ValidationFailed > 0 {
 			message += fmt.Sprintf(", Failed Validation: %d", s.ValidationFailed)
 			if len(facts.ValidationFailedErrors) > 0 {
+				keys := make([]string, 0, len(facts.ValidationFailedErrors))
+				for k := range facts.ValidationFailedErrors {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
 				var errors []string
-				for _, errMsg := range facts.ValidationFailedErrors {
-					errors = append(errors, errMsg)
+				for _, k := range keys {
+					errors = append(errors, facts.ValidationFailedErrors[k])
 				}
 				errMsg := strings.Join(errors, "; ")
 				if len(errMsg) > 1024 {
