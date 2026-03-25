@@ -17,7 +17,6 @@ limitations under the License.
 package subcommands
 
 import (
-	"errors"
 	"log"
 	"os"
 	"path/filepath"
@@ -53,22 +52,14 @@ func stepInit(steps []string) error {
 	for i, s := range steps {
 		run := filepath.Join(tektonRoot, "run", strconv.Itoa(i), "status")
 
-		// Remove old symlinks if they exist from a previous container start.
-		// If a container restarts within a pod (e.g. OOM, eviction), the
-		// symlinks from the previous run persist on the emptyDir volume.
+		// Create symlinks, tolerating the case where they already exist
+		// from a previous container start (e.g. OOM restart, eviction).
 		nameLink := filepath.Join(stepDir, s)
 		indexLink := filepath.Join(stepDir, strconv.Itoa(i))
-		if err := os.Remove(nameLink); err != nil && !errors.Is(err, os.ErrNotExist) {
+		if err := os.Symlink(run, nameLink); err != nil && !os.IsExist(err) {
 			return err
 		}
-		if err := os.Remove(indexLink); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-
-		if err := os.Symlink(run, nameLink); err != nil {
-			return err
-		}
-		if err := os.Symlink(run, indexLink); err != nil {
+		if err := os.Symlink(run, indexLink); err != nil && !os.IsExist(err) {
 			return err
 		}
 	}
