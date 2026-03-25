@@ -196,6 +196,9 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 	// Read the initial condition
 	before := pr.Status.GetCondition(apis.ConditionSucceeded)
 
+	// Record the duration and count after the reconcile cycle.
+	defer c.durationAndCountMetrics(ctx, pr, before)
+
 	// Check if we are failing to mark this as timed out for a while. If we are, mark immediately and finish the
 	// reconcile. We are assuming here that if the PipelineRun has timed out for a long time, it had time to run
 	// before and it kept failing. One reason that can happen is exceeding etcd request size limit. Finishing it early
@@ -267,7 +270,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 
 	// Reconcile this copy of the pipelinerun and then write back any status or label
 	// updates regardless of whether the reconciliation errored out.
-	if err = c.reconcile(ctx, pr, getPipelineFunc, before); err != nil {
+	if err = c.reconcile(ctx, pr, getPipelineFunc); err != nil {
 		logger.Errorf("Reconcile error: %v", err.Error())
 	}
 
@@ -456,10 +459,9 @@ func (c *Reconciler) resolvePipelineState(
 	return pst, nil
 }
 
-func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipelineFunc rprp.GetPipeline, beforeCondition *apis.Condition) error {
+func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipelineFunc rprp.GetPipeline) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "reconcile")
 	defer span.End()
-	defer c.durationAndCountMetrics(ctx, pr, beforeCondition)
 	logger := logging.FromContext(ctx)
 	pr.SetDefaults(ctx)
 
