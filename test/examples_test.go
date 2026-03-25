@@ -1,5 +1,4 @@
 //go:build examples
-// +build examples
 
 /*
 Copyright 2020 The Tekton Authors
@@ -194,6 +193,7 @@ func extractTestName(baseDir string, path string) string {
 	return string(submatch[1])
 }
 
+// @test:execution=parallel
 func TestExamples(t *testing.T) {
 	pf, err := getPathFilter(t)
 	if err != nil {

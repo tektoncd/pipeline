@@ -3,6 +3,7 @@
 To run tests:
 
 [Unit tests](#unit-tests) and build tests (those run by [presubmits](#presubmit-tests)) run against your Pipelines clone:
+
 ```sh
 # Unit tests
 go test ./...
@@ -29,9 +30,10 @@ in local kubeconfig file (~/.kube/config by default) in you local machine.
 > Sometimes local tests pass but presubmit tests fail, one possible reason
 is the difference of running environments. The envs that our presubmit test
 uses are stored in ./*.env files. Specifically,
+>
 > - e2e-tests-kind-prow-alpha.env for [`pull-tekton-pipeline-alpha-integration-tests`](https://github.com/tektoncd/plumbing/blob/d2c8ccb63d02c6e72c62def788af32d63ff1981a/prow/config.yaml#L1304)
 > - e2e-tests-kind-prow-beta.env for [`pull-tekton-pipeline-beta-integration-tests`]
-(TODO: https://github.com/tektoncd/pipeline/issues/6048 Add permanent link after plumbing setup for prow)
+(TODO: <https://github.com/tektoncd/pipeline/issues/6048> Add permanent link after plumbing setup for prow)
 > - e2e-tests-kind-prow.env for [`pull-tekton-pipeline-integration-tests`](https://github.com/tektoncd/plumbing/blob/d2c8ccb63d02c6e72c62def788af32d63ff1981a/prow/config.yaml#L1249)
 
 ## Unit tests
@@ -194,7 +196,7 @@ To include tests for Windows, you need to specify the `windows_e2e` build tag. F
 go test -v -count=1 -tags=e2e,windows_e2e -timeout=20m ./test
 ```
 
-Please note that in order to run Windows tests there must be at least one Windows node available in the target Kubernetes cluster. 
+Please note that in order to run Windows tests there must be at least one Windows node available in the target Kubernetes cluster.
 
 ### Flags
 
@@ -255,8 +257,8 @@ There are two scenarios in upgrade tests. One is to install the previous release
 validate whether the Tekton pipeline works. The other is to install the previous release, create the pipelines and tasks,
 upgrade to the current release, and validate whether the Tekton pipeline works.
 
+#### Prerequisites for running upgrade tests locally
 
-#### Prerequisites for running upgrade tests locally:
 - Set up the cluster
   - Running against a fresh kind cluster
     - export SKIP_INITIALIZE=true
@@ -442,7 +444,7 @@ test/presubmit-tests.sh --integration-tests
 ## Per Feature flag tests
 
 Per-feature flag tests verify that the combinations of feature flags work together
-correctly, ensuring that individual flags don't interfere with each other's 
+correctly, ensuring that individual flags don't interfere with each other's
 functionality and that overall outcomes remain consistent.
 Per [TEP0138](https://github.com/tektoncd/community/blob/main/teps/0138-decouple-api-and-feature-versioning.md#additional-ci-tests),
 minimum end-to-end tests for stable features are utilized, mocking stable, beta,
@@ -458,3 +460,115 @@ go test -v -count=1 -tags=featureflags -timeout=60m ./test -run ^TestPerFeatureF
 
 Flags that could be set in featureflags tests are exactly the same as [flags in end to end tests](#flags).
 Just note that the build tags should be `-tags=featureflags`.
+
+## Test Categorization: Parallel vs Serial Execution
+
+The e2e test suite implements a categorization system that allows tests to run in parallel or serial mode,
+optimizing test execution time while ensuring safety for tests that modify shared cluster state.
+
+### Overview
+
+Tests are categorized using comment annotations in the source code:
+
+- **Parallel tests**: Safe to run concurrently, don't modify shared cluster state
+- **Serial tests**: Must run sequentially because they modify ConfigMaps in `system.Namespace()`
+
+The test runner (`TestMain` in `init_test.go`) parses these annotations and orchestrates test execution accordingly.
+
+### Annotation Format
+
+Tests use structured Go comments to declare their execution mode:
+
+```go
+// @test:execution=parallel
+func TestMyParallelTest(t *testing.T) {
+    // Test implementation
+}
+
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
+// @test:tags=artifacts,featureflags,stateful
+func TestMySerialTest(t *testing.T) {
+    // Test implementation
+}
+```
+
+**Annotation fields:**
+
+- `@test:execution` - Required: either `parallel` or `serial`
+- `@test:reason` - Recommended for serial tests: explains why serial execution is needed
+- `@test:tags` - Optional: comma-separated tags for categorization and filtering
+
+### Running Tests by Category
+
+Use the `-category` flag to control which tests run:
+
+```shell
+# Run only parallel tests (fast, safe for concurrent execution)
+go test -tags=e2e -category=parallel -timeout=20m ./test
+
+# Run only serial tests (slower, sequential execution)
+go test -tags=e2e -category=serial -timeout=20m ./test
+
+# Run all tests with proper ordering (serial → parallel → unknown)
+go test -tags=e2e -category=all -timeout=30m ./test
+
+# Show test categorization without running tests
+go test -tags=e2e -show-tests ./test
+```
+
+**Note:** When the `-run` flag is provided, category filtering is automatically skipped and the
+user's test filter takes precedence. This allows running individual tests without category orchestration:
+
+```shell
+# Run a specific test (skips category filtering)
+go test -tags=e2e -run ^TestBundleResolverCache$ ./test
+```
+
+### Execution Order
+
+When running with `-category=all`, tests execute in this order:
+
+1. **Serial tests** run first, sequentially, with fail-fast behavior
+2. **Parallel tests** run next, concurrently
+3. **Unknown tests** (unannotated) run last
+
+This ensures that tests modifying shared state complete before parallel execution begins.
+
+### When to Mark Tests as Serial
+
+A test MUST be marked `serial` if it:
+
+- Modifies ConfigMaps in `system.Namespace()` (typically `tekton-pipelines`)
+- Changes feature flags in the `feature-flags` ConfigMap
+- Modifies any other shared cluster-wide configuration or resources
+
+Common examples:
+
+- Tests changing `enable-api-fields`, `results-from`, `coschedule` feature flags
+- Tests modifying `trusted-resources-verification-no-match-policy`
+- Any test calling `updateConfigMap(ctx, c.KubeClient, system.Namespace(), ...)`
+- Tests modifying controller replicas
+
+### When to Mark Tests as Parallel
+
+A test can be marked `parallel` if it:
+
+- Only creates/modifies resources in its own test namespace
+- Doesn't modify `system.Namespace()` ConfigMaps
+- Can safely run concurrently with other tests
+
+This includes most conformance tests, resolver tests, workspace tests, etc.
+
+### Implementation Details
+
+The categorization system is implemented via:
+
+1. **TestMain** (`init_test.go`): Parses annotations from source files using Go's AST parser,
+   categorizes tests, and routes execution based on the `-category` flag.
+
+2. **Annotation Parser**: Scans `*_test.go` files, extracts `@test:*` comments, and builds
+   a manifest of test metadata.
+
+3. **Test Filtering**: Uses `flag.Set("test.run", pattern)` to filter which tests execute
+   in each run.

@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
  Copyright 2022 The Tekton Authors
@@ -66,6 +65,7 @@ var (
 	})
 )
 
+// @test:execution=parallel
 func TestHubResolver(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, hubFeatureFlags)
@@ -125,6 +125,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestHubResolver_Failure(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, hubFeatureFlags)
@@ -188,6 +189,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestGitResolver_Clone(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, gitFeatureFlags)
@@ -247,6 +249,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestGitResolver_Clone_Failure(t *testing.T) {
 	defaultURL := "https://github.com/tektoncd/catalog.git"
 	defaultPathInRepo := "/task/git-clone/0.10/git-clone.yaml"
@@ -358,6 +361,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestClusterResolver(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, clusterFeatureFlags)
@@ -421,6 +425,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestClusterResolver_Failure(t *testing.T) {
 	ctx := t.Context()
 	c, namespace := setup(ctx, t, clusterFeatureFlags)

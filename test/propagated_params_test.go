@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2022 The Tekton Authors
@@ -31,6 +30,7 @@ import (
 	knativetest "knative.dev/pkg/test"
 )
 
+// @test:execution=parallel
 func TestPropagatedParams(t *testing.T) {
 	t.Parallel()
 

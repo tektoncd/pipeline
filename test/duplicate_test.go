@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2019 The Tekton Authors
@@ -33,6 +32,7 @@ import (
 )
 
 // TestDuplicatePodTaskRun creates multiple builds and checks that each of them has only one build pod.
+// @test:execution=parallel
 func TestDuplicatePodTaskRun(t *testing.T) {
 	t.Parallel()
 

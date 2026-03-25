@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2019 The Tekton Authors
@@ -45,6 +44,7 @@ var (
 	task1Name  = "task1"
 )
 
+// @test:execution=parallel
 func TestPipelineRunStatusSpec(t *testing.T) {
 	t.Parallel()
 	type tests struct {
@@ -169,6 +169,7 @@ spec:
 	}
 }
 
+// @test:execution=parallel
 func TestPipelineRun(t *testing.T) {
 	t.Parallel()
 	type tests struct {
@@ -418,6 +419,7 @@ spec:
 
 // TestPipelineRunRefDeleted tests that a running PipelineRun doesn't fail when the Pipeline
 // it references is deleted.
+// @test:execution=parallel
 func TestPipelineRunRefDeleted(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -491,6 +493,7 @@ spec:
 // status is cleared. This is separate from the TestPipelineRun suite because it has to
 // transition PipelineRun states during the test, which the TestPipelineRun suite does not
 // support.
+// @test:execution=parallel
 func TestPipelineRunPending(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -956,6 +959,7 @@ func getLimitRange(name, namespace, resourceCPU, resourceMemory, resourceEphemer
 	}
 }
 
+// @test:execution=parallel
 func TestPipelineRunTaskFailed(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)

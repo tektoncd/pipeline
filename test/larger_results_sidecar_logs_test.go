@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2022 The Tekton Authors
@@ -45,6 +44,8 @@ var (
 	}
 )
 
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
 func TestLargerResultsSidecarLogs(t *testing.T) {
 	expectedFeatureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 	previousResultExtractionMethod := expectedFeatureFlags.ResultExtractionMethod

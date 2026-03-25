@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2023 The Tekton Authors
@@ -33,6 +32,7 @@ import (
 )
 
 // TestAffinityAssistant_PerWorkspace tests the taskrun pod scheduling and the PVC lifecycle status
+// @test:execution=parallel
 func TestAffinityAssistant_PerWorkspace(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -117,6 +117,9 @@ spec:
 
 // TestAffinityAssistant_PerPipelineRun tests that mounting multiple PVC based workspaces to a pipeline task is allowed and
 // all the pods are scheduled to the same node in AffinityAssistantPerPipelineRuns mode
+//
+// @test:execution=serial
+// @test:reason=modifies coschedule feature flag in feature-flags ConfigMap
 func TestAffinityAssistant_PerPipelineRun(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)

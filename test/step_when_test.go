@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 // /*
 // Copyright 2024 The Tekton Authors
@@ -36,6 +35,8 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
+// @test:execution=serial
+// @test:reason=modifies enable-step-actions feature flag in feature-flags ConfigMap
 func TestWhenExpressionsInStep(t *testing.T) {
 	tests := []struct {
 		desc         string
@@ -246,6 +247,8 @@ spec:
 	}
 }
 
+// @test:execution=serial
+// @test:reason=modifies enable-cel-in-whenexpression feature flag in feature-flags ConfigMap
 func TestWhenExpressionsCELInStep(t *testing.T) {
 	tests := []struct {
 		desc         string

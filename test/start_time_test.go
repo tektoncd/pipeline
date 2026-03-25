@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 /*
 Copyright 2019 The Tekton Authors
@@ -40,6 +39,7 @@ import (
 // The number of seconds between each step has a big impact on the total
 // duration of the test so smaller is better (while still supporting the
 // test's intended purpose).
+// @test:execution=parallel
 func TestStartTime(t *testing.T) {
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)

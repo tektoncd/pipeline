@@ -1,5 +1,4 @@
 //go:build e2e
-// +build e2e
 
 // /*
 // Copyright 2024 The Tekton Authors
@@ -40,6 +39,8 @@ var (
 	}
 )
 
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
 func TestSurfaceArtifacts(t *testing.T) {
 	tests := []struct {
 		desc                   string
@@ -128,6 +129,8 @@ spec:
 	}
 }
 
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
 func TestSurfaceArtifactsThroughTerminationMessageScriptProducesArtifacts(t *testing.T) {
 	featureFlags := getFeatureFlagsBaseOnAPIFlag(t)
 	checkFlagsEnabled := requireAllGates(requireEnableStepArtifactsGate)
@@ -200,6 +203,8 @@ spec:
 	}
 }
 
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
 func TestConsumeArtifacts(t *testing.T) {
 	tests := []struct {
 		desc                   string
@@ -294,6 +299,8 @@ spec:
 	}
 }
 
+// @test:execution=serial
+// @test:reason=modifies results-from field in feature-flags ConfigMap
 func TestStepProduceResultsAndArtifacts(t *testing.T) {
 	tests := []struct {
 		desc                   string
