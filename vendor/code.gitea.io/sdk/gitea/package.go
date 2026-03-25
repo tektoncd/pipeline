@@ -14,17 +14,19 @@ type Package struct {
 	// the package's id
 	ID int64 `json:"id"`
 	// the package's owner
-	Owner User `json:"owner"`
+	Owner *User `json:"owner"`
 	// the repo this package belongs to (if any)
 	Repository *Repository `json:"repository"`
 	// the package's creator
-	Creator User `json:"creator"`
+	Creator *User `json:"creator"`
 	// the type of package:
 	Type string `json:"type"`
 	// the name of the package
 	Name string `json:"name"`
 	// the version of the package
 	Version string `json:"version"`
+	// the HTML URL for viewing the package
+	HTMLURL string `json:"html_url"`
 	// the date the package was uploaded
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -63,6 +65,17 @@ func (c *Client) ListPackages(owner string, opt ListPackagesOptions) ([]*Package
 	return packages, resp, err
 }
 
+// ListPackageVersions lists all versions of a package.
+func (c *Client) ListPackageVersions(owner, packageType, name string, opt ListPackagesOptions) ([]*Package, *Response, error) {
+	if err := escapeValidatePathSegments(&owner, &packageType, &name); err != nil {
+		return nil, nil, err
+	}
+	opt.setDefaults()
+	packages := make([]*Package, 0, opt.PageSize)
+	resp, err := c.getParsedResponse("GET", fmt.Sprintf("/packages/%s/%s/%s?%s", owner, packageType, name, opt.getURLQuery().Encode()), nil, nil, &packages)
+	return packages, resp, err
+}
+
 // GetPackage gets the details of a specific package version
 func (c *Client) GetPackage(owner, packageType, name, version string) (*Package, *Response, error) {
 	if err := escapeValidatePathSegments(&owner, &packageType, &name, &version); err != nil {
@@ -78,8 +91,7 @@ func (c *Client) DeletePackage(owner, packageType, name, version string) (*Respo
 	if err := escapeValidatePathSegments(&owner, &packageType, &name, &version); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/packages/%s/%s/%s/%s", owner, packageType, name, version), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/packages/%s/%s/%s/%s", owner, packageType, name, version), nil, nil)
 }
 
 // ListPackageFiles lists the files within a package
@@ -90,4 +102,30 @@ func (c *Client) ListPackageFiles(owner, packageType, name, version string) ([]*
 	packageFiles := make([]*PackageFile, 0)
 	resp, err := c.getParsedResponse("GET", fmt.Sprintf("/packages/%s/%s/%s/%s/files", owner, packageType, name, version), nil, nil, &packageFiles)
 	return packageFiles, resp, err
+}
+
+// GetLatestPackage gets the details of the latest version of a package
+func (c *Client) GetLatestPackage(owner, packageType, name string) (*Package, *Response, error) {
+	if err := escapeValidatePathSegments(&owner, &packageType, &name); err != nil {
+		return nil, nil, err
+	}
+	foundPackage := new(Package)
+	resp, err := c.getParsedResponse("GET", fmt.Sprintf("/packages/%s/%s/%s/-/latest", owner, packageType, name), nil, nil, foundPackage)
+	return foundPackage, resp, err
+}
+
+// LinkPackage links a package to a repository
+func (c *Client) LinkPackage(owner, packageType, name, repoName string) (*Response, error) {
+	if err := escapeValidatePathSegments(&owner, &packageType, &name, &repoName); err != nil {
+		return nil, err
+	}
+	return c.doRequestWithStatusHandle("POST", fmt.Sprintf("/packages/%s/%s/%s/-/link/%s", owner, packageType, name, repoName), nil, nil)
+}
+
+// UnlinkPackage unlinks a package from a repository
+func (c *Client) UnlinkPackage(owner, packageType, name string) (*Response, error) {
+	if err := escapeValidatePathSegments(&owner, &packageType, &name); err != nil {
+		return nil, err
+	}
+	return c.doRequestWithStatusHandle("POST", fmt.Sprintf("/packages/%s/%s/%s/-/unlink", owner, packageType, name), nil, nil)
 }
