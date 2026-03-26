@@ -36,7 +36,7 @@ const (
 )
 
 // initialize tracing by creating the root span and injecting the
-// spanContext is propogated through annotations in the CR
+// spanContext is propagated through annotations in the CR
 func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, tr *v1.TaskRun) context.Context {
 	logger := logging.FromContext(ctx)
 	pro := otel.GetTextMapPropagator()
@@ -48,7 +48,7 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, tr *v
 
 	spanContext := make(map[string]string)
 
-	// SpanContext was propogated through annotations
+	// SpanContext was propagated through annotations
 	if tr.Annotations != nil && tr.Annotations[SpanContextAnnotation] != "" {
 		err := json.Unmarshal([]byte(tr.Annotations[SpanContextAnnotation]), &spanContext)
 		if err != nil {
