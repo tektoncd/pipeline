@@ -1,0 +1,192 @@
+name: Patch Release
+
+"on":
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Release branch (e.g. release-v0.76.x)"
+        required: true
+        type: string
+      version:
+        description: "Version to release (e.g. v0.76.1)"
+        required: true
+        type: string
+      release_as_latest:
+        description: "Publish as latest release"
+        required: false
+        type: boolean
+        default: true
+  schedule:
+    # Weekly on Thursday at 10:00 UTC
+    - cron: "0 10 * * 4"
+
+permissions: {}
+
+env:
+  PAC_CONTROLLER_URL: "https://pac.infra.tekton.dev"
+  PAC_REPOSITORY_NAME: "tektoncd-pipeline"
+  # Ignore release branches older than this (major.minor)
+  MIN_RELEASE_VERSION: "1.0"
+
+jobs:
+  scan-release-branches:
+    name: Scan for unreleased commits
+    if: github.event_name == 'schedule' && github.repository_owner == 'tektoncd'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.scan.outputs.matrix }}
+      has_releases: ${{ steps.scan.outputs.has_releases }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Scan release branches for new commits
+        id: scan
+        run: |
+          # Determine which release branch is the latest (highest version)
+          latest_branch=""
+          latest_major=0
+          latest_minor=0
+          for ref in $(git branch -r --list 'origin/release-v*'); do
+            branch="${ref#origin/}"
+            # Extract major.minor from release-vX.Y.x
+            if [[ "$branch" =~ release-v([0-9]+)\.([0-9]+)\.x ]]; then
+              major="${BASH_REMATCH[1]}"
+              minor="${BASH_REMATCH[2]}"
+              if [ "$major" -gt "$latest_major" ] || { [ "$major" -eq "$latest_major" ] && [ "$minor" -gt "$latest_minor" ]; }; then
+                latest_major=$major
+                latest_minor=$minor
+                latest_branch=$branch
+              fi
+            fi
+          done
+          echo "::notice::Latest release branch: ${latest_branch}"
+
+          MIN_MAJOR="${MIN_RELEASE_VERSION%%.*}"
+          MIN_MINOR="${MIN_RELEASE_VERSION##*.}"
+
+          releases=()
+          for ref in $(git branch -r --list 'origin/release-v*'); do
+            branch="${ref#origin/}"
+
+            # Skip branches older than MIN_RELEASE_VERSION
+            if [[ "$branch" =~ release-v([0-9]+)\.([0-9]+)\.x ]]; then
+              major="${BASH_REMATCH[1]}"
+              minor="${BASH_REMATCH[2]}"
+              if [ "$major" -lt "$MIN_MAJOR" ] || { [ "$major" -eq "$MIN_MAJOR" ] && [ "$minor" -lt "$MIN_MINOR" ]; }; then
+                echo "::notice::Branch ${branch} is older than v${MIN_RELEASE_VERSION} — skipping"
+                continue
+              fi
+            fi
+
+            # Find the latest tag on this branch
+            last_tag=$(git describe --tags --abbrev=0 --match 'v*' "$ref" 2>/dev/null || echo "")
+            if [ -z "$last_tag" ]; then
+              echo "::notice::Branch ${branch} has no tags — skipping (initial release handled by branch creation)"
+              continue
+            fi
+
+            # Count commits since last tag
+            new_commits=$(git rev-list "${last_tag}..${ref}" --count)
+            if [ "$new_commits" -eq 0 ]; then
+              echo "::notice::Branch ${branch} has no new commits since ${last_tag}"
+              continue
+            fi
+
+            # Calculate next patch version: v0.76.0 → v0.76.1
+            next_version=$(echo "$last_tag" | awk -F. '{printf "%s.%s.%d", $1, $2, $3+1}')
+
+            # Only the latest release branch publishes as latest
+            is_latest="false"
+            if [ "$branch" = "$latest_branch" ]; then
+              is_latest="true"
+            fi
+
+            echo "::notice::Branch ${branch}: ${new_commits} new commits since ${last_tag} → ${next_version} (latest=${is_latest})"
+            releases+=("{\"branch\":\"${branch}\",\"version\":\"${next_version}\",\"release_as_latest\":\"${is_latest}\"}")
+          done
+
+          if [ ${#releases[@]} -eq 0 ]; then
+            echo "matrix=[]" >> "$GITHUB_OUTPUT"
+            echo "has_releases=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "matrix=[$(IFS=,; echo "${releases[*]}")]" >> "$GITHUB_OUTPUT"
+            echo "has_releases=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  trigger-scanned-releases:
+    name: "Trigger ${{ matrix.release.version }} (${{ matrix.release.branch }})"
+    needs: scan-release-branches
+    if: needs.scan-release-branches.outputs.has_releases == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        release: ${{ fromJson(needs.scan-release-branches.outputs.matrix) }}
+      max-parallel: 1
+    steps:
+      - name: Trigger PAC incoming webhook
+        env:
+          PAC_INCOMING_SECRET: ${{ secrets.PAC_INCOMING_SECRET }}
+          RELEASE_BRANCH: ${{ matrix.release.branch }}
+          RELEASE_VERSION: ${{ matrix.release.version }}
+          RELEASE_AS_LATEST: ${{ matrix.release.release_as_latest }}
+        run: |
+          echo "::notice::Triggering release ${RELEASE_VERSION} on ${RELEASE_BRANCH} (latest=${RELEASE_AS_LATEST})"
+          curl -sf -X POST "${PAC_CONTROLLER_URL}/incoming" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "repository": "'"${PAC_REPOSITORY_NAME}"'",
+              "branch": "'"${RELEASE_BRANCH}"'",
+              "pipelinerun": "release-patch",
+              "secret": "'"${PAC_INCOMING_SECRET}"'",
+              "params": {
+                "version": "'"${RELEASE_VERSION}"'",
+                "release_as_latest": "'"${RELEASE_AS_LATEST}"'"
+              }
+            }'
+          echo "✅ Release triggered successfully"
+
+  trigger-manual-release:
+    name: "Trigger ${{ inputs.version }} (${{ inputs.branch }})"
+    if: github.event_name == 'workflow_dispatch' && github.repository_owner == 'tektoncd'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate inputs
+        env:
+          INPUT_BRANCH: ${{ inputs.branch }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          # Validate branch format
+          if [[ ! "${INPUT_BRANCH}" =~ ^release-v[0-9]+\.[0-9]+\.x$ ]]; then
+            echo "::error::Invalid branch format: ${INPUT_BRANCH}. Expected: release-vX.Y.x"
+            exit 1
+          fi
+          # Validate version format
+          if [[ ! "${INPUT_VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version format: ${INPUT_VERSION}. Expected: vX.Y.Z"
+            exit 1
+          fi
+
+      - name: Trigger PAC incoming webhook
+        env:
+          PAC_INCOMING_SECRET: ${{ secrets.PAC_INCOMING_SECRET }}
+          INPUT_BRANCH: ${{ inputs.branch }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_RELEASE_AS_LATEST: ${{ inputs.release_as_latest }}
+        run: |
+          echo "::notice::Triggering release ${INPUT_VERSION} on ${INPUT_BRANCH} (latest=${INPUT_RELEASE_AS_LATEST})"
+          curl -sf -X POST "${PAC_CONTROLLER_URL}/incoming" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "repository": "'"${PAC_REPOSITORY_NAME}"'",
+              "branch": "'"${INPUT_BRANCH}"'",
+              "pipelinerun": "release-patch",
+              "secret": "'"${PAC_INCOMING_SECRET}"'",
+              "params": {
+                "version": "'"${INPUT_VERSION}"'",
+                "release_as_latest": "'"${INPUT_RELEASE_AS_LATEST}"'"
+              }
+            }'
+          echo "✅ Release triggered successfully"
