@@ -7,7 +7,6 @@ on:
 permissions:
   contents: read
   pull-requests: read
-  checks: write
 
 defaults:
   run:
@@ -20,47 +19,56 @@ jobs:
     - name: Show Github Object
       run: |
         cat <<'EOF'
-        ${{ toJson(github) }}
+        ${GITHUB_CONTEXT}
         EOF
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
     - name: Show Github Event Path Json
       run: 'cat $GITHUB_EVENT_PATH || true'
     - name: Set PR variables
       id: pr
       uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      env:
+        ISSUE_NUMBER: ${{ github.event.client_payload.github.payload.issue.number }}
       with:
         script: |
           const pr = await github.rest.pulls.get({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            pull_number: ${{ github.event.client_payload.github.payload.issue.number }}
+            pull_number: parseInt(process.env.ISSUE_NUMBER, 10)
           });
           core.setOutput('sha', pr.data.head.sha);
 
     - name: Create comment
       if: ${{ failure() }}
-      uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
-      with:
-        token: ${{ secrets.CHATOPS_TOKEN }}
-        repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
-        issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
-        body: |
-          Something went wrong with your `/${{ github.event.client_payload.slash_command.command }}` command: [please check the logs][1].
-
-          [1]: ${{ steps.vars.outputs.run-url }}
+      run: |
+        gh issue comment "${ISSUE_NUMBER}" \
+          --repo "${REPO}" \
+          --body "Something went wrong with your \`/${COMMAND}\` command: [please check the logs](${RUN_URL})."
+      env:
+        GH_TOKEN: ${{ secrets.CHATOPS_TOKEN }}
+        REPO: ${{ github.event.client_payload.github.payload.repository.full_name }}
+        ISSUE_NUMBER: ${{ github.event.client_payload.github.payload.issue.number }}
+        COMMAND: ${{ github.event.client_payload.slash_command.command }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
     - name: Add reaction
       if: ${{ success() }}
-      uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
-      with:
-        token: ${{ secrets.CHATOPS_TOKEN }}
-        repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
-        comment-id: ${{ github.event.client_payload.github.payload.comment.id }}
-        reactions: hooray
+      run: |
+        gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+          -f content='hooray'
+      env:
+        GH_TOKEN: ${{ secrets.CHATOPS_TOKEN }}
+        REPO: ${{ github.event.client_payload.github.payload.repository.full_name }}
+        COMMENT_ID: ${{ github.event.client_payload.github.payload.comment.id }}
     outputs:
       sha: ${{ steps.pr.outputs.sha }}
 
   e2e-extras:
     needs: [run-if-requested]
+    permissions:
+      contents: read
+      checks: write # Used to create/update check runs
     if: ${{ needs.run-if-requested.result == 'success' }}
     concurrency:
       group: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.k8s-name }}-${{ matrix.feature-flags }}-${{ github.event.client_payload.github.payload.issue.number }}
@@ -99,14 +107,17 @@ jobs:
     - name: Report tests check
       uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
       id: check-run
+      env:
+        HEAD_SHA: ${{ needs.run-if-requested.outputs.sha }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
           const check = await github.rest.checks.create({
             name: 'run tests',
-            head_sha: '${{ needs.run-if-requested.outputs.sha }}',
+            head_sha: process.env.HEAD_SHA,
             status: 'in_progress',
-            details_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+            details_url: process.env.RUN_URL,
             ...context.repo
           })
           return { id: check.data.id }
@@ -163,19 +174,24 @@ jobs:
     - name: Report tests check
       if: success() || failure()
       uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      env:
+        CHECK_RUN_ID: ${{ fromJSON(steps.check-run.outputs.result).id }}
+        HEAD_SHA: ${{ needs.run-if-requested.outputs.sha }}
+        TEST_OUTCOME: ${{ steps.tests-step.outcome }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
           const resp = await github.rest.checks.update({
             name: 'run tests',
-            check_run_id: ${{ fromJSON(steps.check-run.outputs.result).id }},
-            head_sha: '${{ needs.run-if-requested.outputs.sha }}',
+            check_run_id: parseInt(process.env.CHECK_RUN_ID, 10),
+            head_sha: process.env.HEAD_SHA,
             status: 'completed',
-            conclusion: '${{ steps.tests-step.outcome }}',
-            details_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+            conclusion: process.env.TEST_OUTCOME,
+            details_url: process.env.RUN_URL,
             output: {
               title: 'Run tests',
-              summary: 'Results: ${{ steps.tests-step.outcome }}\n\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+              summary: `Results: ${process.env.TEST_OUTCOME}\n\n${process.env.RUN_URL}`
             },
             ...context.repo
           })
