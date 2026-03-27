@@ -1164,23 +1164,26 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 
 	// Resolve cross-layer mutual exclusion between computeResources and
 	// stepSpecs. Within a single layer, validation prevents setting both.
-	// Across layers, the higher-precedence layer's intent wins:
-	// - If PipelineRun sets stepSpecs with per-step resources, clear
-	//   Pipeline-level computeResources (per-step takes precedence).
-	// - If PipelineRun sets computeResources, clear Pipeline-level
-	//   stepSpecs resources (task-level takes precedence).
+	// Across layers, per-step resources always take precedence over
+	// task-level computeResources, regardless of which layer set them.
+	// This follows specificity: more-specific (per-step) wins over
+	// less-specific (task-level), consistent with Kubernetes patterns.
 	if computeResources != nil && len(stepSpecs) > 0 {
 		hasStepResources := false
 		for _, s := range stepSpecs {
-			if s.ComputeResources.Size() != 0 {
+			if len(s.ComputeResources.Requests) > 0 || len(s.ComputeResources.Limits) > 0 {
 				hasStepResources = true
 				break
 			}
 		}
 		if hasStepResources {
 			// Per-step resources and task-level computeResources conflict.
-			// The layer that set stepSpecs wins — clear computeResources.
-			computeResources = nil
+			// Preserve any DRA Claims from computeResources, clear the rest.
+			if len(computeResources.Claims) > 0 {
+				computeResources = &corev1.ResourceRequirements{Claims: computeResources.Claims}
+			} else {
+				computeResources = nil
+			}
 		}
 	}
 

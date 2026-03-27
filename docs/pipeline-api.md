@@ -5686,7 +5686,7 @@ ResultValue
 <h3 id="tekton.dev/v1.TaskRunSidecarSpec">TaskRunSidecarSpec
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.PipelineTaskRunSpec">PipelineTaskRunSpec</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTaskRunSpec">PipelineTaskRunSpec</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>TaskRunSidecarSpec is used to override the values of a Sidecar in the corresponding Task.</p>
@@ -6221,7 +6221,7 @@ It directly uses the Artifact type for its structure.</p>
 <h3 id="tekton.dev/v1.TaskRunStepSpec">TaskRunStepSpec
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.PipelineTaskRunSpec">PipelineTaskRunSpec</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTaskRunSpec">PipelineTaskRunSpec</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>TaskRunStepSpec is used to override the values of a Step in the corresponding Task.</p>
@@ -12532,50 +12532,6 @@ PipelineTaskOnErrorType
 <em>(Optional)</em>
 <p>OnError defines the exiting behavior of a PipelineRun on error
 can be set to [ continue | stopAndFail ]</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>stepSpecs</code><br/>
-<em>
-<a href="#tekton.dev/v1.TaskRunStepSpec">
-[]TaskRunStepSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>StepSpecs is used to override the compute resources of steps in the
-referenced Task at the Pipeline level.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>sidecarSpecs</code><br/>
-<em>
-<a href="#tekton.dev/v1.TaskRunSidecarSpec">
-[]TaskRunSidecarSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>SidecarSpecs is used to override the compute resources of sidecars in the
-referenced Task at the Pipeline level.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>computeResources</code><br/>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
-Kubernetes core/v1.ResourceRequirements
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Compute resources to use for this PipelineTask.</p>
 </td>
 </tr>
 </tbody>

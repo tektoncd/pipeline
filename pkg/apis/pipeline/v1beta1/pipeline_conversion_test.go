@@ -21,7 +21,6 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/google/go-cmp/cmp"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -224,45 +223,6 @@ func TestPipelineConversion(t *testing.T) {
 					DisplayName: "final-task-display-name",
 					Description: "final-task-description",
 					TaskRef:     &v1beta1.TaskRef{Name: "foo-task"},
-				}},
-			},
-		},
-	}, {
-		name: "pipeline with compute resource overrides on PipelineTask",
-		in: &v1beta1.Pipeline{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
-			},
-			Spec: v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
-					Name:    "task-with-overrides",
-					TaskRef: &v1beta1.TaskRef{Name: "my-task"},
-					StepSpecs: []v1.TaskRunStepSpec{{
-						Name: "build",
-						ComputeResources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("500m"),
-								corev1.ResourceMemory: resource.MustParse("256Mi"),
-							},
-						},
-					}},
-					SidecarSpecs: []v1.TaskRunSidecarSpec{{
-						Name: "logging",
-						ComputeResources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{
-								corev1.ResourceCPU: resource.MustParse("100m"),
-							},
-						},
-					}},
-					ComputeResources: &corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceMemory: resource.MustParse("512Mi"),
-						},
-						Limits: corev1.ResourceList{
-							corev1.ResourceMemory: resource.MustParse("1Gi"),
-						},
-					},
 				}},
 			},
 		},

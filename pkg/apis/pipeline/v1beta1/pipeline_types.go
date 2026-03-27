@@ -19,9 +19,7 @@ package v1beta1
 import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internal/checksum"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -276,22 +274,6 @@ type PipelineTask struct {
 	// can be set to [ continue | stopAndFail ]
 	// +optional
 	OnError PipelineTaskOnErrorType `json:"onError,omitempty"`
-
-	// StepSpecs is used to override the compute resources of steps in the
-	// referenced Task at the Pipeline level.
-	// +optional
-	// +listType=atomic
-	StepSpecs []v1.TaskRunStepSpec `json:"stepSpecs,omitempty"`
-
-	// SidecarSpecs is used to override the compute resources of sidecars in the
-	// referenced Task at the Pipeline level.
-	// +optional
-	// +listType=atomic
-	SidecarSpecs []v1.TaskRunSidecarSpec `json:"sidecarSpecs,omitempty"`
-
-	// Compute resources to use for this PipelineTask.
-	// +optional
-	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
 }
 
 // IsCustomTask checks whether an embedded TaskSpec is a Custom Task
