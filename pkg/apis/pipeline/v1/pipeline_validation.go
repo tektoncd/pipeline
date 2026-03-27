@@ -1002,7 +1002,7 @@ func (pt PipelineTask) validateComputeResourceOverrides(ctx context.Context) (er
 	}
 	if pt.ComputeResources != nil {
 		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "computeResources", config.BetaAPIFields).ViaField("computeResources"))
-		errs = errs.Also(validateTaskRunComputeResources(pt.ComputeResources, pt.StepSpecs).ViaField("computeResources"))
+		errs = errs.Also(validateTaskRunComputeResources(pt.ComputeResources, pt.StepSpecs))
 	}
 	return errs
 }

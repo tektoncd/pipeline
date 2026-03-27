@@ -5126,7 +5126,7 @@ func TestPipelineTask_ValidateComputeResourceOverrides(t *testing.T) {
 		wantErr: apis.ErrMultipleOneOf(
 			"stepSpecs.resources",
 			"computeResources",
-		).ViaField("computeResources"),
+		),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
