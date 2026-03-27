@@ -619,6 +619,10 @@ func (g *GitResolver) getAuthenticationCredentials(ctx context.Context, apiSecre
 		token: token,
 	}
 
+	if apiSecret.usernameKey == "" {
+		apiSecret.usernameKey = conf.APIUsernameSecretKey
+	}
+
 	username, ok := secret.Data[apiSecret.usernameKey]
 	if ok {
 		credentials.username = username
