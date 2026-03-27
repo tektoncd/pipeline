@@ -626,6 +626,8 @@ func (g *GitResolver) getAuthenticationCredentials(ctx context.Context, apiSecre
 		g.Logger.Debugf("Cannot get username, key %s not found in secret %s in namespace %s", apiSecret.usernameKey, apiSecret.name, apiSecret.ns)
 	}
 
+	g.Cache.Add(apiSecret, credentials, ttl)
+
 	return credentials, nil
 }
 
