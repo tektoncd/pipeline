@@ -19209,7 +19209,11 @@ func TestMemberOfLookup(t *testing.T) {
 			actual := memberOfLookup(tc.spec, tc.taskName)
 			if actual != tc.expected {
 				t.Errorf("memberOfLookup() = %q, expected %q", actual, tc.expected)
-||||||| parent of fd75640a6 (fix: add feature gate checks, cross-layer validation, and tests)
+			}
+		})
+	}
+}
+
 func TestReconcile_PipelineTaskComputeResourceOverrides(t *testing.T) {
 	testCases := []struct {
 		name                     string
