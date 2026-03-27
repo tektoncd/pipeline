@@ -40,7 +40,7 @@ const (
 	// DefaultTokenKeyParam is the default key in the TokenParam secret for SCM API authentication
 	DefaultTokenKeyParam string = "token"
 	// UsernameKeyParam is an optional reference to a usernameKey in the TokenParam or GitTokenParam secret
-	UsernameKeyParam string = "username"
+	UsernameKeyParam string = "usernameKey"
 	// DefaultUsernameKeyParam is the default key for the usernameKey in the TokenParam or GitTokenParam secret
 	DefaultUsernameKeyParam string = "username"
 	// scmTypeParam is an optional string overriding the scm-type configuration (ie: github, gitea, gitlab etc..)
