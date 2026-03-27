@@ -405,7 +405,27 @@ func (c *Reconciler) resolvePipelineState(
 		)
 
 		getTaskRunFunc := func(name string) (*v1.TaskRun, error) {
-			return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
+			tr, err := c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
+			if err != nil {
+				return nil, err
+			}
+			// If the informer cache shows the TaskRun as Failed, verify against the API server
+			// to guard against stale cache data causing premature PipelineRun failure.
+			// This addresses a race condition where a TaskRun transiently fails (e.g., pod eviction)
+			// and recovers, but the PipelineRun controller reads the stale Failed status.
+			if cond := tr.Status.GetCondition(apis.ConditionSucceeded); cond != nil && cond.IsFalse() {
+				freshTR, freshErr := c.PipelineClientSet.TektonV1().TaskRuns(pr.Namespace).Get(ctx, name, metav1.GetOptions{})
+				if freshErr != nil {
+					logging.FromContext(ctx).Warnf("Cannot verify TaskRun %s status from API server: %v; using cached status", name, freshErr)
+					return tr, nil
+				}
+				freshCond := freshTR.Status.GetCondition(apis.ConditionSucceeded)
+				if freshCond == nil || !freshCond.IsFalse() {
+					logging.FromContext(ctx).Infof("TaskRun %s appears failed in cache but is not failed in API server; using API server status", name)
+					return freshTR, nil
+				}
+			}
+			return tr, nil
 		}
 
 		getCustomRunFunc := func(name string) (*v1beta1.CustomRun, error) {
