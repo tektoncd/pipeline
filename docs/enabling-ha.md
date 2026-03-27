@@ -11,6 +11,7 @@ weight: 106
   - [Controller HA](#controller-ha)
     - [Configuring Controller Replicas](#configuring-controller-replicas)
     - [Configuring Leader Election](#configuring-leader-election)
+    - [Tuning Leader Election Buckets for Throughput](#tuning-leader-election-buckets-for-throughput)
     - [Disabling Controller HA](#disabling-controller-ha)
   - [Webhook HA](#webhook-ha)
     - [Configuring Webhook Replicas](#configuring-webhook-replicas)
@@ -48,6 +49,25 @@ Leader election can be configured in [config-leader-election.yaml](./../config/c
 | `data.retryPeriod`   | 2s       |
 
 _Note_: The maximum value of `data.buckets` at this time is 10.
+
+### Tuning Leader Election Buckets for Throughput
+
+`data.buckets` controls how controller workqueue keys are partitioned. With `M` buckets and `N` replicas, replicas compete for leases and each replica reconciles the buckets it currently owns.
+
+A practical way to size values:
+
+- Start with `buckets >= replicas` so each replica can own work when the cluster is healthy
+- Use more buckets than replicas (for example 2-3x replicas) when you want smoother balancing after failover or scale events
+- Keep buckets at or below the documented maximum (currently `10`)
+
+Higher bucket counts usually improve parallelism and can reduce reconciliation latency under load, but they also increase lease coordination overhead. If your cluster is lightly loaded, increasing buckets may not improve throughput.
+
+The same leader-election bucket mechanism is available for other Tekton control-plane components:
+
+- `config-leader-election-webhook` for the webhook deployment
+- `config-leader-election-events` for the events controller
+
+When you change `buckets` or scale replicas, ownership is rebalanced as leases are renewed. During this convergence window, some keys can be retried or briefly delayed, so prefer gradual changes and monitor controller reconciliation metrics after each update.
 
 ### Disabling Controller HA
 
