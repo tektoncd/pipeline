@@ -1242,6 +1242,10 @@ parameter of `PipelineTask`. Variables like `context.pipelineTask.retries` and
 `context.pipelineTask.retries` will be replaced by `retries` of the `PipelineTask`, while
 `context.task.retry-count` will be replaced by current retry number of the `PipelineTask`.
 
+**Note:** `context.task.retry-count` is currently substituted when the `PipelineTask`
+uses an inline `taskSpec`. When a `PipelineTask` uses `taskRef`, this variable is not
+resolved and remains a literal string (for example, `$(context.task.retry-count)`).
+
 ```yaml
 params:
 - name: pipelineTask-retries
