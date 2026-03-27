@@ -993,13 +993,16 @@ func (ps *PipelineSpec) GetIndexingReferencesToArrayParams() sets.String {
 // rules as the equivalent fields on PipelineTaskRunSpec.
 func (pt PipelineTask) validateComputeResourceOverrides(ctx context.Context) (errs *apis.FieldError) {
 	if pt.StepSpecs != nil {
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepSpecs", config.BetaAPIFields).ViaField("stepSpecs"))
 		errs = errs.Also(validateStepSpecs(pt.StepSpecs).ViaField("stepSpecs"))
 	}
 	if pt.SidecarSpecs != nil {
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "sidecarSpecs", config.BetaAPIFields).ViaField("sidecarSpecs"))
 		errs = errs.Also(validateSidecarSpecs(pt.SidecarSpecs).ViaField("sidecarSpecs"))
 	}
 	if pt.ComputeResources != nil {
-		errs = errs.Also(validateTaskRunComputeResources(pt.ComputeResources, pt.StepSpecs))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "computeResources", config.BetaAPIFields).ViaField("computeResources"))
+		errs = errs.Also(validateTaskRunComputeResources(pt.ComputeResources, pt.StepSpecs).ViaField("computeResources"))
 	}
 	return errs
 }
