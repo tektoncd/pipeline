@@ -29,63 +29,59 @@ import (
 func TestGetNameAndNamespace(t *testing.T) {
 	tests := []struct {
 		name         string
-		resolverName string
 		ownerName    string
 		ownerNS      string
 		inputName    string
 		inputNS      string
-		expectErr    bool
 		expectErrMsg string
 		expectNS     string
 	}{
 		{
 			name:         "uses owner namespace when name is empty",
-			resolverName: "git",
 			ownerName:    "my-run",
 			ownerNS:      "my-ns",
 			inputName:    "",
 			inputNS:      "",
-			expectErr:    false,
 			expectNS:     "my-ns",
 		},
 		{
 			name:         "explicit name and namespace succeeds",
-			resolverName: "git",
 			ownerName:    "my-run",
 			ownerNS:      "my-ns",
 			inputName:    "explicit-name",
 			inputNS:      "explicit-ns",
-			expectErr:    false,
 			expectNS:     "explicit-ns",
 		},
 		{
 			name:         "explicit name and namespace ignores owner namespace",
-			resolverName: "git",
 			ownerName:    "my-run",
 			ownerNS:      "owner-ns",
 			inputName:    "explicit-name",
 			inputNS:      "explicit-ns",
-			expectErr:    false,
 			expectNS:     "explicit-ns",
 		},
 		{
-			name:         "errors on empty namespace with explicit name",
-			resolverName: "git",
+			name:      "explicit name with empty namespace falls back to owner namespace",
+			ownerName: "my-run",
+			ownerNS:   "my-ns",
+			inputName: "explicit-name",
+			inputNS:   "",
+			expectNS:  "my-ns",
+		},
+		{
+			name:         "errors when both input and owner namespace are empty",
 			ownerName:    "my-run",
-			ownerNS:      "my-ns",
+			ownerNS:      "",
 			inputName:    "explicit-name",
 			inputNS:      "",
-			expectErr:    true,
 			expectErrMsg: "namespace is required",
 		},
 		{
 			name:         "errors on empty namespace from owner",
-			resolverName: "git",
 			ownerName:    "my-run",
 			ownerNS:      "",
 			inputName:    "",
 			inputNS:      "",
-			expectErr:    true,
 			expectErrMsg: "namespace is required",
 		},
 	}
@@ -103,8 +99,8 @@ func TestGetNameAndNamespace(t *testing.T) {
 					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "bar"},
 				}},
 			}
-			gotName, gotNS, err := resource.GetNameAndNamespace(tt.resolverName, owner, tt.inputName, tt.inputNS, req)
-			if tt.expectErr {
+			gotName, gotNS, err := resource.GetNameAndNamespace("git", owner, tt.inputName, tt.inputNS, req)
+			if tt.expectErrMsg != "" {
 				if err == nil {
 					t.Fatalf("expected error containing %q but got nil", tt.expectErrMsg)
 				}
