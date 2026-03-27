@@ -266,7 +266,10 @@ type PipelineTask struct {
 	// StepSpecs is used to override the compute resources of steps in the
 	// referenced Task at the Pipeline level. These values take precedence over
 	// the Task's step resources but can be overridden by PipelineRun's
-	// taskRunSpecs[].stepSpecs.
+	// taskRunSpecs[].stepSpecs. When PipelineRun specifies stepSpecs for this
+	// task, it replaces the entire Pipeline-level list (not a per-step merge).
+	// For matrixed PipelineTasks, the same overrides apply to all fan-out TaskRuns.
+	// These fields are only meaningful for regular tasks, not custom tasks.
 	// +optional
 	// +listType=atomic
 	StepSpecs []TaskRunStepSpec `json:"stepSpecs,omitempty"`
@@ -274,14 +277,18 @@ type PipelineTask struct {
 	// SidecarSpecs is used to override the compute resources of sidecars in the
 	// referenced Task at the Pipeline level. These values take precedence over
 	// the Task's sidecar resources but can be overridden by PipelineRun's
-	// taskRunSpecs[].sidecarSpecs.
+	// taskRunSpecs[].sidecarSpecs. When PipelineRun specifies sidecarSpecs for
+	// this task, it replaces the entire Pipeline-level list (not a per-sidecar merge).
+	// These fields are only meaningful for regular tasks, not custom tasks.
 	// +optional
 	// +listType=atomic
 	SidecarSpecs []TaskRunSidecarSpec `json:"sidecarSpecs,omitempty"`
 
 	// Compute resources to use for this PipelineTask. These values take
 	// precedence over the Task's compute resources but can be overridden by
-	// PipelineRun's taskRunSpecs[].computeResources.
+	// PipelineRun's taskRunSpecs[].computeResources. Cannot be used together
+	// with stepSpecs that set per-step resources (mutually exclusive).
+	// These fields are only meaningful for regular tasks, not custom tasks.
 	// +optional
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
 }
