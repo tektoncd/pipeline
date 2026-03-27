@@ -5127,6 +5127,44 @@ func TestPipelineTask_ValidateComputeResourceOverrides(t *testing.T) {
 			"stepSpecs.resources",
 			"computeResources",
 		),
+	}, {
+		name: "stepSpecs without resources coexists with computeResources",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			StepSpecs: []TaskRunStepSpec{{
+				Name: "step1",
+			}},
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
+			},
+		},
+		wc: cfgtesting.EnableBetaAPIFields,
+	}, {
+		name: "stepSpecs rejected on custom task",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{APIVersion: "example.com/v1", Kind: "Example"},
+			StepSpecs: []TaskRunStepSpec{{
+				Name: "step1",
+				ComputeResources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}},
+		},
+		wc:      cfgtesting.EnableBetaAPIFields,
+		wantErr: apis.ErrInvalidValue("stepSpecs cannot be used with custom tasks", "stepSpecs"),
+	}, {
+		name: "computeResources rejected on custom task",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{APIVersion: "example.com/v1", Kind: "Example"},
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
+			},
+		},
+		wc:      cfgtesting.EnableBetaAPIFields,
+		wantErr: apis.ErrInvalidValue("computeResources cannot be used with custom tasks", "computeResources"),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

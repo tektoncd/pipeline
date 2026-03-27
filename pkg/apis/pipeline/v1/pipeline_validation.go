@@ -992,6 +992,27 @@ func (ps *PipelineSpec) GetIndexingReferencesToArrayParams() sets.String {
 // ComputeResources fields on a PipelineTask. These follow the same validation
 // rules as the equivalent fields on PipelineTaskRunSpec.
 func (pt PipelineTask) validateComputeResourceOverrides(ctx context.Context) (errs *apis.FieldError) {
+	hasOverrides := pt.StepSpecs != nil || pt.SidecarSpecs != nil || pt.ComputeResources != nil
+	if !hasOverrides {
+		return nil
+	}
+
+	// These fields are only meaningful for regular tasks (not custom tasks).
+	isCustom := (pt.TaskRef != nil && pt.TaskRef.IsCustomTask()) ||
+		(pt.TaskSpec != nil && pt.TaskSpec.IsCustomTask())
+	if isCustom {
+		if pt.StepSpecs != nil {
+			errs = errs.Also(apis.ErrInvalidValue("stepSpecs cannot be used with custom tasks", "stepSpecs"))
+		}
+		if pt.SidecarSpecs != nil {
+			errs = errs.Also(apis.ErrInvalidValue("sidecarSpecs cannot be used with custom tasks", "sidecarSpecs"))
+		}
+		if pt.ComputeResources != nil {
+			errs = errs.Also(apis.ErrInvalidValue("computeResources cannot be used with custom tasks", "computeResources"))
+		}
+		return errs
+	}
+
 	if pt.StepSpecs != nil {
 		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepSpecs", config.BetaAPIFields).ViaField("stepSpecs"))
 		errs = errs.Also(validateStepSpecs(pt.StepSpecs).ViaField("stepSpecs"))
