@@ -13,29 +13,37 @@ installation.
 
 ## Table of Contents
 
-  - [Configuring built-in remote Task and Pipeline resolution](#configuring-built-in-remote-task-and-pipeline-resolution)
-  - [Configuring CloudEvents notifications](#configuring-cloudevents-notifications)
-  - [Configuring self-signed cert for private registry](#configuring-self-signed-cert-for-private-registry)
-  - [Configuring environment variables](#configuring-environment-variables)
-  - [Customizing basic execution parameters](#customizing-basic-execution-parameters)
-    - [Customizing the Pipelines Controller behavior](#customizing-the-pipelines-controller-behavior)
-    - [Alpha Features](#alpha-features)
-    - [Beta Features](#beta-features)
-  - [Enabling larger results using sidecar logs](#enabling-larger-results-using-sidecar-logs)
-  - [Configuring High Availability](#configuring-high-availability)
-  - [Configuring tekton pipeline controller performance](#configuring-tekton-pipeline-controller-performance)
-  - [Platform Support](#platform-support)
-  - [Creating a custom release of Tekton Pipelines](#creating-a-custom-release-of-tekton-pipelines)
-  - [Verify Tekton Pipelines Release](#verify-tekton-pipelines-release)
-    - [Verify signatures using `cosign`](#verify-signatures-using-cosign)
-    - [Verify the transparency logs using `rekor-cli`](#verify-the-transparency-logs-using-rekor-cli)
-  - [Verify Tekton Resources](#verify-tekton-resources)
-  - [Pipelinerun with Affinity Assistant](#pipelineruns-with-affinity-assistant)
-  - [TaskRuns with `imagePullBackOff` Timeout](#taskruns-with-imagepullbackoff-timeout)
-  - [Disabling Inline Spec in TaskRun and PipelineRun](#disabling-inline-spec-in-taskrun-and-pipelinerun)
-  - [Exponential Backoff for TaskRun and CustomRun Creation](#exponential-backoff-for-taskrun-and-customrun-creation)
-  - [Limiting Step reference concurrency resolution](#limiting-step-reference-concurrency-resolution)
-  - [Next steps](#next-steps)
+- [Table of Contents](#table-of-contents)
+- [Configuring built-in remote Task and Pipeline resolution](#configuring-built-in-remote-task-and-pipeline-resolution)
+- [Configuring CloudEvents notifications](#configuring-cloudevents-notifications)
+- [Configuring self-signed cert for private registry](#configuring-self-signed-cert-for-private-registry)
+- [Configuring environment variables](#configuring-environment-variables)
+- [Configuring default resources requirements](#configuring-default-resources-requirements)
+- [Customizing basic execution parameters](#customizing-basic-execution-parameters)
+  - [`default-sidecar-log-polling-interval`](#default-sidecar-log-polling-interval)
+  - [Customizing the Pipelines Controller behavior](#customizing-the-pipelines-controller-behavior)
+  - [Alpha Features](#alpha-features)
+  - [Beta Features](#beta-features)
+- [Enabling larger results using sidecar logs](#enabling-larger-results-using-sidecar-logs)
+- [Configuring High Availability](#configuring-high-availability)
+- [Configuring tekton pipeline controller performance](#configuring-tekton-pipeline-controller-performance)
+- [Running TaskRuns and PipelineRuns with restricted pod security standards](#running-taskruns-and-pipelineruns-with-restricted-pod-security-standards)
+- [Platform Support](#platform-support)
+- [Creating a custom release of Tekton Pipelines](#creating-a-custom-release-of-tekton-pipelines)
+- [Verify Tekton Pipelines Release](#verify-tekton-pipelines-release)
+  - [Verify signatures using `cosign`](#verify-signatures-using-cosign)
+  - [Verify the transparency logs using `rekor-cli`](#verify-the-transparency-logs-using-rekor-cli)
+- [Verify Tekton Resources](#verify-tekton-resources)
+- [Pipelineruns with Affinity Assistant](#pipelineruns-with-affinity-assistant)
+- [TaskRuns with `imagePullBackOff` Timeout](#taskruns-with-imagepullbackoff-timeout)
+- [Disabling Inline Spec in Pipeline, TaskRun and PipelineRun](#disabling-inline-spec-in-pipeline-taskrun-and-pipelinerun)
+- [Exponential Backoff for TaskRun and CustomRun Creation](#exponential-backoff-for-taskrun-and-customrun-creation)
+  - [Backoff Configuration](#backoff-configuration)
+  - [Default Behavior](#default-behavior)
+- [Limiting Step reference concurrency resolution](#limiting-step-reference-concurrency-resolution)
+    - [Default Behavior](#default-behavior-1)
+    - [Overriding the Default](#overriding-the-default)
+- [Next steps](#next-steps)
 
 
 ## Configuring built-in remote Task and Pipeline resolution
@@ -364,7 +372,7 @@ Defaults to "ignore".
   To disable populating this field, set this flag to `"false"`.
 
 - `set-security-context`: Set this flag to `true` to set a security context for containers injected by Tekton that will allow TaskRun pods
-to run in namespaces with `restricted` pod security admission. By default, this is set to `false`.
+to run in namespaces with `restricted` pod security admission. By default, this is set to `true`.
 
 - `set-security-context-read-only-root-filesystem`: Set this flag to `true` to enable `readOnlyRootFilesystem` in the
   security context for containers injected by Tekton. This makes the root filesystem of the container read-only,
