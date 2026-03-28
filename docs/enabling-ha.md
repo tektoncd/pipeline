@@ -49,6 +49,17 @@ Leader election can be configured in [config-leader-election.yaml](./../config/c
 
 _Note_: The maximum value of `data.buckets` at this time is 10.
 
+`data.buckets` controls how many leader-election partitions are created. Increasing
+it allows multiple controller replicas to reconcile resources in parallel.
+
+A practical starting point is to keep buckets at or slightly above the number of
+replicas (for example, 5 replicas with 5-10 buckets). Too few buckets can leave
+replicas mostly idle, while too many buckets may increase rebalance work during
+leader changes without improving throughput.
+
+When you change either buckets or replica count, expect a short rebalance period
+while leases move between replicas.
+
 ### Disabling Controller HA
 
 If HA is not required, you can disable it by scaling the deployment back to one replica. You can also modify the [controller deployment](./../config/controller.yaml), by specifying in the `tekton-pipelines-controller` container the `disable-ha` flag. For example:
@@ -94,6 +105,10 @@ metadata:
 spec:
   minReplicas: 1
 ```
+
+The same bucket-based leader election mechanism is also used by the Webhook and
+Events components via their leader-election ConfigMap (`config-leader-election`
+in the `tekton-pipelines` namespace).
 
 By default, the Webhook deployment is _not_ configured to block a [Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler) from scaling down the node that's running the only replica of the deployment using the `cluster-autoscaler.kubernetes.io/safe-to-evict` annotation.
 This means that during node drains, the Webhook might be unavailable temporarily, during which time Tekton resources can't be created, updated or deleted.
