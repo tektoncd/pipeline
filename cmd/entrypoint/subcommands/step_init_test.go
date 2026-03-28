@@ -52,6 +52,12 @@ func TestStepInit(t *testing.T) {
 		"1": "1",
 	}
 
+	// Call stepInit again to verify idempotency. If a container restarts
+	// within a pod, the init entrypoint re-runs with symlinks already present.
+	if err := stepInit(steps); err != nil {
+		t.Fatalf("stepInit (second call): %v", err)
+	}
+
 	direntry, err := os.ReadDir(stepDir)
 	if err != nil {
 		t.Fatalf("os.ReadDir: %v", err)
