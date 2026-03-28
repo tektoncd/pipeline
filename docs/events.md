@@ -51,35 +51,58 @@ but the underlying `TaskRun` do.
 # Events via `CloudEvents`
 
 When you [configure a sink](./additional-configs.md#configuring-cloudevents-notifications), Tekton emits
-events as described in the table below.
+CloudEvents as described in the table below.
 
-Tekton sends cloud events in a parallel routine to allow for retries without blocking the
-reconciler. A routine is started every time the `Succeeded` condition changes - either state,
-reason or message. Retries are sent using an exponential back-off strategy.
+All CloudEvents are sent by the dedicated `tekton-events-controller`, which watches
+`TaskRun`, `PipelineRun`, and `CustomRun` resources and sends events independently of
+the core reconcilers. Operators must ensure the `tekton-events-controller` Deployment
+is running.
+
+The controller sends cloud events in a parallel routine to allow for retries without blocking
+reconciliation. Retries are sent using an exponential back-off strategy.
 Because of retries, events are not guaranteed to be sent to the target sink in the order they happened.
 
-Resource      |Event    |Event Type
-:-------------|:-------:|:----------------------------------------------------------
-`TaskRun`     | `Started` | `dev.tekton.event.taskrun.started.v1`
-`TaskRun`     | `Running` | `dev.tekton.event.taskrun.running.v1`
+The controller uses an in-memory cache to deduplicate events. In case of controller restart,
+the cache is reset and a small number of duplicate events may be sent.
+
+Resource      |Event                             |Event Type
+:-------------|:--------------------------------:|:---------------------------------------------------------:
+`TaskRun`     | `Queued`                         | `dev.tekton.event.taskrun.queued.v1`
+`TaskRun`     | `Started`                        | `dev.tekton.event.taskrun.started.v1`
+`TaskRun`     | `Running`                        | `dev.tekton.event.taskrun.running.v1`
 `TaskRun`     | `Condition Change while Running` | `dev.tekton.event.taskrun.unknown.v1`
-`TaskRun`     | `Succeed` | `dev.tekton.event.taskrun.successful.v1`
-`TaskRun`     | `Failed`  | `dev.tekton.event.taskrun.failed.v1`
-`PipelineRun` | `Started` | `dev.tekton.event.pipelinerun.started.v1`
-`PipelineRun` | `Running` | `dev.tekton.event.pipelinerun.running.v1`
+`TaskRun`     | `Succeed`                        | `dev.tekton.event.taskrun.successful.v1`
+`TaskRun`     | `Failed`                         | `dev.tekton.event.taskrun.failed.v1`
+`PipelineRun` | `Queued`                         | `dev.tekton.event.pipelinerun.queued.v1`
+`PipelineRun` | `Started`                        | `dev.tekton.event.pipelinerun.started.v1`
+`PipelineRun` | `Running`                        | `dev.tekton.event.pipelinerun.running.v1`
 `PipelineRun` | `Condition Change while Running` | `dev.tekton.event.pipelinerun.unknown.v1`
-`PipelineRun` | `Succeed` | `dev.tekton.event.pipelinerun.successful.v1`
-`PipelineRun` | `Failed`  | `dev.tekton.event.pipelinerun.failed.v1`
-`Run`         | `Started` | `dev.tekton.event.run.started.v1`
-`Run`         | `Running` | `dev.tekton.event.run.running.v1`
-`Run`         | `Succeed` | `dev.tekton.event.run.successful.v1`
-`Run`         | `Failed`  | `dev.tekton.event.run.failed.v1`
+`PipelineRun` | `Succeed`                        | `dev.tekton.event.pipelinerun.successful.v1`
+`PipelineRun` | `Failed`                         | `dev.tekton.event.pipelinerun.failed.v1`
+`CustomRun`   | `Started`                        | `dev.tekton.event.customrun.started.v1`
+`CustomRun`   | `Running`                        | `dev.tekton.event.customrun.running.v1`
+`CustomRun`   | `Succeed`                        | `dev.tekton.event.customrun.successful.v1`
+`CustomRun`   | `Failed`                         | `dev.tekton.event.customrun.failed.v1`
 
-`CloudEvents` for `Runs` are only sent when enabled in the [configuration](./additional-configs.md#configuring-cloudevents-notifications).
+The `Queued` event is sent when a `TaskRun` or `PipelineRun` has been created but not yet
+picked up by the core reconciler (no `Succeeded` condition set yet). It provides early
+notification that the resource exists and is waiting to be processed.
 
-**Note**: `CloudEvents` for `Runs` rely on an ephemeral cache to avoid duplicate
-events. In case of controller restart, the cache is reset and duplicate events
-may be sent.
+CloudEvents are only sent when enabled in the [configuration](./additional-configs.md#configuring-cloudevents-notifications).
+
+## Delivery visibility
+
+Each send attempt by the `tekton-events-controller` is recorded as a Kubernetes Event on the
+`TaskRun` or `PipelineRun` resource:
+
+- `CloudEventSent`: the event was delivered successfully to the sink.
+- `CloudEventFailed`: the event could not be delivered after retries.
+
+Use `kubectl describe taskrun <name>` or `kubectl describe pipelinerun <name>` to inspect these events.
+
+**Note**: `status.cloudEvents` on `TaskRun` and `PipelineRun` is deprecated and is no longer
+populated by the `tekton-events-controller`. Use `kubectl describe` (see above) for delivery
+visibility instead.
 
 ## Format of `CloudEvents`
 

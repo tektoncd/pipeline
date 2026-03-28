@@ -24,12 +24,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -48,7 +48,7 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 	tests := []struct {
 		name            string
 		clientBehaviour cloudevent.FakeClientBehaviour
-		object          runtime.Object
+		object          v1beta1.RunObject
 		wantCEvents     []string
 		wantEvents      []string
 	}{{
@@ -63,7 +63,7 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 			Status: v1.TaskRunStatus{Status: objectStatus},
 		},
 		wantCEvents: []string{"Context Attributes,"},
-		wantEvents:  []string{},
+		wantEvents:  []string{"Normal CloudEventSent"},
 	}, {
 		name: "test-send-cloud-event-pipelinerun",
 		clientBehaviour: cloudevent.FakeClientBehaviour{
@@ -76,7 +76,7 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 			Status: v1.PipelineRunStatus{Status: objectStatus},
 		},
 		wantCEvents: []string{"Context Attributes,"},
-		wantEvents:  []string{},
+		wantEvents:  []string{"Normal CloudEventSent"},
 	}, {
 		name: "test-send-cloud-event-failed",
 		clientBehaviour: cloudevent.FakeClientBehaviour{
@@ -86,7 +86,7 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 			Status: v1.PipelineRunStatus{Status: objectStatus},
 		},
 		wantCEvents: []string{},
-		wantEvents:  []string{"Warning Cloud Event Failure"},
+		wantEvents:  []string{"Warning CloudEventFailed"},
 	}, {
 		name: "test-send-cloud-event-customrun",
 		clientBehaviour: cloudevent.FakeClientBehaviour{
@@ -94,7 +94,7 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 		},
 		object:      &v1beta1.CustomRun{},
 		wantCEvents: []string{"Context Attributes,"},
-		wantEvents:  []string{},
+		wantEvents:  []string{"Normal CloudEventSent"},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -112,39 +112,35 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 	}
 }
 
-func TestSendCloudEventWithRetriesInvalid(t *testing.T) {
-	tests := []struct {
-		name       string
-		object     runtime.Object
-		wantCEvent string
-		wantEvent  string
-	}{{
-		name: "test-send-cloud-event-invalid-taskrun",
-		object: &v1.TaskRun{
-			Status: v1.TaskRunStatus{},
-		},
-		wantCEvent: "Context Attributes,",
-		wantEvent:  "",
-	}, {
-		name: "test-send-cloud-event-pipelinerun",
-		object: &v1.PipelineRun{
-			Status: v1.PipelineRunStatus{},
-		},
-		wantCEvent: "Context Attributes,",
-		wantEvent:  "",
-	}}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			ctx := setupFakeContext(t, cloudevent.FakeClientBehaviour{
-				SendSuccessfully: true,
-			}, true, 1)
-			ctx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			err := cloudevent.SendCloudEventWithRetries(ctx, tc.object)
-			if err == nil {
-				t.Fatalf("Expected an error sending cloud events for invalid object, got none")
-			}
-		})
+// TestSendCloudEventWithRetriesQueued verifies that a TaskRun with no condition
+// (not yet picked up by the core reconciler) sends a queued event successfully.
+func TestSendCloudEventWithRetriesQueued(t *testing.T) {
+	ctx := setupFakeContext(t, cloudevent.FakeClientBehaviour{SendSuccessfully: true}, true, 1)
+	object := &v1.TaskRun{Status: v1.TaskRunStatus{}}
+	if err := cloudevent.SendCloudEventWithRetries(ctx, object); err != nil {
+		t.Fatalf("Unexpected error sending queued cloud event: %v", err)
+	}
+	ceClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
+	ceClient.CheckCloudEventsUnordered(t, "queued taskrun", []string{"Context Attributes,"})
+	recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
+	if err := k8sevent.CheckEventsOrdered(t, recorder.Events, "queued taskrun", []string{"Normal CloudEventSent"}); err != nil {
+		t.Fatal(err.Error())
+	}
+}
+
+// TestSendCloudEventWithRetriesQueuedPipelineRun verifies that a PipelineRun with no condition
+// (not yet picked up by the core reconciler) sends a queued event successfully.
+func TestSendCloudEventWithRetriesQueuedPipelineRun(t *testing.T) {
+	ctx := setupFakeContext(t, cloudevent.FakeClientBehaviour{SendSuccessfully: true}, true, 1)
+	object := &v1.PipelineRun{Status: v1.PipelineRunStatus{}}
+	if err := cloudevent.SendCloudEventWithRetries(ctx, object); err != nil {
+		t.Fatalf("Unexpected error sending queued cloud event: %v", err)
+	}
+	ceClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
+	ceClient.CheckCloudEventsUnordered(t, "queued pipelinerun", []string{"Context Attributes,"})
+	recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
+	if err := k8sevent.CheckEventsOrdered(t, recorder.Events, "queued pipelinerun", []string{"Normal CloudEventSent"}); err != nil {
+		t.Fatal(err.Error())
 	}
 }
 
@@ -188,19 +184,19 @@ func TestEmitCloudEvents(t *testing.T) {
 		name:            "with sink",
 		defaults:        map[string]string{},
 		events:          map[string]string{"sink": "http://mysink"},
-		wantEvents:      []string{},
+		wantEvents:      []string{"Normal CloudEventSent"},
 		wantCloudEvents: []string{`(?s)dev.tekton.event.customrun.started.v1.*test1`},
 	}, {
 		name:            "with legacy sink",
 		defaults:        map[string]string{"default-cloud-events-sink": "http://mysink.defaults"},
 		events:          map[string]string{},
-		wantEvents:      []string{},
+		wantEvents:      []string{"Normal CloudEventSent"},
 		wantCloudEvents: []string{`(?s)dev.tekton.event.customrun.started.v1.*test1`},
 	}, {
 		name:            "with both sinks",
 		defaults:        map[string]string{"default-cloud-events-sink": "http://mysink.defaults"},
 		events:          map[string]string{"sink": "http://mysink.events"},
-		wantEvents:      []string{},
+		wantEvents:      []string{"Normal CloudEventSent"},
 		wantCloudEvents: []string{`(?s)dev.tekton.event.customrun.started.v1.*test1`},
 	}}
 
@@ -227,6 +223,34 @@ func TestEmitCloudEvents(t *testing.T) {
 		}
 		fakeClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
 	}
+}
+
+// TestEmitCloudEvents_NoCacheClient verifies that no cloud event is sent when
+// a sink is configured but the cache client is missing from the context.
+func TestEmitCloudEvents_NoCacheClient(t *testing.T) {
+	object := &v1beta1.CustomRun{
+		ObjectMeta: metav1.ObjectMeta{
+			SelfLink: "/customrun/test1",
+		},
+		Status: v1beta1.CustomRunStatus{},
+	}
+
+	ctx, _ := rtesting.SetupFakeContext(t)
+	// Override the injected cache client with nil to simulate a missing client
+	ctx = cache.ToContext(ctx, nil)
+	ctx = cloudevent.WithFakeClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, 0)
+	fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
+
+	eventsConfig, _ := config.NewEventsFromMap(map[string]string{"sink": "http://mysink"})
+	cfg := &config.Config{
+		Events:       eventsConfig,
+		Defaults:     config.DefaultConfig.DeepCopy(),
+		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
+	}
+	ctx = config.ToContext(ctx, cfg)
+
+	cloudevent.EmitCloudEvents(ctx, object)
+	fakeClient.CheckCloudEventsUnordered(t, "no cache client", []string{})
 }
 
 func TestEmitCloudEventsWhenConditionChange(t *testing.T) {

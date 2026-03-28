@@ -22,7 +22,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
-	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,55 +52,20 @@ func TestEmit(t *testing.T) {
 		Message: "just starting",
 	}
 	testcases := []struct {
-		name            string
-		defaults        map[string]string
-		events          map[string]string
-		wantEvents      []string
-		wantCloudEvents []string
+		name       string
+		wantEvents []string
 	}{{
-		name:            "without sink",
-		defaults:        map[string]string{},
-		events:          map[string]string{},
-		wantEvents:      []string{"Normal Started"},
-		wantCloudEvents: []string{},
-	}, {
-		name:            "with empty string sink",
-		defaults:        map[string]string{},
-		events:          map[string]string{"sink": ""},
-		wantEvents:      []string{"Normal Started"},
-		wantCloudEvents: []string{},
-	}, {
-		name:            "with sink in events",
-		defaults:        map[string]string{},
-		events:          map[string]string{"sink": "http://mysink"},
-		wantEvents:      []string{"Normal Started"},
-		wantCloudEvents: []string{`(?s)dev.tekton.event.pipelinerun.started.v1.*test1`},
-	}, {
-		name:            "with sink in defaults",
-		defaults:        map[string]string{"default-cloud-events-sink": "http://mysink"},
-		events:          map[string]string{},
-		wantEvents:      []string{"Normal Started"},
-		wantCloudEvents: []string{`(?s)dev.tekton.event.pipelinerun.started.v1.*test1`},
-	}, {
-		name:            "with sink in both",
-		defaults:        map[string]string{"default-cloud-events-sink": "http://mysink.defaults"},
-		events:          map[string]string{"sink": "http://mysink.events"},
-		wantEvents:      []string{"Normal Started"},
-		wantCloudEvents: []string{`(?s)dev.tekton.event.pipelinerun.started.v1.*test1`},
+		name:       "condition change emits k8s event",
+		wantEvents: []string{"Normal Started"},
 	}}
 
 	for _, tc := range testcases {
-		// Setup the context and seed test data
 		ctx, _ := rtesting.SetupFakeContext(t)
-		ctx = cloudevent.WithFakeClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, len(tc.wantCloudEvents))
-		fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
 
-		// Setup the config and add it to the context
-		eventsConfig, _ := config.NewEventsFromMap(tc.events)
-		defaultsConfig, _ := config.NewDefaultsFromMap(tc.defaults)
+		eventsConfig, _ := config.NewEventsFromMap(map[string]string{"sink": "http://mysink"})
 		cfg := &config.Config{
 			Events:       eventsConfig,
-			Defaults:     defaultsConfig,
+			Defaults:     config.DefaultConfig.DeepCopy(),
 			FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
 		}
 		ctx = config.ToContext(ctx, cfg)
@@ -111,6 +75,5 @@ func TestEmit(t *testing.T) {
 		if err := k8sevent.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 			t.Fatal(err.Error())
 		}
-		fakeClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
 	}
 }
