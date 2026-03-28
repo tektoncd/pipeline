@@ -33,6 +33,8 @@ The `cache` parameter controls whether the cluster resolver caches resolved reso
 
 **Note**: The cluster resolver only caches when `cache: always` is explicitly specified. This is because cluster resources (Tasks, Pipelines, etc.) do not have immutable references like Git commit hashes or bundle digests, making automatic caching unreliable.
 
+**Note**: The cache parameter must be under `pipelineRef.params` or `taskRef.params`, not `spec.params`.
+
 ### Cache Configuration
 
 The resolver cache can be configured globally using the `resolver-cache-config` ConfigMap. This ConfigMap controls the cache size and TTL (time-to-live) for all resolvers.
@@ -122,7 +124,7 @@ spec:
       value: some-task
     - name: namespace
       value: namespace-containing-task
-    - name: cache
+    - name: cache   # cache param under spec.taskRef.params
       value: always
 ```
 
@@ -143,7 +145,7 @@ spec:
       value: some-task
     - name: namespace
       value: namespace-containing-task
-    - name: cache
+    - name: cache   # cache param under spec.taskRef.params
       value: never
 ```
 
@@ -185,6 +187,48 @@ spec:
       value: some-pipeline
     - name: namespace
       value: namespace-containing-pipeline
+```
+
+### Pipeline Resolution with Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: remote-pipeline-reference
+spec:
+  pipelineRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: pipeline
+    - name: name
+      value: some-pipeline
+    - name: namespace
+      value: namespace-containing-pipeline
+    - name: cache   # cache param under spec.pipelineRef.params
+      value: always
+```
+
+### Pipeline Resolution without Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: remote-pipeline-reference
+spec:
+  pipelineRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: pipeline
+    - name: name
+      value: some-pipeline
+    - name: namespace
+      value: namespace-containing-pipeline
+    - name: cache   # cache param under spec.pipelineRef.params
+      value: never
 ```
 
 ## `ResolutionRequest` Status
