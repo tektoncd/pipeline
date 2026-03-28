@@ -1,0 +1,13 @@
+name: Nightly E2E Tests
+on:
+  schedule:
+    - cron: '0 3 * * *'  # 03:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  e2e-matrix:
+    uses: ./.github/workflows/e2e-matrix.yml
+    with:
+      # Run full matrix
+      k8s-versions: '["v1.28.x", "v1.29.x", "v1.30.x", "v1.31.x"]'
+      feature-flags: '["stable", "beta", "alpha"]'
