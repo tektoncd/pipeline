@@ -22,17 +22,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
+	pipelineapi "github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	pipelinescheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	rrclient "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	rrv1beta1 "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
 	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -58,6 +63,12 @@ type statusDataPatch struct {
 	Data        string                        `json:"data"`
 	Source      *pipelinev1beta1.ConfigSource `json:"source"`
 	RefSource   *pipelinev1.RefSource         `json:"refSource"`
+}
+
+var allowedResourceKinds = []string{
+	pipelineapi.PipelineControllerName,
+	pipelineapi.TaskControllerName,
+	pipelinev1beta1.StepActionKind,
 }
 
 // Reconciler handles ResolutionRequest objects, performs functionality
@@ -167,6 +178,14 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 			}
 			return
 		}
+		if err := ValidateResolvedResource(resource); err != nil {
+			errChan <- &resolutioncommon.GetResourceError{
+				ResolverName: r.resolver.GetName(resolutionCtx),
+				Key:          key,
+				Original:     fmt.Errorf("resolved resource validation error: %w", err),
+			}
+			return
+		}
 		resourceChan <- resource
 	}()
 
@@ -251,5 +270,23 @@ func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.Resoluti
 		})
 	}
 
+	return nil
+}
+
+func ValidateResolvedResource(resource framework.ResolvedResource) error {
+	decoder := pipelinescheme.Codecs.UniversalDeserializer()
+	_, gvk, err := decoder.Decode(resource.Data(), nil, nil)
+	if err != nil {
+		if k8sruntime.IsNotRegisteredError(err) {
+			return errors.New("unknown object scheme, must be tekton object")
+		} else if strings.Contains(err.Error(), "json parse error") {
+			// Generic error is returned, so string matching is required
+			return errors.New("invalid object; json parse error")
+		}
+		return fmt.Errorf("decoding error: %w", err)
+	}
+	if gvk != nil && (gvk.Group != pipelineapi.GroupName || !slices.Contains(allowedResourceKinds, gvk.Kind)) {
+		return fmt.Errorf("resolved data is not of a supported type (%q/%q): must of Group: %s, Kinds: %v", gvk.Group, gvk.Kind, pipelineapi.GroupName, allowedResourceKinds)
+	}
 	return nil
 }
