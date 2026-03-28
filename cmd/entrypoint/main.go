@@ -55,7 +55,8 @@ var (
 	onError             = flag.String("on_error", "", "Set to \"continue\" to ignore an error and continue when a container terminates with a non-zero exit code."+
 		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps.")
 	stepMetadataDir        = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
-	resultExtractionMethod = flag.String("result_from", entrypoint.ResultExtractionMethodTerminationMessage, "The method using which to extract results from tasks. Default is using the termination message.")
+	resultExtractionMethod         = flag.String("result_from", entrypoint.ResultExtractionMethodTerminationMessage, "The method using which to extract results from tasks. Default is using the termination message.")
+	compressTerminationMessage     = flag.Bool("compress_termination_message", false, "If true, compress termination messages with flate to fit more results in the 4KB Kubernetes limit.")
 )
 
 const (
@@ -148,7 +149,8 @@ func main() {
 		OnError:                *onError,
 		StepMetadataDir:        *stepMetadataDir,
 		SpireWorkloadAPI:       spireWorkloadAPI,
-		ResultExtractionMethod: *resultExtractionMethod,
+		ResultExtractionMethod:     *resultExtractionMethod,
+		CompressTerminationMessage: *compressTerminationMessage,
 	}
 
 	// Copy any creds injected by the controller into the $HOME directory of the current

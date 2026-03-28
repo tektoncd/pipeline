@@ -82,7 +82,7 @@ func writeMessage(path string, pro []result.RunResult, compress bool) error {
 		return errTooLong
 	}
 
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}
@@ -140,6 +140,12 @@ func compressMessage(jsonData []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// maxDecompressedSize is the upper bound for decompressed termination messages.
+// The pre-compression JSON was at most 4KB, but with compression we allow
+// larger payloads. 1MB is a safe limit that prevents decompression bombs
+// without restricting legitimate use cases.
+const maxDecompressedSize = 1024 * 1024 // 1MB
+
 // decompressMessage decodes and decompresses a "tknz:"-prefixed message.
 func decompressMessage(data []byte) ([]byte, error) {
 	encoded := data[len(compressedPrefix):]
@@ -149,7 +155,7 @@ func decompressMessage(data []byte) ([]byte, error) {
 	}
 	reader := flate.NewReader(bytes.NewReader(decoded))
 	defer reader.Close()
-	decompressed, err := io.ReadAll(reader)
+	decompressed, err := io.ReadAll(io.LimitReader(reader, maxDecompressedSize))
 	if err != nil {
 		return nil, fmt.Errorf("flate decompress: %w", err)
 	}
