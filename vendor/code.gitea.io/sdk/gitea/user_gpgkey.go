@@ -23,6 +23,7 @@ type GPGKey struct {
 	CanEncryptComms   bool           `json:"can_encrypt_comms"`
 	CanEncryptStorage bool           `json:"can_encrypt_storage"`
 	CanCertify        bool           `json:"can_certify"`
+	Verified          bool           `json:"verified"`
 	Created           time.Time      `json:"created_at,omitempty"`
 	Expires           time.Time      `json:"expires_at,omitempty"`
 }
@@ -67,8 +68,9 @@ func (c *Client) GetGPGKey(keyID int64) (*GPGKey, *Response, error) {
 // CreateGPGKeyOption options create user GPG key
 type CreateGPGKeyOption struct {
 	// An armored GPG key to add
-	//
 	ArmoredKey string `json:"armored_public_key"`
+	// An optional armored signature for the GPG key
+	Signature string `json:"armored_signature,omitempty"`
 }
 
 // CreateGPGKey create GPG key with options
@@ -84,6 +86,35 @@ func (c *Client) CreateGPGKey(opt CreateGPGKeyOption) (*GPGKey, *Response, error
 
 // DeleteGPGKey delete GPG key with key id
 func (c *Client) DeleteGPGKey(keyID int64) (*Response, error) {
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/user/gpg_keys/%d", keyID), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/user/gpg_keys/%d", keyID), nil, nil)
+}
+
+// GetGPGKeyVerificationToken gets a verification token for adding a GPG key.
+// Returns the token as a plain string (API returns text/plain, not JSON).
+// The user should sign this token with their GPG key and submit via VerifyGPGKey.
+func (c *Client) GetGPGKeyVerificationToken() (string, *Response, error) {
+	body, resp, err := c.getResponse("GET", "/user/gpg_key_token", nil, nil)
+	return string(body), resp, err
+}
+
+// VerifyGPGKeyOption options for verifying a GPG key
+type VerifyGPGKeyOption struct {
+	// KeyID is the GPG key ID to verify
+	KeyID string `json:"key_id"`
+	// Signature is the ASCII-armored signature of the verification token
+	Signature string `json:"armored_signature"`
+}
+
+// VerifyGPGKey verifies a GPG key by submitting a signed verification token.
+// First call GetGPGKeyVerificationToken to get the token, sign it with the GPG key,
+// then call this with the key ID and armored signature.
+func (c *Client) VerifyGPGKey(opt VerifyGPGKeyOption) (*GPGKey, *Response, error) {
+	body, err := json.Marshal(&opt)
+	if err != nil {
+		return nil, nil, err
+	}
+	key := new(GPGKey)
+	resp, err := c.getParsedResponse("POST", "/user/gpg_key_verify",
+		jsonHeader, bytes.NewReader(body), key)
+	return key, resp, err
 }
