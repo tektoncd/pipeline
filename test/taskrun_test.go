@@ -708,3 +708,70 @@ spec:
 		t.Fatalf("-got, +want: %v", d)
 	}
 }
+
+// @test:execution=parallel
+// TestTaskRunPending tests that a Pending TaskRun is not run until the pending
+// status is cleared. This mirrors TestPipelineRunPending for PipelineRun.
+func TestTaskRunPending(t *testing.T) {
+	ctx := t.Context()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	trName := helpers.ObjectNameForTest(t)
+
+	t.Logf("Creating Pending TaskRun %s in namespace %s", trName, namespace)
+
+	if _, err := c.V1TaskRunClient.Create(ctx, parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskSpec:
+    steps:
+    - image: mirror.gcr.io/busybox
+      command: ['/bin/sh']
+      args: ['-c', 'echo hello, world']
+  status: TaskRunPending
+`, trName, namespace)), metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create TaskRun `%s`: %s", trName, err)
+	}
+
+	t.Logf("Waiting for TaskRun %s in namespace %s to be marked pending", trName, namespace)
+	if err := WaitForTaskRunState(ctx, c, trName, TaskRunPending(trName), "TaskRunPending", v1Version); err != nil {
+		t.Fatalf("Error waiting for TaskRun %s to be marked pending: %s", trName, err)
+	}
+
+	t.Logf("Verifying TaskRun %s has no start time and no pod while pending", trName)
+	taskRun, err := c.V1TaskRunClient.Get(ctx, trName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Error getting TaskRun %s: %s", trName, err)
+	}
+	if taskRun.Status.StartTime != nil {
+		t.Fatalf("Expected start time to be nil while pending, got: %s", taskRun.Status.StartTime)
+	}
+
+	pods, err := c.KubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: "tekton.dev/taskRun=" + trName,
+	})
+	if err != nil {
+		t.Fatalf("Error listing pods for TaskRun %s: %s", trName, err)
+	}
+	if len(pods.Items) != 0 {
+		t.Fatalf("Expected no pods while TaskRun is pending, got %d", len(pods.Items))
+	}
+
+	t.Logf("Clearing pending status on TaskRun %s", trName)
+	taskRun.Spec.Status = ""
+	if _, err := c.V1TaskRunClient.Update(ctx, taskRun, metav1.UpdateOptions{}); err != nil {
+		t.Fatalf("Error clearing pending status on TaskRun %s: %s", trName, err)
+	}
+
+	t.Logf("Waiting for TaskRun %s in namespace %s to complete", trName, namespace)
+	if err := WaitForTaskRunState(ctx, c, trName, TaskRunSucceed(trName), "TaskRunSuccess", v1Version); err != nil {
+		t.Fatalf("Error waiting for TaskRun %s to finish: %s", trName, err)
+	}
+}
