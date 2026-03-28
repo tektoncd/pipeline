@@ -11,6 +11,7 @@ weight: 106
   - [Controller HA](#controller-ha)
     - [Configuring Controller Replicas](#configuring-controller-replicas)
     - [Configuring Leader Election](#configuring-leader-election)
+    - [Horizontal Scaling with Leader Election Buckets](#horizontal-scaling-with-leader-election-buckets)
     - [Disabling Controller HA](#disabling-controller-ha)
   - [Webhook HA](#webhook-ha)
     - [Configuring Webhook Replicas](#configuring-webhook-replicas)
@@ -48,6 +49,77 @@ Leader election can be configured in [config-leader-election.yaml](./../config/c
 | `data.retryPeriod`   | 2s       |
 
 _Note_: The maximum value of `data.buckets` at this time is 10.
+
+### Horizontal Scaling with Leader Election Buckets
+
+Tekton's controller uses [Knative's bucket-based leader election](https://knative.dev/docs/serving/config/ha/) to distribute reconciliation work across multiple replicas. Understanding how buckets work helps you tune the controller for higher throughput and lower reconciliation latency.
+
+#### How Bucket-Based Leader Election Works
+
+When you configure `data.buckets` in the `config-leader-election-controller` ConfigMap, the controller's key space is partitioned into that many buckets. Each bucket is backed by a separate Kubernetes `Lease` object. Controller replicas compete to acquire leases, and the replica that holds a given lease is responsible for reconciling all resources whose keys hash into that bucket.
+
+For example, with 5 buckets and 3 replicas:
+- Each replica acquires one or more bucket leases.
+- Resource keys are distributed across the 5 buckets by consistent hashing.
+- If a replica fails, its bucket leases are acquired by surviving replicas after the lease expires.
+
+#### Configuring Buckets for Horizontal Scaling
+
+To enable horizontal scaling, increase the number of buckets and replicas:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-leader-election-controller
+  namespace: tekton-pipelines
+data:
+  buckets: "10"
+  leaseDuration: "15s"
+  renewDeadline: "10s"
+  retryPeriod: "2s"
+```
+
+Then scale the controller deployment to match:
+
+```sh
+kubectl -n tekton-pipelines scale deployment tekton-pipelines-controller --replicas=5
+```
+
+#### Recommended Bucket-to-Replica Ratios
+
+| Cluster Size     | Replicas | Buckets | Notes                                           |
+| ---------------- | -------- | ------- | ----------------------------------------------- |
+| Small (<100 pipelines/day)  | 1  | 1  | Default; HA not needed                  |
+| Medium           | 2–3      | 5       | Good balance of HA and distribution             |
+| Large            | 3–5      | 10      | Maximum distribution; use when reconciliation latency matters |
+
+General guidelines:
+- **Buckets ≥ Replicas**: Having more buckets than replicas allows for better load distribution and smoother rebalancing when replicas are added or removed.
+- **Buckets = Replicas**: Each replica owns exactly one bucket. Simple, but adding a replica without increasing buckets means some replicas sit idle.
+- **Buckets < Replicas**: Some replicas will have no buckets and remain idle standby. This wastes resources but provides fast failover.
+
+#### Impact on Reconciliation Latency and Throughput
+
+- **More buckets** = finer-grained partitioning of work, allowing more replicas to process resources concurrently. This reduces reconciliation latency under high load.
+- **Throughput scales with active replicas**, up to the number of buckets. Beyond that, additional replicas are standby-only.
+- Under low load, multiple replicas may have little to do. Monitor resource usage and scale accordingly.
+
+#### Rebalancing Behavior
+
+When replicas are added or removed (e.g., during rolling updates or scaling events):
+- New replicas attempt to acquire unleased buckets.
+- If a replica is terminated, its leases expire after `leaseDuration` and are picked up by other replicas.
+- During rebalancing, there is a brief period (up to `leaseDuration`) where some buckets may have no active leader. Resources in those buckets are not reconciled until a new leader is elected.
+- To minimize rebalancing disruption, use a `PodDisruptionBudget` and perform rolling updates.
+
+#### Other Components
+
+The same bucket-based leader election mechanism is available for:
+- **Webhook**: via `config-leader-election-webhook` ConfigMap
+- **Events controller**: via `config-leader-election-events` ConfigMap
+
+However, the webhook is stateless and benefits more from simple replica scaling (see [Webhook HA](#webhook-ha)) than from bucket-based partitioning.
 
 ### Disabling Controller HA
 
