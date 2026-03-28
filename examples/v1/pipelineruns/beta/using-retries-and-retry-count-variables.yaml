@@ -8,21 +8,18 @@ spec:
   pipelineSpec:
     tasks:
     - name: retry-me
-      retries: 5
+      retries: 1
       params:
       - name: pipelineTask-retries
         value: "$(context.pipelineTask.retries)"
-      - name: pipelineTask-retry-count
-        value: "$(context.task.retry-count)"
       taskSpec:
         params:
         - name: pipelineTask-retries
-        - name: pipelineTask-retry-count
         steps:
         - image: mirror.gcr.io/alpine
           script: |
             #!/usr/bin/env sh
-            if [ "$(params.pipelineTask-retry-count)" == "$(params.pipelineTask-retries)" ]; then
+            if [ "$(context.task.retry-count)" == "$(params.pipelineTask-retries)" ]; then
               echo "This is the last retry."
               exit 0;
             fi
