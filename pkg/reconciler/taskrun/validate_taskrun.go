@@ -18,12 +18,12 @@ package taskrun
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 
-	"errors"
-
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/list"
@@ -265,16 +265,21 @@ func validateSidecarOverrides(ts *v1.TaskSpec, trs *v1.TaskRunSpec) error {
 	return errors.Join(errs...)
 }
 
-// validateResults checks the emitted results type and object properties against the ones defined in spec.
-func validateTaskRunResults(tr *v1.TaskRun, resolvedTaskSpec *v1.TaskSpec) error {
-	specResults := []v1.TaskResult{}
+// collectAllTaskResults combines results from the inline TaskSpec and the resolved TaskSpec.
+func collectAllTaskResults(tr *v1.TaskRun, resolvedTaskSpec *v1.TaskSpec) []v1.TaskResult {
+	var specResults []v1.TaskResult
 	if tr.Spec.TaskSpec != nil {
 		specResults = append(specResults, tr.Spec.TaskSpec.Results...)
 	}
-
 	if resolvedTaskSpec != nil {
 		specResults = append(specResults, resolvedTaskSpec.Results...)
 	}
+	return specResults
+}
+
+// validateTaskRunResults checks the emitted results type and object properties against the ones defined in spec.
+func validateTaskRunResults(tr *v1.TaskRun, resolvedTaskSpec *v1.TaskSpec) error {
+	specResults := collectAllTaskResults(tr, resolvedTaskSpec)
 
 	// When get the results, check if the type of result is the expected one
 	if missmatchedTypes := mismatchedTypesResults(tr, specResults); len(missmatchedTypes) != 0 {
@@ -289,6 +294,40 @@ func validateTaskRunResults(tr *v1.TaskRun, resolvedTaskSpec *v1.TaskSpec) error
 	// When get the results, for object value need to check if they have missing keys.
 	if missingKeysObjectNames := missingKeysofObjectResults(tr, specResults); len(missingKeysObjectNames) != 0 {
 		return pipelineErrors.WrapUserError(fmt.Errorf("missing keys for these results which are required in TaskResult's properties %v", missingKeysObjectNames))
+	}
+	return nil
+}
+
+// validateResultsProduced checks that every declared result without a default was produced by the TaskRun.
+// Results that have a default are pre-populated in prepare(), so they will always be present in
+// tr.Status.Results even when the step did not write them. Results with no default must be explicitly
+// written by a step; if they are absent the TaskRun has violated its declared contract.
+// This validation only runs on terminal TaskRuns and only when the enable-default-results feature flag is set.
+func validateResultsProduced(ctx context.Context, tr *v1.TaskRun, resolvedTaskSpec *v1.TaskSpec) error {
+	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableDefaultResults {
+		return nil
+	}
+	if !tr.IsDone() {
+		return nil
+	}
+
+	specResults := collectAllTaskResults(tr, resolvedTaskSpec)
+
+	producedResults := sets.NewString()
+	for _, r := range tr.Status.Results {
+		producedResults.Insert(r.Name)
+	}
+
+	var missing []string
+	for _, r := range specResults {
+		if r.Default == nil && !producedResults.Has(r.Name) {
+			missing = append(missing, r.Name)
+		}
+	}
+
+	if len(missing) > 0 {
+		sort.Strings(missing)
+		return pipelineErrors.WrapUserError(fmt.Errorf("missing results: %s", strings.Join(missing, ", ")))
 	}
 	return nil
 }

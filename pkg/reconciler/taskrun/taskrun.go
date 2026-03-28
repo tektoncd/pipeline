@@ -625,6 +625,18 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableDefaultResults && len(tr.Status.Results) == 0 {
+		for _, tR := range rtr.TaskSpec.Results {
+			if tR.Default != nil {
+				tr.Status.Results = append(tr.Status.Results, v1.TaskRunResult{
+					Name:  tR.Name,
+					Type:  tR.Type,
+					Value: *tR.Default,
+				})
+			}
+		}
+	}
+
 	return taskSpec, rtr, nil
 }
 
@@ -735,6 +747,11 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	}
 
 	if err := validateTaskRunResults(tr, rtr.TaskSpec); err != nil {
+		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
+		return err
+	}
+
+	if err := validateResultsProduced(ctx, tr, rtr.TaskSpec); err != nil {
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return err
 	}

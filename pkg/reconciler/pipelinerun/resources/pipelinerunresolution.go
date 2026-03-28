@@ -508,7 +508,7 @@ func (t *ResolvedPipelineTask) skipBecauseParentTaskWasSkipped(facts *PipelineRu
 // reason for skipping the task, and applies result references if found
 func (t *ResolvedPipelineTask) skipBecauseResultReferencesAreMissing(facts *PipelineRunFacts) bool {
 	if t.checkParentsDone(facts) && t.hasResultReferences() {
-		resolvedResultRefs, pt, err := ResolveResultRefs(facts.State, PipelineRunState{t})
+		resolvedResultRefs, pt, err := ResolveResultRefs(facts.EnableDefaultResults, facts.State, PipelineRunState{t})
 		rpt := facts.State.ToMap()[pt]
 		if rpt != nil {
 			if err != nil &&
@@ -683,7 +683,7 @@ func ResolvePipelineTask(
 	// We want to resolve all of the result references and ignore any errors at this point since there could be
 	// instances where result references are missing here, but will be later skipped and resolved in
 	// skipBecauseResultReferencesAreMissing. The final validation is handled in CheckMissingResultReferences.
-	resolvedResultRefs, _, _ := ResolveResultRefs(pst, PipelineRunState{&rpt})
+	resolvedResultRefs, _, _ := ResolveResultRefs(config.FromContextOrDefaults(ctx).FeatureFlags.EnableDefaultResults, pst, PipelineRunState{&rpt})
 	if err := validateArrayResultsIndex(resolvedResultRefs); err != nil {
 		return nil, err
 	}
@@ -989,7 +989,7 @@ func isCustomRunCancelledByPipelineRunTimeout(cr *v1beta1.CustomRun) bool {
 // CheckMissingResultReferences returns an error if it is missing any result references.
 // Missing result references can occur if task fails to produce a result but has
 // OnError: continue (ie TestMissingResultWhenStepErrorIsIgnored)
-func CheckMissingResultReferences(pipelineRunState PipelineRunState, target *ResolvedPipelineTask) error {
+func CheckMissingResultReferences(enableDefaultResults bool, pipelineRunState PipelineRunState, target *ResolvedPipelineTask) error {
 	for _, resultRef := range v1.PipelineTaskResultRefs(target.PipelineTask) {
 		referencedPipelineTask, ok := pipelineRunState.ToMap()[resultRef.PipelineTask]
 		if !ok {
@@ -1009,7 +1009,7 @@ func CheckMissingResultReferences(pipelineRunState PipelineRunState, target *Res
 				return fmt.Errorf("Result reference error: Internal result ref \"%s\" has zero-length TaskRuns", resultRef.PipelineTask)
 			}
 			taskRun := referencedPipelineTask.TaskRuns[0]
-			_, err := findTaskResultForParam(taskRun, resultRef)
+			_, err := findTaskResultForParam(enableDefaultResults, taskRun, resultRef, referencedPipelineTask.ResolvedTask)
 			if err != nil {
 				return err
 			}
