@@ -17,6 +17,7 @@ package termination_test
 
 import (
 	"os"
+	"sort"
 	"strings"
 	"testing"
 
@@ -115,15 +116,15 @@ func TestParseMessage_CompressedAutoDetect(t *testing.T) {
 	}
 	defer os.Remove(tmpFile.Name())
 
-	want := []result.RunResult{{
-		Key:        "digest",
-		Value:      "sha256:abc123",
-		ResultType: result.TaskRunResultType,
-	}, {
-		Key:        "url",
-		Value:      "https://example.com",
-		ResultType: result.TaskRunResultType,
-	}}
+	// Use enough results so compression actually saves space and produces tknz: prefix
+	var want []result.RunResult
+	for i := 0; i < 20; i++ {
+		want = append(want, result.RunResult{
+			Key:        "image-digest-" + string(rune('a'+i)),
+			Value:      "gcr.io/project/image@sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+			ResultType: result.TaskRunResultType,
+		})
+	}
 
 	if err := termination.WriteCompressedMessage(tmpFile.Name(), want); err != nil {
 		t.Fatalf("WriteCompressedMessage: %v", err)
@@ -136,7 +137,7 @@ func TestParseMessage_CompressedAutoDetect(t *testing.T) {
 
 	// Verify the raw content starts with the compressed prefix.
 	if !strings.HasPrefix(string(fileContents), "tknz:") {
-		t.Fatalf("Expected compressed prefix 'tknz:', got: %.20s...", string(fileContents))
+		t.Fatalf("Expected compressed prefix 'tknz:', got: %.40s...", string(fileContents))
 	}
 
 	got, err := termination.ParseMessage(logger, string(fileContents))
@@ -144,6 +145,8 @@ func TestParseMessage_CompressedAutoDetect(t *testing.T) {
 		t.Fatalf("ParseMessage: %v", err)
 	}
 
+	// Sort want to match ParseMessage's sorting
+	sort.Slice(want, func(i, j int) bool { return want[i].Key < want[j].Key })
 	if d := cmp.Diff(want, got); d != "" {
 		t.Fatalf("ParseMessage compressed auto-detect %s", diff.PrintWantGot(d))
 	}
@@ -181,6 +184,18 @@ func TestParseMessageInvalidMessage(t *testing.T) {
 		desc:      "invalid JSON",
 		msg:       "invalid JSON",
 		wantError: "parsing message json",
+	}, {
+		desc:      "compressed prefix with invalid base64",
+		msg:       "tknz:not-valid-base64!!!",
+		wantError: "decompressing termination message",
+	}, {
+		desc:      "compressed prefix with valid base64 but invalid flate",
+		msg:       "tknz:aGVsbG8gd29ybGQ",
+		wantError: "decompressing termination message",
+	}, {
+		desc:      "compressed prefix with empty payload",
+		msg:       "tknz:",
+		wantError: "decompressing termination message",
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			logger, _ := logging.NewLogger("", "status")

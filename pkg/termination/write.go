@@ -73,7 +73,14 @@ func writeMessage(path string, pro []result.RunResult, compress bool) error {
 		if err != nil {
 			return err
 		}
-		output = compressed
+		// Fall back to plain JSON if compression makes the output larger
+		// (possible with small, high-entropy payloads where base64 overhead
+		// exceeds compression savings).
+		if len(compressed) < len(jsonOutput) {
+			output = compressed
+		} else {
+			output = jsonOutput
+		}
 	} else {
 		output = jsonOutput
 	}
@@ -155,9 +162,12 @@ func decompressMessage(data []byte) ([]byte, error) {
 	}
 	reader := flate.NewReader(bytes.NewReader(decoded))
 	defer reader.Close()
-	decompressed, err := io.ReadAll(io.LimitReader(reader, maxDecompressedSize))
+	decompressed, err := io.ReadAll(io.LimitReader(reader, maxDecompressedSize+1))
 	if err != nil {
 		return nil, fmt.Errorf("flate decompress: %w", err)
+	}
+	if int64(len(decompressed)) > maxDecompressedSize {
+		return nil, fmt.Errorf("decompressed termination message exceeds %d byte limit", maxDecompressedSize)
 	}
 	return decompressed, nil
 }

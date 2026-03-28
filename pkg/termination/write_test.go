@@ -76,15 +76,16 @@ func TestWriteCompressedMessage(t *testing.T) {
 	}
 	defer os.Remove(tmpFile.Name())
 
-	output := []result.RunResult{{
-		Key:        "digest",
-		Value:      "sha256:abc123",
-		ResultType: result.TaskRunResultType,
-	}, {
-		Key:        "url",
-		Value:      "https://example.com/image",
-		ResultType: result.TaskRunResultType,
-	}}
+	// Use enough results so compression actually saves space (small payloads
+	// fall back to plain JSON when compressed output is larger).
+	var output []result.RunResult
+	for i := 0; i < 20; i++ {
+		output = append(output, result.RunResult{
+			Key:        "image-digest-" + string(rune('a'+i)),
+			Value:      "gcr.io/project/image@sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+			ResultType: result.TaskRunResultType,
+		})
+	}
 
 	if err := termination.WriteCompressedMessage(tmpFile.Name(), output); err != nil {
 		t.Fatalf("WriteCompressedMessage: %v", err)
@@ -96,7 +97,7 @@ func TestWriteCompressedMessage(t *testing.T) {
 	}
 
 	if !strings.HasPrefix(string(fileContents), "tknz:") {
-		t.Fatalf("Expected compressed message to start with 'tknz:' prefix, got: %.20s...", string(fileContents))
+		t.Fatalf("Expected compressed message to start with 'tknz:' prefix, got: %.40s...", string(fileContents))
 	}
 }
 
