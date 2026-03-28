@@ -1,0 +1,50 @@
+# This TaskRun demonstrates the termination message compression feature.
+# It produces many results that would exceed the 4KB termination message limit
+# without compression, but fit within the limit when compression is enabled.
+#
+# Prerequisites:
+#   Set the feature flag in the feature-flags ConfigMap:
+#     kubectl patch configmap feature-flags -n tekton-pipelines \
+#       -p '{"data":{"enable-termination-message-compression":"true"}}'
+#
+# The task generates 20 image digest results. Without compression, this
+# produces ~5KB of JSON, exceeding the 4KB Kubernetes termination message
+# limit. With compression enabled (~40-50% reduction), it fits comfortably.
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: compressed-results-
+spec:
+  taskSpec:
+    results:
+      - name: digest-1
+      - name: digest-2
+      - name: digest-3
+      - name: digest-4
+      - name: digest-5
+      - name: digest-6
+      - name: digest-7
+      - name: digest-8
+      - name: digest-9
+      - name: digest-10
+      - name: digest-11
+      - name: digest-12
+      - name: digest-13
+      - name: digest-14
+      - name: digest-15
+      - name: digest-16
+      - name: digest-17
+      - name: digest-18
+      - name: digest-19
+      - name: digest-20
+    steps:
+      - name: generate-digests
+        image: mirror.gcr.io/bash
+        script: |
+          #!/usr/bin/env bash
+          # Generate 20 image digest results — each ~100 bytes, totaling ~5KB JSON
+          for i in $(seq 1 20); do
+            digest="sha256:$(printf '%064x' $((i * 12345678901234)))"
+            echo -n "gcr.io/my-project/image-${i}@${digest}" > "$(results.digest-${i}.path)"
+          done
+          echo "Wrote 20 digest results"

@@ -264,3 +264,66 @@ func TestMaxSizeFile(t *testing.T) {
 		t.Fatalf("Expected MessageLengthError, received: %v", err)
 	}
 }
+
+// TestWriteCompressedMessage_ExceedsLimitUncompressedButFitsCompressed proves
+// that results exceeding the 4KB limit in plain JSON succeed with compression.
+// This is the core value proposition of the compression feature.
+func TestWriteCompressedMessage_ExceedsLimitUncompressedButFitsCompressed(t *testing.T) {
+	// Create results that produce >4KB JSON but <4KB compressed.
+	// Repetitive data compresses well — typical for results with similar
+	// structure (e.g., multiple image digests, URLs, build metadata).
+	var results []result.RunResult
+	for i := 0; i < 50; i++ {
+		results = append(results, result.RunResult{
+			Key:        "image-digest-result-" + string(rune('a'+i%26)) + strings.Repeat("-", i%5),
+			Value:      "gcr.io/my-project/my-image-name@sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef12345678" + strings.Repeat("90", i%3+1),
+			ResultType: result.TaskRunResultType,
+		})
+	}
+
+	// Step 1: Verify this exceeds the 4KB limit without compression
+	plainFile, err := os.CreateTemp("", "plain-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(plainFile.Name())
+	plainFile.Close()
+
+	plainErr := termination.WriteMessage(plainFile.Name(), results)
+	var lengthErr termination.MessageLengthError
+	if !errors.As(plainErr, &lengthErr) {
+		t.Fatalf("Expected plain JSON to exceed 4KB limit, but got: %v", plainErr)
+	}
+
+	// Step 2: Verify the same results fit with compression
+	compressedFile, err := os.CreateTemp("", "compressed-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(compressedFile.Name())
+	compressedFile.Close()
+
+	compressedErr := termination.WriteCompressedMessage(compressedFile.Name(), results)
+	if compressedErr != nil {
+		t.Fatalf("Expected compressed message to fit in 4KB, but got: %v", compressedErr)
+	}
+
+	// Step 3: Verify all results survive the round-trip
+	compressedData, err := os.ReadFile(compressedFile.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	logger, _ := logging.NewLogger("", "test")
+	parsed, err := termination.ParseMessage(logger, string(compressedData))
+	if err != nil {
+		t.Fatalf("Failed to parse compressed message: %v", err)
+	}
+
+	if len(parsed) != len(results) {
+		t.Fatalf("Expected %d results after round-trip, got %d", len(results), len(parsed))
+	}
+
+	t.Logf("Plain JSON: >4KB (rejected), Compressed: %d bytes (accepted), Results: %d",
+		len(compressedData), len(parsed))
+}
