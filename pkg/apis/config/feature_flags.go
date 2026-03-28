@@ -111,6 +111,14 @@ const (
 	EnableWaitExponentialBackoff = "enable-wait-exponential-backoff"
 	// DefaultEnableWaitExponentialBackoff is the default value for EnableWaitExponentialBackoff
 	DefaultEnableWaitExponentialBackoff = false
+	// EnableTerminationMessageCompression is the flag to enable compression of
+	// termination messages to fit more results in the 4KB Kubernetes limit.
+	// When enabled, results are compressed with flate and base64-encoded before
+	// writing to the termination message path. The reconciler auto-detects
+	// compressed vs plain JSON messages for backward compatibility.
+	EnableTerminationMessageCompression = "enable-termination-message-compression"
+	// DefaultEnableTerminationMessageCompression is the default value for EnableTerminationMessageCompression
+	DefaultEnableTerminationMessageCompression = false
 
 	// EnableStepActions is the flag to enable step actions (no-op since it's stable)
 	EnableStepActions = "enable-step-actions"
@@ -176,6 +184,13 @@ var (
 		Enabled:   DefaultAlphaFeatureEnabled,
 	}
 
+	// DefaultEnableTerminationMessageCompressionFlag is the default PerFeatureFlag value for EnableTerminationMessageCompression
+	DefaultEnableTerminationMessageCompressionFlag = PerFeatureFlag{
+		Name:      EnableTerminationMessageCompression,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
 	DefaultEnableTektonOCIBundles = PerFeatureFlag{
 		Name:       EnableTektonOCIBundles,
 		Stability:  AlphaAPIFields,
@@ -216,7 +231,8 @@ type FeatureFlags struct {
 	DisableInlineSpec            string `json:"disableInlineSpec,omitempty"`
 	EnableConciseResolverSyntax  bool   `json:"enableConciseResolverSyntax,omitempty"`
 	EnableKubernetesSidecar      bool   `json:"enableKubernetesSidecar,omitempty"`
-	EnableWaitExponentialBackoff bool   `json:"enableWaitExponentialBackoff,omitempty"`
+	EnableWaitExponentialBackoff             bool `json:"enableWaitExponentialBackoff,omitempty"`
+	EnableTerminationMessageCompression     bool `json:"enableTerminationMessageCompression,omitempty"`
 	// DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
 	// to allow deletion of PipelineRuns created before v0.62.x.
 	// This field is not used and can be removed in a future release
@@ -328,6 +344,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setFeature(EnableWaitExponentialBackoff, DefaultEnableWaitExponentialBackoff, &tc.EnableWaitExponentialBackoff); err != nil {
+		return nil, err
+	}
+	if err := setPerFeatureFlag(EnableTerminationMessageCompression, DefaultEnableTerminationMessageCompressionFlag, &tc.EnableTerminationMessageCompression); err != nil {
 		return nil, err
 	}
 

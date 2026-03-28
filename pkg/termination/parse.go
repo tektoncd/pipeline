@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/result"
 	"go.uber.org/zap"
@@ -31,14 +32,27 @@ import (
 //
 // If more than one item has the same key, only the latest is returned. Items
 // are sorted by their key.
+//
+// Automatically detects and decompresses messages that were compressed with
+// WriteCompressedMessage (identified by the "tknz:" prefix).
 func ParseMessage(logger *zap.SugaredLogger, msg string) ([]result.RunResult, error) {
 	if msg == "" {
 		return nil, nil
 	}
 
+	// Auto-detect compressed messages
+	jsonMsg := msg
+	if strings.HasPrefix(msg, compressedPrefix) {
+		decompressed, err := decompressMessage([]byte(msg))
+		if err != nil {
+			return nil, fmt.Errorf("decompressing termination message: %w", err)
+		}
+		jsonMsg = string(decompressed)
+	}
+
 	var r []result.RunResult
-	if err := json.Unmarshal([]byte(msg), &r); err != nil {
-		return nil, fmt.Errorf("parsing message json: %w, msg: %s", err, msg)
+	if err := json.Unmarshal([]byte(jsonMsg), &r); err != nil {
+		return nil, fmt.Errorf("parsing message json: %w, msg: %s", err, jsonMsg)
 	}
 
 	writeIndex := 0
