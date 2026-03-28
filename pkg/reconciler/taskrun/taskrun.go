@@ -345,6 +345,9 @@ func (c *Reconciler) checkContainerFailure(
 		}
 		// ImagePullBackOff timeout exceeded or not configured
 		message := fmt.Sprintf(`the %s %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, containerType, name, tr.Name, imageID, waiting.Message)
+		if eventMsg := c.getImagePullEventMessage(ctx, tr); eventMsg != "" {
+			message += fmt.Sprintf(` The most recent event message: "%s."`, eventMsg)
+		}
 		return true, v1.TaskRunReasonImagePullFailed, message
 	}
 
@@ -357,12 +360,39 @@ func (c *Reconciler) checkContainerFailure(
 	// Handle InvalidImageName (unrecoverable error)
 	if waiting.Reason == InvalidImageName {
 		message := fmt.Sprintf(`the %s %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, containerType, name, tr.Name, imageID, waiting.Message)
+		if eventMsg := c.getImagePullEventMessage(ctx, tr); eventMsg != "" {
+			message += fmt.Sprintf(` The most recent event message: "%s."`, eventMsg)
+		}
 		return true, v1.TaskRunReasonImagePullFailed, message
 	}
 
 	// Handle CreateContainerError and other generic failures
 	message := fmt.Sprintf(`the %s %q in TaskRun %q failed to start. The pod errored with the message: "%s."`, containerType, name, tr.Name, waiting.Message)
 	return true, v1.TaskRunReasonPodCreationFailed, message
+}
+
+// getImagePullEventMessage queries pod events to find the most recent image pull
+// failure event message. Kubelet events contain richer error details from the
+// container runtime (e.g., "unauthorized", "manifest not found", "rate limit")
+// than the generic ContainerStateWaiting.Message.
+func (c *Reconciler) getImagePullEventMessage(ctx context.Context, tr *v1.TaskRun) string {
+	if tr.Status.PodName == "" {
+		return ""
+	}
+	eventList, err := c.KubeClientSet.CoreV1().Events(tr.Namespace).List(ctx, metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("involvedObject.name=%s,involvedObject.kind=Pod,reason=Failed", tr.Status.PodName),
+	})
+	if err != nil || len(eventList.Items) == 0 {
+		return ""
+	}
+	// Return the most recent event message
+	latest := eventList.Items[0]
+	for _, e := range eventList.Items[1:] {
+		if e.LastTimestamp.After(latest.LastTimestamp.Time) {
+			latest = e
+		}
+	}
+	return latest.Message
 }
 
 func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition) {
