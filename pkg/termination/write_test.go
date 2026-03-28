@@ -17,7 +17,6 @@ package termination_test
 
 import (
 	"errors"
-	"log"
 	"os"
 	"strings"
 	"testing"
@@ -30,12 +29,10 @@ import (
 )
 
 func TestExistingFile(t *testing.T) {
-	tmpFile, err := os.CreateTemp(os.TempDir(), "tempFile")
+	tmpFile, err := os.CreateTemp(t.TempDir(), "tempFile")
 	if err != nil {
-		log.Fatal("Cannot create temporary file", err)
+		t.Fatal("Cannot create temporary file", err)
 	}
-	// Remember to clean up the file afterwards
-	defer os.Remove(tmpFile.Name())
 
 	logger, _ := logging.NewLogger("", "test termination")
 	defer func() {
@@ -70,16 +67,15 @@ func TestExistingFile(t *testing.T) {
 }
 
 func TestWriteCompressedMessage(t *testing.T) {
-	tmpFile, err := os.CreateTemp(os.TempDir(), "tempFile")
+	tmpFile, err := os.CreateTemp(t.TempDir(), "tempFile")
 	if err != nil {
-		log.Fatal("Cannot create temporary file", err)
+		t.Fatal("Cannot create temporary file", err)
 	}
-	defer os.Remove(tmpFile.Name())
 
 	// Use enough results so compression actually saves space (small payloads
 	// fall back to plain JSON when compressed output is larger).
 	var output []result.RunResult
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		output = append(output, result.RunResult{
 			Key:        "image-digest-" + string(rune('a'+i)),
 			Value:      "gcr.io/project/image@sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
@@ -102,11 +98,10 @@ func TestWriteCompressedMessage(t *testing.T) {
 }
 
 func TestWriteCompressedMessage_RoundTrip(t *testing.T) {
-	tmpFile, err := os.CreateTemp(os.TempDir(), "tempFile")
+	tmpFile, err := os.CreateTemp(t.TempDir(), "tempFile")
 	if err != nil {
-		log.Fatal("Cannot create temporary file", err)
+		t.Fatal("Cannot create temporary file", err)
 	}
-	defer os.Remove(tmpFile.Name())
 
 	logger, _ := logging.NewLogger("", "test termination")
 	defer func() {
@@ -155,17 +150,15 @@ func TestWriteCompressedMessage_SmallerThanJSON(t *testing.T) {
 		ResultType: result.TaskRunResultType,
 	}}
 
-	plainFile, err := os.CreateTemp(os.TempDir(), "plainFile")
+	plainFile, err := os.CreateTemp(t.TempDir(), "plainFile")
 	if err != nil {
-		log.Fatal("Cannot create temporary file", err)
+		t.Fatal("Cannot create temporary file", err)
 	}
-	defer os.Remove(plainFile.Name())
 
-	compressedFile, err := os.CreateTemp(os.TempDir(), "compressedFile")
+	compressedFile, err := os.CreateTemp(t.TempDir(), "compressedFile")
 	if err != nil {
-		log.Fatal("Cannot create temporary file", err)
+		t.Fatal("Cannot create temporary file", err)
 	}
-	defer os.Remove(compressedFile.Name())
 
 	if err := termination.WriteMessage(plainFile.Name(), results); err != nil {
 		t.Fatalf("WriteMessage: %v", err)
@@ -190,11 +183,10 @@ func TestWriteCompressedMessage_SmallerThanJSON(t *testing.T) {
 }
 
 func TestWriteCompressedMessage_AppendToExisting(t *testing.T) {
-	tmpFile, err := os.CreateTemp(os.TempDir(), "tempFile")
+	tmpFile, err := os.CreateTemp(t.TempDir(), "tempFile")
 	if err != nil {
-		log.Fatal("Cannot create temporary file", err)
+		t.Fatal("Cannot create temporary file", err)
 	}
-	defer os.Remove(tmpFile.Name())
 
 	logger, _ := logging.NewLogger("", "test termination")
 	defer func() {
@@ -247,12 +239,10 @@ func TestWriteCompressedMessage_AppendToExisting(t *testing.T) {
 
 func TestMaxSizeFile(t *testing.T) {
 	value := strings.Repeat("a", 4096)
-	tmpFile, err := os.CreateTemp(os.TempDir(), "tempFile")
+	tmpFile, err := os.CreateTemp(t.TempDir(), "tempFile")
 	if err != nil {
-		log.Fatal("Cannot create temporary file", err)
+		t.Fatal("Cannot create temporary file", err)
 	}
-	// Remember to clean up the file afterwards
-	defer os.Remove(tmpFile.Name())
 
 	output := []result.RunResult{{
 		Key:   "key1",
@@ -274,7 +264,7 @@ func TestWriteCompressedMessage_ExceedsLimitUncompressedButFitsCompressed(t *tes
 	// Repetitive data compresses well — typical for results with similar
 	// structure (e.g., multiple image digests, URLs, build metadata).
 	var results []result.RunResult
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		results = append(results, result.RunResult{
 			Key:        "image-digest-result-" + string(rune('a'+i%26)) + strings.Repeat("-", i%5),
 			Value:      "gcr.io/my-project/my-image-name@sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef12345678" + strings.Repeat("90", i%3+1),
@@ -283,11 +273,10 @@ func TestWriteCompressedMessage_ExceedsLimitUncompressedButFitsCompressed(t *tes
 	}
 
 	// Step 1: Verify this exceeds the 4KB limit without compression
-	plainFile, err := os.CreateTemp("", "plain-*")
+	plainFile, err := os.CreateTemp(t.TempDir(), "plain-*")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(plainFile.Name())
 	plainFile.Close()
 
 	plainErr := termination.WriteMessage(plainFile.Name(), results)
@@ -297,11 +286,10 @@ func TestWriteCompressedMessage_ExceedsLimitUncompressedButFitsCompressed(t *tes
 	}
 
 	// Step 2: Verify the same results fit with compression
-	compressedFile, err := os.CreateTemp("", "compressed-*")
+	compressedFile, err := os.CreateTemp(t.TempDir(), "compressed-*")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(compressedFile.Name())
 	compressedFile.Close()
 
 	compressedErr := termination.WriteCompressedMessage(compressedFile.Name(), results)
@@ -343,13 +331,14 @@ func TestWriteCompressedMessage_CapacityBenchmark(t *testing.T) {
 	}
 
 	// Find max results without compression
+	tmpDir := t.TempDir()
 	maxPlain := 0
 	for n := 1; n <= 200; n++ {
 		var results []result.RunResult
-		for i := 0; i < n; i++ {
+		for i := range n {
 			results = append(results, makeResult(i))
 		}
-		tmpFile, _ := os.CreateTemp("", "plain-*")
+		tmpFile, _ := os.CreateTemp(tmpDir, "plain-*")
 		err := termination.WriteMessage(tmpFile.Name(), results)
 		os.Remove(tmpFile.Name())
 		if err != nil {
@@ -362,10 +351,10 @@ func TestWriteCompressedMessage_CapacityBenchmark(t *testing.T) {
 	maxCompressed := 0
 	for n := 1; n <= 200; n++ {
 		var results []result.RunResult
-		for i := 0; i < n; i++ {
+		for i := range n {
 			results = append(results, makeResult(i))
 		}
-		tmpFile, _ := os.CreateTemp("", "compressed-*")
+		tmpFile, _ := os.CreateTemp(tmpDir, "compressed-*")
 		err := termination.WriteCompressedMessage(tmpFile.Name(), results)
 		os.Remove(tmpFile.Name())
 		if err != nil {

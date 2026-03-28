@@ -110,15 +110,14 @@ func TestParseMessage_CompressedAutoDetect(t *testing.T) {
 	logger, _ := logging.NewLogger("", "status")
 
 	// Write compressed results to a temp file, then read back and parse.
-	tmpFile, err := os.CreateTemp(os.TempDir(), "compressedMsg")
+	tmpFile, err := os.CreateTemp(t.TempDir(), "compressedMsg")
 	if err != nil {
 		t.Fatalf("Cannot create temporary file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
 
 	// Use enough results so compression actually saves space and produces tknz: prefix
 	var want []result.RunResult
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		want = append(want, result.RunResult{
 			Key:        "image-digest-" + string(rune('a'+i)),
 			Value:      "gcr.io/project/image@sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
