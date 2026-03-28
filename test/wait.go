@@ -50,6 +50,7 @@ import (
 	"strings"
 	"time"
 
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"go.opentelemetry.io/otel"
 	appsv1 "k8s.io/api/apps/v1"
@@ -314,6 +315,31 @@ func TaskRunSucceed(name string) ConditionAccessorFn {
 // has failed.
 func TaskRunFailed(name string) ConditionAccessorFn {
 	return Failed(name)
+}
+
+// TaskRunPending provides a poll condition function that checks if the TaskRun
+// has been marked pending by the Tekton controller. If the TaskRun starts
+// running before we observe the pending state, an error is returned.
+func TaskRunPending(name string) ConditionAccessorFn {
+	running := Running(name)
+
+	return func(ca apis.ConditionAccessor) (bool, error) {
+		c := ca.GetCondition(apis.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionUnknown && c.Reason == string(v1.TaskRunReasonPending) {
+				return true, nil
+			}
+		}
+		status, err := running(ca)
+		if status {
+			reason := ""
+			if c != nil {
+				reason = c.Reason
+			}
+			return false, fmt.Errorf("status should be %s, but it is %s", v1.TaskRunReasonPending, reason)
+		}
+		return status, err
+	}
 }
 
 // PipelineRunSucceed provides a poll condition function that checks if the PipelineRun
