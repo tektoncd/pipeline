@@ -123,7 +123,7 @@ func compressMessage(jsonData []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	buf.WriteString(compressedPrefix)
 
-	b64Writer := base64.NewEncoder(base64.StdEncoding, &buf)
+	b64Writer := base64.NewEncoder(base64.RawStdEncoding, &buf)
 	flateWriter, err := flate.NewWriter(b64Writer, flate.BestCompression)
 	if err != nil {
 		return nil, err
@@ -149,7 +149,7 @@ const maxDecompressedSize = 1024 * 1024 // 1MB
 // decompressMessage decodes and decompresses a "tknz:"-prefixed message.
 func decompressMessage(data []byte) ([]byte, error) {
 	encoded := data[len(compressedPrefix):]
-	decoded, err := base64.StdEncoding.DecodeString(string(encoded))
+	decoded, err := base64.RawStdEncoding.DecodeString(string(encoded))
 	if err != nil {
 		return nil, fmt.Errorf("base64 decode: %w", err)
 	}

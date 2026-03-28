@@ -184,6 +184,13 @@ var (
 		Enabled:   DefaultAlphaFeatureEnabled,
 	}
 
+	// DefaultEnableTerminationMessageCompressionFlag is the default PerFeatureFlag value for EnableTerminationMessageCompression
+	DefaultEnableTerminationMessageCompressionFlag = PerFeatureFlag{
+		Name:      EnableTerminationMessageCompression,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
 	DefaultEnableTektonOCIBundles = PerFeatureFlag{
 		Name:       EnableTektonOCIBundles,
 		Stability:  AlphaAPIFields,
@@ -339,7 +346,7 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setFeature(EnableWaitExponentialBackoff, DefaultEnableWaitExponentialBackoff, &tc.EnableWaitExponentialBackoff); err != nil {
 		return nil, err
 	}
-	if err := setFeature(EnableTerminationMessageCompression, DefaultEnableTerminationMessageCompression, &tc.EnableTerminationMessageCompression); err != nil {
+	if err := setPerFeatureFlag(EnableTerminationMessageCompression, DefaultEnableTerminationMessageCompressionFlag, &tc.EnableTerminationMessageCompression); err != nil {
 		return nil, err
 	}
 
