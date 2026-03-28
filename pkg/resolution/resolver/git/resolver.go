@@ -209,12 +209,16 @@ func (g *GitResolver) ResolveGitClone(ctx context.Context) (framework.ResolvedRe
 	var password string
 
 	secretRef := &secretCacheKey{
-		name: g.Params[GitTokenParam],
-		key:  g.Params[GitTokenKeyParam],
+		name:        g.Params[GitTokenParam],
+		tokenKey:    g.Params[GitTokenKeyParam],
+		usernameKey: g.Params[UsernameKeyParam],
 	}
 	if secretRef.name != "" {
-		if secretRef.key == "" {
-			secretRef.key = DefaultTokenKeyParam
+		if secretRef.tokenKey == "" {
+			secretRef.tokenKey = DefaultTokenKeyParam
+		}
+		if secretRef.usernameKey == "" {
+			secretRef.usernameKey = DefaultUsernameKeyParam
 		}
 		secretRef.ns = common.RequestNamespace(ctx)
 	} else {
@@ -222,12 +226,15 @@ func (g *GitResolver) ResolveGitClone(ctx context.Context) (framework.ResolvedRe
 	}
 
 	if secretRef != nil {
-		gitToken, err := g.getAPIToken(ctx, secretRef, GitTokenKeyParam)
+		credentials, err := g.getAuthenticationCredentials(ctx, secretRef, GitTokenKeyParam)
 		if err != nil {
 			return nil, err
 		}
-		username = "git"
-		password = string(gitToken)
+		username = string(credentials.username)
+		if username == "" {
+			username = "git"
+		}
+		password = string(credentials.token)
 	}
 
 	path := g.Params[PathParam]
@@ -272,22 +279,30 @@ func (g *GitResolver) ResolveAPIGit(ctx context.Context, clientFunc func(string,
 		return nil, err
 	}
 	secretRef := &secretCacheKey{
-		name: g.Params[TokenParam],
-		key:  g.Params[TokenKeyParam],
+		name:        g.Params[TokenParam],
+		tokenKey:    g.Params[TokenKeyParam],
+		usernameKey: g.Params[UsernameKeyParam],
 	}
 	if secretRef.name != "" {
-		if secretRef.key == "" {
-			secretRef.key = DefaultTokenKeyParam
+		if secretRef.tokenKey == "" {
+			secretRef.tokenKey = DefaultTokenKeyParam
+		}
+		if secretRef.usernameKey == "" {
+			secretRef.usernameKey = DefaultUsernameKeyParam
 		}
 		secretRef.ns = common.RequestNamespace(ctx)
 	} else {
 		secretRef = nil
 	}
-	apiToken, err := g.getAPIToken(ctx, secretRef, APISecretNameKey)
+	credentials, err := g.getAuthenticationCredentials(ctx, secretRef, APISecretNameKey)
 	if err != nil {
 		return nil, err
 	}
-	scmClient, err := clientFunc(scmType, serverURL, string(apiToken))
+	var clientOptions []factory.ClientOptionFunc
+	if string(credentials.username) != "" {
+		clientOptions = append(clientOptions, factory.SetUsername(string(credentials.username)))
+	}
+	scmClient, err := clientFunc(scmType, serverURL, string(credentials.token), clientOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create SCM client: %w", err)
 	}
@@ -482,12 +497,18 @@ func (r *resolvedGitResource) RefSource() *pipelinev1.RefSource {
 }
 
 type secretCacheKey struct {
-	ns   string
-	name string
-	key  string
+	ns          string
+	name        string
+	tokenKey    string
+	usernameKey string
 }
 
-func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey, key string) ([]byte, error) {
+type authCredentials struct {
+	token    []byte
+	username []byte
+}
+
+func (g *GitResolver) getAuthenticationCredentials(ctx context.Context, apiSecret *secretCacheKey, key string) (*authCredentials, error) {
 	conf, err := GetScmConfigForParamConfigKey(ctx, g.Params)
 	if err != nil {
 		return nil, err
@@ -510,9 +531,9 @@ func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey
 			return nil, err
 		}
 	}
-	if apiSecret.key == "" {
-		apiSecret.key = conf.APISecretKey
-		if apiSecret.key == "" {
+	if apiSecret.tokenKey == "" {
+		apiSecret.tokenKey = conf.APISecretKey
+		if apiSecret.tokenKey == "" {
 			err := fmt.Errorf("cannot get API token, required when specifying '%s' param, '%s' not specified in config", RepoParam, APISecretKeyKey)
 			g.Logger.Info(err)
 			return nil, err
@@ -528,7 +549,7 @@ func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey
 	if cacheSecret {
 		val, ok := g.Cache.Get(apiSecret)
 		if ok {
-			return val.([]byte), nil
+			return val.(*authCredentials), nil
 		}
 	}
 
@@ -544,16 +565,30 @@ func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey
 		return nil, wrappedErr
 	}
 
-	secretVal, ok := secret.Data[apiSecret.key]
+	token, ok := secret.Data[apiSecret.tokenKey]
 	if !ok {
-		err := fmt.Errorf("cannot get API token, key %s not found in secret %s in namespace %s", apiSecret.key, apiSecret.name, apiSecret.ns)
+		err := fmt.Errorf("cannot get API token, key %s not found in secret %s in namespace %s", apiSecret.tokenKey, apiSecret.name, apiSecret.ns)
 		g.Logger.Info(err)
 		return nil, err
 	}
-	if cacheSecret {
-		g.Cache.Add(apiSecret, secretVal, ttl)
+	credentials := &authCredentials{
+		token: token,
 	}
-	return secretVal, nil
+
+	if apiSecret.usernameKey == "" {
+		apiSecret.usernameKey = conf.APIUsernameSecretKey
+	}
+
+	username, ok := secret.Data[apiSecret.usernameKey]
+	if ok {
+		credentials.username = username
+	} else {
+		g.Logger.Debugf("Cannot get username, key %s not found in secret %s in namespace %s", apiSecret.usernameKey, apiSecret.name, apiSecret.ns)
+	}
+
+	g.Cache.Add(apiSecret, credentials, ttl)
+
+	return credentials, nil
 }
 
 func getSCMTypeAndServerURL(ctx context.Context, params map[string]string) (string, string, error) {
