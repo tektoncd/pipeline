@@ -4386,7 +4386,6 @@ func schema_pkg_apis_pipeline_v1beta1_StepTemplate(ref common.ReferenceCallback)
 					"name": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Default name for each Step specified as a DNS_LABEL. Each Step in a Task must have a unique name. Cannot be updated.\n\nDeprecated: This field will be removed in a future release.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -4632,7 +4631,6 @@ func schema_pkg_apis_pipeline_v1beta1_StepTemplate(ref common.ReferenceCallback)
 						},
 					},
 				},
-				Required: []string{"name"},
 			},
 		},
 		Dependencies: []string{
