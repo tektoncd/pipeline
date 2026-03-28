@@ -278,7 +278,6 @@ func resolveStepAction(ctx context.Context, resolver remote.Resolver, name, name
 // its v1beta1 equivalent.
 // A VerificationResult is returned if trusted resources is enabled, VerificationResult contains the result type and err.
 // v1beta1 task will be verified by trusted resources if the feature is enabled
-// TODO(#5541): convert v1beta1 obj to v1 once we use v1 as the stored version
 func readRuntimeObjectAsTask(ctx context.Context, namespace string, obj runtime.Object, k8s kubernetes.Interface, tekton clientset.Interface, refSource *v1.RefSource, verificationPolicies []*v1alpha1.VerificationPolicy) (*v1.Task, *trustedresources.VerificationResult, error) {
 	switch obj := obj.(type) {
 	case *v1beta1.Task:
@@ -338,7 +337,6 @@ type LocalTaskRefResolver struct {
 
 // GetTask will resolve a Task from the local cluster using a versioned Tekton client. It will
 // return an error if it can't find an appropriate Task for any reason.
-// TODO(#6666): support local task verification
 func (l *LocalTaskRefResolver) GetTask(ctx context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
 	// If we are going to resolve this reference locally, we need a namespace scope.
 	if l.Namespace == "" {
