@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2026 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,20 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package customrun
+package taskrun
 
 import (
 	"context"
 
 	bc "github.com/allegro/bigcache/v3"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	customrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/customrun"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	taskrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1/taskrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/notifications"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
-// Reconciler implements controller.Reconciler for Configuration resources.
+// Reconciler implements controller.Reconciler for TaskRun resources.
 type Reconciler struct {
 	cloudEventClient cloudevent.CEClient
 	cacheClient      *bc.BigCache
@@ -49,15 +49,10 @@ func (c *Reconciler) GetCacheClient() *bc.BigCache {
 	return c.cacheClient
 }
 
-// Check that our Reconciler implements customrunreconciler.Interface
-var (
-	_ customrunreconciler.Interface = (*Reconciler)(nil)
-)
+// Check that our Reconciler implements taskrunreconciler.Interface
+var _ taskrunreconciler.Interface = (*Reconciler)(nil)
 
-// ReconcileKind oberves the resource conditions and triggers notifications accordingly
-func (c *Reconciler) ReconcileKind(ctx context.Context, customRun *v1beta1.CustomRun) pkgreconciler.Event {
-	// Custom task controllers may be sending events for "CustomRuns" associated
-	// to the custom tasks they control. To avoid sending duplicate events,
-	// CloudEvents for "CustomRuns" are only sent when enabled
-	return notifications.ReconcileRunObject(ctx, c, customRun)
+// ReconcileKind observes the resource conditions and triggers notifications accordingly.
+func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgreconciler.Event {
+	return notifications.ReconcileRunObject(ctx, c, tr)
 }

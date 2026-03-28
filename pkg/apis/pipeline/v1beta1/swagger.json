@@ -3056,7 +3056,7 @@
           }
         },
         "cloudEvents": {
-          "description": "CloudEvents describe the state of each cloud event requested via a CloudEventResource.\n\nDeprecated: Removed in v0.44.0.",
+          "description": "CloudEvents describe the state of each cloud event requested via a CloudEventResource.\n\nDeprecated: No content written to it. To be Removed (since v0.44.0). Use kubectl describe (CloudEventSent/CloudEventFailed k8s Events) or the tekton_events_sent_total Prometheus metric for delivery visibility instead.",
           "type": "array",
           "items": {
             "default": {},
@@ -3162,7 +3162,7 @@
       ],
       "properties": {
         "cloudEvents": {
-          "description": "CloudEvents describe the state of each cloud event requested via a CloudEventResource.\n\nDeprecated: Removed in v0.44.0.",
+          "description": "CloudEvents describe the state of each cloud event requested via a CloudEventResource.\n\nDeprecated: No content written to it. To be Removed (since v0.44.0). Use kubectl describe (CloudEventSent/CloudEventFailed k8s Events) or the tekton_events_sent_total Prometheus metric for delivery visibility instead.",
           "type": "array",
           "items": {
             "default": {},
