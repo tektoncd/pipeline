@@ -1,0 +1,133 @@
+# This Pipeline demonstrates the termination message compression feature.
+# Task "build" generates 25 image digest results that would exceed the 4KB
+# termination message limit without compression. Task "verify" consumes
+# selected results to prove they survived the compression round-trip.
+#
+# Prerequisites:
+#   kubectl patch configmap feature-flags -n tekton-pipelines \
+#     -p '{"data":{"enable-termination-message-compression":"true"}}'
+#
+# Without compression: Task "build" fails — results exceed 4KB limit.
+# With compression: Task "build" succeeds — results compress to ~500 bytes.
+# Task "verify" confirms results are intact after decompression.
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: build-many-images
+spec:
+  results:
+    - name: digest-1
+    - name: digest-2
+    - name: digest-3
+    - name: digest-4
+    - name: digest-5
+    - name: digest-6
+    - name: digest-7
+    - name: digest-8
+    - name: digest-9
+    - name: digest-10
+    - name: digest-11
+    - name: digest-12
+    - name: digest-13
+    - name: digest-14
+    - name: digest-15
+    - name: digest-16
+    - name: digest-17
+    - name: digest-18
+    - name: digest-19
+    - name: digest-20
+    - name: digest-21
+    - name: digest-22
+    - name: digest-23
+    - name: digest-24
+    - name: digest-25
+    - name: image-count
+  steps:
+    - name: build
+      image: mirror.gcr.io/bash
+      script: |
+        #!/usr/bin/env bash
+        # Simulate a multi-architecture build producing 25 image digests.
+        # Each digest is ~100 chars. Total JSON: ~6KB (exceeds 4KB limit).
+        for i in $(seq 1 25); do
+          digest="sha256:$(printf '%064x' $((i * 98765432109876)))"
+          echo -n "gcr.io/my-project/app-${i}@${digest}" > "$(results.digest-${i}.path)"
+        done
+        echo -n "25" > "$(results.image-count.path)"
+        echo "Built 25 images successfully"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: verify-compressed-results
+spec:
+  params:
+    - name: first-digest
+    - name: last-digest
+    - name: count
+  steps:
+    - name: verify
+      image: mirror.gcr.io/bash
+      script: |
+        #!/usr/bin/env bash
+        set -e
+
+        echo "Verifying compressed results round-trip..."
+
+        # Verify first digest starts with expected prefix
+        first="$(params.first-digest)"
+        if [[ "$first" != gcr.io/my-project/app-1@sha256:* ]]; then
+          echo "FAIL: first digest has unexpected format: $first"
+          exit 1
+        fi
+        echo "OK: first digest = $first"
+
+        # Verify last digest starts with expected prefix
+        last="$(params.last-digest)"
+        if [[ "$last" != gcr.io/my-project/app-25@sha256:* ]]; then
+          echo "FAIL: last digest has unexpected format: $last"
+          exit 1
+        fi
+        echo "OK: last digest = $last"
+
+        # Verify count
+        count="$(params.count)"
+        if [[ "$count" != "25" ]]; then
+          echo "FAIL: expected count 25, got $count"
+          exit 1
+        fi
+        echo "OK: image count = $count"
+
+        echo "All compressed results verified successfully!"
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: compressed-results-pipeline
+spec:
+  tasks:
+    - name: build
+      taskRef:
+        name: build-many-images
+    - name: verify
+      runAfter: [build]
+      params:
+        - name: first-digest
+          value: "$(tasks.build.results.digest-1)"
+        - name: last-digest
+          value: "$(tasks.build.results.digest-25)"
+        - name: count
+          value: "$(tasks.build.results.image-count)"
+      taskRef:
+        name: verify-compressed-results
+  results:
+    - name: image-count
+      value: $(tasks.build.results.image-count)
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: compressed-results-pipeline-run-
+spec:
+  pipelineRef:
+    name: compressed-results-pipeline

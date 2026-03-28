@@ -328,3 +328,63 @@ func TestWriteCompressedMessage_ExceedsLimitUncompressedButFitsCompressed(t *tes
 	t.Logf("Plain JSON: >4KB (rejected), Compressed: %d bytes (accepted), Results: %d",
 		len(compressedData), len(parsed))
 }
+
+// TestWriteCompressedMessage_CapacityBenchmark measures exactly how many
+// results fit within the 4KB limit with and without compression.
+// This documents the concrete capacity improvement from the feature.
+func TestWriteCompressedMessage_CapacityBenchmark(t *testing.T) {
+	// Each result simulates a realistic image digest reference (~100 bytes value).
+	makeResult := func(i int) result.RunResult {
+		return result.RunResult{
+			Key:        "image-digest-" + strings.Repeat("x", 5) + "-" + string(rune('a'+i%26)),
+			Value:      "gcr.io/my-project/my-image@sha256:" + strings.Repeat("abcdef1234567890", 4),
+			ResultType: result.TaskRunResultType,
+		}
+	}
+
+	// Find max results without compression
+	maxPlain := 0
+	for n := 1; n <= 200; n++ {
+		var results []result.RunResult
+		for i := 0; i < n; i++ {
+			results = append(results, makeResult(i))
+		}
+		tmpFile, _ := os.CreateTemp("", "plain-*")
+		err := termination.WriteMessage(tmpFile.Name(), results)
+		os.Remove(tmpFile.Name())
+		if err != nil {
+			break
+		}
+		maxPlain = n
+	}
+
+	// Find max results with compression
+	maxCompressed := 0
+	for n := 1; n <= 200; n++ {
+		var results []result.RunResult
+		for i := 0; i < n; i++ {
+			results = append(results, makeResult(i))
+		}
+		tmpFile, _ := os.CreateTemp("", "compressed-*")
+		err := termination.WriteCompressedMessage(tmpFile.Name(), results)
+		os.Remove(tmpFile.Name())
+		if err != nil {
+			break
+		}
+		maxCompressed = n
+	}
+
+	improvement := float64(maxCompressed-maxPlain) / float64(maxPlain) * 100
+
+	t.Logf("=== Compression Capacity Benchmark ===")
+	t.Logf("Result size: ~100 byte image digest reference")
+	t.Logf("Without compression: %d results fit in 4KB", maxPlain)
+	t.Logf("With compression:    %d results fit in 4KB", maxCompressed)
+	t.Logf("Improvement:         +%.0f%% more results", improvement)
+	t.Logf("======================================")
+
+	// Verify compression provides meaningful improvement
+	if maxCompressed <= maxPlain {
+		t.Fatalf("Compression should fit more results than plain JSON (%d <= %d)", maxCompressed, maxPlain)
+	}
+}
