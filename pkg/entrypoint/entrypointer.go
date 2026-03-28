@@ -174,6 +174,9 @@ type Entrypointer struct {
 
 	// ArtifactsDirectory is the directory to find artifacts, defaults to pipeline.ArtifactsDir
 	ArtifactsDirectory string
+	// CompressTerminationMessage enables flate compression of termination messages
+	// to fit more results in the 4KB Kubernetes limit.
+	CompressTerminationMessage bool
 }
 
 // Waiter encapsulates waiting for files to exist.
@@ -198,7 +201,13 @@ type PostWriter interface {
 func (e Entrypointer) Go() error {
 	output := []result.RunResult{}
 	defer func() {
-		if wErr := termination.WriteMessage(e.TerminationPath, output); wErr != nil {
+		var wErr error
+		if e.CompressTerminationMessage {
+			wErr = termination.WriteCompressedMessage(e.TerminationPath, output)
+		} else {
+			wErr = termination.WriteMessage(e.TerminationPath, output)
+		}
+		if wErr != nil {
 			log.Fatalf("Error while writing message: %s", wErr)
 		}
 	}()
@@ -466,8 +475,14 @@ func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string,
 
 	// push output to termination path
 	if e.ResultExtractionMethod == ResultExtractionMethodTerminationMessage && len(output) != 0 {
-		if err := termination.WriteMessage(e.TerminationPath, output); err != nil {
-			return err
+		var writeErr error
+		if e.CompressTerminationMessage {
+			writeErr = termination.WriteCompressedMessage(e.TerminationPath, output)
+		} else {
+			writeErr = termination.WriteMessage(e.TerminationPath, output)
+		}
+		if writeErr != nil {
+			return writeErr
 		}
 	}
 	return nil

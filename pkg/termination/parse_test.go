@@ -16,6 +16,7 @@ limitations under the License.
 package termination_test
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -101,6 +102,75 @@ func TestParseMessage(t *testing.T) {
 				t.Fatalf("ParseMessage %s", diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+func TestParseMessage_CompressedAutoDetect(t *testing.T) {
+	logger, _ := logging.NewLogger("", "status")
+
+	// Write compressed results to a temp file, then read back and parse.
+	tmpFile, err := os.CreateTemp(os.TempDir(), "compressedMsg")
+	if err != nil {
+		t.Fatalf("Cannot create temporary file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	want := []result.RunResult{{
+		Key:        "digest",
+		Value:      "sha256:abc123",
+		ResultType: result.TaskRunResultType,
+	}, {
+		Key:        "url",
+		Value:      "https://example.com",
+		ResultType: result.TaskRunResultType,
+	}}
+
+	if err := termination.WriteCompressedMessage(tmpFile.Name(), want); err != nil {
+		t.Fatalf("WriteCompressedMessage: %v", err)
+	}
+
+	fileContents, err := os.ReadFile(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+
+	// Verify the raw content starts with the compressed prefix.
+	if !strings.HasPrefix(string(fileContents), "tknz:") {
+		t.Fatalf("Expected compressed prefix 'tknz:', got: %.20s...", string(fileContents))
+	}
+
+	got, err := termination.ParseMessage(logger, string(fileContents))
+	if err != nil {
+		t.Fatalf("ParseMessage: %v", err)
+	}
+
+	if d := cmp.Diff(want, got); d != "" {
+		t.Fatalf("ParseMessage compressed auto-detect %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestParseMessage_PlainJSON_StillWorks(t *testing.T) {
+	logger, _ := logging.NewLogger("", "status")
+
+	msg := `[{"key":"digest","value":"sha256:abc123","type":1},{"key":"url","value":"https://example.com","type":1}]`
+
+	want := []result.RunResult{{
+		Key:        "digest",
+		Value:      "sha256:abc123",
+		ResultType: result.TaskRunResultType,
+	}, {
+		Key:        "url",
+		Value:      "https://example.com",
+		ResultType: result.TaskRunResultType,
+	}}
+
+	got, err := termination.ParseMessage(logger, msg)
+	if err != nil {
+		t.Fatalf("ParseMessage: %v", err)
+	}
+
+	if d := cmp.Diff(want, got); d != "" {
+		t.Fatalf("ParseMessage plain JSON backward compat %s", diff.PrintWantGot(d))
 	}
 }
 
