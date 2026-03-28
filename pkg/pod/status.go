@@ -611,7 +611,8 @@ func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1.TaskRunStat
 		if onError == v1.PipelineTaskContinue {
 			markStatusFailure(trs, v1.TaskRunReasonFailureIgnored.String(), msg)
 		} else {
-			markStatusFailure(trs, v1.TaskRunReasonFailed.String(), msg)
+			reason := getFailureReason(pod).String()
+			markStatusFailure(trs, reason, msg)
 		}
 	} else {
 		markStatusSuccess(trs)
@@ -750,6 +751,90 @@ func checkContainersCompleted(pod *corev1.Pod, nameFilters []containerNameFilter
 		}
 	}
 	return true
+}
+
+// getFailureReason classifies the pod failure and returns a specific
+// TaskRunReason. This surfaces meaningful failure reasons instead of the
+// generic "Failed" for all failure types.
+// See https://github.com/tektoncd/pipeline/issues/7396
+//
+// Priority order (sidecar failures surface before step failures
+// because a crashed sidecar is likely the root cause):
+//  1. PodEvicted            - pod-level eviction (ephemeral storage, node pressure)
+//  2. InitContainerOOM      - internal Tekton init container OOMKilled
+//  3. InitContainerFailed   - internal Tekton init container failed (non-OOM)
+//  4. SidecarOOM            - sidecar OOMKilled
+//  5. StepOOM               - step OOMKilled
+//  6. SidecarFailed         - sidecar failed non-OOM
+//  7. StepFailed            - step failed non-OOM
+//  8. Failed                - generic fallthrough (unknown)
+func getFailureReason(pod *corev1.Pod) v1.TaskRunReason {
+	// Check pod-level eviction first, this is authoritative.
+	if pod.Status.Reason == evicted {
+		return v1.TaskRunReasonPodEvicted
+	}
+
+	// Check init containers. Init containers include native sidecars
+	// (sidecar-*, with restartPolicy: Always) and internal Tekton
+	// containers (prepare, place-scripts, working-dir-initializer).
+	// Note: steps are regular containers, not init containers.
+	for _, s := range pod.Status.InitContainerStatuses {
+		if s.State.Terminated == nil {
+			continue
+		}
+		if isOOMKilled(s) {
+			if IsContainerSidecar(s.Name) {
+				return v1.TaskRunReasonSidecarOOM
+			}
+			return v1.TaskRunReasonInitContainerOOM
+		}
+		if s.State.Terminated.ExitCode != 0 {
+			if IsContainerSidecar(s.Name) {
+				return v1.TaskRunReasonSidecarFailed
+			}
+			return v1.TaskRunReasonInitContainerFailed
+		}
+	}
+
+	// Check regular containers. Steps and sidecars run in parallel here,
+	// so OOM is checked across all containers first (likely root cause),
+	// then sidecar failures before step failures.
+	for _, s := range pod.Status.ContainerStatuses {
+		if s.State.Terminated == nil {
+			continue
+		}
+		if isOOMKilled(s) {
+			if IsContainerSidecar(s.Name) {
+				return v1.TaskRunReasonSidecarOOM
+			}
+			if IsContainerStep(s.Name) {
+				return v1.TaskRunReasonStepOOM
+			}
+		}
+	}
+	for _, s := range pod.Status.ContainerStatuses {
+		if s.State.Terminated == nil {
+			continue
+		}
+		if s.State.Terminated.ExitCode != 0 {
+			if IsContainerSidecar(s.Name) {
+				return v1.TaskRunReasonSidecarFailed
+			}
+		}
+	}
+	for _, s := range pod.Status.ContainerStatuses {
+		if s.State.Terminated == nil {
+			continue
+		}
+		if s.State.Terminated.ExitCode != 0 {
+			if IsContainerStep(s.Name) {
+				return v1.TaskRunReasonStepFailed
+			}
+		}
+	}
+
+	// Default: generic failure (internal init container crash or unknown).
+	return v1.TaskRunReasonFailed
 }
 
 func getFailureMessage(logger *zap.SugaredLogger, pod *corev1.Pod) string {
