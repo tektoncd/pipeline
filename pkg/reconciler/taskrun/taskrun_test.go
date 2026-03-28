@@ -1862,6 +1862,7 @@ status:
         maxResultSize: 4096
         coschedule: "workspaces"
         disableInlineSpec: ""
+        trustedCACertConfigMapName: "config-ca-cert"
   provenance:
     featureFlags:
       runningInEnvWithInjectedSidecars: true
@@ -1874,6 +1875,7 @@ status:
       maxResultSize: 4096
       coschedule: "workspaces"
       disableInlineSpec: ""
+      trustedCACertConfigMapName: "config-ca-cert"
 `, pipelineErrors.UserErrorLabel, pipelineErrors.UserErrorLabel))
 		reconciliatonError = errors.New("Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
 		toBeRetriedTaskRun = parse.MustParseV1TaskRun(t, `
@@ -1928,6 +1930,7 @@ status:
       maxResultSize: 4096
       coschedule: "workspaces"
       disableInlineSpec: ""
+      trustedCACertConfigMapName: "config-ca-cert"
 `)
 		toBeRetriedWithResultsTaskRun = parse.MustParseV1TaskRun(t, `
 metadata:
