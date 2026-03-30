@@ -11,6 +11,7 @@ weight: 106
   - [Controller HA](#controller-ha)
     - [Configuring Controller Replicas](#configuring-controller-replicas)
     - [Configuring Leader Election](#configuring-leader-election)
+    - [Horizontal Scaling with Leader Election Buckets](#horizontal-scaling-with-leader-election-buckets)
     - [Disabling Controller HA](#disabling-controller-ha)
   - [Webhook HA](#webhook-ha)
     - [Configuring Webhook Replicas](#configuring-webhook-replicas)
@@ -48,6 +49,74 @@ Leader election can be configured in [config-leader-election.yaml](./../config/c
 | `data.retryPeriod`   | 2s       |
 
 _Note_: The maximum value of `data.buckets` at this time is 10.
+
+### Horizontal Scaling with Leader Election Buckets
+
+The controller uses Knative's bucket-based leader election to distribute reconciliation work. The key space is partitioned into buckets, each backed by a Kubernetes `Lease` object. Replicas compete for leases, and the holder of a lease reconciles all resources whose keys hash into that bucket.
+
+#### Scaling with a Deployment
+
+Increase the number of buckets and replicas:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-leader-election-controller
+  namespace: tekton-pipelines
+data:
+  buckets: "10"
+```
+
+```sh
+kubectl -n tekton-pipelines scale deployment tekton-pipelines-controller --replicas=5
+```
+
+With 10 buckets and 5 replicas, each replica owns roughly 2 buckets. If a replica fails, its leases expire after `leaseDuration` and surviving replicas acquire them.
+
+#### Scaling with a StatefulSet (without the Tekton Operator)
+
+For environments that do not use the [Tekton Operator](https://github.com/tektoncd/operator), you can convert the controller Deployment to a StatefulSet for stable network identities and predictable bucket assignment:
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: tekton-pipelines-controller
+  namespace: tekton-pipelines
+spec:
+  serviceName: tekton-pipelines-controller
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: controller
+      app.kubernetes.io/component: controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: controller
+        app.kubernetes.io/component: controller
+    spec:
+      serviceAccountName: tekton-pipelines-controller
+      containers:
+        - name: tekton-pipelines-controller
+          # Use the same image and args as the original Deployment.
+```
+
+With a StatefulSet, pods get stable names (`tekton-pipelines-controller-0`, `-1`, `-2`), which makes lease ownership more predictable during rolling updates compared to a Deployment.
+
+Set `data.buckets` in `config-leader-election-controller` to at least the number of replicas.
+
+#### Guidelines
+
+- **Buckets ≥ Replicas**: Allows better load distribution and smoother rebalancing.
+- **Buckets = Replicas**: Each replica owns exactly one bucket.
+- **Buckets < Replicas**: Extra replicas are idle standby.
+- During rebalancing (scale up/down or rolling updates), unleased buckets are not reconciled until a new leader is elected (up to `leaseDuration`). Use a `PodDisruptionBudget` to minimize disruption.
+
+#### Other Components
+
+The same mechanism is available for the webhook (`config-leader-election-webhook`) and events controller (`config-leader-election-events`). However, the webhook is stateless and benefits more from simple replica scaling (see [Webhook HA](#webhook-ha)).
 
 ### Disabling Controller HA
 
