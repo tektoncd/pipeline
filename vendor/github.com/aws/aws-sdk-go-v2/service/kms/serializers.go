@@ -3249,6 +3249,17 @@ func (m *awsAwsjson11_serializeOpVerifyMac) HandleSerialize(ctx context.Context,
 	span.End()
 	return next.HandleSerialize(ctx, in)
 }
+func awsAwsjson11_serializeDocumentDryRunModifierList(v []types.DryRunModifierType, value smithyjson.Value) error {
+	array := value.Array()
+	defer array.Close()
+
+	for i := range v {
+		av := array.Value()
+		av.String(string(v[i]))
+	}
+	return nil
+}
+
 func awsAwsjson11_serializeDocumentEncryptionContextType(v map[string]string, value smithyjson.Value) error {
 	object := value.Object()
 	defer object.Close()
@@ -3612,6 +3623,13 @@ func awsAwsjson11_serializeOpDocumentDecryptInput(v *DecryptInput, value smithyj
 	if v.DryRun != nil {
 		ok := object.Key("DryRun")
 		ok.Boolean(*v.DryRun)
+	}
+
+	if v.DryRunModifiers != nil {
+		ok := object.Key("DryRunModifiers")
+		if err := awsAwsjson11_serializeDocumentDryRunModifierList(v.DryRunModifiers, ok); err != nil {
+			return err
+		}
 	}
 
 	if len(v.EncryptionAlgorithm) > 0 {
@@ -4445,6 +4463,13 @@ func awsAwsjson11_serializeOpDocumentReEncryptInput(v *ReEncryptInput, value smi
 	if v.DryRun != nil {
 		ok := object.Key("DryRun")
 		ok.Boolean(*v.DryRun)
+	}
+
+	if v.DryRunModifiers != nil {
+		ok := object.Key("DryRunModifiers")
+		if err := awsAwsjson11_serializeDocumentDryRunModifierList(v.DryRunModifiers, ok); err != nil {
+			return err
+		}
 	}
 
 	if v.GrantTokens != nil {

@@ -217,6 +217,23 @@ func (DataKeySpec) Values() []DataKeySpec {
 	}
 }
 
+type DryRunModifierType string
+
+// Enum values for DryRunModifierType
+const (
+	DryRunModifierTypeIgnoreCiphertext DryRunModifierType = "IGNORE_CIPHERTEXT"
+)
+
+// Values returns all known values for DryRunModifierType. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (DryRunModifierType) Values() []DryRunModifierType {
+	return []DryRunModifierType{
+		"IGNORE_CIPHERTEXT",
+	}
+}
+
 type EncryptionAlgorithmSpec string
 
 // Enum values for EncryptionAlgorithmSpec

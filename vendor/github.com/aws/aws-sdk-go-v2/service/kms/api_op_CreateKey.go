@@ -75,12 +75,12 @@ import (
 // HMAC keys to generate (GenerateMac ) and verify (VerifyMac ) HMAC codes for messages up to 4096
 // bytes.
 //
-// Multi-Region primary keys Imported key material To create a multi-Region
-// primary key in the local Amazon Web Services Region, use the MultiRegion
-// parameter with a value of True . To create a multi-Region replica key, that is,
-// a KMS key with the same key ID and key material as a primary key, but in a
-// different Amazon Web Services Region, use the ReplicateKeyoperation. To change a replica
-// key to a primary key, and its primary key to a replica key, use the UpdatePrimaryRegionoperation.
+// Multi-Region primary keys To create a multi-Region primary key in the local
+// Amazon Web Services Region, use the MultiRegion parameter with a value of True .
+// To create a multi-Region replica key, that is, a KMS key with the same key ID
+// and key material as a primary key, but in a different Amazon Web Services
+// Region, use the ReplicateKeyoperation. To change a replica key to a primary key, and its
+// primary key to a replica key, use the UpdatePrimaryRegionoperation.
 //
 // You can create multi-Region KMS keys for all supported KMS key types: symmetric
 // encryption KMS keys, HMAC KMS keys, asymmetric encryption KMS keys, and
@@ -95,12 +95,12 @@ import (
 // re-encrypting the data or making a cross-Region call. For more information about
 // multi-Region keys, see [Multi-Region keys in KMS]in the Key Management Service Developer Guide.
 //
-// To import your own key material into a KMS key, begin by creating a KMS key
-// with no key material. To do this, use the Origin parameter of CreateKey with a
-// value of EXTERNAL . Next, use GetParametersForImport operation to get a public key and import token.
-// Use the wrapping public key to encrypt your key material. Then, use ImportKeyMaterialwith your
-// import token to import the key material. For step-by-step instructions, see [Importing Key Material]in
-// the Key Management Service Developer Guide .
+// Imported key material To import your own key material into a KMS key, begin by
+// creating a KMS key with no key material. To do this, use the Origin parameter
+// of CreateKey with a value of EXTERNAL . Next, use GetParametersForImport operation to get a public
+// key and import token. Use the wrapping public key to encrypt your key material.
+// Then, use ImportKeyMaterialwith your import token to import the key material. For step-by-step
+// instructions, see [Importing Key Material]in the Key Management Service Developer Guide .
 //
 // You can import key material into KMS keys of all supported KMS key types:
 // symmetric encryption KMS keys, HMAC KMS keys, asymmetric encryption KMS keys,
