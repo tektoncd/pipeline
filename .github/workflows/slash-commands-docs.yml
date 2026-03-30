@@ -1,0 +1,63 @@
+# Post slash command documentation on new pull requests
+#
+# This workflow adds a comment to new PRs so contributors know about
+# available slash commands and when to use them.
+# See https://github.com/tektoncd/pipeline/issues/9148
+
+name: Slash Commands PR Comment
+
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  comment:
+    name: Post slash commands documentation
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check for existing comment
+      id: check
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      with:
+        script: |
+          const marker = '<!-- tekton-slash-commands -->';
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          const existing = comments.find(c => c.body && c.body.includes(marker));
+          core.setOutput('exists', existing ? 'true' : 'false');
+    - name: Post slash commands documentation
+      if: steps.check.outputs.exists != 'true'
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      with:
+        script: |
+          const body = [
+            '<!-- tekton-slash-commands -->',
+            '## Slash commands',
+            '',
+            'You can use these commands by commenting on this PR. All require **write** access to the repository.',
+            '',
+            '| Command | When to use |',
+            '|---------|-------------|',
+            '| `/kind <type>` | Set the kind label for this PR (e.g. `bug`, `feature`, `documentation`) |',
+            '| `/retest` | Re-run failed GitHub Actions checks on this PR |',
+            '| `/e2e-extras` | Run extra end-to-end tests (not part of default CI) |',
+            '| `/rebase` | Rebase this PR onto its base branch (PR must be from tektoncd/pipeline, not a fork) |',
+            '| `/cherry-pick <branch>` | After merge: cherry-pick this PR to the given branch(es) |',
+            '',
+            'See [CONTRIBUTING.md - Slash Commands](https://github.com/tektoncd/pipeline/blob/main/CONTRIBUTING.md#slash-commands) for details.',
+          ].join('\n');
+
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body,
+          });
+          core.info('Posted slash commands documentation.');
