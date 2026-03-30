@@ -196,6 +196,9 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 	// Read the initial condition
 	before := pr.Status.GetCondition(apis.ConditionSucceeded)
 
+	// Record the duration and count after the reconcile cycle.
+	defer c.durationAndCountMetrics(ctx, pr, before)
+
 	// Check if we are failing to mark this as timed out for a while. If we are, mark immediately and finish the
 	// reconcile. We are assuming here that if the PipelineRun has timed out for a long time, it had time to run
 	// before and it kept failing. One reason that can happen is exceeding etcd request size limit. Finishing it early
@@ -267,7 +270,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 
 	// Reconcile this copy of the pipelinerun and then write back any status or label
 	// updates regardless of whether the reconciliation errored out.
-	if err = c.reconcile(ctx, pr, getPipelineFunc, before); err != nil {
+	if err = c.reconcile(ctx, pr, getPipelineFunc); err != nil {
 		logger.Errorf("Reconcile error: %v", err.Error())
 	}
 
@@ -456,10 +459,9 @@ func (c *Reconciler) resolvePipelineState(
 	return pst, nil
 }
 
-func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipelineFunc rprp.GetPipeline, beforeCondition *apis.Condition) error {
+func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipelineFunc rprp.GetPipeline) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "reconcile")
 	defer span.End()
-	defer c.durationAndCountMetrics(ctx, pr, beforeCondition)
 	logger := logging.FromContext(ctx)
 	pr.SetDefaults(ctx)
 
@@ -1622,23 +1624,27 @@ func createChildResourceLabels(pr *v1.PipelineRun, pipelineTaskName string, incl
 	if pipelineTaskName != "" {
 		labels[pipeline.PipelineTaskLabelKey] = pipelineTaskName
 	}
-	if pr.Status.PipelineSpec != nil {
-		// check if a task is part of the "tasks" section, add a label to identify it during the runtime
-		for _, f := range pr.Status.PipelineSpec.Tasks {
-			if pipelineTaskName == f.Name {
-				labels[pipeline.MemberOfLabelKey] = v1.PipelineTasks
-				break
-			}
-		}
-		// check if a task is part of the "finally" section, add a label to identify it during the runtime
-		for _, f := range pr.Status.PipelineSpec.Finally {
-			if pipelineTaskName == f.Name {
-				labels[pipeline.MemberOfLabelKey] = v1.PipelineFinallyTasks
-				break
-			}
-		}
+	if memberOf := memberOfLookup(pr.Status.PipelineSpec, pipelineTaskName); memberOf != "" {
+		labels[pipeline.MemberOfLabelKey] = memberOf
 	}
 	return labels
+}
+
+func memberOfLookup(ps *v1.PipelineSpec, name string) string {
+	if ps == nil {
+		return ""
+	}
+	for _, t := range ps.Tasks {
+		if name == t.Name {
+			return v1.PipelineTasks
+		}
+	}
+	for _, t := range ps.Finally {
+		if name == t.Name {
+			return v1.PipelineFinallyTasks
+		}
+	}
+	return ""
 }
 
 func combineTaskRunAndTaskSpecLabels(pr *v1.PipelineRun, pipelineTask *v1.PipelineTask) map[string]string {

@@ -23,7 +23,104 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func TestGetNameAndNamespace(t *testing.T) {
+	tests := []struct {
+		name         string
+		ownerName    string
+		ownerNS      string
+		inputName    string
+		inputNS      string
+		expectErrMsg string
+		expectNS     string
+	}{
+		{
+			name:      "uses owner namespace when name is empty",
+			ownerName: "my-run",
+			ownerNS:   "my-ns",
+			inputName: "",
+			inputNS:   "",
+			expectNS:  "my-ns",
+		},
+		{
+			name:      "explicit name and namespace succeeds",
+			ownerName: "my-run",
+			ownerNS:   "my-ns",
+			inputName: "explicit-name",
+			inputNS:   "explicit-ns",
+			expectNS:  "explicit-ns",
+		},
+		{
+			name:      "explicit name and namespace ignores owner namespace",
+			ownerName: "my-run",
+			ownerNS:   "owner-ns",
+			inputName: "explicit-name",
+			inputNS:   "explicit-ns",
+			expectNS:  "explicit-ns",
+		},
+		{
+			name:      "explicit name with empty namespace falls back to owner namespace",
+			ownerName: "my-run",
+			ownerNS:   "my-ns",
+			inputName: "explicit-name",
+			inputNS:   "",
+			expectNS:  "my-ns",
+		},
+		{
+			name:         "errors when both input and owner namespace are empty",
+			ownerName:    "my-run",
+			ownerNS:      "",
+			inputName:    "explicit-name",
+			inputNS:      "",
+			expectErrMsg: "namespace is required",
+		},
+		{
+			name:         "errors on empty namespace from owner",
+			ownerName:    "my-run",
+			ownerNS:      "",
+			inputName:    "",
+			inputNS:      "",
+			expectErrMsg: "namespace is required",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			owner := &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      tt.ownerName,
+					Namespace: tt.ownerNS,
+				},
+			}
+			req := &v1beta1.ResolutionRequestSpec{
+				Params: v1.Params{{
+					Name:  "foo",
+					Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "bar"},
+				}},
+			}
+			gotName, gotNS, err := resource.GetNameAndNamespace("git", owner, tt.inputName, tt.inputNS, req)
+			if tt.expectErrMsg != "" {
+				if err == nil {
+					t.Fatalf("expected error containing %q but got nil", tt.expectErrMsg)
+				}
+				if !strings.Contains(err.Error(), tt.expectErrMsg) {
+					t.Errorf("expected error containing %q, got: %v", tt.expectErrMsg, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if gotName == "" {
+				t.Error("expected non-empty name")
+			}
+			if gotNS != tt.expectNS {
+				t.Errorf("expected namespace %q, got %q", tt.expectNS, gotNS)
+			}
+		})
+	}
+}
 
 func TestGenerateDeterministicName(t *testing.T) {
 	type args struct {

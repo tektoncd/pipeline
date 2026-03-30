@@ -5539,6 +5539,9 @@ TaskRuns failed due to reconciler/validation error should not use this reason.</
 </tr><tr><td><p>&#34;InvalidParamValue&#34;</p></td>
 <td><p>TaskRunReasonInvalidParamValue indicates that the TaskRun Param input value is not allowed.</p>
 </td>
+</tr><tr><td><p>&#34;TaskRunPending&#34;</p></td>
+<td><p>TaskRunReasonPending is the reason set when the TaskRun is in the pending state</p>
+</td>
 </tr><tr><td><p>&#34;PodCreationFailed&#34;</p></td>
 <td><p>TaskRunReasonPodCreationFailed is the reason set when the pod backing the TaskRun fails to be created (e.g., CreateContainerError)</p>
 </td>

@@ -139,7 +139,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 
 	// If the TaskRun is just starting, this will also set the starttime,
 	// from which the timeout will immediately begin counting down.
-	if !tr.HasStarted() {
+	if !tr.HasStarted() && !tr.IsPending() {
 		tr.Status.InitializeConditions()
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
 		if tr.Status.StartTime.Sub(tr.CreationTimestamp.Time) < 0 {
@@ -189,6 +189,12 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 		message := fmt.Sprintf("TaskRun %q was cancelled. %s", tr.Name, tr.Spec.StatusMessage)
 		err := c.failTaskRun(ctx, tr, v1.TaskRunReasonCancelled, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+	}
+
+	// When TaskRun is pending, do not create a Pod. Set condition and return.
+	if tr.IsPending() {
+		tr.Status.MarkResourceOngoing(v1.TaskRunReasonPending, fmt.Sprintf("TaskRun %q is pending", tr.Name))
+		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, nil)
 	}
 
 	// Check if the TaskRun has timed out; if it is, this will set its status
@@ -451,9 +457,8 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 // error but it does not sync updates back to etcd. It does not emit events.
 // All errors returned by `prepare` are always handled by `Reconcile`, so they don't cause
 // the key to be re-queued directly.
-// `prepare` returns spec and resources. In future we might store
-// them in the TaskRun.Status so we don't need to re-run `prepare` at every
-// reconcile (see https://github.com/tektoncd/pipeline/issues/2473).
+// `prepare` returns spec and resources. The resolved TaskSpec is stored in the
+// TaskRun.Status so we don't need to re-fetch and re-validate it at every reconcile.
 func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec, *resources.ResolvedTask, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "prepare")
 	defer span.End()

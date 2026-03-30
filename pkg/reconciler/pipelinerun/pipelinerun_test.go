@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -58,6 +59,9 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	"github.com/tektoncd/pipeline/test/parse"
+	"go.opentelemetry.io/otel"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -120,6 +124,18 @@ var (
 	now       = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
 	testClock = clock.NewFakePassiveClock(now)
 )
+
+// testMetricsReader is initialised in TestMain before any test creates a
+// controller, so the pipelinerunmetrics singleton picks up this provider when
+// it calls otel.GetMeterProvider() on first use.
+var testMetricsReader *sdkmetric.ManualReader
+
+func TestMain(m *testing.M) {
+	testMetricsReader = sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(testMetricsReader))
+	otel.SetMeterProvider(provider)
+	os.Exit(m.Run())
+}
 
 type PipelineRunTest struct {
 	test.Data  `json:"inline"`
@@ -1540,6 +1556,119 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 				if !(actionType == "testing.UpdateActionImpl" || actionType == "testing.GetActionImpl") {
 					t.Errorf("Expected a TaskRun to be get/updated, but it was %s", actionType)
 				}
+			}
+		})
+	}
+}
+
+// TestReconcilePipelineRunRecordsMetrics verifies that all three terminal
+// statuses (success, failed, cancelled) are reflected in the
+// tekton_pipelines_controller_pipelinerun_total counter after reconcile.
+func TestReconcilePipelineRunRecordsMetrics(t *testing.T) {
+	countForStatus := func(status string) int64 {
+		var rm metricdata.ResourceMetrics
+		if err := testMetricsReader.Collect(t.Context(), &rm); err != nil {
+			t.Fatalf("failed to collect metrics: %v", err)
+		}
+		for _, sm := range rm.ScopeMetrics {
+			for _, m := range sm.Metrics {
+				if m.Name != "tekton_pipelines_controller_pipelinerun_total" {
+					continue
+				}
+				sum, ok := m.Data.(metricdata.Sum[int64])
+				if !ok {
+					continue
+				}
+				for _, dp := range sum.DataPoints {
+					for _, kv := range dp.Attributes.ToSlice() {
+						if string(kv.Key) == "status" && kv.Value.AsString() == status {
+							return dp.Value
+						}
+					}
+				}
+			}
+		}
+		return 0
+	}
+
+	for _, tc := range []struct {
+		name        string
+		pipelineRun *v1.PipelineRun
+		taskRun     *v1.TaskRun
+		wantStatus  string
+	}{{
+		name: "success",
+		pipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: metrics-pr-success
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+status:
+  startTime: "2022-01-01T00:00:00Z"
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: metrics-pr-success-tr
+    pipelineTaskName: hello-world-1
+`),
+		taskRun: createHelloWorldTaskRunWithStatus(t, "metrics-pr-success-tr", "foo",
+			"metrics-pr-success", "test-pipeline", "",
+			apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
+			}),
+		wantStatus: "success",
+	}, {
+		name: "failed",
+		pipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: metrics-pr-failed
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+status:
+  startTime: "2022-01-01T00:00:00Z"
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: metrics-pr-failed-tr
+    pipelineTaskName: hello-world-1
+`),
+		taskRun: createHelloWorldTaskRunWithStatus(t, "metrics-pr-failed-tr", "foo",
+			"metrics-pr-failed", "test-pipeline", "",
+			apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+			}),
+		wantStatus: "failed",
+	}, {
+		name:        "cancelled",
+		pipelineRun: createCancelledPipelineRun(t, "metrics-pr-cancelled", v1.PipelineRunSpecStatusCancelled),
+		taskRun:     createHelloWorldTaskRun(t, "metrics-pr-cancelled-tr", "foo", "metrics-pr-cancelled", "test-pipeline"),
+		wantStatus:  "cancelled",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				PipelineRuns: []*v1.PipelineRun{tc.pipelineRun},
+				Pipelines:    []*v1.Pipeline{simpleHelloWorldPipeline},
+				Tasks:        []*v1.Task{simpleHelloWorldTask},
+				TaskRuns:     []*v1.TaskRun{tc.taskRun},
+				ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
+			}
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+
+			baseline := countForStatus(tc.wantStatus)
+			prt.reconcileRun("foo", tc.pipelineRun.Name, nil, false)
+			if after := countForStatus(tc.wantStatus); after != baseline+1 {
+				t.Errorf("pipelinerun_total{status=%s}: got %d after reconcile, want %d", tc.wantStatus, after, baseline+1)
 			}
 		})
 	}
@@ -19025,5 +19154,62 @@ spec:
 	// Verify its status was updated
 	if !reconciledTekton.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
 		t.Errorf("Expected Tekton-managed PipelineRun to be running, but it was not")
+	}
+}
+
+func TestMemberOfLookup(t *testing.T) {
+	tcs := []struct {
+		name     string
+		spec     *v1.PipelineSpec
+		taskName string
+		expected string
+	}{
+		{
+			name: "task found in tasks list",
+			spec: &v1.PipelineSpec{
+				Tasks: []v1.PipelineTask{{Name: "my-task"}, {Name: "other-task"}},
+			},
+			taskName: "my-task",
+			expected: v1.PipelineTasks,
+		},
+		{
+			name: "task found in finally list",
+			spec: &v1.PipelineSpec{
+				Tasks:   []v1.PipelineTask{{Name: "my-task"}},
+				Finally: []v1.PipelineTask{{Name: "my-finally-task"}},
+			},
+			taskName: "my-finally-task",
+			expected: v1.PipelineFinallyTasks,
+		},
+		{
+			name: "task not found",
+			spec: &v1.PipelineSpec{
+				Tasks:   []v1.PipelineTask{{Name: "some-task"}},
+				Finally: []v1.PipelineTask{{Name: "some-finally-task"}},
+			},
+			taskName: "missing-task",
+			expected: "",
+		},
+		{
+			name:     "nil pipeline spec does not panic",
+			spec:     nil,
+			taskName: "any-task",
+			expected: "",
+		},
+		{
+			name:     "empty pipeline spec",
+			spec:     &v1.PipelineSpec{},
+			taskName: "any-task",
+			expected: "",
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := memberOfLookup(tc.spec, tc.taskName)
+			if actual != tc.expected {
+				t.Errorf("memberOfLookup() = %q, expected %q", actual, tc.expected)
+			}
+		})
 	}
 }

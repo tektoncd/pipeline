@@ -4,4 +4,4 @@
 package runtime // import "go.opentelemetry.io/contrib/instrumentation/runtime"
 
 // Version is the current release version of the runtime instrumentation.
-const Version = "0.65.0"
+const Version = "0.67.0"

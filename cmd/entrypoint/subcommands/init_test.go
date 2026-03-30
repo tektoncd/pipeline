@@ -64,6 +64,12 @@ func TestEntrypointInit(t *testing.T) {
 		t.Errorf("expected permissions <= %#o for destination file but found %#o", dstPermissions, p)
 	}
 
+	// Call entrypointInit again to verify idempotency. If a container restarts
+	// within a pod, the init entrypoint re-runs with symlinks already present.
+	if err := entrypointInit(src, dst, steps); err != nil {
+		t.Fatalf("entrypointInit (second call): %v", err)
+	}
+
 	// Map of symlinks to expected /tekton/run folders.
 	// Expected format:
 	// Key: /tekton/steps/<key>

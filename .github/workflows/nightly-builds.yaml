@@ -41,6 +41,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Generate version info
         id: version
@@ -152,13 +153,13 @@ jobs:
 
           PIPELINE_RUN=$(tkn pipeline start pipeline-release \
             --serviceaccount=release-right-meow \
-            --param package="${{ env.PACKAGE }}" \
-            --param repoName="${{ env.REPO_NAME }}" \
-            --param gitRevision="${{ steps.version.outputs.latest_sha }}" \
-            --param versionTag="${{ steps.version.outputs.version_tag }}" \
-            --param releaseBucket="${{ env.BUCKET }}" \
+            --param package="${PACKAGE}" \
+            --param repoName="${REPO_NAME}" \
+            --param gitRevision="${STEPS_VERSION_OUTPUTS_LATEST_SHA}" \
+            --param versionTag="${STEPS_VERSION_OUTPUTS_VERSION_TAG}" \
+            --param releaseBucket="${BUCKET}" \
             --param imageRegistry=${{ env.REGISTRY }} \
-            --param imageRegistryPath="${{ env.IMAGE_REGISTRY_PATH }}" \
+            --param imageRegistryPath="${IMAGE_REGISTRY_PATH}" \
             --param imageRegistryUser="${{ env.IMAGE_REGISTRY_USER }}" \
             --param imageRegistryRegions="" \
             --param buildPlatforms="linux/amd64,linux/arm64,linux/s390x,linux/ppc64le" \
@@ -188,3 +189,6 @@ jobs:
           }
 
           echo "✅ Pipeline Run completed successfully!"
+        env:
+          STEPS_VERSION_OUTPUTS_LATEST_SHA: ${{ steps.version.outputs.latest_sha }}
+          STEPS_VERSION_OUTPUTS_VERSION_TAG: ${{ steps.version.outputs.version_tag }}

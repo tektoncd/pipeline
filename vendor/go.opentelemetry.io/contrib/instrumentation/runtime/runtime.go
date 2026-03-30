@@ -12,7 +12,7 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/semconv/v1.39.0/goconv"
+	"go.opentelemetry.io/otel/semconv/v1.40.0/goconv"
 
 	"go.opentelemetry.io/contrib/instrumentation/runtime/internal/deprecatedruntime"
 	"go.opentelemetry.io/contrib/instrumentation/runtime/internal/x"
