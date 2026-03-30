@@ -124,11 +124,6 @@ func (c *Client) ReEncrypt(ctx context.Context, params *ReEncryptInput, optFns .
 
 type ReEncryptInput struct {
 
-	// Ciphertext of the data to reencrypt.
-	//
-	// This member is required.
-	CiphertextBlob []byte
-
 	// A unique identifier for the KMS key that is used to reencrypt the data. Specify
 	// a symmetric encryption KMS key or an asymmetric KMS key with a KeyUsage value
 	// of ENCRYPT_DECRYPT . To find the KeyUsage value of a KMS key, use the DescribeKey
@@ -154,6 +149,12 @@ type ReEncryptInput struct {
 	//
 	// This member is required.
 	DestinationKeyId *string
+
+	// Ciphertext of the data to reencrypt.
+	//
+	// This parameter is required in all cases except when DryRun is true and
+	// DryRunModifiers is set to IGNORE_CIPHERTEXT .
+	CiphertextBlob []byte
 
 	// Specifies the encryption algorithm that KMS will use to reecrypt the data after
 	// it has decrypted it. The default value, SYMMETRIC_DEFAULT , represents the
@@ -192,6 +193,19 @@ type ReEncryptInput struct {
 	//
 	// [Testing your permissions]: https://docs.aws.amazon.com/kms/latest/developerguide/testing-permissions.html
 	DryRun *bool
+
+	// Specifies the modifiers to apply to the dry run operation. DryRunModifiers is
+	// an optional parameter that only applies when DryRun is set to true .
+	//
+	// When set to IGNORE_CIPHERTEXT , KMS performs only authorization validation
+	// without ciphertext validation. This allows you to test permissions without
+	// requiring a valid ciphertext blob.
+	//
+	// To learn more about how to use this parameter, see [Testing your permissions] in the Key Management
+	// Service Developer Guide.
+	//
+	// [Testing your permissions]: https://docs.aws.amazon.com/kms/latest/developerguide/testing-permissions.html
+	DryRunModifiers []types.DryRunModifierType
 
 	// A list of grant tokens.
 	//
@@ -238,7 +252,8 @@ type ReEncryptInput struct {
 	// IncorrectKeyException .
 	//
 	// This parameter is required only when the ciphertext was encrypted under an
-	// asymmetric KMS key. If you used a symmetric encryption KMS key, KMS can get the
+	// asymmetric KMS key or when DryRun is true and DryRunModifiers is set to
+	// IGNORE_CIPHERTEXT . If you used a symmetric encryption KMS key, KMS can get the
 	// KMS key from metadata that it adds to the symmetric ciphertext blob. However, it
 	// is always recommended as a best practice. This practice ensures that you use the
 	// KMS key that you intend.
