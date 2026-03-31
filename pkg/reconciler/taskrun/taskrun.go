@@ -168,6 +168,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 			dc := c.KubeClientSet.Discovery()
 			sv, err := dc.ServerVersion()
 			if err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
 				return err
 			}
 			if podconvert.IsNativeSidecarSupport(sv) {
@@ -177,6 +179,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 		}
 		if useTektonSidecar {
 			if err := c.stopSidecars(ctx, tr); err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
 				return err
 			}
 		}
@@ -235,6 +239,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	// updates regardless of whether the reconciliation errored out.
 	if err = c.reconcile(ctx, tr, rtr); err != nil {
 		logger.Errorf("Reconcile: %v", err.Error())
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		if errors.Is(err, sidecarlogresults.ErrSizeExceeded) {
 			message := fmt.Sprintf("%s TaskRun \"%q\" failed: %s", pipelineErrors.UserErrorLabel, tr.Name, err.Error())
 			err := c.failTaskRun(ctx, tr, v1.TaskRunReasonResultLargerThanAllowedLimit, message)
@@ -405,6 +411,8 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
 	if k8serrors.IsNotFound(err) {
 		// At this stage the TaskRun has been completed if the pod is not found, it won't come back,
 		// it has probably evicted. We can return the error, but we consider it a permanent one.
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return controller.NewPermanentError(err)
 	} else if err != nil {
 		// It is admissible for Pods to fail with concurrentModification errors
@@ -414,6 +422,8 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
 			return controller.NewRequeueAfter(time.Second)
 		}
 		logger.Errorf("Error stopping sidecars for TaskRun %q: %v", tr.Name, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonStopSidecarFailed, err)
 	}
 	return nil
@@ -446,6 +456,10 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 		}
 	}
 	joinedErr := errors.Join(errs...)
+	if joinedErr != nil {
+		span.RecordError(joinedErr)
+		span.SetStatus(codes.Error, joinedErr.Error())
+	}
 	if controller.IsPermanentError(previousError) {
 		return controller.NewPermanentError(joinedErr)
 	}
@@ -468,7 +482,10 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	// list VerificationPolicies for trusted resources
 	vp, err := c.verificationPolicyLister.VerificationPolicies(tr.Namespace).List(labels.Everything())
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", tr.Namespace, err)
+		err = fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %w", tr.Namespace, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, nil, err
 	}
 	getTaskfunc := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, tr, vp)
 
@@ -480,11 +497,17 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		return nil, nil, err
 	case errors.Is(err, apiserver.ErrReferencedObjectValidationFailed), errors.Is(err, apiserver.ErrCouldntValidateObjectPermanent):
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonTaskFailedValidation, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, nil, controller.NewPermanentError(err)
 	case errors.Is(err, apiserver.ErrCouldntValidateObjectRetryable):
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, nil, err
 	case err != nil:
 		logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		if resolutioncommon.IsErrTransient(err) {
 			return nil, nil, err
 		}
@@ -505,11 +528,17 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		return nil, nil, err
 	case errors.Is(err, apiserver.ErrReferencedObjectValidationFailed), errors.Is(err, apiserver.ErrCouldntValidateObjectPermanent):
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonTaskFailedValidation, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, nil, controller.NewPermanentError(err)
 	case errors.Is(err, apiserver.ErrCouldntValidateObjectRetryable):
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, nil, err
 	case err != nil:
 		logger.Errorf("Failed to determine StepAction to use for TaskRun %s: %v", tr.Name, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		if resolutioncommon.IsErrTransient(err) {
 			return nil, nil, err
 		}
@@ -533,6 +562,8 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 				Status:  corev1.ConditionFalse,
 				Message: taskMeta.VerificationResult.Err.Error(),
 			})
+			span.RecordError(taskMeta.VerificationResult.Err)
+			span.SetStatus(codes.Error, taskMeta.VerificationResult.Err.Error())
 			return nil, nil, controller.NewPermanentError(taskMeta.VerificationResult.Err)
 		case trustedresources.VerificationSkip:
 			// do nothing
@@ -559,12 +590,16 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	if err := validateTaskSpecRequestResources(taskSpec); err != nil {
 		logger.Errorf("TaskRun %s taskSpec request resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	if err := ValidateResolvedTask(ctx, tr.Spec.Params, &v1.Matrix{}, rtr); err != nil {
 		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
@@ -572,6 +607,8 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		if err := ValidateEnumParam(ctx, tr.Spec.Params, rtr.TaskSpec.Params); err != nil {
 			logger.Errorf("TaskRun %q Param Enum validation failed: %v", tr.Name, err)
 			tr.Status.MarkResourceFailed(v1.TaskRunReasonInvalidParamValue, err)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return nil, nil, controller.NewPermanentError(err)
 		}
 	}
@@ -579,12 +616,16 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	if err := resources.ValidateParamArrayIndex(rtr.TaskSpec, tr.Spec.Params); err != nil {
 		logger.Errorf("TaskRun %q Param references are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	if err := c.updateTaskRunWithDefaultWorkspaces(ctx, tr, taskSpec); err != nil {
 		logger.Errorf("Failed to update taskrun %s with default workspace: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedResolution, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
@@ -604,17 +645,23 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	if err := workspace.ValidateBindings(ctx, workspaceDeclarations, tr.Spec.Workspaces); err != nil {
 		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	aaBehavior, err := affinityassistant.GetAffinityAssistantBehavior(ctx)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, nil, controller.NewPermanentError(err)
 	}
 	if aaBehavior == affinityassistant.AffinityAssistantPerWorkspace {
 		if err := workspace.ValidateOnlyOnePVCIsUsed(tr.Spec.Workspaces); err != nil {
 			logger.Errorf("TaskRun %q workspaces incompatible with Affinity Assistant: %v", tr.Name, err)
 			tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return nil, nil, controller.NewPermanentError(err)
 		}
 	}
@@ -622,6 +669,8 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	if err := validateOverrides(taskSpec, &tr.Spec); err != nil {
 		logger.Errorf("TaskRun %q step or sidecar overrides are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
@@ -653,6 +702,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 			// the task run condition, and return an error which will cause this key to
 			// be requeued for reconcile.
 			logger.Errorf("Error getting pod %q: %v", tr.Status.PodName, err)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return err
 		}
 	} else {
@@ -663,6 +714,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		pos, err := c.podLister.Pods(tr.Namespace).List(labelSelector.AsSelector())
 		if err != nil {
 			logger.Errorf("Error listing pods: %v", err)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return err
 		}
 		for index := range pos {
@@ -682,6 +735,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 				tr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
 					fmt.Errorf("failed to create PVC for TaskRun %s workspaces correctly: %w",
 						fmt.Sprintf("%s/%s", tr.Namespace, tr.Name), err))
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
 				return controller.NewPermanentError(err)
 			}
 		}
@@ -698,6 +753,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	ts, err := applyParamsContextsResultsAndWorkspaces(ctx, tr, rtr, workspaceVolumes)
 	if err != nil {
 		logger.Errorf("Error updating task spec parameters, contexts, results and workspaces: %s", err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 	tr.Status.TaskSpec = ts
@@ -711,6 +768,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		if err != nil {
 			newErr := c.handlePodCreationError(tr, err)
 			logger.Errorf("Failed to create task run pod for taskrun %q: %v", tr.Name, newErr)
+			span.RecordError(newErr)
+			span.SetStatus(codes.Error, newErr.Error())
 			return newErr
 		}
 	}
@@ -721,6 +780,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 
 	if podconvert.SidecarsReady(pod.Status) {
 		if err := podconvert.UpdateReady(ctx, c.KubeClientSet, *pod); err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return err
 		}
 		if err := c.metrics.RecordPodLatency(ctx, pod, tr); err != nil {
@@ -731,11 +792,15 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	// Convert the Pod's status to the equivalent TaskRun Status.
 	tr.Status, err = podconvert.MakeTaskRunStatus(ctx, logger, *tr, pod, c.KubeClientSet, rtr.TaskSpec)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 
 	if err := validateTaskRunResults(tr, rtr.TaskSpec); err != nil {
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 
@@ -751,7 +816,10 @@ func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr 
 	if defaults.DefaultTaskRunWorkspaceBinding != "" {
 		var defaultWS v1.WorkspaceBinding
 		if err := yaml.Unmarshal([]byte(defaults.DefaultTaskRunWorkspaceBinding), &defaultWS); err != nil {
-			return fmt.Errorf("failed to unmarshal %v", defaults.DefaultTaskRunWorkspaceBinding)
+			unmarshalErr := fmt.Errorf("failed to unmarshal %v", defaults.DefaultTaskRunWorkspaceBinding)
+			span.RecordError(unmarshalErr)
+			span.SetStatus(codes.Error, unmarshalErr.Error())
+			return unmarshalErr
 		}
 		workspaceBindings := map[string]v1.WorkspaceBinding{}
 		for _, tsWorkspace := range taskSpec.Workspaces {
@@ -791,7 +859,10 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1.Task
 
 	newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
 	if err != nil {
-		return nil, fmt.Errorf("error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
+		err = fmt.Errorf("error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, err
 	}
 	if !reflect.DeepEqual(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) || !reflect.DeepEqual(tr.ObjectMeta.Annotations, newTr.ObjectMeta.Annotations) {
 		// Note that this uses Update vs. Patch because the former is significantly easier to test.
@@ -875,6 +946,8 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 	}
 	if err != nil && !k8serrors.IsNotFound(err) {
 		logger.Errorf("Failed to terminate pod %s: %v", tr.Status.PodName, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 
@@ -965,10 +1038,14 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 	// validate that all parameter variables and workspaces used in the TaskSpec are declared by the Task.
 	if validateErr := v1.ValidateUsageOfDeclaredParameters(ctx, ts.Steps, ts.Params); validateErr != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to task validation error %v", tr.Name, validateErr)
+		span.RecordError(validateErr)
+		span.SetStatus(codes.Error, validateErr.Error())
 		return nil, validateErr
 	}
 	if validateErr := ts.Validate(ctx); validateErr != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to task validation error %v", tr.Name, validateErr)
+		span.RecordError(validateErr)
+		span.SetStatus(codes.Error, validateErr.Error())
 		return nil, validateErr
 	}
 
@@ -976,6 +1053,8 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 	ts, err = workspace.Apply(ctx, *ts, tr.Spec.Workspaces, workspaceVolumes)
 	if err != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to workspace error %v", tr.Name, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -1007,7 +1086,10 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 		affinityassistant.NewTransformer(ctx, tr.Annotations),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("translating TaskSpec to Pod: %w", err)
+		err = fmt.Errorf("translating TaskSpec to Pod: %w", err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, err
 	}
 
 	// Stash the podname in case there's create conflict so that we can try
@@ -1053,6 +1135,8 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 		}
 	}
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 	return pod, nil
