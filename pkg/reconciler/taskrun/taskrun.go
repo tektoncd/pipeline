@@ -487,9 +487,24 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		if err := storeTaskSpecAndMergeMeta(ctx, tr, taskSpec, taskMeta); err != nil {
 			logger.Errorf("Failed to store TaskSpec on TaskRun.Status for taskrun %s: %v", tr.Name, err)
 		}
+
+		// Persist the resolved Task's namespace in the Status so that subsequent
+		// reconcile loops (which take the cached fast path in GetTaskFuncFromTaskRun)
+		// can recover the correct namespace for StepAction resolution.
+		// Status is controller-managed and cannot be injected by users or malicious Tasks.
+		if taskMeta.Namespace != "" && taskMeta.Namespace != tr.Namespace {
+			tr.Status.ResolvedTaskNamespace = taskMeta.Namespace
+		}
 	}
 
-	steps, err := resources.GetStepActionsData(ctx, *taskSpec, tr, c.PipelineClientSet, c.KubeClientSet, c.resolutionRequester)
+	// Determine the Task's namespace for StepAction resolution.
+	// The setter block above already persists taskMeta.Namespace into
+	// ResolvedTaskNamespace when they differ, so we only need to check Status.
+	taskNamespace := tr.Namespace
+	if tr.Status.ResolvedTaskNamespace != "" {
+		taskNamespace = tr.Status.ResolvedTaskNamespace
+	}
+	steps, err := resources.GetStepActionsData(ctx, *taskSpec, tr, c.PipelineClientSet, c.KubeClientSet, c.resolutionRequester, taskNamespace)
 	switch {
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("TaskRun %s/%s awaiting remote StepAction", tr.Namespace, tr.Name)

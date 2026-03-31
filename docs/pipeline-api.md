@@ -6179,6 +6179,19 @@ map[string]string
 <p>SpanContext contains tracing span context fields</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>resolvedTaskNamespace</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResolvedTaskNamespace is the namespace of the resolved Task, used for
+cross-namespace StepAction resolution. Set by the controller, not user-modifiable.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.TaskRunStepArtifact">TaskRunStepArtifact
