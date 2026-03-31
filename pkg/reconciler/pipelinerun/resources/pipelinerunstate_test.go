@@ -2387,6 +2387,163 @@ func TestGetPipelineConditionStatus_PipelineTasksTimeouts(t *testing.T) {
 	}
 }
 
+func TestGetPipelineConditionStatus_TasksTimedOutRunningFinally(t *testing.T) {
+	// DAG task that is running (will be timed out)
+	dagRunning := PipelineRunState{{
+		TaskRunNames: []string{"task0taskrun"},
+		PipelineTask: &pts[0],
+		TaskRuns:     []*v1.TaskRun{makeStarted(trs[0])},
+	}}
+
+	// DAG task that has timed out (cancelled) and finally task not started
+	dagTimedOutFinalNotStarted := PipelineRunState{{
+		TaskRunNames: []string{"task0taskrun"},
+		PipelineTask: &pts[0],
+		TaskRuns:     []*v1.TaskRun{withCancelled(makeFailed(trs[0]))},
+	}, {
+		TaskRunNames: []string{"finaltask"},
+		PipelineTask: &pts[1],
+		TaskRuns:     nil,
+	}}
+
+	// DAG task that has timed out (cancelled) and finally task succeeded
+	dagTimedOutFinalDone := PipelineRunState{{
+		TaskRunNames: []string{"task0taskrun"},
+		PipelineTask: &pts[0],
+		TaskRuns:     []*v1.TaskRun{withCancelled(makeFailed(trs[0]))},
+	}, {
+		TaskRunNames: []string{"finaltask"},
+		PipelineTask: &pts[1],
+		TaskRuns:     []*v1.TaskRun{makeSucceeded(trs[1])},
+	}}
+
+	tcs := []struct {
+		name           string
+		state          PipelineRunState
+		dagTasks       []v1.PipelineTask
+		finalTasks     []v1.PipelineTask
+		expectedStatus corev1.ConditionStatus
+		expectedReason string
+	}{{
+		name:           "tasks timed out with finally tasks not started - should keep running",
+		state:          dagTimedOutFinalNotStarted,
+		dagTasks:       []v1.PipelineTask{pts[0]},
+		finalTasks:     []v1.PipelineTask{pts[1]},
+		expectedStatus: corev1.ConditionUnknown,
+		expectedReason: v1.PipelineRunReasonTimedOutRunningFinally.String(),
+	}, {
+		name:           "tasks timed out with finally tasks completed - should fail",
+		state:          dagTimedOutFinalDone,
+		dagTasks:       []v1.PipelineTask{pts[0]},
+		finalTasks:     []v1.PipelineTask{pts[1]},
+		expectedStatus: corev1.ConditionFalse,
+		expectedReason: v1.PipelineRunReasonTimedOut.String(),
+	}, {
+		name:           "tasks timed out with no finally tasks - should fail",
+		state:          dagRunning,
+		dagTasks:       []v1.PipelineTask{pts[0]},
+		finalTasks:     []v1.PipelineTask{},
+		expectedStatus: corev1.ConditionFalse,
+		expectedReason: v1.PipelineRunReasonTimedOut.String(),
+	}}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-tasks-timeout-finally"},
+				Spec: v1.PipelineRunSpec{
+					Timeouts: &v1.TimeoutFields{
+						Pipeline: &metav1.Duration{Duration: 2 * time.Minute},
+						Finally:  &metav1.Duration{Duration: 1 * time.Minute},
+						// tasks timeout is calculated: pipeline - finally = 1 minute
+					},
+				},
+				Status: v1.PipelineRunStatus{
+					PipelineRunStatusFields: v1.PipelineRunStatusFields{
+						StartTime: &metav1.Time{Time: now.Add(-90 * time.Second)},
+					},
+				},
+			}
+			d, err := dag.Build(v1.PipelineTaskList(tc.dagTasks), v1.PipelineTaskList(tc.dagTasks).Deps())
+			if err != nil {
+				t.Fatalf("Unexpected error while building graph for DAG tasks %v: %v", tc.dagTasks, err)
+			}
+			df, err := dag.Build(v1.PipelineTaskList(tc.finalTasks), map[string][]string{})
+			if err != nil {
+				t.Fatalf("Unexpected error while building graph for final tasks %v: %v", tc.finalTasks, err)
+			}
+			facts := PipelineRunFacts{
+				State:           tc.state,
+				TasksGraph:      d,
+				FinalTasksGraph: df,
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
+			}
+			c := facts.GetPipelineConditionStatus(t.Context(), pr, zap.NewNop().Sugar(), testClock)
+			if c.Status != tc.expectedStatus {
+				t.Errorf("Expected status %s but got %s for test %s", tc.expectedStatus, c.Status, tc.name)
+			}
+			if c.Reason != tc.expectedReason {
+				t.Errorf("Expected reason %s but got %s for test %s", tc.expectedReason, c.Reason, tc.name)
+			}
+		})
+	}
+}
+
+func TestGetPipelineConditionStatus_TasksTimedOutExplicitWithFinally(t *testing.T) {
+	// Same as above but with explicit tasks timeout instead of calculated
+	dagTimedOutFinalNotStarted := PipelineRunState{{
+		TaskRunNames: []string{"task0taskrun"},
+		PipelineTask: &pts[0],
+		TaskRuns:     []*v1.TaskRun{withCancelled(makeFailed(trs[0]))},
+	}, {
+		TaskRunNames: []string{"finaltask"},
+		PipelineTask: &pts[1],
+		TaskRuns:     nil,
+	}}
+
+	pr := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-explicit-tasks-timeout-finally"},
+		Spec: v1.PipelineRunSpec{
+			Timeouts: &v1.TimeoutFields{
+				Pipeline: &metav1.Duration{Duration: 2 * time.Minute},
+				Tasks:    &metav1.Duration{Duration: 1 * time.Minute},
+			},
+		},
+		Status: v1.PipelineRunStatus{
+			PipelineRunStatusFields: v1.PipelineRunStatusFields{
+				StartTime: &metav1.Time{Time: now.Add(-90 * time.Second)},
+			},
+		},
+	}
+
+	d, err := dag.Build(v1.PipelineTaskList([]v1.PipelineTask{pts[0]}), v1.PipelineTaskList([]v1.PipelineTask{pts[0]}).Deps())
+	if err != nil {
+		t.Fatalf("Unexpected error while building graph for DAG tasks: %v", err)
+	}
+	df, err := dag.Build(v1.PipelineTaskList([]v1.PipelineTask{pts[1]}), map[string][]string{})
+	if err != nil {
+		t.Fatalf("Unexpected error while building graph for final tasks: %v", err)
+	}
+
+	facts := PipelineRunFacts{
+		State:           dagTimedOutFinalNotStarted,
+		TasksGraph:      d,
+		FinalTasksGraph: df,
+		TimeoutsState: PipelineRunTimeoutsState{
+			Clock: testClock,
+		},
+	}
+	c := facts.GetPipelineConditionStatus(t.Context(), pr, zap.NewNop().Sugar(), testClock)
+	if c.Status != corev1.ConditionUnknown {
+		t.Errorf("Expected status %s but got %s", corev1.ConditionUnknown, c.Status)
+	}
+	if c.Reason != v1.PipelineRunReasonTimedOutRunningFinally.String() {
+		t.Errorf("Expected reason %s but got %s", v1.PipelineRunReasonTimedOutRunningFinally.String(), c.Reason)
+	}
+}
+
 func TestGetPipelineConditionStatus_OnError(t *testing.T) {
 	var oneFailedStateOnError = PipelineRunState{{
 		PipelineTask: &v1.PipelineTask{

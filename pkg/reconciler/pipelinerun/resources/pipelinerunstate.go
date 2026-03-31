@@ -545,11 +545,18 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 	}
 
 	if pr.HaveTasksTimedOut(ctx, c) {
-		return &apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  v1.PipelineRunReasonTimedOut.String(),
-			Message: fmt.Sprintf("PipelineRun %q failed due to tasks failed to finish within %q", pr.Name, pr.TasksTimeout().Duration.String()),
+		// If there are finally tasks that haven't completed yet, allow the pipeline to keep
+		// running so that finally tasks can execute. Only fail immediately if there are no
+		// finally tasks or all finally tasks have already completed.
+		if !facts.checkFinalTasksDone() && facts.hasFinalTasks() {
+			logger.Infof("Tasks in PipelineRun %q have timed out but final tasks are not yet done", pr.Name)
+		} else {
+			return &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  v1.PipelineRunReasonTimedOut.String(),
+				Message: fmt.Sprintf("PipelineRun %q failed due to tasks failed to finish within %q", pr.Name, pr.TasksTimeout().Duration.String()),
+			}
 		}
 	}
 
@@ -615,6 +622,9 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 
 	// Hasn't timed out; not all tasks have finished.... Must keep running then....
 	switch {
+	case pr.HaveTasksTimedOut(ctx, c) && facts.hasFinalTasks() && !facts.checkFinalTasksDone():
+		// Tasks have timed out but finally tasks are still running
+		reason = v1.PipelineRunReasonTimedOutRunningFinally.String()
 	case pr.IsGracefullyCancelled():
 		// Transition pipeline into running finally state, when graceful cancel is in progress
 		reason = v1.PipelineRunReasonCancelledRunningFinally.String()
@@ -788,6 +798,11 @@ func (facts *PipelineRunFacts) checkDAGTasksDone() bool {
 // check if all finally tasks done executing (succeeded or failed)
 func (facts *PipelineRunFacts) checkFinalTasksDone() bool {
 	return facts.checkTasksDone(facts.FinalTasksGraph)
+}
+
+// hasFinalTasks returns true if the Pipeline has any finally tasks defined
+func (facts *PipelineRunFacts) hasFinalTasks() bool {
+	return facts.FinalTasksGraph.Nodes != nil && len(facts.FinalTasksGraph.Nodes) > 0
 }
 
 // getPipelineTasksCount returns the count of successful tasks, failed tasks, cancelled tasks, skipped task, and incomplete tasks
