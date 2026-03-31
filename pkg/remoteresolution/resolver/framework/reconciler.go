@@ -32,6 +32,9 @@ import (
 	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -49,6 +52,9 @@ import (
 // Resolve() may take. It can be overridden by a resolver implementing
 // the framework.TimedResolution interface.
 const defaultMaximumResolutionDuration = time.Minute
+
+// TracerName is the name of the tracer used by the resolver framework reconciler.
+const TracerName = "ResolverReconciler"
 
 // statusDataPatch is the json structure that will be PATCHed into
 // a ResolutionRequest with its data and annotations once successfully
@@ -103,6 +109,17 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return nil
 	}
 
+	resolverName := r.resolver.GetName(ctx)
+
+	tracer := otel.GetTracerProvider().Tracer(TracerName)
+	ctx, span := tracer.Start(ctx, "ResolutionRequest:Reconcile")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("resolver.type", resolverName),
+		attribute.String("resolutionrequest.name", name),
+		attribute.String("resolutionrequest.namespace", namespace),
+	)
+
 	// Inject request-scoped information into the context, such as
 	// the namespace that the request originates from and the
 	// configuration from the configmap this resolver is watching.
@@ -112,7 +129,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 		ctx = r.configStore.ToContext(ctx)
 	}
 
-	return r.resolve(ctx, key, rr)
+	resolveErr := r.resolve(ctx, key, rr)
+	if resolveErr != nil {
+		span.SetStatus(codes.Error, resolveErr.Error())
+	}
+	return resolveErr
 }
 
 func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.ResolutionRequest) error {
@@ -149,24 +170,39 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 	resolutionCtx, cancelFn := context.WithTimeout(ctx, timeoutDuration)
 	defer cancelFn()
 
+	tracer := otel.GetTracerProvider().Tracer(TracerName)
+
 	go func() {
-		validationError := r.resolver.Validate(resolutionCtx, &rr.Spec)
+		resolverName := r.resolver.GetName(resolutionCtx)
+
+		validateCtx, validateSpan := tracer.Start(resolutionCtx, "ResolutionRequest:Validate")
+		validateSpan.SetAttributes(attribute.String("resolver.type", resolverName))
+		validationError := r.resolver.Validate(validateCtx, &rr.Spec)
 		if validationError != nil {
+			validateSpan.SetStatus(codes.Error, validationError.Error())
+			validateSpan.End()
 			errChan <- &resolutioncommon.InvalidRequestError{
 				ResolutionRequestKey: key,
 				Message:              validationError.Error(),
 			}
 			return
 		}
-		resource, resolveErr := r.resolver.Resolve(resolutionCtx, &rr.Spec)
+		validateSpan.End()
+
+		resolveCtx, resolveSpan := tracer.Start(resolutionCtx, "ResolutionRequest:Resolve")
+		resolveSpan.SetAttributes(attribute.String("resolver.type", resolverName))
+		resource, resolveErr := r.resolver.Resolve(resolveCtx, &rr.Spec)
 		if resolveErr != nil {
+			resolveSpan.SetStatus(codes.Error, resolveErr.Error())
+			resolveSpan.End()
 			errChan <- &resolutioncommon.GetResourceError{
-				ResolverName: r.resolver.GetName(resolutionCtx),
+				ResolverName: resolverName,
 				Key:          key,
 				Original:     resolveErr,
 			}
 			return
 		}
+		resolveSpan.End()
 		resourceChan <- resource
 	}()
 

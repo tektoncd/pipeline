@@ -31,6 +31,9 @@ import (
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.uber.org/zap"
 	k8scache "k8s.io/apimachinery/pkg/util/cache"
 	"k8s.io/client-go/kubernetes"
@@ -155,6 +158,9 @@ func (r *Resolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time
 // Resolve performs the work of fetching a file from git given a map of
 // parameters.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
+	ctx, span := otel.GetTracerProvider().Tracer("resolver:git").Start(ctx, "resolver:git:Resolve")
+	defer span.End()
+
 	if len(req.Params) == 0 {
 		return nil, errors.New("no params")
 	}
@@ -165,19 +171,41 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 
 	params, err := git.PopulateDefaultParams(ctx, req.Params)
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
+	span.SetAttributes(
+		attribute.String("resolver.git.revision", params[git.RevisionParam]),
+		attribute.String("resolver.git.path", params[git.PathParam]),
+	)
+	if url := params[git.UrlParam]; url != "" {
+		span.SetAttributes(attribute.String("resolver.git.url", url))
+	}
+	if org := params[git.OrgParam]; org != "" {
+		span.SetAttributes(attribute.String("resolver.git.org", org))
+	}
+	if repo := params[git.RepoParam]; repo != "" {
+		span.SetAttributes(attribute.String("resolver.git.repo", repo))
+	}
+
+	var resource resolutionframework.ResolvedResource
 	if cache.ShouldUse(ctx, r, req.Params) {
-		return cache.Get(ctx).GetCachedOrResolveFromRemote(
+		resource, err = cache.Get(ctx).GetCachedOrResolveFromRemote(
 			req.Params,
 			labelValueGitResolverType,
 			func() (resolutionframework.ResolvedResource, error) {
 				return r.resolveViaGit(ctx, params)
 			},
 		)
+	} else {
+		resource, err = r.resolveViaGit(ctx, params)
 	}
-	return r.resolveViaGit(ctx, params)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		return nil, err
+	}
+	return resource, nil
 }
 
 func (r *Resolver) resolveViaGit(ctx context.Context, params map[string]string) (resolutionframework.ResolvedResource, error) {
