@@ -66,6 +66,10 @@ func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 	// When a Task is created directly, instead of declared inline in a TaskRun or PipelineRun,
 	// we do not support propagated parameters. Validate that all params it uses are declared.
 	errs = errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.Spec.Steps, t.Spec.Params).ViaField("spec"))
+	// When a Task is created directly, instead of declared inline in a TaskRun or PipelineRun,
+	// we do not support propagated workspaces. Validate that all workspace variable references
+	// (e.g. $(workspaces.foo.path)) refer to declared workspaces with valid properties.
+	errs = errs.Also(ValidateUsageOfDeclaredWorkspaces(ctx, t.Spec.Steps, t.Spec.Sidecars, t.Spec.Workspaces).ViaField("spec"))
 	return errs
 }
 
@@ -155,6 +159,27 @@ func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step,
 			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("workspace mount path %q must be unique", mountPath), "mountpath").ViaIndex(idx))
 		}
 		mountPaths[mountPath] = struct{}{}
+	}
+	return errs
+}
+
+// ValidateUsageOfDeclaredWorkspaces validates that all workspace variable references
+// (e.g. $(workspaces.foo.path)) in Steps and Sidecars refer to workspaces declared in the Task
+// and use valid workspace properties (path, bound, claim, volume).
+func ValidateUsageOfDeclaredWorkspaces(ctx context.Context, steps []Step, sidecars []Sidecar, workspaces []WorkspaceDeclaration) *apis.FieldError {
+	var errs *apis.FieldError
+	wsNames := sets.NewString()
+	for _, w := range workspaces {
+		wsNames.Insert(w.Name)
+	}
+	// Validate that workspace variable references refer to declared workspaces
+	errs = errs.Also(validateVariables(ctx, steps, "workspaces", wsNames))
+	errs = errs.Also(validateSidecarVariables(ctx, sidecars, "workspaces", wsNames))
+	// Validate that workspace properties are valid (path, bound, claim, volume)
+	wsProperties := sets.NewString("path", "bound", "claim", "volume")
+	for _, w := range workspaces {
+		errs = errs.Also(validateVariables(ctx, steps, "workspaces\\."+w.Name, wsProperties))
+		errs = errs.Also(validateSidecarVariables(ctx, sidecars, "workspaces\\."+w.Name, wsProperties))
 	}
 	return errs
 }
@@ -447,6 +472,37 @@ func validateStepArrayUsage(step Step, prefix string, arrayParamNames sets.Strin
 func validateVariables(ctx context.Context, steps []Step, prefix string, vars sets.String) (errs *apis.FieldError) {
 	for idx, step := range steps {
 		errs = errs.Also(validateStepVariables(ctx, step, prefix, vars).ViaFieldIndex("steps", idx))
+	}
+	return errs
+}
+
+// validateSidecarVariables returns an error if the Sidecars contain references to any unknown variables
+func validateSidecarVariables(ctx context.Context, sidecars []Sidecar, prefix string, vars sets.String) (errs *apis.FieldError) {
+	for idx, sidecar := range sidecars {
+		errs = errs.Also(validateSidecarContainerVariables(ctx, sidecar, prefix, vars).ViaFieldIndex("sidecars", idx))
+	}
+	return errs
+}
+
+// validateSidecarContainerVariables validates variable references in a single Sidecar
+func validateSidecarContainerVariables(ctx context.Context, sidecar Sidecar, prefix string, vars sets.String) *apis.FieldError {
+	errs := substitution.ValidateNoReferencesToUnknownVariables(sidecar.Name, prefix, vars).ViaField("name")
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(sidecar.Image, prefix, vars).ViaField("image"))
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(sidecar.WorkingDir, prefix, vars).ViaField("workingDir"))
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(sidecar.Script, prefix, vars).ViaField("script"))
+	for i, cmd := range sidecar.Command {
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(cmd, prefix, vars).ViaFieldIndex("command", i))
+	}
+	for i, arg := range sidecar.Args {
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(arg, prefix, vars).ViaFieldIndex("args", i))
+	}
+	for _, env := range sidecar.Env {
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(env.Value, prefix, vars).ViaFieldKey("env", env.Name))
+	}
+	for i, v := range sidecar.VolumeMounts {
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v.Name, prefix, vars).ViaField("name").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v.MountPath, prefix, vars).ViaField("MountPath").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v.SubPath, prefix, vars).ViaField("SubPath").ViaFieldIndex("volumeMount", i))
 	}
 	return errs
 }
