@@ -434,8 +434,9 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	}
 
 	for j, vm := range s.VolumeMounts {
-		if strings.HasPrefix(vm.MountPath, "/tekton/") &&
-			!strings.HasPrefix(vm.MountPath, "/tekton/home") {
+		cleanMountPath := filepath.Clean(vm.MountPath)
+		if strings.HasPrefix(cleanMountPath, "/tekton/") &&
+			!strings.HasPrefix(cleanMountPath, "/tekton/home") {
 			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("volumeMount cannot be mounted under /tekton/ (volumeMount %q mounted at %q)", vm.Name, vm.MountPath), "mountPath").ViaFieldIndex("volumeMounts", j))
 		}
 		if strings.HasPrefix(vm.Name, "tekton-internal-") {
