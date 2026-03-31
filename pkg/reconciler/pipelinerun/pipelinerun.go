@@ -1086,6 +1086,12 @@ func (c *Reconciler) createChildPipelineRun(
 		},
 	}
 
+	// Add current spanContext as annotations to child PipelineRun
+	// so that tracing can be continued under the same traceId
+	if spanContext, err := getMarshalledSpanFromContext(ctx); err == nil {
+		newChildPipelineRun.Annotations[SpanContextAnnotation] = spanContext
+	}
+
 	logger.Infof(
 		"Creating a new child (PIP) PipelineRun object %s for pipeline task %s",
 		childPipelineRunName,
@@ -1360,6 +1366,12 @@ func (c *Reconciler) createCustomRun(ctx context.Context, runName string, params
 				Raw: j,
 			},
 		}
+	}
+
+	// Add current spanContext as annotations to CustomRun
+	// so that tracing can be continued under the same traceId
+	if spanContext, err := getMarshalledSpanFromContext(ctx); err == nil {
+		r.Annotations[TaskRunSpanContextAnnotation] = spanContext
 	}
 
 	// Set the affinity assistant annotation in case the custom task creates TaskRuns or Pods
