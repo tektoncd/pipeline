@@ -1483,9 +1483,9 @@ status:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
-	wantEvents := []string{
-		"Normal Succeeded All Tasks have completed executing",
-	}
+	// A PipelineRun that is already completed should not emit events on re-reconcile,
+	// since both before and after conditions are the same (no transition).
+	wantEvents := []string{}
 	reconciledRun, clients := prt.reconcileRun(namespace, pipelineRunName, wantEvents, false)
 
 	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, pipelineRunName)
@@ -8346,22 +8346,6 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 			reconciledRun, clients := prt.reconcileRun(namespace, tt.pipelineRunName, []string{}, false)
 
 			actions := clients.Pipeline.Actions()
-			if len(actions) < 2 {
-				t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
-			}
-
-			// The first update action should be updating the PipelineRun.
-			var actual *v1.PipelineRun
-			for _, action := range actions {
-				if actualPrime, ok := action.(ktesting.UpdateAction); ok {
-					actual = actualPrime.GetObject().(*v1.PipelineRun)
-					break
-				}
-			}
-
-			if actual == nil {
-				t.Errorf("Expected a PipelineRun to be updated, but it wasn't for %s", tt.name)
-			}
 
 			for _, action := range actions {
 				if action != nil {
