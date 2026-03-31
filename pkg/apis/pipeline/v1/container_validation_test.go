@@ -209,6 +209,15 @@ func TestStepValidate(t *testing.T) {
 				MountPath: "/tekton/home",
 			}},
 		},
+	}, {
+		name: "valid step with volumeMount under /tekton/home subdirectory",
+		Step: v1.Step{
+			Image: "myimage",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "foo",
+				MountPath: "/tekton/home/subdir",
+			}},
+		},
 	}}
 	for _, st := range tests {
 		t.Run(st.name, func(t *testing.T) {
@@ -265,6 +274,45 @@ func TestStepValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/foo")`,
+			Paths:   []string{"volumeMounts[0].mountPath"},
+		},
+	}, {
+		name: "step volume mount path traversal to /tekton/results",
+		Step: v1.Step{
+			Image: "myimage",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "foo",
+				MountPath: "/tekton/home/../results",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/home/../results")`,
+			Paths:   []string{"volumeMounts[0].mountPath"},
+		},
+	}, {
+		name: "step volume mount path traversal to /tekton/scripts",
+		Step: v1.Step{
+			Image: "myimage",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "foo",
+				MountPath: "/tekton/home/../scripts",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/home/../scripts")`,
+			Paths:   []string{"volumeMounts[0].mountPath"},
+		},
+	}, {
+		name: "step volume mount nested path traversal to /tekton/run",
+		Step: v1.Step{
+			Image: "myimage",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "foo",
+				MountPath: "/tekton/home/../../tekton/run",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/home/../../tekton/run")`,
 			Paths:   []string{"volumeMounts[0].mountPath"},
 		},
 	}, {
