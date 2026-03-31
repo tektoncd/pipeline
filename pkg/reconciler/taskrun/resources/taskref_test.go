@@ -805,7 +805,7 @@ func TestGetStepActionFunc_Local(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			tektonclient := fake.NewSimpleClientset(tc.localStepActions...)
-			fn := resources.GetStepActionFunc(tektonclient, nil, nil, tc.taskRun, *tc.taskRun.Spec.TaskSpec, &tc.taskRun.Spec.TaskSpec.Steps[0])
+			fn := resources.GetStepActionFunc(tektonclient, nil, nil, tc.taskRun, *tc.taskRun.Spec.TaskSpec, &tc.taskRun.Spec.TaskSpec.Steps[0], tc.taskRun.Namespace)
 
 			stepAction, refSource, err := fn(ctx, tc.taskRun.Spec.TaskSpec.Steps[0].Ref.Name)
 			if err != nil {
@@ -866,7 +866,7 @@ func TestGetStepActionFunc_RemoteResolution_Success(t *testing.T) {
 				},
 			}
 			tektonclient := fake.NewSimpleClientset()
-			fn := resources.GetStepActionFunc(tektonclient, nil, requester, tr, *tr.Spec.TaskSpec, &tr.Spec.TaskSpec.Steps[0])
+			fn := resources.GetStepActionFunc(tektonclient, nil, requester, tr, *tr.Spec.TaskSpec, &tr.Spec.TaskSpec.Steps[0], tr.Namespace)
 
 			resolvedStepAction, resolvedRefSource, err := fn(ctx, tr.Spec.TaskSpec.Steps[0].Ref.Name)
 			if tc.wantErr {
@@ -927,7 +927,7 @@ func TestGetStepActionFunc_RemoteResolution_Error(t *testing.T) {
 				},
 			}
 			tektonclient := fake.NewSimpleClientset()
-			fn := resources.GetStepActionFunc(tektonclient, nil, requester, tr, *tr.Spec.TaskSpec, &tr.Spec.TaskSpec.Steps[0])
+			fn := resources.GetStepActionFunc(tektonclient, nil, requester, tr, *tr.Spec.TaskSpec, &tr.Spec.TaskSpec.Steps[0], tr.Namespace)
 			if _, _, err := fn(ctx, tr.Spec.TaskSpec.Steps[0].Ref.Name); err == nil {
 				t.Fatalf("expected error due to invalid pipeline data but saw none")
 			}
@@ -1910,4 +1910,154 @@ func signInterface(signer signature.Signer, i interface{}) ([]byte, error) {
 	}
 
 	return sig, nil
+}
+
+// TestGetStepActionFunc_CrossNamespace_LocalLookup verifies that when a TaskRun
+// is in namespace "a" but the resolved Task came from namespace "b", the local
+// StepAction lookup uses namespace "b" (the Task's namespace).
+func TestGetStepActionFunc_CrossNamespace_LocalLookup(t *testing.T) {
+	ctx := t.Context()
+
+	taskRunNamespace := "namespace-a"
+	taskNamespace := "namespace-b"
+
+	stepActionInTaskNS := &v1beta1.StepAction{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-step-action",
+			Namespace: taskNamespace,
+		},
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1beta1",
+			Kind:       "StepAction",
+		},
+		Spec: v1beta1.StepActionSpec{
+			Image: "step-action-image",
+		},
+	}
+
+	tektonclient := fake.NewSimpleClientset(stepActionInTaskNS)
+
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-taskrun",
+			Namespace: taskRunNamespace,
+		},
+		Spec: v1.TaskRunSpec{
+			TaskSpec: &v1.TaskSpec{
+				Steps: []v1.Step{{
+					Ref: &v1.Ref{
+						Name: "my-step-action",
+					},
+				}},
+			},
+		},
+	}
+
+	// GetStepActionFunc is called with taskNamespace="namespace-b", which should
+	// be used for local lookups. The StepAction exists in namespace-b, not namespace-a.
+	fn := resources.GetStepActionFunc(tektonclient, nil, nil, tr, *tr.Spec.TaskSpec, &tr.Spec.TaskSpec.Steps[0], taskNamespace)
+
+	stepAction, refSource, err := fn(ctx, "my-step-action")
+	if err != nil {
+		t.Fatalf("expected StepAction to be found in task namespace %q, but got error: %v", taskNamespace, err)
+	}
+
+	if stepAction.Name != "my-step-action" {
+		t.Errorf("expected StepAction name %q, got %q", "my-step-action", stepAction.Name)
+	}
+	if stepAction.Namespace != taskNamespace {
+		t.Errorf("expected StepAction namespace %q, got %q", taskNamespace, stepAction.Namespace)
+	}
+	if stepAction.Spec.Image != "step-action-image" {
+		t.Errorf("expected image %q, got %q", "step-action-image", stepAction.Spec.Image)
+	}
+	// Local lookups have nil refSource
+	if refSource != nil {
+		t.Errorf("expected nil refSource for local lookup, got %v", refSource)
+	}
+}
+
+// TestGetTaskFuncFromTaskRun_CrossNamespace_StatusPersistence verifies that
+// the ResolvedTaskNamespace Status field is read on second reconcile when the
+// TaskSpec is already cached in the TaskRun status.
+func TestGetTaskFuncFromTaskRun_CrossNamespace_StatusPersistence(t *testing.T) {
+	ctx := t.Context()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	taskRunNamespace := "namespace-a"
+	taskSourceNamespace := "namespace-b"
+
+	tektonclient := fake.NewSimpleClientset()
+	kubeclient := fakek8s.NewSimpleClientset(&corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: taskRunNamespace,
+			Name:      "default",
+		},
+	})
+
+	taskSpec := v1.TaskSpec{
+		Steps: []v1.Step{{
+			Image: "myimage",
+			Script: `
+#!/usr/bin/env bash
+echo hello
+`,
+		}},
+	}
+
+	// Simulate second reconcile: TaskSpec is already cached in status,
+	// and the ResolvedTaskNamespace Status field preserves the original namespace.
+	taskRun := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-taskrun",
+			Namespace: taskRunNamespace,
+		},
+		Spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
+				Name: "my-task",
+			},
+			ServiceAccountName: "default",
+		},
+		Status: v1.TaskRunStatus{TaskRunStatusFields: v1.TaskRunStatusFields{
+			TaskSpec: &taskSpec,
+			Provenance: &v1.Provenance{
+				RefSource: sampleRefSource.DeepCopy(),
+			},
+			ResolvedTaskNamespace: taskSourceNamespace,
+		}},
+	}
+
+	fn := resources.GetTaskFuncFromTaskRun(ctx, kubeclient, tektonclient, nil, taskRun, []*v1alpha1.VerificationPolicy{})
+
+	actualTask, actualRefSource, _, err := fn(ctx, "my-task")
+	if err != nil {
+		t.Fatalf("failed to call GetTaskFuncFromTaskRun: %s", err.Error())
+	}
+
+	// Verify the returned Task has the namespace from the Status field, not the TaskRun's namespace
+	if actualTask.Namespace != taskSourceNamespace {
+		t.Errorf("expected task namespace %q (from Status), got %q", taskSourceNamespace, actualTask.Namespace)
+	}
+	if actualTask.Name != "my-task" {
+		t.Errorf("expected task name %q, got %q", "my-task", actualTask.Name)
+	}
+	if d := cmp.Diff(sampleRefSource, actualRefSource); d != "" {
+		t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
+	}
+
+	// Now test without the Status field - should fall back to TaskRun namespace
+	taskRunNoStatus := taskRun.DeepCopy()
+	taskRunNoStatus.Status.ResolvedTaskNamespace = ""
+
+	fn2 := resources.GetTaskFuncFromTaskRun(ctx, kubeclient, tektonclient, nil, taskRunNoStatus, []*v1alpha1.VerificationPolicy{})
+	actualTask2, _, _, err := fn2(ctx, "my-task")
+	if err != nil {
+		t.Fatalf("failed to call GetTaskFuncFromTaskRun without Status field: %s", err.Error())
+	}
+
+	// Without the Status field, should fall back to TaskRun's namespace
+	if actualTask2.Namespace != taskRunNamespace {
+		t.Errorf("expected task namespace %q (TaskRun namespace fallback), got %q", taskRunNamespace, actualTask2.Namespace)
+	}
 }
