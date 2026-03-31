@@ -1,0 +1,8 @@
+{
+  "os": ["ubuntu-latest"],
+  "k8s-name": ["k8s-latest"],
+  "feature-flags": ["stable"],
+  "include": [
+    {"k8s-name": "k8s-latest", "k8s-version": "v1.34.x"}
+  ]
+}

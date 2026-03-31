@@ -1,7 +1,14 @@
 name: Tekton Integration
 # Adapted from https://github.com/mattmoor/mink/blob/master/.github/workflows/minkind.yaml
 
-on: [workflow_call]
+on:
+  workflow_call:
+    inputs:
+      is-draft:
+        description: 'Whether the PR is a draft'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -11,7 +18,31 @@ defaults:
     shell: bash
 
 jobs:
+  compute-matrix:
+    name: compute e2e matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        sparse-checkout: .github
+        persist-credentials: false
+    - name: Select matrix
+      id: matrix
+      run: |
+        if [ "${IS_DRAFT}" = "true" ]; then
+          echo "Using draft matrix (amd64, k8s-latest, stable)"
+          echo "matrix=$(jq -c . .github/e2e-matrix-draft.json)" >> $GITHUB_OUTPUT
+        else
+          echo "Using full matrix"
+          echo "matrix=$(jq -c . .github/e2e-matrix-full.json)" >> $GITHUB_OUTPUT
+        fi
+      env:
+        IS_DRAFT: ${{ inputs.is-draft }}
+
   e2e-tests:
+    needs: [compute-matrix]
     concurrency:
       group: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.k8s-name }}-${{ matrix.feature-flags }}-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
@@ -19,36 +50,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false # Keep running if one leg fails.
-      matrix:
-        os:
-        - ubuntu-latest     # amd64
-        - ubuntu-24.04-arm  # arm64
-
-        k8s-name:
-        - k8s-oldest             # 1.28
-        - k8s-latest             # 1.34
-
-        feature-flags:
-        - stable
-        - beta
-        - alpha
-
-        include:
-        - k8s-name: k8s-oldest
-          k8s-version: v1.28.x
-        - k8s-name: k8s-latest
-          k8s-version: v1.34.x
-
-        # Limit arm64: only run k8s-latest on arm64 (alpha and beta), skip oldest on arm64
-        exclude:
-        - k8s-name: k8s-oldest
-          os: ubuntu-24.04-arm
-        - k8s-name: k8s-latest
-          os: ubuntu-24.04-arm
-          feature-flags: beta
-        - k8s-name: k8s-latest
-          os: ubuntu-24.04-arm
-          feature-flags: alpha
+      matrix: ${{ fromJSON(needs.compute-matrix.outputs.matrix) }}
     env:
       KO_DOCKER_REPO: registry.local:5000/tekton
       CLUSTER_DOMAIN: c${{ github.run_id }}.local
