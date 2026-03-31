@@ -4,10 +4,7 @@ on:
   repository_dispatch:
     types: [e2e-extras-command]
 
-permissions:
-  contents: read
-  pull-requests: read
-  checks: write
+permissions: {}
 
 defaults:
   run:
@@ -16,6 +13,9 @@ defaults:
 jobs:
   run-if-requested:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
     - name: Show Github Object
       run: |
@@ -27,34 +27,43 @@ jobs:
     - name: Set PR variables
       id: pr
       uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      env:
+        ISSUE_NUMBER: ${{ github.event.client_payload.github.payload.issue.number }}
       with:
         script: |
           const pr = await github.rest.pulls.get({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            pull_number: ${{ github.event.client_payload.github.payload.issue.number }}
+            pull_number: parseInt(process.env.ISSUE_NUMBER)
           });
           core.setOutput('sha', pr.data.head.sha);
 
     - name: Create comment
       if: ${{ failure() }}
       uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+      env:
+        COMMAND: ${{ github.event.client_payload.slash_command.command }}
+        REPO: ${{ github.event.client_payload.github.payload.repository.full_name }}
+        ISSUE_NUMBER: ${{ github.event.client_payload.github.payload.issue.number }}
       with:
         token: ${{ secrets.CHATOPS_TOKEN }}
-        repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
-        issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+        repository: ${{ env.REPO }}
+        issue-number: ${{ env.ISSUE_NUMBER }}
         body: |
-          Something went wrong with your `/${{ github.event.client_payload.slash_command.command }}` command: [please check the logs][1].
+          Something went wrong with your `/${{ env.COMMAND }}` command: [please check the logs][1].
 
           [1]: ${{ steps.vars.outputs.run-url }}
 
     - name: Add reaction
       if: ${{ success() }}
       uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+      env:
+        REPO: ${{ github.event.client_payload.github.payload.repository.full_name }}
+        COMMENT_ID: ${{ github.event.client_payload.github.payload.comment.id }}
       with:
         token: ${{ secrets.CHATOPS_TOKEN }}
-        repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
-        comment-id: ${{ github.event.client_payload.github.payload.comment.id }}
+        repository: ${{ env.REPO }}
+        comment-id: ${{ env.COMMENT_ID }}
         reactions: hooray
     outputs:
       sha: ${{ steps.pr.outputs.sha }}
@@ -67,6 +76,9 @@ jobs:
       cancel-in-progress: true
     name: e2e tests (extras)
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      checks: write
     strategy:
       fail-fast: false
       matrix:
@@ -99,20 +111,24 @@ jobs:
     - name: Report tests check
       uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
       id: check-run
+      env:
+        HEAD_SHA: ${{ needs.run-if-requested.outputs.sha }}
+        RUN_ID: ${{ github.run_id }}
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
           const check = await github.rest.checks.create({
             name: 'run tests',
-            head_sha: '${{ needs.run-if-requested.outputs.sha }}',
+            head_sha: process.env.HEAD_SHA,
             status: 'in_progress',
-            details_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+            details_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/' + process.env.RUN_ID,
             ...context.repo
           })
           return { id: check.data.id }
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       with:
+        persist-credentials: false
         ref: ${{ needs.run-if-requested.outputs.sha }}
     - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417  # v6.3.0
       with:
@@ -137,16 +153,20 @@ jobs:
         echo "${GOPATH}/bin" >> "$GITHUB_PATH"
 
     - name: Run tests
+      env:
+        RUN_ID: ${{ github.run_id }}
+        K8S_VERSION: ${{ matrix.k8s-version }}
+        FEATURE_FLAGS: ${{ matrix.feature-flags }}
       run: |
         export PATH="$(echo "$PATH" | sed -e 's/^\/bin://'):/bin"
         export KO_DEFAULTPLATFORMS=linux/$(go env GOARCH)
         ./hack/setup-kind.sh \
           --registry-url $(echo ${KO_DOCKER_REPO} | cut -d'/' -f 1) \
-          --cluster-suffix c${{ github.run_id }}.local \
+          --cluster-suffix "c${RUN_ID}.local" \
           --nodes 3 \
-          --k8s-version ${{ matrix.k8s-version }} \
+          --k8s-version "${K8S_VERSION}" \
           --e2e-script ./test/e2e-tests.sh \
-          --e2e-env ./test/e2e-tests-kind-${{ matrix.feature-flags }}.env
+          --e2e-env "./test/e2e-tests-kind-${FEATURE_FLAGS}.env"
 
     - name: Upload test results
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0

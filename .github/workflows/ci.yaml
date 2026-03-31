@@ -10,30 +10,37 @@ defaults:
   run:
     shell: bash
 
-permissions:
-  contents: read
-  checks: write # Used to annotate code in the PR
+permissions: {}
 
 jobs:
   changes:
     name: categorize changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       non-docs: ${{ steps.detect.outputs.non-docs }}
       yaml: ${{ steps.detect.outputs.yaml }}
     steps:
     - name: Get base depth
       id: base-depth
-      run: echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
+      env:
+        COMMITS: ${{ github.event.pull_request.commits }}
+      run: echo "base-depth=$(expr "${COMMITS}" + 1)" >> $GITHUB_OUTPUT
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       with:
+        persist-credentials: false
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: ${{ steps.base-depth.outputs.base-depth }}
     - name: detect
       id: detect
+      env:
+        BASE_REF: ${{ github.base_ref }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       run: |
-        git fetch origin ${{ github.base_ref }}
-        CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} | tr ' ' '\n')
+        git fetch origin "${BASE_REF}"
+        CHANGED_FILES=$(git diff --name-only "${BASE_SHA}"..."${HEAD_SHA}" | tr ' ' '\n')
 
         echo -e "Changed files:\n${CHANGED_FILES}"
 
@@ -64,10 +71,14 @@ jobs:
   build:
     name: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: [changes]
     if: ${{ needs.changes.outputs.non-docs == 'true' }}
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        persist-credentials: false
     - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417  # v6.3.0
       with:
         go-version-file: "go.mod"
@@ -77,10 +88,14 @@ jobs:
   buildFips:
     name: buildFips
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: [changes]
     if: ${{ needs.changes.outputs.non-docs == 'true' }}
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        persist-credentials: false
     - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417  # v6.3.0
       with:
         go-version-file: "go.mod"
@@ -91,10 +106,13 @@ jobs:
   linting:
     name: lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: [changes]
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       with:
+        persist-credentials: false
         fetch-depth: 0
     - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417  # v6.3.0
       with:
@@ -127,8 +145,12 @@ jobs:
     needs: [build]
     name: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        persist-credentials: false
     - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417  # v6.3.0
       with:
         go-version-file: "go.mod"
@@ -139,8 +161,12 @@ jobs:
     needs: [build]
     name: Check generated code
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        persist-credentials: false
     - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417  # v6.3.0
       with:
         go-version-file: "go.mod"
@@ -151,10 +177,14 @@ jobs:
     needs: [build]
     name: Multi-arch build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       KOCACHE: /tmp/ko-cache
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        persist-credentials: false
     - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417  # v6.3.0
       with:
         go-version-file: "go.mod"

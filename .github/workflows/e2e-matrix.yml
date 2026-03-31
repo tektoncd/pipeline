@@ -3,9 +3,7 @@ name: Tekton Integration
 
 on: [workflow_call]
 
-permissions:
-  contents: read
-  checks: write
+permissions: {}
 
 defaults:
   run:
@@ -18,6 +16,9 @@ jobs:
       cancel-in-progress: true
     name: e2e tests
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      checks: write
     strategy:
       fail-fast: false # Keep running if one leg fails.
       matrix:
@@ -70,6 +71,8 @@ jobs:
         echo "--- Disk space after cleanup ---"
         df -h
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        persist-credentials: false
     - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417  # v6.3.0
       with:
         go-version-file: "go.mod"
@@ -96,6 +99,10 @@ jobs:
         echo "${GOPATH}/bin" >> "$GITHUB_PATH"
 
     - name: Run tests
+      env:
+        K8S_VERSION: ${{ matrix.k8s-version }}
+        FEATURE_FLAGS: ${{ matrix.feature-flags }}
+        RUN_ID: ${{ github.run_id }}
       run: |
         # This is a hack to make sure binary in /bin from the base image are not picked by default
         # On ubuntu-arm, there is a /bin/go that shadows the one setup-go installs
@@ -103,11 +110,11 @@ jobs:
         export KO_DEFAULTPLATFORMS=linux/$(go env GOARCH)
         ./hack/setup-kind.sh \
           --registry-url $(echo ${KO_DOCKER_REPO} | cut -d'/' -f 1) \
-          --cluster-suffix c${{ github.run_id }}.local \
+          --cluster-suffix "c${RUN_ID}.local" \
           --nodes 3 \
-          --k8s-version ${{ matrix.k8s-version }} \
+          --k8s-version "${K8S_VERSION}" \
           --e2e-script ./test/e2e-tests.sh \
-          --e2e-env ./test/e2e-tests-kind-${{ matrix.feature-flags }}.env
+          --e2e-env "./test/e2e-tests-kind-${FEATURE_FLAGS}.env"
 
     - name: Upload test results
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -122,12 +129,14 @@ jobs:
 
     - name: Dump Artifacts
       if: ${{ failure() }}
+      env:
+        ARTIFACTS: ${{ env.ARTIFACTS }}
       run: |
-        if [[ -d ${{ env.ARTIFACTS }} ]]; then
-          cd ${{ env.ARTIFACTS }}
+        if [[ -d "${ARTIFACTS}" ]]; then
+          cd "${ARTIFACTS}"
           for x in $(find . -type f); do
             echo "::group:: artifact $x"
-            cat $x
+            cat "$x"
             echo '::endgroup::'
           done
         fi

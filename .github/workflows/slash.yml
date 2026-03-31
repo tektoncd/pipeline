@@ -24,12 +24,13 @@ on:
   issue_comment:
     types: [created]
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   check_comments:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - name: route-land
       uses: peter-evans/slash-command-dispatch@9bdcd7914ec1b75590b790b844aa3b8eee7c683a # v5.0.2

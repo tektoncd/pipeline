@@ -1,7 +1,6 @@
 name: Go coverage
 
-permissions:
-  contents: read
+permissions: {}
 
 on:
   pull_request:
@@ -26,6 +25,7 @@ jobs:
     name: Go coverage
     runs-on: ubuntu-24.04
     permissions:
+      contents: read
       pull-requests: write
 
     steps:
@@ -37,6 +37,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          persist-credentials: false
           path: ${{ github.workspace }}/src/github.com/tektoncd/pipeline
 
       - name: Set up Go

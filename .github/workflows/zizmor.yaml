@@ -1,0 +1,27 @@
+name: zizmor
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions: {}
+
+jobs:
+  zizmor:
+    name: Zizmor security audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Run zizmor
+        uses: nscott/zizmor-action@1db5a13ca37c0d57f184c6e7e62ffabe2c5e4ab5 # v1.6.1
+        with:
+          fail-on-error: true
+          upload-sarif: true

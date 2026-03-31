@@ -10,14 +10,14 @@ on:
   pull_request_target:
     types: [opened]
 
-permissions:
-  pull-requests: write
-  contents: read
+permissions: {}
 
 jobs:
   comment:
     name: Post slash commands documentation
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
     - name: Check for existing comment
       id: check

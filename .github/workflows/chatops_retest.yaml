@@ -9,8 +9,7 @@
 # - or the issuer is the owner the PR
 name: Rerun Failed Actions
 
-permissions:
-  contents: read
+permissions: {}
 
 on:
   repository_dispatch:
@@ -19,5 +18,7 @@ on:
 jobs:
   retest:
     name: Rerun Failed Actions
+    permissions:
+      contents: read
     uses: tektoncd/plumbing/.github/workflows/_chatops_retest.yml@48c53b4e7f1e0bb206575b80eb9fcf07b5854907  # main
     secrets: inherit

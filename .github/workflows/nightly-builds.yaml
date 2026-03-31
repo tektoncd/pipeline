@@ -40,15 +40,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Generate version info
         id: version
+        env:
+          LATEST_SHA: ${{ github.sha }}
         run: |
-          latest_sha=${{ github.sha }}
-          date_tag=$(date +v%Y%m%d-${latest_sha:0:7})
+          date_tag=$(date +v%Y%m%d-${LATEST_SHA:0:7})
           echo "version_tag=${date_tag}" >> "$GITHUB_OUTPUT"
-          echo "latest_sha=${latest_sha}" >> "$GITHUB_OUTPUT"
+          echo "latest_sha=${LATEST_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Kind cluster
         uses: chainguard-dev/actions/setup-kind@7440e20e3e0bb180a2f6e330bcd53504e2ac8980  # v1.6.8
