@@ -357,6 +357,170 @@
         }
       }
     },
+    "HsmManagement": {
+      "clients": {
+        "grpc": {
+          "libraryClient": "HsmManagementClient",
+          "rpcs": {
+            "ApproveSingleTenantHsmInstanceProposal": {
+              "methods": [
+                "ApproveSingleTenantHsmInstanceProposal"
+              ]
+            },
+            "CreateSingleTenantHsmInstance": {
+              "methods": [
+                "CreateSingleTenantHsmInstance"
+              ]
+            },
+            "CreateSingleTenantHsmInstanceProposal": {
+              "methods": [
+                "CreateSingleTenantHsmInstanceProposal"
+              ]
+            },
+            "DeleteSingleTenantHsmInstanceProposal": {
+              "methods": [
+                "DeleteSingleTenantHsmInstanceProposal"
+              ]
+            },
+            "ExecuteSingleTenantHsmInstanceProposal": {
+              "methods": [
+                "ExecuteSingleTenantHsmInstanceProposal"
+              ]
+            },
+            "GetIamPolicy": {
+              "methods": [
+                "GetIamPolicy"
+              ]
+            },
+            "GetLocation": {
+              "methods": [
+                "GetLocation"
+              ]
+            },
+            "GetOperation": {
+              "methods": [
+                "GetOperation"
+              ]
+            },
+            "GetSingleTenantHsmInstance": {
+              "methods": [
+                "GetSingleTenantHsmInstance"
+              ]
+            },
+            "GetSingleTenantHsmInstanceProposal": {
+              "methods": [
+                "GetSingleTenantHsmInstanceProposal"
+              ]
+            },
+            "ListLocations": {
+              "methods": [
+                "ListLocations"
+              ]
+            },
+            "ListSingleTenantHsmInstanceProposals": {
+              "methods": [
+                "ListSingleTenantHsmInstanceProposals"
+              ]
+            },
+            "ListSingleTenantHsmInstances": {
+              "methods": [
+                "ListSingleTenantHsmInstances"
+              ]
+            },
+            "SetIamPolicy": {
+              "methods": [
+                "SetIamPolicy"
+              ]
+            },
+            "TestIamPermissions": {
+              "methods": [
+                "TestIamPermissions"
+              ]
+            }
+          }
+        },
+        "rest": {
+          "libraryClient": "HsmManagementClient",
+          "rpcs": {
+            "ApproveSingleTenantHsmInstanceProposal": {
+              "methods": [
+                "ApproveSingleTenantHsmInstanceProposal"
+              ]
+            },
+            "CreateSingleTenantHsmInstance": {
+              "methods": [
+                "CreateSingleTenantHsmInstance"
+              ]
+            },
+            "CreateSingleTenantHsmInstanceProposal": {
+              "methods": [
+                "CreateSingleTenantHsmInstanceProposal"
+              ]
+            },
+            "DeleteSingleTenantHsmInstanceProposal": {
+              "methods": [
+                "DeleteSingleTenantHsmInstanceProposal"
+              ]
+            },
+            "ExecuteSingleTenantHsmInstanceProposal": {
+              "methods": [
+                "ExecuteSingleTenantHsmInstanceProposal"
+              ]
+            },
+            "GetIamPolicy": {
+              "methods": [
+                "GetIamPolicy"
+              ]
+            },
+            "GetLocation": {
+              "methods": [
+                "GetLocation"
+              ]
+            },
+            "GetOperation": {
+              "methods": [
+                "GetOperation"
+              ]
+            },
+            "GetSingleTenantHsmInstance": {
+              "methods": [
+                "GetSingleTenantHsmInstance"
+              ]
+            },
+            "GetSingleTenantHsmInstanceProposal": {
+              "methods": [
+                "GetSingleTenantHsmInstanceProposal"
+              ]
+            },
+            "ListLocations": {
+              "methods": [
+                "ListLocations"
+              ]
+            },
+            "ListSingleTenantHsmInstanceProposals": {
+              "methods": [
+                "ListSingleTenantHsmInstanceProposals"
+              ]
+            },
+            "ListSingleTenantHsmInstances": {
+              "methods": [
+                "ListSingleTenantHsmInstances"
+              ]
+            },
+            "SetIamPolicy": {
+              "methods": [
+                "SetIamPolicy"
+              ]
+            },
+            "TestIamPermissions": {
+              "methods": [
+                "TestIamPermissions"
+              ]
+            }
+          }
+        }
+      }
+    },
     "KeyManagementService": {
       "clients": {
         "grpc": {
@@ -400,6 +564,16 @@
             "Decrypt": {
               "methods": [
                 "Decrypt"
+              ]
+            },
+            "DeleteCryptoKey": {
+              "methods": [
+                "DeleteCryptoKey"
+              ]
+            },
+            "DeleteCryptoKeyVersion": {
+              "methods": [
+                "DeleteCryptoKeyVersion"
               ]
             },
             "DestroyCryptoKeyVersion": {
@@ -457,6 +631,11 @@
                 "GetPublicKey"
               ]
             },
+            "GetRetiredResource": {
+              "methods": [
+                "GetRetiredResource"
+              ]
+            },
             "ImportCryptoKeyVersion": {
               "methods": [
                 "ImportCryptoKeyVersion"
@@ -485,6 +664,11 @@
             "ListLocations": {
               "methods": [
                 "ListLocations"
+              ]
+            },
+            "ListRetiredResources": {
+              "methods": [
+                "ListRetiredResources"
               ]
             },
             "MacSign": {
@@ -582,6 +766,16 @@
                 "Decrypt"
               ]
             },
+            "DeleteCryptoKey": {
+              "methods": [
+                "DeleteCryptoKey"
+              ]
+            },
+            "DeleteCryptoKeyVersion": {
+              "methods": [
+                "DeleteCryptoKeyVersion"
+              ]
+            },
             "DestroyCryptoKeyVersion": {
               "methods": [
                 "DestroyCryptoKeyVersion"
@@ -637,6 +831,11 @@
                 "GetPublicKey"
               ]
             },
+            "GetRetiredResource": {
+              "methods": [
+                "GetRetiredResource"
+              ]
+            },
             "ImportCryptoKeyVersion": {
               "methods": [
                 "ImportCryptoKeyVersion"
@@ -665,6 +864,11 @@
             "ListLocations": {
               "methods": [
                 "ListLocations"
+              ]
+            },
+            "ListRetiredResources": {
+              "methods": [
+                "ListRetiredResources"
               ]
             },
             "MacSign": {
