@@ -1,4 +1,4 @@
-// Copyright 2025 Google LLC
+// Copyright 2026 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@ package kmspb
 
 import (
 	context "context"
+
+	longrunningpb "cloud.google.com/go/longrunning/autogen/longrunningpb"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -37,14 +39,18 @@ const (
 	KeyManagementService_ListCryptoKeys_FullMethodName                = "/google.cloud.kms.v1.KeyManagementService/ListCryptoKeys"
 	KeyManagementService_ListCryptoKeyVersions_FullMethodName         = "/google.cloud.kms.v1.KeyManagementService/ListCryptoKeyVersions"
 	KeyManagementService_ListImportJobs_FullMethodName                = "/google.cloud.kms.v1.KeyManagementService/ListImportJobs"
+	KeyManagementService_ListRetiredResources_FullMethodName          = "/google.cloud.kms.v1.KeyManagementService/ListRetiredResources"
 	KeyManagementService_GetKeyRing_FullMethodName                    = "/google.cloud.kms.v1.KeyManagementService/GetKeyRing"
 	KeyManagementService_GetCryptoKey_FullMethodName                  = "/google.cloud.kms.v1.KeyManagementService/GetCryptoKey"
 	KeyManagementService_GetCryptoKeyVersion_FullMethodName           = "/google.cloud.kms.v1.KeyManagementService/GetCryptoKeyVersion"
 	KeyManagementService_GetPublicKey_FullMethodName                  = "/google.cloud.kms.v1.KeyManagementService/GetPublicKey"
 	KeyManagementService_GetImportJob_FullMethodName                  = "/google.cloud.kms.v1.KeyManagementService/GetImportJob"
+	KeyManagementService_GetRetiredResource_FullMethodName            = "/google.cloud.kms.v1.KeyManagementService/GetRetiredResource"
 	KeyManagementService_CreateKeyRing_FullMethodName                 = "/google.cloud.kms.v1.KeyManagementService/CreateKeyRing"
 	KeyManagementService_CreateCryptoKey_FullMethodName               = "/google.cloud.kms.v1.KeyManagementService/CreateCryptoKey"
 	KeyManagementService_CreateCryptoKeyVersion_FullMethodName        = "/google.cloud.kms.v1.KeyManagementService/CreateCryptoKeyVersion"
+	KeyManagementService_DeleteCryptoKey_FullMethodName               = "/google.cloud.kms.v1.KeyManagementService/DeleteCryptoKey"
+	KeyManagementService_DeleteCryptoKeyVersion_FullMethodName        = "/google.cloud.kms.v1.KeyManagementService/DeleteCryptoKeyVersion"
 	KeyManagementService_ImportCryptoKeyVersion_FullMethodName        = "/google.cloud.kms.v1.KeyManagementService/ImportCryptoKeyVersion"
 	KeyManagementService_CreateImportJob_FullMethodName               = "/google.cloud.kms.v1.KeyManagementService/CreateImportJob"
 	KeyManagementService_UpdateCryptoKey_FullMethodName               = "/google.cloud.kms.v1.KeyManagementService/UpdateCryptoKey"
@@ -76,6 +82,10 @@ type KeyManagementServiceClient interface {
 	ListCryptoKeyVersions(ctx context.Context, in *ListCryptoKeyVersionsRequest, opts ...grpc.CallOption) (*ListCryptoKeyVersionsResponse, error)
 	// Lists [ImportJobs][google.cloud.kms.v1.ImportJob].
 	ListImportJobs(ctx context.Context, in *ListImportJobsRequest, opts ...grpc.CallOption) (*ListImportJobsResponse, error)
+	// Lists the [RetiredResources][google.cloud.kms.v1.RetiredResource] which are
+	// the records of deleted [CryptoKeys][google.cloud.kms.v1.CryptoKey].
+	// RetiredResources prevent the reuse of these resource names after deletion.
+	ListRetiredResources(ctx context.Context, in *ListRetiredResourcesRequest, opts ...grpc.CallOption) (*ListRetiredResourcesResponse, error)
 	// Returns metadata for a given [KeyRing][google.cloud.kms.v1.KeyRing].
 	GetKeyRing(ctx context.Context, in *GetKeyRingRequest, opts ...grpc.CallOption) (*KeyRing, error)
 	// Returns metadata for a given [CryptoKey][google.cloud.kms.v1.CryptoKey], as
@@ -94,6 +104,10 @@ type KeyManagementServiceClient interface {
 	GetPublicKey(ctx context.Context, in *GetPublicKeyRequest, opts ...grpc.CallOption) (*PublicKey, error)
 	// Returns metadata for a given [ImportJob][google.cloud.kms.v1.ImportJob].
 	GetImportJob(ctx context.Context, in *GetImportJobRequest, opts ...grpc.CallOption) (*ImportJob, error)
+	// Retrieves a specific [RetiredResource][google.cloud.kms.v1.RetiredResource]
+	// resource, which represents the record of a deleted
+	// [CryptoKey][google.cloud.kms.v1.CryptoKey].
+	GetRetiredResource(ctx context.Context, in *GetRetiredResourceRequest, opts ...grpc.CallOption) (*RetiredResource, error)
 	// Create a new [KeyRing][google.cloud.kms.v1.KeyRing] in a given Project and
 	// Location.
 	CreateKeyRing(ctx context.Context, in *CreateKeyRingRequest, opts ...grpc.CallOption) (*KeyRing, error)
@@ -111,6 +125,25 @@ type KeyManagementServiceClient interface {
 	// [state][google.cloud.kms.v1.CryptoKeyVersion.state] will be set to
 	// [ENABLED][google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionState.ENABLED].
 	CreateCryptoKeyVersion(ctx context.Context, in *CreateCryptoKeyVersionRequest, opts ...grpc.CallOption) (*CryptoKeyVersion, error)
+	// Permanently deletes the given [CryptoKey][google.cloud.kms.v1.CryptoKey].
+	// All child [CryptoKeyVersions][google.cloud.kms.v1.CryptoKeyVersion] must
+	// have been previously deleted using
+	// [KeyManagementService.DeleteCryptoKeyVersion][google.cloud.kms.v1.KeyManagementService.DeleteCryptoKeyVersion].
+	// The specified crypto key will be immediately and permanently deleted upon
+	// calling this method. This action cannot be undone.
+	DeleteCryptoKey(ctx context.Context, in *DeleteCryptoKeyRequest, opts ...grpc.CallOption) (*longrunningpb.Operation, error)
+	// Permanently deletes the given
+	// [CryptoKeyVersion][google.cloud.kms.v1.CryptoKeyVersion]. Only possible if
+	// the version has not been previously imported and if its
+	// [state][google.cloud.kms.v1.CryptoKeyVersion.state] is one of
+	// [DESTROYED][CryptoKeyVersionState.DESTROYED],
+	// [IMPORT_FAILED][CryptoKeyVersionState.IMPORT_FAILED], or
+	// [GENERATION_FAILED][CryptoKeyVersionState.GENERATION_FAILED].
+	// Successfully imported
+	// [CryptoKeyVersions][google.cloud.kms.v1.CryptoKeyVersion] cannot be deleted
+	// at this time. The specified version will be immediately and permanently
+	// deleted upon calling this method. This action cannot be undone.
+	DeleteCryptoKeyVersion(ctx context.Context, in *DeleteCryptoKeyVersionRequest, opts ...grpc.CallOption) (*longrunningpb.Operation, error)
 	// Import wrapped key material into a
 	// [CryptoKeyVersion][google.cloud.kms.v1.CryptoKeyVersion].
 	//
@@ -278,6 +311,15 @@ func (c *keyManagementServiceClient) ListImportJobs(ctx context.Context, in *Lis
 	return out, nil
 }
 
+func (c *keyManagementServiceClient) ListRetiredResources(ctx context.Context, in *ListRetiredResourcesRequest, opts ...grpc.CallOption) (*ListRetiredResourcesResponse, error) {
+	out := new(ListRetiredResourcesResponse)
+	err := c.cc.Invoke(ctx, KeyManagementService_ListRetiredResources_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *keyManagementServiceClient) GetKeyRing(ctx context.Context, in *GetKeyRingRequest, opts ...grpc.CallOption) (*KeyRing, error) {
 	out := new(KeyRing)
 	err := c.cc.Invoke(ctx, KeyManagementService_GetKeyRing_FullMethodName, in, out, opts...)
@@ -323,6 +365,15 @@ func (c *keyManagementServiceClient) GetImportJob(ctx context.Context, in *GetIm
 	return out, nil
 }
 
+func (c *keyManagementServiceClient) GetRetiredResource(ctx context.Context, in *GetRetiredResourceRequest, opts ...grpc.CallOption) (*RetiredResource, error) {
+	out := new(RetiredResource)
+	err := c.cc.Invoke(ctx, KeyManagementService_GetRetiredResource_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *keyManagementServiceClient) CreateKeyRing(ctx context.Context, in *CreateKeyRingRequest, opts ...grpc.CallOption) (*KeyRing, error) {
 	out := new(KeyRing)
 	err := c.cc.Invoke(ctx, KeyManagementService_CreateKeyRing_FullMethodName, in, out, opts...)
@@ -344,6 +395,24 @@ func (c *keyManagementServiceClient) CreateCryptoKey(ctx context.Context, in *Cr
 func (c *keyManagementServiceClient) CreateCryptoKeyVersion(ctx context.Context, in *CreateCryptoKeyVersionRequest, opts ...grpc.CallOption) (*CryptoKeyVersion, error) {
 	out := new(CryptoKeyVersion)
 	err := c.cc.Invoke(ctx, KeyManagementService_CreateCryptoKeyVersion_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyManagementServiceClient) DeleteCryptoKey(ctx context.Context, in *DeleteCryptoKeyRequest, opts ...grpc.CallOption) (*longrunningpb.Operation, error) {
+	out := new(longrunningpb.Operation)
+	err := c.cc.Invoke(ctx, KeyManagementService_DeleteCryptoKey_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyManagementServiceClient) DeleteCryptoKeyVersion(ctx context.Context, in *DeleteCryptoKeyVersionRequest, opts ...grpc.CallOption) (*longrunningpb.Operation, error) {
+	out := new(longrunningpb.Operation)
+	err := c.cc.Invoke(ctx, KeyManagementService_DeleteCryptoKeyVersion_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -515,6 +584,10 @@ type KeyManagementServiceServer interface {
 	ListCryptoKeyVersions(context.Context, *ListCryptoKeyVersionsRequest) (*ListCryptoKeyVersionsResponse, error)
 	// Lists [ImportJobs][google.cloud.kms.v1.ImportJob].
 	ListImportJobs(context.Context, *ListImportJobsRequest) (*ListImportJobsResponse, error)
+	// Lists the [RetiredResources][google.cloud.kms.v1.RetiredResource] which are
+	// the records of deleted [CryptoKeys][google.cloud.kms.v1.CryptoKey].
+	// RetiredResources prevent the reuse of these resource names after deletion.
+	ListRetiredResources(context.Context, *ListRetiredResourcesRequest) (*ListRetiredResourcesResponse, error)
 	// Returns metadata for a given [KeyRing][google.cloud.kms.v1.KeyRing].
 	GetKeyRing(context.Context, *GetKeyRingRequest) (*KeyRing, error)
 	// Returns metadata for a given [CryptoKey][google.cloud.kms.v1.CryptoKey], as
@@ -533,6 +606,10 @@ type KeyManagementServiceServer interface {
 	GetPublicKey(context.Context, *GetPublicKeyRequest) (*PublicKey, error)
 	// Returns metadata for a given [ImportJob][google.cloud.kms.v1.ImportJob].
 	GetImportJob(context.Context, *GetImportJobRequest) (*ImportJob, error)
+	// Retrieves a specific [RetiredResource][google.cloud.kms.v1.RetiredResource]
+	// resource, which represents the record of a deleted
+	// [CryptoKey][google.cloud.kms.v1.CryptoKey].
+	GetRetiredResource(context.Context, *GetRetiredResourceRequest) (*RetiredResource, error)
 	// Create a new [KeyRing][google.cloud.kms.v1.KeyRing] in a given Project and
 	// Location.
 	CreateKeyRing(context.Context, *CreateKeyRingRequest) (*KeyRing, error)
@@ -550,6 +627,25 @@ type KeyManagementServiceServer interface {
 	// [state][google.cloud.kms.v1.CryptoKeyVersion.state] will be set to
 	// [ENABLED][google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionState.ENABLED].
 	CreateCryptoKeyVersion(context.Context, *CreateCryptoKeyVersionRequest) (*CryptoKeyVersion, error)
+	// Permanently deletes the given [CryptoKey][google.cloud.kms.v1.CryptoKey].
+	// All child [CryptoKeyVersions][google.cloud.kms.v1.CryptoKeyVersion] must
+	// have been previously deleted using
+	// [KeyManagementService.DeleteCryptoKeyVersion][google.cloud.kms.v1.KeyManagementService.DeleteCryptoKeyVersion].
+	// The specified crypto key will be immediately and permanently deleted upon
+	// calling this method. This action cannot be undone.
+	DeleteCryptoKey(context.Context, *DeleteCryptoKeyRequest) (*longrunningpb.Operation, error)
+	// Permanently deletes the given
+	// [CryptoKeyVersion][google.cloud.kms.v1.CryptoKeyVersion]. Only possible if
+	// the version has not been previously imported and if its
+	// [state][google.cloud.kms.v1.CryptoKeyVersion.state] is one of
+	// [DESTROYED][CryptoKeyVersionState.DESTROYED],
+	// [IMPORT_FAILED][CryptoKeyVersionState.IMPORT_FAILED], or
+	// [GENERATION_FAILED][CryptoKeyVersionState.GENERATION_FAILED].
+	// Successfully imported
+	// [CryptoKeyVersions][google.cloud.kms.v1.CryptoKeyVersion] cannot be deleted
+	// at this time. The specified version will be immediately and permanently
+	// deleted upon calling this method. This action cannot be undone.
+	DeleteCryptoKeyVersion(context.Context, *DeleteCryptoKeyVersionRequest) (*longrunningpb.Operation, error)
 	// Import wrapped key material into a
 	// [CryptoKeyVersion][google.cloud.kms.v1.CryptoKeyVersion].
 	//
@@ -689,6 +785,9 @@ func (UnimplementedKeyManagementServiceServer) ListCryptoKeyVersions(context.Con
 func (UnimplementedKeyManagementServiceServer) ListImportJobs(context.Context, *ListImportJobsRequest) (*ListImportJobsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListImportJobs not implemented")
 }
+func (UnimplementedKeyManagementServiceServer) ListRetiredResources(context.Context, *ListRetiredResourcesRequest) (*ListRetiredResourcesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRetiredResources not implemented")
+}
 func (UnimplementedKeyManagementServiceServer) GetKeyRing(context.Context, *GetKeyRingRequest) (*KeyRing, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetKeyRing not implemented")
 }
@@ -704,6 +803,9 @@ func (UnimplementedKeyManagementServiceServer) GetPublicKey(context.Context, *Ge
 func (UnimplementedKeyManagementServiceServer) GetImportJob(context.Context, *GetImportJobRequest) (*ImportJob, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetImportJob not implemented")
 }
+func (UnimplementedKeyManagementServiceServer) GetRetiredResource(context.Context, *GetRetiredResourceRequest) (*RetiredResource, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRetiredResource not implemented")
+}
 func (UnimplementedKeyManagementServiceServer) CreateKeyRing(context.Context, *CreateKeyRingRequest) (*KeyRing, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateKeyRing not implemented")
 }
@@ -712,6 +814,12 @@ func (UnimplementedKeyManagementServiceServer) CreateCryptoKey(context.Context, 
 }
 func (UnimplementedKeyManagementServiceServer) CreateCryptoKeyVersion(context.Context, *CreateCryptoKeyVersionRequest) (*CryptoKeyVersion, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateCryptoKeyVersion not implemented")
+}
+func (UnimplementedKeyManagementServiceServer) DeleteCryptoKey(context.Context, *DeleteCryptoKeyRequest) (*longrunningpb.Operation, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteCryptoKey not implemented")
+}
+func (UnimplementedKeyManagementServiceServer) DeleteCryptoKeyVersion(context.Context, *DeleteCryptoKeyVersionRequest) (*longrunningpb.Operation, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteCryptoKeyVersion not implemented")
 }
 func (UnimplementedKeyManagementServiceServer) ImportCryptoKeyVersion(context.Context, *ImportCryptoKeyVersionRequest) (*CryptoKeyVersion, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ImportCryptoKeyVersion not implemented")
@@ -848,6 +956,24 @@ func _KeyManagementService_ListImportJobs_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KeyManagementService_ListRetiredResources_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRetiredResourcesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyManagementServiceServer).ListRetiredResources(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyManagementService_ListRetiredResources_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyManagementServiceServer).ListRetiredResources(ctx, req.(*ListRetiredResourcesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _KeyManagementService_GetKeyRing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetKeyRingRequest)
 	if err := dec(in); err != nil {
@@ -938,6 +1064,24 @@ func _KeyManagementService_GetImportJob_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KeyManagementService_GetRetiredResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRetiredResourceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyManagementServiceServer).GetRetiredResource(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyManagementService_GetRetiredResource_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyManagementServiceServer).GetRetiredResource(ctx, req.(*GetRetiredResourceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _KeyManagementService_CreateKeyRing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateKeyRingRequest)
 	if err := dec(in); err != nil {
@@ -988,6 +1132,42 @@ func _KeyManagementService_CreateCryptoKeyVersion_Handler(srv interface{}, ctx c
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyManagementServiceServer).CreateCryptoKeyVersion(ctx, req.(*CreateCryptoKeyVersionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyManagementService_DeleteCryptoKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteCryptoKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyManagementServiceServer).DeleteCryptoKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyManagementService_DeleteCryptoKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyManagementServiceServer).DeleteCryptoKey(ctx, req.(*DeleteCryptoKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyManagementService_DeleteCryptoKeyVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteCryptoKeyVersionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyManagementServiceServer).DeleteCryptoKeyVersion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyManagementService_DeleteCryptoKeyVersion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyManagementServiceServer).DeleteCryptoKeyVersion(ctx, req.(*DeleteCryptoKeyVersionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1322,6 +1502,10 @@ var KeyManagementService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _KeyManagementService_ListImportJobs_Handler,
 		},
 		{
+			MethodName: "ListRetiredResources",
+			Handler:    _KeyManagementService_ListRetiredResources_Handler,
+		},
+		{
 			MethodName: "GetKeyRing",
 			Handler:    _KeyManagementService_GetKeyRing_Handler,
 		},
@@ -1342,6 +1526,10 @@ var KeyManagementService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _KeyManagementService_GetImportJob_Handler,
 		},
 		{
+			MethodName: "GetRetiredResource",
+			Handler:    _KeyManagementService_GetRetiredResource_Handler,
+		},
+		{
 			MethodName: "CreateKeyRing",
 			Handler:    _KeyManagementService_CreateKeyRing_Handler,
 		},
@@ -1352,6 +1540,14 @@ var KeyManagementService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateCryptoKeyVersion",
 			Handler:    _KeyManagementService_CreateCryptoKeyVersion_Handler,
+		},
+		{
+			MethodName: "DeleteCryptoKey",
+			Handler:    _KeyManagementService_DeleteCryptoKey_Handler,
+		},
+		{
+			MethodName: "DeleteCryptoKeyVersion",
+			Handler:    _KeyManagementService_DeleteCryptoKeyVersion_Handler,
 		},
 		{
 			MethodName: "ImportCryptoKeyVersion",
