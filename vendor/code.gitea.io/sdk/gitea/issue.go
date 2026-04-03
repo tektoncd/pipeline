@@ -143,7 +143,7 @@ func (opt *ListIssueOption) QueryEncode() string {
 		query.Add("owner", opt.Owner)
 	}
 	if len(opt.Team) > 0 {
-		query.Add("team", opt.MentionedBy)
+		query.Add("team", opt.Team)
 	}
 
 	return query.Encode()
@@ -294,10 +294,9 @@ func (c *Client) DeleteIssue(user, repo string, id int64) (*Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE",
+	return c.doRequestWithStatusHandle("DELETE",
 		fmt.Sprintf("/repos/%s/%s/issues/%d", user, repo, id),
 		nil, nil)
-	return resp, err
 }
 
 func (c *Client) issueBackwardsCompatibility(issue *Issue) {
