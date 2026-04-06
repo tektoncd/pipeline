@@ -1570,8 +1570,9 @@ func createChildResourceAnnotations(pr *v1.PipelineRun) map[string]string {
 	for key, val := range pr.ObjectMeta.Annotations {
 		annotations[key] = val
 	}
-	return kmap.Filter(annotations, func(s string) bool {
-		return filterReservedAnnotationRegexp.MatchString(s)
+	// Filter out reserved annotations and annotations that should not propagate to child resources
+	return kmap.Filter(annotations, func(key string) bool {
+		return filterReservedAnnotationRegexp.MatchString(key) || key == AutoCleanupPVCAnnotation
 	})
 }
 
