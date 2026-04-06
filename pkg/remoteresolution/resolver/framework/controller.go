@@ -18,18 +18,24 @@ package framework
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	rrclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client"
 	rrinformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
+	rrlister "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
 	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
-	framework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"github.com/tektoncd/pipeline/pkg/resolution/common"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/clock"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
+	"knative.dev/pkg/reconciler"
 )
 
 // ReconcilerModifier is a func that can access and modify a reconciler
@@ -41,7 +47,7 @@ type ReconcilerModifier = func(reconciler *Reconciler)
 // This sets up a lot of the boilerplate that individual resolvers
 // shouldn't need to be concerned with since it's common to all of them.
 func NewController(ctx context.Context, resolver Resolver, modifiers ...ReconcilerModifier) func(context.Context, configmap.Watcher) *controller.Impl {
-	if err := framework.ValidateResolver(ctx, resolver.GetSelector(ctx)); err != nil {
+	if err := ValidateResolver(ctx, resolver.GetSelector(ctx)); err != nil {
 		panic(err.Error())
 	}
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
@@ -55,7 +61,7 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 		}
 
 		r := &Reconciler{
-			LeaderAwareFuncs:           framework.LeaderAwareFuncs(rrInformer.Lister()),
+			LeaderAwareFuncs:           LeaderAwareFuncs(rrInformer.Lister()),
 			kubeClientSet:              kubeclientset,
 			resolutionRequestLister:    rrInformer.Lister(),
 			resolutionRequestClientSet: rrclientset,
@@ -78,7 +84,7 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 		})
 
 		_, err := rrInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: framework.FilterResolutionRequestsBySelector(resolver.GetSelector(ctx)),
+			FilterFunc: FilterResolutionRequestsBySelector(resolver.GetSelector(ctx)),
 			Handler: cache.ResourceEventHandlerFuncs{
 				AddFunc: impl.Enqueue,
 				UpdateFunc: func(oldObj, newObj interface{}) {
@@ -101,13 +107,13 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 // configmap, using knative's configmap helpers. This is only done if
 // the resolver implements the framework.ConfigWatcher interface.
 func watchConfigChanges(ctx context.Context, reconciler *Reconciler, cmw configmap.Watcher) {
-	if configWatcher, ok := reconciler.resolver.(framework.ConfigWatcher); ok {
+	if configWatcher, ok := reconciler.resolver.(ConfigWatcher); ok {
 		logger := logging.FromContext(ctx)
 		resolverConfigName := configWatcher.GetConfigName(ctx)
 		if resolverConfigName == "" {
 			panic("resolver returned empty config name")
 		}
-		reconciler.configStore = framework.NewConfigStore(resolverConfigName, logger)
+		reconciler.configStore = NewConfigStore(resolverConfigName, logger)
 		reconciler.configStore.WatchConfigs(cmw)
 	}
 }
@@ -136,4 +142,62 @@ func applyModifiersAndDefaults(ctx context.Context, r *Reconciler, modifiers []R
 	if r.Clock == nil {
 		r.Clock = clock.RealClock{}
 	}
+}
+
+func FilterResolutionRequestsBySelector(selector map[string]string) func(obj interface{}) bool {
+	return func(obj interface{}) bool {
+		rr, ok := obj.(*v1beta1.ResolutionRequest)
+		if !ok {
+			return false
+		}
+		if len(rr.ObjectMeta.Labels) == 0 {
+			return false
+		}
+		for key, val := range selector {
+			lookup, has := rr.ObjectMeta.Labels[key]
+			if !has {
+				return false
+			}
+			if lookup != val {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// TODO(sbwsg): I don't really understand the LeaderAwareness types beyond the
+// fact that the controller crashes if they're missing. It looks
+// like this is bucketing based on labels. Should we use the filter
+// selector from above in the call to lister.List here?
+func LeaderAwareFuncs(lister rrlister.ResolutionRequestLister) reconciler.LeaderAwareFuncs {
+	return reconciler.LeaderAwareFuncs{
+		PromoteFunc: func(bkt reconciler.Bucket, enq func(reconciler.Bucket, types.NamespacedName)) error {
+			all, err := lister.List(labels.Everything())
+			if err != nil {
+				return err
+			}
+			for _, elt := range all {
+				enq(bkt, types.NamespacedName{
+					Namespace: elt.GetNamespace(),
+					Name:      elt.GetName(),
+				})
+			}
+			return nil
+		},
+	}
+}
+
+// ErrMissingTypeSelector is returned when a resolver does not return
+// a selector with a type label from its GetSelector method.
+var ErrMissingTypeSelector = fmt.Errorf("invalid resolver: minimum selector must include %q", common.LabelKeyResolverType)
+
+func ValidateResolver(ctx context.Context, sel map[string]string) error {
+	if sel == nil {
+		return ErrMissingTypeSelector
+	}
+	if sel[common.LabelKeyResolverType] == "" {
+		return ErrMissingTypeSelector
+	}
+	return nil
 }
