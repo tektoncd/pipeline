@@ -31,7 +31,6 @@ import (
 	rrv1beta1 "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
 	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -76,7 +75,7 @@ type Reconciler struct {
 	resolutionRequestLister    rrv1beta1.ResolutionRequestLister
 	resolutionRequestClientSet rrclient.Interface
 
-	configStore *framework.ConfigStore
+	configStore *ConfigStore
 }
 
 var _ reconciler.LeaderAware = &Reconciler{}
@@ -117,7 +116,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.ResolutionRequest) error {
 	errChan := make(chan error)
-	resourceChan := make(chan framework.ResolvedResource)
+	resourceChan := make(chan ResolvedResource)
 
 	paramsMap := make(map[string]string)
 	for _, p := range rr.Spec.Params {
@@ -135,7 +134,7 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 	}
 
 	timeoutDuration := defaultMaximumResolutionDuration
-	if timed, ok := r.resolver.(framework.TimedResolution); ok {
+	if timed, ok := r.resolver.(TimedResolution); ok {
 		var err error
 		timeoutDuration, err = timed.GetResolutionTimeout(ctx, defaultMaximumResolutionDuration, paramsMap)
 		if err != nil {
@@ -233,7 +232,7 @@ func (r *Reconciler) MarkFailed(ctx context.Context, rr *v1beta1.ResolutionReque
 	return nil
 }
 
-func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.ResolutionRequest, resource framework.ResolvedResource) error {
+func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.ResolutionRequest, resource ResolvedResource) error {
 	encodedData := base64.StdEncoding.Strict().EncodeToString(resource.Data())
 	patchBytes, err := json.Marshal(map[string]statusDataPatch{
 		"status": {
