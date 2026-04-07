@@ -24,9 +24,13 @@ kind: PipelineRun
 metadata:
   name: release-pipeline
   annotations:
+    # NOTE: on-cel-expression takes precedence over on-event/on-target-branch,
+    # so the branch filter MUST be included in the CEL expression.
     pipelinesascode.tekton.dev/on-event: "[push]"
     pipelinesascode.tekton.dev/on-target-branch: "[refs/heads/release-v*]"
-    pipelinesascode.tekton.dev/on-cel-expression: "body.created == true"
+    pipelinesascode.tekton.dev/on-cel-expression: >
+      has(body.created) && body.created == true &&
+      pac.target_branch.startsWith("refs/heads/release-v")
     pipelinesascode.tekton.dev/pipeline: "tekton/release-pipeline.yaml"
     pipelinesascode.tekton.dev/max-keep-runs: "5"
 spec:
