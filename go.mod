@@ -1,6 +1,6 @@
 module github.com/tektoncd/pipeline
 
-go 1.24.0
+go 1.24.13
 
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -201,7 +201,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.20.5 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/common v0.62.0 // indirect
+	github.com/prometheus/common v0.62.0
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/prometheus/statsd_exporter v0.22.7 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
