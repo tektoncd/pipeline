@@ -32,8 +32,6 @@ metadata:
 spec:
   pipelineRef:
     name: pipeline-release
-  taskRunTemplate:
-    serviceAccountName: release-right-meow
   params:
     - name: package
       value: github.com/tektoncd/pipeline
