@@ -407,6 +407,17 @@ func TestTaskSpecValidate(t *testing.T) {
 			}},
 		},
 	}, {
+		name: "valid step with volumeMount under /tekton/home subdirectory",
+		fields: fields{
+			Steps: []v1.Step{{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "foo",
+					MountPath: "/tekton/home/subdir",
+				}},
+			}},
+		},
+	}, {
 		name: "valid workspace",
 		fields: fields{
 			Steps: []v1.Step{{
@@ -1243,6 +1254,51 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/foo")`,
+			Paths:   []string{"steps[0].volumeMounts[0].mountPath"},
+		},
+	}, {
+		name: "step volume mount path traversal to /tekton/results",
+		fields: fields{
+			Steps: []v1.Step{{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "foo",
+					MountPath: "/tekton/home/../results",
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/home/../results")`,
+			Paths:   []string{"steps[0].volumeMounts[0].mountPath"},
+		},
+	}, {
+		name: "step volume mount path traversal to /tekton/scripts",
+		fields: fields{
+			Steps: []v1.Step{{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "foo",
+					MountPath: "/tekton/home/../scripts",
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/home/../scripts")`,
+			Paths:   []string{"steps[0].volumeMounts[0].mountPath"},
+		},
+	}, {
+		name: "step volume mount nested path traversal to /tekton/run",
+		fields: fields{
+			Steps: []v1.Step{{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "foo",
+					MountPath: "/tekton/home/../../tekton/run",
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/home/../../tekton/run")`,
 			Paths:   []string{"steps[0].volumeMounts[0].mountPath"},
 		},
 	}, {
