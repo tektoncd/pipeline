@@ -156,10 +156,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	if tr.IsDone() {
 		logger.Infof("taskrun done : %s \n", tr.Name)
 
-		// We may be reading a version of the object that was stored at an older version
-		// and may not have had all of the assumed default specified.
-		tr.SetDefaults(ctx)
-
 		useTektonSidecar := true
 		if config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
 			dc := c.KubeClientSet.Discovery()
