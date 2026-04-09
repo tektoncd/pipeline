@@ -986,6 +986,141 @@ func TestThatAffinityAssistantNameIsNoLongerThan53(t *testing.T) {
 	}
 }
 
+func TestSanitizeVolumeName(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wantLen  int  // 0 means just check <= 63
+		wantSame bool // expect output == input
+	}{
+		{"short name unchanged", "my-pvc", 6, true},
+		{"exactly 63 chars unchanged", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 63, true},
+		{"64 chars gets truncated", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 63, false},
+		{"long name from issue 9739", "master-pipeline-700-generic-feature-execution-15943-error-handle-e46a3a1317", 63, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := sanitizeVolumeName(tc.input)
+			if len(got) > 63 {
+				t.Errorf("sanitizeVolumeName(%q) = %q (%d chars), want <= 63", tc.input, got, len(got))
+			}
+			if tc.wantSame && got != tc.input {
+				t.Errorf("sanitizeVolumeName(%q) = %q, want same as input", tc.input, got)
+			}
+			if tc.wantLen > 0 && len(got) != tc.wantLen {
+				t.Errorf("sanitizeVolumeName(%q) length = %d, want %d", tc.input, len(got), tc.wantLen)
+			}
+		})
+	}
+
+	// Verify determinism: same input always produces same output
+	long := "master-pipeline-700-generic-feature-execution-15943-error-handle-e46a3a1317"
+	a := sanitizeVolumeName(long)
+	b := sanitizeVolumeName(long)
+	if a != b {
+		t.Errorf("sanitizeVolumeName is not deterministic: %q != %q", a, b)
+	}
+
+	// Verify uniqueness: different inputs produce different outputs
+	c := sanitizeVolumeName(long + "-different")
+	if a == c {
+		t.Errorf("sanitizeVolumeName collision: %q and %q both produced %q", long, long+"-different", a)
+	}
+}
+
+// TestAffinityAssistantStatefulSet_VolumeNamesNoLongerThan63 tests that volume names
+// and VolumeClaimTemplate names in the Affinity Assistant StatefulSet are no longer than
+// 63 characters. Kubernetes rejects volume names exceeding this limit.
+func TestAffinityAssistantStatefulSet_VolumeNamesNoLongerThan63(t *testing.T) {
+	tests := []struct {
+		name                     string
+		volumeClaimTemplateName  string
+		workspaceName            string
+		pipelineRunName          string
+	}{
+		{
+			name:                    "long volumeClaimTemplate name from issue 9739",
+			volumeClaimTemplateName: "master-pipeline-700-generic-feature-execution-15943-error-handle",
+			workspaceName:           "my-workspace",
+			pipelineRunName:         "my-pipelinerun",
+		},
+		{
+			name:                    "long workspace name",
+			volumeClaimTemplateName: "",
+			workspaceName:           "a]workspace-name-that-is-quite-long-and-could-cause-issues-with-volume-naming",
+			pipelineRunName:         "my-pipelinerun",
+		},
+		{
+			name:                    "maximum length names",
+			volumeClaimTemplateName: "claim-name-that-is-exactly-at-the-kubernetes-limit-for-names-in-resources-for-pvc",
+			workspaceName:           "workspace-name-that-is-also-very-long-and-might-cause-problems",
+			pipelineRunName:         "pipelinerun-with-a-very-long-name-that-pushes-limits",
+		},
+		{
+			name:                    "short names are fine",
+			volumeClaimTemplateName: "",
+			workspaceName:           "ws",
+			pipelineRunName:         "pr",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := &v1.PipelineRun{
+				TypeMeta:   metav1.TypeMeta{Kind: "PipelineRun"},
+				ObjectMeta: metav1.ObjectMeta{Name: tc.pipelineRunName, UID: "uid-1234"},
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{{
+						Name: tc.workspaceName,
+						VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+							ObjectMeta: metav1.ObjectMeta{Name: tc.volumeClaimTemplateName},
+						},
+					}},
+				},
+			}
+
+			// Build claimTemplates the same way the production code does
+			var claimTemplates []corev1.PersistentVolumeClaim
+			for _, w := range pr.Spec.Workspaces {
+				if w.VolumeClaimTemplate != nil {
+					ct := w.VolumeClaimTemplate.DeepCopy()
+					ct.Name = volumeclaim.GeneratePVCNameFromWorkspaceBinding(w.VolumeClaimTemplate.Name, w, *kmeta.NewControllerRef(pr))
+					claimTemplates = append(claimTemplates, *ct)
+				}
+			}
+
+			aaName := GetAffinityAssistantName("", pr.Name)
+			ss := affinityAssistantStatefulSet(
+				aa.AffinityAssistantPerPipelineRun, aaName, pr,
+				claimTemplates, nil, containerConfigWithoutSecurityContext, nil,
+			)
+
+			// Check VolumeClaimTemplate names (used as volume names by K8s)
+			for _, vct := range ss.Spec.VolumeClaimTemplates {
+				if len(vct.Name) > 63 {
+					t.Errorf("VolumeClaimTemplate name %q is %d chars, must be no more than 63", vct.Name, len(vct.Name))
+				}
+			}
+
+			// Check VolumeMount names
+			for _, c := range ss.Spec.Template.Spec.Containers {
+				for _, vm := range c.VolumeMounts {
+					if len(vm.Name) > 63 {
+						t.Errorf("VolumeMount name %q is %d chars, must be no more than 63", vm.Name, len(vm.Name))
+					}
+				}
+			}
+
+			// Check Volume names
+			for _, v := range ss.Spec.Template.Spec.Volumes {
+				if len(v.Name) > 63 {
+					t.Errorf("Volume name %q is %d chars, must be no more than 63", v.Name, len(v.Name))
+				}
+			}
+		})
+	}
+}
+
 func TestCleanupAffinityAssistants_Success(t *testing.T) {
 	workspaces := []v1.WorkspaceBinding{
 		{
