@@ -32,7 +32,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/names"
-	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -72,8 +71,6 @@ var (
 func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
 	t.Helper()
 	skipIfExcluded(t)
-
-	cache.Get(ctx).Clear()
 
 	namespace := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("arendelle")
 
