@@ -283,6 +283,25 @@ func (g *GitResolver) ResolveAPIGit(ctx context.Context, clientFunc func(string,
 	} else {
 		secretRef = nil
 	}
+
+	// Security: when the user did not provide a token but specified a custom
+	// serverURL, reject the request to prevent sending the system-configured
+	// API token to an untrusted server.
+	if secretRef == nil {
+		userServerURL, hasUserServerURL := g.Params[ServerURLParam]
+		if hasUserServerURL && userServerURL != "" {
+			conf, confErr := GetScmConfigForParamConfigKey(ctx, g.Params)
+			if confErr != nil {
+				return nil, confErr
+			}
+			if userServerURL != conf.ServerURL {
+				return nil, fmt.Errorf("custom %s %q requires a %s parameter; "+
+					"the system token cannot be sent to a non-default server URL",
+					ServerURLParam, userServerURL, TokenParam)
+			}
+		}
+	}
+
 	apiToken, err := g.getAPIToken(ctx, secretRef, APISecretNameKey)
 	if err != nil {
 		return nil, err
