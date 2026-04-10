@@ -1,3 +1,11 @@
+# v1.50.1 (2026-02-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.50.0 (2026-02-16)
+
+* **Feature**: Added support for Decrypt and ReEncrypt API's to use dry run feature without ciphertext for authorization validation
+
 # v1.49.5 (2026-01-09)
 
 * **Dependency Update**: Updated to the latest SDK module versions

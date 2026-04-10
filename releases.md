@@ -41,11 +41,11 @@ Further documentation available:
 
 ## Release
 
-### v1.10
-- **Latest Release**: [v1.10.2][v1.10-2] (2026-03-18) ([docs][v1.10-2-docs], [examples][v1.10-2-examples])
-- **Initial Release**: [v1.10.0][v1.10-0] (2026-02-27)
-- **End of Life**: 2026-03-27
-- **Patch Releases**: [v1.10.0][v1.10-0], [v1.10.1][v1.10-1], [v1.10.2][v1.10-2]
+### v1.11
+- **Latest Release**: [v1.11.0][v1.11-0] (2026-03-30) ([docs][v1.11-0-docs], [examples][v1.11-0-examples])
+- **Initial Release**: [v1.11.0][v1.11-0] (2026-03-30)
+- **End of Life**: 2026-04-30
+- **Patch Releases**: [v1.11.0][v1.11-0]
 
 ### v1.9 (LTS)
 - **Latest Release**: [v1.9.2][v1.9-2] (2026-03-18) ([docs][v1.9-2-docs], [examples][v1.9-2-examples])
@@ -72,6 +72,12 @@ Further documentation available:
 - **Patch Releases**: [v1.0.0][v1.0-0], [v1.0.1][v1.0-1]
 
 ## End of Life Releases
+
+### v1.10
+- **Latest Release**: [v1.10.2][v1.10-2] (2026-03-18) ([docs][v1.10-2-docs], [examples][v1.10-2-examples])
+- **Initial Release**: [v1.10.0][v1.10-0] (2026-02-27)
+- **End of Life**: 2026-03-27
+- **Patch Releases**: [v1.10.0][v1.10-0], [v1.10.1][v1.10-1], [v1.10.2][v1.10-2]
 
 ### v1.7
 - **Latest Release**: [v1.7.0][v1.7-0] (2025-12-03) ([docs][v1.7-0-docs], [examples][v1.7-0-examples])
@@ -328,6 +334,7 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [release-notes-standards]:
     https://github.com/tektoncd/community/blob/main/standards.md#release-notes
 
+[v1.11-0]: https://github.com/tektoncd/pipeline/releases/tag/v1.11.0
 [v1.10-2]: https://github.com/tektoncd/pipeline/releases/tag/v1.10.2
 [v1.10-1]: https://github.com/tektoncd/pipeline/releases/tag/v1.10.1
 [v1.10-0]: https://github.com/tektoncd/pipeline/releases/tag/v1.10.0
@@ -439,6 +446,7 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [v0-37-5]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.5
 [v0-37-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.0
 
+[v1.11-0-docs]: https://github.com/tektoncd/pipeline/tree/v1.11.0/docs#tekton-pipelines
 [v1.10-2-docs]: https://github.com/tektoncd/pipeline/tree/v1.10.2/docs#tekton-pipelines
 [v1.10-1-docs]: https://github.com/tektoncd/pipeline/tree/v1.10.1/docs#tekton-pipelines
 [v1.10-0-docs]: https://github.com/tektoncd/pipeline/tree/v1.10.0/docs#tekton-pipelines
@@ -493,6 +501,7 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [v0-38-4-docs]: https://github.com/tektoncd/pipeline/tree/v0.38.4/docs#tekton-pipelines
 [v0-37-5-docs]: https://github.com/tektoncd/pipeline/tree/v0.37.5/docs#tekton-pipelines
 
+[v1.11-0-examples]: https://github.com/tektoncd/pipeline/tree/v1.11.0/examples#examples
 [v1.10-2-examples]: https://github.com/tektoncd/pipeline/tree/v1.10.2/examples#examples
 [v1.10-1-examples]: https://github.com/tektoncd/pipeline/tree/v1.10.1/examples#examples
 [v1.10-0-examples]: https://github.com/tektoncd/pipeline/tree/v1.10.0/examples#examples
