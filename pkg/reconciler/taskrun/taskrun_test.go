@@ -6059,6 +6059,178 @@ status:
 	}
 }
 
+func TestReconcile_DoneTaskRun_SkipsStopSidecarsWithoutRunningSidecarsInStatus(t *testing.T) {
+	tcs := []struct {
+		name string
+		yaml string
+	}{
+		{
+			name: "no sidecars in status",
+			yaml: `
+metadata:
+  name: test-taskrun
+  namespace: foo
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+  podName: test-taskrun-pod
+  startTime: "2000-01-01T01:01:01Z"
+  taskSpec:
+    steps:
+    - name: step1
+      image: busybox
+`,
+		},
+		{
+			name: "all sidecars terminated",
+			yaml: `
+metadata:
+  name: test-taskrun
+  namespace: foo
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+  podName: test-taskrun-pod
+  sidecars:
+  - name: sidecar1
+    terminated:
+      exitCode: 0
+      finishedAt: "2000-01-01T02:00:00Z"
+      reason: Completed
+      startedAt: "2000-01-01T01:01:01Z"
+  startTime: "2000-01-01T01:01:01Z"
+`,
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := parse.MustParseV1TaskRun(t, tc.yaml)
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-taskrun-pod",
+					Namespace: "foo",
+				},
+			}
+			d := test.Data{
+				Pods:     []*corev1.Pod{pod},
+				TaskRuns: []*v1.TaskRun{tr},
+			}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr)); err != nil {
+				t.Fatalf("Reconcile: %v", err)
+			}
+			for _, action := range clients.Kube.Actions() {
+				if action.Matches("get", "pods") {
+					t.Fatalf("expected no pods get when sidecars are absent or all terminated, got action %#v", action)
+				}
+			}
+		})
+	}
+}
+
+func TestTaskRunNeedsSidecarDonePath(t *testing.T) {
+	tcs := []struct {
+		name string
+		tr   *v1.TaskRun
+		want bool
+	}{
+		{
+			name: "sidecar still running in status",
+			tr: &v1.TaskRun{
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						Sidecars: []v1.SidecarState{{
+							ContainerState: corev1.ContainerState{
+								Running: &corev1.ContainerStateRunning{},
+							},
+							Name: "sc",
+						}},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "all sidecars terminated in status",
+			tr: &v1.TaskRun{
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						Sidecars: []v1.SidecarState{{
+							ContainerState: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
+							},
+							Name: "sc",
+						}},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "empty sidecar status and no task spec",
+			tr: &v1.TaskRun{
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "empty sidecar status task has no sidecars",
+			tr: &v1.TaskRun{
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						TaskSpec: &v1.TaskSpec{
+							Steps: []v1.Step{{Name: "s", Image: "img"}},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "empty sidecar status task declares sidecars",
+			tr: &v1.TaskRun{
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						TaskSpec: &v1.TaskSpec{
+							Steps:    []v1.Step{{Name: "s", Image: "img"}},
+							Sidecars: []v1.Sidecar{{Name: "sc", Image: "img"}},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "empty sidecar status uses spec.taskSpec for inline task",
+			tr: &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{{Name: "s", Image: "img"}},
+					},
+				},
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{},
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := taskRunNeedsSidecarDonePath(tc.tr); got != tc.want {
+				t.Fatalf("taskRunNeedsSidecarDonePath() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestStopSidecars_WithInjectedSidecarsNoTaskSpecSidecars(t *testing.T) {
 	sidecarTask := &v1.Task{
 		ObjectMeta: objectMeta("test-task-injected-sidecar", "foo"),

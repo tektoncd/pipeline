@@ -163,21 +163,25 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 		// and may not have had all of the assumed default specified.
 		tr.SetDefaults(ctx)
 
-		useTektonSidecar := true
-		if config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
-			dc := c.KubeClientSet.Discovery()
-			sv, err := dc.ServerVersion()
-			if err != nil {
-				return err
+		// When sidecar teardown is unnecessary, skip stopSidecars and discovery — avoids
+		// a live Pods().Get and ServerVersion on every resync of completed TaskRuns (#9755).
+		if taskRunNeedsSidecarDonePath(tr) {
+			useTektonSidecar := true
+			if config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
+				dc := c.KubeClientSet.Discovery()
+				sv, err := dc.ServerVersion()
+				if err != nil {
+					return err
+				}
+				if podconvert.IsNativeSidecarSupport(sv) {
+					useTektonSidecar = false
+					logger.Infof("Using Kubernetes Native Sidecars \n")
+				}
 			}
-			if podconvert.IsNativeSidecarSupport(sv) {
-				useTektonSidecar = false
-				logger.Infof("Using Kubernetes Native Sidecars \n")
-			}
-		}
-		if useTektonSidecar {
-			if err := c.stopSidecars(ctx, tr); err != nil {
-				return err
+			if useTektonSidecar {
+				if err := c.stopSidecars(ctx, tr); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -374,6 +378,32 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1.TaskRun
 			logger.Warnf("Failed to log the duration and count of taskruns : %v", err)
 		}
 	}
+}
+
+// taskRunNeedsSidecarDonePath returns true when the TaskRun done path should run
+// discovery and possibly stopSidecars. When false, completed TaskRun resyncs avoid
+// ServerVersion and Pods().Get (#9755).
+//
+// We skip when status lists every sidecar as terminated, or when sidecar status is
+// still empty but the resolved task spec has no sidecars. If status is empty and the
+// task declares sidecars (or TaskSpec is unavailable), we still run the path so we do
+// not skip teardown before sidecar status has been written.
+func taskRunNeedsSidecarDonePath(tr *v1.TaskRun) bool {
+	if podconvert.IsSidecarStatusRunning(tr) {
+		return true
+	}
+	if len(tr.Status.Sidecars) > 0 {
+		// Every entry has Terminated set (IsSidecarStatusRunning is false).
+		return false
+	}
+	ts := tr.Status.TaskSpec
+	if ts == nil {
+		ts = tr.Spec.TaskSpec
+	}
+	if ts == nil {
+		return true
+	}
+	return len(ts.Sidecars) > 0
 }
 
 func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
