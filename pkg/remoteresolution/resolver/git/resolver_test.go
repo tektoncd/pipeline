@@ -101,17 +101,42 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			name: "git url from a local repository",
+			name: "git url from a local repository is rejected",
 			params: map[string]string{
 				gitresolution.UrlParam:      "/tmp/repo",
 				gitresolution.PathParam:     "bar",
 				gitresolution.RevisionParam: "baz",
 			},
+			wantErr: "invalid git repository url: /tmp/repo",
 		},
 		{
 			name: "git url from a git ssh repository",
 			params: map[string]string{
 				gitresolution.UrlParam:      "git@host.com:foo/bar",
+				gitresolution.PathParam:     "bar",
+				gitresolution.RevisionParam: "baz",
+			},
+		},
+		{
+			name: "git url from an ssh:// repository",
+			params: map[string]string{
+				gitresolution.UrlParam:      "ssh://git@host.com/foo/bar",
+				gitresolution.PathParam:     "bar",
+				gitresolution.RevisionParam: "baz",
+			},
+		},
+		{
+			name: "git url from an ftp repository",
+			params: map[string]string{
+				gitresolution.UrlParam:      "ftp://host.com/foo/bar",
+				gitresolution.PathParam:     "bar",
+				gitresolution.RevisionParam: "baz",
+			},
+		},
+		{
+			name: "git url from an ftps repository",
+			params: map[string]string{
+				gitresolution.UrlParam:      "ftps://host.com/foo/bar",
 				gitresolution.PathParam:     "bar",
 				gitresolution.RevisionParam: "baz",
 			},
@@ -317,6 +342,11 @@ func TestResolve(t *testing.T) {
 	}}
 
 	anonFakeRepoURL, commitSHAsInAnonRepo := createTestRepo(t, commits)
+
+	// Clone integration tests use local filesystem paths which are
+	// rejected by validateRepoURL in production. Override the validator
+	// for the duration of this test so the clone path can be exercised.
+	t.Cleanup(gitresolution.SetValidateRepoURLForTesting(func(_ string) bool { return true }))
 
 	// local repo set up for scm cloning
 	// ----
