@@ -55,7 +55,9 @@ func (r remote) clone(ctx context.Context) (*repository, func(), error) {
 		executor:  r.cmdExecutor,
 	}
 
-	_, err = repo.execGit(ctx, "clone", repo.url, tmpDir, "--depth=1", "--no-checkout")
+	// The "--" separator ensures that repo.url is always interpreted as
+	// a repository path, never as a flag — even if it starts with "-".
+	_, err = repo.execGit(ctx, "clone", "--depth=1", "--no-checkout", "--", repo.url, tmpDir)
 	if err != nil {
 		if strings.Contains(err.Error(), "could not read Username") {
 			err = errors.New("clone error: authentication required")
@@ -82,7 +84,11 @@ func (repo *repository) currentRevision(ctx context.Context) (string, error) {
 }
 
 func (repo *repository) checkout(ctx context.Context, revision string) error {
-	_, err := repo.execGit(ctx, "fetch", "origin", revision, "--depth=1")
+	// The "--" separator ensures that 'revision' is always interpreted as
+	// a refspec, never as a flag. Without it, a revision like
+	// "--upload-pack=/path/to/binary" would be parsed as the
+	// --upload-pack flag by git, enabling argument injection.
+	_, err := repo.execGit(ctx, "fetch", "origin", "--depth=1", "--", revision)
 	if err != nil {
 		return err
 	}

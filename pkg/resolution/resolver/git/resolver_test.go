@@ -95,17 +95,42 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			name: "git url from a local repository",
+			name: "git url from a local repository is rejected",
 			params: map[string]string{
 				UrlParam:      "/tmp/repo",
 				PathParam:     "bar",
 				RevisionParam: "baz",
 			},
+			wantErr: "invalid git repository url: /tmp/repo",
 		},
 		{
 			name: "git url from a git ssh repository",
 			params: map[string]string{
 				UrlParam:      "git@host.com:foo/bar",
+				PathParam:     "bar",
+				RevisionParam: "baz",
+			},
+		},
+		{
+			name: "git url from an ssh:// repository",
+			params: map[string]string{
+				UrlParam:      "ssh://git@host.com/foo/bar",
+				PathParam:     "bar",
+				RevisionParam: "baz",
+			},
+		},
+		{
+			name: "git url from an ftp repository",
+			params: map[string]string{
+				UrlParam:      "ftp://host.com/foo/bar",
+				PathParam:     "bar",
+				RevisionParam: "baz",
+			},
+		},
+		{
+			name: "git url from an ftps repository",
+			params: map[string]string{
+				UrlParam:      "ftps://host.com/foo/bar",
 				PathParam:     "bar",
 				RevisionParam: "baz",
 			},
@@ -201,6 +226,38 @@ func TestValidateParams_Failure(t *testing.T) {
 				RepoParam:     "foo",
 			},
 			expectedErr: "'org' is required when 'repo' is specified",
+		}, {
+			name: "revision starts with dash (argument injection)",
+			params: map[string]string{
+				RevisionParam: "--upload-pack=/bin/sh",
+				PathParam:     "foo/bar.yaml",
+				UrlParam:      "https://github.com/tektoncd/catalog",
+			},
+			expectedErr: `invalid revision "--upload-pack=/bin/sh": must not begin with '-'`,
+		}, {
+			name: "revision starts with single dash",
+			params: map[string]string{
+				RevisionParam: "-v",
+				PathParam:     "foo/bar.yaml",
+				UrlParam:      "https://github.com/tektoncd/catalog",
+			},
+			expectedErr: `invalid revision "-v": must not begin with '-'`,
+		}, {
+			name: "local filesystem url rejected",
+			params: map[string]string{
+				RevisionParam: "main",
+				PathParam:     "foo/bar.yaml",
+				UrlParam:      "/tmp/localrepo",
+			},
+			expectedErr: "invalid git repository url: /tmp/localrepo",
+		}, {
+			name: "file:// url rejected",
+			params: map[string]string{
+				RevisionParam: "main",
+				PathParam:     "foo/bar.yaml",
+				UrlParam:      "file:///tmp/localrepo",
+			},
+			expectedErr: "invalid git repository url: file:///tmp/localrepo",
 		}, {
 			name: "path traversal with dot-dot",
 			params: map[string]string{
@@ -353,6 +410,11 @@ func TestResolve(t *testing.T) {
 	}}
 
 	anonFakeRepoURL, commitSHAsInAnonRepo := createTestRepo(t, commits)
+
+	// Clone integration tests use local filesystem paths which are
+	// rejected by validateRepoURL in production. Override the validator
+	// for the duration of this test so the clone path can be exercised.
+	t.Cleanup(SetValidateRepoURLForTesting(func(_ string) bool { return true }))
 
 	// local repo set up for scm cloning
 	// ----

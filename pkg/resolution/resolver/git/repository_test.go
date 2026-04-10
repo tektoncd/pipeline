@@ -75,7 +75,7 @@ func TestClone(t *testing.T) {
 				expectedCmd = append(expectedCmd, "--config-env", "http.extraHeader=GIT_AUTH_HEADER")
 				expectedEnv = append(expectedEnv, "GIT_AUTH_HEADER=Authorization: Basic "+token)
 			}
-			expectedCmd = append(expectedCmd, "clone", test.url, repo.directory, "--depth=1", "--no-checkout")
+			expectedCmd = append(expectedCmd, "clone", "--depth=1", "--no-checkout", "--", test.url, repo.directory)
 
 			if len(executions) != 1 {
 				t.Fatalf("Expected 1 command execution during cloning, got %d: %v", len(executions), executions)
@@ -170,6 +170,124 @@ func TestCheckout(t *testing.T) {
 				t.Fatalf("Expected revision to be %q but got %q", test.expectedRevision, revision)
 			}
 		})
+	}
+}
+
+// TestCheckout_ArgumentInjection_CommandStructure uses a mock executor
+// to verify that checkout() places the "--" separator before the
+// revision argument, preventing git from interpreting a malicious
+// revision (e.g. "--upload-pack=/bin/sh") as a flag.
+//
+// Regression test for GHSA-94jr-7pqp-xhcq.
+func TestCheckout_ArgumentInjection_CommandStructure(t *testing.T) {
+	testCases := []struct {
+		name     string
+		revision string
+	}{
+		{name: "upload-pack injection", revision: "--upload-pack=/bin/sh"},
+		{name: "single dash flag", revision: "-v"},
+		{name: "normal revision still works", revision: "main"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var allInvocations [][]string
+
+			executor := func(ctx context.Context, name string, args ...string) *exec.Cmd {
+				// Capture every invocation's full argument list.
+				invocation := append([]string{name}, args...)
+				allInvocations = append(allInvocations, invocation)
+				// Use "echo" to avoid actually running git.
+				return exec.CommandContext(ctx, "echo", invocation...)
+			}
+
+			repo := &repository{
+				directory: t.TempDir(),
+				executor:  executor,
+			}
+
+			_ = repo.checkout(t.Context(), tc.revision)
+
+			// checkout() calls execGit twice: first "fetch", then "checkout".
+			// We inspect the "fetch" invocation (first call).
+			if len(allInvocations) == 0 {
+				t.Fatal("expected at least one git invocation, got none")
+			}
+			fetchArgs := allInvocations[0]
+
+			// Find the position of "--" and the revision in the fetch args.
+			separatorIdx := -1
+			revisionIdx := -1
+			for i, arg := range fetchArgs {
+				if arg == "--" {
+					separatorIdx = i
+				}
+				if arg == tc.revision {
+					revisionIdx = i
+				}
+			}
+
+			if separatorIdx == -1 {
+				t.Fatalf("expected '--' separator in git fetch args, got: %v", fetchArgs)
+			}
+			if revisionIdx == -1 {
+				t.Fatalf("expected revision %q in git fetch args, got: %v", tc.revision, fetchArgs)
+			}
+			if revisionIdx < separatorIdx {
+				t.Fatalf("revision %q appears before '--' separator (index %d < %d), "+
+					"which means git could interpret it as a flag: %v",
+					tc.revision, revisionIdx, separatorIdx, fetchArgs)
+			}
+		})
+	}
+}
+
+// TestCheckout_ArgumentInjection_RealGit creates a real git repository
+// and verifies that a malicious revision containing "--upload-pack"
+// cannot execute a binary. With the "--" separator, git treats the
+// value as a refspec (which doesn't exist) rather than a flag.
+//
+// Regression test for GHSA-94jr-7pqp-xhcq.
+func TestCheckout_ArgumentInjection_RealGit(t *testing.T) {
+	// Create a local git repo to serve as the remote.
+	repoPath, _ := createTestRepo(t, []commitForRepo{
+		{Filename: "task.yaml", Content: "apiVersion: tekton.dev/v1\nkind: Task"},
+	})
+
+	// Create a marker file that would be written if the exploit succeeds.
+	markerFile := filepath.Join(t.TempDir(), "exploit-marker")
+
+	// Create an exploit script that writes the marker file.
+	exploitScript := filepath.Join(t.TempDir(), "exploit.sh")
+	if err := os.WriteFile(exploitScript, []byte("#!/bin/sh\necho EXPLOITED > "+markerFile+"\n"), 0o700); err != nil {
+		t.Fatalf("failed to create exploit script: %v", err)
+	}
+
+	ctx := t.Context()
+
+	// Clone the repo (as the resolver would).
+	repo, cleanup, err := remote{url: repoPath}.clone(ctx)
+	if err != nil {
+		t.Fatalf("failed to clone test repo: %v", err)
+	}
+	defer cleanup()
+
+	// Attempt checkout with a malicious revision that tries to inject
+	// --upload-pack. With the "--" separator, git should treat this as
+	// a refspec and fail with "couldn't find remote ref".
+	maliciousRevision := "--upload-pack=" + exploitScript
+	err = repo.checkout(ctx, maliciousRevision)
+
+	// We expect an error because the "refspec" doesn't exist.
+	if err == nil {
+		t.Fatal("expected checkout to fail with malicious revision, but it succeeded")
+	}
+
+	// The critical assertion: the exploit script must NOT have been executed.
+	if _, statErr := os.Stat(markerFile); statErr == nil {
+		t.Fatalf("SECURITY FAILURE: exploit script was executed! "+
+			"The '--upload-pack' argument was interpreted as a git flag "+
+			"instead of a refspec. Marker file exists at %s", markerFile)
 	}
 }
 
