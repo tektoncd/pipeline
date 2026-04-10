@@ -70,7 +70,7 @@ func initImageNames() map[int]string {
 	default:
 		return map[int]string{
 			busyboxImage:   "mirror.gcr.io/busybox@sha256:2f9af5cf39068ec3a9e124feceaa11910c511e23a1670dcfdff0bc16793545fb",
-			registryImage:  "mirror.gcr.io/library/registry",
+			registryImage:  "mirror.gcr.io/library/registry:3",
 			kanikoImage:    "gcr.io/kaniko-project/executor:v1.3.0",
 			dockerizeImage: "mirror.gcr.io/jwilder/dockerize",
 		}
