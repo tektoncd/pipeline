@@ -29,6 +29,7 @@ import (
 	resolutionclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client"
 	resolutioninformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
 	"github.com/tektoncd/pipeline/pkg/pod"
+	tektonreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolution "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
@@ -115,6 +116,14 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 				PromoteFilterFunc: taskRunFilterManagedBy,
 			}
 		})
+
+		// Strip managedFields from cached objects to reduce memory footprint and DeepCopy cost.
+		if err := taskRunInformer.Informer().SetTransform(tektonreconciler.StripManagedFields); err != nil {
+			logging.FromContext(ctx).Panicf("Failed to set TaskRun informer transform: %w", err)
+		}
+		if err := podInformer.Informer().SetTransform(tektonreconciler.StripManagedFields); err != nil {
+			logging.FromContext(ctx).Panicf("Failed to set Pod informer transform: %w", err)
+		}
 
 		if _, err := secretinformer.Informer().AddEventHandler(controller.HandleAll(tracerProvider.Handler)); err != nil {
 			logging.FromContext(ctx).Panicf("Couldn't register Secret informer event handler: %w", err)
