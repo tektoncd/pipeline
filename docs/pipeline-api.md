@@ -5425,6 +5425,22 @@ string
 </tr>
 <tr>
 <td>
+<code>default</code><br/>
+<em>
+<a href="#tekton.dev/v1.ResultValue">
+ResultValue
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Default is the value a result takes if no actual value is produced by the task.
+If default is set, a task may be executed without producing the result and
+the default value will be used instead.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>value</code><br/>
 <em>
 <a href="#tekton.dev/v1.ResultValue">
@@ -15455,6 +15471,22 @@ string
 <td>
 <em>(Optional)</em>
 <p>Description is a human-readable description of the result</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>default</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.ResultValue">
+ResultValue
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Default is the value a result takes if no actual value is produced by the task.
+If default is set, a task may be executed without producing the result and
+the default value will be used instead.</p>
 </td>
 </tr>
 <tr>

@@ -3502,6 +3502,143 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 	}
 }
 
+func TestResolvedPipelineRunTask_IsFinallySkipped_WithDefaultResults(t *testing.T) {
+	makeFacts := func() (*ResolvedPipelineTask, *PipelineRunFacts) {
+		failedTaskRun := &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "failed-dag-task"},
+			Status: v1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				},
+			},
+		}
+		dagTask := &ResolvedPipelineTask{
+			TaskRunNames: []string{"failed-dag-task"},
+			TaskRuns:     []*v1.TaskRun{failedTaskRun},
+			PipelineTask: &v1.PipelineTask{
+				Name:    "dag-task",
+				TaskRef: &v1.TaskRef{Name: "task"},
+			},
+			ResolvedTask: &resources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Results: []v1.TaskResult{{
+						Name:    "my-result",
+						Type:    v1.ResultsTypeString,
+						Default: v1.NewStructuredValues("default-value"),
+					}},
+				},
+			},
+		}
+		finallyTask := &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "finally-task",
+				TaskRef: &v1.TaskRef{Name: "task"},
+				Params: v1.Params{{
+					Name:  "param",
+					Value: *v1.NewStructuredValues("$(tasks.dag-task.results.my-result)"),
+				}},
+			},
+		}
+		state := PipelineRunState{dagTask, finallyTask}
+		d, _ := dag.Build(v1.PipelineTaskList([]v1.PipelineTask{*dagTask.PipelineTask}), map[string][]string{})
+		dfinally, _ := dag.Build(v1.PipelineTaskList([]v1.PipelineTask{*finallyTask.PipelineTask}), map[string][]string{})
+		facts := &PipelineRunFacts{
+			State:           state,
+			TasksGraph:      d,
+			FinalTasksGraph: dfinally,
+			TimeoutsState:   PipelineRunTimeoutsState{Clock: testClock},
+		}
+		return finallyTask, facts
+	}
+
+	t.Run("finally task NOT skipped when dag task fails but result has default and feature flag enabled", func(t *testing.T) {
+		finallyTask, facts := makeFacts()
+		facts.EnableDefaultResults = true
+		skipStatus := finallyTask.IsFinallySkipped(facts)
+		if skipStatus.IsSkipped {
+			t.Errorf("expected finally task to NOT be skipped when default result is available, got skippingReason: %v", skipStatus.SkippingReason)
+		}
+	})
+
+	t.Run("finally task IS skipped when dag task fails and result has default but feature flag disabled", func(t *testing.T) {
+		finallyTask, facts := makeFacts()
+		skipStatus := finallyTask.IsFinallySkipped(facts)
+		if !skipStatus.IsSkipped {
+			t.Errorf("expected finally task to be skipped when default results feature flag is disabled")
+		}
+		if skipStatus.SkippingReason != v1.MissingResultsSkip {
+			t.Errorf("expected skipping reason MissingResultsSkip, got: %v", skipStatus.SkippingReason)
+		}
+	})
+
+	makeFactsSkippedDAGTask := func() (*ResolvedPipelineTask, *PipelineRunFacts) {
+		// dagTask has no TaskRuns - it was skipped due to a when expression evaluating to false
+		dagTask := &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "dag-task",
+				TaskRef: &v1.TaskRef{Name: "task"},
+				When: v1.WhenExpressions{{
+					Input:    "false",
+					Operator: selection.In,
+					Values:   []string{"true"},
+				}},
+			},
+			ResolvedTask: &resources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Results: []v1.TaskResult{{
+						Name:    "my-result",
+						Type:    v1.ResultsTypeString,
+						Default: v1.NewStructuredValues("default-from-skipped"),
+					}},
+				},
+			},
+		}
+		finallyTask := &ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "finally-task",
+				TaskRef: &v1.TaskRef{Name: "task"},
+				Params: v1.Params{{
+					Name:  "param",
+					Value: *v1.NewStructuredValues("$(tasks.dag-task.results.my-result)"),
+				}},
+			},
+		}
+		state := PipelineRunState{dagTask, finallyTask}
+		d, _ := dag.Build(v1.PipelineTaskList([]v1.PipelineTask{*dagTask.PipelineTask}), map[string][]string{})
+		dfinally, _ := dag.Build(v1.PipelineTaskList([]v1.PipelineTask{*finallyTask.PipelineTask}), map[string][]string{})
+		facts := &PipelineRunFacts{
+			State:           state,
+			TasksGraph:      d,
+			FinalTasksGraph: dfinally,
+			TimeoutsState:   PipelineRunTimeoutsState{Clock: testClock},
+		}
+		return finallyTask, facts
+	}
+
+	t.Run("finally task NOT skipped when dag task is skipped but result has default and feature flag enabled", func(t *testing.T) {
+		finallyTask, facts := makeFactsSkippedDAGTask()
+		facts.EnableDefaultResults = true
+		skipStatus := finallyTask.IsFinallySkipped(facts)
+		if skipStatus.IsSkipped {
+			t.Errorf("expected finally task to NOT be skipped when referenced task is skipped but default is available, got skippingReason: %v", skipStatus.SkippingReason)
+		}
+	})
+
+	t.Run("finally task IS skipped when dag task is skipped and feature flag disabled", func(t *testing.T) {
+		finallyTask, facts := makeFactsSkippedDAGTask()
+		skipStatus := finallyTask.IsFinallySkipped(facts)
+		if !skipStatus.IsSkipped {
+			t.Errorf("expected finally task to be skipped when referenced task is skipped and feature flag is disabled")
+		}
+		if skipStatus.SkippingReason != v1.MissingResultsSkip {
+			t.Errorf("expected skipping reason MissingResultsSkip, got: %v", skipStatus.SkippingReason)
+		}
+	})
+}
+
 func TestResolvedPipelineRunTask_IsFinallySkippedByCondition(t *testing.T) {
 	task := &ResolvedPipelineTask{
 		TaskRunNames: []string{"dag-task"},

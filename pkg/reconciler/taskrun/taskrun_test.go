@@ -8224,3 +8224,121 @@ spec:
 		t.Errorf("Expected Tekton-managed TaskRun to be running, but it was not")
 	}
 }
+
+func TestReconcile_DefaultResults(t *testing.T) {
+	// Task with defaults — valid only when enable-default-results=true.
+	taskWithDefaults := parse.MustParseV1Task(t, `
+metadata:
+  name: test-task-with-default-results
+  namespace: foo
+spec:
+  results:
+    - name: string-result
+      default: "default-string-value"
+    - name: array-result
+      type: array
+      default:
+        - "default-1"
+        - "default-2"
+    - name: no-default-result
+  steps:
+    - name: step1
+      image: foo
+      command: ["/mycmd"]
+`)
+
+	// Task without defaults — usable regardless of the feature flag.
+	taskNoDefaults := parse.MustParseV1Task(t, `
+metadata:
+  name: test-task-no-defaults
+  namespace: foo
+spec:
+  results:
+    - name: string-result
+  steps:
+    - name: step1
+      image: foo
+      command: ["/mycmd"]
+`)
+
+	for _, tc := range []struct {
+		name            string
+		task            *v1.Task
+		featureFlag     string
+		existingResults []v1.TaskRunResult
+		wantResults     []v1.TaskRunResult
+		wantRequeue     bool
+	}{{
+		name:        "default results populated when feature flag enabled and no results yet",
+		task:        taskWithDefaults,
+		featureFlag: "true",
+		wantRequeue: true,
+		wantResults: []v1.TaskRunResult{
+			{Name: "string-result", Type: v1.ResultsTypeString, Value: *v1.NewStructuredValues("default-string-value")},
+			{Name: "array-result", Type: v1.ResultsTypeArray, Value: *v1.NewStructuredValues("default-1", "default-2")},
+		},
+	}, {
+		name:        "default results NOT populated when feature flag disabled",
+		task:        taskNoDefaults,
+		featureFlag: "false",
+		wantRequeue: true,
+		wantResults: nil,
+	}, {
+		name:        "default results NOT re-initialized when results already present",
+		task:        taskWithDefaults,
+		featureFlag: "true",
+		existingResults: []v1.TaskRunResult{
+			{Name: "string-result", Type: v1.ResultsTypeString, Value: *v1.NewStructuredValues("step-produced-value")},
+		},
+		wantRequeue: true,
+		wantResults: []v1.TaskRunResult{
+			{Name: "string-result", Type: v1.ResultsTypeString, Value: *v1.NewStructuredValues("step-produced-value")},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-default-results
+  namespace: foo
+spec:
+  taskRef:
+    name: `+tc.task.Name+`
+`)
+			tr.Status.Results = tc.existingResults
+
+			d := test.Data{
+				TaskRuns: []*v1.TaskRun{tr},
+				Tasks:    []*v1.Task{tc.task},
+				ConfigMaps: []*corev1.ConfigMap{{
+					ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+					Data: map[string]string{
+						"enable-default-results": tc.featureFlag,
+					},
+				}},
+			}
+
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, tr.Spec.ServiceAccountName, tr.Namespace)
+
+			err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+			if tc.wantRequeue {
+				if err == nil {
+					t.Error("Wanted a wrapped requeue error, but got nil.")
+				} else if ok, _ := controller.IsRequeueKey(err); !ok {
+					t.Errorf("Error reconciling TaskRun: %v", err)
+				}
+			} else if err != nil {
+				t.Errorf("Unexpected reconcile error: %v", err)
+			}
+
+			reconciledTR, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+			if d := cmp.Diff(tc.wantResults, reconciledTR.Status.Results); d != "" {
+				t.Errorf("unexpected results %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}

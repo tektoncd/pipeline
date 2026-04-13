@@ -101,6 +101,8 @@ const (
 	EnableArtifacts = "enable-artifacts"
 	// EnableParamEnum is the flag to enabled enum in params
 	EnableParamEnum = "enable-param-enum"
+	// EnableDefaultResults is the flag to enable default values for task results
+	EnableDefaultResults = "enable-default-results"
 	// EnableConciseResolverSyntax is the flag to enable concise resolver syntax
 	EnableConciseResolverSyntax = "enable-concise-resolver-syntax"
 	// EnableKubernetesSidecar is the flag to enable kubernetes sidecar support
@@ -169,6 +171,13 @@ var (
 		Enabled:   DefaultAlphaFeatureEnabled,
 	}
 
+	// DefaultEnableDefaultResults is the default PerFeatureFlag value for EnableDefaultResults
+	DefaultEnableDefaultResults = PerFeatureFlag{
+		Name:      EnableDefaultResults,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
 	// DefaultEnableConciseResolverSyntax is the default PerFeatureFlag value for EnableConciseResolverSyntax
 	DefaultEnableConciseResolverSyntax = PerFeatureFlag{
 		Name:      EnableConciseResolverSyntax,
@@ -212,6 +221,7 @@ type FeatureFlags struct {
 	// EnableStepActions is a no-op flag since StepActions are stable
 	EnableStepActions            bool   `json:"enableStepActions,omitempty"`
 	EnableParamEnum              bool   `json:"enableParamEnum,omitempty"`
+	EnableDefaultResults         bool   `json:"enableDefaultResults,omitempty"`
 	EnableArtifacts              bool   `json:"enableArtifacts,omitempty"`
 	DisableInlineSpec            string `json:"disableInlineSpec,omitempty"`
 	EnableConciseResolverSyntax  bool   `json:"enableConciseResolverSyntax,omitempty"`
@@ -312,6 +322,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setPerFeatureFlag(EnableParamEnum, DefaultEnableParamEnum, &tc.EnableParamEnum); err != nil {
+		return nil, err
+	}
+	if err := setPerFeatureFlag(EnableDefaultResults, DefaultEnableDefaultResults, &tc.EnableDefaultResults); err != nil {
 		return nil, err
 	}
 	if err := setPerFeatureFlag(EnableArtifacts, DefaultEnableArtifacts, &tc.EnableArtifacts); err != nil {

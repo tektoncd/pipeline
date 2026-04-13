@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	taskresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -604,9 +605,69 @@ func TestResolveResultRefs(t *testing.T) {
 			},
 			FromTaskRun: "nTaskRun",
 		}},
+	}, {
+		name: "Test successful result references resolution with default value",
+		pipelineRunState: PipelineRunState{{
+			TaskRunNames: []string{"taskWithDefault"},
+			TaskRuns: []*v1.TaskRun{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "taskWithDefault",
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{successCondition},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						// Note: no results in TaskRun status - should use default
+					},
+				},
+			}},
+			PipelineTask: &v1.PipelineTask{
+				Name:    "taskWithDefault",
+				TaskRef: &v1.TaskRef{Name: "taskWithDefault"},
+			},
+			ResolvedTask: &taskresources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Results: []v1.TaskResult{{
+						Name:    "defaultResult",
+						Type:    v1.ResultsTypeString,
+						Default: v1.NewStructuredValues("defaultValue"),
+					}},
+				},
+			},
+		}, {
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "consumerParam",
+					Value: *v1.NewStructuredValues("$(tasks.taskWithDefault.results.defaultResult)"),
+				}},
+			},
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "consumerParam",
+					Value: *v1.NewStructuredValues("$(tasks.taskWithDefault.results.defaultResult)"),
+				}},
+			},
+		}},
+		want: ResolvedResultRefs{{
+			Value: *v1.NewStructuredValues("defaultValue"),
+			ResultReference: v1.ResultRef{
+				PipelineTask: "taskWithDefault",
+				Result:       "defaultResult",
+			},
+			FromTaskRun: "taskWithDefault",
+		}},
+		wantErr: false,
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
-			got, pt, err := ResolveResultRefs(tt.pipelineRunState, tt.targets)
+			enableDefaultResults := tt.name == "Test successful result references resolution with default value"
+			got, pt, err := ResolveResultRefs(enableDefaultResults, tt.pipelineRunState, tt.targets)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ResolveResultRefs() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -690,7 +751,7 @@ func TestResolveResultRef(t *testing.T) {
 		wantErr: false,
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
-			got, pt, err := ResolveResultRef(tt.pipelineRunState, tt.target)
+			got, pt, err := ResolveResultRef(false, tt.pipelineRunState, tt.target)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ResolveResultRefs() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -817,7 +878,7 @@ func TestCheckMissingResultReferences(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
 			for _, target := range tt.targets {
-				tmpErr := CheckMissingResultReferences(tt.pipelineRunState, target)
+				tmpErr := CheckMissingResultReferences(false, tt.pipelineRunState, target)
 				if tmpErr != nil {
 					err = tmpErr
 				}
@@ -982,6 +1043,464 @@ func TestParamValueFromCustomRunResult(t *testing.T) {
 			got := paramValueFromCustomRunResult(tt.args.result)
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Fatalf("paramValueFromCustomRunResult %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestResolveResultRefsWithDefaultValues(t *testing.T) {
+	tests := []struct {
+		name             string
+		pipelineRunState PipelineRunState
+		targets          PipelineRunState
+		featureFlag      bool
+		want             ResolvedResultRefs
+		wantErr          bool
+		wantErrMsg       string
+	}{{
+		name: "default value used when feature flag enabled and result missing",
+		pipelineRunState: PipelineRunState{{
+			TaskRunNames: []string{"taskWithDefault"},
+			TaskRuns: []*v1.TaskRun{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "taskWithDefault",
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{successCondition},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						// Note: no results in TaskRun status - should use default
+					},
+				},
+			}},
+			PipelineTask: &v1.PipelineTask{
+				Name:    "taskWithDefault",
+				TaskRef: &v1.TaskRef{Name: "taskWithDefault"},
+			},
+			ResolvedTask: &taskresources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Results: []v1.TaskResult{{
+						Name:    "defaultResult",
+						Type:    v1.ResultsTypeString,
+						Default: v1.NewStructuredValues("defaultValue"),
+					}},
+				},
+			},
+		}, {
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "consumerParam",
+					Value: *v1.NewStructuredValues("$(tasks.taskWithDefault.results.defaultResult)"),
+				}},
+			},
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "consumerParam",
+					Value: *v1.NewStructuredValues("$(tasks.taskWithDefault.results.defaultResult)"),
+				}},
+			},
+		}},
+		featureFlag: true,
+		want: ResolvedResultRefs{{
+			Value: *v1.NewStructuredValues("defaultValue"),
+			ResultReference: v1.ResultRef{
+				PipelineTask: "taskWithDefault",
+				Result:       "defaultResult",
+			},
+			FromTaskRun: "taskWithDefault",
+		}},
+		wantErr: false,
+	}, {
+		name: "default value not used when feature flag disabled",
+		pipelineRunState: PipelineRunState{{
+			TaskRunNames: []string{"taskWithDefault"},
+			TaskRuns: []*v1.TaskRun{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "taskWithDefault",
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{successCondition},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						// Note: no results in TaskRun status
+					},
+				},
+			}},
+			PipelineTask: &v1.PipelineTask{
+				Name:    "taskWithDefault",
+				TaskRef: &v1.TaskRef{Name: "taskWithDefault"},
+			},
+			ResolvedTask: &taskresources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Results: []v1.TaskResult{{
+						Name:    "defaultResult",
+						Type:    v1.ResultsTypeString,
+						Default: v1.NewStructuredValues("defaultValue"),
+					}},
+				},
+			},
+		}, {
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "consumerParam",
+					Value: *v1.NewStructuredValues("$(tasks.taskWithDefault.results.defaultResult)"),
+				}},
+			},
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "consumerParam",
+					Value: *v1.NewStructuredValues("$(tasks.taskWithDefault.results.defaultResult)"),
+				}},
+			},
+		}},
+		featureFlag: false,
+		wantErr:     true,
+		wantErrMsg:  "Could not find result with name defaultResult",
+	}, {
+		name: "actual result takes precedence over default when both exist",
+		pipelineRunState: PipelineRunState{{
+			TaskRunNames: []string{"taskWithDefault"},
+			TaskRuns: []*v1.TaskRun{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "taskWithDefault",
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{successCondition},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						Results: []v1.TaskRunResult{{
+							Name:  "defaultResult",
+							Value: *v1.NewStructuredValues("actualValue"),
+						}},
+					},
+				},
+			}},
+			PipelineTask: &v1.PipelineTask{
+				Name:    "taskWithDefault",
+				TaskRef: &v1.TaskRef{Name: "taskWithDefault"},
+			},
+			ResolvedTask: &taskresources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Results: []v1.TaskResult{{
+						Name:    "defaultResult",
+						Type:    v1.ResultsTypeString,
+						Default: v1.NewStructuredValues("defaultValue"),
+					}},
+				},
+			},
+		}, {
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "consumerParam",
+					Value: *v1.NewStructuredValues("$(tasks.taskWithDefault.results.defaultResult)"),
+				}},
+			},
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "consumerParam",
+					Value: *v1.NewStructuredValues("$(tasks.taskWithDefault.results.defaultResult)"),
+				}},
+			},
+		}},
+		featureFlag: true,
+		want: ResolvedResultRefs{{
+			Value: *v1.NewStructuredValues("actualValue"),
+			ResultReference: v1.ResultRef{
+				PipelineTask: "taskWithDefault",
+				Result:       "defaultResult",
+			},
+			FromTaskRun: "taskWithDefault",
+		}},
+		wantErr: false,
+	}, {
+		name: "default value used for array result",
+		pipelineRunState: PipelineRunState{{
+			TaskRunNames: []string{"taskWithArrayDefault"},
+			TaskRuns: []*v1.TaskRun{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "taskWithArrayDefault",
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{successCondition},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						// Note: no results in TaskRun status
+					},
+				},
+			}},
+			PipelineTask: &v1.PipelineTask{
+				Name:    "taskWithArrayDefault",
+				TaskRef: &v1.TaskRef{Name: "taskWithArrayDefault"},
+			},
+			ResolvedTask: &taskresources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Results: []v1.TaskResult{{
+						Name:    "arrayResult",
+						Type:    v1.ResultsTypeArray,
+						Default: v1.NewStructuredValues("value1", "value2", "value3"),
+					}},
+				},
+			},
+		}, {
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "consumerParam",
+					Value: *v1.NewStructuredValues("$(tasks.taskWithArrayDefault.results.arrayResult)"),
+				}},
+			},
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "consumerParam",
+					Value: *v1.NewStructuredValues("$(tasks.taskWithArrayDefault.results.arrayResult)"),
+				}},
+			},
+		}},
+		featureFlag: true,
+		want: ResolvedResultRefs{{
+			Value: *v1.NewStructuredValues("value1", "value2", "value3"),
+			ResultReference: v1.ResultRef{
+				PipelineTask: "taskWithArrayDefault",
+				Result:       "arrayResult",
+			},
+			FromTaskRun: "taskWithArrayDefault",
+		}},
+		wantErr: false,
+	}, {
+		name: "default value used for matrix parameter when result missing",
+		pipelineRunState: PipelineRunState{{
+			TaskRunNames: []string{"matrixTaskWithDefault"},
+			TaskRuns: []*v1.TaskRun{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "matrixTaskWithDefault",
+				},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{successCondition},
+					},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						// Note: no results in TaskRun status
+					},
+				},
+			}},
+			PipelineTask: &v1.PipelineTask{
+				Name:    "matrixTaskWithDefault",
+				TaskRef: &v1.TaskRef{Name: "matrixTaskWithDefault"},
+			},
+			ResolvedTask: &taskresources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Results: []v1.TaskResult{{
+						Name:    "matrixResult",
+						Type:    v1.ResultsTypeArray,
+						Default: v1.NewStructuredValues("default1", "default2"),
+					}},
+				},
+			},
+		}, {
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerMatrixTask",
+				TaskRef: &v1.TaskRef{Name: "consumerMatrixTask"},
+				Matrix: &v1.Matrix{
+					Params: v1.Params{{
+						Name:  "matrixParam",
+						Value: *v1.NewStructuredValues("$(tasks.matrixTaskWithDefault.results.matrixResult[*])"),
+					}},
+				},
+			},
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerMatrixTask",
+				TaskRef: &v1.TaskRef{Name: "consumerMatrixTask"},
+				Matrix: &v1.Matrix{
+					Params: v1.Params{{
+						Name:  "matrixParam",
+						Value: *v1.NewStructuredValues("$(tasks.matrixTaskWithDefault.results.matrixResult[*])"),
+					}},
+				},
+			},
+		}},
+		featureFlag: true,
+		want: ResolvedResultRefs{{
+			Value: *v1.NewStructuredValues("default1", "default2"),
+			ResultReference: v1.ResultRef{
+				PipelineTask: "matrixTaskWithDefault",
+				Result:       "matrixResult",
+			},
+			FromTaskRun: "matrixTaskWithDefault",
+		}},
+		wantErr: false,
+	}, {
+		name: "default value used when referenced task is skipped (no TaskRun) and feature flag enabled",
+		pipelineRunState: PipelineRunState{{
+			// skippedTask has no TaskRuns - it was skipped (e.g. when expression evaluated to false)
+			PipelineTask: &v1.PipelineTask{
+				Name:    "skippedTask",
+				TaskRef: &v1.TaskRef{Name: "skippedTask"},
+			},
+			ResolvedTask: &taskresources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Results: []v1.TaskResult{{
+						Name:    "skippedResult",
+						Type:    v1.ResultsTypeString,
+						Default: v1.NewStructuredValues("default-from-skipped"),
+					}},
+				},
+			},
+		}, {
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "param",
+					Value: *v1.NewStructuredValues("$(tasks.skippedTask.results.skippedResult)"),
+				}},
+			},
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "param",
+					Value: *v1.NewStructuredValues("$(tasks.skippedTask.results.skippedResult)"),
+				}},
+			},
+		}},
+		featureFlag: true,
+		want: ResolvedResultRefs{{
+			Value: *v1.NewStructuredValues("default-from-skipped"),
+			ResultReference: v1.ResultRef{
+				PipelineTask: "skippedTask",
+				Result:       "skippedResult",
+			},
+			FromTaskRun: "",
+		}},
+		wantErr: false,
+	}, {
+		name: "error when referenced task is skipped and feature flag disabled",
+		pipelineRunState: PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "skippedTask",
+				TaskRef: &v1.TaskRef{Name: "skippedTask"},
+			},
+			ResolvedTask: &taskresources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Results: []v1.TaskResult{{
+						Name:    "skippedResult",
+						Type:    v1.ResultsTypeString,
+						Default: v1.NewStructuredValues("default-from-skipped"),
+					}},
+				},
+			},
+		}, {
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "param",
+					Value: *v1.NewStructuredValues("$(tasks.skippedTask.results.skippedResult)"),
+				}},
+			},
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "param",
+					Value: *v1.NewStructuredValues("$(tasks.skippedTask.results.skippedResult)"),
+				}},
+			},
+		}},
+		featureFlag: false,
+		wantErr:     true,
+		wantErrMsg:  "was not finished",
+	}, {
+		name: "error when referenced task is skipped and result has no default",
+		pipelineRunState: PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "skippedTask",
+				TaskRef: &v1.TaskRef{Name: "skippedTask"},
+			},
+			ResolvedTask: &taskresources.ResolvedTask{
+				TaskSpec: &v1.TaskSpec{
+					Results: []v1.TaskResult{{
+						Name: "skippedResult",
+						Type: v1.ResultsTypeString,
+						// no Default
+					}},
+				},
+			},
+		}, {
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "param",
+					Value: *v1.NewStructuredValues("$(tasks.skippedTask.results.skippedResult)"),
+				}},
+			},
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "consumerTask",
+				TaskRef: &v1.TaskRef{Name: "consumerTask"},
+				Params: []v1.Param{{
+					Name:  "param",
+					Value: *v1.NewStructuredValues("$(tasks.skippedTask.results.skippedResult)"),
+				}},
+			},
+		}},
+		featureFlag: true,
+		wantErr:     true,
+		wantErrMsg:  "was not finished",
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, pt, err := ResolveResultRefs(tt.featureFlag, tt.pipelineRunState, tt.targets)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ResolveResultRefs() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if tt.wantErr {
+				if err != nil && !strings.Contains(err.Error(), tt.wantErrMsg) {
+					t.Errorf("ResolveResultRefs() error = %v, expected to contain %q", err.Error(), tt.wantErrMsg)
+				}
+				return
+			}
+			if d := cmp.Diff(tt.want, got, cmpopts.SortSlices(lessResolvedResultRefs)); d != "" {
+				t.Fatalf("ResolveResultRef %s", diff.PrintWantGot(d))
+			}
+			if d := cmp.Diff("", pt); d != "" {
+				t.Fatalf("ResolvedPipelineTask %s", diff.PrintWantGot(d))
 			}
 		})
 	}
