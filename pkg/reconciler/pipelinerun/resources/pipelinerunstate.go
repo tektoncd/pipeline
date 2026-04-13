@@ -577,9 +577,19 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 			message = fmt.Sprintf("Tasks Completed: %d (Failed: %d, Cancelled %d), Skipped: %d",
 				cmTasks, totalFailedTasks, s.Cancelled, s.Skipped)
 		}
-		// append validation failed count in the message
+		// append validation failed count and details in the message
 		if s.ValidationFailed > 0 {
-			message += fmt.Sprintf(", Failed Validation: %d", s.ValidationFailed)
+			var errDetails []string
+			for _, rpt := range facts.ValidationFailedTask {
+				if err := CheckMissingResultReferences(facts.State, rpt); err != nil {
+					errDetails = append(errDetails, fmt.Sprintf("task %q: %s", rpt.PipelineTask.Name, err))
+				}
+			}
+			if len(errDetails) > 0 {
+				message += fmt.Sprintf(", Failed Validation: %d (%s)", s.ValidationFailed, strings.Join(errDetails, "; "))
+			} else {
+				message += fmt.Sprintf(", Failed Validation: %d", s.ValidationFailed)
+			}
 		}
 		// Set reason to ReasonCompleted - At least one is skipped
 		if s.Skipped > 0 {
