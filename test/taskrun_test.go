@@ -581,7 +581,7 @@ spec:
 		t.Fatalf("task should have been a failure")
 	}
 
-	expectedReason := "Failed"
+	expectedReason := "StepFailed"
 	actualReason := taskrun.Status.GetCondition(apis.ConditionSucceeded).GetReason()
 	if actualReason != expectedReason {
 		t.Fatalf("expected TaskRun to have failed reason %s, got %s", expectedReason, actualReason)
