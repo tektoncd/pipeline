@@ -62,7 +62,7 @@ func TestGetTaskRunStatusForPipelineTask(t *testing.T) {
 				Name:             "some-task-run",
 				PipelineTaskName: "some-task",
 			},
-			expectedStatus: &v1.TaskRunStatus{},
+			expectedErr: status.ErrNotFound,
 		}, {
 			name: "success",
 			taskRun: parse.MustParseV1TaskRun(t, `
@@ -109,7 +109,7 @@ status:
 				if err == nil {
 					t.Fatalf("no error, but expected '%s'", tc.expectedErr.Error())
 				}
-				if err.Error() != tc.expectedErr.Error() {
+				if !errors.Is(err, tc.expectedErr) && err.Error() != tc.expectedErr.Error() {
 					t.Fatalf("expected error '%s', but got '%s'", tc.expectedErr.Error(), err.Error())
 				}
 			} else {
@@ -150,7 +150,7 @@ func TestGetRunStatusForPipelineTask(t *testing.T) {
 				Name:             "some-run",
 				PipelineTaskName: "some-task",
 			},
-			expectedStatus: &v1beta1.CustomRunStatus{},
+			expectedErr: status.ErrNotFound,
 		}, {
 			name: "success",
 			run: parse.MustParseCustomRun(t, `
@@ -193,7 +193,7 @@ status:
 				if err == nil {
 					t.Fatalf("no error, but expected '%s'", tc.expectedErr.Error())
 				}
-				if err.Error() != tc.expectedErr.Error() {
+				if !errors.Is(err, tc.expectedErr) && err.Error() != tc.expectedErr.Error() {
 					t.Fatalf("expected error '%s', but got '%s'", tc.expectedErr.Error(), err.Error())
 				}
 			} else {
