@@ -38,6 +38,19 @@ import (
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/kmeta"
 )
+// MissingResultFromCompletedTaskError indicates a task completed successfully
+// but did not emit a result that a downstream task references.
+type MissingResultFromCompletedTaskError struct {
+	Task   string
+	Result string
+	Target string
+}
+
+func (e *MissingResultFromCompletedTaskError) Error() string {
+	return fmt.Sprintf("task %q completed successfully but did not emit the result %q, which is referenced by task %q",
+		e.Task, e.Result, e.Target)
+}
+
 
 const (
 	// ReasonConditionCheckFailed indicates that the reason for the failure status is that the
@@ -1002,6 +1015,13 @@ func CheckMissingResultReferences(pipelineRunState PipelineRunState, target *Res
 			customRun := referencedPipelineTask.CustomRuns[0]
 			_, err := findRunResultForParam(customRun, resultRef)
 			if err != nil {
+				if referencedPipelineTask.isSuccessful() {
+					return &MissingResultFromCompletedTaskError{
+						Task:   resultRef.PipelineTask,
+						Result: resultRef.Result,
+						Target: target.PipelineTask.Name,
+					}
+				}
 				return err
 			}
 		} else {
@@ -1011,6 +1031,13 @@ func CheckMissingResultReferences(pipelineRunState PipelineRunState, target *Res
 			taskRun := referencedPipelineTask.TaskRuns[0]
 			_, err := findTaskResultForParam(taskRun, resultRef)
 			if err != nil {
+				if referencedPipelineTask.isSuccessful() {
+					return &MissingResultFromCompletedTaskError{
+						Task:   resultRef.PipelineTask,
+						Result: resultRef.Result,
+						Target: target.PipelineTask.Name,
+					}
+				}
 				return err
 			}
 		}
