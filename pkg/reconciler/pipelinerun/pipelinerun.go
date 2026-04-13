@@ -919,14 +919,27 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 		// added to the validationFailedTask list
 		err := resources.CheckMissingResultReferences(pipelineRunFacts.State, rpt)
 		if err != nil {
-			logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
+			// Use Errorf when a task succeeded but didn't emit a result (surprising),
+			// Infof when the referenced task failed (expected that results are missing).
+			var missingResultErr *resources.MissingResultFromCompletedTaskError
+			if errors.As(err, &missingResultErr) {
+				logger.Errorf("Failed to resolve task result reference for %q with error %v", pr.Name, err)
+			} else {
+				logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
+			}
 			// If there is an error encountered, no new task
 			// will be scheduled, hence nextRpts should be empty
 			// If finally tasks are found, then those tasks will
 			// be added to the nextRpts
 			nextRpts = nil
-			logger.Infof("Adding the task %q to the validation failed list", rpt.ResolvedTask)
+			logger.Infof("Adding the task %q to the validation failed list", rpt.PipelineTask.Name)
 			pipelineRunFacts.ValidationFailedTask = append(pipelineRunFacts.ValidationFailedTask, rpt)
+			if pipelineRunFacts.ValidationFailedErrors == nil {
+				pipelineRunFacts.ValidationFailedErrors = make(map[string]string)
+			}
+			pipelineRunFacts.ValidationFailedErrors[rpt.PipelineTask.Name] = err.Error()
+			recorder.Eventf(pr, corev1.EventTypeWarning, "ResultValidationFailed",
+				"Task %q failed result validation: %v", rpt.PipelineTask.Name, err)
 		}
 	}
 	// GetFinalTasks only returns final tasks when a DAG is complete
