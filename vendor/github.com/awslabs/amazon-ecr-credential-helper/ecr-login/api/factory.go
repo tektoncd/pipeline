@@ -1,4 +1,4 @@
-// Copyright 2016 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"). You may
 // not use this file except in compliance with the License. A copy of the
@@ -100,8 +100,8 @@ func (defaultClientFactory DefaultClientFactory) NewClientWithOptions(opts Optio
 	publicConfig := opts.Config.Copy()
 	publicConfig.Region = "us-east-1"
 	return &defaultClient{
-		ecrClient:       ecr.NewFromConfig(opts.Config),
-		ecrPublicClient: ecrpublic.NewFromConfig(publicConfig),
+		ecrClient:       NewECRClientWrapper(ecr.NewFromConfig(opts.Config)),
+		ecrPublicClient: NewECRPublicClientWrapper(ecrpublic.NewFromConfig(publicConfig)),
 		credentialCache: cache.BuildCredentialsCache(opts.Config, opts.CacheDir),
 	}
 }
