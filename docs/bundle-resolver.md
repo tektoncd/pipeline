@@ -37,14 +37,16 @@ for the name, namespace and defaults that the resolver ships with.
 
 ### Options
 
-| Option Name          | Description                                                       | Example Values        |
-|----------------------|-------------------------------------------------------------------|-----------------------|
-| `backoff-duration`   | The initial duration for a backoff.                               | `500ms`, `2s`         |
-| `backoff-factor`     | The factor by which the sleep duration increases every step.      | `2.5`, `4.0`          |
-| `backoff-jitter`     | A random amount of additioan sleep between 0 andduration * jitter.| `0.1`, `0.5`          |
-| `backoff-steps`      | The number of backoffs to attempt.                                | `3`, `7`              |
-| `backoff-cap`        | The maxumum backoff duration. If reached, remaining steps are zeroed.| `10s`, `20s`       |
-| `default-kind`       | The default layer kind in the bundle image.                       | `task`, `pipeline`    |
+| Option Name                | Description                                                                  | Default Value| Example Values   |
+|----------------------------|------------------------------------------------------------------------------|---------|-----------------------|
+| `backoff-duration`         | The initial duration for backoff retries.                                    | `2s`    | `500ms`, `2s`         |
+| `backoff-factor`           | The factor by which the sleep duration increases at each retry step.         | `2.0`   | `2.5`, `4.0`          |
+| `backoff-jitter`           | Random jitter added to each backoff duration (`duration * jitter`).          | `0.1`   | `0.1`, `0.5`          |
+| `backoff-steps`            | The number of backoff retries to attempt.                                    | `2`     | `3`, `7`              |
+| `backoff-cap`              | The maximum backoff duration. If reached, remaining retry steps are capped.  | `10s`   | `10s`, `20s`          |
+| `default-service-account`  | The service account used for bundle requests when `secret` is not provided.  | `default` | `build-bot`, `default` |
+| `default-kind`             | The default layer kind in the bundle image.                                  | `task`  | `task`, `pipeline`    |
+
 
 ### Caching Options
 
