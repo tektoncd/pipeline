@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	nsconfig "github.com/tektoncd/pipeline/pkg/apis/config/namespace"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
@@ -91,6 +92,15 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			logger.Fatalf("Error creating entrypoint cache: %v", err)
 		}
 
+		// TEP-0085: Create filtered informer for per-namespace configuration.
+		// This watches only ConfigMaps labeled tekton.dev/pipeline-config=true
+		// across all namespaces, so no direct API calls are needed per namespace.
+		nsConfigFactory, nsConfigCMInformer := nsconfig.NewNamespaceConfigInformer(kubeclientset, nsconfig.DefaultResyncPeriod)
+		nsConfigCMInformer.Informer().AddEventHandler(nsconfig.LogEventHandlers(logger)) //nolint:errcheck
+		nsConfigFactory.Start(ctx.Done())
+		nsConfigFactory.WaitForCacheSync(ctx.Done())
+		nsConfigCache := nsconfig.NewNamespaceConfigCache(nsConfigCMInformer.Lister())
+
 		c := &Reconciler{
 			KubeClientSet:            kubeclientset,
 			PipelineClientSet:        pipelineclientset,
@@ -107,6 +117,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			pvcHandler:               volumeclaim.NewPVCHandler(kubeclientset, logger),
 			resolutionRequester:      resolution.NewCRDRequester(resolutionclient.Get(ctx), resolutionInformer.Lister()),
 			tracerProvider:           tracerProvider,
+			namespaceConfigCache:     nsConfigCache,
 		}
 		impl := taskrunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
 			return controller.Options{
