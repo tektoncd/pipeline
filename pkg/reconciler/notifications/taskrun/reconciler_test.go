@@ -41,6 +41,10 @@ var (
 		ObjectMeta: metav1.ObjectMeta{Name: config.GetEventsConfigName(), Namespace: system.Namespace()},
 		Data:       map[string]string{"sink": "http://sink:8080"},
 	}
+	cmSinkOnWithFormat = &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetEventsConfigName(), Namespace: system.Namespace()},
+		Data:       map[string]string{"sink": "http://sink:8080", "formats": "tektonv1"},
+	}
 	cmSinkOff = &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: config.GetEventsConfigName(), Namespace: system.Namespace()},
 		Data:       map[string]string{"sink": ""},
@@ -268,4 +272,40 @@ func TestReconcileKind_FeatureFlagOff(t *testing.T) {
 
 	ceClientFake := ceClient.(cloudevent.FakeClient)
 	ceClientFake.CheckCloudEventsUnordered(t, "feature flag off", []string{})
+}
+
+// TestReconcileKind_ExplicitTektonV1Format tests that events are sent when the
+// formats field is set explicitly to "tektonv1" in the ConfigMap, identical to
+// the default behaviour where the formats key is omitted.
+func TestReconcileKind_ExplicitTektonV1Format(t *testing.T) {
+	tr := v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-taskrun", Namespace: "foo"},
+		Status: v1.TaskRunStatus{
+			Status: duckv1.Status{Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
+				Reason: v1.TaskRunReasonSuccessful.String(),
+			}}},
+		},
+	}
+
+	d := test.Data{
+		TaskRuns:                []*v1.TaskRun{&tr},
+		ConfigMaps:              []*corev1.ConfigMap{cmSinkOnWithFormat, cmRunsOn},
+		ExpectedCloudEventCount: 1,
+	}
+	testAssets, cancel := ntesting.InitializeTestAssets(t, &d)
+	defer cancel()
+
+	ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
+	reconciler := taskrun.NewReconciler(ceClient, cacheClient)
+
+	if err := reconciler.ReconcileKind(testAssets.Ctx, &tr); err != nil {
+		t.Fatalf("didn't expect an error, but got one: %v", err)
+	}
+
+	ceClientFake := ceClient.(cloudevent.FakeClient)
+	ceClientFake.CheckCloudEventsUnordered(t, "explicit tektonv1 format", []string{
+		`(?s)dev.tekton.event.taskrun.successful.v1.*test-taskrun`,
+	})
 }

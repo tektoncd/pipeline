@@ -74,6 +74,9 @@ data:
   sink: https://my-sink-url
 ```
 
+The `formats` field specifies which event format to use; currently `tektonv1` is the
+only supported format and is the default when the field is omitted.
+
 The sink used to be configured in the `config-defaults` config map.
 This option is still available, but deprecated, and will be removed.
 
