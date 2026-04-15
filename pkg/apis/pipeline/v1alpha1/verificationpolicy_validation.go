@@ -90,13 +90,27 @@ func (key *KeyRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 	return errs
 }
 
-// Validate ResourcePattern and make sure the Pattern is valid regex expression
+// Validate ResourcePattern and make sure the Pattern is valid regex expression.
+// Patterns that are not anchored with ^ and $ are flagged with a warning because
+// unanchored patterns can match unintended substrings in resource URIs, which
+// could allow an attacker to craft a URI that contains the trusted pattern as a
+// substring.
 func (r *ResourcePattern) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if _, err := regexp.Compile(r.Pattern); err != nil {
 		errs = errs.Also(apis.ErrInvalidValue(r.Pattern, "ResourcePattern", fmt.Sprintf("%v: %v", InvalidResourcePatternErr, err)))
 		return errs
 	}
-	return nil
+
+	if !strings.HasPrefix(r.Pattern, "^") || !strings.HasSuffix(r.Pattern, "$") {
+		errs = errs.Also(apis.ErrGeneric(
+			fmt.Sprintf("resource pattern %q is not anchored with ^ and $; "+
+				"unanchored patterns may match unintended resource URIs — "+
+				"consider using ^%s$ to match the full URI", r.Pattern, r.Pattern),
+			"pattern",
+		))
+	}
+
+	return errs
 }
 
 // validateHashAlgorithm checks if the algorithm is supported
