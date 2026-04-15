@@ -76,9 +76,11 @@ data:
   # Setting this flag will determine which gated features are enabled.
   # Acceptable values are "stable", "beta", or "alpha".
   enable-api-fields: "beta"
-  # Setting this flag to "true" enables CloudEvents for CustomRuns and Runs, as long as a
-  # CloudEvents sink is configured in the config-defaults config map
-  send-cloudevents-for-runs: "false"
+  # DEPRECATED: send-cloudevents-for-runs is deprecated and will be removed in a future
+  # release. CloudEvents are now enabled by default when a sink is configured in the
+  # config-events ConfigMap. This flag only affects CustomRuns; it has no effect on
+  # TaskRuns or PipelineRuns.
+  send-cloudevents-for-runs: "true"
   # This flag affects the behavior of taskruns and pipelineruns in cases where no VerificationPolicies match them.
   # If it is set to "fail", TaskRuns and PipelineRuns will fail verification if no matching policies are found.
   # If it is set to "warn", TaskRuns and PipelineRuns will run to completion if no matching policies are found, and an error will be logged.
