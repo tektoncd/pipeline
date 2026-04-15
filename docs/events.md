@@ -90,6 +90,27 @@ notification that the resource exists and is waiting to be processed.
 
 CloudEvents are only sent when enabled in the [configuration](./additional-configs.md#configuring-cloudevents-notifications).
 
+## Event formats
+
+The `tekton-events-controller` sends events in the formats specified by the `formats`
+field in `config-events`. The currently available format is:
+
+- `tektonv1`: Tekton's native CloudEvents format. Produces the event types listed in the
+  table above. See [Format of CloudEvents](#format-of-cloudevents) for payload details.
+
+When `formats` is omitted from `config-events`, the controller defaults to `tektonv1`.
+To configure it explicitly:
+
+```yaml
+data:
+  formats: tektonv1
+  sink: https://my-sink-url
+```
+
+Multiple formats can be listed as a comma-separated value (future releases will add
+additional formats). Each configured format produces its own set of events, dispatched
+concurrently to the same sink.
+
 ## Delivery visibility
 
 Each send attempt by the `tekton-events-controller` is recorded as a Kubernetes Event on the
