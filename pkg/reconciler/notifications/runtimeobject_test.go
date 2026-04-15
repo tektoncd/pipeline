@@ -151,6 +151,52 @@ func TestReconcileRunObject(t *testing.T) {
 	}
 }
 
+// TestReconcileRunObject_ExplicitTektonV1Format verifies that setting
+// formats=tektonv1 explicitly in the ConfigMap produces events, identical to
+// the default behaviour where the formats key is omitted.
+func TestReconcileRunObject_ExplicitTektonV1Format(t *testing.T) {
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetEventsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"sink":    "http://synk:8080",
+				"formats": "tektonv1",
+			},
+		},
+	}
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "tr", Namespace: "foo"},
+		Status: v1.TaskRunStatus{
+			Status: duckv1.Status{Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
+				Reason: v1.TaskRunReasonSuccessful.String(),
+			}}},
+		},
+	}
+	wantCEs := []string{`(?s)dev.tekton.event.taskrun.successful.v1.*tr`}
+
+	d := test.Data{
+		ConfigMaps:              cms,
+		ExpectedCloudEventCount: len(wantCEs),
+	}
+	testAssets, cancel := ntesting.InitializeTestAssets(t, &d)
+	defer cancel()
+
+	ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
+	reconciler := &ntesting.FakeReconciler{
+		CloudEventClient: ceClient,
+		CacheClient:      cacheClient,
+	}
+
+	if err := notifications.ReconcileRunObject(testAssets.Ctx, reconciler, tr); err != nil {
+		t.Errorf("didn't expect an error, but got one: %v", err)
+	}
+
+	ceClientFake := ceClient.(cloudevent.FakeClient)
+	ceClientFake.CheckCloudEventsUnordered(t, "explicit tektonv1 format", wantCEs)
+}
+
 func TestReconcileRunObject_Disabled(t *testing.T) {
 	// ReconcileRunObject only skips events when no sink is configured.
 	// The send-cloudevents-for-runs flag gate (deprecated) is enforced by
