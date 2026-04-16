@@ -44,7 +44,7 @@ for the name, namespace and defaults that the resolver ships with.
 | `backoff-jitter`           | Random jitter added to each backoff duration (`duration * jitter`).          | `0.1`   | `0.1`, `0.5`          |
 | `backoff-steps`            | The number of backoff retries to attempt.                                    | `2`     | `3`, `7`              |
 | `backoff-cap`              | The maximum backoff duration. If reached, remaining retry steps are capped.  | `10s`   | `10s`, `20s`          |
-| `default-service-account`  | The service account used for bundle requests when `secret` is not provided.  | `default` | `build-bot`, `default` |
+| `default-service-account`  | the default service account name to use for bundle requests.                 | `default` | `build-bot`, `default` |
 | `default-kind`             | The default layer kind in the bundle image.                                  | `task`  | `task`, `pipeline`    |
 
 
