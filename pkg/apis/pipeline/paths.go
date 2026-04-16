@@ -32,4 +32,7 @@ const (
 	ScriptDir = "/tekton/scripts"
 
 	ArtifactsDir = "/tekton/artifacts"
+	// SecretMaskDir is the directory where secret values are mounted
+	// for redaction from step logs when secret masking is enabled.
+	SecretMaskDir = "/tekton/secret-mask"
 )

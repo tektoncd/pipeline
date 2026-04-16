@@ -111,6 +111,8 @@ const (
 	EnableWaitExponentialBackoff = "enable-wait-exponential-backoff"
 	// DefaultEnableWaitExponentialBackoff is the default value for EnableWaitExponentialBackoff
 	DefaultEnableWaitExponentialBackoff = false
+	// EnableSecretMasking is the flag to enable masking of secret values in step logs
+	EnableSecretMasking = "enable-secret-masking"
 
 	// EnableStepActions is the flag to enable step actions (no-op since it's stable)
 	EnableStepActions = "enable-step-actions"
@@ -182,6 +184,13 @@ var (
 		Enabled:    DefaultAlphaFeatureEnabled,
 		Deprecated: true,
 	}
+
+	// DefaultEnableSecretMasking is the default PerFeatureFlag value for EnableSecretMasking
+	DefaultEnableSecretMasking = PerFeatureFlag{
+		Name:      EnableSecretMasking,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
 )
 
 // FeatureFlags holds the features configurations
@@ -217,6 +226,7 @@ type FeatureFlags struct {
 	EnableConciseResolverSyntax  bool   `json:"enableConciseResolverSyntax,omitempty"`
 	EnableKubernetesSidecar      bool   `json:"enableKubernetesSidecar,omitempty"`
 	EnableWaitExponentialBackoff bool   `json:"enableWaitExponentialBackoff,omitempty"`
+	EnableSecretMasking          bool   `json:"enableSecretMasking,omitempty"`
 	// DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
 	// to allow deletion of PipelineRuns created before v0.62.x.
 	// This field is not used and can be removed in a future release
@@ -328,6 +338,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setFeature(EnableWaitExponentialBackoff, DefaultEnableWaitExponentialBackoff, &tc.EnableWaitExponentialBackoff); err != nil {
+		return nil, err
+	}
+	if err := setPerFeatureFlag(EnableSecretMasking, DefaultEnableSecretMasking, &tc.EnableSecretMasking); err != nil {
 		return nil, err
 	}
 
