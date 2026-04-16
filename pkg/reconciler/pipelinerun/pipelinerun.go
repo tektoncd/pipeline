@@ -21,8 +21,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -1711,7 +1711,7 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1.Pipe
 	if err != nil {
 		return nil, fmt.Errorf("error getting PipelineRun %s when updating labels/annotations: %w", pr.Name, err)
 	}
-	if !reflect.DeepEqual(pr.ObjectMeta.Labels, newPr.ObjectMeta.Labels) || !reflect.DeepEqual(pr.ObjectMeta.Annotations, newPr.ObjectMeta.Annotations) {
+	if !maps.Equal(pr.ObjectMeta.Labels, newPr.ObjectMeta.Labels) || !maps.Equal(pr.ObjectMeta.Annotations, newPr.ObjectMeta.Annotations) {
 		// Note that this uses Update vs. Patch because the former is significantly easier to test.
 		// If we want to switch this to Patch, then we will need to teach the utilities in test/controller.go
 		// to deal with Patch (setting resourceVersion, and optimistic concurrency checks).

@@ -20,7 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -789,7 +789,7 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1.Task
 	if err != nil {
 		return nil, fmt.Errorf("error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
 	}
-	if !reflect.DeepEqual(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) || !reflect.DeepEqual(tr.ObjectMeta.Annotations, newTr.ObjectMeta.Annotations) {
+	if !maps.Equal(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) || !maps.Equal(tr.ObjectMeta.Annotations, newTr.ObjectMeta.Annotations) {
 		// Note that this uses Update vs. Patch because the former is significantly easier to test.
 		// If we want to switch this to Patch, then we will need to teach the utilities in test/controller.go
 		// to deal with Patch (setting resourceVersion, and optimistic concurrency checks).
