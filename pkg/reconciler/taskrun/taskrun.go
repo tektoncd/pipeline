@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
@@ -95,6 +96,16 @@ type Reconciler struct {
 	pvcHandler               volumeclaim.PvcHandler
 	resolutionRequester      resolution.Requester
 	tracerProvider           trace.TracerProvider
+
+	// sidecarMode caches ServerVersion + IsNativeSidecarSupport when EnableKubernetesSidecar
+	// is true, so the done path does not call Discovery on every resync (#9755).
+	// Status.Sidecars cannot be used to skip stopSidecars: injected containers (e.g. Istio)
+	// are not listed there but buildSidecarStopPatch stops them using the live Pod.
+	sidecarMode struct {
+		sync.Mutex
+		computed     bool
+		useTektonNop bool // if true, run stopSidecars; if false, native Kubernetes sidecars
+	}
 }
 
 const (
@@ -163,25 +174,17 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 		// and may not have had all of the assumed default specified.
 		tr.SetDefaults(ctx)
 
-		// When sidecar teardown is unnecessary, skip stopSidecars and discovery — avoids
-		// a live Pods().Get and ServerVersion on every resync of completed TaskRuns (#9755).
-		if taskRunNeedsSidecarDonePath(tr) {
-			useTektonSidecar := true
-			if config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
-				dc := c.KubeClientSet.Discovery()
-				sv, err := dc.ServerVersion()
-				if err != nil {
-					return err
-				}
-				if podconvert.IsNativeSidecarSupport(sv) {
-					useTektonSidecar = false
-					logger.Infof("Using Kubernetes Native Sidecars \n")
-				}
-			}
-			if useTektonSidecar {
-				if err := c.stopSidecars(ctx, tr); err != nil {
-					return err
-				}
+		// stopSidecars must run whenever we use Tekton-managed sidecars: TaskRun status only
+		// lists containers with the sidecar- prefix; injected sidecars are visible only on
+		// the Pod (see buildSidecarStopPatch). Cache ServerVersion + native-sidecar detection
+		// so we do not call Discovery on every resync (#9755).
+		useTektonSidecar, err := c.useTektonSidecarMode(ctx, logger)
+		if err != nil {
+			return err
+		}
+		if useTektonSidecar {
+			if err := c.stopSidecars(ctx, tr); err != nil {
+				return err
 			}
 		}
 
@@ -380,30 +383,29 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1.TaskRun
 	}
 }
 
-// taskRunNeedsSidecarDonePath returns true when the TaskRun done path should run
-// discovery and possibly stopSidecars. When false, completed TaskRun resyncs avoid
-// ServerVersion and Pods().Get (#9755).
-//
-// We skip when status lists every sidecar as terminated, or when sidecar status is
-// still empty but the resolved task spec has no sidecars. If status is empty and the
-// task declares sidecars (or TaskSpec is unavailable), we still run the path so we do
-// not skip teardown before sidecar status has been written.
-func taskRunNeedsSidecarDonePath(tr *v1.TaskRun) bool {
-	if podconvert.IsSidecarStatusRunning(tr) {
-		return true
+// useTektonSidecarMode returns whether the done path should run stopSidecars (Tekton nop
+// image) vs skipping it for native Kubernetes sidecars. ServerVersion is queried at most once
+// per reconciler when EnableKubernetesSidecar is true.
+func (c *Reconciler) useTektonSidecarMode(ctx context.Context, logger *zap.SugaredLogger) (bool, error) {
+	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
+		return true, nil
 	}
-	if len(tr.Status.Sidecars) > 0 {
-		// Every entry has Terminated set (IsSidecarStatusRunning is false).
-		return false
+	c.sidecarMode.Lock()
+	defer c.sidecarMode.Unlock()
+	if c.sidecarMode.computed {
+		return c.sidecarMode.useTektonNop, nil
 	}
-	ts := tr.Status.TaskSpec
-	if ts == nil {
-		ts = tr.Spec.TaskSpec
+	sv, err := c.KubeClientSet.Discovery().ServerVersion()
+	if err != nil {
+		return false, err
 	}
-	if ts == nil {
-		return true
+	native := podconvert.IsNativeSidecarSupport(sv)
+	c.sidecarMode.useTektonNop = !native
+	c.sidecarMode.computed = true
+	if native {
+		logger.Infof("Using Kubernetes Native Sidecars \n")
 	}
-	return len(ts.Sidecars) > 0
+	return c.sidecarMode.useTektonNop, nil
 }
 
 func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {

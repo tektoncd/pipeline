@@ -6059,175 +6059,108 @@ status:
 	}
 }
 
-func TestReconcile_DoneTaskRun_SkipsStopSidecarsWithoutRunningSidecarsInStatus(t *testing.T) {
-	tcs := []struct {
-		name string
-		yaml string
-	}{
-		{
-			name: "no sidecars in status",
-			yaml: `
-metadata:
-  name: test-taskrun
-  namespace: foo
-status:
-  conditions:
-  - status: "True"
-    type: Succeeded
-  podName: test-taskrun-pod
-  startTime: "2000-01-01T01:01:01Z"
-  taskSpec:
-    steps:
-    - name: step1
-      image: busybox
-`,
+// TestStopSidecars_DeclaredSidecarTerminatedInStatusButInjectedStillRuns covers the case where
+// TaskRun.Status.Sidecars only reflects sidecar- prefixed containers; a non-prefixed injected
+// sidecar can still be running on the Pod and must be stopped via the live Pod (see #9760 review).
+func TestStopSidecars_DeclaredSidecarTerminatedInStatusButInjectedStillRuns(t *testing.T) {
+	sidecarTask := &v1.Task{
+		ObjectMeta: objectMeta("test-task-injected-terminated-status", "foo"),
+		Spec: v1.TaskSpec{
+			Steps: []v1.Step{simpleStep},
+			Sidecars: []v1.Sidecar{{
+				Name:  "sidecar1",
+				Image: "image-id",
+			}},
 		},
-		{
-			name: "all sidecars terminated",
-			yaml: `
+	}
+
+	taskRun := parse.MustParseV1TaskRun(t, `
 metadata:
-  name: test-taskrun
+  name: test-taskrun-injected-terminated-status
   namespace: foo
+spec:
+  taskRef:
+    name: test-task-injected-terminated-status
 status:
+  podName: test-taskrun-injected-terminated-status-pod
   conditions:
-  - status: "True"
+  - message: Build succeeded
+    reason: Build succeeded
+    status: "True"
     type: Succeeded
-  podName: test-taskrun-pod
   sidecars:
   - name: sidecar1
+    container: sidecar-sidecar1
     terminated:
       exitCode: 0
       finishedAt: "2000-01-01T02:00:00Z"
       reason: Completed
       startedAt: "2000-01-01T01:01:01Z"
-  startTime: "2000-01-01T01:01:01Z"
-`,
-		},
-	}
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			tr := parse.MustParseV1TaskRun(t, tc.yaml)
-			pod := &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-taskrun-pod",
-					Namespace: "foo",
-				},
-			}
-			d := test.Data{
-				Pods:     []*corev1.Pod{pod},
-				TaskRuns: []*v1.TaskRun{tr},
-			}
-			testAssets, cancel := getTaskRunController(t, d)
-			defer cancel()
-			c := testAssets.Controller
-			clients := testAssets.Clients
-			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr)); err != nil {
-				t.Fatalf("Reconcile: %v", err)
-			}
-			for _, action := range clients.Kube.Actions() {
-				if action.Matches("get", "pods") {
-					t.Fatalf("expected no pods get when sidecars are absent or all terminated, got action %#v", action)
-				}
-			}
-		})
-	}
-}
+`)
 
-func TestTaskRunNeedsSidecarDonePath(t *testing.T) {
-	tcs := []struct {
-		name string
-		tr   *v1.TaskRun
-		want bool
-	}{
-		{
-			name: "sidecar still running in status",
-			tr: &v1.TaskRun{
-				Status: v1.TaskRunStatus{
-					TaskRunStatusFields: v1.TaskRunStatusFields{
-						Sidecars: []v1.SidecarState{{
-							ContainerState: corev1.ContainerState{
-								Running: &corev1.ContainerStateRunning{},
-							},
-							Name: "sc",
-						}},
-					},
-				},
-			},
-			want: true,
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-injected-terminated-status-pod",
+			Namespace: "foo",
 		},
-		{
-			name: "all sidecars terminated in status",
-			tr: &v1.TaskRun{
-				Status: v1.TaskRunStatus{
-					TaskRunStatusFields: v1.TaskRunStatusFields{
-						Sidecars: []v1.SidecarState{{
-							ContainerState: corev1.ContainerState{
-								Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
-							},
-							Name: "sc",
-						}},
-					},
-				},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{Name: "step-do-something", Image: "my-step-image"},
+				{Name: "sidecar1", Image: "image-id"},
+				{Name: "injected-sidecar", Image: "some-image"},
 			},
-			want: false,
 		},
-		{
-			name: "empty sidecar status and no task spec",
-			tr: &v1.TaskRun{
-				Status: v1.TaskRunStatus{
-					TaskRunStatusFields: v1.TaskRunStatusFields{},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:  "step-do-something",
+					State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{}},
+				},
+				{
+					Name:  "sidecar-sidecar1",
+					State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 0}},
+				},
+				{
+					Name:  "injected-sidecar",
+					State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}},
 				},
 			},
-			want: true,
-		},
-		{
-			name: "empty sidecar status task has no sidecars",
-			tr: &v1.TaskRun{
-				Status: v1.TaskRunStatus{
-					TaskRunStatusFields: v1.TaskRunStatusFields{
-						TaskSpec: &v1.TaskSpec{
-							Steps: []v1.Step{{Name: "s", Image: "img"}},
-						},
-					},
-				},
-			},
-			want: false,
-		},
-		{
-			name: "empty sidecar status task declares sidecars",
-			tr: &v1.TaskRun{
-				Status: v1.TaskRunStatus{
-					TaskRunStatusFields: v1.TaskRunStatusFields{
-						TaskSpec: &v1.TaskSpec{
-							Steps:    []v1.Step{{Name: "s", Image: "img"}},
-							Sidecars: []v1.Sidecar{{Name: "sc", Image: "img"}},
-						},
-					},
-				},
-			},
-			want: true,
-		},
-		{
-			name: "empty sidecar status uses spec.taskSpec for inline task",
-			tr: &v1.TaskRun{
-				Spec: v1.TaskRunSpec{
-					TaskSpec: &v1.TaskSpec{
-						Steps: []v1.Step{{Name: "s", Image: "img"}},
-					},
-				},
-				Status: v1.TaskRunStatus{
-					TaskRunStatusFields: v1.TaskRunStatusFields{},
-				},
-			},
-			want: false,
 		},
 	}
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := taskRunNeedsSidecarDonePath(tc.tr); got != tc.want {
-				t.Fatalf("taskRunNeedsSidecarDonePath() = %v, want %v", got, tc.want)
-			}
-		})
+
+	d := test.Data{
+		Pods:     []*corev1.Pod{pod},
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Tasks:    []*v1.Task{sidecarTask},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+		t.Fatalf("Reconcile: %v", err)
+	}
+
+	getPodFound := false
+	for _, action := range clients.Kube.Actions() {
+		if action.Matches("get", "pods") {
+			getPodFound = true
+			break
+		}
+	}
+	if !getPodFound {
+		t.Fatalf("expected Pods().Get to stop a still-running injected sidecar not listed in TaskRun status")
+	}
+
+	retrievedPod, err := clients.Kube.CoreV1().Pods(pod.Namespace).Get(testAssets.Ctx, pod.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Get pod: %v", err)
+	}
+	if d := cmp.Diff(images.NopImage, retrievedPod.Spec.Containers[2].Image); d != "" {
+		t.Errorf("expected injected sidecar image replaced with nop %s", diff.PrintWantGot(d))
 	}
 }
 
