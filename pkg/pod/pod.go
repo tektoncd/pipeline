@@ -37,6 +37,7 @@ import (
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/version"
@@ -83,6 +84,12 @@ const (
 
 	// K8s version to determine if to use native k8s sidecar or Tekton sidecar
 	SidecarK8sMinorVersionCheck = 29
+
+	// Internal container name constants. These containers are created by Tekton
+	// and are not user-defined steps or sidecars.
+	ContainerNamePrepare               = "prepare"
+	ContainerNamePlaceScripts          = "place-scripts"
+	ContainerNameWorkingDirInitializer = "working-dir-initializer"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -131,7 +138,26 @@ var (
 
 	// MaxActiveDeadlineSeconds is a maximum permitted value to be used for a task with no timeout
 	MaxActiveDeadlineSeconds = int64(math.MaxInt32)
+
+	// internalContainerDefaultCPU is the default CPU request for init containers (prepare, place-scripts, working-dir-initializer).
+	internalContainerDefaultCPU = resource.MustParse("10m")
+	// internalContainerDefaultSidecarCPU is the default CPU request for the results sidecar which runs continuously.
+	internalContainerDefaultSidecarCPU = resource.MustParse("50m")
+	// internalContainerDefaultMemorySmall is the default memory request (16Mi) for prepare and working-dir-initializer.
+	internalContainerDefaultMemorySmall = resource.MustParse("16Mi")
+	// internalContainerDefaultMemoryMedium is the default memory request (32Mi) for place-scripts and results sidecar.
+	internalContainerDefaultMemoryMedium = resource.MustParse("32Mi")
 )
+
+// IsInternalContainer returns true if the container name is one of Tekton's
+// internal containers (prepare, place-scripts, working-dir-initializer, or
+// the results sidecar).
+func IsInternalContainer(name string) bool {
+	return name == ContainerNamePrepare ||
+		name == ContainerNamePlaceScripts ||
+		name == ContainerNameWorkingDirInitializer ||
+		name == pipeline.ReservedResultsSidecarContainerName
+}
 
 // Builder exposes options to configure Pod construction from TaskSpecs/Runs.
 type Builder struct {
@@ -624,7 +650,7 @@ func entrypointInitContainer(image string, steps []v1.Step, securityContext Secu
 	// container to place the entrypoint binary. Also add timeout flags
 	// to entrypoint binary.
 	prepareInitContainer := corev1.Container{
-		Name:  "prepare",
+		Name:  ContainerNamePrepare,
 		Image: image,
 		// Rewrite default WorkingDir from "/home/nonroot" to "/"
 		// as suggested at https://github.com/GoogleContainerTools/distroless/issues/718
@@ -632,6 +658,16 @@ func entrypointInitContainer(image string, steps []v1.Step, securityContext Secu
 		WorkingDir:   "/",
 		Command:      command,
 		VolumeMounts: volumeMounts,
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    internalContainerDefaultCPU,
+				corev1.ResourceMemory: internalContainerDefaultMemorySmall,
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    internalContainerDefaultCPU,
+				corev1.ResourceMemory: internalContainerDefaultMemorySmall,
+			},
+		},
 	}
 	if securityContext.SetSecurityContext {
 		prepareInitContainer.SecurityContext = securityContext.GetSecurityContext(windows)
@@ -697,6 +733,16 @@ func createResultsSidecar(taskSpec v1.TaskSpec, image string, securityContext Se
 			{
 				Name:  "SIDECAR_LOG_POLLING_INTERVAL",
 				Value: pollingInterval.String(),
+			},
+		},
+		ComputeResources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    internalContainerDefaultSidecarCPU,
+				corev1.ResourceMemory: internalContainerDefaultMemoryMedium,
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    internalContainerDefaultSidecarCPU,
+				corev1.ResourceMemory: internalContainerDefaultMemoryMedium,
 			},
 		},
 	}

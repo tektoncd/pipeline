@@ -237,7 +237,7 @@ data:
         cpu: "500m"
 ```
 
-Any resource requirements set at the `Task` and `TaskRun` levels will overidde the default one specified in the `config-defaults` configmap.
+Any resource requirements set at the `Task` and `TaskRun` levels will override the default one specified in the `config-defaults` configmap.
 
 ## Customizing basic execution parameters
 
