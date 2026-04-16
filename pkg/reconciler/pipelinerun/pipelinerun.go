@@ -186,6 +186,13 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 	logger := logging.FromContext(ctx)
 	ctx = cloudevent.ToContext(ctx, c.cloudEventClient)
 	ctx = initTracing(ctx, c.tracerProvider, pr)
+	sc := trace.SpanFromContext(ctx).SpanContext()
+	if sc.IsValid() {
+		logger = logger.With(
+			zap.String("traceID", sc.TraceID().String()),
+			zap.String("spanID", sc.SpanID().String()),
+		)
+	}
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "PipelineRun:ReconcileKind")
 	defer span.End()
 

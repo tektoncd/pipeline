@@ -124,6 +124,13 @@ var (
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 	ctx = initTracing(ctx, c.tracerProvider, tr)
+	sc := trace.SpanFromContext(ctx).SpanContext()
+	if sc.IsValid() {
+		logger = logger.With(
+			zap.String("traceID", sc.TraceID().String()),
+			zap.String("spanID", sc.SpanID().String()),
+		)
+	}
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:ReconcileKind")
 	defer span.End()
 
