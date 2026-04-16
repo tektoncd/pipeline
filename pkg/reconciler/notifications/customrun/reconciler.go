@@ -25,8 +25,12 @@ import (
 	customrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/customrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/notifications"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
+
+const tracerName = "CustomRunNotificationsReconciler"
 
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
@@ -64,5 +68,13 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, customRun *v1beta1.Custo
 	if !configs.FeatureFlags.SendCloudEventsForRuns {
 		return nil
 	}
+
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "ReconcileKind")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("customrun", customRun.Name),
+		attribute.String("namespace", customRun.Namespace),
+	)
+
 	return notifications.ReconcileRunObject(ctx, c, customRun)
 }
