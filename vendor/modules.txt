@@ -617,7 +617,7 @@ github.com/mitchellh/mapstructure
 # github.com/mitchellh/reflectwalk v1.0.2
 ## explicit
 github.com/mitchellh/reflectwalk
-# github.com/moby/spdystream v0.5.0
+# github.com/moby/spdystream v0.5.1
 ## explicit; go 1.13
 github.com/moby/spdystream
 github.com/moby/spdystream/spdy
