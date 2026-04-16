@@ -6038,6 +6038,111 @@ status:
 	}
 }
 
+// TestStopSidecars_DeclaredSidecarTerminatedInStatusButInjectedStillRuns covers the case where
+// TaskRun.Status.Sidecars only reflects sidecar- prefixed containers; a non-prefixed injected
+// sidecar can still be running on the Pod and must be stopped via the live Pod (see #9760 review).
+func TestStopSidecars_DeclaredSidecarTerminatedInStatusButInjectedStillRuns(t *testing.T) {
+	sidecarTask := &v1.Task{
+		ObjectMeta: objectMeta("test-task-injected-terminated-status", "foo"),
+		Spec: v1.TaskSpec{
+			Steps: []v1.Step{simpleStep},
+			Sidecars: []v1.Sidecar{{
+				Name:  "sidecar1",
+				Image: "image-id",
+			}},
+		},
+	}
+
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-injected-terminated-status
+  namespace: foo
+spec:
+  taskRef:
+    name: test-task-injected-terminated-status
+status:
+  podName: test-taskrun-injected-terminated-status-pod
+  conditions:
+  - message: Build succeeded
+    reason: Build succeeded
+    status: "True"
+    type: Succeeded
+  sidecars:
+  - name: sidecar1
+    container: sidecar-sidecar1
+    terminated:
+      exitCode: 0
+      finishedAt: "2000-01-01T02:00:00Z"
+      reason: Completed
+      startedAt: "2000-01-01T01:01:01Z"
+`)
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-injected-terminated-status-pod",
+			Namespace: "foo",
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{Name: "step-do-something", Image: "my-step-image"},
+				{Name: "sidecar1", Image: "image-id"},
+				{Name: "injected-sidecar", Image: "some-image"},
+			},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:  "step-do-something",
+					State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{}},
+				},
+				{
+					Name:  "sidecar-sidecar1",
+					State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 0}},
+				},
+				{
+					Name:  "injected-sidecar",
+					State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}},
+				},
+			},
+		},
+	}
+
+	d := test.Data{
+		Pods:     []*corev1.Pod{pod},
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Tasks:    []*v1.Task{sidecarTask},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+		t.Fatalf("Reconcile: %v", err)
+	}
+
+	getPodFound := false
+	for _, action := range clients.Kube.Actions() {
+		if action.Matches("get", "pods") {
+			getPodFound = true
+			break
+		}
+	}
+	if !getPodFound {
+		t.Fatalf("expected Pods().Get to stop a still-running injected sidecar not listed in TaskRun status")
+	}
+
+	retrievedPod, err := clients.Kube.CoreV1().Pods(pod.Namespace).Get(testAssets.Ctx, pod.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Get pod: %v", err)
+	}
+	if d := cmp.Diff(images.NopImage, retrievedPod.Spec.Containers[2].Image); d != "" {
+		t.Errorf("expected injected sidecar image replaced with nop %s", diff.PrintWantGot(d))
+	}
+}
+
 func TestStopSidecars_WithInjectedSidecarsNoTaskSpecSidecars(t *testing.T) {
 	sidecarTask := &v1.Task{
 		ObjectMeta: objectMeta("test-task-injected-sidecar", "foo"),
