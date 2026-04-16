@@ -72,7 +72,7 @@ For instructions on using variable substitutions see the relevant section of [th
 | `context.taskRun.namespace`                        | The namespace of the `TaskRun` that this `Task` is running in.                                                                 |
 | `context.taskRun.uid`                              | The uid of the `TaskRun` that this `Task` is running in.                                                                       |
 | `context.task.name`                                | The name of this `Task`.                                                                                                       |
-| `context.task.retry-count`                         | The current retry number of this `Task`.                                                                                       |
+| `context.task.retry-count`                         | The current retry number of this `Task`. Only substituted when the `PipelineTask` uses an inline `taskSpec`; with `taskRef` the value is passed through as a literal string. |
 | `steps.step-<stepName>.exitCode.path`              | The path to the file where a Step's exit code is stored.                                                                       |
 | `steps.step-unnamed-<stepIndex>.exitCode.path`     | The path to the file where a Step's exit code is stored for a step without any name.                                           |
 | `artifacts.path`                                   | The path to the file where the `Task` writes its artifacts data.                                                               |
