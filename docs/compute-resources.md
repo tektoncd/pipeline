@@ -51,8 +51,8 @@ which run sequentially. However, the pod's effective resource requirements are s
 sum of its containers' resource requirements. This means that when specifying resource 
 requirements for `Step` containers, they must be treated as if they are running in parallel.
 
-Tekton adjusts `Step` resource requirements to comply with [LimitRanges](#limitrange-support).
-[ResourceQuotas](#resourcequota-support) are not currently supported.
+Tekton adjusts `Step` resource requirements to comply with [LimitRanges](#limitrange-support)
+and [ResourceQuotas](#resourcequota-support).
 
 Instead of specifying resource requirements on each `Step`, users can choose to specify resource requirements at the Task-level. If users specify a Task-level resource request, it will ensure that the kubelet reserves only that amount of resources to execute the `Task`'s `Steps`.
 If users specify a Task-level resource limit, no `Step` may use more than that amount of resources.
@@ -316,15 +316,15 @@ The maximum of the "min" values is the output "min" value.
 Kubernetes allows users to define [ResourceQuotas](https://kubernetes.io/docs/concepts/policy/resource-quotas/),
 which restrict the maximum resource requests and limits of all pods running in a namespace.
 
-To deploy Tekton TaskRuns or PipelineRuns in namespaces with ResourceQuotas, compute resource requirements
-must be set for all containers in a `TaskRun`'s pod, including the init containers injected by Tekton.
-`Step` and `Sidecar` resource requirements can be configured directly through the API, as described in
-[Task Resource Requirements](#task-resource-requirements). To configure resource requirements for Tekton's init containers,
-deploy a LimitRange in the same namespace. The LimitRange's `default` and `defaultRequest` will be applied to the init containers,
-and divided among the `Steps` and `Sidecars`, as described in [LimitRange Support](#limitrange-support).
+Tekton's internal containers (`prepare`, `place-scripts`, `working-dir-initializer`,
+`sidecar-tekton-log-results`) ship with minimal default resource requests so that pods can be
+scheduled in namespaces with ResourceQuotas without requiring a LimitRange. These defaults can
+be overridden using the `default-container-resource-requirements` ConfigMap
+(see [Configuring default resources requirements](./additional-configs.md#configuring-default-resources-requirements)).
 
-[#2933](https://github.com/tektoncd/pipeline/issues/2933) tracks support for running `TaskRuns` in a namespace with a ResourceQuota
-without having to use LimitRanges.
+`Step` and `Sidecar` resource requirements can be configured directly through the API, as described in
+[Task Resource Requirements](#task-resource-requirements). You can also deploy a LimitRange
+in the same namespace, as described in [LimitRange Support](#limitrange-support).
 
 ResourceQuotas consider the effective resource requests and limits of a pod, which Kubernetes determines by summing the resource requirements
 of its containers (under the assumption that they run in parallel). When using LimitRanges to set compute resources for `TaskRun` pods,

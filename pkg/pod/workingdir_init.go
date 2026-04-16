@@ -62,12 +62,22 @@ func workingDirInit(workingdirinitImage string, stepContainers []corev1.Containe
 	}
 
 	c := &corev1.Container{
-		Name:         "working-dir-initializer",
+		Name:         ContainerNameWorkingDirInitializer,
 		Image:        workingdirinitImage,
 		Command:      []string{"/ko-app/workingdirinit"},
 		Args:         relativeDirs,
 		WorkingDir:   pipeline.WorkspaceDir,
 		VolumeMounts: implicitVolumeMounts,
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    internalContainerDefaultCPU,
+				corev1.ResourceMemory: internalContainerDefaultMemorySmall,
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    internalContainerDefaultCPU,
+				corev1.ResourceMemory: internalContainerDefaultMemorySmall,
+			},
+		},
 	}
 	if securityContext.SetSecurityContext {
 		c.SecurityContext = securityContext.GetSecurityContext(windows)
