@@ -38,6 +38,13 @@ type realRunner struct {
 
 var _ entrypoint.Runner = (*realRunner)(nil)
 
+func newRunner(stdoutPath, stderrPath, _, _ string) *realRunner {
+	return &realRunner{
+		stdoutPath: stdoutPath,
+		stderrPath: stderrPath,
+	}
+}
+
 func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	if rr.stdoutPath != "" || rr.stderrPath != "" {
 		return errors.New("step.StdoutPath and step.StderrPath not supported on Windows")

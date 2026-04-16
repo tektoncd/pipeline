@@ -1883,6 +1883,8 @@ spec:
                           type: boolean
                         enableProvenanceInStatus:
                           type: boolean
+                        enableSecretMasking:
+                          type: boolean
                         enableStepActions:
                           description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
@@ -2155,6 +2157,8 @@ spec:
                               enableParamEnum:
                                 type: boolean
                               enableProvenanceInStatus:
+                                type: boolean
+                              enableSecretMasking:
                                 type: boolean
                               enableStepActions:
                                 description: EnableStepActions is a no-op flag since StepActions are stable
@@ -4037,6 +4041,8 @@ spec:
                           type: boolean
                         enableProvenanceInStatus:
                           type: boolean
+                        enableSecretMasking:
+                          type: boolean
                         enableStepActions:
                           description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
@@ -4301,6 +4307,8 @@ spec:
                               enableParamEnum:
                                 type: boolean
                               enableProvenanceInStatus:
+                                type: boolean
+                              enableSecretMasking:
                                 type: boolean
                               enableStepActions:
                                 description: EnableStepActions is a no-op flag since StepActions are stable
