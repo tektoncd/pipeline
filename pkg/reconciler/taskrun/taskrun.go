@@ -551,31 +551,51 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		Kind:     resources.GetTaskKind(tr),
 	}
 
+	_, span = c.tracerProvider.Tracer(TracerName).Start(ctx, "validateTaskSpecRequestResources")
 	if err := validateTaskSpecRequestResources(taskSpec); err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+		span.End()
 		logger.Errorf("TaskRun %s taskSpec request resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
+	span.End()
 
+	_, span = c.tracerProvider.Tracer(TracerName).Start(ctx, "validateResolvedTask")
 	if err := ValidateResolvedTask(ctx, tr.Spec.Params, &v1.Matrix{}, rtr); err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+		span.End()
 		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
+	span.End()
 
 	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableParamEnum {
+		_, span = c.tracerProvider.Tracer(TracerName).Start(ctx, "validateEnumParam")
 		if err := ValidateEnumParam(ctx, tr.Spec.Params, rtr.TaskSpec.Params); err != nil {
+			span.SetStatus(codes.Error, err.Error())
+			span.RecordError(err)
+			span.End()
 			logger.Errorf("TaskRun %q Param Enum validation failed: %v", tr.Name, err)
 			tr.Status.MarkResourceFailed(v1.TaskRunReasonInvalidParamValue, err)
 			return nil, nil, controller.NewPermanentError(err)
 		}
+		span.End()
 	}
 
+	_, span = c.tracerProvider.Tracer(TracerName).Start(ctx, "validateParamArrayIndex")
 	if err := resources.ValidateParamArrayIndex(rtr.TaskSpec, tr.Spec.Params); err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+		span.End()
 		logger.Errorf("TaskRun %q Param references are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
+	span.End()
 
 	if err := c.updateTaskRunWithDefaultWorkspaces(ctx, tr, taskSpec); err != nil {
 		logger.Errorf("Failed to update taskrun %s with default workspace: %v", tr.Name, err)
@@ -596,11 +616,16 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	} else {
 		workspaceDeclarations = taskSpec.Workspaces
 	}
+	_, span = c.tracerProvider.Tracer(TracerName).Start(ctx, "validateWorkspaceBindings")
 	if err := workspace.ValidateBindings(ctx, workspaceDeclarations, tr.Spec.Workspaces); err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+		span.End()
 		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
+	span.End()
 
 	aaBehavior, err := affinityassistant.GetAffinityAssistantBehavior(ctx)
 	if err != nil {
@@ -614,11 +639,16 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		}
 	}
 
+	_, span = c.tracerProvider.Tracer(TracerName).Start(ctx, "validateOverrides")
 	if err := validateOverrides(taskSpec, &tr.Spec); err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+		span.End()
 		logger.Errorf("TaskRun %q step or sidecar overrides are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
+	span.End()
 
 	return taskSpec, rtr, nil
 }
@@ -729,10 +759,15 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		return err
 	}
 
+	_, span = c.tracerProvider.Tracer(TracerName).Start(ctx, "validateTaskRunResults")
 	if err := validateTaskRunResults(tr, rtr.TaskSpec); err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+		span.End()
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return err
 	}
+	span.End()
 
 	logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, tr.Status.GetCondition(apis.ConditionSucceeded))
 	return nil
