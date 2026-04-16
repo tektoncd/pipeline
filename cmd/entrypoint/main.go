@@ -57,6 +57,8 @@ var (
 	stepMetadataDir            = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
 	resultExtractionMethod     = flag.String("result_from", entrypoint.ResultExtractionMethodTerminationMessage, "The method using which to extract results from tasks. Default is using the termination message.")
 	compressTerminationMessage = flag.Bool("compress_termination_message", false, "If true, compress termination messages with flate to fit more results in the 4KB Kubernetes limit.")
+	secretMaskDir              = flag.String("secret_mask_dir", "", "If specified, directory containing mounted secrets for log redaction")
+	redactPatterns             = flag.String("redact_patterns", "", "If specified, base64-encoded newline-separated regex patterns for log redaction")
 )
 
 const (
@@ -129,16 +131,13 @@ func main() {
 	spireWorkloadAPI := initializeSpireAPI()
 
 	e := entrypoint.Entrypointer{
-		Command:         append(cmd, commandArgs...),
-		WaitFiles:       strings.Split(*waitFiles, ","),
-		WaitFileContent: *waitFileContent,
-		PostFile:        *postFile,
-		TerminationPath: *terminationPath,
-		Waiter:          &realWaiter{waitPollingInterval: defaultWaitPollingInterval, breakpointOnFailure: *breakpointOnFailure},
-		Runner: &realRunner{
-			stdoutPath: *stdoutPath,
-			stderrPath: *stderrPath,
-		},
+		Command:                    append(cmd, commandArgs...),
+		WaitFiles:                  strings.Split(*waitFiles, ","),
+		WaitFileContent:            *waitFileContent,
+		PostFile:                   *postFile,
+		TerminationPath:            *terminationPath,
+		Waiter:                     &realWaiter{waitPollingInterval: defaultWaitPollingInterval, breakpointOnFailure: *breakpointOnFailure},
+		Runner:                     newRunner(*stdoutPath, *stderrPath, *secretMaskDir, *redactPatterns),
 		PostWriter:                 &realPostWriter{},
 		Results:                    strings.Split(*results, ","),
 		StepResults:                strings.Split(*stepResults, ","),
