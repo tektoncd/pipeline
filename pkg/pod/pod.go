@@ -18,6 +18,7 @@ package pod
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -183,6 +184,20 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, credEntrypointArgs...)
 	volumes = append(volumes, credVolumes...)
 	volumeMounts = append(volumeMounts, credVolumeMounts...)
+
+	// If secret masking is enabled, mount referenced secrets for redaction
+	// and pass regex patterns to the entrypoint.
+	if featureFlags.EnableSecretMasking {
+		smVolumes, smMounts := secretMaskingVolumes(taskSpec)
+		volumes = append(volumes, smVolumes...)
+		volumeMounts = append(volumeMounts, smMounts...)
+		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-secret_mask_dir", pipeline.SecretMaskDir)
+
+		if rp := config.FromContextOrDefaults(ctx).RedactPatterns; rp != nil && len(rp.Patterns) > 0 {
+			encoded := base64.StdEncoding.EncodeToString([]byte(strings.Join(rp.Patterns, "\n")))
+			commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-redact_patterns", encoded)
+		}
+	}
 
 	// Merge step template with steps.
 	// TODO(#1605): Move MergeSteps to pkg/pod
