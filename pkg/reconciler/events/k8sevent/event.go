@@ -20,13 +20,13 @@ import (
 	"context"
 	"fmt"
 
+	"go.opentelemetry.io/otel/trace"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
-	"go.opentelemetry.io/otel/trace"
 )
 
 const (
