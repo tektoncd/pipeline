@@ -26,8 +26,7 @@ spec:
 
           # Write a Dockerfile and `docker build` it.
           cat > Dockerfile << EOF
-          FROM ubuntu
-          RUN apt-get update
+          FROM busybox
           ENTRYPOINT ["echo", "hello"]
           EOF
           docker build -t hello .
