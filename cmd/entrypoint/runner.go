@@ -88,25 +88,33 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 
 	// if a standard output file is specified
 	// create the log file and add to the std multi writer
+	stdoutMask := newMaskingWriter(os.Stdout)
+	defer stdoutMask.Flush()
 	if rr.stdoutPath != "" {
 		stdout, err := newStdLogWriter(rr.stdoutPath)
 		if err != nil {
 			return err
 		}
 		defer stdout.Close()
-		cmd.Stdout = io.MultiWriter(os.Stdout, stdout)
+		stdoutFileMask := newMaskingWriter(stdout)
+		defer stdoutFileMask.Flush()
+		cmd.Stdout = io.MultiWriter(stdoutMask, stdoutFileMask)
 	} else {
-		cmd.Stdout = os.Stdout
+		cmd.Stdout = stdoutMask
 	}
+	stderrMask := newMaskingWriter(os.Stderr)
+	defer stderrMask.Flush()
 	if rr.stderrPath != "" {
 		stderr, err := newStdLogWriter(rr.stderrPath)
 		if err != nil {
 			return err
 		}
 		defer stderr.Close()
-		cmd.Stderr = io.MultiWriter(os.Stderr, stderr)
+		stderrFileMask := newMaskingWriter(stderr)
+		defer stderrFileMask.Flush()
+		cmd.Stderr = io.MultiWriter(stderrMask, stderrFileMask)
 	} else {
-		cmd.Stderr = os.Stderr
+		cmd.Stderr = stderrMask
 	}
 
 	// dedicated PID group used to forward signals to
