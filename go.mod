@@ -42,7 +42,7 @@ require (
 	github.com/google/cel-go v0.27.0
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20260414223304-7a662782a11f
 	github.com/sigstore/sigstore/pkg/signature/kms/aws v1.10.5
-	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.4
+	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.5
 	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.10.5
 	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.10.4
 	go.opentelemetry.io/otel v1.43.0
