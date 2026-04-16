@@ -217,6 +217,10 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		}
 	}
 
+	if featureFlags.EnableTerminationMessageCompression && !sidecarLogsResultsEnabled {
+		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-compress_termination_message=true")
+	}
+
 	sidecars, err := v1.MergeSidecarsWithSpecs(taskSpec.Sidecars, taskRun.Spec.SidecarSpecs)
 	if err != nil {
 		return nil, err
