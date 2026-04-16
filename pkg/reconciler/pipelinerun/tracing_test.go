@@ -90,7 +90,8 @@ func TestInitTracing(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			pr := tc.pipelineRun
-			ctx := initTracing(t.Context(), tc.tracerProvider, pr)
+			ctx, span := initTracing(t.Context(), tc.tracerProvider, pr)
+			defer span.End()
 
 			if ctx == nil {
 				t.Fatalf("returned nil context from initTracing")

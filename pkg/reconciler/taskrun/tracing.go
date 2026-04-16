@@ -35,15 +35,16 @@ const (
 	SpanContextAnnotation = "tekton.dev/taskrunSpanContext"
 )
 
-// initialize tracing by creating the root span and injecting the
-// spanContext is propogated through annotations in the CR
-func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, tr *v1.TaskRun) context.Context {
+// initTracing initializes tracing by creating or restoring the root span.
+// The caller is responsible for ending the returned span.
+func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, tr *v1.TaskRun) (context.Context, trace.Span) {
 	logger := logging.FromContext(ctx)
 	pro := otel.GetTextMapPropagator()
+	noopSpan := trace.SpanFromContext(ctx)
 
 	// SpanContext was created already
 	if len(tr.Status.SpanContext) > 0 {
-		return pro.Extract(ctx, propagation.MapCarrier(tr.Status.SpanContext))
+		return pro.Extract(ctx, propagation.MapCarrier(tr.Status.SpanContext)), noopSpan
 	}
 
 	spanContext := make(map[string]string)
@@ -56,12 +57,11 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, tr *v
 		}
 
 		tr.Status.SpanContext = spanContext
-		return pro.Extract(ctx, propagation.MapCarrier(tr.Status.SpanContext))
+		return pro.Extract(ctx, propagation.MapCarrier(tr.Status.SpanContext)), noopSpan
 	}
 
 	// Create a new root span since there was no parent spanContext provided through annotations
 	ctxWithTrace, span := tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:Reconciler")
-	defer span.End()
 	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 
 	pro.Inject(ctxWithTrace, propagation.MapCarrier(spanContext))
@@ -69,10 +69,11 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, tr *v
 	logger.Debug("got tracing carrier", spanContext)
 	if len(spanContext) == 0 {
 		logger.Debug("tracerProvider doesn't provide a traceId, tracing is disabled")
-		return ctx
+		span.End()
+		return ctx, noopSpan
 	}
 
 	span.AddEvent("updating TaskRun status with SpanContext")
 	tr.Status.SpanContext = spanContext
-	return ctxWithTrace
+	return ctxWithTrace, span
 }
