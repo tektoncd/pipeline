@@ -281,6 +281,10 @@ func getPipelineTagName(pr *v1.PipelineRun) string {
 	case pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Name != "":
 		pipelineName = pr.Spec.PipelineRef.Name
 	case pr.Spec.PipelineSpec != nil:
+		if pr.ObjectMeta.GenerateName == "" {
+			break
+		}
+		fallthrough
 	default:
 		if len(pr.Labels) > 0 {
 			pipelineLabel, hasPipelineLabel := pr.Labels[pipeline.PipelineLabelKey]
