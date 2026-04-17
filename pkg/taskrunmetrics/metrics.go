@@ -568,6 +568,9 @@ func IsPartOfPipeline(tr *v1.TaskRun) (bool, string, string) {
 	pipelineRunLabel, hasPipelineRunLabel := tr.Labels[pipeline.PipelineRunLabelKey]
 
 	if hasPipelineLabel && hasPipelineRunLabel {
+		if pipelineLabel == pipelineRunLabel {
+			pipelineLabel = anonymous
+		}
 		return true, pipelineLabel, pipelineRunLabel
 	}
 
