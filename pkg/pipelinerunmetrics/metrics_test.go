@@ -806,6 +806,73 @@ func unregisterMetrics() {
 	errRegistering = nil
 }
 
+func TestGetPipelineTagName(t *testing.T) {
+	tests := []struct {
+		name     string
+		pr       *v1.PipelineRun
+		expected string
+	}{
+		{
+			name: "with pipeline ref",
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					PipelineRef: &v1.PipelineRef{Name: "test-pipeline"},
+				},
+			},
+			expected: "test-pipeline",
+		},
+		{
+			name: "with pipeline spec",
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					PipelineSpec: &v1.PipelineSpec{},
+				},
+			},
+			expected: "anonymous",
+		},
+		{
+			name: "with pipeline spec and generateName",
+			pr: &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						pipeline.PipelineLabelKey: "some-pipeline",
+					},
+					Name:         "some-pipeline-abc123",
+					GenerateName: "some-pipeline-",
+				},
+				Spec: v1.PipelineRunSpec{
+					PipelineSpec: &v1.PipelineSpec{},
+				},
+			},
+			expected: "some-pipeline",
+		},
+		{
+			name: "with pipeline label",
+			pr: &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						pipeline.PipelineLabelKey: "pipeline-label",
+					},
+				},
+			},
+			expected: "pipeline-label",
+		},
+		{
+			name:     "empty",
+			pr:       &v1.PipelineRun{},
+			expected: "anonymous",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := getPipelineTagName(tt.pr); got != tt.expected {
+				t.Errorf("getPipelineTagName() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
 // We have to write this function as knative package does not provide the feature to validate multiple records for same metric.
 func checkLastValueDataForTags(t *testing.T, name string, wantTags map[string]string, expected float64) {
 	t.Helper()
