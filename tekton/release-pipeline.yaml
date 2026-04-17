@@ -343,7 +343,7 @@ spec:
             description: Whether Chains signing succeeded (true, failed, or timeout)
         steps:
           - name: wait-and-extract
-            image: docker.io/library/alpine/k8s:1.32.2
+            image: docker.io/alpine/k8s:1.32.2@sha256:15cfdf84d6de3559bc54d7479eb4e8aadbf71f6d7f08782cb1e91f3446f4b2d8
             script: |
               #!/bin/sh
               set -e
@@ -398,8 +398,8 @@ spec:
                     # URL format: https://rekor.sigstore.dev/api/v1/log/entries?logIndex=NNNN
                     REKOR_UUID=$(echo "${TRANSPARENCY}" | grep -oE 'logIndex=[0-9]+' | cut -d= -f2)
                     if [ -z "${REKOR_UUID}" ]; then
-                      # Might be a direct UUID format
-                      REKOR_UUID="${TRANSPARENCY}"
+                      echo "WARNING: Could not extract logIndex from transparency URL: ${TRANSPARENCY}"
+                      REKOR_UUID="unknown"
                     fi
                     echo "Rekor UUID: ${REKOR_UUID}"
                     printf '%s' "${REKOR_UUID}" > "$(results.rekor-uuid.path)"
@@ -411,7 +411,7 @@ spec:
                 fi
 
                 ATTEMPT=$((ATTEMPT + 1))
-                echo "  Attempt ${ATTEMPT}/${MAX_ATTEMPTS} - signing status: '${SIGNED}'"
+                echo "  Attempt ${ATTEMPT}/${MAX_ATTEMPTS} - signing status: '${SIGNED:-pending}'"
                 sleep 30
               done
 
@@ -457,7 +457,7 @@ spec:
           - name: workarea
         steps:
           - name: setup
-            image: docker.io/library/alpine:3.21
+            image: docker.io/library/alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
             script: |
               #!/bin/sh
               set -e
