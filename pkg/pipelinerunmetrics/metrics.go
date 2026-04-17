@@ -348,7 +348,11 @@ func getPipelineTagName(pr *v1.PipelineRun) string {
 	case pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Name != "":
 		pipelineName = pr.Spec.PipelineRef.Name
 	case pr.Spec.PipelineSpec != nil:
-		// anonymous — inline spec, no external pipeline name
+		if pr.ObjectMeta.GenerateName == "" {
+			// anonymous — inline spec, no external pipeline name and no generic name
+			break
+		}
+		fallthrough
 	default:
 		if label, ok := pr.Labels[pipeline.PipelineLabelKey]; ok && label != "" {
 			pipelineName = label
