@@ -1263,6 +1263,14 @@ taskSpec:
 **Note:** Every `PipelineTask` can only access its own `retries` and `retry-count`. These
 values aren't accessible for other `PipelineTask`s.
 
+**Note:** `$(context.pipelineTask.retries)` and `$(context.task.retry-count)` are only
+substituted when the `PipelineTask` uses an inline `taskSpec`. When a `PipelineTask` uses a
+`taskRef`, these variables are passed through as literal strings because the referenced
+`Task` is resolved before the retry-count context is available. To reference retry context
+from a `taskRef` task, pass the value via the `PipelineTask`'s `params`
+(as shown in the [`using-retries-and-retry-count-variables.yaml`](https://github.com/tektoncd/pipeline/blob/main/examples/v1/pipelineruns/using-retries-and-retry-count-variables.yaml)
+example) and consume it inside the `Task` as `$(params.<name>)`.
+
 ## Using `Results`
 
 Tasks can emit [`Results`](tasks.md#emitting-results) when they execute. A Pipeline can use these
