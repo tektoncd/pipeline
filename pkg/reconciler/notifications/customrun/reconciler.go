@@ -52,7 +52,7 @@ func InitTracing(ctx context.Context, tp trace.TracerProvider, customRun *v1beta
 	if customRun.Annotations != nil && customRun.Annotations[SpanContextAnnotation] != "" {
 		err := json.Unmarshal([]byte(customRun.Annotations[SpanContextAnnotation]), &spanContextMap)
 		if err != nil {
-			logger.Error("unable to unmarshal spancontext from annotation, err: %v", err)
+			logger.Errorf("unable to unmarshal spancontext from annotation, err: %v", err)
 			// Fall through to create a new span
 		} else {
 			// Successfully extracted span context from annotations
@@ -72,7 +72,7 @@ func InitTracing(ctx context.Context, tp trace.TracerProvider, customRun *v1beta
 	pro.Inject(ctxWithTrace, propagation.MapCarrier(spanContextMap))
 
 	if len(spanContextMap) == 0 {
-		logger.Debug("tracerProvider doesn't provide a traceId, tracing is disabled")
+		logger.Debugf("tracerProvider doesn't provide a traceId, tracing is disabled")
 		return ctx
 	}
 
