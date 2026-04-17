@@ -43,6 +43,7 @@ import (
 	ctrl "github.com/tektoncd/pipeline/pkg/controller"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
+	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
@@ -1601,7 +1602,13 @@ func propagatePipelineNameLabelToPipelineRun(pr *v1.PipelineRun) error {
 	case pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Name != "":
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Spec.PipelineRef.Name
 	case pr.Spec.PipelineSpec != nil:
-		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
+		// Use sanitized GenerateName for anonymous pipelines to reduce cardinality while
+		// still allowing categorization
+		if pr.GenerateName != "" {
+			pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = names.SimpleNameGenerator.RestrictLength(pr.GenerateName)
+		} else {
+			pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
+		}
 	case pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Resolver != "":
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
 
@@ -1734,7 +1741,10 @@ func storePipelineSpecAndMergeMeta(ctx context.Context, pr *v1.PipelineRun, ps *
 
 		// Propagate labels from Pipeline to PipelineRun. PipelineRun labels take precedences over Pipeline.
 		pr.ObjectMeta.Labels = kmap.Union(meta.Labels, pr.ObjectMeta.Labels)
-		if len(meta.Name) > 0 {
+		// Only overwrite the pipeline label from meta.Name if the label has not already been set,
+		// or if GenerateName is not in use. When GenerateName is set, propagatePipelineNameLabelToPipelineRun
+		// has already assigned the correct label from GenerateName.
+		if len(meta.Name) > 0 && (pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] == "" || meta.GenerateName == "") {
 			pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = meta.Name
 		}
 
