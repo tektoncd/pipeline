@@ -44,8 +44,8 @@ cloud.google.com/go/kms/internal
 cloud.google.com/go/longrunning
 cloud.google.com/go/longrunning/autogen
 cloud.google.com/go/longrunning/autogen/longrunningpb
-# code.gitea.io/sdk/gitea v0.21.0
-## explicit; go 1.23
+# code.gitea.io/sdk/gitea v0.23.0
+## explicit; go 1.23.0
 code.gitea.io/sdk/gitea
 # fortio.org/safecast v1.2.0
 ## explicit; go 1.20

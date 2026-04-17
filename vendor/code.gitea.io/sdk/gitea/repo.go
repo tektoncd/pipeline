@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -259,10 +260,10 @@ func (opt *SearchRepoOptions) QueryEncode() string {
 
 	// Repo Attributes
 	if opt.IsPrivate != nil {
-		query.Add("is_private", fmt.Sprintf("%v", opt.IsPrivate))
+		query.Add("is_private", fmt.Sprintf("%t", *opt.IsPrivate))
 	}
 	if opt.IsArchived != nil {
-		query.Add("archived", fmt.Sprintf("%v", opt.IsArchived))
+		query.Add("archived", fmt.Sprintf("%t", *opt.IsArchived))
 	}
 	if opt.ExcludeTemplate {
 		query.Add("template", "false")
@@ -506,8 +507,7 @@ func (c *Client) DeleteRepo(owner, repo string) (*Response, error) {
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s", owner, repo), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s", owner, repo), nil, nil)
 }
 
 // MirrorSync adds a mirrored repository to the mirror sync queue.
@@ -515,8 +515,7 @@ func (c *Client) MirrorSync(owner, repo string) (*Response, error) {
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("POST", fmt.Sprintf("/repos/%s/%s/mirror-sync", owner, repo), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("POST", fmt.Sprintf("/repos/%s/%s/mirror-sync", owner, repo), nil, nil)
 }
 
 // GetRepoLanguages return language stats of a repo
@@ -575,4 +574,47 @@ func (c *Client) GetArchiveReader(owner, repo, ref string, ext ArchiveType) (io.
 	}
 
 	return resp.Body, resp, nil
+}
+
+// UpdateRepoAvatarOption options for updating repository avatar
+type UpdateRepoAvatarOption struct {
+	Image string `json:"image"` // base64 encoded image
+}
+
+// UpdateRepoAvatar updates a repository's avatar
+func (c *Client) UpdateRepoAvatar(owner, repo string, opt UpdateRepoAvatarOption) (*Response, error) {
+	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
+		return nil, err
+	}
+	body, err := json.Marshal(&opt)
+	if err != nil {
+		return nil, err
+	}
+	status, resp, err := c.getStatusCode("POST",
+		fmt.Sprintf("/repos/%s/%s/avatar", owner, repo),
+		jsonHeader, bytes.NewReader(body))
+	if err != nil {
+		return resp, err
+	}
+	if status != http.StatusNoContent {
+		return resp, fmt.Errorf("unexpected status: %d", status)
+	}
+	return resp, nil
+}
+
+// DeleteRepoAvatar deletes a repository's avatar
+func (c *Client) DeleteRepoAvatar(owner, repo string) (*Response, error) {
+	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
+		return nil, err
+	}
+	status, resp, err := c.getStatusCode("DELETE",
+		fmt.Sprintf("/repos/%s/%s/avatar", owner, repo),
+		jsonHeader, nil)
+	if err != nil {
+		return resp, err
+	}
+	if status != http.StatusNoContent {
+		return resp, fmt.Errorf("unexpected status: %d", status)
+	}
+	return resp, nil
 }

@@ -15,6 +15,8 @@ type Email struct {
 	Email    string `json:"email"`
 	Verified bool   `json:"verified"`
 	Primary  bool   `json:"primary"`
+	UserID   int64  `json:"user_id,omitempty"`
+	Username string `json:"username,omitempty"`
 }
 
 // ListEmailsOptions options for listing current's user emails
@@ -59,6 +61,5 @@ func (c *Client) DeleteEmail(opt DeleteEmailOption) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", "/user/emails", jsonHeader, bytes.NewReader(body))
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", "/user/emails", jsonHeader, bytes.NewReader(body))
 }

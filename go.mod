@@ -36,7 +36,7 @@ require (
 )
 
 require (
-	code.gitea.io/sdk/gitea v0.21.0
+	code.gitea.io/sdk/gitea v0.23.0
 	github.com/go-jose/go-jose/v3 v3.0.5
 	github.com/goccy/kpoward v0.1.0
 	github.com/google/cel-go v0.27.0
