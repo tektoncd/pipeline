@@ -18,14 +18,19 @@ package status
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// ErrNotFound is returned when a resource is not found during status lookup.
+// Callers should check for this with errors.Is.
+var ErrNotFound = errors.New("resource not found")
 
 // GetTaskRunStatusForPipelineTask takes a child reference and returns the actual TaskRunStatus
 // for the PipelineTask. It returns an error if the child reference's kind isn't TaskRun.
@@ -35,11 +40,11 @@ func GetTaskRunStatusForPipelineTask(ctx context.Context, client versioned.Inter
 	}
 
 	tr, err := client.TektonV1().TaskRuns(ns).Get(ctx, childRef.Name, metav1.GetOptions{})
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !k8serrors.IsNotFound(err) {
 		return nil, err
 	}
 	if tr == nil {
-		return nil, nil //nolint:nilnil // would be more ergonomic to return a sentinel error
+		return nil, ErrNotFound
 	}
 
 	return &tr.Status, nil
@@ -53,11 +58,11 @@ func GetCustomRunStatusForPipelineTask(ctx context.Context, client versioned.Int
 	switch childRef.Kind {
 	case "CustomRun":
 		r, err := client.TektonV1beta1().CustomRuns(ns).Get(ctx, childRef.Name, metav1.GetOptions{})
-		if err != nil && !errors.IsNotFound(err) {
+		if err != nil && !k8serrors.IsNotFound(err) {
 			return nil, err
 		}
 		if r == nil {
-			return nil, nil //nolint:nilnil // would be more ergonomic to return a sentinel error
+			return nil, ErrNotFound
 		}
 		runStatus = &r.Status
 	default:
@@ -88,7 +93,7 @@ func GetPipelineTaskStatuses(ctx context.Context, client versioned.Interface, ns
 		switch cr.Kind {
 		case "TaskRun":
 			tr, err := client.TektonV1().TaskRuns(ns).Get(ctx, cr.Name, metav1.GetOptions{})
-			if err != nil && !errors.IsNotFound(err) {
+			if err != nil && !k8serrors.IsNotFound(err) {
 				return nil, nil, err
 			}
 
@@ -102,7 +107,7 @@ func GetPipelineTaskStatuses(ctx context.Context, client versioned.Interface, ns
 			}
 		case "CustomRun":
 			r, err := client.TektonV1beta1().CustomRuns(ns).Get(ctx, cr.Name, metav1.GetOptions{})
-			if err != nil && !errors.IsNotFound(err) {
+			if err != nil && !k8serrors.IsNotFound(err) {
 				return nil, nil, err
 			}
 
