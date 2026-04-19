@@ -648,6 +648,88 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		},
 		expectedCount:    1,
 		expectedDuration: 60,
+	}, {
+		name: "for succeeded taskrun in anonymous pipelinerun (no generateName)",
+		taskRun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "taskrun-1",
+				Namespace: "ns",
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey:    "anonymous",
+					pipeline.PipelineRunLabelKey: "pipelinerun-1",
+				},
+			},
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{Name: "task-1"},
+			},
+			Status: v1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
+		beforeCondition:  nil,
+		countWithReason:  false,
+		taskrunLevel:     config.TaskrunLevelAtTaskrun,
+		pipelinerunLevel: config.PipelinerunLevelAtPipelinerun,
+		expectedTags: map[string]string{
+			"pipeline":    "anonymous",
+			"pipelinerun": "pipelinerun-1",
+			"task":        "task-1",
+			"taskrun":     "taskrun-1",
+			"namespace":   "ns",
+			"status":      "success",
+		},
+		expectedCount:    1,
+		expectedDuration: 60,
+	}, {
+		name: "for succeeded taskrun in pipelinerun with generateName-derived pipeline label",
+		taskRun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "taskrun-1",
+				Namespace: "ns",
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey:    "my-pipeline",
+					pipeline.PipelineRunLabelKey: "my-pipeline-abcde",
+				},
+			},
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{Name: "task-1"},
+			},
+			Status: v1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
+		beforeCondition:  nil,
+		countWithReason:  false,
+		taskrunLevel:     config.TaskrunLevelAtTaskrun,
+		pipelinerunLevel: config.PipelinerunLevelAtPipelinerun,
+		expectedTags: map[string]string{
+			"pipeline":    "my-pipeline",
+			"pipelinerun": "my-pipeline-abcde",
+			"task":        "task-1",
+			"taskrun":     "taskrun-1",
+			"namespace":   "ns",
+			"status":      "success",
+		},
+		expectedCount:    1,
+		expectedDuration: 60,
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			resetMetrics()
@@ -1330,6 +1412,38 @@ func TestTaskRunIsOfPipelinerun(t *testing.T) {
 		name:          "no",
 		tr:            &v1.TaskRun{},
 		expectedValue: false,
+	}, {
+		// After the anonymous-pipeline label change, TaskRuns created from an
+		// inline pipelineSpec with no generateName carry "anonymous" as their
+		// tekton.dev/pipeline label value.
+		name: "anonymous pipeline label",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey:    "anonymous",
+					pipeline.PipelineRunLabelKey: "pipelinerun-xyz",
+				},
+			},
+		},
+		expectedValue:         true,
+		expetectedPipeline:    "anonymous",
+		expetectedPipelineRun: "pipelinerun-xyz",
+	}, {
+		// When the PipelineRun used generateName, the label carries the
+		// trimmed prefix (e.g. "my-pipeline-" → "my-pipeline") instead of
+		// the generated Name.
+		name: "generateName-derived pipeline label",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey:    "my-pipeline",
+					pipeline.PipelineRunLabelKey: "my-pipeline-abcde",
+				},
+			},
+		},
+		expectedValue:         true,
+		expetectedPipeline:    "my-pipeline",
+		expetectedPipelineRun: "my-pipeline-abcde",
 	}}
 
 	for _, test := range tests {
