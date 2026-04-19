@@ -35,6 +35,12 @@ for sending metrics to an OpenTelemetry Collector or compatible backend.
 
 The Labels/Tags marked as "\*" are optional. There is a choice between Histogram and LastValue(Gauge) for pipelinerun and taskrun duration metrics.
 
+> **Note:** The `pipeline` tag is set to `"anonymous"` when the PipelineRun uses an inline
+> pipeline spec (`pipelineSpec`) instead of a named reference (`pipelineRef`). This applies
+> to both `pipelinerun_duration_seconds` and `pipelinerun_taskrun_duration_seconds` metrics,
+> preventing high-cardinality issues caused by unique PipelineRun names being used as the
+> pipeline identifier.
+
 > **Note:** All metrics now carry an `otel_scope_name` label identifying the
 > instrumentation package. This label is informational and transparent to
 > most PromQL queries.
