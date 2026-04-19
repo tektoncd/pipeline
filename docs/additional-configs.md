@@ -364,7 +364,7 @@ Defaults to "ignore".
   To disable populating this field, set this flag to `"false"`.
 
 - `set-security-context`: Set this flag to `true` to set a security context for containers injected by Tekton that will allow TaskRun pods
-to run in namespaces with `restricted` pod security admission. By default, this is set to `false`.
+to run in namespaces with `restricted` pod security admission. By default, this is set to `true`.
 
 - `set-security-context-read-only-root-filesystem`: Set this flag to `true` to enable `readOnlyRootFilesystem` in the
   security context for containers injected by Tekton. This makes the root filesystem of the container read-only,
