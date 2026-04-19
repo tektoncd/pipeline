@@ -10,7 +10,9 @@ channel for training and tutorials on Tekton!
 ## Contents
 - Developing on Tekton:
   - [Local Setup](./local-setup.md): Getting your local environment set up to develop on Tekton.
-  - [Testing](../../test/README.md): Running Tekton tests.
+  - Testing:
+    - [Overview](../../test/README.md): Running Tekton tests.
+    - [Best Practices](./testing-best-practices.md): Guidelines for writing effective unit tests.
   - [Tracing](./tracing.md): Enabling Jaeger tracing
 - How Tekton is run on Kubernetes:
   - [Controller Logic](./controller-logic.md): How Tekton extends Kubernetes using Knative.
