@@ -1,4 +1,4 @@
-cd # Contributing to Tekton
+# Contributing to Tekton
 
 Thank you for contributing your time and expertise to Tekton. This
 document describes the contribution guidelines for the project.
