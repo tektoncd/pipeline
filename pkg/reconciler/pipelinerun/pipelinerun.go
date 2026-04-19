@@ -213,6 +213,18 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 		return controller.NewPermanentError(errors.New("PipelineRun has timed out for a long time"))
 	}
 
+	// If the PipelineRun is already done on entry, perform only the lightweight
+	// post-completion work: cleanup and return. This avoids expensive operations
+	// like listing VerificationPolicies, resolving Pipeline references, and
+	// calling SetDefaults on every resync of a completed run.
+	if pr.IsDone() {
+		err := c.cleanupAffinityAssistantsAndPVCs(ctx, pr)
+		if err != nil {
+			logger.Errorf("Failed to delete StatefulSet or PVC for PipelineRun %s: %v", pr.Name, err)
+		}
+		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
+	}
+
 	if !pr.HasStarted() && !pr.IsPending() {
 		pr.Status.InitializeConditions(c.Clock)
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
@@ -240,15 +252,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 	}
 	getPipelineFunc := resources.GetPipelineFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, vp)
 
-	if pr.IsDone() {
-		pr.SetDefaults(ctx)
-		err := c.cleanupAffinityAssistantsAndPVCs(ctx, pr)
-		if err != nil {
-			logger.Errorf("Failed to delete StatefulSet or PVC for PipelineRun %s: %v", pr.Name, err)
-		}
-		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
-	}
-
 	if err := propagatePipelineNameLabelToPipelineRun(pr); err != nil {
 		logger.Errorf("Failed to propagate pipeline name label to pipelinerun %s: %v", pr.Name, err)
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
@@ -272,6 +275,15 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 	// updates regardless of whether the reconciliation errored out.
 	if err = c.reconcile(ctx, pr, getPipelineFunc); err != nil {
 		logger.Errorf("Reconcile error: %v", err.Error())
+	}
+
+	// If the PipelineRun just transitioned to done during this reconcile,
+	// perform cleanup eagerly so subsequent reconciles find nothing to do.
+	if pr.IsDone() {
+		if cleanupErr := c.cleanupAffinityAssistantsAndPVCs(ctx, pr); cleanupErr != nil {
+			logger.Errorf("Failed to delete StatefulSet or PVC for PipelineRun %s: %v", pr.Name, cleanupErr)
+			err = errors.Join(err, cleanupErr)
+		}
 	}
 
 	if err = c.finishReconcileUpdateEmitEvents(ctx, pr, before, err); err != nil {
@@ -346,17 +358,28 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1
 
 	afterCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
 	events.Emit(ctx, beforeCondition, afterCondition, pr)
-	_, err := c.updateLabelsAndAnnotations(ctx, pr)
-	if err != nil {
-		logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
-		events.EmitError(controller.GetEventRecorder(ctx), err, pr)
+
+	errs := []error{previousError}
+
+	// If the PipelineRun was already completed before and remains completed,
+	// there is no need to update labels and annotations — they can't have
+	// changed. This avoids an unnecessary API read+write on every resync of
+	// a done PipelineRun (ported from the TaskRun reconciler).
+	skipUpdateLabelsAndAnnotations := !afterCondition.IsUnknown() && !beforeCondition.IsUnknown()
+	if !skipUpdateLabelsAndAnnotations {
+		_, err := c.updateLabelsAndAnnotations(ctx, pr)
+		if err != nil {
+			logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
+			events.EmitError(controller.GetEventRecorder(ctx), err, pr)
+			errs = append(errs, err)
+		}
 	}
 
-	errs := errors.Join(previousError, err)
+	joinedErr := errors.Join(errs...)
 	if controller.IsPermanentError(previousError) {
-		return controller.NewPermanentError(errs)
+		return controller.NewPermanentError(joinedErr)
 	}
-	return errs
+	return joinedErr
 }
 
 // resolvePipelineState will attempt to resolve each referenced pipeline task in the pipeline's spec and all of the resources
