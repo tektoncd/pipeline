@@ -21,7 +21,6 @@ import (
 
 	bc "github.com/allegro/bigcache/v3"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"knative.dev/pkg/apis"
@@ -46,6 +45,6 @@ func ReconcileRunObject(ctx context.Context, e EventClientsProvider, readOnlyRun
 	condition := readOnlyRun.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 	logger.Debugf("%s %s, condition: %s", readOnlyRun.GetObjectKind().GroupVersionKind().Kind, readOnlyRun.GetObjectMeta().GetName(), condition)
 
-	events.EmitCloudEvents(ctx, readOnlyRun)
+	cloudevent.EmitCloudEvents(ctx, readOnlyRun)
 	return nil
 }
