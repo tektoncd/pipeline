@@ -19227,3 +19227,68 @@ func TestMemberOfLookup(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateChildResourceAnnotations_FiltersAutoCleanupPVC(t *testing.T) {
+	tcs := []struct {
+		name        string
+		annotations map[string]string
+		expected    map[string]string
+	}{
+		{
+			name: "auto-cleanup-pvc annotation is filtered out",
+			annotations: map[string]string{
+				"tekton.dev/auto-cleanup-pvc": "true",
+				"user-annotation":             "val",
+			},
+			expected: map[string]string{
+				"user-annotation": "val",
+			},
+		},
+		{
+			name: "chains annotations are still filtered out",
+			annotations: map[string]string{
+				"chains.tekton.dev/signed":    "true",
+				"tekton.dev/auto-cleanup-pvc": "true",
+				"user-annotation":             "val",
+			},
+			expected: map[string]string{
+				"user-annotation": "val",
+			},
+		},
+		{
+			name: "other tekton annotations are preserved",
+			annotations: map[string]string{
+				"tekton.dev/some-other": "value",
+				"user-annotation":       "val",
+			},
+			expected: map[string]string{
+				"tekton.dev/some-other": "value",
+				"user-annotation":       "val",
+			},
+		},
+		{
+			name: "only auto-cleanup-pvc annotation results in empty map",
+			annotations: map[string]string{
+				"tekton.dev/auto-cleanup-pvc": "true",
+			},
+			expected: map[string]string{},
+		},
+		{
+			name:        "nil annotations",
+			annotations: nil,
+			expected:    map[string]string{},
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := &v1.PipelineRun{}
+			pr.ObjectMeta.Annotations = tc.annotations
+
+			got := createChildResourceAnnotations(pr)
+			if d := cmp.Diff(tc.expected, got); d != "" {
+				t.Errorf("createChildResourceAnnotations() mismatch (-want +got):\n%s", d)
+			}
+		})
+	}
+}
