@@ -26,7 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionV1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
-	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
+	resolutionhelper "github.com/tektoncd/pipeline/pkg/reconciler/resolution"
 	rprp "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/pipelinespec"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/remote/resolution"
@@ -151,14 +151,7 @@ func readRuntimeObjectAsPipeline(ctx context.Context, namespace string, obj runt
 	switch obj := obj.(type) {
 	case *v1beta1.Pipeline:
 		obj.SetDefaults(ctx)
-		// Cleanup object from things we don't care about
-		// FIXME: extract this in a function
-		obj.ObjectMeta.OwnerReferences = nil
-		// Verify the Pipeline once we fetch from the remote resolution, mutating, validation and conversion of the pipeline should happen after the verification, since signatures are based on the remote pipeline contents
-		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
-		// Issue a dry-run request to create the remote Pipeline, so that it can undergo validation from validating admission webhooks
-		// and mutation from mutating admission webhooks without actually creating the Pipeline on the cluster
-		o, err := apiserver.DryRunValidate(ctx, namespace, obj, tekton)
+		o, vr, err := resolutionhelper.CleanupAndValidate(ctx, namespace, obj, k8s, tekton, refSource, verificationPolicies)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -173,23 +166,17 @@ func readRuntimeObjectAsPipeline(ctx context.Context, namespace string, obj runt
 			if err := mutatedPipeline.ConvertTo(ctx, p); err != nil {
 				return nil, nil, fmt.Errorf("failed to convert v1beta1 obj %s into v1 Pipeline", mutatedPipeline.GetObjectKind().GroupVersionKind().String())
 			}
-			return p, &vr, nil
+			return p, vr, nil
 		}
 	case *v1.Pipeline:
-		// Cleanup object from things we don't care about
-		// FIXME: extract this in a function
-		obj.ObjectMeta.OwnerReferences = nil
-		// This SetDefaults is currently not necessary, but for consistency, it is recommended to add it.
-		// Avoid forgetting to add it in the future when there is a v2 version, causing similar problems.
 		obj.SetDefaults(ctx)
-		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
-		o, err := apiserver.DryRunValidate(ctx, namespace, obj, tekton)
+		o, vr, err := resolutionhelper.CleanupAndValidate(ctx, namespace, obj, k8s, tekton, refSource, verificationPolicies)
 		if err != nil {
 			return nil, nil, err
 		}
 		if mutatedPipeline, ok := o.(*v1.Pipeline); ok {
 			mutatedPipeline.ObjectMeta = obj.ObjectMeta
-			return mutatedPipeline, &vr, nil
+			return mutatedPipeline, vr, nil
 		}
 	}
 	return nil, nil, errors.New("resource is not a pipeline")
