@@ -24,6 +24,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -43,8 +45,19 @@ func ReconcileRunObject(ctx context.Context, e EventClientsProvider, readOnlyRun
 
 	logger.Infof("reconciling %s", readOnlyRun.GetObjectMeta().GetName())
 
+	ctx, span := otel.Tracer("NotificationsReconciler").Start(ctx, "ReconcileRunObject")
+	defer span.End()
+
+	kind := readOnlyRun.GetObjectKind().GroupVersionKind().Kind
+	name := readOnlyRun.GetObjectMeta().GetName()
+	span.SetAttributes(
+		attribute.String("kind", kind),
+		attribute.String("name", name),
+		attribute.String("namespace", readOnlyRun.GetObjectMeta().GetNamespace()),
+	)
+
 	condition := readOnlyRun.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
-	logger.Debugf("%s %s, condition: %s", readOnlyRun.GetObjectKind().GroupVersionKind().Kind, readOnlyRun.GetObjectMeta().GetName(), condition)
+	logger.Debugf("%s %s, condition: %s", kind, name, condition)
 
 	events.EmitCloudEvents(ctx, readOnlyRun)
 	return nil

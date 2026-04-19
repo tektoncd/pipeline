@@ -25,6 +25,8 @@ import (
 	customrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/customrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/notifications"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
@@ -60,6 +62,13 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, customRun *v1beta1.Custo
 	// Custom task controllers may be sending events for "CustomRuns" associated
 	// to the custom tasks they control. To avoid sending duplicate events,
 	// CloudEvents for "CustomRuns" are only sent when enabled via send-cloudevents-for-runs.
+	ctx, span := otel.Tracer("CustomRunNotificationsReconciler").Start(ctx, "ReconcileKind")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("customrun", customRun.Name),
+		attribute.String("namespace", customRun.Namespace),
+	)
+
 	configs := config.FromContextOrDefaults(ctx)
 	if !configs.FeatureFlags.SendCloudEventsForRuns {
 		return nil

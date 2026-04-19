@@ -18,7 +18,9 @@ package k8sevent
 
 import (
 	"context"
+	"fmt"
 
+	"go.opentelemetry.io/otel/trace"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -42,6 +44,10 @@ const (
 // k8s events are always sent if afterCondition is different from beforeCondition
 func EmitK8sEvents(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
 	recorder := controller.GetEventRecorder(ctx)
+	
+	// Extract trace context from the current span
+	annotations := getTraceAnnotations(ctx)
+	
 	// Events that are going to be sent
 	//
 	// Status "ConditionUnknown":
@@ -54,27 +60,44 @@ func EmitK8sEvents(ctx context.Context, beforeCondition *apis.Condition, afterCo
 		// If the condition changed, and the target condition is not empty, we send an event
 		switch afterCondition.Status {
 		case corev1.ConditionTrue:
-			recorder.Event(object, corev1.EventTypeNormal, EventReasonSucceded, afterCondition.Message)
+			recorder.AnnotatedEventf(object, annotations, corev1.EventTypeNormal, EventReasonSucceded, afterCondition.Message)
 		case corev1.ConditionFalse:
-			recorder.Event(object, corev1.EventTypeWarning, EventReasonFailed, afterCondition.Message)
+			recorder.AnnotatedEventf(object, annotations, corev1.EventTypeWarning, EventReasonFailed, afterCondition.Message)
 		case corev1.ConditionUnknown:
 			if beforeCondition == nil {
 				// If the condition changed, the status is "unknown", and there was no condition before,
 				// we emit the "Started event". We ignore further updates of the "unknown" status.
-				recorder.Event(object, corev1.EventTypeNormal, EventReasonStarted, "")
+				recorder.AnnotatedEventf(object, annotations, corev1.EventTypeNormal, EventReasonStarted, "")
 			} else {
 				// If the condition changed, the status is "unknown", and there was a condition before,
 				// we emit an event that matches the reason and message of the condition.
 				// This is used for instance to signal the transition from "started" to "running"
-				recorder.Event(object, corev1.EventTypeNormal, afterCondition.Reason, afterCondition.Message)
+				recorder.AnnotatedEventf(object, annotations, corev1.EventTypeNormal, afterCondition.Reason, afterCondition.Message)
 			}
 		}
 	}
 }
 
+// getTraceAnnotations extracts trace context from the current span and returns it as annotations
+func getTraceAnnotations(ctx context.Context) map[string]string {
+	annotations := make(map[string]string)
+	span := trace.SpanFromContext(ctx)
+	if span != nil && span.SpanContext().IsValid() {
+		sc := span.SpanContext()
+		// Add W3C Trace Context (traceparent) annotation
+		annotations["traceparent"] = fmt.Sprintf("00-%s-%s-%02x", sc.TraceID(), sc.SpanID(), sc.TraceFlags())
+		// Add tracestate if available
+		if sc.TraceState().Len() > 0 {
+			annotations["tracestate"] = sc.TraceState().String()
+		}
+	}
+	return annotations
+}
+
 // EmitError emits a failure associated to an error
-func EmitError(c record.EventRecorder, err error, object runtime.Object) {
+func EmitError(ctx context.Context, c record.EventRecorder, err error, object runtime.Object) {
 	if err != nil {
-		c.Event(object, corev1.EventTypeWarning, EventReasonError, err.Error())
+		annotations := getTraceAnnotations(ctx)
+		c.AnnotatedEventf(object, annotations, corev1.EventTypeWarning, EventReasonError, err.Error())
 	}
 }
