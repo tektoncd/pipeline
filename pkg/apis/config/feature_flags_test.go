@@ -80,6 +80,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				DisableInlineSpec:                        "pipeline,pipelinerun,taskrun",
 				EnableConciseResolverSyntax:              true,
 				EnableKubernetesSidecar:                  true,
+				EnableTerminationMessageCompression:      true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -297,6 +298,9 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	}, {
 		fileName: "feature-flags-invalid-enable-kubernetes-sidecar",
 		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax`,
+	}, {
+		fileName: "feature-flags-invalid-enable-termination-message-compression",
+		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-termination-message-compression`,
 	}, {
 		fileName: "feature-flags-invalid-set_security_context_read_only_root_filesystem",
 		want:     `failed parsing feature flags config "invalid read only root filesystem flag": strconv.ParseBool: parsing "invalid read only root filesystem flag": invalid syntax`,

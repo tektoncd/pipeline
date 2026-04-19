@@ -136,3 +136,10 @@ data:
   # If set to "false", exponential backoff will be disabled.
   # For advanced tuning of backoff parameters, update the 'wait-exponential-backoff' ConfigMap.
   enable-wait-exponential-backoff: "false"
+  # Setting this flag to "true" will compress termination messages with flate
+  # to fit more results in the 4KB Kubernetes termination message limit.
+  # Only applies when results-from is set to "termination-message" (the default);
+  # ignored when results-from is "sidecar-logs".
+  # Alpha feature — this is a short-term measure. External result storage
+  # (TEP-0164) will address the underlying 4KB limitation.
+  enable-termination-message-compression: "false"
