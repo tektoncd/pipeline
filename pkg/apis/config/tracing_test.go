@@ -34,16 +34,18 @@ func TestNewTracingFromConfigMap(t *testing.T) {
 		{
 			name: "empty",
 			want: &config.Tracing{
-				Enabled:  false,
-				Endpoint: "http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces",
+				Enabled:       false,
+				Endpoint:      "http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces",
+				SamplingRatio: 1.0,
 			},
 			fileName: "config-tracing-empty",
 		},
 		{
 			name: "enabled with endpoint",
 			want: &config.Tracing{
-				Enabled:  true,
-				Endpoint: "http://jaeger-test",
+				Enabled:       true,
+				Endpoint:      "http://jaeger-test",
+				SamplingRatio: 1.0,
 			},
 			fileName: "config-tracing-enabled",
 		},
@@ -123,16 +125,28 @@ func TestTracingEquals(t *testing.T) {
 			expected: false,
 		},
 		{
+			name: "different samplingRatio",
+			left: &config.Tracing{
+				SamplingRatio: 0.5,
+			},
+			right: &config.Tracing{
+				SamplingRatio: 1.0,
+			},
+			expected: false,
+		},
+		{
 			name: "same all fields",
 			left: &config.Tracing{
 				Enabled:           true,
 				Endpoint:          "a",
 				CredentialsSecret: "b",
+				SamplingRatio:     0.5,
 			},
 			right: &config.Tracing{
 				Enabled:           true,
 				Endpoint:          "a",
 				CredentialsSecret: "b",
+				SamplingRatio:     0.5,
 			},
 			expected: true,
 		},

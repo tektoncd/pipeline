@@ -70,6 +70,7 @@ func TestOnStoreWithSecret(t *testing.T) {
 	cfg := &config.Tracing{
 		Enabled:           true,
 		CredentialsSecret: "tracing-sec",
+		SamplingRatio:     1.0,
 	}
 
 	client := fakekubeclient.Get(ctx)
@@ -80,7 +81,7 @@ func TestOnStoreWithSecret(t *testing.T) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "tracing-sec",
-			// system.Namespace() will return `knative-testing`
+			// system.Namespace() will return 'knative-testing'
 			// Set inside the imported knative testing package
 			Namespace: "knative-testing",
 		},
@@ -104,8 +105,9 @@ func TestOnStoreWithEnabled(t *testing.T) {
 	tp := New("test-service", zap.NewNop().Sugar())
 
 	cfg := &config.Tracing{
-		Enabled:  true,
-		Endpoint: "test-endpoint",
+		Enabled:       true,
+		Endpoint:      "test-endpoint",
+		SamplingRatio: 1.0,
 	}
 
 	tp.OnStore(nil)("config-tracing", cfg)
@@ -124,6 +126,7 @@ func TestOnSecretWithSecretName(t *testing.T) {
 	cfg := &config.Tracing{
 		Enabled:           true,
 		CredentialsSecret: "jaeger",
+		SamplingRatio:     1.0,
 	}
 
 	tp.OnStore(nil)("config-tracing", cfg)
@@ -152,6 +155,7 @@ func TestOnSecretWithSameCreds(t *testing.T) {
 	cfg := &config.Tracing{
 		Enabled:           true,
 		CredentialsSecret: "jaeger",
+		SamplingRatio:     1.0,
 	}
 
 	tp.OnStore(nil)("config-tracing", cfg)
@@ -183,6 +187,7 @@ func TestOnSecretWithWrongName(t *testing.T) {
 	cfg := &config.Tracing{
 		Enabled:           true,
 		CredentialsSecret: "jaeger",
+		SamplingRatio:     1.0,
 	}
 
 	tp.OnStore(nil)("config-tracing", cfg)
@@ -210,6 +215,7 @@ func TestHandlerSecretUpdate(t *testing.T) {
 	cfg := &config.Tracing{
 		Enabled:           true,
 		CredentialsSecret: "jaeger",
+		SamplingRatio:     1.0,
 	}
 
 	tp.OnStore(nil)("config-tracing", cfg)

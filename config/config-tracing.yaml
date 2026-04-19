@@ -44,3 +44,8 @@ data:
     endpoint: "http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces"
     # (optional) Name of the k8s secret which contains basic auth credentials
     credentialsSecret: "jaeger-creds"
+    #
+    # (optional) Sampling ratio for traces, between 0.0 and 1.0.
+    # 1.0 samples every trace (default), 0.0 samples none,
+    # 0.5 samples approximately half.
+    sampling-ratio: "1.0"

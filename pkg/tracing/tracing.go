@@ -184,6 +184,7 @@ func createTracerProvider(service string, cfg *config.Tracing, user, pass string
 	// Initialize tracerProvider with the jaeger exporter
 	tp := tracesdk.NewTracerProvider(
 		tracesdk.WithBatcher(exp),
+		tracesdk.WithSampler(tracesdk.TraceIDRatioBased(cfg.SamplingRatio)),
 		// Record information about the service in a Resource.
 		tracesdk.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
