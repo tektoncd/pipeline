@@ -77,7 +77,11 @@ func EmitCloudEvents(ctx context.Context, object runtime.Object) {
 	}
 }
 
-// EmitCloudEventsWhenConditionChange emits CloudEvents when there is a change in condition
+// EmitCloudEventsWhenConditionChange emits CloudEvents when there is a change in condition.
+//
+// Deprecated: CloudEvents are now sent by the dedicated tekton-events-controller
+// (pkg/reconciler/notifications). This function is no longer called by any core reconciler
+// and will be removed in a future release.
 func EmitCloudEventsWhenConditionChange(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
 	logger := logging.FromContext(ctx)
 	runObject, ok := object.(v1beta1.RunObject)

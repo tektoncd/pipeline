@@ -400,7 +400,6 @@ func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 func initializeTaskRunControllerAssets(t *testing.T, d test.Data, opts pipeline.Options) (test.Assets, func()) {
 	t.Helper()
 	ctx, _ := ttesting.SetupFakeContext(t)
-	ctx = ttesting.SetupFakeCloudClientContext(ctx, d.ExpectedCloudEventCount)
 	ctx, cancel := context.WithCancel(ctx)
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
@@ -573,9 +572,6 @@ spec:
 	d := test.Data{
 		Tasks:    []*v1.Task{task},
 		TaskRuns: []*v1.TaskRun{taskRun},
-		// No CE sink configured: the core reconciler no longer injects a CE client,
-		// so no cloud events should be sent even if the test infra wires one up.
-		ExpectedCloudEventCount: 0,
 	}
 
 	testAssets, cancel := getTaskRunController(t, d)
