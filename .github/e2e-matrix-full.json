@@ -1,0 +1,14 @@
+{
+  "os": ["ubuntu-latest", "ubuntu-24.04-arm"],
+  "k8s-name": ["k8s-oldest", "k8s-latest"],
+  "feature-flags": ["stable", "beta", "alpha"],
+  "include": [
+    {"k8s-name": "k8s-oldest", "k8s-version": "v1.28.x"},
+    {"k8s-name": "k8s-latest", "k8s-version": "v1.34.x"}
+  ],
+  "exclude": [
+    {"k8s-name": "k8s-oldest", "os": "ubuntu-24.04-arm"},
+    {"k8s-name": "k8s-latest", "os": "ubuntu-24.04-arm", "feature-flags": "beta"},
+    {"k8s-name": "k8s-latest", "os": "ubuntu-24.04-arm", "feature-flags": "alpha"}
+  ]
+}

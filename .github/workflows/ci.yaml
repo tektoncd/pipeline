@@ -1,6 +1,8 @@
 name: ci
 
-on: [pull_request]
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull-request.number || github.ref }}
@@ -188,6 +190,8 @@ jobs:
   e2e-tests:
     needs: [build]
     uses: ./.github/workflows/e2e-matrix.yml
+    with:
+      is-draft: ${{ github.event.pull_request.draft }}
 
   ci-summary:
     name: CI summary
@@ -195,7 +199,16 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
+    - name: Block merge for draft PRs
+      if: ${{ github.event.pull_request.draft == true }}
+      run: |
+        echo "::warning::Draft PR — only minimal e2e tests were run (amd64, k8s-latest, stable)"
+        echo "Mark as 'Ready for Review' to run the full CI matrix."
+        exit 1
+      env:
+        IS_DRAFT: ${{ github.event.pull_request.draft }}
     - name: Check CI results
+      if: ${{ github.event.pull_request.draft == false }}
       run: |
         results=(
           "build=${NEEDS_BUILD_RESULT}"
