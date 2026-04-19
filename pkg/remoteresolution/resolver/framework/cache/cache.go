@@ -83,6 +83,7 @@ func (c *resolverCache) MaxSize() int {
 }
 
 func (c *resolverCache) GetCachedOrResolveFromRemote(
+	ctx context.Context,
 	params []pipelinev1.Param,
 	resolverType string,
 	resolveFromRemote resolveFn,
@@ -113,8 +114,13 @@ func (c *resolverCache) GetCachedOrResolveFromRemote(
 
 		// Store annotated resource with store operation and return annotated resource
 		// to indicate it was stored in cache
-		c.infow("Adding to cache", "key", key, "expiration", c.ttl)
-		c.cache.Add(key, annotated, c.ttl)
+
+		effectiveTTL := c.ttl
+		if resolverTTL := getResolverTTL(ctx); resolverTTL > 0 {
+			effectiveTTL = resolverTTL
+		}
+		c.infow("Adding to cache", "key", key, "expiration", effectiveTTL)
+		c.cache.Add(key, annotated, effectiveTTL)
 		return annotated, nil
 	})
 	if err != nil {
@@ -145,6 +151,17 @@ func (c *resolverCache) Clear() {
 	c.infow("Clearing all cache entries")
 	// predicate that returns true clears all entries
 	c.cache.RemoveAll(func(_ any) bool { return true })
+}
+
+// getResolverTTL reads the TTL(=Time-To-Live) from the resolver-specific ConfigMap, returning 0 if unset.
+func getResolverTTL(ctx context.Context) time.Duration {
+	conf := resolutionframework.GetResolverConfigFromContext(ctx)
+	if ttlStr, ok := conf[ttlConfigMapKey]; ok {
+		if parsed, err := time.ParseDuration(ttlStr); err == nil && parsed > 0 {
+			return parsed
+		}
+	}
+	return 0
 }
 
 func generateCacheKey(resolverType string, params []pipelinev1.Param) string {
