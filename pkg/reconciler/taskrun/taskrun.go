@@ -20,7 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
+	"reflect"
 	"slices"
 	"strings"
 	"time"
@@ -128,6 +128,23 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	defer span.End()
 
 	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
+
+	// Set the release annotation early so it's available throughout reconciliation.
+	if tr.Annotations == nil {
+		tr.Annotations = make(map[string]string, 1)
+	}
+	tr.Annotations[podconvert.ReleaseAnnotation] = changeset.Get()
+
+	// Sync metadata (labels/annotations) at the end of every reconciliation.
+	// This is deferred to ensure it runs on every exit path.
+	// Knative's generated reconciler only calls UpdateStatus(), never writes .metadata,
+	// so we must persist label/annotation changes ourselves.
+	defer func() {
+		if err := c.syncMetadata(ctx, tr); err != nil {
+			logger.Warn("Failed to sync TaskRun metadata", zap.Error(err))
+		}
+	}()
+
 	// Read the initial condition
 	before := tr.Status.GetCondition(apis.ConditionSucceeded)
 
@@ -178,20 +195,20 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 			}
 		}
 
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, nil)
+		return c.emitReconcileEvents(ctx, tr, before, nil)
 	}
 
 	// If the TaskRun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
 		message := fmt.Sprintf("TaskRun %q was cancelled. %s", tr.Name, tr.Spec.StatusMessage)
 		err := c.failTaskRun(ctx, tr, v1.TaskRunReasonCancelled, message)
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+		return c.emitReconcileEvents(ctx, tr, before, err)
 	}
 
 	// When TaskRun is pending, do not create a Pod. Set condition and return.
 	if tr.IsPending() {
 		tr.Status.MarkResourceOngoing(v1.TaskRunReasonPending, fmt.Sprintf("TaskRun %q is pending", tr.Name))
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, nil)
+		return c.emitReconcileEvents(ctx, tr, before, nil)
 	}
 
 	// Check if the TaskRun has timed out; if it is, this will set its status
@@ -204,13 +221,13 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 		}
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout(ctx))
 		err := c.failTaskRun(ctx, tr, v1.TaskRunReasonTimedOut, message)
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+		return c.emitReconcileEvents(ctx, tr, before, err)
 	}
 
 	// Check for Pod Failures
 	if failed, reason, message := c.checkPodFailed(ctx, tr); failed {
 		err := c.failTaskRun(ctx, tr, reason, message)
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+		return c.emitReconcileEvents(ctx, tr, before, err)
 	}
 
 	// prepare fetches all required resources, validates them together with the
@@ -222,7 +239,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 		// reconcile an invalid TaskRun anymore
 		span.SetStatus(codes.Error, "taskrun prepare error")
 		span.RecordError(err)
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, nil, err)
+		return c.emitReconcileEvents(ctx, tr, nil, err)
 	}
 
 	// Store the condition before reconcile
@@ -235,12 +252,12 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 		if errors.Is(err, sidecarlogresults.ErrSizeExceeded) {
 			message := fmt.Sprintf("%s TaskRun \"%q\" failed: %s", pipelineErrors.UserErrorLabel, tr.Name, err.Error())
 			err := c.failTaskRun(ctx, tr, v1.TaskRunReasonResultLargerThanAllowedLimit, message)
-			return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+			return c.emitReconcileEvents(ctx, tr, before, err)
 		}
 	}
 
 	// Emit events (only when ConditionSucceeded was changed)
-	if err = c.finishReconcileUpdateEmitEvents(ctx, tr, before, err); err != nil {
+	if err = c.emitReconcileEvents(ctx, tr, before, err); err != nil {
 		return err
 	}
 
@@ -416,10 +433,9 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
 	return nil
 }
 
-func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
-	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "finishReconcileUpdateEmitEvents")
+func (c *Reconciler) emitReconcileEvents(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "emitReconcileEvents")
 	defer span.End()
-	logger := logging.FromContext(ctx)
 
 	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
 	if afterCondition.IsFalse() && !tr.IsCancelled() && tr.IsRetriable() {
@@ -428,24 +444,10 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 	}
 	events.Emit(ctx, beforeCondition, afterCondition, tr)
 
-	errs := []error{previousError}
-
-	// If the Run has been completed before and remains so at present,
-	// no need to update the labels and annotations
-	skipUpdateLabelsAndAnnotations := !afterCondition.IsUnknown() && !beforeCondition.IsUnknown()
-	if !skipUpdateLabelsAndAnnotations {
-		_, err := c.updateLabelsAndAnnotations(ctx, tr)
-		if err != nil {
-			logger.Warn("Failed to update TaskRun labels/annotations", zap.Error(err))
-			events.EmitError(controller.GetEventRecorder(ctx), err, tr)
-			errs = append(errs, err)
-		}
-	}
-	joinedErr := errors.Join(errs...)
 	if controller.IsPermanentError(previousError) {
-		return controller.NewPermanentError(joinedErr)
+		return controller.NewPermanentError(previousError)
 	}
-	return joinedErr
+	return previousError
 }
 
 // `prepare` fetches resources the taskrun depends on, runs validation and conversion
@@ -776,29 +778,35 @@ func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr 
 	return nil
 }
 
-func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1.TaskRun) (*v1.TaskRun, error) {
-	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updateLabelsAndAnnotations")
+// syncMetadata persists label and annotation changes made during reconciliation.
+// Knative's generated reconciler only calls UpdateStatus() after ReconcileKind returns,
+// so metadata changes must be persisted separately. This is called via defer in
+// ReconcileKind to ensure it runs on every exit path.
+func (c *Reconciler) syncMetadata(ctx context.Context, tr *v1.TaskRun) error {
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "syncMetadata")
 	defer span.End()
-	// Ensure the TaskRun is properly decorated with the version of the Tekton controller processing it.
-	if tr.Annotations == nil {
-		tr.Annotations = make(map[string]string, 1)
-	}
-	tr.Annotations[podconvert.ReleaseAnnotation] = changeset.Get()
 
-	newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
+	existing, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
 	if err != nil {
-		return nil, fmt.Errorf("error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
+		return fmt.Errorf("error getting TaskRun %s when syncing metadata: %w", tr.Name, err)
 	}
-	if !maps.Equal(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) || !maps.Equal(tr.ObjectMeta.Annotations, newTr.ObjectMeta.Annotations) {
-		// Note that this uses Update vs. Patch because the former is significantly easier to test.
-		// If we want to switch this to Patch, then we will need to teach the utilities in test/controller.go
-		// to deal with Patch (setting resourceVersion, and optimistic concurrency checks).
-		newTr = newTr.DeepCopy()
-		newTr.Labels = kmap.Union(newTr.Labels, tr.Labels)
-		newTr.Annotations = kmap.Union(kmap.ExcludeKeys(newTr.Annotations, tknreconciler.KubectlLastAppliedAnnotationKey), tr.Annotations)
-		return c.PipelineClientSet.TektonV1().TaskRuns(tr.Namespace).Update(ctx, newTr, metav1.UpdateOptions{})
+
+	// Merge labels and annotations: existing values are preserved, reconciled values take precedence
+	mergedLabels := kmap.Union(existing.Labels, tr.Labels)
+	mergedAnnotations := kmap.Union(
+		kmap.ExcludeKeys(existing.Annotations, tknreconciler.KubectlLastAppliedAnnotationKey),
+		tr.Annotations,
+	)
+
+	if reflect.DeepEqual(mergedLabels, existing.ObjectMeta.Labels) && reflect.DeepEqual(mergedAnnotations, existing.ObjectMeta.Annotations) {
+		return nil
 	}
-	return newTr, nil
+
+	updated := existing.DeepCopy()
+	updated.Labels = mergedLabels
+	updated.Annotations = mergedAnnotations
+	_, err = c.PipelineClientSet.TektonV1().TaskRuns(tr.Namespace).Update(ctx, updated, metav1.UpdateOptions{})
+	return err
 }
 
 func (c *Reconciler) handlePodCreationError(tr *v1.TaskRun, err error) error {
