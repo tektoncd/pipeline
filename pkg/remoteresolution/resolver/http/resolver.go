@@ -77,7 +77,7 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 }
 
 // Resolve uses the given params to resolve the requested file or resource.
-func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
+func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (framework.ResolvedResource, error) {
 	if http.IsDisabled(ctx) {
 		return nil, errors.New(disabledError)
 	}
