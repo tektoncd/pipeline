@@ -35,18 +35,15 @@ import (
 )
 
 // TestReconcileRunObject runs reconcile with a cloud event sink configured
-// and ensures that the event logic is correctly invoked for all supported types
+// and ensures that the event logic is correctly invoked for all supported types.
+// ReconcileRunObject no longer checks send-cloudevents-for-runs; that gate is
+// enforced by individual reconcilers (e.g. CustomRun) before calling this function.
 func TestReconcileRunObject(t *testing.T) {
 	cms := []*corev1.ConfigMap{
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetEventsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				"sink": "http://synk:8080",
-			},
-		}, {
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"send-cloudevents-for-runs": "true",
 			},
 		},
 	}
@@ -154,14 +151,59 @@ func TestReconcileRunObject(t *testing.T) {
 	}
 }
 
+// TestReconcileRunObject_ExplicitTektonV1Format verifies that setting
+// formats=tektonv1 explicitly in the ConfigMap produces events, identical to
+// the default behaviour where the formats key is omitted.
+func TestReconcileRunObject_ExplicitTektonV1Format(t *testing.T) {
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetEventsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"sink":    "http://synk:8080",
+				"formats": "tektonv1",
+			},
+		},
+	}
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "tr", Namespace: "foo"},
+		Status: v1.TaskRunStatus{
+			Status: duckv1.Status{Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
+				Reason: v1.TaskRunReasonSuccessful.String(),
+			}}},
+		},
+	}
+	wantCEs := []string{`(?s)dev.tekton.event.taskrun.successful.v1.*tr`}
+
+	d := test.Data{
+		ConfigMaps:              cms,
+		ExpectedCloudEventCount: len(wantCEs),
+	}
+	testAssets, cancel := ntesting.InitializeTestAssets(t, &d)
+	defer cancel()
+
+	ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
+	reconciler := &ntesting.FakeReconciler{
+		CloudEventClient: ceClient,
+		CacheClient:      cacheClient,
+	}
+
+	if err := notifications.ReconcileRunObject(testAssets.Ctx, reconciler, tr); err != nil {
+		t.Errorf("didn't expect an error, but got one: %v", err)
+	}
+
+	ceClientFake := ceClient.(cloudevent.FakeClient)
+	ceClientFake.CheckCloudEventsUnordered(t, "explicit tektonv1 format", wantCEs)
+}
+
 func TestReconcileRunObject_Disabled(t *testing.T) {
+	// ReconcileRunObject only skips events when no sink is configured.
+	// The send-cloudevents-for-runs flag gate (deprecated) is enforced by
+	// individual reconcilers before calling ReconcileRunObject.
 	cmSinkOff := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: config.GetEventsConfigName(), Namespace: system.Namespace()},
 		Data:       map[string]string{"sink": ""},
-	}
-	cmRunsOn := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-		Data:       map[string]string{"send-cloudevents-for-runs": "true"},
 	}
 
 	for _, tc := range []struct {
@@ -169,7 +211,7 @@ func TestReconcileRunObject_Disabled(t *testing.T) {
 		cms  []*corev1.ConfigMap
 	}{{
 		name: "No sink",
-		cms:  []*corev1.ConfigMap{cmSinkOff, cmRunsOn},
+		cms:  []*corev1.ConfigMap{cmSinkOff},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			customRun := &v1beta1.CustomRun{

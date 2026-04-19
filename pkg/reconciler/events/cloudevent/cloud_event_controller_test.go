@@ -128,14 +128,19 @@ func TestSendCloudEventWithRetriesQueued(t *testing.T) {
 	}
 }
 
-// TestSendCloudEventWithRetriesInvalid verifies that objects with no condition
-// and no queued event type defined return an error.
-func TestSendCloudEventWithRetriesInvalid(t *testing.T) {
-	// PipelineRun with nil condition has no queued event type defined yet.
-	ctx := setupFakeContext(t, cloudevent.FakeClientBehaviour{SendSuccessfully: true}, true, 0)
-	err := cloudevent.SendCloudEventWithRetries(ctx, &v1.PipelineRun{Status: v1.PipelineRunStatus{}})
-	if err == nil {
-		t.Fatalf("Expected an error sending cloud events for PipelineRun with no condition, got none")
+// TestSendCloudEventWithRetriesQueuedPipelineRun verifies that a PipelineRun with no condition
+// (not yet picked up by the core reconciler) sends a queued event successfully.
+func TestSendCloudEventWithRetriesQueuedPipelineRun(t *testing.T) {
+	ctx := setupFakeContext(t, cloudevent.FakeClientBehaviour{SendSuccessfully: true}, true, 1)
+	object := &v1.PipelineRun{Status: v1.PipelineRunStatus{}}
+	if err := cloudevent.SendCloudEventWithRetries(ctx, object); err != nil {
+		t.Fatalf("Unexpected error sending queued cloud event: %v", err)
+	}
+	ceClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
+	ceClient.CheckCloudEventsUnordered(t, "queued pipelinerun", []string{"Context Attributes,"})
+	recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
+	if err := k8sevent.CheckEventsOrdered(t, recorder.Events, "queued pipelinerun", []string{"Normal CloudEventSent"}); err != nil {
+		t.Fatal(err.Error())
 	}
 }
 
@@ -288,6 +293,91 @@ func TestEmitCloudEventsWhenConditionChange(t *testing.T) {
 
 	cloudevent.EmitCloudEventsWhenConditionChange(ctx, nil, after, object)
 	fakeClient.CheckCloudEventsUnordered(t, "with sink", wantCloudEvents)
+}
+
+// TestEmitCloudEvents_ExplicitTektonV1Format verifies that setting formats=tektonv1
+// explicitly in the config produces the same behaviour as the default (no formats key).
+func TestEmitCloudEvents_ExplicitTektonV1Format(t *testing.T) {
+	object := &v1beta1.CustomRun{
+		ObjectMeta: metav1.ObjectMeta{SelfLink: "/customrun/test1"},
+		Status:     v1beta1.CustomRunStatus{},
+	}
+	wantCloudEvents := []string{`(?s)dev.tekton.event.customrun.started.v1.*test1`}
+
+	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx = cloudevent.WithFakeClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, len(wantCloudEvents))
+	fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
+
+	eventsConfig, _ := config.NewEventsFromMap(map[string]string{
+		"sink":    "http://mysink",
+		"formats": "tektonv1",
+	})
+	cfg := &config.Config{
+		Events:       eventsConfig,
+		Defaults:     config.DefaultConfig.DeepCopy(),
+		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
+	}
+	ctx = config.ToContext(ctx, cfg)
+
+	cloudevent.EmitCloudEvents(ctx, object)
+	fakeClient.CheckCloudEventsUnordered(t, "explicit tektonv1 format", wantCloudEvents)
+}
+
+// TestEmitCloudEvents_EmptyFormats verifies that an empty formats set causes no
+// events to be sent. This state cannot be reached via ConfigMap parsing (which
+// rejects empty formats), but the guard should be exercised.
+func TestEmitCloudEvents_EmptyFormats(t *testing.T) {
+	object := &v1beta1.CustomRun{
+		ObjectMeta: metav1.ObjectMeta{SelfLink: "/customrun/test1"},
+		Status:     v1beta1.CustomRunStatus{},
+	}
+
+	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx = cloudevent.WithFakeClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, 0)
+	fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
+
+	// Inject a config with a non-empty sink but empty formats set directly —
+	// bypassing the ConfigMap parser which would reject this.
+	cfg := &config.Config{
+		Events: &config.Events{
+			Sink:    "http://mysink",
+			Formats: config.EventFormats{},
+		},
+		Defaults:     config.DefaultConfig.DeepCopy(),
+		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
+	}
+	ctx = config.ToContext(ctx, cfg)
+
+	cloudevent.EmitCloudEvents(ctx, object)
+	fakeClient.CheckCloudEventsUnordered(t, "empty formats", []string{})
+}
+
+// TestEmitCloudEvents_UnknownFormat verifies that an unrecognised format value
+// causes no events to be sent (warn-and-skip rather than error).
+func TestEmitCloudEvents_UnknownFormat(t *testing.T) {
+	object := &v1beta1.CustomRun{
+		ObjectMeta: metav1.ObjectMeta{SelfLink: "/customrun/test1"},
+		Status:     v1beta1.CustomRunStatus{},
+	}
+
+	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx = cloudevent.WithFakeClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, 0)
+	fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
+
+	// Inject a config with an unknown format directly — bypassing the ConfigMap
+	// parser which would reject unknown format values.
+	cfg := &config.Config{
+		Events: &config.Events{
+			Sink:    "http://mysink",
+			Formats: config.EventFormats{config.EventFormat("future-format"): {}},
+		},
+		Defaults:     config.DefaultConfig.DeepCopy(),
+		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
+	}
+	ctx = config.ToContext(ctx, cfg)
+
+	cloudevent.EmitCloudEvents(ctx, object)
+	fakeClient.CheckCloudEventsUnordered(t, "unknown format", []string{})
 }
 
 func setupFakeContext(t *testing.T, behaviour cloudevent.FakeClientBehaviour, withClient bool, expectedEventCount int) context.Context {

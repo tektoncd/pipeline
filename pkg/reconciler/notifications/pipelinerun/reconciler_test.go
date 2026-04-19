@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package taskrun_test
+package pipelinerun_test
 
 import (
 	"testing"
@@ -25,7 +25,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/notifications"
-	"github.com/tektoncd/pipeline/pkg/reconciler/notifications/taskrun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/notifications/pipelinerun"
 	ntesting "github.com/tektoncd/pipeline/pkg/reconciler/notifications/testing"
 	"github.com/tektoncd/pipeline/test"
 	corev1 "k8s.io/api/core/v1"
@@ -59,50 +59,50 @@ var (
 	}
 )
 
-// TestReconcileKind_CloudEvents tests cloud event emission for the TaskRun notifications reconciler
+// TestReconcileKind_CloudEvents tests cloud event emission for the PipelineRun notifications reconciler
 func TestReconcileKind_CloudEvents(t *testing.T) {
-	ignoreResourceVersion := cmpopts.IgnoreFields(v1.TaskRun{}, "ObjectMeta.ResourceVersion")
+	ignoreResourceVersion := cmpopts.IgnoreFields(v1.PipelineRun{}, "ObjectMeta.ResourceVersion")
 
 	testcases := []struct {
 		name            string
 		condition       *apis.Condition
 		wantCloudEvents []string
 	}{{
-		name:            "TaskRun with no condition (queued)",
+		name:            "PipelineRun with no condition (queued)",
 		condition:       nil,
-		wantCloudEvents: []string{`(?s)dev.tekton.event.taskrun.queued.v1.*test-taskrun`},
+		wantCloudEvents: []string{`(?s)dev.tekton.event.pipelinerun.queued.v1.*test-pipelinerun`},
 	}, {
-		name: "TaskRun with unknown/started condition",
+		name: "PipelineRun with unknown/started condition",
 		condition: &apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
-			Reason: v1.TaskRunReasonStarted.String(),
+			Reason: v1.PipelineRunReasonStarted.String(),
 		},
-		wantCloudEvents: []string{`(?s)dev.tekton.event.taskrun.started.v1.*test-taskrun`},
+		wantCloudEvents: []string{`(?s)dev.tekton.event.pipelinerun.started.v1.*test-pipelinerun`},
 	}, {
-		name: "TaskRun with unknown/running condition",
+		name: "PipelineRun with unknown/running condition",
 		condition: &apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
-			Reason: v1.TaskRunReasonRunning.String(),
+			Reason: v1.PipelineRunReasonRunning.String(),
 		},
-		wantCloudEvents: []string{`(?s)dev.tekton.event.taskrun.running.v1.*test-taskrun`},
+		wantCloudEvents: []string{`(?s)dev.tekton.event.pipelinerun.running.v1.*test-pipelinerun`},
 	}, {
-		name: "TaskRun with successful condition",
+		name: "PipelineRun with successful condition",
 		condition: &apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,
-			Reason: v1.TaskRunReasonSuccessful.String(),
+			Reason: v1.PipelineRunReasonSuccessful.String(),
 		},
-		wantCloudEvents: []string{`(?s)dev.tekton.event.taskrun.successful.v1.*test-taskrun`},
+		wantCloudEvents: []string{`(?s)dev.tekton.event.pipelinerun.successful.v1.*test-pipelinerun`},
 	}, {
-		name: "TaskRun with failed condition",
+		name: "PipelineRun with failed condition",
 		condition: &apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
-			Reason: v1.TaskRunReasonFailed.String(),
+			Reason: v1.PipelineRunReasonFailed.String(),
 		},
-		wantCloudEvents: []string{`(?s)dev.tekton.event.taskrun.failed.v1.*test-taskrun`},
+		wantCloudEvents: []string{`(?s)dev.tekton.event.pipelinerun.failed.v1.*test-pipelinerun`},
 	}}
 
 	cms := []*corev1.ConfigMap{cmSinkOn, cmRunsOn}
@@ -115,20 +115,20 @@ func TestReconcileKind_CloudEvents(t *testing.T) {
 			if tc.condition != nil {
 				objectStatus.Conditions = append(objectStatus.Conditions, *tc.condition)
 			}
-			tr := v1.TaskRun{
+			pr := v1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-taskrun",
+					Name:      "test-pipelinerun",
 					Namespace: "foo",
 				},
-				Spec: v1.TaskRunSpec{},
-				Status: v1.TaskRunStatus{
+				Spec: v1.PipelineRunSpec{},
+				Status: v1.PipelineRunStatus{
 					Status: objectStatus,
 				},
 			}
-			taskRuns := []*v1.TaskRun{&tr}
+			pipelineRuns := []*v1.PipelineRun{&pr}
 
 			d := test.Data{
-				TaskRuns:                taskRuns,
+				PipelineRuns:            pipelineRuns,
 				ConfigMaps:              cms,
 				ExpectedCloudEventCount: len(tc.wantCloudEvents),
 			}
@@ -137,9 +137,9 @@ func TestReconcileKind_CloudEvents(t *testing.T) {
 			clients := testAssets.Clients
 
 			ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
-			reconciler := taskrun.NewReconciler(ceClient, cacheClient)
+			reconciler := pipelinerun.NewReconciler(ceClient, cacheClient)
 
-			if err := reconciler.ReconcileKind(testAssets.Ctx, &tr); err != nil {
+			if err := reconciler.ReconcileKind(testAssets.Ctx, &pr); err != nil {
 				t.Errorf("didn't expect an error, but got one: %v", err)
 			}
 
@@ -150,19 +150,19 @@ func TestReconcileKind_CloudEvents(t *testing.T) {
 				}
 			}
 
-			trAfter, err := clients.Pipeline.TektonV1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+			prAfter, err := clients.Pipeline.TektonV1().PipelineRuns(pr.Namespace).Get(testAssets.Ctx, pr.Name, metav1.GetOptions{})
 			if err != nil {
-				t.Errorf("getting updated taskRun: %v", err)
+				t.Errorf("getting updated pipelineRun: %v", err)
 			}
-			if d := cmp.Diff(&tr, trAfter, ignoreResourceVersion); d != "" {
-				t.Errorf("TaskRun should not have changed, got %v instead", d)
+			if d := cmp.Diff(&pr, prAfter, ignoreResourceVersion); d != "" {
+				t.Errorf("PipelineRun should not have changed, got %v instead", d)
 			}
 
 			ceClientFake := ceClient.(cloudevent.FakeClient)
 			ceClientFake.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
 
 			// Try and reconcile again - expect no event (deduplication via cache)
-			if err := reconciler.ReconcileKind(testAssets.Ctx, &tr); err != nil {
+			if err := reconciler.ReconcileKind(testAssets.Ctx, &pr); err != nil {
 				t.Errorf("didn't expect an error, but got one: %v", err)
 			}
 			ceClientFake.CheckCloudEventsUnordered(t, tc.name+" (duplicate)", []string{})
@@ -170,29 +170,29 @@ func TestReconcileKind_CloudEvents(t *testing.T) {
 	}
 }
 
-// TestReconcileKind_RunningAfterQueued tests that when a TaskRun is first seen in Running
+// TestReconcileKind_RunningAfterQueued tests that when a PipelineRun is first seen in Running
 // state (no prior Started observation), only the running event is sent.
 func TestReconcileKind_RunningAfterQueued(t *testing.T) {
 	cms := []*corev1.ConfigMap{cmSinkOn, cmRunsOn}
 
-	tr := v1.TaskRun{
+	pr := v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-taskrun",
+			Name:      "test-pipelinerun",
 			Namespace: "foo",
 		},
-		Status: v1.TaskRunStatus{
+		Status: v1.PipelineRunStatus{
 			Status: duckv1.Status{
 				Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionUnknown,
-					Reason: v1.TaskRunReasonRunning.String(),
+					Reason: v1.PipelineRunReasonRunning.String(),
 				}},
 			},
 		},
 	}
 
 	d := test.Data{
-		TaskRuns:                []*v1.TaskRun{&tr},
+		PipelineRuns:            []*v1.PipelineRun{&pr},
 		ConfigMaps:              cms,
 		ExpectedCloudEventCount: 1,
 	}
@@ -200,42 +200,42 @@ func TestReconcileKind_RunningAfterQueued(t *testing.T) {
 	defer cancel()
 
 	ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
-	reconciler := taskrun.NewReconciler(ceClient, cacheClient)
+	reconciler := pipelinerun.NewReconciler(ceClient, cacheClient)
 
-	if err := reconciler.ReconcileKind(testAssets.Ctx, &tr); err != nil {
+	if err := reconciler.ReconcileKind(testAssets.Ctx, &pr); err != nil {
 		t.Errorf("didn't expect an error, but got one: %v", err)
 	}
 
 	ceClientFake := ceClient.(cloudevent.FakeClient)
 	ceClientFake.CheckCloudEventsUnordered(t, "running event", []string{
-		`(?s)dev.tekton.event.taskrun.running.v1.*test-taskrun`,
+		`(?s)dev.tekton.event.pipelinerun.running.v1.*test-pipelinerun`,
 	})
 }
 
 // TestReconcileKind_NoSink tests that no events are sent when no sink is configured
 func TestReconcileKind_NoSink(t *testing.T) {
-	tr := v1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-taskrun", Namespace: "foo"},
-		Status: v1.TaskRunStatus{
+	pr := v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-pipelinerun", Namespace: "foo"},
+		Status: v1.PipelineRunStatus{
 			Status: duckv1.Status{Conditions: []apis.Condition{{
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionTrue,
-				Reason: v1.TaskRunReasonSuccessful.String(),
+				Reason: v1.PipelineRunReasonSuccessful.String(),
 			}}},
 		},
 	}
 
 	d := test.Data{
-		TaskRuns:   []*v1.TaskRun{&tr},
-		ConfigMaps: []*corev1.ConfigMap{cmSinkOff, cmRunsOn},
+		PipelineRuns: []*v1.PipelineRun{&pr},
+		ConfigMaps:   []*corev1.ConfigMap{cmSinkOff, cmRunsOn},
 	}
 	testAssets, cancel := ntesting.InitializeTestAssets(t, &d)
 	defer cancel()
 
 	ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
-	reconciler := taskrun.NewReconciler(ceClient, cacheClient)
+	reconciler := pipelinerun.NewReconciler(ceClient, cacheClient)
 
-	if err := reconciler.ReconcileKind(testAssets.Ctx, &tr); err != nil {
+	if err := reconciler.ReconcileKind(testAssets.Ctx, &pr); err != nil {
 		t.Fatalf("didn't expect an error, but got one: %v", err)
 	}
 
@@ -245,28 +245,28 @@ func TestReconcileKind_NoSink(t *testing.T) {
 
 // TestReconcileKind_FeatureFlagOff tests that no events are sent when feature flag is off
 func TestReconcileKind_FeatureFlagOff(t *testing.T) {
-	tr := v1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-taskrun", Namespace: "foo"},
-		Status: v1.TaskRunStatus{
+	pr := v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-pipelinerun", Namespace: "foo"},
+		Status: v1.PipelineRunStatus{
 			Status: duckv1.Status{Conditions: []apis.Condition{{
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionTrue,
-				Reason: v1.TaskRunReasonSuccessful.String(),
+				Reason: v1.PipelineRunReasonSuccessful.String(),
 			}}},
 		},
 	}
 
 	d := test.Data{
-		TaskRuns:   []*v1.TaskRun{&tr},
-		ConfigMaps: []*corev1.ConfigMap{cmSinkOn, cmRunsOff},
+		PipelineRuns: []*v1.PipelineRun{&pr},
+		ConfigMaps:   []*corev1.ConfigMap{cmSinkOn, cmRunsOff},
 	}
 	testAssets, cancel := ntesting.InitializeTestAssets(t, &d)
 	defer cancel()
 
 	ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
-	reconciler := taskrun.NewReconciler(ceClient, cacheClient)
+	reconciler := pipelinerun.NewReconciler(ceClient, cacheClient)
 
-	if err := reconciler.ReconcileKind(testAssets.Ctx, &tr); err != nil {
+	if err := reconciler.ReconcileKind(testAssets.Ctx, &pr); err != nil {
 		t.Fatalf("didn't expect an error, but got one: %v", err)
 	}
 
@@ -278,19 +278,19 @@ func TestReconcileKind_FeatureFlagOff(t *testing.T) {
 // formats field is set explicitly to "tektonv1" in the ConfigMap, identical to
 // the default behaviour where the formats key is omitted.
 func TestReconcileKind_ExplicitTektonV1Format(t *testing.T) {
-	tr := v1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-taskrun", Namespace: "foo"},
-		Status: v1.TaskRunStatus{
+	pr := v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-pipelinerun", Namespace: "foo"},
+		Status: v1.PipelineRunStatus{
 			Status: duckv1.Status{Conditions: []apis.Condition{{
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionTrue,
-				Reason: v1.TaskRunReasonSuccessful.String(),
+				Reason: v1.PipelineRunReasonSuccessful.String(),
 			}}},
 		},
 	}
 
 	d := test.Data{
-		TaskRuns:                []*v1.TaskRun{&tr},
+		PipelineRuns:            []*v1.PipelineRun{&pr},
 		ConfigMaps:              []*corev1.ConfigMap{cmSinkOnWithFormat, cmRunsOn},
 		ExpectedCloudEventCount: 1,
 	}
@@ -298,14 +298,14 @@ func TestReconcileKind_ExplicitTektonV1Format(t *testing.T) {
 	defer cancel()
 
 	ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
-	reconciler := taskrun.NewReconciler(ceClient, cacheClient)
+	reconciler := pipelinerun.NewReconciler(ceClient, cacheClient)
 
-	if err := reconciler.ReconcileKind(testAssets.Ctx, &tr); err != nil {
+	if err := reconciler.ReconcileKind(testAssets.Ctx, &pr); err != nil {
 		t.Fatalf("didn't expect an error, but got one: %v", err)
 	}
 
 	ceClientFake := ceClient.(cloudevent.FakeClient)
 	ceClientFake.CheckCloudEventsUnordered(t, "explicit tektonv1 format", []string{
-		`(?s)dev.tekton.event.taskrun.successful.v1.*test-taskrun`,
+		`(?s)dev.tekton.event.pipelinerun.successful.v1.*test-pipelinerun`,
 	})
 }
