@@ -1,0 +1,85 @@
+# Copyright 2026 The Tekton Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This PipelineRun is triggered via PAC incoming webhooks for patch
+# releases on existing release branches. It is invoked either manually
+# (via GitHub Actions workflow_dispatch) or on a cron schedule when
+# new commits are detected on a release branch since the last tag.
+#
+# The version and previous_version parameters are passed dynamically
+# through the incoming webhook payload.
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: release-patch
+  annotations:
+    pipelinesascode.tekton.dev/on-event: "[incoming]"
+    pipelinesascode.tekton.dev/on-target-branch: "[release-v*]"
+    pipelinesascode.tekton.dev/pipeline: "tekton/release-pipeline.yaml"
+    pipelinesascode.tekton.dev/max-keep-runs: "5"
+spec:
+  pipelineRef:
+    name: pipeline-release
+  params:
+    - name: package
+      value: github.com/tektoncd/pipeline
+    - name: repoName
+      value: pipeline
+    - name: gitRevision
+      value: "{{ revision }}"
+    - name: imageRegistry
+      value: ghcr.io
+    - name: imageRegistryPath
+      value: tektoncd/pipeline
+    - name: imageRegistryRegions
+      value: ""
+    - name: imageRegistryUser
+      value: tekton-robot
+    - name: versionTag
+      value: "{{ version }}"
+    - name: releaseBucket
+      value: tekton-releases
+    - name: releaseAsLatest
+      value: "{{ release_as_latest }}"
+    - name: koExtraArgs
+      value: ""
+    - name: serviceAccountImagesPath
+      value: credentials
+    - name: runTests
+      value: "true"
+    # Auto-detected from git tags when empty
+    - name: previousReleaseTag
+      value: ""
+  timeouts:
+    pipeline: 3h0m0s
+  workspaces:
+    - name: workarea
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 5Gi
+    - name: release-secret
+      secret:
+        secretName: oci-release-secret
+    - name: release-images-secret
+      secret:
+        secretName: ghcr-creds
+    # Enables automatic draft GitHub release creation (PR #9420).
+    - name: github-secret
+      secret:
+        secretName: github-token
