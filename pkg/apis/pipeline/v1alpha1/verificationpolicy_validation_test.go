@@ -14,10 +14,13 @@ limitations under the License.
 package v1alpha1_test
 
 import (
+	"context"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -25,11 +28,34 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+func withExactMatchFlag(t *testing.T, enabled bool) context.Context {
+	t.Helper()
+
+	featureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
+		config.EnableVerificationExactMatchPolicy: strconv.FormatBool(enabled),
+	})
+	if err != nil {
+		t.Fatalf("creating feature flags: %v", err)
+	}
+
+	cfg := &config.Config{FeatureFlags: featureFlags}
+	return config.ToContext(context.Background(), cfg)
+}
+
+func patternResource(pattern string) v1alpha1.ResourcePattern {
+	return v1alpha1.ResourcePattern{pattern, ""}
+}
+
+func exactMatchResource(url string) v1alpha1.ResourcePattern {
+	return v1alpha1.ResourcePattern{"", url}
+}
+
 func TestVerificationPolicy_Invalid(t *testing.T) {
 	tests := []struct {
 		name               string
 		verificationPolicy *v1alpha1.VerificationPolicy
 		want               *apis.FieldError
+		withContext        func(context.Context) context.Context
 	}{{
 		name: "missing Resources",
 		verificationPolicy: &v1alpha1.VerificationPolicy{
@@ -55,7 +81,7 @@ func TestVerificationPolicy_Invalid(t *testing.T) {
 				Name: "vp",
 			},
 			Spec: v1alpha1.VerificationPolicySpec{
-				Resources: []v1alpha1.ResourcePattern{{"^["}},
+				Resources: []v1alpha1.ResourcePattern{patternResource("^[")},
 				Authorities: []v1alpha1.Authority{
 					{
 						Name: "foo",
@@ -66,7 +92,7 @@ func TestVerificationPolicy_Invalid(t *testing.T) {
 				},
 			},
 		},
-		want: apis.ErrInvalidValue("^[", "ResourcePattern", fmt.Sprintf("%v: error parsing regexp: missing closing ]: `[`", v1alpha1.InvalidResourcePatternErr)),
+		want: apis.ErrInvalidValue("^[", "ResourcePattern", fmt.Sprintf("%v: error parsing regexp: missing closing ]: `[`", v1alpha1.InvalidResourcePatternErr)).ViaFieldIndex("resources", 0),
 	}, {
 		name: "missing Authoritities",
 		verificationPolicy: &v1alpha1.VerificationPolicy{
@@ -74,7 +100,7 @@ func TestVerificationPolicy_Invalid(t *testing.T) {
 				Name: "vp",
 			},
 			Spec: v1alpha1.VerificationPolicySpec{
-				Resources: []v1alpha1.ResourcePattern{{".*"}},
+				Resources: []v1alpha1.ResourcePattern{patternResource(".*")},
 			},
 		},
 		want: apis.ErrMissingField("authorities"),
@@ -85,7 +111,7 @@ func TestVerificationPolicy_Invalid(t *testing.T) {
 				Name: "vp",
 			},
 			Spec: v1alpha1.VerificationPolicySpec{
-				Resources: []v1alpha1.ResourcePattern{{".*"}},
+				Resources: []v1alpha1.ResourcePattern{patternResource(".*")},
 				Authorities: []v1alpha1.Authority{
 					{
 						Name: "foo",
@@ -105,7 +131,7 @@ func TestVerificationPolicy_Invalid(t *testing.T) {
 				Name: "vp",
 			},
 			Spec: v1alpha1.VerificationPolicySpec{
-				Resources: []v1alpha1.ResourcePattern{{".*"}},
+				Resources: []v1alpha1.ResourcePattern{patternResource(".*")},
 				Authorities: []v1alpha1.Authority{
 					{
 						Name: "foo",
@@ -122,7 +148,7 @@ func TestVerificationPolicy_Invalid(t *testing.T) {
 				Name: "vp",
 			},
 			Spec: v1alpha1.VerificationPolicySpec{
-				Resources: []v1alpha1.ResourcePattern{{".*"}},
+				Resources: []v1alpha1.ResourcePattern{patternResource(".*")},
 				Authorities: []v1alpha1.Authority{
 					{
 						Name: "foo",
@@ -144,7 +170,7 @@ func TestVerificationPolicy_Invalid(t *testing.T) {
 				Name: "vp",
 			},
 			Spec: v1alpha1.VerificationPolicySpec{
-				Resources: []v1alpha1.ResourcePattern{{".*"}},
+				Resources: []v1alpha1.ResourcePattern{patternResource(".*")},
 				Authorities: []v1alpha1.Authority{
 					{
 						Name: "foo",
@@ -164,7 +190,7 @@ func TestVerificationPolicy_Invalid(t *testing.T) {
 				Name: "vp",
 			},
 			Spec: v1alpha1.VerificationPolicySpec{
-				Resources: []v1alpha1.ResourcePattern{{".*"}},
+				Resources: []v1alpha1.ResourcePattern{patternResource(".*")},
 				Authorities: []v1alpha1.Authority{
 					{
 						Name: "foo",
@@ -187,7 +213,7 @@ func TestVerificationPolicy_Invalid(t *testing.T) {
 				Name: "vp",
 			},
 			Spec: v1alpha1.VerificationPolicySpec{
-				Resources: []v1alpha1.ResourcePattern{{".*"}},
+				Resources: []v1alpha1.ResourcePattern{patternResource(".*")},
 				Authorities: []v1alpha1.Authority{
 					{
 						Name: "foo",
@@ -211,7 +237,7 @@ func TestVerificationPolicy_Invalid(t *testing.T) {
 				Name: "vp",
 			},
 			Spec: v1alpha1.VerificationPolicySpec{
-				Resources: []v1alpha1.ResourcePattern{{".*"}},
+				Resources: []v1alpha1.ResourcePattern{patternResource(".*")},
 				Authorities: []v1alpha1.Authority{
 					{
 						Name: "foo",
@@ -224,10 +250,39 @@ func TestVerificationPolicy_Invalid(t *testing.T) {
 			},
 		},
 		want: apis.ErrInvalidValue("sha1", "HashAlgorithm").ViaFieldIndex("key", 0),
+	}, {
+		name: "exactMatch requires feature flag",
+		withContext: func(context.Context) context.Context {
+			return withExactMatchFlag(t, false)
+		},
+		verificationPolicy: &v1alpha1.VerificationPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "vp",
+			},
+			Spec: v1alpha1.VerificationPolicySpec{
+				Resources: []v1alpha1.ResourcePattern{exactMatchResource("https://github.com/tektoncd/catalog.git")},
+				Authorities: []v1alpha1.Authority{
+					{
+						Name: "foo",
+						Key: &v1alpha1.KeyRef{
+							Data: "inlinekey",
+						},
+					},
+				},
+			},
+		},
+		want: apis.ErrGeneric(
+			fmt.Sprintf("feature flag %s should be set to true to use exactMatch", config.EnableVerificationExactMatchPolicy),
+			"exactMatch",
+		).ViaFieldIndex("resources", 0),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.verificationPolicy.Validate(t.Context())
+			ctx := t.Context()
+			if tt.withContext != nil {
+				ctx = tt.withContext(ctx)
+			}
+			err := tt.verificationPolicy.Validate(ctx)
 			if d := cmp.Diff(tt.want.Error(), err.Error()); d != "" {
 				t.Error("VerificationPolicy validate error mismatch", diff.PrintWantGot(d))
 			}
@@ -239,6 +294,7 @@ func TestVerificationPolicy_Valid(t *testing.T) {
 	tests := []struct {
 		name               string
 		verificationPolicy *v1alpha1.VerificationPolicy
+		withContext        func(context.Context) context.Context
 	}{
 		{
 			name: "key in data",
@@ -247,7 +303,7 @@ func TestVerificationPolicy_Valid(t *testing.T) {
 					Name: "vp",
 				},
 				Spec: v1alpha1.VerificationPolicySpec{
-					Resources: []v1alpha1.ResourcePattern{{".*"}},
+					Resources: []v1alpha1.ResourcePattern{patternResource(".*")},
 					Authorities: []v1alpha1.Authority{
 						{
 							Name: "foo",
@@ -259,14 +315,38 @@ func TestVerificationPolicy_Valid(t *testing.T) {
 					},
 				},
 			},
-		}, {
+		},
+		{
+			name: "exact match resource pattern",
+			withContext: func(context.Context) context.Context {
+				return withExactMatchFlag(t, true)
+			},
+			verificationPolicy: &v1alpha1.VerificationPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vp",
+				},
+				Spec: v1alpha1.VerificationPolicySpec{
+					Resources: []v1alpha1.ResourcePattern{exactMatchResource("https://github.com/tektoncd/catalog.git")},
+					Authorities: []v1alpha1.Authority{
+						{
+							Name: "foo",
+							Key: &v1alpha1.KeyRef{
+								Data:          "inlinekey",
+								HashAlgorithm: "sha256",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "key in secretref",
 			verificationPolicy: &v1alpha1.VerificationPolicy{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "vp",
 				},
 				Spec: v1alpha1.VerificationPolicySpec{
-					Resources: []v1alpha1.ResourcePattern{{".*"}},
+					Resources: []v1alpha1.ResourcePattern{patternResource(".*")},
 					Authorities: []v1alpha1.Authority{
 						{
 							Name: "foo",
@@ -287,7 +367,7 @@ func TestVerificationPolicy_Valid(t *testing.T) {
 					Name: "vp",
 				},
 				Spec: v1alpha1.VerificationPolicySpec{
-					Resources: []v1alpha1.ResourcePattern{{".*"}},
+					Resources: []v1alpha1.ResourcePattern{patternResource(".*")},
 					Authorities: []v1alpha1.Authority{
 						{
 							Name: "foo",
@@ -305,7 +385,7 @@ func TestVerificationPolicy_Valid(t *testing.T) {
 					Name: "vp",
 				},
 				Spec: v1alpha1.VerificationPolicySpec{
-					Resources: []v1alpha1.ResourcePattern{{".*"}},
+					Resources: []v1alpha1.ResourcePattern{patternResource(".*")},
 					Authorities: []v1alpha1.Authority{
 						{
 							Name: "foo",
@@ -324,7 +404,7 @@ func TestVerificationPolicy_Valid(t *testing.T) {
 					Name: "vp",
 				},
 				Spec: v1alpha1.VerificationPolicySpec{
-					Resources: []v1alpha1.ResourcePattern{{".*"}},
+					Resources: []v1alpha1.ResourcePattern{patternResource(".*")},
 					Authorities: []v1alpha1.Authority{
 						{
 							Name: "foo",
@@ -339,7 +419,11 @@ func TestVerificationPolicy_Valid(t *testing.T) {
 		}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.verificationPolicy.Validate(t.Context())
+			ctx := t.Context()
+			if tt.withContext != nil {
+				ctx = tt.withContext(ctx)
+			}
+			err := tt.verificationPolicy.Validate(ctx)
 			if err != nil {
 				t.Errorf("validating valid VerificationPolicy: %v", err)
 			}

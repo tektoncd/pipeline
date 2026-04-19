@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -81,8 +82,8 @@ func VerifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.
 	if refSource != nil {
 		refSourceURI = refSource.URI
 	}
-
-	matchedPolicies, err := getMatchedPolicies(resource.GetName(), refSourceURI, verificationpolicies)
+	exactMatchEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.EnableVerificationExactMatchPolicy
+	matchedPolicies, err := getMatchedPolicies(resource.GetName(), refSourceURI, verificationpolicies, exactMatchEnabled)
 	if err != nil {
 		if errors.Is(err, ErrNoMatchedPolicies) {
 			switch config.GetVerificationNoMatchPolicy(ctx) {
@@ -115,16 +116,30 @@ func VerifyPipeline(ctx context.Context, pipelineObj *v1beta1.Pipeline, k8s kube
 }
 
 // getMatchedPolicies filters out the policies by checking if the resource url (source) is matching any of the `patterns` in the `resources` list.
-func getMatchedPolicies(resourceName string, source string, policies []*v1alpha1.VerificationPolicy) ([]*v1alpha1.VerificationPolicy, error) {
+func getMatchedPolicies(resourceName string, source string, policies []*v1alpha1.VerificationPolicy, exactMatchEnabled bool) ([]*v1alpha1.VerificationPolicy, error) {
 	matchedPolicies := []*v1alpha1.VerificationPolicy{}
+
 	for _, p := range policies {
 		for _, r := range p.Spec.Resources {
-			matching, err := regexp.MatchString(r.Pattern, source)
+			matching := false
+			var err error
+
+			normalizedSource := strings.TrimPrefix(source, "git+")
+
+			if r.Pattern != "" {
+				matching, err = regexp.MatchString(r.Pattern, source)
+			}
+
 			if err != nil {
 				// FixMe: changing %v to %w breaks integration tests.
 				return matchedPolicies, fmt.Errorf("%v: %w", err, ErrRegexMatch) //nolint:errorlint
 			}
-			if matching {
+
+			exactMatching := false
+			if r.ExactMatch != "" && exactMatchEnabled {
+				exactMatching = r.ExactMatch == normalizedSource
+			}
+			if matching || exactMatching {
 				matchedPolicies = append(matchedPolicies, p)
 				break
 			}
