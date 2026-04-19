@@ -77,6 +77,8 @@ type ResourcePattern struct {
 	// Bundle resource: gcr.io/tekton-releases/catalog/upstream/git-clone, gcr.io/tekton-releases/catalog/upstream/*
 	// Hub resource: https://artifacthub.io/*,
 	Pattern string `json:"pattern"`
+	// ExactMatch defines an exact match for the resource source.
+	ExactMatch string `json:"exactMatch,omitempty"`
 }
 
 // The Authority block defines the keys for validating signatures.

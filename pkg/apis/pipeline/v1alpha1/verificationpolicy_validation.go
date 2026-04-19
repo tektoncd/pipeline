@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"knative.dev/pkg/apis"
 )
@@ -29,6 +30,8 @@ var (
 	// InvalidResourcePatternErr is returned when the pattern is not valid regex expression
 	InvalidResourcePatternErr = "resourcePattern cannot be compiled by regex"
 )
+
+
 
 // Validate VerificationPolicy
 func (v *VerificationPolicy) Validate(ctx context.Context) (errs *apis.FieldError) {
@@ -44,8 +47,10 @@ func (vs *VerificationPolicySpec) Validate(ctx context.Context) (errs *apis.Fiel
 	if len(vs.Resources) == 0 {
 		errs = errs.Also(apis.ErrMissingField("resources"))
 	}
-	for _, r := range vs.Resources {
-		errs = errs.Also(r.Validate(ctx))
+	// Validate each resource and attach the list index to any returned field errors.
+
+	for i, r := range vs.Resources {
+		errs = errs.Also(r.Validate(ctx).ViaFieldIndex("resources", i))
 	}
 	if len(vs.Authorities) == 0 {
 		errs = errs.Also(apis.ErrMissingField("authorities"))
@@ -90,11 +95,34 @@ func (key *KeyRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 	return errs
 }
 
+
 // Validate ResourcePattern and make sure the Pattern is valid regex expression
+// only one can be present if both then reject // 
+// will only run Compile on Pattern if ExactMatch is not provided // 
 func (r *ResourcePattern) Validate(ctx context.Context) (errs *apis.FieldError) {
-	if _, err := regexp.Compile(r.Pattern); err != nil {
-		errs = errs.Also(apis.ErrInvalidValue(r.Pattern, "ResourcePattern", fmt.Sprintf("%v: %v", InvalidResourcePatternErr, err)))
+	if r.Pattern != "" && r.ExactMatch != "" {
+		errs = errs.Also(apis.ErrMultipleOneOf("pattern", "exactMatch"))
 		return errs
+	}
+
+	if r.Pattern == "" && r.ExactMatch == "" {
+		errs = errs.Also(apis.ErrMissingOneOf("pattern", "exactMatch"))
+		return errs
+	}
+
+	if r.ExactMatch != "" && !config.FromContextOrDefaults(ctx).FeatureFlags.EnableVerificationExactMatchPolicy {
+		errs = errs.Also(apis.ErrGeneric(
+			fmt.Sprintf("feature flag %s should be set to true to use exactMatch", config.EnableVerificationExactMatchPolicy),
+			"exactMatch",
+		))
+		return errs
+	}
+
+	if r.ExactMatch == "" {
+		if _, err := regexp.Compile(r.Pattern); err != nil {
+			errs = errs.Also(apis.ErrInvalidValue(r.Pattern, "ResourcePattern", fmt.Sprintf("%v: %v", InvalidResourcePatternErr, err)))
+			return errs
+		}
 	}
 	return nil
 }
