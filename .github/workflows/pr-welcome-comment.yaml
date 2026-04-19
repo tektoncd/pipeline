@@ -1,0 +1,69 @@
+# This workflow posts a welcome comment on newly opened pull requests listing
+# all available slash commands for maintainers.
+#
+# SECURITY: This workflow uses pull_request_target to post comments on fork PRs.
+# It is safe because it does NOT checkout PR code and only posts a static comment.
+# Do NOT add actions/checkout or run untrusted code in this workflow.
+#
+# pull_request_target runs in the context of the base branch (not the PR branch),
+# so it has access to repository secrets and elevated permissions. Adding any step
+# that executes code from the PR would create a critical security vulnerability.
+#
+# Available slash commands posted in the welcome comment:
+# - /kind <type>: add a kind label to the PR
+# - /retest: re-trigger workflows that failed on a given PR
+# - /e2e-extras: run extra e2e tests on a given PR
+# - /cherry-pick <branch>: cherry-picks the merged PR to the specified branch
+# - /rebase: rebase a PR branch against its base branch
+#
+# Slash commands must be placed at the very beginning of the first line of a comment.
+
+name: PR Welcome Comment
+
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions: {}
+
+jobs:
+  welcome-comment:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: audit
+
+      - name: Find existing slash commands comment
+        id: find-comment
+        uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad # v4.0.0
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: Thanks for opening a pull request!
+
+      - name: Post slash commands comment
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          edit-mode: replace
+          body: |
+            Thanks for opening a pull request!
+
+            The following slash commands are available for maintainers (requires write access):
+
+            | Command | Description |
+            |---|---|
+            | `/kind <type>` | Add a kind label (bug, cleanup, design, documentation, feature, flake, misc, question, tep) |
+            | `/retest` | Re-trigger workflows that failed on this PR |
+            | `/e2e-extras` | Run extra e2e tests on this PR |
+            | `/cherry-pick <branch>` | Cherry-pick the merged PR to the specified branch |
+            | `/rebase` | Rebase the PR branch against its base branch |
+
+            Note: Slash commands must be placed at the very beginning of the first line of a comment.
+
+            For more details, see the [slash command docs](https://github.com/peter-evans/slash-command-dispatch/tree/main?tab=readme-ov-file#how-comments-are-parsed-for-slash-commands).
