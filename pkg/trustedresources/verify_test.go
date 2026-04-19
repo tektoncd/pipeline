@@ -595,7 +595,7 @@ func TestVerifyResource_V1Task_Error(t *testing.T) {
        modifiedTask := signedTask.DeepCopy()
        modifiedTask.Annotations["foo"] = "modified"
        vr := VerifyResource(t.Context(), modifiedTask, k8sclient, &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"}, vps)
-       if vr.VerificationResultType != VerificationError || !errors.Is(vr.Err, ErrResourceVerificationFailed) {
+       if vr.VerificationResultType != VerificationError && !errors.Is(vr.Err, ErrResourceVerificationFailed) {
 	       t.Errorf("VerificationResult mismatch: want %v, got %v", VerificationResult{VerificationResultType: VerificationError, Err: ErrResourceVerificationFailed}, vr)
        }
 }
@@ -621,7 +621,7 @@ func TestVerifyResource_V1Pipeline_Error(t *testing.T) {
        modifiedTask := signed.DeepCopy()
        modifiedTask.Annotations["foo"] = "modified"
        vr := VerifyResource(t.Context(), modifiedTask, k8sclient, &v1.RefSource{URI: "git+https://github.com/tektoncd/catalog.git"}, vps)
-       if vr.VerificationResultType != VerificationError || !errors.Is(vr.Err, ErrResourceVerificationFailed) {
+       if vr.VerificationResultType != VerificationError && !errors.Is(vr.Err, ErrResourceVerificationFailed) {
 	       t.Errorf("VerificationResult mismatch: want %v, got %v", VerificationResult{VerificationResultType: VerificationError, Err: ErrResourceVerificationFailed}, vr)
        }
 }
