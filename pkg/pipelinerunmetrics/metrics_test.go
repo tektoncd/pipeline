@@ -844,3 +844,30 @@ func getLastValueData(rows []*view.Row, wantTags map[string]string) *view.LastVa
 	}
 	return nil
 }
+
+func TestRecordRunningPipelineRunsNoCondition(t *testing.T) {
+	unregisterMetrics()
+
+	ctx, _ := ttesting.SetupFakeContext(t)
+	informer := fakepipelineruninformer.Get(ctx)
+
+	// Add a PipelineRun with no Succeeded condition (before first reconcile)
+	pr := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-no-condition", Namespace: "ns"},
+		Status:     v1.PipelineRunStatus{},
+	}
+	if err := informer.Informer().GetIndexer().Add(pr); err != nil {
+		t.Fatalf("Adding PipelineRun to informer: %v", err)
+	}
+
+	ctx = getConfigContext(false)
+	metrics, err := NewRecorder(ctx)
+	if err != nil {
+		t.Fatalf("NewRecorder: %v", err)
+	}
+
+	if err := metrics.RunningPipelineRuns(informer.Lister()); err != nil {
+		t.Errorf("RunningPipelineRuns: %v", err)
+	}
+	metricstest.CheckLastValueData(t, "running_pipelineruns", map[string]string{}, 0)
+}
