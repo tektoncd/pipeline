@@ -51,29 +51,21 @@ func TestEmit(t *testing.T) {
 		Status:  corev1.ConditionUnknown,
 		Message: "just starting",
 	}
-	testcases := []struct {
-		name       string
-		wantEvents []string
-	}{{
-		name:       "condition change emits k8s event",
-		wantEvents: []string{"Normal Started"},
-	}}
 
-	for _, tc := range testcases {
-		ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, _ := rtesting.SetupFakeContext(t)
 
-		eventsConfig, _ := config.NewEventsFromMap(map[string]string{"sink": "http://mysink"})
-		cfg := &config.Config{
-			Events:       eventsConfig,
-			Defaults:     config.DefaultConfig.DeepCopy(),
-			FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
-		}
-		ctx = config.ToContext(ctx, cfg)
+	eventsConfig, _ := config.NewEventsFromMap(map[string]string{"sink": "http://mysink"})
+	cfg := &config.Config{
+		Events:       eventsConfig,
+		Defaults:     config.DefaultConfig.DeepCopy(),
+		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
+	}
+	ctx = config.ToContext(ctx, cfg)
 
-		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
-		events.Emit(ctx, nil, after, object)
-		if err := k8sevent.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
-			t.Fatal(err.Error())
-		}
+	recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
+	events.Emit(ctx, nil, after, object)
+	wantEvents := []string{"Normal Started"}
+	if err := k8sevent.CheckEventsOrdered(t, recorder.Events, "condition change emits k8s event", wantEvents); err != nil {
+		t.Fatal(err.Error())
 	}
 }
