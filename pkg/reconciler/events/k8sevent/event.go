@@ -44,10 +44,10 @@ const (
 // k8s events are always sent if afterCondition is different from beforeCondition
 func EmitK8sEvents(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
 	recorder := controller.GetEventRecorder(ctx)
-	
+
 	// Extract trace context from the current span
 	annotations := getTraceAnnotations(ctx)
-	
+
 	// Events that are going to be sent
 	//
 	// Status "ConditionUnknown":
