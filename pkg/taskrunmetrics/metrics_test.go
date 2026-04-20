@@ -930,3 +930,30 @@ func unregisterMetrics() {
 	r = nil
 	errRegistering = nil
 }
+
+func TestRecordRunningTaskRunsNoCondition(t *testing.T) {
+	unregisterMetrics()
+
+	ctx, _ := ttesting.SetupFakeContext(t)
+	informer := faketaskruninformer.Get(ctx)
+
+	// Add a TaskRun with no Succeeded condition (before first reconcile)
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "taskrun-no-condition", Namespace: "ns"},
+		Status:     v1.TaskRunStatus{},
+	}
+	if err := informer.Informer().GetIndexer().Add(tr); err != nil {
+		t.Fatalf("Adding TaskRun to informer: %v", err)
+	}
+
+	ctx = getConfigContext(false, false)
+	metrics, err := NewRecorder(ctx)
+	if err != nil {
+		t.Fatalf("NewRecorder: %v", err)
+	}
+
+	if err := metrics.RunningTaskRuns(ctx, informer.Lister()); err != nil {
+		t.Errorf("RunningTaskRuns: %v", err)
+	}
+	metricstest.CheckLastValueData(t, "running_taskruns", map[string]string{}, 0)
+}
