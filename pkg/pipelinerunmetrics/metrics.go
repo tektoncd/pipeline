@@ -444,18 +444,16 @@ func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 		if err_ != nil {
 			return err
 		}
-		if !pr.IsDone() {
+		succeedCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
+		if succeedCondition != nil && succeedCondition.IsUnknown() {
 			countMap[pipelineRunKey]++
 			metrics.Record(ctx_, runningPRs.M(float64(countMap[pipelineRunKey])))
 			runningPipelineRuns++
-			succeedCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
-			if succeedCondition != nil && succeedCondition.Status == corev1.ConditionUnknown {
-				switch succeedCondition.Reason {
-				case v1.TaskRunReasonResolvingTaskRef:
-					trsWaitResolvingTaskRef++
-				case v1.PipelineRunReasonResolvingPipelineRef.String():
-					prsWaitResolvingPipelineRef++
-				}
+			switch succeedCondition.Reason {
+			case v1.TaskRunReasonResolvingTaskRef:
+				trsWaitResolvingTaskRef++
+			case v1.PipelineRunReasonResolvingPipelineRef.String():
+				prsWaitResolvingPipelineRef++
 			}
 		} else {
 			// In case there are no running PipelineRuns for the pipelineRunKey, set the metric value to 0 to ensure
