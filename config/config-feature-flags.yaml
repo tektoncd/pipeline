@@ -136,3 +136,5 @@ data:
   # If set to "false", exponential backoff will be disabled.
   # For advanced tuning of backoff parameters, update the 'wait-exponential-backoff' ConfigMap.
   enable-wait-exponential-backoff: "false"
+  # Setting this flag to "true" will enable the exact match policy for trusted resources verification.
+  enable-trusted-resources-verification-exact-match-policy: "false"

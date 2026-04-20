@@ -123,7 +123,7 @@ VerificationPolicy supports SecretRef or encoded public key data.
 How does VerificationPolicy work?
 You can create multiple `VerificationPolicy` and apply them to the cluster.
 1. Trusted resources will look up policies from the resource namespace (usually this is the same as taskrun/pipelinerun namespace).
-2. If multiple policies are found. For each policy we will check if the resource url is matching any of the `patterns` in the `resources` list. If matched then this policy will be used for verification.
+2. If multiple policies are found, for each policy we check if the resource URL matches any entry in the `resources` list. A resource entry can use either `pattern` for regex matching or `exactMatch` for exact URL matching. If any resource entry matches, that policy is used for verification.
 3. If multiple policies are matched, the resource must pass all the "enforce" mode policies. If the resource only matches policies in "warn" mode and fails to pass the "warn" policy, it will not fail the taskrun or pipelinerun, but log a warning instead.
 
 4. To pass one policy, the resource can pass any public keys in the policy.
@@ -177,6 +177,8 @@ spec:
 ```
 
 `namespace` should be the same of corresponding resources' namespace.
+
+`exactMatch` is used to filter out remote resources by their source URL. For example, a git resource exact match can be set to `https://github.com/tektoncd/catalog.git`. Unlike `pattern`, `exactMatch` does not use regex syntax. Tekton compares the configured value directly against the `ConfigSource` URL resolved by remote resolution, so the value must match exactly.
 
 `pattern` is used to filter out remote resources by their sources URL. e.g. git resources pattern can be set to https://github.com/tektoncd/catalog.git. The `pattern` should follow regex schema, we use go regex library's [`Match`](https://pkg.go.dev/regexp#Match) to match the pattern from VerificationPolicy to the `ConfigSource` URL resolved by remote resolution. Note that `.*` will match all resources.
 To learn more about regex syntax please refer to [syntax](https://pkg.go.dev/regexp/syntax).

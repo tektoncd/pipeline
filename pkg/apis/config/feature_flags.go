@@ -111,6 +111,10 @@ const (
 	EnableWaitExponentialBackoff = "enable-wait-exponential-backoff"
 	// DefaultEnableWaitExponentialBackoff is the default value for EnableWaitExponentialBackoff
 	DefaultEnableWaitExponentialBackoff = false
+	// DefaultEnableVerificationExactMatchPolicyValue is the default value for EnableVerificationExactMatchPolicy
+	DefaultEnableVerificationExactMatchPolicyValue = false
+	// EnableVerificationExactMatchPolicy is the flag to set "trusted-resources-verification-exact-match-policy"
+	EnableVerificationExactMatchPolicy = "enable-trusted-resources-verification-exact-match-policy"
 
 	// EnableStepActions is the flag to enable step actions (no-op since it's stable)
 	EnableStepActions = "enable-step-actions"
@@ -182,6 +186,13 @@ var (
 		Enabled:    DefaultAlphaFeatureEnabled,
 		Deprecated: true,
 	}
+
+	// DefaultEnableVerificationExactMatchPolicy is the default PerFeatureFlag value for EnableVerificationExactMatchPolicy
+	DefaultEnableVerificationExactMatchPolicy = PerFeatureFlag{
+		Name: EnableVerificationExactMatchPolicy,
+		Stability: AlphaAPIFields,
+		Enabled: DefaultEnableVerificationExactMatchPolicyValue,
+	}
 )
 
 // FeatureFlags holds the features configurations
@@ -217,6 +228,7 @@ type FeatureFlags struct {
 	EnableConciseResolverSyntax  bool   `json:"enableConciseResolverSyntax,omitempty"`
 	EnableKubernetesSidecar      bool   `json:"enableKubernetesSidecar,omitempty"`
 	EnableWaitExponentialBackoff bool   `json:"enableWaitExponentialBackoff,omitempty"`
+	EnableVerificationExactMatchPolicy bool `json:"enableVerificationExactMatchPolicy,omitempty"`
 	// DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
 	// to allow deletion of PipelineRuns created before v0.62.x.
 	// This field is not used and can be removed in a future release
@@ -329,6 +341,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	}
 	if err := setFeature(EnableWaitExponentialBackoff, DefaultEnableWaitExponentialBackoff, &tc.EnableWaitExponentialBackoff); err != nil {
 		return nil, err
+	}
+	if err := setPerFeatureFlag(EnableVerificationExactMatchPolicy, DefaultEnableVerificationExactMatchPolicy, &tc.EnableVerificationExactMatchPolicy); err != nil {
+		return nil, err 
 	}
 
 	return &tc, nil
