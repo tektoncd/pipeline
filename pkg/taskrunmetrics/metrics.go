@@ -453,25 +453,23 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 			trsThrottledByNode[pr.Namespace] = 0
 		}
 
-		if pr.IsDone() {
+		succeedCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
+		if succeedCondition == nil || !succeedCondition.IsUnknown() {
 			continue
 		}
 		runningTrs++
 
-		succeedCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
-		if succeedCondition != nil && succeedCondition.Status == corev1.ConditionUnknown {
-			switch succeedCondition.Reason {
-			case pod.ReasonExceededResourceQuota:
-				cnt := trsThrottledByQuota[pr.Namespace]
-				cnt++
-				trsThrottledByQuota[pr.Namespace] = cnt
-			case pod.ReasonExceededNodeResources:
-				cnt := trsThrottledByNode[pr.Namespace]
-				cnt++
-				trsThrottledByNode[pr.Namespace] = cnt
-			case v1.TaskRunReasonResolvingTaskRef:
-				trsWaitResolvingTaskRef++
-			}
+		switch succeedCondition.Reason {
+		case pod.ReasonExceededResourceQuota:
+			cnt := trsThrottledByQuota[pr.Namespace]
+			cnt++
+			trsThrottledByQuota[pr.Namespace] = cnt
+		case pod.ReasonExceededNodeResources:
+			cnt := trsThrottledByNode[pr.Namespace]
+			cnt++
+			trsThrottledByNode[pr.Namespace] = cnt
+		case v1.TaskRunReasonResolvingTaskRef:
+			trsWaitResolvingTaskRef++
 		}
 	}
 
