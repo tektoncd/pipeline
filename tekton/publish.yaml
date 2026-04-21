@@ -134,6 +134,8 @@ spec:
     env:
     - name: KO_DOCKER_REPO
       value: $(params.imageRegistry)/$(params.imageRegistryPath)
+    - name: GOTOOLCHAIN
+      value: "auto"
     - name: GOFLAGS
       value: "-mod=vendor"
     script: |
