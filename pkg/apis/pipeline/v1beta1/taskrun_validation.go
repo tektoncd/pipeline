@@ -86,7 +86,7 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(ValidateWorkspaceBindings(ctx, ts.Workspaces).ViaField("workspaces"))
 	if ts.Debug != nil {
 		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "debug", config.AlphaAPIFields).ViaField("debug"))
-		errs = errs.Also(validateDebug(ts.Debug).ViaField("debug"))
+		errs = errs.Also(validateDebug(ts.Debug, ts.TaskSpec).ViaField("debug"))
 	}
 	if ts.StepOverrides != nil {
 		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepOverrides", config.BetaAPIFields).ViaField("stepOverrides"))
@@ -274,8 +274,11 @@ func combineParamSpec(p ParamSpec, paramSpecForValidation map[string]ParamSpec) 
 }
 
 // validateDebug validates the debug section of the TaskRun.
-// if set, onFailure breakpoint must be "enabled"
-func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
+// if set, onFailure breakpoint must be "enabled". When taskSpec is inline,
+// every name listed in breakpoints.beforeSteps must reference a step that
+// actually exists, otherwise the breakpoint silently never fires and the
+// user gets no feedback about the misconfiguration (#9720).
+func validateDebug(db *TaskRunDebug, ts *TaskSpec) (errs *apis.FieldError) {
 	if db == nil || db.Breakpoints == nil {
 		return errs
 	}
@@ -287,10 +290,22 @@ func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
 	if db.Breakpoints.OnFailure != "" && db.Breakpoints.OnFailure != EnabledOnFailureBreakpoint {
 		errs = errs.Also(apis.ErrInvalidValue(db.Breakpoints.OnFailure+" is not a valid onFailure breakpoint value, onFailure breakpoint is only allowed to be set as enabled", "breakpoints.onFailure"))
 	}
+
+	var knownSteps sets.Set[string]
+	if ts != nil {
+		knownSteps = sets.New[string]()
+		for _, step := range ts.Steps {
+			knownSteps.Insert(step.Name)
+		}
+	}
+
 	beforeSteps := sets.NewString()
 	for i, step := range db.Breakpoints.BeforeSteps {
 		if beforeSteps.Has(step) {
 			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("before step must be unique, the same step: %s is defined multiple times at", step), fmt.Sprintf("breakpoints.beforeSteps[%d]", i)))
+		}
+		if knownSteps != nil && !knownSteps.Has(step) {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("beforeSteps entry %q does not match any step name in the inline taskSpec", step), fmt.Sprintf("breakpoints.beforeSteps[%d]", i)))
 		}
 		beforeSteps.Insert(step)
 	}
