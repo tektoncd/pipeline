@@ -172,6 +172,7 @@ func anchorPattern(pattern string) string {
 // per the SPDX convention (see spdxGit in
 // pkg/resolution/resolver/git/resolver.go).
 func stripResolverPrefix(uri string) string {
+	uri = strings.TrimSpace(uri)
 	if strings.HasPrefix(uri, "git+") {
 		return uri[4:]
 	}
