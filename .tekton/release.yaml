@@ -34,6 +34,8 @@ metadata:
     pipelinesascode.tekton.dev/pipeline: "tekton/release-pipeline.yaml"
     pipelinesascode.tekton.dev/max-keep-runs: "5"
 spec:
+  taskRunTemplate:
+    serviceAccountName: release
   pipelineRef:
     name: pipeline-release
   params:
