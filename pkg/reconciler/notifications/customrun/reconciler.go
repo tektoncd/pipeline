@@ -55,11 +55,11 @@ var (
 	_ customrunreconciler.Interface = (*Reconciler)(nil)
 )
 
-// ReconcileKind oberves the resource conditions and triggers notifications accordingly
+// ReconcileKind observes the resource conditions and triggers notifications accordingly
 func (c *Reconciler) ReconcileKind(ctx context.Context, customRun *v1beta1.CustomRun) pkgreconciler.Event {
-	// Custom task controllers may be sending events for "CustomRuns" associated
-	// to the custom tasks they control. To avoid sending duplicate events,
-	// CloudEvents for "CustomRuns" are only sent when enabled via send-cloudevents-for-runs.
+	// Custom task controllers may send their own events for CustomRuns; this flag
+	// prevents duplicate events when such a controller is in use.
+	// send-cloudevents-for-runs is deprecated and will be removed in a future release.
 	configs := config.FromContextOrDefaults(ctx)
 	if !configs.FeatureFlags.SendCloudEventsForRuns {
 		return nil

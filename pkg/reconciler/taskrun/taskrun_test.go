@@ -1836,6 +1836,7 @@ status:
         runningInEnvWithInjectedSidecars: true
         enforceNonfalsifiability: "none"
         enableAPIFields: "alpha"
+        sendCloudEventsForRuns: true
         awaitSidecarReadiness: true
         verificationNoMatchPolicy: "ignore"
         enableProvenanceInStatus: true
@@ -1847,6 +1848,7 @@ status:
     featureFlags:
       runningInEnvWithInjectedSidecars: true
       enableAPIFields: "alpha"
+      sendCloudEventsForRuns: true
       enforceNonfalsifiability: "none"
       awaitSidecarReadiness: true
       verificationNoMatchPolicy: "ignore"
@@ -1901,6 +1903,7 @@ status:
     featureFlags:
       runningInEnvWithInjectedSidecars: true
       enableAPIFields: "beta"
+      sendCloudEventsForRuns: true
       enforceNonfalsifiability: "none"
       awaitSidecarReadiness: true
       verificationNoMatchPolicy: "ignore"
