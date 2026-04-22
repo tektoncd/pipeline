@@ -25,6 +25,8 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -71,6 +73,9 @@ func init() {
 
 // timeoutPipelineRun marks the PipelineRun as timed out and any resolved TaskRun(s) too.
 func timeoutPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface) error {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "timeoutPipelineRun",
+		trace.WithAttributes(attribute.String("pipelineRun.name", pr.Name)))
+	defer span.End()
 	errs := timeoutPipelineTasks(ctx, logger, pr, clientSet)
 
 	// If we successfully timed out all the TaskRuns and Runs, we can consider the PipelineRun timed out.
@@ -93,6 +98,9 @@ func timeoutPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.P
 }
 
 func timeoutCustomRun(ctx context.Context, customRunName string, namespace string, clientSet clientset.Interface) error {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "timeoutCustomRun",
+		trace.WithAttributes(attribute.String("customRun.name", customRunName)))
+	defer span.End()
 	_, err := clientSet.TektonV1beta1().CustomRuns(namespace).Patch(ctx, customRunName, types.JSONPatchType, timeoutCustomRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
 		return nil
@@ -101,6 +109,9 @@ func timeoutCustomRun(ctx context.Context, customRunName string, namespace strin
 }
 
 func timeoutTaskRun(ctx context.Context, taskRunName string, namespace string, clientSet clientset.Interface) error {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "timeoutTaskRun",
+		trace.WithAttributes(attribute.String("taskRun.name", taskRunName)))
+	defer span.End()
 	_, err := clientSet.TektonV1().TaskRuns(namespace).Patch(ctx, taskRunName, types.JSONPatchType, timeoutTaskRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
 		return nil
@@ -115,6 +126,12 @@ func timeoutPipelineTasks(ctx context.Context, logger *zap.SugaredLogger, pr *v1
 
 // timeoutPipelineTasksForTaskNames patches `TaskRun`s and `Run`s for the given task names, or all if no task names are given, with canceled status and appropriate message
 func timeoutPipelineTasksForTaskNames(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface, taskNames sets.String) []string {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "timeoutPipelineTasksForTaskNames",
+		trace.WithAttributes(
+			attribute.String("pipelineRun.name", pr.Name),
+			attribute.Int("taskNames.count", taskNames.Len()),
+		))
+	defer span.End()
 	errs := []string{}
 
 	trNames, customRunNames, err := getChildObjectsFromPRStatusForTaskNames(ctx, pr.Status, taskNames)
