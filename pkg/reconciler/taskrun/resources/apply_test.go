@@ -27,6 +27,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"knative.dev/pkg/apis"
@@ -3313,5 +3314,61 @@ func TestArtifacts(t *testing.T) {
 	got := resources.ApplyArtifacts(ts)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyArtifacts() got diff %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestApplyComputeResourcesParams(t *testing.T) {
+	ts := v1.TaskSpec{
+		Params: v1.ParamSpecs{{
+			Name: "MEM",
+			Type: v1.ParamTypeString,
+			Default: &v1.ParamValue{Type: v1.ParamTypeString, StringVal: "128Mi"},
+		}, {
+			Name: "MEM_LIMIT",
+			Type: v1.ParamTypeString,
+		}},
+		Steps: []v1.Step{{
+			Name:  "build",
+			Image: "ubuntu",
+			ComputeResources: v1.ComputeResourceRequirements{
+				RawRequests: map[corev1.ResourceName]string{
+					corev1.ResourceMemory: "$(params.MEM)",
+				},
+				RawLimits: map[corev1.ResourceName]string{
+					corev1.ResourceMemory: "$(params.MEM_LIMIT)",
+				},
+			},
+		}},
+	}
+
+	tr := &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: v1.Params{{
+				Name:  "MEM",
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "256Mi"},
+			}, {
+				Name:  "MEM_LIMIT",
+				Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "512Mi"},
+			}},
+		},
+	}
+
+	spec := resources.ApplyParameters(&ts, tr)
+
+	wantRequests := corev1.ResourceList{
+		corev1.ResourceMemory: resource.MustParse("256Mi"),
+	}
+	wantLimits := corev1.ResourceList{
+		corev1.ResourceMemory: resource.MustParse("512Mi"),
+	}
+
+	if d := cmp.Diff(wantRequests, spec.Steps[0].ComputeResources.Requests); d != "" {
+		t.Errorf("Requests diff (-want +got):\n%s", d)
+	}
+	if d := cmp.Diff(wantLimits, spec.Steps[0].ComputeResources.Limits); d != "" {
+		t.Errorf("Limits diff (-want +got):\n%s", d)
+	}
+	if spec.Steps[0].ComputeResources.HasUnresolvedReferences() {
+		t.Error("expected all references to be resolved")
 	}
 }

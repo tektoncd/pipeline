@@ -37,7 +37,9 @@ func ApplyStepReplacements(step *v1.Step, stringReplacements map[string]string, 
 
 // ApplyStepTemplateReplacements applies variable interpolation on a StepTemplate (aka a container)
 func ApplyStepTemplateReplacements(stepTemplate *v1.StepTemplate, stringReplacements map[string]string, arrayReplacements map[string][]string) {
+	cr := stepTemplate.ComputeResources
 	container := stepTemplate.ToK8sContainer()
 	applyContainerReplacements(container, stringReplacements, arrayReplacements)
 	stepTemplate.SetContainerFields(*container)
+	stepTemplate.ComputeResources = cr.ApplyReplacements(stringReplacements)
 }

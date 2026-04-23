@@ -23,6 +23,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/container"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/selection"
 )
 
@@ -152,5 +153,43 @@ func TestApplyStepReplacements(t *testing.T) {
 	container.ApplyStepReplacements(&s, replacements, arrayReplacements)
 	if d := cmp.Diff(s, expected); d != "" {
 		t.Errorf("Container replacements failed: %s", d)
+	}
+}
+
+func TestApplyStepReplacements_ComputeResources(t *testing.T) {
+	s := v1.Step{
+		Name:  "build",
+		Image: "image",
+		ComputeResources: v1.ComputeResourceRequirements{
+			RawRequests: map[corev1.ResourceName]string{
+				corev1.ResourceMemory: "$(params.MEM)",
+			},
+			RawLimits: map[corev1.ResourceName]string{
+				corev1.ResourceMemory: "$(params.MEM_LIMIT)",
+			},
+		},
+	}
+	replacements := map[string]string{
+		"params.MEM":       "128Mi",
+		"params.MEM_LIMIT": "256Mi",
+	}
+
+	container.ApplyStepReplacements(&s, replacements, nil)
+
+	wantRequests := corev1.ResourceList{
+		corev1.ResourceMemory: resource.MustParse("128Mi"),
+	}
+	wantLimits := corev1.ResourceList{
+		corev1.ResourceMemory: resource.MustParse("256Mi"),
+	}
+
+	if d := cmp.Diff(wantRequests, s.ComputeResources.Requests); d != "" {
+		t.Errorf("Requests diff (-want +got):\n%s", d)
+	}
+	if d := cmp.Diff(wantLimits, s.ComputeResources.Limits); d != "" {
+		t.Errorf("Limits diff (-want +got):\n%s", d)
+	}
+	if s.ComputeResources.HasUnresolvedReferences() {
+		t.Error("expected all references to be resolved")
 	}
 }

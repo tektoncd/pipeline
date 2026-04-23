@@ -16621,7 +16621,8 @@ spec:
 			return fmt.Errorf("expected %d compute resource requirements, got %d", len(expectedComputeResources), len(taskRuns))
 		}
 		for i, r := range expectedComputeResources {
-			if d := cmp.Diff(r, *taskRuns[i].Spec.ComputeResources); d != "" {
+			got := taskRuns[i].Spec.ComputeResources.MustToK8s()
+			if d := cmp.Diff(r, got); d != "" {
 				return fmt.Errorf("TaskRun #%d resource requirements don't match %s", i, diff.PrintWantGot(d))
 			}
 		}
