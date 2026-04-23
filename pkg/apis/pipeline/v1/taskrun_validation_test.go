@@ -454,13 +454,13 @@ func TestTaskRun_Validate(t *testing.T) {
 				TaskRef: &v1.TaskRef{Name: "task"},
 				StepSpecs: []v1.TaskRunStepSpec{{
 					Name: "foo",
-					ComputeResources: corev1.ResourceRequirements{
+					ComputeResources: v1.ComputeResourceRequirements{
 						Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 					},
 				}},
 				SidecarSpecs: []v1.TaskRunSidecarSpec{{
 					Name: "bar",
-					ComputeResources: corev1.ResourceRequirements{
+					ComputeResources: v1.ComputeResourceRequirements{
 						Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 					},
 				}},
@@ -771,7 +771,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 			StepSpecs: []v1.TaskRunStepSpec{{
 				Name: "foo",
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}},
@@ -786,7 +786,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 			SidecarSpecs: []v1.TaskRunSidecarSpec{{
 				Name: "foo",
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}},
@@ -799,12 +799,12 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			TaskRef: &v1.TaskRef{Name: "task"},
 			StepSpecs: []v1.TaskRunStepSpec{{
 				Name: "foo",
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}, {
 				Name: "foo",
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}},
@@ -816,7 +816,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{Name: "task"},
 			StepSpecs: []v1.TaskRunStepSpec{{
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}},
@@ -829,12 +829,12 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			TaskRef: &v1.TaskRef{Name: "task"},
 			SidecarSpecs: []v1.TaskRunSidecarSpec{{
 				Name: "bar",
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}, {
 				Name: "bar",
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}},
@@ -846,7 +846,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{Name: "task"},
 			SidecarSpecs: []v1.TaskRunSidecarSpec{{
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}},
@@ -859,13 +859,13 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			TaskRef: &v1.TaskRef{Name: "task"},
 			StepSpecs: []v1.TaskRunStepSpec{{
 				Name: "stepSpec",
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceMemory: corev1resources.MustParse("1Gi"),
 					},
 				},
 			}},
-			ComputeResources: &corev1.ResourceRequirements{
+			ComputeResources: &v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceMemory: corev1resources.MustParse("2Gi"),
 				},
@@ -882,7 +882,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			TaskRef: &v1.TaskRef{
 				Name: "foo",
 			},
-			ComputeResources: &corev1.ResourceRequirements{
+			ComputeResources: &v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceMemory: corev1resources.MustParse("2Gi"),
 				},
@@ -890,6 +890,33 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		},
 		wc:      cfgtesting.EnableStableAPIFields,
 		wantErr: apis.ErrGeneric("computeResources requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\""),
+	}, {
+		name: "variable references in task-level computeResources are rejected",
+		spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{Name: "task"},
+			ComputeResources: &v1.ComputeResourceRequirements{
+				RawRequests: map[corev1.ResourceName]string{
+					corev1.ResourceMemory: "$(params.MEM)",
+				},
+			},
+		},
+		wc:      cfgtesting.EnableBetaAPIFields,
+		wantErr: apis.ErrInvalidValue("variable substitution is not supported in TaskRun-level computeResources", "computeResources"),
+	}, {
+		name: "variable references in stepSpecs computeResources are rejected",
+		spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{Name: "task"},
+			StepSpecs: []v1.TaskRunStepSpec{{
+				Name: "build",
+				ComputeResources: v1.ComputeResourceRequirements{
+					RawRequests: map[corev1.ResourceName]string{
+						corev1.ResourceMemory: "$(params.MEM)",
+					},
+				},
+			}},
+		},
+		wc:      cfgtesting.EnableBetaAPIFields,
+		wantErr: apis.ErrInvalidValue("variable substitution is not supported in stepSpecs computeResources", "computeResources").ViaIndex(0).ViaField("stepSpecs"),
 	}}
 
 	for _, ts := range tests {
@@ -974,7 +1001,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		name: "valid task-level (spec.resources) resource requirements",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{Name: "task"},
-			ComputeResources: &corev1.ResourceRequirements{
+			ComputeResources: &v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceMemory: corev1resources.MustParse("2Gi"),
 				},
@@ -985,14 +1012,14 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		name: "valid sidecar and task-level (spec.resources) resource requirements",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{Name: "task"},
-			ComputeResources: &corev1.ResourceRequirements{
+			ComputeResources: &v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceMemory: corev1resources.MustParse("2Gi"),
 				},
 			},
 			SidecarSpecs: []v1.TaskRunSidecarSpec{{
 				Name: "sidecar",
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceMemory: corev1resources.MustParse("4Gi"),
 					},
