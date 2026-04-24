@@ -1033,10 +1033,10 @@ func TestSanitizeVolumeName(t *testing.T) {
 // 63 characters. Kubernetes rejects volume names exceeding this limit.
 func TestAffinityAssistantStatefulSet_VolumeNamesNoLongerThan63(t *testing.T) {
 	tests := []struct {
-		name                     string
-		volumeClaimTemplateName  string
-		workspaceName            string
-		pipelineRunName          string
+		name                    string
+		volumeClaimTemplateName string
+		workspaceName           string
+		pipelineRunName         string
 	}{
 		{
 			name:                    "long volumeClaimTemplate name from issue 9739",
