@@ -4,12 +4,12 @@ go 1.23.0
 
 require (
 	github.com/google/go-cmp v0.7.0
-	github.com/tektoncd/pipeline v0.53.1
+	github.com/tektoncd/pipeline v0.53.9
 	k8s.io/api v0.27.16
 	k8s.io/apimachinery v0.27.16
 	k8s.io/client-go v0.27.16
 	k8s.io/utils v0.0.0-20230505201702-9f6742963106
-	knative.dev/pkg v0.0.0-20231011193800-bd99f2f98be7
+	knative.dev/pkg v0.0.0-20231023150739-56bfe0dd9626
 )
 
 require (
@@ -70,7 +70,6 @@ require (
 	go.uber.org/multierr v1.10.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/exp v0.0.0-20230307190834-24139beb5833 // indirect
-	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/oauth2 v0.13.0 // indirect
 	golang.org/x/sync v0.14.0 // indirect
