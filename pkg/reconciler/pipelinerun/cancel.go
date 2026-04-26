@@ -28,6 +28,9 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -73,16 +76,34 @@ func init() {
 }
 
 func cancelCustomRun(ctx context.Context, runName string, namespace string, clientSet clientset.Interface) error {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "cancelCustomRun",
+		trace.WithAttributes(
+			attribute.String("customRun.name", runName),
+			attribute.String("customRun.namespace", namespace),
+		))
+	defer span.End()
+
 	_, err := clientSet.TektonV1beta1().CustomRuns(namespace).Patch(ctx, runName, types.JSONPatchType, cancelCustomRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
 		// The resource may have been deleted in the meanwhile, but we should
 		// still be able to cancel the PipelineRun
 		return nil
 	}
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+	}
 	return err
 }
 
 func cancelTaskRun(ctx context.Context, taskRunName string, namespace string, clientSet clientset.Interface) error {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "cancelTaskRun",
+		trace.WithAttributes(
+			attribute.String("taskRun.name", taskRunName),
+			attribute.String("taskRun.namespace", namespace),
+		))
+	defer span.End()
+
 	_, err := clientSet.TektonV1().TaskRuns(namespace).Patch(ctx, taskRunName, types.JSONPatchType, cancelTaskRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
 		// The resource may have been deleted in the meanwhile, but we should
@@ -93,11 +114,22 @@ func cancelTaskRun(ctx context.Context, taskRunName string, namespace string, cl
 		// The TaskRun may have completed and the spec field is immutable, we should ignore this error.
 		return nil
 	}
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+	}
 	return err
 }
 
 // cancelPipelineRun marks the PipelineRun as cancelled and any resolved TaskRun(s) too.
 func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface) error {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "cancelPipelineRun",
+		trace.WithAttributes(
+			attribute.String("pipelineRun.name", pr.Name),
+			attribute.String("pipelineRun.namespace", pr.Namespace),
+		))
+	defer span.End()
+
 	errs := cancelPipelineTaskRuns(ctx, logger, pr, clientSet)
 
 	// If we successfully cancelled all the TaskRuns and Runs, we can consider the PipelineRun cancelled.
@@ -121,7 +153,10 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.Pi
 			Reason:  v1.PipelineRunReasonCouldntCancel.String(),
 			Message: fmt.Sprintf("PipelineRun %q was cancelled but had errors trying to cancel TaskRuns and/or Runs: %s", pr.Name, e),
 		})
-		return fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
+		combinedErr := fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
+		span.SetStatus(codes.Error, combinedErr.Error())
+		span.RecordError(combinedErr)
+		return combinedErr
 	}
 	return nil
 }
@@ -133,6 +168,13 @@ func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *
 
 // cancelPipelineTaskRunsForTaskNames patches `TaskRun`s and `Run`s for the given task names, or all if no task names are given, with canceled status
 func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface, taskNames sets.String) []string {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "cancelPipelineTaskRunsForTaskNames",
+		trace.WithAttributes(
+			attribute.String("pipelineRun.name", pr.Name),
+			attribute.String("pipelineRun.namespace", pr.Namespace),
+		))
+	defer span.End()
+
 	errs := []string{}
 
 	trNames, customRunNames, err := getChildObjectsFromPRStatusForTaskNames(ctx, pr.Status, taskNames)
@@ -156,6 +198,12 @@ func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.Sugared
 			errs = append(errs, fmt.Errorf("failed to patch CustomRun `%s` with cancellation: %w", runName, err).Error())
 			continue
 		}
+	}
+
+	if len(errs) > 0 {
+		combined := strings.Join(errs, "; ")
+		span.SetStatus(codes.Error, combined)
+		span.RecordError(fmt.Errorf("%s", combined))
 	}
 	return errs
 }
@@ -190,6 +238,13 @@ func getChildObjectsFromPRStatusForTaskNames(ctx context.Context, prs v1.Pipelin
 
 // gracefullyCancelPipelineRun marks any non-final resolved TaskRun(s) as cancelled and runs finally.
 func gracefullyCancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface) error {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "gracefullyCancelPipelineRun",
+		trace.WithAttributes(
+			attribute.String("pipelineRun.name", pr.Name),
+			attribute.String("pipelineRun.namespace", pr.Namespace),
+		))
+	defer span.End()
+
 	errs := cancelPipelineTaskRuns(ctx, logger, pr, clientSet)
 
 	// If we successfully cancelled all the TaskRuns and Runs, we can proceed with the PipelineRun reconciliation to trigger finally.
@@ -202,7 +257,10 @@ func gracefullyCancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger,
 			Reason:  v1.PipelineRunReasonCouldntCancel.String(),
 			Message: fmt.Sprintf("PipelineRun %q was cancelled but had errors trying to cancel TaskRuns and/or Runs: %s", pr.Name, e),
 		})
-		return fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
+		combinedErr := fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
+		span.SetStatus(codes.Error, combinedErr.Error())
+		span.RecordError(combinedErr)
+		return combinedErr
 	}
 	return nil
 }

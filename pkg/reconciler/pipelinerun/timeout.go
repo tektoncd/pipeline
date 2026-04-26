@@ -25,6 +25,9 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -71,6 +74,13 @@ func init() {
 
 // timeoutPipelineRun marks the PipelineRun as timed out and any resolved TaskRun(s) too.
 func timeoutPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface) error {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "timeoutPipelineRun",
+		trace.WithAttributes(
+			attribute.String("pipelineRun.name", pr.Name),
+			attribute.String("pipelineRun.namespace", pr.Namespace),
+		))
+	defer span.End()
+
 	errs := timeoutPipelineTasks(ctx, logger, pr, clientSet)
 
 	// If we successfully timed out all the TaskRuns and Runs, we can consider the PipelineRun timed out.
@@ -87,23 +97,48 @@ func timeoutPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.P
 			Reason:  v1.PipelineRunReasonCouldntTimeOut.String(),
 			Message: fmt.Sprintf("PipelineRun %q was timed out but had errors trying to time out TaskRuns and/or Runs: %s", pr.Name, e),
 		})
-		return fmt.Errorf("error(s) from timing out TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
+		combinedErr := fmt.Errorf("error(s) from timing out TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
+		span.SetStatus(codes.Error, combinedErr.Error())
+		span.RecordError(combinedErr)
+		return combinedErr
 	}
 	return nil
 }
 
 func timeoutCustomRun(ctx context.Context, customRunName string, namespace string, clientSet clientset.Interface) error {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "timeoutCustomRun",
+		trace.WithAttributes(
+			attribute.String("customRun.name", customRunName),
+			attribute.String("customRun.namespace", namespace),
+		))
+	defer span.End()
+
 	_, err := clientSet.TektonV1beta1().CustomRuns(namespace).Patch(ctx, customRunName, types.JSONPatchType, timeoutCustomRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
 		return nil
+	}
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
 	}
 	return err
 }
 
 func timeoutTaskRun(ctx context.Context, taskRunName string, namespace string, clientSet clientset.Interface) error {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "timeoutTaskRun",
+		trace.WithAttributes(
+			attribute.String("taskRun.name", taskRunName),
+			attribute.String("taskRun.namespace", namespace),
+		))
+	defer span.End()
+
 	_, err := clientSet.TektonV1().TaskRuns(namespace).Patch(ctx, taskRunName, types.JSONPatchType, timeoutTaskRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
 		return nil
+	}
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
 	}
 	return err
 }
@@ -115,6 +150,13 @@ func timeoutPipelineTasks(ctx context.Context, logger *zap.SugaredLogger, pr *v1
 
 // timeoutPipelineTasksForTaskNames patches `TaskRun`s and `Run`s for the given task names, or all if no task names are given, with canceled status and appropriate message
 func timeoutPipelineTasksForTaskNames(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface, taskNames sets.String) []string {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "timeoutPipelineTasksForTaskNames",
+		trace.WithAttributes(
+			attribute.String("pipelineRun.name", pr.Name),
+			attribute.String("pipelineRun.namespace", pr.Namespace),
+		))
+	defer span.End()
+
 	errs := []string{}
 
 	trNames, customRunNames, err := getChildObjectsFromPRStatusForTaskNames(ctx, pr.Status, taskNames)
@@ -142,6 +184,12 @@ func timeoutPipelineTasksForTaskNames(ctx context.Context, logger *zap.SugaredLo
 			errs = append(errs, fmt.Errorf("failed to patch CustomRun `%s` with timeout: %w", custonRunName, err).Error())
 			continue
 		}
+	}
+
+	if len(errs) > 0 {
+		combined := strings.Join(errs, "; ")
+		span.SetStatus(codes.Error, combined)
+		span.RecordError(fmt.Errorf("%s", combined))
 	}
 	return errs
 }
