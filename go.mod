@@ -38,7 +38,7 @@ require (
 
 require (
 	code.gitea.io/sdk/gitea v0.21.0
-	github.com/go-jose/go-jose/v3 v3.0.4
+	github.com/go-jose/go-jose/v3 v3.0.5
 	github.com/goccy/kpoward v0.1.0
 	github.com/google/cel-go v0.27.0
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20240108195214-a0658aa1d0cc
