@@ -26,7 +26,7 @@ require (
 	golang.org/x/oauth2 v0.32.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	k8s.io/api v0.32.13
-	k8s.io/apimachinery v0.33.7
+	k8s.io/apimachinery v0.33.11
 	k8s.io/client-go v0.32.13
 	k8s.io/code-generator v0.32.13
 	k8s.io/klog v1.0.0
@@ -192,7 +192,7 @@ require (
 	github.com/mailru/easyjson v0.9.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
-	github.com/moby/spdystream v0.5.0 // indirect
+	github.com/moby/spdystream v0.5.1 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
