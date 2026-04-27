@@ -437,7 +437,7 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 		_, err := c.updateLabelsAndAnnotations(ctx, tr)
 		if err != nil {
 			logger.Warn("Failed to update TaskRun labels/annotations", zap.Error(err))
-			events.EmitError(controller.GetEventRecorder(ctx), err, tr)
+			events.EmitError(ctx, controller.GetEventRecorder(ctx), err, tr)
 			errs = append(errs, err)
 		}
 	}

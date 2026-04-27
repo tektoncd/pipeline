@@ -27,6 +27,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -55,6 +57,9 @@ func cloudEventsSink(ctx context.Context) string {
 // a new object or the condition changed; proceed to call SendCloudEventWithRetries
 func EmitCloudEvents(ctx context.Context, object runtime.Object) {
 	logger := logging.FromContext(ctx)
+	ctx, span := otel.Tracer("CloudEventController").Start(ctx, "EmitCloudEvents")
+	defer span.End()
+
 	runObject, ok := object.(v1beta1.RunObject)
 	if !ok {
 		logger.Warnf("failed to emit cloud events, runtime.Object %v is not a v1beta1.RunObject", object)
@@ -72,6 +77,7 @@ func EmitCloudEvents(ctx context.Context, object runtime.Object) {
 			ctx = cloudevents.ContextWithTarget(ctx, sink)
 			if err := SendCloudEventWithRetries(ctx, runObject); err != nil {
 				logger.Warnf("failed to emit cloud events %v", err.Error())
+				span.RecordError(err)
 			}
 		}
 	}
@@ -145,17 +151,22 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 		defer ceClient.decreaseCount()
 		wasIn <- nil
 		logger.Debugf("Sending cloudevent of type %q", event.Type())
+		_, sendSpan := otel.Tracer("CloudEventController").Start(ctx, "SendCloudEvent")
+		sendSpan.SetAttributes(attribute.String("event_type", event.Type()))
 		recorder := controller.GetEventRecorder(ctx)
 		if result := ceClient.Send(cloudevents.ContextWithRetriesExponentialBackoff(ctx, 10*time.Millisecond, 10), *event); !cloudevents.IsACK(result) {
 			logger.Warnf("Failed to send cloudevent: %s", result.Error())
+			sendSpan.RecordError(errors.New(result.Error()))
 			if recorder == nil {
 				logger.Warnf("No recorder in context, cannot emit error event")
+				sendSpan.End()
 				return
 			}
 			recorder.Event(runObject, corev1.EventTypeWarning, "CloudEventFailed", result.Error())
 		} else if recorder != nil {
 			recorder.Eventf(runObject, corev1.EventTypeNormal, "CloudEventSent", "Sent %s", event.Type())
 		}
+		sendSpan.End()
 	}()
 
 	return <-wasIn
