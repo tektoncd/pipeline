@@ -24,15 +24,21 @@ import (
 	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
+	"go.opentelemetry.io/otel"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/apis"
 	controller "knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
+
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
+)
+
+const (
+	TracerName = "CloudEventController"
 )
 
 func cloudEventsSink(ctx context.Context) string {
@@ -56,6 +62,8 @@ func cloudEventsSink(ctx context.Context) string {
 // Each format sender calls dispatchCloudEvent which handles the L2 cache check,
 // goroutine dispatch, retries, and Kubernetes Event recording.
 func EmitCloudEvents(ctx context.Context, object runtime.Object) {
+	ctx, span := otel.GetTracerProvider().Tracer(TracerName).Start(ctx, "EmitCloudEvents")
+	defer span.End()
 	logger := logging.FromContext(ctx)
 	runObject, ok := object.(v1beta1.RunObject)
 	if !ok {
@@ -68,26 +76,28 @@ func EmitCloudEvents(ctx context.Context, object runtime.Object) {
 		return
 	}
 
-	// Level 1: skip if this exact condition state was already processed.
-	// One check per reconcile, before any format-specific work.
 	cacheClient := cache.Get(ctx)
+
 	wasPresent, err := cache.ContainsOrAddObject(cacheClient, runObject)
 	if err != nil {
 		logger.Warnf("failed to emit cloud events: could not check the events cache %v", err.Error())
+		span.RecordError(err)
 	}
+
 	if err != nil || wasPresent {
 		return
 	}
 
 	ctx = cloudevents.ContextWithTarget(ctx, sink)
+
 	cfg := config.FromContextOrDefaults(ctx)
 	formats := cfg.Events.Formats
+
 	if len(formats) == 0 {
-		// Belt-and-suspenders: config validation already rejects empty formats.
-		// Warn-and-skip rather than error to avoid requeue loops for a
-		// misconfiguration that cannot self-heal.
-		logger.Warnf("no event formats configured, skipping notifications for %s",
-			runObject.GetObjectMeta().GetName())
+		logger.Warnf(
+			"no event formats configured, skipping notifications for %s",
+			runObject.GetObjectMeta().GetName(),
+		)
 		return
 	}
 
@@ -96,8 +106,6 @@ func EmitCloudEvents(ctx context.Context, object runtime.Object) {
 		case config.FormatTektonV1:
 			sendTektonV1Event(ctx, runObject)
 		default:
-			// Unknown format: operator may have set a future format before
-			// updating the binary. Warn-and-skip rather than fail.
 			logger.Warnf("unknown event format %q, skipping", format)
 		}
 	}

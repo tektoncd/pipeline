@@ -20,12 +20,20 @@ import (
 	"context"
 
 	bc "github.com/allegro/bigcache/v3"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
-	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
+
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
+)
+
+const (
+	// TracerName is the name of the tracer for the notifications reconciler.
+	TracerName = "Notifications"
 )
 
 // EventClientsProvider provides read access to cloud event dependencies
@@ -36,6 +44,9 @@ type EventClientsProvider interface {
 
 // ReconcileRunObject observes a v1beta1.RunObject and triggers notifications.
 func ReconcileRunObject(ctx context.Context, e EventClientsProvider, readOnlyRun v1beta1.RunObject) pkgreconciler.Event {
+	var span trace.Span
+	ctx, span = otel.GetTracerProvider().Tracer(TracerName).Start(ctx, "ReconcileRunObject")
+	defer span.End()
 	logger := logging.FromContext(ctx)
 	ctx = cloudevent.ToContext(ctx, e.GetCloudEventsClient())
 	ctx = cache.ToContext(ctx, e.GetCacheClient())
