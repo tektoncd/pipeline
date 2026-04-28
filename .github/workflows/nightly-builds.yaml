@@ -1,5 +1,7 @@
 name: Tekton Nightly Build
 
+permissions: {}
+
 "on":
   schedule:
     # Run at 03:00 UTC daily
