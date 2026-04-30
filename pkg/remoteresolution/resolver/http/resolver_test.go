@@ -358,7 +358,9 @@ func TestResolverReconcileBasicAuth(t *testing.T) {
 				p.url = svr.URL
 			}
 			request := createRequest(p)
-			cfg := make(map[string]string)
+			cfg := map[string]string{
+				httpresolution.BlockPrivateIPsKey: "false",
+			}
 			d := test.Data{
 				ConfigMaps: []*corev1.ConfigMap{{
 					ObjectMeta: metav1.ObjectMeta{
@@ -468,7 +470,8 @@ func toParams(m map[string]string) []pipelinev1.Param {
 
 func contextWithConfig(timeout string) context.Context {
 	config := map[string]string{
-		httpresolution.TimeoutKey: timeout,
+		httpresolution.TimeoutKey:         timeout,
+		httpresolution.BlockPrivateIPsKey: "false",
 	}
 	return resolutionframework.InjectResolverConfigToContext(context.Background(), config)
 }

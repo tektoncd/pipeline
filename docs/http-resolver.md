@@ -54,6 +54,7 @@ for the name, namespace and defaults that the resolver ships with.
 | Option Name                 | Description                                          | Example Values         |
 |-----------------------------|------------------------------------------------------|------------------------|
 | `fetch-timeout`              | The maximum time any fetching of URL resolution may take. **Note**: a global maximum timeout of 1 minute is currently enforced on _all_ resolution requests. | `1m`, `2s`, `700ms`                                              |
+| `block-private-ips`          | Controls whether the HTTP resolver blocks requests to private, loopback, link-local, and unspecified IP addresses (SSRF protection). Defaults to `"true"`. Set to `"false"` to allow requests to internal/private network addresses (e.g. cluster-internal registries or services). | `"true"`, `"false"` |
 
 ## Usage
 

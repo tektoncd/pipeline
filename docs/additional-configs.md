@@ -40,7 +40,7 @@ installation.
 
 ## Configuring built-in remote Task and Pipeline resolution
 
-Four remote resolvers are currently provided as part of the Tekton Pipelines installation.
+Five remote resolvers are currently provided as part of the Tekton Pipelines installation.
 By default, these remote resolvers are enabled. Each resolver can be disabled by setting
 the appropriate feature flag in the `resolvers-feature-flags` ConfigMap in the `tekton-pipelines-resolvers`
 namespace:
@@ -52,6 +52,8 @@ namespace:
 1. [The `hub` resolver](./hub-resolver.md), disabled by setting the `enable-hub-resolver`
    feature flag to `false`.
 1. [The `cluster` resolver](./cluster-resolver.md), disabled by setting the `enable-cluster-resolver`
+   feature flag to `false`.
+1. [The `http` resolver](./http-resolver.md), disabled by setting the `enable-http-resolver`
    feature flag to `false`.
 
 ## Configuring CloudEvents notifications

@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"regexp"
 	"strings"
 	"testing"
@@ -411,7 +412,9 @@ func TestResolverReconcileBasicAuth(t *testing.T) {
 				p.url = svr.URL
 			}
 			request := createRequest(p)
-			cfg := make(map[string]string)
+			cfg := map[string]string{
+				BlockPrivateIPsKey: "false",
+			}
 			d := test.Data{
 				ConfigMaps: []*corev1.ConfigMap{{
 					ObjectMeta: metav1.ObjectMeta{
@@ -515,6 +518,14 @@ func toParams(m map[string]string) []pipelinev1.Param {
 
 func contextWithConfig(timeout string) context.Context {
 	config := map[string]string{
+		TimeoutKey:         timeout,
+		BlockPrivateIPsKey: "false",
+	}
+	return framework.InjectResolverConfigToContext(context.Background(), config)
+}
+
+func contextWithBlockingConfig(timeout string) context.Context {
+	config := map[string]string{
 		TimeoutKey: timeout,
 	}
 	return framework.InjectResolverConfigToContext(context.Background(), config)
@@ -528,6 +539,212 @@ func checkExpectedErr(t *testing.T, expectedErr, actualErr error) {
 	if d := cmp.Diff(expectedErr.Error(), actualErr.Error()); d != "" {
 		t.Fatalf("expected err '%v' but got '%v'", expectedErr, actualErr)
 	}
+}
+
+func TestIsBlockedIP(t *testing.T) {
+	tests := []struct {
+		name    string
+		ip      string
+		blocked bool
+	}{
+		// Loopback
+		{name: "loopback IPv4", ip: "127.0.0.1", blocked: true},
+		{name: "loopback IPv4 other", ip: "127.0.0.2", blocked: true},
+		{name: "loopback IPv6", ip: "::1", blocked: true},
+
+		// Private RFC 1918
+		{name: "private 10.x", ip: "10.0.0.1", blocked: true},
+		{name: "private 172.16.x", ip: "172.16.0.1", blocked: true},
+		{name: "private 192.168.x", ip: "192.168.1.1", blocked: true},
+
+		// Private IPv6
+		{name: "private IPv6 fc00", ip: "fc00::1", blocked: true},
+		{name: "private IPv6 fd00", ip: "fd00::1", blocked: true},
+
+		// Link-local (includes cloud metadata)
+		{name: "cloud metadata", ip: "169.254.169.254", blocked: true},
+		{name: "link-local IPv4", ip: "169.254.1.1", blocked: true},
+		{name: "link-local IPv6", ip: "fe80::1", blocked: true},
+
+		// Unspecified
+		{name: "unspecified IPv4", ip: "0.0.0.0", blocked: true},
+		{name: "unspecified IPv6", ip: "::", blocked: true},
+
+		// Multicast
+		{name: "multicast IPv4", ip: "224.0.0.1", blocked: true},
+		{name: "multicast IPv6", ip: "ff02::1", blocked: true},
+
+		// Carrier-grade NAT (RFC 6598)
+		{name: "CGNAT start", ip: "100.64.0.1", blocked: true},
+		{name: "CGNAT end", ip: "100.127.255.254", blocked: true},
+
+		// IPv4-mapped IPv6 bypass attempts
+		{name: "mapped loopback", ip: "::ffff:127.0.0.1", blocked: true},
+		{name: "mapped metadata", ip: "::ffff:169.254.169.254", blocked: true},
+		{name: "mapped private", ip: "::ffff:10.0.0.1", blocked: true},
+
+		// Allowed public IPs
+		{name: "public DNS 8.8.8.8", ip: "8.8.8.8", blocked: false},
+		{name: "public DNS 1.1.1.1", ip: "1.1.1.1", blocked: false},
+		{name: "public IP", ip: "142.250.80.46", blocked: false},
+		{name: "public IPv6", ip: "2607:f8b0:4004:800::200e", blocked: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			addr := netip.MustParseAddr(tc.ip)
+			got := isBlockedIP(addr)
+			if got != tc.blocked {
+				t.Errorf("isBlockedIP(%s) = %v, want %v", tc.ip, got, tc.blocked)
+			}
+		})
+	}
+}
+
+func TestMakeHTTPClientBlockPrivateIPs(t *testing.T) {
+	tests := []struct {
+		name           string
+		config         map[string]string
+		expectBlocking bool
+	}{
+		{
+			name:           "default (key absent) blocks private IPs",
+			config:         map[string]string{TimeoutKey: "1m"},
+			expectBlocking: true,
+		},
+		{
+			name:           "explicit true blocks private IPs",
+			config:         map[string]string{TimeoutKey: "1m", BlockPrivateIPsKey: "true"},
+			expectBlocking: true,
+		},
+		{
+			name:           "false disables blocking",
+			config:         map[string]string{TimeoutKey: "1m", BlockPrivateIPsKey: "false"},
+			expectBlocking: false,
+		},
+		{
+			name:           "invalid value treated as true",
+			config:         map[string]string{TimeoutKey: "1m", BlockPrivateIPsKey: "yes"},
+			expectBlocking: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := framework.InjectResolverConfigToContext(context.Background(), tc.config)
+			client, err := makeHttpClient(ctx)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			hasCustomTransport := client.Transport != http.DefaultTransport && client.Transport != nil
+			if hasCustomTransport != tc.expectBlocking {
+				t.Errorf("custom Transport set = %v, want %v", hasCustomTransport, tc.expectBlocking)
+			}
+		})
+	}
+}
+
+func TestSafeDialContextBlockedIP(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("blocks loopback address", func(t *testing.T) {
+		_, err := safeDialContext(ctx, "tcp", "127.0.0.1:80")
+		if err == nil {
+			t.Fatal("expected error dialing loopback")
+		}
+		if !strings.Contains(err.Error(), "private/internal IP address") {
+			t.Fatalf("expected SSRF error but got: %v", err)
+		}
+	})
+
+	t.Run("DNS failure returns error", func(t *testing.T) {
+		_, err := safeDialContext(ctx, "tcp", "this-host-does-not-exist.invalid:80")
+		if err == nil {
+			t.Fatal("expected DNS failure error")
+		}
+		if !strings.Contains(err.Error(), "DNS resolution failed") {
+			t.Fatalf("expected DNS error but got: %v", err)
+		}
+	})
+
+	t.Run("invalid address format", func(t *testing.T) {
+		_, err := safeDialContext(ctx, "tcp", "no-port")
+		if err == nil {
+			t.Fatal("expected error for invalid address")
+		}
+		if !strings.Contains(err.Error(), "invalid address") {
+			t.Fatalf("expected address parse error but got: %v", err)
+		}
+	})
+}
+
+func TestFetchHttpResourceBlockedIP(t *testing.T) {
+	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "ok")
+	}))
+	defer svr.Close()
+
+	params := map[string]string{UrlParam: svr.URL}
+	logger, _ := zap.NewDevelopment()
+
+	t.Run("blocking enabled rejects loopback", func(t *testing.T) {
+		ctx := contextWithBlockingConfig(defaultHttpTimeoutValue)
+		_, err := FetchHttpResource(ctx, params, nil, logger.Sugar())
+		if err == nil {
+			t.Fatal("expected error when fetching from loopback with blocking enabled")
+		}
+		if !strings.Contains(err.Error(), "private/internal IP address") {
+			t.Fatalf("expected SSRF error but got: %v", err)
+		}
+	})
+
+	t.Run("blocking disabled allows loopback", func(t *testing.T) {
+		ctx := contextWithConfig(defaultHttpTimeoutValue)
+		result, err := FetchHttpResource(ctx, params, nil, logger.Sugar())
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(result.Data()) != "ok" {
+			t.Fatalf("expected 'ok' but got %q", string(result.Data()))
+		}
+	})
+}
+
+func TestFetchHttpResourceRedirectToBlocked(t *testing.T) {
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "redirected")
+	}))
+	defer target.Close()
+
+	redirector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL, http.StatusFound)
+	}))
+	defer redirector.Close()
+
+	params := map[string]string{UrlParam: redirector.URL}
+	logger, _ := zap.NewDevelopment()
+
+	t.Run("redirect to loopback blocked", func(t *testing.T) {
+		ctx := contextWithBlockingConfig(defaultHttpTimeoutValue)
+		_, err := FetchHttpResource(ctx, params, nil, logger.Sugar())
+		if err == nil {
+			t.Fatal("expected error when redirect targets loopback with blocking enabled")
+		}
+		if !strings.Contains(err.Error(), "private/internal IP address") {
+			t.Fatalf("expected SSRF error but got: %v", err)
+		}
+	})
+
+	t.Run("redirect to loopback allowed when disabled", func(t *testing.T) {
+		ctx := contextWithConfig(defaultHttpTimeoutValue)
+		result, err := FetchHttpResource(ctx, params, nil, logger.Sugar())
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(result.Data()) != "redirected" {
+			t.Fatalf("expected 'redirected' but got %q", string(result.Data()))
+		}
+	})
 }
 
 func TestCompareSHA(t *testing.T) {
