@@ -57,7 +57,6 @@ func NewReconciler(ceClient cloudevent.CEClient, cacheClient *bc.BigCache) *Reco
 }
 
 // GetCloudEventsClient returns the cloud event client.
-
 func (r *Reconciler) GetCloudEventsClient() cloudevent.CEClient {
 	return r.cloudEventClient
 }
@@ -71,7 +70,6 @@ func (r *Reconciler) GetCacheClient() *bc.BigCache {
 var _ taskrunreconciler.Interface = (*Reconciler)(nil)
 
 func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgreconciler.Event {
-
 	ctx, span := r.tracerProvider.Tracer(TracerName).Start(ctx, "ReconcileKind",
 		trace.WithAttributes(
 			attribute.String("taskrun.name", tr.Name),
