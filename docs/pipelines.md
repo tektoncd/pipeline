@@ -1263,6 +1263,10 @@ taskSpec:
 **Note:** Every `PipelineTask` can only access its own `retries` and `retry-count`. These
 values aren't accessible for other `PipelineTask`s.
 
+> **Note:** `$(context.task.retry-count)` and `$(context.task.retries)` are only supported
+> with inline `taskSpec` definitions. They are **not** supported when using `taskRef`
+> to reference an external Task.
+
 ## Using `Results`
 
 Tasks can emit [`Results`](tasks.md#emitting-results) when they execute. A Pipeline can use these
