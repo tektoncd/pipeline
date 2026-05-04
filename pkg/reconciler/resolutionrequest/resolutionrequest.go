@@ -27,6 +27,9 @@ import (
 	resolutionclientset "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	rrreconciler "github.com/tektoncd/pipeline/pkg/client/resolution/injection/reconciler/resolution/v1beta1/resolutionrequest"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,13 +41,17 @@ import (
 	"knative.dev/pkg/reconciler"
 )
 
+// TracerName is the name of the tracer used by the ResolutionRequest reconciler.
+const TracerName = "ResolutionRequestReconciler"
+
 // Reconciler is a knative reconciler for processing ResolutionRequest objects.
 // It patches lifecycle-owned status fields itself and must be configured with
 // SkipStatusUpdates so generated updates do not overwrite resolver-owned fields.
 type Reconciler struct {
 	// client applies lifecycle-only status patches.
-	client resolutionclientset.Interface
-	clock  clock.PassiveClock
+	client         resolutionclientset.Interface
+	clock          clock.PassiveClock
+	tracerProvider trace.TracerProvider
 }
 
 var _ rrreconciler.Interface = (*Reconciler)(nil)
@@ -80,6 +87,13 @@ func (r *Reconciler) reconcile(ctx context.Context, rr *v1beta1.ResolutionReques
 		return nil
 	}
 
+	ctx, span := r.tracerProvider.Tracer(TracerName).Start(ctx, "ReconcileKind")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("resolutionrequest.name", rr.Name),
+		attribute.String("resolutionrequest.namespace", rr.Namespace),
+	)
+
 	if rr.Status.GetCondition(apis.ConditionSucceeded) == nil {
 		rr.Status.InitializeConditions()
 	}
@@ -87,10 +101,14 @@ func (r *Reconciler) reconcile(ctx context.Context, rr *v1beta1.ResolutionReques
 	maximumResolutionDuration := config.FromContextOrDefaults(ctx).Defaults.DefaultMaximumResolutionTimeout
 	switch {
 	case rr.IsResolved():
+		span.SetAttributes(attribute.String("resolutionrequest.outcome", "succeeded"))
 		rr.Status.MarkSucceeded()
 	case requestDuration(rr) > maximumResolutionDuration:
+		span.SetAttributes(attribute.String("resolutionrequest.outcome", "timed-out"))
+		span.SetStatus(codes.Error, resolutioncommon.ReasonResolutionTimedOut)
 		rr.Status.MarkFailed(resolutioncommon.ReasonResolutionTimedOut, timeoutMessage(maximumResolutionDuration))
 	default:
+		span.SetAttributes(attribute.String("resolutionrequest.outcome", "in-progress"))
 		rr.Status.MarkInProgress(resolutioncommon.MessageWaitingForResolver)
 		return controller.NewRequeueAfter(maximumResolutionDuration - requestDuration(rr))
 	}

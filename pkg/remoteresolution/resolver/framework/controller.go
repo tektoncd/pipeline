@@ -20,13 +20,16 @@ import (
 	"context"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	rrclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client"
 	rrinformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
 	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	framework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"github.com/tektoncd/pipeline/pkg/tracing"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/clock"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	secretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -49,6 +52,23 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 		kubeclientset := kubeclient.Get(ctx)
 		rrclientset := rrclient.Get(ctx)
 		rrInformer := rrinformer.Get(ctx)
+		secretInformer := secretinformer.Get(ctx)
+		tracerProvider := tracing.New("resolver-framework", logger.Named("tracing"))
+
+		// Watch only the tracing configmap. Using the full pipeline config
+		// store here would also watch configmaps the resolver deployment does
+		// not install (e.g. config-wait-exponential-backoff), which crashes the
+		// remote resolver pod.
+		//nolint:contextcheck
+		tracingConfigStore := configmap.NewUntypedStore(
+			"tracing-config-store",
+			logger.Named("tracing-config-store"),
+			configmap.Constructors{
+				config.GetTracingConfigName(): config.NewTracingFromConfigMap,
+			},
+			tracerProvider.OnStore(secretInformer.Lister()),
+		)
+		tracingConfigStore.WatchConfigs(cmw)
 
 		if err := resolver.Initialize(ctx); err != nil {
 			panic(err.Error())
@@ -60,6 +80,7 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 			resolutionRequestLister:    rrInformer.Lister(),
 			resolutionRequestClientSet: rrclientset,
 			resolver:                   resolver,
+			tracerProvider:             tracerProvider,
 		}
 
 		watchConfigChanges(ctx, r, cmw)
@@ -76,6 +97,10 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 			WorkQueueName: "TektonResolverFramework." + resolverName,
 			Logger:        logger,
 		})
+
+		if _, err := secretInformer.Informer().AddEventHandler(controller.HandleAll(tracerProvider.Handler)); err != nil {
+			logging.FromContext(ctx).Panicf("Couldn't register Secret informer event handler: %v", err)
+		}
 
 		_, err := rrInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: framework.FilterResolutionRequestsBySelector(resolver.GetSelector(ctx)),
@@ -135,5 +160,8 @@ func applyModifiersAndDefaults(ctx context.Context, r *Reconciler, modifiers []R
 
 	if r.Clock == nil {
 		r.Clock = clock.RealClock{}
+	}
+	if r.tracerProvider == nil {
+		r.tracerProvider = tracing.New("resolver-framework", logging.FromContext(ctx).Named("tracing"))
 	}
 }
