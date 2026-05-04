@@ -22,6 +22,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/http"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -78,14 +81,27 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
+	ctx, span := otel.GetTracerProvider().Tracer("resolver:http").Start(ctx, "resolver:http:Resolve")
+	defer span.End()
+
 	if http.IsDisabled(ctx) {
 		return nil, errors.New(disabledError)
 	}
 
 	params, err := http.PopulateDefaultParams(ctx, req.Params)
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
-	return http.FetchHttpResource(ctx, params, r.kubeClient, r.logger)
+	if url := params[http.UrlParam]; url != "" {
+		span.SetAttributes(attribute.String("resolver.http.url", url))
+	}
+
+	resource, err := http.FetchHttpResource(ctx, params, r.kubeClient, r.logger)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		return nil, err
+	}
+	return resource, nil
 }

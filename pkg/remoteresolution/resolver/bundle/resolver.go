@@ -28,6 +28,9 @@ import (
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	bundleresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/bundle"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 )
@@ -105,19 +108,41 @@ func (r *Resolver) IsImmutable(params []v1.Param) bool {
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
+	ctx, span := otel.GetTracerProvider().Tracer("resolver:bundle").Start(ctx, "resolver:bundle:Resolve")
+	defer span.End()
+
 	if len(req.Params) == 0 {
 		return nil, errors.New("no params")
 	}
 
+	// Extract params for span attributes.
+	for _, p := range req.Params {
+		switch p.Name {
+		case bundleresolution.ParamBundle:
+			span.SetAttributes(attribute.String("resolver.bundle.url", p.Value.StringVal))
+		case bundleresolution.ParamName:
+			span.SetAttributes(attribute.String("resolver.bundle.name", p.Value.StringVal))
+		case bundleresolution.ParamKind:
+			span.SetAttributes(attribute.String("resolver.bundle.kind", p.Value.StringVal))
+		}
+	}
+
+	var resource resolutionframework.ResolvedResource
+	var err error
 	if cache.ShouldUse(ctx, r, req.Params) {
-		return cache.Get(ctx).GetCachedOrResolveFromRemote(
+		resource, err = cache.Get(ctx).GetCachedOrResolveFromRemote(
 			req.Params,
 			LabelValueBundleResolverType,
 			func() (resolutionframework.ResolvedResource, error) {
 				return r.resolveRequestFunc(ctx, r.kubeClientSet, req)
 			},
 		)
+	} else {
+		resource, err = r.resolveRequestFunc(ctx, r.kubeClientSet, req)
 	}
-
-	return r.resolveRequestFunc(ctx, r.kubeClientSet, req)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		return nil, err
+	}
+	return resource, nil
 }
