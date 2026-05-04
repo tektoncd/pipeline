@@ -96,11 +96,13 @@ type Reconciler struct {
 	tracerProvider           trace.TracerProvider
 
 	// sidecarMode caches ServerVersion + IsNativeSidecarSupport when EnableKubernetesSidecar
-	// is true, so the done path does not call Discovery on every resync (#9755).
+	// is true, so the done path does not call Discovery on every resync (#9755). After the first
+	// successful discovery, useTektonSidecarMode only reads computed/useTektonNop from memory
+	// (RLock); Discovery runs at most once per reconciler (Lock), and errors retry until success.
 	// Status.Sidecars cannot be used to skip stopSidecars: injected containers (e.g. Istio)
 	// are not listed there but buildSidecarStopPatch stops them using the live Pod.
 	sidecarMode struct {
-		sync.Mutex
+		sync.RWMutex
 		computed     bool
 		useTektonNop bool // if true, run stopSidecars; if false, native Kubernetes sidecars
 	}
@@ -378,11 +380,20 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1.TaskRun
 
 // useTektonSidecarMode returns whether the done path should run stopSidecars (Tekton nop
 // image) vs skipping it for native Kubernetes sidecars. ServerVersion is queried at most once
-// per reconciler when EnableKubernetesSidecar is true.
+// per reconciler when EnableKubernetesSidecar is true; later reconciles return the cached
+// useTektonNop without calling Discovery.
 func (c *Reconciler) useTektonSidecarMode(ctx context.Context, logger *zap.SugaredLogger) (bool, error) {
 	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
 		return true, nil
 	}
+	c.sidecarMode.RLock()
+	if c.sidecarMode.computed {
+		v := c.sidecarMode.useTektonNop
+		c.sidecarMode.RUnlock()
+		return v, nil
+	}
+	c.sidecarMode.RUnlock()
+
 	c.sidecarMode.Lock()
 	defer c.sidecarMode.Unlock()
 	if c.sidecarMode.computed {
