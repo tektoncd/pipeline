@@ -24,10 +24,16 @@ import (
 	rrlisters "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	resolutionresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
+
+// TracerName is the name of the tracer used by CRDRequester.
+const TracerName = "CRDRequester"
 
 // CRDRequester implements the Requester interface using
 // ResolutionRequest CRDs.
@@ -50,18 +56,27 @@ var _ Requester = &CRDRequester{}
 // kubernetes cluster, returning any errors experienced while doing so.
 // If ResolutionRequest is succeeded then it returns the resolved data.
 func (r *CRDRequester) Submit(ctx context.Context, resolver ResolverName, req Request) (ResolvedResource, error) {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "Submit")
+	defer span.End()
+	span.SetAttributes(attribute.String("resolver.name", string(resolver)))
+
 	rr, _ := r.lister.ResolutionRequests(req.ResolverPayload().Namespace).Get(req.ResolverPayload().Name)
 	if rr == nil {
+		span.AddEvent("cache-miss: creating ResolutionRequest")
 		if err := r.createResolutionRequest(ctx, resolver, req); err != nil &&
 			// When the request reconciles frequently, the creation may fail
 			// because the list informer cache is not updated.
 			// If the request already exists then we can assume that is in progress.
 			// The next reconcile will handle it based on the actual situation.
 			!apierrors.IsAlreadyExists(err) {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return nil, err
 		}
 		return nil, resolutioncommon.ErrRequestInProgress
 	}
+
+	span.AddEvent("cache-hit: ResolutionRequest exists")
 
 	if rr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
 		// TODO(sbwsg): This should be where an existing
@@ -78,10 +93,15 @@ func (r *CRDRequester) Submit(ctx context.Context, resolver ResolverName, req Re
 
 	message := rr.Status.GetCondition(apis.ConditionSucceeded).GetMessage()
 	err := resolutioncommon.NewError(resolutioncommon.ReasonResolutionFailed, errors.New(message))
+	span.RecordError(err)
+	span.SetStatus(codes.Error, err.Error())
 	return nil, err
 }
 
 func (r *CRDRequester) createResolutionRequest(ctx context.Context, resolver ResolverName, req Request) error {
+	_, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "createResolutionRequest")
+	defer span.End()
+
 	var owner metav1.OwnerReference
 	if ownedReq, ok := req.(OwnedRequest); ok {
 		owner = ownedReq.OwnerRef()
@@ -89,5 +109,9 @@ func (r *CRDRequester) createResolutionRequest(ctx context.Context, resolver Res
 	rr := resolutionresource.CreateResolutionRequest(ctx, resolver, req.ResolverPayload().Name, req.ResolverPayload().Namespace, req.ResolverPayload().ResolutionSpec.Params, owner)
 	rr.Spec.URL = req.ResolverPayload().ResolutionSpec.URL
 	_, err := r.clientset.ResolutionV1beta1().ResolutionRequests(rr.Namespace).Create(ctx, rr, metav1.CreateOptions{})
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
 	return err
 }

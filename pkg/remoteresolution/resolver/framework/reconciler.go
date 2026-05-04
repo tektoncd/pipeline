@@ -32,6 +32,9 @@ import (
 	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -49,6 +52,9 @@ import (
 // Resolve() may take. It can be overridden by a resolver implementing
 // the framework.TimedResolution interface.
 const defaultMaximumResolutionDuration = time.Minute
+
+// TracerName is the name of the tracer used by the resolver framework reconciler.
+const TracerName = "ResolverFrameworkReconciler"
 
 // statusDataPatch is the json structure that will be PATCHed into
 // a ResolutionRequest with its data and annotations once successfully
@@ -76,7 +82,8 @@ type Reconciler struct {
 	resolutionRequestLister    rrv1beta1.ResolutionRequestLister
 	resolutionRequestClientSet rrclient.Interface
 
-	configStore *framework.ConfigStore
+	configStore    *framework.ConfigStore
+	tracerProvider trace.TracerProvider
 }
 
 var _ reconciler.LeaderAware = &Reconciler{}
@@ -103,6 +110,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return nil
 	}
 
+	ctx, span := r.tracerProvider.Tracer(TracerName).Start(ctx, "Reconcile")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("resolver.type", r.resolver.GetName(ctx)),
+		attribute.String("resolutionrequest.name", name),
+		attribute.String("resolutionrequest.namespace", namespace),
+	)
+
 	// Inject request-scoped information into the context, such as
 	// the namespace that the request originates from and the
 	// configuration from the configmap this resolver is watching.
@@ -112,10 +127,18 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 		ctx = r.configStore.ToContext(ctx)
 	}
 
-	return r.resolve(ctx, key, rr)
+	if resolveErr := r.resolve(ctx, key, rr); resolveErr != nil {
+		span.RecordError(resolveErr)
+		span.SetStatus(codes.Error, resolveErr.Error())
+		return resolveErr
+	}
+	return nil
 }
 
 func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.ResolutionRequest) error {
+	ctx, span := r.tracerProvider.Tracer(TracerName).Start(ctx, "resolve")
+	defer span.End()
+
 	errChan := make(chan error)
 	resourceChan := make(chan framework.ResolvedResource)
 
@@ -139,6 +162,8 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 		var err error
 		timeoutDuration, err = timed.GetResolutionTimeout(ctx, defaultMaximumResolutionDuration, paramsMap)
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return err
 		}
 	}
@@ -149,42 +174,66 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 	resolutionCtx, cancelFn := context.WithTimeout(ctx, timeoutDuration)
 	defer cancelFn()
 
+	resolverName := r.resolver.GetName(resolutionCtx)
+	tracer := r.tracerProvider.Tracer(TracerName)
+
 	go func() {
-		validationError := r.resolver.Validate(resolutionCtx, &rr.Spec)
+		validateCtx, validateSpan := tracer.Start(resolutionCtx, "validate")
+		validateSpan.SetAttributes(attribute.String("resolver.type", resolverName))
+		validationError := r.resolver.Validate(validateCtx, &rr.Spec)
 		if validationError != nil {
+			validateSpan.RecordError(validationError)
+			validateSpan.SetStatus(codes.Error, validationError.Error())
+			validateSpan.End()
 			errChan <- &resolutioncommon.InvalidRequestError{
 				ResolutionRequestKey: key,
 				Message:              validationError.Error(),
 			}
 			return
 		}
-		resource, resolveErr := r.resolver.Resolve(resolutionCtx, &rr.Spec)
+		validateSpan.End()
+
+		resolveCtx, resolveSpan := tracer.Start(resolutionCtx, "resolverResolve")
+		resolveSpan.SetAttributes(attribute.String("resolver.type", resolverName))
+		resource, resolveErr := r.resolver.Resolve(resolveCtx, &rr.Spec)
 		if resolveErr != nil {
+			resolveSpan.RecordError(resolveErr)
+			resolveSpan.SetStatus(codes.Error, resolveErr.Error())
+			resolveSpan.End()
 			errChan <- &resolutioncommon.GetResourceError{
-				ResolverName: r.resolver.GetName(resolutionCtx),
+				ResolverName: resolverName,
 				Key:          key,
 				Original:     resolveErr,
 			}
 			return
 		}
 		if err := framework.ValidateResolvedResource(resource); err != nil {
+			wrappedErr := fmt.Errorf("resolved resource validation error: %w", err)
+			resolveSpan.RecordError(wrappedErr)
+			resolveSpan.SetStatus(codes.Error, wrappedErr.Error())
+			resolveSpan.End()
 			errChan <- &resolutioncommon.GetResourceError{
-				ResolverName: r.resolver.GetName(resolutionCtx),
+				ResolverName: resolverName,
 				Key:          key,
-				Original:     fmt.Errorf("resolved resource validation error: %w", err),
+				Original:     wrappedErr,
 			}
 			return
 		}
+		resolveSpan.End()
 		resourceChan <- resource
 	}()
 
 	select {
 	case err := <-errChan:
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return r.OnError(ctx, rr, err)
 		}
 	case <-resolutionCtx.Done():
 		if err := resolutionCtx.Err(); err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return r.OnError(ctx, rr, err)
 		}
 	case resource := <-resourceChan:
@@ -214,11 +263,16 @@ func (r *Reconciler) OnError(ctx context.Context, rr *v1beta1.ResolutionRequest,
 // errors that occur during the update process or nil if the update
 // appeared to succeed.
 func (r *Reconciler) MarkFailed(ctx context.Context, rr *v1beta1.ResolutionRequest, resolutionErr error) error {
+	ctx, span := r.tracerProvider.Tracer(TracerName).Start(ctx, "MarkFailed")
+	defer span.End()
+
 	key := fmt.Sprintf("%s/%s", rr.Namespace, rr.Name)
 	reason, resolutionErr := resolutioncommon.ReasonError(resolutionErr)
 	latestGeneration, err := r.resolutionRequestClientSet.ResolutionV1beta1().ResolutionRequests(rr.Namespace).Get(ctx, rr.Name, metav1.GetOptions{})
 	if err != nil {
 		logging.FromContext(ctx).Warnf("error getting latest generation of resolutionrequest %q: %v", key, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 	if latestGeneration.IsDone() {
@@ -228,12 +282,17 @@ func (r *Reconciler) MarkFailed(ctx context.Context, rr *v1beta1.ResolutionReque
 	_, err = r.resolutionRequestClientSet.ResolutionV1beta1().ResolutionRequests(rr.Namespace).UpdateStatus(ctx, latestGeneration, metav1.UpdateOptions{})
 	if err != nil {
 		logging.FromContext(ctx).Warnf("error marking resolutionrequest %q as failed: %v", key, err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 	return nil
 }
 
 func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.ResolutionRequest, resource framework.ResolvedResource) error {
+	ctx, span := r.tracerProvider.Tracer(TracerName).Start(ctx, "writeResolvedData")
+	defer span.End()
+
 	encodedData := base64.StdEncoding.Strict().EncodeToString(resource.Data())
 	patchBytes, err := json.Marshal(map[string]statusDataPatch{
 		"status": {
@@ -245,6 +304,8 @@ func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.Resoluti
 	})
 	if err != nil {
 		logging.FromContext(ctx).Warnf("writeResolvedData error serializing resource request patch for resolution request %s:%s: %s", rr.Namespace, rr.Name, err.Error())
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return r.OnError(ctx, rr, &resolutioncommon.UpdatingRequestError{
 			ResolutionRequestKey: fmt.Sprintf("%s/%s", rr.Namespace, rr.Name),
 			Original:             fmt.Errorf("error serializing resource request patch: %w", err),
@@ -253,6 +314,8 @@ func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.Resoluti
 	_, err = r.resolutionRequestClientSet.ResolutionV1beta1().ResolutionRequests(rr.Namespace).Patch(ctx, rr.Name, types.MergePatchType, patchBytes, metav1.PatchOptions{}, "status")
 	if err != nil {
 		logging.FromContext(ctx).Warnf("writeResolvedData error patching resolution request %s:%s: %s", rr.Namespace, rr.Name, err.Error())
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return r.OnError(ctx, rr, &resolutioncommon.UpdatingRequestError{
 			ResolutionRequestKey: fmt.Sprintf("%s/%s", rr.Namespace, rr.Name),
 			Original:             err,
