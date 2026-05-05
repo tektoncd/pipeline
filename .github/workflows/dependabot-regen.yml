@@ -56,8 +56,8 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           # Configure git
-          git config user.name "Tekton Bot"
-          git config user.email "tekton-bot@users.noreply.github.com"
+          git config user.name "Vincent Demeester"
+          git config user.email "vdemeest@redhat.com"
 
           # Create a new branch
           BRANCH="dependabot-regen-$(date +%Y%m%d-%H%M%S)"
@@ -65,7 +65,7 @@ jobs:
 
           # Commit changes
           git add .github/dependabot.config.yml .github/dependabot.yml
-          git commit -m "Regenerate dependabot.yml from config
+          git commit -s -m "Regenerate dependabot.yml from config
 
           This automated PR regenerates .github/dependabot.yml from
           .github/dependabot.config.yml to ensure the configuration
