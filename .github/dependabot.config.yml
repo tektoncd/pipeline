@@ -16,10 +16,10 @@
 # These should be active LTS release branches
 # Check releases.md for the current list of supported releases
 release-branches:
+  - release-v1.12.x
   - release-v1.9.x
   - release-v1.6.x
   - release-v1.3.x
-  - release-v1.0.x
 # Package ecosystems to monitor
 # Each ecosystem will be configured for:
 # - main branch: all updates (major, minor, patch)
