@@ -95,17 +95,12 @@ type Reconciler struct {
 	resolutionRequester      resolution.Requester
 	tracerProvider           trace.TracerProvider
 
-	// sidecarMode caches ServerVersion + IsNativeSidecarSupport when EnableKubernetesSidecar
-	// is true, so the done path does not call Discovery on every resync (#9755). After the first
-	// successful discovery, useTektonSidecarMode only reads computed/useTektonNop from memory
-	// (RLock); Discovery runs at most once per reconciler (Lock), and errors retry until success.
+	// Native-sidecar detection (ServerVersion + IsNativeSidecarSupport) when EnableKubernetesSidecar
+	// is set is memoized via sync.OnceValues after lazy init guarded by nativeSidecarOnce (#9755).
 	// Status.Sidecars cannot be used to skip stopSidecars: injected containers (e.g. Istio)
 	// are not listed there but buildSidecarStopPatch stops them using the live Pod.
-	sidecarMode struct {
-		sync.RWMutex
-		computed     bool
-		useTektonNop bool // if true, run stopSidecars; if false, native Kubernetes sidecars
-	}
+	nativeSidecarOnce        sync.Once
+	nativeSidecarFromCluster func() (useTektonNop bool, err error)
 }
 
 const (
@@ -379,37 +374,32 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1.TaskRun
 }
 
 // useTektonSidecarMode returns whether the done path should run stopSidecars (Tekton nop
-// image) vs skipping it for native Kubernetes sidecars. ServerVersion is queried at most once
-// per reconciler when EnableKubernetesSidecar is true; later reconciles return the cached
-// useTektonNop without calling Discovery.
+// image) vs skipping it for native Kubernetes sidecars. When EnableKubernetesSidecar is enabled,
+// ServerVersion is queried at most once per reconciler; later reconciles reuse the memoized result.
 func (c *Reconciler) useTektonSidecarMode(ctx context.Context, logger *zap.SugaredLogger) (bool, error) {
 	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
 		return true, nil
 	}
-	c.sidecarMode.RLock()
-	if c.sidecarMode.computed {
-		v := c.sidecarMode.useTektonNop
-		c.sidecarMode.RUnlock()
-		return v, nil
-	}
-	c.sidecarMode.RUnlock()
+	c.nativeSidecarOnce.Do(func() {
+		c.nativeSidecarFromCluster = newNativeSidecarFromCluster(c.KubeClientSet, logger)
+	})
+	return c.nativeSidecarFromCluster()
+}
 
-	c.sidecarMode.Lock()
-	defer c.sidecarMode.Unlock()
-	if c.sidecarMode.computed {
-		return c.sidecarMode.useTektonNop, nil
-	}
-	sv, err := c.KubeClientSet.Discovery().ServerVersion()
-	if err != nil {
-		return false, err
-	}
-	native := podconvert.IsNativeSidecarSupport(sv)
-	c.sidecarMode.useTektonNop = !native
-	c.sidecarMode.computed = true
-	if native {
-		logger.Infof("Using Kubernetes Native Sidecars \n")
-	}
-	return c.sidecarMode.useTektonNop, nil
+// newNativeSidecarFromCluster returns a function that queries ServerVersion at most once and
+// returns whether to use Tekton nop sidecar teardown (true) vs native Kubernetes sidecars (false).
+func newNativeSidecarFromCluster(client kubernetes.Interface, log *zap.SugaredLogger) func() (bool, error) {
+	return sync.OnceValues(func() (bool, error) {
+		sv, err := client.Discovery().ServerVersion()
+		if err != nil {
+			return false, err
+		}
+		if podconvert.IsNativeSidecarSupport(sv) {
+			log.Info("Using Kubernetes Native Sidecars")
+			return false, nil
+		}
+		return true, nil
+	})
 }
 
 func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
