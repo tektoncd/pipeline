@@ -114,9 +114,7 @@ func (c *wrapper) do(ctx context.Context, method, path string, in, out interface
 
 	// if an error is encountered, unmarshal and return the
 	// error response.
-	if res.Status == 401 {
-		return res, scm.ErrNotAuthorized
-	} else if res.Status > 300 {
+	if res.Status > 300 {
 		err := new(Error)
 		// nolint
 		json.NewDecoder(res.Body).Decode(err) // #nosec
