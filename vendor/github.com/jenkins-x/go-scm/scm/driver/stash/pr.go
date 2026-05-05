@@ -100,7 +100,7 @@ func (s *pullService) ListComments(ctx context.Context, repo string, number int,
 
 	projectName, repoName := scm.Split(repo)
 	out := new(pullRequestActivities)
-	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/activities", projectName, repoName, number)
+	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/activities?%s", projectName, repoName, number, encodeListOptions(opts))
 	res, err := s.client.do(ctx, "GET", path, nil, out)
 	if !out.pagination.LastPage.Bool {
 		res.Page.First = 1
@@ -501,6 +501,7 @@ func convertPullRequestComment(from *pullRequestComment) *scm.Comment {
 		Created: time.Unix(from.CreatedDate/1000, 0),
 		Updated: time.Unix(from.UpdatedDate/1000, 0),
 		Author: scm.User{
+			ID:     from.Author.ID,
 			Login:  from.Author.Slug,
 			Name:   from.Author.DisplayName,
 			Email:  from.Author.EmailAddress,
