@@ -100,6 +100,135 @@ updates:
                 - '*'
     - package-ecosystem: gomod
       directory: /
+      target-branch: release-v1.12.x
+      schedule:
+        interval: daily
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+    - package-ecosystem: gomod
+      directory: /tools
+      target-branch: release-v1.12.x
+      schedule:
+        interval: daily
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+    - package-ecosystem: gomod
+      directory: /test/custom-task-ctrls/wait-task-alpha
+      target-branch: release-v1.12.x
+      schedule:
+        interval: daily
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+    - package-ecosystem: gomod
+      directory: /test/custom-task-ctrls/wait-task-beta
+      target-branch: release-v1.12.x
+      schedule:
+        interval: daily
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+    - package-ecosystem: github-actions
+      directory: /
+      target-branch: release-v1.12.x
+      schedule:
+        interval: weekly
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+    - package-ecosystem: docker
+      directory: /tekton
+      target-branch: release-v1.12.x
+      schedule:
+        interval: weekly
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      groups:
+        all:
+            patterns:
+                - '*'
+    - package-ecosystem: docker
+      directory: /
+      target-branch: release-v1.12.x
+      schedule:
+        interval: weekly
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      groups:
+        all:
+            patterns:
+                - '*'
+    - package-ecosystem: gomod
+      directory: /
       target-branch: release-v1.9.x
       schedule:
         interval: daily
@@ -469,135 +598,6 @@ updates:
     - package-ecosystem: docker
       directory: /
       target-branch: release-v1.3.x
-      schedule:
-        interval: weekly
-      labels:
-        - ok-to-test
-        - dependencies
-        - release-note-none
-        - kind/misc
-      ignore:
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-      groups:
-        all:
-            patterns:
-                - '*'
-    - package-ecosystem: gomod
-      directory: /
-      target-branch: release-v1.0.x
-      schedule:
-        interval: daily
-      labels:
-        - ok-to-test
-        - dependencies
-        - release-note-none
-        - kind/misc
-      ignore:
-        - dependency-name: k8s.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-    - package-ecosystem: gomod
-      directory: /tools
-      target-branch: release-v1.0.x
-      schedule:
-        interval: daily
-      labels:
-        - ok-to-test
-        - dependencies
-        - release-note-none
-        - kind/misc
-      ignore:
-        - dependency-name: k8s.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-    - package-ecosystem: gomod
-      directory: /test/custom-task-ctrls/wait-task-alpha
-      target-branch: release-v1.0.x
-      schedule:
-        interval: daily
-      labels:
-        - ok-to-test
-        - dependencies
-        - release-note-none
-        - kind/misc
-      ignore:
-        - dependency-name: k8s.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-    - package-ecosystem: gomod
-      directory: /test/custom-task-ctrls/wait-task-beta
-      target-branch: release-v1.0.x
-      schedule:
-        interval: daily
-      labels:
-        - ok-to-test
-        - dependencies
-        - release-note-none
-        - kind/misc
-      ignore:
-        - dependency-name: k8s.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-    - package-ecosystem: github-actions
-      directory: /
-      target-branch: release-v1.0.x
-      schedule:
-        interval: weekly
-      labels:
-        - ok-to-test
-        - dependencies
-        - release-note-none
-        - kind/misc
-      ignore:
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-    - package-ecosystem: docker
-      directory: /tekton
-      target-branch: release-v1.0.x
-      schedule:
-        interval: weekly
-      labels:
-        - ok-to-test
-        - dependencies
-        - release-note-none
-        - kind/misc
-      ignore:
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-      groups:
-        all:
-            patterns:
-                - '*'
-    - package-ecosystem: docker
-      directory: /
-      target-branch: release-v1.0.x
       schedule:
         interval: weekly
       labels:
