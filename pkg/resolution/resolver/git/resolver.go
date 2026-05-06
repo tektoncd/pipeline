@@ -149,13 +149,30 @@ func ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
 	return nil
 }
 
-// validateRepoURL validates if the given URL is a valid git, http, https URL or
-// starting with a / (a local repository).
-func validateRepoURL(url string) bool {
-	// Explanation:
-	pattern := `^(/|[^@]+@[^:]+|(git|https?)://)`
+// validateRepoURL validates if the given URL is a valid git, http, or https
+// URL, or an SSH-style remote (user@host:path). Local filesystem paths
+// (starting with "/" or "file://") are rejected to prevent argument
+// injection attacks via --upload-pack when combined with user-controlled
+// revision parameters.
+//
+// This is a variable so that integration tests can temporarily override
+// it when they need to use local filesystem paths.
+var validateRepoURL = defaultValidateRepoURL
+
+func defaultValidateRepoURL(url string) bool {
+	pattern := `^([^@]+@[^:]+|(git|ssh|ftps?|https?)://)`
 	re := regexp.MustCompile(pattern)
 	return re.MatchString(url)
+}
+
+// Deprecated: SetValidateRepoURLForTesting is test-only infrastructure.
+// It replaces the URL validation function and returns a restore function
+// that must be called (e.g. via t.Cleanup) to reset the original
+// validator. Do not depend on this in production code.
+func SetValidateRepoURLForTesting(fn func(string) bool) func() {
+	orig := validateRepoURL
+	validateRepoURL = fn
+	return func() { validateRepoURL = orig }
 }
 
 // containsDotDot checks if a path contains ".." components that could be
@@ -283,6 +300,25 @@ func (g *GitResolver) ResolveAPIGit(ctx context.Context, clientFunc func(string,
 	} else {
 		secretRef = nil
 	}
+
+	// Security: when the user did not provide a token but specified a custom
+	// serverURL, reject the request to prevent sending the system-configured
+	// API token to an untrusted server.
+	if secretRef == nil {
+		userServerURL, hasUserServerURL := g.Params[ServerURLParam]
+		if hasUserServerURL && userServerURL != "" {
+			conf, confErr := GetScmConfigForParamConfigKey(ctx, g.Params)
+			if confErr != nil {
+				return nil, confErr
+			}
+			if userServerURL != conf.ServerURL {
+				return nil, fmt.Errorf("custom %s %q requires a %s parameter; "+
+					"the system token cannot be sent to a non-default server URL",
+					ServerURLParam, userServerURL, TokenParam)
+			}
+		}
+	}
+
 	apiToken, err := g.getAPIToken(ctx, secretRef, APISecretNameKey)
 	if err != nil {
 		return nil, err
@@ -404,6 +440,14 @@ func PopulateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[
 	}
 	if len(missingParams) > 0 {
 		return nil, fmt.Errorf("missing required git resolver params: %s", strings.Join(missingParams, ", "))
+	}
+
+	// Reject revision values that begin with "-" to prevent git argument
+	// injection (e.g. "--upload-pack=/path/to/binary"). Git parses flags
+	// from mixed positional arguments so a leading dash in the revision
+	// would be interpreted as a flag rather than a refspec.
+	if strings.HasPrefix(paramsMap[RevisionParam], "-") {
+		return nil, fmt.Errorf("invalid revision %q: must not begin with '-'", paramsMap[RevisionParam])
 	}
 
 	// validate the url params if we are not using the SCM API

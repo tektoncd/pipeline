@@ -27,7 +27,7 @@ jobs:
       run: 'cat $GITHUB_EVENT_PATH || true'
     - name: Set PR variables
       id: pr
-      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       env:
         ISSUE_NUMBER: ${{ github.event.client_payload.github.payload.issue.number }}
       with:
@@ -105,7 +105,7 @@ jobs:
       KOCACHE: /tmp/ko-cache
     steps:
     - name: Report tests check
-      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       id: check-run
       env:
         HEAD_SHA: ${{ needs.run-if-requested.outputs.sha }}
@@ -126,11 +126,11 @@ jobs:
       with:
         ref: ${{ needs.run-if-requested.outputs.sha }}
         persist-credentials: false
-    - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417  # v6.3.0
+    - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
       with:
         go-version-file: "go.mod"
     - name: Cache ko build cache
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7  # v5.0.4
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
       with:
         path: /tmp/ko-cache
         key: ${{ runner.os }}-${{ runner.arch }}-ko-${{ hashFiles('go.sum') }}
@@ -161,19 +161,19 @@ jobs:
           --e2e-env ./test/e2e-tests-kind-${{ matrix.feature-flags }}.env
 
     - name: Upload test results
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: extra-tests-${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}
         path: ${{ env.ARTIFACTS }}
 
-    - uses: chainguard-dev/actions/kind-diag@f45211d3e8f9d2676c6b8cdd6a765435e06c819d # v1.6.13
+    - uses: chainguard-dev/actions/kind-diag@916fec00fb80f3cd124a0b41eef79ee63f607c5d # v1.6.17
       if: ${{ failure() }}
       with:
         artifact-name: extra-tests-${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}-logs
 
     - name: Report tests check
       if: success() || failure()
-      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       env:
         CHECK_RUN_ID: ${{ fromJSON(steps.check-run.outputs.result).id }}
         HEAD_SHA: ${{ needs.run-if-requested.outputs.sha }}

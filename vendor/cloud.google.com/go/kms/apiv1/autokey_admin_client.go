@@ -1,4 +1,4 @@
-// Copyright 2025 Google LLC
+// Copyright 2026 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -190,13 +190,15 @@ type internalAutokeyAdminClient interface {
 // Methods, except Close, may be called concurrently. However, fields must not be modified concurrently with method calls.
 //
 // Provides interfaces for managing Cloud KMS
-// Autokey (at https://cloud.google.com/kms/help/autokey) folder-level
-// configurations. A configuration is inherited by all descendent projects. A
-// configuration at one folder overrides any other configurations in its
-// ancestry. Setting a configuration on a folder is a prerequisite for Cloud KMS
-// Autokey, so that users working in a descendant project can request
-// provisioned CryptoKeys, ready for Customer
-// Managed Encryption Key (CMEK) use, on-demand.
+// Autokey (at https://cloud.google.com/kms/help/autokey) folder-level or
+// project-level configurations. A configuration is inherited by all descendent
+// folders and projects. A configuration at a folder or project overrides any
+// other configurations in its ancestry. Setting a configuration on a folder is
+// a prerequisite for Cloud KMS Autokey, so that users working in a descendant
+// project can request provisioned CryptoKeys,
+// ready for Customer Managed Encryption Key (CMEK) use, on-demand when using
+// the dedicated key project mode. This is not required when using the delegated
+// key management mode for same-project keys.
 type AutokeyAdminClient struct {
 	// The internal transport-dependent client.
 	internalClient internalAutokeyAdminClient
@@ -228,8 +230,8 @@ func (c *AutokeyAdminClient) Connection() *grpc.ClientConn {
 	return c.internalClient.Connection()
 }
 
-// UpdateAutokeyConfig updates the AutokeyConfig for a
-// folder. The caller must have both cloudkms.autokeyConfigs.update
+// UpdateAutokeyConfig updates the AutokeyConfig for a folder
+// or a project. The caller must have both cloudkms.autokeyConfigs.update
 // permission on the parent folder and cloudkms.cryptoKeys.setIamPolicy
 // permission on the provided key project. A
 // KeyHandle creation in the folder’s
@@ -239,8 +241,8 @@ func (c *AutokeyAdminClient) UpdateAutokeyConfig(ctx context.Context, req *kmspb
 	return c.internalClient.UpdateAutokeyConfig(ctx, req, opts...)
 }
 
-// GetAutokeyConfig returns the AutokeyConfig for a
-// folder.
+// GetAutokeyConfig returns the AutokeyConfig for a folder
+// or project.
 func (c *AutokeyAdminClient) GetAutokeyConfig(ctx context.Context, req *kmspb.GetAutokeyConfigRequest, opts ...gax.CallOption) (*kmspb.AutokeyConfig, error) {
 	return c.internalClient.GetAutokeyConfig(ctx, req, opts...)
 }
@@ -256,6 +258,14 @@ func (c *AutokeyAdminClient) GetLocation(ctx context.Context, req *locationpb.Ge
 }
 
 // ListLocations lists information about the supported locations for this service.
+// This method can be called in two ways:
+//
+//	List all public locations: Use the path GET /v1/locations.
+//
+//	List project-visible locations: Use the path
+//	GET /v1/projects/{project_id}/locations. This may include public
+//	locations as well as private or other locations specifically visible
+//	to the project.
 func (c *AutokeyAdminClient) ListLocations(ctx context.Context, req *locationpb.ListLocationsRequest, opts ...gax.CallOption) *LocationIterator {
 	return c.internalClient.ListLocations(ctx, req, opts...)
 }
@@ -320,13 +330,15 @@ type autokeyAdminGRPCClient struct {
 // The returned client must be Closed when it is done being used to clean up its underlying connections.
 //
 // Provides interfaces for managing Cloud KMS
-// Autokey (at https://cloud.google.com/kms/help/autokey) folder-level
-// configurations. A configuration is inherited by all descendent projects. A
-// configuration at one folder overrides any other configurations in its
-// ancestry. Setting a configuration on a folder is a prerequisite for Cloud KMS
-// Autokey, so that users working in a descendant project can request
-// provisioned CryptoKeys, ready for Customer
-// Managed Encryption Key (CMEK) use, on-demand.
+// Autokey (at https://cloud.google.com/kms/help/autokey) folder-level or
+// project-level configurations. A configuration is inherited by all descendent
+// folders and projects. A configuration at a folder or project overrides any
+// other configurations in its ancestry. Setting a configuration on a folder is
+// a prerequisite for Cloud KMS Autokey, so that users working in a descendant
+// project can request provisioned CryptoKeys,
+// ready for Customer Managed Encryption Key (CMEK) use, on-demand when using
+// the dedicated key project mode. This is not required when using the delegated
+// key management mode for same-project keys.
 func NewAutokeyAdminClient(ctx context.Context, opts ...option.ClientOption) (*AutokeyAdminClient, error) {
 	clientOpts := defaultAutokeyAdminGRPCClientOptions()
 	if newAutokeyAdminClientHook != nil {
@@ -404,13 +416,15 @@ type autokeyAdminRESTClient struct {
 // NewAutokeyAdminRESTClient creates a new autokey admin rest client.
 //
 // Provides interfaces for managing Cloud KMS
-// Autokey (at https://cloud.google.com/kms/help/autokey) folder-level
-// configurations. A configuration is inherited by all descendent projects. A
-// configuration at one folder overrides any other configurations in its
-// ancestry. Setting a configuration on a folder is a prerequisite for Cloud KMS
-// Autokey, so that users working in a descendant project can request
-// provisioned CryptoKeys, ready for Customer
-// Managed Encryption Key (CMEK) use, on-demand.
+// Autokey (at https://cloud.google.com/kms/help/autokey) folder-level or
+// project-level configurations. A configuration is inherited by all descendent
+// folders and projects. A configuration at a folder or project overrides any
+// other configurations in its ancestry. Setting a configuration on a folder is
+// a prerequisite for Cloud KMS Autokey, so that users working in a descendant
+// project can request provisioned CryptoKeys,
+// ready for Customer Managed Encryption Key (CMEK) use, on-demand when using
+// the dedicated key project mode. This is not required when using the delegated
+// key management mode for same-project keys.
 func NewAutokeyAdminRESTClient(ctx context.Context, opts ...option.ClientOption) (*AutokeyAdminClient, error) {
 	clientOpts := append(defaultAutokeyAdminRESTClientOptions(), opts...)
 	httpClient, endpoint, err := httptransport.NewClient(ctx, clientOpts...)
@@ -657,8 +671,8 @@ func (c *autokeyAdminGRPCClient) GetOperation(ctx context.Context, req *longrunn
 	return resp, nil
 }
 
-// UpdateAutokeyConfig updates the AutokeyConfig for a
-// folder. The caller must have both cloudkms.autokeyConfigs.update
+// UpdateAutokeyConfig updates the AutokeyConfig for a folder
+// or a project. The caller must have both cloudkms.autokeyConfigs.update
 // permission on the parent folder and cloudkms.cryptoKeys.setIamPolicy
 // permission on the provided key project. A
 // KeyHandle creation in the folder’s
@@ -727,8 +741,8 @@ func (c *autokeyAdminRESTClient) UpdateAutokeyConfig(ctx context.Context, req *k
 	return resp, nil
 }
 
-// GetAutokeyConfig returns the AutokeyConfig for a
-// folder.
+// GetAutokeyConfig returns the AutokeyConfig for a folder
+// or project.
 func (c *autokeyAdminRESTClient) GetAutokeyConfig(ctx context.Context, req *kmspb.GetAutokeyConfigRequest, opts ...gax.CallOption) (*kmspb.AutokeyConfig, error) {
 	baseUrl, err := url.Parse(c.endpoint)
 	if err != nil {
@@ -879,6 +893,14 @@ func (c *autokeyAdminRESTClient) GetLocation(ctx context.Context, req *locationp
 }
 
 // ListLocations lists information about the supported locations for this service.
+// This method can be called in two ways:
+//
+//	List all public locations: Use the path GET /v1/locations.
+//
+//	List project-visible locations: Use the path
+//	GET /v1/projects/{project_id}/locations. This may include public
+//	locations as well as private or other locations specifically visible
+//	to the project.
 func (c *autokeyAdminRESTClient) ListLocations(ctx context.Context, req *locationpb.ListLocationsRequest, opts ...gax.CallOption) *LocationIterator {
 	it := &LocationIterator{}
 	req = proto.Clone(req).(*locationpb.ListLocationsRequest)

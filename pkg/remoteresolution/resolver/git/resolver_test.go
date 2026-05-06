@@ -101,17 +101,42 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			name: "git url from a local repository",
+			name: "git url from a local repository is rejected",
 			params: map[string]string{
 				gitresolution.UrlParam:      "/tmp/repo",
 				gitresolution.PathParam:     "bar",
 				gitresolution.RevisionParam: "baz",
 			},
+			wantErr: "invalid git repository url: /tmp/repo",
 		},
 		{
 			name: "git url from a git ssh repository",
 			params: map[string]string{
 				gitresolution.UrlParam:      "git@host.com:foo/bar",
+				gitresolution.PathParam:     "bar",
+				gitresolution.RevisionParam: "baz",
+			},
+		},
+		{
+			name: "git url from an ssh:// repository",
+			params: map[string]string{
+				gitresolution.UrlParam:      "ssh://git@host.com/foo/bar",
+				gitresolution.PathParam:     "bar",
+				gitresolution.RevisionParam: "baz",
+			},
+		},
+		{
+			name: "git url from an ftp repository",
+			params: map[string]string{
+				gitresolution.UrlParam:      "ftp://host.com/foo/bar",
+				gitresolution.PathParam:     "bar",
+				gitresolution.RevisionParam: "baz",
+			},
+		},
+		{
+			name: "git url from an ftps repository",
+			params: map[string]string{
+				gitresolution.UrlParam:      "ftps://host.com/foo/bar",
 				gitresolution.PathParam:     "bar",
 				gitresolution.RevisionParam: "baz",
 			},
@@ -341,26 +366,35 @@ type params struct {
 }
 
 func TestResolve(t *testing.T) {
+	objTemplate := "{\"apiVersion\": \"tekton.dev/v1\", \"kind\": \"%s\", \"metadata\": {\"name\": \"%s\"}}"
+	mainContent := fmt.Sprintf(objTemplate, "Pipeline", "released content in main branch and in tag v1")
+	oldBranchContent := fmt.Sprintf(objTemplate, "Pipeline", "oldcontent in test branch")
+	newBranchContent := fmt.Sprintf(objTemplate, "Pipeline", "new content in test branch")
 	// local repo set up for anonymous cloning
 	// ----
 	commits := []commitForRepo{{
 		Dir:      "foo/",
 		Filename: "old",
-		Content:  "old content in test branch",
+		Content:  oldBranchContent,
 		Branch:   "test-branch",
 	}, {
 		Dir:      "foo/",
 		Filename: "new",
-		Content:  "new content in test branch",
+		Content:  newBranchContent,
 		Branch:   "test-branch",
 	}, {
 		Dir:      "./",
 		Filename: "released",
-		Content:  "released content in main branch and in tag v1",
+		Content:  mainContent,
 		Tag:      "v1",
 	}}
 
 	anonFakeRepoURL, commitSHAsInAnonRepo := createTestRepo(t, commits)
+
+	// Clone integration tests use local filesystem paths which are
+	// rejected by validateRepoURL in production. Override the validator
+	// for the duration of this test so the clone path can be exercised.
+	t.Cleanup(gitresolution.SetValidateRepoURLForTesting(func(_ string) bool { return true }))
 
 	// local repo set up for scm cloning
 	// ----
@@ -420,7 +454,7 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[2],
-		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte("released content in main branch and in tag v1")),
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte(mainContent)),
 	}, {
 		name: "clone: revision is tag name",
 		args: &params{
@@ -429,7 +463,7 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[2],
-		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte("released content in main branch and in tag v1")),
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte(mainContent)),
 	}, {
 		name: "clone: revision is the full tag name i.e. refs/tags/v1",
 		args: &params{
@@ -438,7 +472,7 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[2],
-		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte("released content in main branch and in tag v1")),
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte(mainContent)),
 	}, {
 		name: "clone: revision is a branch name",
 		args: &params{
@@ -447,7 +481,7 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[1],
-		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte("new content in test branch")),
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte(newBranchContent)),
 	}, {
 		name: "clone: revision is a specific commit sha",
 		args: &params{
@@ -456,7 +490,7 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[0],
-		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte("old content in test branch")),
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte(oldBranchContent)),
 	}, {
 		name: "clone: file does not exist",
 		args: &params{
@@ -601,6 +635,66 @@ func TestResolve(t *testing.T) {
 		config: map[string]string{
 			gitresolution.ServerURLKey: "notsofake",
 			gitresolution.SCMTypeKey:   "definitivelynotafake",
+		},
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData(mainTaskYAML),
+	}, {
+		name: "api: custom serverURL without token is rejected",
+		args: &params{
+			revision:   "main",
+			pathInRepo: "tasks/example-task.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			serverURL:  "https://attacker.example.com",
+			scmType:    "github",
+		},
+		config: map[string]string{
+			gitresolution.ServerURLKey:          "fake",
+			gitresolution.SCMTypeKey:            "fake",
+			gitresolution.APISecretNameKey:      "token-secret",
+			gitresolution.APISecretKeyKey:       "token",
+			gitresolution.APISecretNamespaceKey: system.Namespace(),
+		},
+		apiToken:       "some-token",
+		expectedStatus: resolution.CreateResolutionRequestFailureStatus(),
+		expectedErr:    createError(`custom serverURL "https://attacker.example.com" requires a token parameter; the system token cannot be sent to a non-default server URL`),
+	}, {
+		name: "api: custom serverURL with user-provided token is allowed",
+		args: &params{
+			revision:   "main",
+			pathInRepo: "tasks/example-task.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			serverURL:  "fake",
+			scmType:    "fake",
+			token:      "token-secret",
+			tokenKey:   "token",
+			namespace:  "foo",
+		},
+		config: map[string]string{
+			gitresolution.ServerURLKey: "notsofake",
+			gitresolution.SCMTypeKey:   "definitivelynotafake",
+		},
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData(mainTaskYAML),
+	}, {
+		name: "api: serverURL matching system config without token is allowed",
+		args: &params{
+			revision:   "main",
+			pathInRepo: "tasks/example-task.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			serverURL:  "fake",
+			scmType:    "fake",
+		},
+		config: map[string]string{
+			gitresolution.ServerURLKey:          "fake",
+			gitresolution.SCMTypeKey:            "fake",
+			gitresolution.APISecretNameKey:      "token-secret",
+			gitresolution.APISecretKeyKey:       "token",
+			gitresolution.APISecretNamespaceKey: system.Namespace(),
 		},
 		apiToken:          "some-token",
 		expectedCommitSHA: commitSHAsInSCMRepo[0],

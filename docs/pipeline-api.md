@@ -5536,6 +5536,16 @@ TaskRuns failed due to reconciler/validation error should not use this reason.</
 </tr><tr><td><p>&#34;TaskRunImagePullFailed&#34;</p></td>
 <td><p>TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled</p>
 </td>
+</tr><tr><td><p>&#34;InitContainerFailed&#34;</p></td>
+<td><p>TaskRunReasonInitContainerFailed indicates an internal Tekton init
+container (prepare, place-scripts, working-dir-initializer) failed
+(non-OOM), e.g., due to node memory pressure or runtime errors.</p>
+</td>
+</tr><tr><td><p>&#34;InitContainerOOM&#34;</p></td>
+<td><p>TaskRunReasonInitContainerOOM indicates an internal Tekton init
+container (prepare, place-scripts, working-dir-initializer) was
+killed due to running out of memory (OOMKilled).</p>
+</td>
 </tr><tr><td><p>&#34;InvalidParamValue&#34;</p></td>
 <td><p>TaskRunReasonInvalidParamValue indicates that the TaskRun Param input value is not allowed.</p>
 </td>
@@ -5544,6 +5554,10 @@ TaskRuns failed due to reconciler/validation error should not use this reason.</
 </td>
 </tr><tr><td><p>&#34;PodCreationFailed&#34;</p></td>
 <td><p>TaskRunReasonPodCreationFailed is the reason set when the pod backing the TaskRun fails to be created (e.g., CreateContainerError)</p>
+</td>
+</tr><tr><td><p>&#34;PodEvicted&#34;</p></td>
+<td><p>TaskRunReasonPodEvicted indicates that the TaskRun&rsquo;s pod was evicted
+(e.g., due to exceeding ephemeral storage limits or node pressure).</p>
 </td>
 </tr><tr><td><p>&#34;ResourceVerificationFailed&#34;</p></td>
 <td><p>TaskRunReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,
@@ -5555,8 +5569,24 @@ it could be the content has changed, signature is invalid or public key is inval
 </tr><tr><td><p>&#34;Running&#34;</p></td>
 <td><p>TaskRunReasonRunning is the reason set when the TaskRun is running</p>
 </td>
+</tr><tr><td><p>&#34;SidecarFailed&#34;</p></td>
+<td><p>TaskRunReasonSidecarFailed indicates a sidecar container failed
+(non-OOM), e.g., bad image or crash.</p>
+</td>
+</tr><tr><td><p>&#34;SidecarOOM&#34;</p></td>
+<td><p>TaskRunReasonSidecarOOM indicates a sidecar container was killed due
+to running out of memory (OOMKilled).</p>
+</td>
 </tr><tr><td><p>&#34;Started&#34;</p></td>
 <td><p>TaskRunReasonStarted is the reason set when the TaskRun has just started</p>
+</td>
+</tr><tr><td><p>&#34;StepFailed&#34;</p></td>
+<td><p>TaskRunReasonStepFailed indicates a step container failed (non-OOM),
+e.g., bad image, crash, or non-zero exit code.</p>
+</td>
+</tr><tr><td><p>&#34;StepOOM&#34;</p></td>
+<td><p>TaskRunReasonStepOOM indicates a step container was killed due to
+running out of memory (OOMKilled).</p>
 </td>
 </tr><tr><td><p>&#34;TaskRunStopSidecarFailed&#34;</p></td>
 <td><p>TaskRunReasonStopSidecarFailed indicates that the sidecar is not properly stopped.</p>
@@ -16122,7 +16152,9 @@ Kubernetes meta/v1.Time
 <em>(Optional)</em>
 <p>CloudEvents describe the state of each cloud event requested via a
 CloudEventResource.</p>
-<p>Deprecated: Removed in v0.44.0.</p>
+<p>Deprecated: No content written to it. To be Removed (since v0.44.0).
+Use kubectl describe (CloudEventSent/CloudEventFailed k8s Events) or the
+tekton_events_sent_total Prometheus metric for delivery visibility instead.</p>
 </td>
 </tr>
 <tr>

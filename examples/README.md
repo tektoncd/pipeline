@@ -16,17 +16,11 @@ push to from inside your cluster. If you are following instructions
 `$KO_DOCKER_REPO` instead of `gcr.io/christiewilson-catfactory`.
 
 ```bash
-# To invoke the build-push Task only
-kubectl apply -f examples/v1beta1/taskruns/task-output-image.yaml
+# To invoke a TaskRun
+kubectl apply -f examples/v1/taskruns/
 
-# To invoke the simple Pipeline
-kubectl apply -f examples/v1beta1/pipelineruns/pipelinerun.yaml
-
-# To invoke the Pipeline that links outputs
-kubectl apply -f examples/v1beta1/pipelineruns/output-pipelinerun.yaml
-
-# To invoke the TaskRun with embedded Resource spec and task Spec
-kubectl apply -f examples/v1beta1/taskruns/git-resource.yaml
+# To invoke a PipelineRun
+kubectl apply -f examples/v1/pipelineruns/
 ```
 
 ## Results

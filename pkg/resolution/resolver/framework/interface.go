@@ -18,9 +18,14 @@ package framework
 
 import (
 	"context"
+	"fmt"
+	"slices"
 	"time"
 
+	pipelineapi "github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/yaml"
 )
 
 // Resolver is the interface to implement for type-specific resource
@@ -99,4 +104,24 @@ type ResolvedResource interface {
 	Data() []byte
 	Annotations() map[string]string
 	RefSource() *pipelinev1.RefSource
+}
+
+// ValidateResolvedResource validates that the ResolvedResource's data is a
+// kubernetes object and a Tekton kind. This ensures non-k8s data (e.g. tokens) or non-tekton
+// k8s objects (e.g. Secrets) are not written into the unprivileged ResolutionRequest objects.
+func ValidateResolvedResource(resource ResolvedResource) error {
+	var metadata struct {
+		APIVersion string
+		Kind       string
+	}
+	if err := yaml.Unmarshal(resource.Data(), &metadata); err != nil {
+		return fmt.Errorf("decoding error: %w", err)
+	}
+	// gv is not nil when there is an error
+	gv, _ := schema.ParseGroupVersion(metadata.APIVersion)
+
+	if gv.Group != pipelineapi.GroupName || !slices.Contains(allowedResourceKinds, metadata.Kind) {
+		return fmt.Errorf("resolved data is not of a supported type, must be of Group: %s, Kinds: %v", pipelineapi.GroupName, allowedResourceKinds)
+	}
+	return nil
 }

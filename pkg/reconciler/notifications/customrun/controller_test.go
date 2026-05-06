@@ -38,7 +38,7 @@ import (
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 
-func InitializeTestController(t *testing.T, d test.Data, a test.Assets) test.Assets {
+func initializeTestController(t *testing.T, a test.Assets) test.Assets {
 	t.Helper()
 	configMapWatcher := cminformer.NewInformedWatcher(a.Clients.Kube, system.Namespace())
 	ctl := customrun.NewController()(a.Ctx, configMapWatcher)
@@ -107,7 +107,7 @@ func TestReconcileNewController(t *testing.T) {
 
 	// Initialise the controller.
 	// Verify that the config map watcher and reconciler setup works well
-	testAssets = InitializeTestController(t, d, testAssets)
+	testAssets = initializeTestController(t, testAssets)
 	c := testAssets.Controller
 
 	if err := c.Reconciler.Reconcile(testAssets.Ctx, ntesting.GetTestResourceName(&customRun)); err != nil {

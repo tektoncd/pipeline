@@ -72,7 +72,9 @@ const (
 	// DefaultEnableAPIFields is the default value for "enable-api-fields".
 	DefaultEnableAPIFields = BetaAPIFields
 	// DefaultSendCloudEventsForRuns is the default value for "send-cloudevents-for-runs".
-	DefaultSendCloudEventsForRuns = false
+	//
+	// Deprecated: send-cloudevents-for-runs is deprecated. The default is now true.
+	DefaultSendCloudEventsForRuns = true
 	// EnforceNonfalsifiabilityWithSpire is the value used for  "enable-nonfalsifiability" when SPIRE is used to enable non-falsifiability.
 	EnforceNonfalsifiabilityWithSpire = "spire"
 	// EnforceNonfalsifiabilityNone is the value used for  "enable-nonfalsifiability" when non-falsifiability is not enabled.
@@ -192,7 +194,7 @@ type FeatureFlags struct {
 	RequireGitSSHSecretKnownHosts    bool `json:"requireGitSSHSecretKnownHosts,omitempty"`
 
 	EnableAPIFields          string `json:"enableAPIFields,omitempty"`
-	SendCloudEventsForRuns   bool   `json:"sendCloudEventsForRuns,omitempty"`
+	SendCloudEventsForRuns   bool   `json:"sendCloudEventsForRuns,omitempty"` // Deprecated: see DefaultSendCloudEventsForRuns
 	AwaitSidecarReadiness    bool   `json:"awaitSidecarReadiness,omitempty"`
 	EnforceNonfalsifiability string `json:"enforceNonfalsifiability,omitempty"`
 	EnableKeepPodOnCancel    bool   `json:"enableKeepPodOnCancel,omitempty"`

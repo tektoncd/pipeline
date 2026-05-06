@@ -22,6 +22,8 @@ import (
 	"os"
 
 	"github.com/tektoncd/pipeline/pkg/reconciler/notifications/customrun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/notifications/pipelinerun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/notifications/taskrun"
 	"knative.dev/pkg/injection/sharedmain"
 )
 
@@ -46,9 +48,11 @@ func main() {
 		log.Fatal(http.ListenAndServe(":"+port, mux)) // #nosec G114 -- see https://github.com/securego/gosec#available-rules
 	}()
 
-	// start the events controller
+	// start the events controllers
 	sharedmain.Main(eventsControllerName,
-		customrun.NewController())
+		customrun.NewController(),
+		taskrun.NewController(),
+		pipelinerun.NewController())
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {

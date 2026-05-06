@@ -974,7 +974,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}},
 		},
 		want: v1.TaskRunStatus{
-			Status: statusFailure(v1.TaskRunReasonFailed.String(), "\"step-failure\" exited with code 123"),
+			Status: statusFailure(v1.TaskRunReasonStepFailed.String(), "\"step-failure\" exited with code 123"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
@@ -1024,7 +1024,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}},
 		},
 		want: v1.TaskRunStatus{
-			Status: statusFailure(v1.TaskRunReasonFailed.String(), "OOMKilled"),
+			Status: statusFailure(v1.TaskRunReasonStepOOM.String(), "OOMKilled"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
@@ -1467,7 +1467,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}},
 		},
 		want: v1.TaskRunStatus{
-			Status: statusFailure(v1.TaskRunReasonFailed.String(), "\"step-one\" exited with code 137: OOMKilled"),
+			Status: statusFailure(v1.TaskRunReasonStepOOM.String(), "\"step-one\" exited with code 137: OOMKilled"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
@@ -2007,7 +2007,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			},
 		},
 		want: v1.TaskRunStatus{
-			Status: statusFailure(v1.TaskRunReasonFailed.String(), "init container failed, \"init-A\" exited with code 1"),
+			Status: statusFailure(v1.TaskRunReasonInitContainerFailed.String(), "init container failed, \"init-A\" exited with code 1"),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
@@ -2056,12 +2056,225 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			},
 		},
 		want: v1.TaskRunStatus{
-			Status: statusFailure(v1.TaskRunReasonFailed.String(), "Usage of EmptyDir volume \"ws-b6dfk\" exceeds the limit \"10Gi\"."),
+			Status: statusFailure(v1.TaskRunReasonPodEvicted.String(), "Usage of EmptyDir volume \"ws-b6dfk\" exceeds the limit \"10Gi\"."),
 			TaskRunStatusFields: v1.TaskRunStatusFields{
 				Steps: []v1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 137,
+						},
+					},
+					Name:      "A",
+					Container: "step-A",
+				}},
+				Sidecars:       []v1.SidecarState{},
+				Artifacts:      &v1.Artifacts{},
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
+		desc: "report StepOOM reason when step container was OOM-killed",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod",
+				Namespace: "foo",
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{{
+					Name: "step-A",
+				}},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "step-A",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 137,
+								Reason:   "OOMKilled",
+							},
+						},
+					},
+				},
+			},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusFailure(v1.TaskRunReasonStepOOM.String(), `"step-A" exited with code 137: OOMKilled`),
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 137,
+							Reason:   "OOMKilled",
+						},
+					},
+					Name:      "A",
+					Container: "step-A",
+				}},
+				Sidecars:       []v1.SidecarState{},
+				Artifacts:      &v1.Artifacts{},
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
+		desc: "report SidecarOOM reason when sidecar was OOM-killed",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod",
+				Namespace: "foo",
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{Name: "step-A"},
+					{Name: "sidecar-logging"},
+				},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "step-A",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 0,
+							},
+						},
+					},
+					{
+						Name: "sidecar-logging",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 137,
+								Reason:   "OOMKilled",
+							},
+						},
+					},
+				},
+			},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusFailure(v1.TaskRunReasonSidecarOOM.String(), `"sidecar-logging" exited with code 137: OOMKilled`),
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 0,
+						},
+					},
+					Name:      "A",
+					Container: "step-A",
+				}},
+				Sidecars: []v1.SidecarState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 137,
+							Reason:   "OOMKilled",
+						},
+					},
+					Name:      "logging",
+					Container: "sidecar-logging",
+				}},
+				Artifacts:      &v1.Artifacts{},
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
+		desc: "report InitContainerFailed reason when prepare init container fails",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod",
+				Namespace: "foo",
+			},
+			Spec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name: "prepare",
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-A",
+				}},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				InitContainerStatuses: []corev1.ContainerStatus{{
+					Name: "prepare",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 255,
+							Reason:   "Error",
+						},
+					},
+				}},
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "step-A",
+					State: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason: "PodInitializing",
+						},
+					},
+				}},
+			},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusFailure(v1.TaskRunReasonInitContainerFailed.String(), `init container failed, "prepare" exited with code 255: Error`),
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason: "PodInitializing",
+						},
+					},
+					Name:      "A",
+					Container: "step-A",
+				}},
+				Sidecars:       []v1.SidecarState{},
+				Artifacts:      &v1.Artifacts{},
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
+		desc: "report InitContainerOOM reason when prepare init container is OOM-killed",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod",
+				Namespace: "foo",
+			},
+			Spec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name: "prepare",
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-A",
+				}},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				InitContainerStatuses: []corev1.ContainerStatus{{
+					Name: "prepare",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 137,
+							Reason:   "OOMKilled",
+						},
+					},
+				}},
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "step-A",
+					State: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason: "PodInitializing",
+						},
+					},
+				}},
+			},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusFailure(v1.TaskRunReasonInitContainerOOM.String(), `init container failed, "prepare" exited with code 137: OOMKilled`),
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason: "PodInitializing",
 						},
 					},
 					Name:      "A",
@@ -2894,7 +3107,7 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 		},
 	}
 	wantTr := v1.TaskRunStatus{
-		Status: statusFailure(v1.TaskRunReasonFailed.String(), "\"step-non-json\" exited with code 1"),
+		Status: statusFailure(v1.TaskRunReasonStepFailed.String(), "\"step-non-json\" exited with code 1"),
 		TaskRunStatusFields: v1.TaskRunStatusFields{
 			PodName: "pod",
 			Steps: []v1.StepState{{
@@ -3655,6 +3868,614 @@ func TestUpdateIncompleteTaskRunStatus_SubPathError(t *testing.T) {
 			updateIncompleteTaskRunStatus(tt.trs, tt.pod)
 			if d := cmp.Diff(tt.expected, tt.trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")); d != "" {
 				t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func Test_getFailureInfo(t *testing.T) {
+	tests := []struct {
+		name       string
+		pod        *corev1.Pod
+		wantReason v1.TaskRunReason
+	}{{
+		name: "pod evicted",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase:  corev1.PodFailed,
+				Reason: "Evicted",
+			},
+		},
+		wantReason: v1.TaskRunReasonPodEvicted,
+	}, {
+		name: "init container OOM",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				InitContainerStatuses: []corev1.ContainerStatus{{
+					Name: "prepare",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 137,
+							Reason:   "OOMKilled",
+						},
+					},
+				}},
+			},
+		},
+		wantReason: v1.TaskRunReasonInitContainerOOM,
+	}, {
+		name: "init container failed (non-OOM)",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				InitContainerStatuses: []corev1.ContainerStatus{{
+					Name: "prepare",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Reason:   "Error",
+						},
+					},
+				}},
+			},
+		},
+		wantReason: v1.TaskRunReasonInitContainerFailed,
+	}, {
+		name: "sidecar OOM in init container (native sidecar)",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				InitContainerStatuses: []corev1.ContainerStatus{{
+					Name: "sidecar-logging",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 137,
+							Reason:   "OOMKilled",
+						},
+					},
+				}},
+			},
+		},
+		wantReason: v1.TaskRunReasonSidecarOOM,
+	}, {
+		name: "sidecar failed in init container (native sidecar, non-OOM)",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				InitContainerStatuses: []corev1.ContainerStatus{{
+					Name: "sidecar-logging",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Reason:   "Error",
+						},
+					},
+				}},
+			},
+		},
+		wantReason: v1.TaskRunReasonSidecarFailed,
+	}, {
+		name: "step OOM",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "step-build",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 137,
+							Reason:   "OOMKilled",
+						},
+					},
+				}},
+			},
+		},
+		wantReason: v1.TaskRunReasonStepOOM,
+	}, {
+		name: "sidecar OOM in regular container",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "sidecar-logging",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 137,
+							Reason:   "OOMKilled",
+						},
+					},
+				}},
+			},
+		},
+		wantReason: v1.TaskRunReasonSidecarOOM,
+	}, {
+		name: "sidecar failed (non-OOM, regular container)",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "sidecar-logging",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Reason:   "Error",
+						},
+					},
+				}},
+			},
+		},
+		wantReason: v1.TaskRunReasonSidecarFailed,
+	}, {
+		name: "step failed (non-OOM)",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "step-build",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+						},
+					},
+				}},
+			},
+		},
+		wantReason: v1.TaskRunReasonStepFailed,
+	}, {
+		name: "generic failure (no containers failed)",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+			},
+		},
+		wantReason: v1.TaskRunReasonFailed,
+	}, {
+		name: "step OOM + sidecar OOM (sidecar listed second) -> SidecarOOM",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "step-build",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 137,
+								Reason:   "OOMKilled",
+							},
+						},
+					},
+					{
+						Name: "sidecar-logging",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 137,
+								Reason:   "OOMKilled",
+							},
+						},
+					},
+				},
+			},
+		},
+		wantReason: v1.TaskRunReasonSidecarOOM,
+	}, {
+		name: "step failed + sidecar failed -> SidecarFailed",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "step-build",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+							},
+						},
+					},
+					{
+						Name: "sidecar-logging",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+							},
+						},
+					},
+				},
+			},
+		},
+		wantReason: v1.TaskRunReasonSidecarFailed,
+	}, {
+		name: "init container failed + step OOM -> InitContainerFailed",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				InitContainerStatuses: []corev1.ContainerStatus{{
+					Name: "prepare",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Reason:   "Error",
+						},
+					},
+				}},
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "step-build",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 137,
+							Reason:   "OOMKilled",
+						},
+					},
+				}},
+			},
+		},
+		wantReason: v1.TaskRunReasonInitContainerFailed,
+	}, {
+		name: "init container failed at index 0 + sidecar OOM at index 1 -> SidecarOOM",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				InitContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "prepare",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+								Reason:   "Error",
+							},
+						},
+					},
+					{
+						Name: "sidecar-logging",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 137,
+								Reason:   "OOMKilled",
+							},
+						},
+					},
+				},
+			},
+		},
+		wantReason: v1.TaskRunReasonSidecarOOM,
+	}, {
+		name: "eviction + container failures -> PodEvicted",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase:   corev1.PodFailed,
+				Reason:  "Evicted",
+				Message: "The node was low on resource: memory.",
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "step-build",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 137,
+								Reason:   "OOMKilled",
+							},
+						},
+					},
+					{
+						Name: "sidecar-logging",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+							},
+						},
+					},
+				},
+			},
+		},
+		wantReason: v1.TaskRunReasonPodEvicted,
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			info := getFailureInfo(tt.pod)
+			if info.reason != tt.wantReason {
+				t.Errorf("getFailureInfo().reason = %q, want %q", info.reason, tt.wantReason)
+			}
+			// Also verify getFailureReason returns the same thing
+			if got := getFailureReason(tt.pod); got != tt.wantReason {
+				t.Errorf("getFailureReason() = %q, want %q", got, tt.wantReason)
+			}
+		})
+	}
+}
+
+func TestMakeTaskRunStatus_SidecarFailed(t *testing.T) {
+	// Sidecar crashes with non-zero exit (not OOM). Verify SidecarFailed is returned.
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pod",
+			Namespace: "foo",
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{Name: "step-A"},
+				{Name: "sidecar-logging"},
+			},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodFailed,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name: "step-A",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 0,
+						},
+					},
+				},
+				{
+					Name: "sidecar-logging",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Reason:   "Error",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	want := v1.TaskRunStatus{
+		Status: statusFailure(v1.TaskRunReasonSidecarFailed.String(), `"sidecar-logging" exited with code 1: Error`),
+		TaskRunStatusFields: v1.TaskRunStatusFields{
+			Steps: []v1.StepState{{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 0,
+					},
+				},
+				Name:      "A",
+				Container: "step-A",
+				Results:   []v1.TaskRunResult{},
+			}},
+			Sidecars: []v1.SidecarState{{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   "Error",
+					},
+				},
+				Name:      "logging",
+				Container: "sidecar-logging",
+			}},
+			Artifacts:      &v1.Artifacts{},
+			CompletionTime: &metav1.Time{Time: time.Now()},
+		},
+	}
+
+	tr := v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "task-run",
+			Namespace: "foo",
+		},
+	}
+	logger, _ := logging.NewLogger("", "status")
+	kubeclient := fakek8s.NewSimpleClientset()
+	got, err := MakeTaskRunStatus(t.Context(), logger, tr, &pod, kubeclient, &v1.TaskSpec{})
+	if err != nil {
+		t.Errorf("MakeTaskRunStatus: %s", err)
+	}
+
+	want.PodName = "pod"
+
+	ensureTimeNotNil := cmp.Comparer(func(x, y *metav1.Time) bool {
+		if x == nil {
+			return y == nil
+		}
+		return y != nil
+	})
+	if d := cmp.Diff(want, got, ignoreVolatileTime, ensureTimeNotNil); d != "" {
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestMakeTaskRunStatus_MultiFailurePriority(t *testing.T) {
+	// Multi-failure tests verifying priority ordering through MakeTaskRunStatus.
+	for _, tc := range []struct {
+		name       string
+		pod        corev1.Pod
+		wantReason string
+	}{{
+		name: "step OOM + sidecar OOM (sidecar listed second) -> SidecarOOM reason",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "pod", Namespace: "foo"},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{Name: "step-build"},
+					{Name: "sidecar-logging"},
+				},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "step-build",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 137,
+								Reason:   "OOMKilled",
+							},
+						},
+					},
+					{
+						Name: "sidecar-logging",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 137,
+								Reason:   "OOMKilled",
+							},
+						},
+					},
+				},
+			},
+		},
+		wantReason: v1.TaskRunReasonSidecarOOM.String(),
+	}, {
+		name: "step failed + sidecar failed -> SidecarFailed reason",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "pod", Namespace: "foo"},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{Name: "step-build"},
+					{Name: "sidecar-logging"},
+				},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "step-build",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+							},
+						},
+					},
+					{
+						Name: "sidecar-logging",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+							},
+						},
+					},
+				},
+			},
+		},
+		wantReason: v1.TaskRunReasonSidecarFailed.String(),
+	}, {
+		name: "eviction + container failures -> PodEvicted reason",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "pod", Namespace: "foo"},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{Name: "step-build"},
+				},
+			},
+			Status: corev1.PodStatus{
+				Phase:   corev1.PodFailed,
+				Reason:  "Evicted",
+				Message: "The node was low on resource: memory.",
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "step-build",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 137,
+								Reason:   "OOMKilled",
+							},
+						},
+					},
+				},
+			},
+		},
+		wantReason: v1.TaskRunReasonPodEvicted.String(),
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task-run",
+					Namespace: "foo",
+				},
+			}
+			logger, _ := logging.NewLogger("", "status")
+			kubeclient := fakek8s.NewSimpleClientset()
+			got, err := MakeTaskRunStatus(t.Context(), logger, tr, &tc.pod, kubeclient, &v1.TaskSpec{})
+			if err != nil {
+				t.Errorf("MakeTaskRunStatus: %s", err)
+			}
+			cond := got.GetCondition(apis.ConditionSucceeded)
+			if cond == nil {
+				t.Fatal("Expected condition to be set")
+			}
+			if cond.Reason != tc.wantReason {
+				t.Errorf("Reason = %q, want %q", cond.Reason, tc.wantReason)
+			}
+		})
+	}
+}
+
+func Test_getFailureMessage_consistent_with_reason(t *testing.T) {
+	// Verify that when multiple containers fail, getFailureMessage describes
+	// the same container that getFailureReason classified.
+	logger, _ := logging.NewLogger("", "status")
+
+	tests := []struct {
+		name        string
+		pod         *corev1.Pod
+		wantReason  v1.TaskRunReason
+		wantMsgPart string // substring that must appear in the message
+	}{{
+		name: "sidecar OOM listed after step OOM -> message mentions sidecar",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "step-build",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 137,
+								Reason:   "OOMKilled",
+							},
+						},
+					},
+					{
+						Name: "sidecar-logging",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 137,
+								Reason:   "OOMKilled",
+							},
+						},
+					},
+				},
+			},
+		},
+		wantReason:  v1.TaskRunReasonSidecarOOM,
+		wantMsgPart: "sidecar-logging",
+	}, {
+		name: "sidecar failed listed after step failed -> message mentions sidecar",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "step-build",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+							},
+						},
+					},
+					{
+						Name: "sidecar-logging",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+							},
+						},
+					},
+				},
+			},
+		},
+		wantReason:  v1.TaskRunReasonSidecarFailed,
+		wantMsgPart: "sidecar-logging",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reason := getFailureReason(tt.pod)
+			if reason != tt.wantReason {
+				t.Errorf("getFailureReason() = %q, want %q", reason, tt.wantReason)
+			}
+			msg := getFailureMessage(logger, tt.pod)
+			if !strings.Contains(msg, tt.wantMsgPart) {
+				t.Errorf("getFailureMessage() = %q, want it to contain %q", msg, tt.wantMsgPart)
 			}
 		})
 	}

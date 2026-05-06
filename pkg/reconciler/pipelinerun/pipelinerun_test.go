@@ -42,7 +42,6 @@ import (
 	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
-	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
@@ -156,7 +155,6 @@ func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipeline.Options) (test.Assets, func()) {
 	t.Helper()
 	ctx, _ := th.SetupFakeContext(t)
-	ctx = th.SetupFakeCloudClientContext(ctx, d.ExpectedCloudEventCount)
 	ctx, cancel := context.WithCancel(ctx)
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
@@ -1324,7 +1322,7 @@ status:
           image: busybox
           script: 'exit 0'
   conditions:
-  - message: "Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0, Failed Validation: 1"
+  - message: 'Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0, Failed Validation: 1 (task "task1" completed successfully but did not emit the result "result2", which is referenced by task "task2")'
     reason: PipelineValidationFailed
     status: "False"
     type: Succeeded
@@ -1341,7 +1339,12 @@ status:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-missing-results", []string{}, false)
+	wantEvents := []string{
+		"Normal Started",
+		"Warning ResultValidationFailed",
+		"Warning Failed",
+	}
+	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-missing-results", wantEvents, false)
 	if reconciledRun.Status.CompletionTime == nil {
 		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
 	}
@@ -1483,9 +1486,9 @@ status:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
-	wantEvents := []string{
-		"Normal Succeeded All Tasks have completed executing",
-	}
+	// A PipelineRun that is already completed should not emit events on re-reconcile,
+	// since both before and after conditions are the same (no transition).
+	wantEvents := []string{}
 	reconciledRun, clients := prt.reconcileRun(namespace, pipelineRunName, wantEvents, false)
 
 	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, pipelineRunName)
@@ -8346,22 +8349,6 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 			reconciledRun, clients := prt.reconcileRun(namespace, tt.pipelineRunName, []string{}, false)
 
 			actions := clients.Pipeline.Actions()
-			if len(actions) < 2 {
-				t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
-			}
-
-			// The first update action should be updating the PipelineRun.
-			var actual *v1.PipelineRun
-			for _, action := range actions {
-				if actualPrime, ok := action.(ktesting.UpdateAction); ok {
-					actual = actualPrime.GetObject().(*v1.PipelineRun)
-					break
-				}
-			}
-
-			if actual == nil {
-				t.Errorf("Expected a PipelineRun to be updated, but it wasn't for %s", tt.name)
-			}
 
 			for _, action := range actions {
 				if action != nil {
@@ -8503,88 +8490,6 @@ func getTaskRunStatus(t string, status corev1.ConditionStatus) *v1.PipelineRunTa
 	}
 }
 
-// TestReconcile_CloudEvents runs reconcile with a cloud event sink configured
-// to ensure that events are sent in different cases
-func TestReconcile_CloudEvents(t *testing.T) {
-	names.TestingSeed()
-
-	prs := []*v1.PipelineRun{
-		parse.MustParseV1PipelineRun(t, `
-metadata:
-  name: test-pipelinerun
-  namespace: foo
-  selfLink: /pipeline/1234
-spec:
-  pipelineRef:
-    name: test-pipeline
-`),
-	}
-	ps := []*v1.Pipeline{
-		parse.MustParseV1Pipeline(t, `
-metadata:
-  name: test-pipeline
-  namespace: foo
-spec:
-  tasks:
-    - name: test-1
-      taskRef:
-        name: test-task
-`),
-	}
-	ts := []*v1.Task{
-		parse.MustParseV1Task(t, `
-metadata:
-  name: test-task
-  namespace: foo
-spec:
-  steps:
-    - name: simple-step
-      image: foo
-      command: ["/mycmd"]
-      env:
-       - name: foo
-         value: bar
-`),
-	}
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"default-cloud-events-sink": "http://synk:8080",
-			},
-		},
-	}
-	t.Logf("config maps: %s", cms)
-
-	wantEvents := []string{
-		"Normal Started",
-		"Normal Running Tasks Completed: 0",
-	}
-
-	d := test.Data{
-		PipelineRuns:            prs,
-		Pipelines:               ps,
-		Tasks:                   ts,
-		ConfigMaps:              cms,
-		ExpectedCloudEventCount: len(wantEvents),
-	}
-	prt := newPipelineRunTest(t, d)
-	defer prt.Cancel()
-
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipelinerun", wantEvents, false)
-
-	// This PipelineRun is in progress now and the status should reflect that
-	th.CheckPipelineRunConditionStatusAndReason(t, reconciledRun.Status, corev1.ConditionUnknown, v1.PipelineRunReasonRunning.String())
-
-	th.VerifyTaskRunStatusesCount(t, reconciledRun.Status, 1)
-
-	wantCloudEvents := []string{
-		`(?s)dev.tekton.event.pipelinerun.started.v1.*test-pipelinerun`,
-		`(?s)dev.tekton.event.pipelinerun.running.v1.*test-pipelinerun`,
-	}
-	ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-	ceClient.CheckCloudEventsUnordered(t, "reconcile-cloud-events", wantCloudEvents)
-}
 
 // this test validates taskSpec metadata is embedded into task run
 func TestReconcilePipeline_TaskSpecMetadata(t *testing.T) {

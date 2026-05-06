@@ -19,10 +19,11 @@ package cloudevent
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
@@ -46,61 +47,99 @@ func cloudEventsSink(ctx context.Context) string {
 	return sink
 }
 
-// EmitCloudEvents emits CloudEvents (only) for object
+// EmitCloudEvents emits CloudEvents for object in all configured formats.
+//
+// Checks the cache for the ObjectKey: gates on the full condition snapshot
+// (Status+Reason+Message+GVK+name). A hit means this exact state was already
+// processed; skip entirely — including the event build and send. A miss means
+// a new object or the condition changed; proceed to dispatch to per-format senders.
+// Each format sender calls dispatchCloudEvent which handles the L2 cache check,
+// goroutine dispatch, retries, and Kubernetes Event recording.
 func EmitCloudEvents(ctx context.Context, object runtime.Object) {
 	logger := logging.FromContext(ctx)
-	if sink := cloudEventsSink(ctx); sink != "" {
-		ctx = cloudevents.ContextWithTarget(ctx, sink)
-		err := SendCloudEventWithRetries(ctx, object)
-		if err != nil {
-			logger.Warnf("Failed to emit cloud events %v", err.Error())
+	runObject, ok := object.(v1beta1.RunObject)
+	if !ok {
+		logger.Warnf("failed to emit cloud events, runtime.Object %v is not a v1beta1.RunObject", object)
+		return
+	}
+
+	sink := cloudEventsSink(ctx)
+	if sink == "" {
+		return
+	}
+
+	// Level 1: skip if this exact condition state was already processed.
+	// One check per reconcile, before any format-specific work.
+	cacheClient := cache.Get(ctx)
+	wasPresent, err := cache.ContainsOrAddObject(cacheClient, runObject)
+	if err != nil {
+		logger.Warnf("failed to emit cloud events: could not check the events cache %v", err.Error())
+	}
+	if err != nil || wasPresent {
+		return
+	}
+
+	ctx = cloudevents.ContextWithTarget(ctx, sink)
+	cfg := config.FromContextOrDefaults(ctx)
+	formats := cfg.Events.Formats
+	if len(formats) == 0 {
+		// Belt-and-suspenders: config validation already rejects empty formats.
+		// Warn-and-skip rather than error to avoid requeue loops for a
+		// misconfiguration that cannot self-heal.
+		logger.Warnf("no event formats configured, skipping notifications for %s",
+			runObject.GetObjectMeta().GetName())
+		return
+	}
+
+	for format := range formats {
+		switch format {
+		case config.FormatTektonV1:
+			sendTektonV1Event(ctx, runObject)
+		default:
+			// Unknown format: operator may have set a future format before
+			// updating the binary. Warn-and-skip rather than fail.
+			logger.Warnf("unknown event format %q, skipping", format)
 		}
 	}
 }
 
-// EmitCloudEventsWhenConditionChange emits CloudEvents when there is a change in condition
-func EmitCloudEventsWhenConditionChange(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
+// sendTektonV1Event builds and sends a CloudEvent in the tektonv1 format
+// (v1beta1-based payload). It delegates delivery to dispatchCloudEvent.
+func sendTektonV1Event(ctx context.Context, runObject v1beta1.RunObject) {
 	logger := logging.FromContext(ctx)
-	if sink := cloudEventsSink(ctx); sink != "" {
-		ctx = cloudevents.ContextWithTarget(ctx, sink)
-
-		// Only send events if the new condition represents a change
-		if !equality.Semantic.DeepEqual(beforeCondition, afterCondition) {
-			err := SendCloudEventWithRetries(ctx, object)
-			if err != nil {
-				logger.Warnf("Failed to emit cloud events %v", err.Error())
-			}
-		}
+	event, err := eventForRunObject(ctx, runObject)
+	if err != nil {
+		logger.Warnf("failed to build tektonv1 cloud event: %v", err)
+		return
+	}
+	if err := dispatchCloudEvent(ctx, event, runObject); err != nil {
+		logger.Warnf("failed to send tektonv1 cloud event: %v", err)
 	}
 }
 
-// SendCloudEventWithRetries sends a cloud event for the specified resource.
-// It does not block and it perform retries with backoff using the cloudevents
-// sdk-go capabilities.
-// It accepts a runtime.Object to avoid making objectWithCondition public since
-// it's only used within the events/cloudevents packages.
-func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error {
-	var (
-		o           objectWithCondition
-		ok          bool
-		cacheClient *lru.Cache
-	)
-	if o, ok = object.(objectWithCondition); !ok {
-		return errors.New("input object does not satisfy objectWithCondition")
-	}
+// dispatchCloudEvent is the shared delivery path for all event formats.
+// It handles the L2 event-level cache check, goroutine dispatch,
+// exponential-backoff retries, and Kubernetes Event recording.
+// It does not block: it returns as soon as the send goroutine is scheduled.
+func dispatchCloudEvent(ctx context.Context, event *cloudevents.Event, runObject v1beta1.RunObject) error {
 	logger := logging.FromContext(ctx)
 	ceClient := Get(ctx)
 	if ceClient == nil {
 		return errors.New("no cloud events client found in the context")
 	}
-	event, err := EventForObjectWithCondition(ctx, o)
-	if err != nil {
-		return err
-	}
-	// Events for CustomRuns require a cache of events that have been sent
-	_, isCustomRun := object.(*v1beta1.CustomRun)
-	if isCustomRun {
-		cacheClient = cache.Get(ctx)
+
+	// Level 2: skip if this event type was already sent for this object.
+	// Unknown events are exempt — they fire on every condition change.
+	if !strings.Contains(event.Type(), ".unknown.") {
+		cacheClient := cache.Get(ctx)
+		alreadySent, err := cache.ContainsOrAddCloudEvent(cacheClient, event, runObject)
+		if err != nil {
+			logger.Errorf("Error while checking cache: %s", err)
+		}
+		if alreadySent {
+			logger.Infof("cloudevent %v already sent", event)
+			return nil
+		}
 	}
 
 	wasIn := make(chan error)
@@ -110,27 +149,68 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 		defer ceClient.decreaseCount()
 		wasIn <- nil
 		logger.Debugf("Sending cloudevent of type %q", event.Type())
-		// In case of Run event, check cache if cloudevent is already sent
-		if isCustomRun {
-			cloudEventSent, err := cache.ContainsOrAddCloudEvent(cacheClient, event)
-			if err != nil {
-				logger.Errorf("Error while checking cache: %s", err)
-			}
-			if cloudEventSent {
-				logger.Infof("cloudevent %v already sent", event)
-				return
-			}
-		}
+		recorder := controller.GetEventRecorder(ctx)
 		if result := ceClient.Send(cloudevents.ContextWithRetriesExponentialBackoff(ctx, 10*time.Millisecond, 10), *event); !cloudevents.IsACK(result) {
 			logger.Warnf("Failed to send cloudevent: %s", result.Error())
-			recorder := controller.GetEventRecorder(ctx)
 			if recorder == nil {
 				logger.Warnf("No recorder in context, cannot emit error event")
 				return
 			}
-			recorder.Event(object, corev1.EventTypeWarning, "Cloud Event Failure", result.Error())
+			recorder.Event(runObject, corev1.EventTypeWarning, "CloudEventFailed", result.Error())
+		} else if recorder != nil {
+			recorder.Eventf(runObject, corev1.EventTypeNormal, "CloudEventSent", "Sent %s", event.Type())
 		}
 	}()
 
 	return <-wasIn
+}
+
+// EmitCloudEventsWhenConditionChange emits CloudEvents when there is a change in condition.
+//
+// Deprecated: CloudEvents are now sent by the dedicated tekton-events-controller
+// (pkg/reconciler/notifications). This function is no longer called by any core reconciler
+// and will be removed in a future release.
+func EmitCloudEventsWhenConditionChange(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
+	logger := logging.FromContext(ctx)
+	runObject, ok := object.(v1beta1.RunObject)
+	if !ok {
+		logger.Warnf("failed to emit cloud events, runtime.Object %v is not a v1beta1.RunObject", object)
+	}
+	if sink := cloudEventsSink(ctx); sink != "" {
+		ctx = cloudevents.ContextWithTarget(ctx, sink)
+
+		// Only send events if the new condition represents a change
+		if !equality.Semantic.DeepEqual(beforeCondition, afterCondition) {
+			err := SendCloudEventWithRetries(ctx, runObject)
+			if err != nil {
+				logger.Warnf("Failed to emit cloud events %v", err.Error())
+			}
+		}
+	}
+}
+
+// SendCloudEventWithRetries sends a cloud event for the specified resource in
+// the tektonv1 format. It does not block and performs retries with backoff using
+// the cloudevents sdk-go capabilities.
+//
+// Checks the cache for the EventKey: skips sending if this event type was already
+// sent for this object, regardless of condition changes. This prevents duplicate
+// terminal events (successful, failed). Unknown events are exempt:
+// they must fire on every condition change while a run is in progress.
+//
+// Deprecated: This function always sends in the tektonv1 format regardless of the
+// configured formats, and bypasses the L1 object-level cache check. Use
+// EmitCloudEvents instead, which respects the configured formats and provides full
+// L1+L2 deduplication. This function will be removed once
+// EmitCloudEventsWhenConditionChange (its only remaining caller) is removed.
+func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error {
+	runObject, ok := object.(v1beta1.RunObject)
+	if !ok {
+		return fmt.Errorf("failed to send cloud events, runtime.Object %v is not a v1beta1.RunObject", object)
+	}
+	event, err := eventForRunObject(ctx, runObject)
+	if err != nil {
+		return err
+	}
+	return dispatchCloudEvent(ctx, event, runObject)
 }

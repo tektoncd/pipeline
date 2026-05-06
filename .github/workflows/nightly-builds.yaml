@@ -52,7 +52,7 @@ jobs:
           echo "latest_sha=${latest_sha}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Kind cluster
-        uses: chainguard-dev/actions/setup-kind@f45211d3e8f9d2676c6b8cdd6a765435e06c819d  # v1.6.13
+        uses: chainguard-dev/actions/setup-kind@916fec00fb80f3cd124a0b41eef79ee63f607c5d  # v1.6.17
         with:
           k8s-version: ${{ env.KUBERNETES_VERSION }}
 
