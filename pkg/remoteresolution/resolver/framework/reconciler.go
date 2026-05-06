@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"time"
 
+	pipelineapi "github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
@@ -57,6 +58,12 @@ type statusDataPatch struct {
 	Data        string                        `json:"data"`
 	Source      *pipelinev1beta1.ConfigSource `json:"source"`
 	RefSource   *pipelinev1.RefSource         `json:"refSource"`
+}
+
+var allowedResourceKinds = []string{
+	pipelineapi.PipelineControllerName,
+	pipelineapi.TaskControllerName,
+	pipelinev1beta1.StepActionKind,
 }
 
 // Reconciler handles ResolutionRequest objects, performs functionality
@@ -166,7 +173,7 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 			}
 			return
 		}
-		if err := framework.ValidateResolvedResource(resource); err != nil {
+		if err := ValidateResolvedResource(resource); err != nil {
 			errChan <- &resolutioncommon.GetResourceError{
 				ResolverName: r.resolver.GetName(resolutionCtx),
 				Key:          key,
