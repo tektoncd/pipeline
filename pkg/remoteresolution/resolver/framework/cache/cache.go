@@ -27,6 +27,7 @@ import (
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"github.com/tektoncd/pipeline/pkg/resolvermetrics"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 	utilcache "k8s.io/apimachinery/pkg/util/cache"
@@ -45,6 +46,7 @@ type resolverCache struct {
 	maxSize     int
 	clock       utilcache.Clock
 	flightGroup *singleflight.Group
+	metrics     *resolvermetrics.Recorder
 }
 
 func newResolverCache(maxSize int, ttl time.Duration) *resolverCache {
@@ -69,7 +71,12 @@ func (c *resolverCache) GetConfigName(_ context.Context) string {
 // withLogger returns a new ResolverCache instance with the provided logger.
 // This prevents state leak by not storing logger in the global singleton.
 func (c *resolverCache) withLogger(logger *zap.SugaredLogger) *resolverCache {
-	return &resolverCache{logger: logger, cache: c.cache, ttl: c.ttl, maxSize: c.maxSize, clock: c.clock, flightGroup: c.flightGroup}
+	return &resolverCache{logger: logger, cache: c.cache, ttl: c.ttl, maxSize: c.maxSize, clock: c.clock, flightGroup: c.flightGroup, metrics: c.metrics}
+}
+
+// SetMetrics sets the metrics recorder on the cache.
+func (c *resolverCache) SetMetrics(m *resolvermetrics.Recorder) {
+	c.metrics = m
 }
 
 // TTL returns the time-to-live duration for cache entries.
@@ -99,11 +106,17 @@ func (c *resolverCache) GetCachedOrResolveFromRemote(
 		}
 
 		c.infow("Cache hit", "key", key)
+		if c.metrics != nil {
+			c.metrics.RecordCacheHit(context.Background(), resolverType)
+		}
 
 		return c.annotate(cached, resolverType, cacheOperationRetrieve), nil
 	}
 
 	// If cache miss, resolve from remote using singleflight
+	if c.metrics != nil {
+		c.metrics.RecordCacheMiss(context.Background(), resolverType)
+	}
 	untyped, err, shared := c.flightGroup.Do(key, func() (any, error) {
 		resolved, err := resolveFromRemote()
 		if err != nil {
@@ -129,6 +142,9 @@ func (c *resolverCache) GetCachedOrResolveFromRemote(
 
 	if shared {
 		c.infow("Resolution deduplicated by singleflight", "resolverType", resolverType, "key", key)
+		if c.metrics != nil {
+			c.metrics.RecordSingleflightDedup(context.Background(), resolverType)
+		}
 	}
 
 	return untyped.(resolutionframework.ResolvedResource), nil

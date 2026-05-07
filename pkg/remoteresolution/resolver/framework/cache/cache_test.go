@@ -17,6 +17,7 @@ limitations under the License.
 package cache
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -24,6 +25,10 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	bundleresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/bundle"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"github.com/tektoncd/pipeline/pkg/resolvermetrics"
+	"go.opentelemetry.io/otel"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.uber.org/zap/zaptest"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
@@ -510,4 +515,95 @@ func TestGetCachedOrResolveFromRemote(t *testing.T) {
 			t.Fatalf("expected fresh resolution to succeed, got error: %v", thirdAttemptErr)
 		}
 	})
+}
+
+func TestCacheMetrics_HitAndMiss(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	oldProvider := otel.GetMeterProvider()
+	otel.SetMeterProvider(provider)
+	defer func() {
+		otel.SetMeterProvider(oldProvider)
+		_ = provider.Shutdown(context.Background())
+	}()
+
+	rec, err := resolvermetrics.NewRecorder()
+	if err != nil {
+		t.Fatalf("NewRecorder() error: %v", err)
+	}
+
+	cache := newResolverCache(100, 1*time.Hour)
+	cache.SetMetrics(rec)
+	cache.logger = zaptest.NewLogger(t).Sugar()
+	defer cache.Clear()
+
+	params := []pipelinev1.Param{{
+		Name:  bundleresolution.ParamBundle,
+		Value: pipelinev1.ParamValue{StringVal: "registry.io/repo@sha256:abcdef"},
+	}}
+	resolveFn := func() (resolutionframework.ResolvedResource, error) {
+		return &mockResolvedResource{data: []byte("test data")}, nil
+	}
+
+	// First call: cache miss
+	if _, err := cache.GetCachedOrResolveFromRemote(params, "bundles", resolveFn); err != nil {
+		t.Fatalf("first resolve error: %v", err)
+	}
+	// Second call: cache hit
+	if _, err := cache.GetCachedOrResolveFromRemote(params, "bundles", resolveFn); err != nil {
+		t.Fatalf("second resolve error: %v", err)
+	}
+
+	var rm metricdata.ResourceMetrics
+	if err := reader.Collect(context.Background(), &rm); err != nil {
+		t.Fatalf("Collect error: %v", err)
+	}
+
+	foundHit := false
+	foundMiss := false
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name == "tekton_pipelines_resolver_cache_hit_total" {
+				foundHit = true
+				sum := m.Data.(metricdata.Sum[int64])
+				if len(sum.DataPoints) == 0 || sum.DataPoints[0].Value != 1 {
+					t.Errorf("expected 1 cache hit, got %d", sum.DataPoints[0].Value)
+				}
+			}
+			if m.Name == "tekton_pipelines_resolver_cache_miss_total" {
+				foundMiss = true
+				sum := m.Data.(metricdata.Sum[int64])
+				if len(sum.DataPoints) == 0 || sum.DataPoints[0].Value != 1 {
+					t.Errorf("expected 1 cache miss, got %d", sum.DataPoints[0].Value)
+				}
+			}
+		}
+	}
+	if !foundHit {
+		t.Error("cache_hit_total metric not found")
+	}
+	if !foundMiss {
+		t.Error("cache_miss_total metric not found")
+	}
+}
+
+func TestCacheMetrics_NilRecorder(t *testing.T) {
+	cache := newResolverCache(100, 1*time.Hour)
+	defer cache.Clear()
+
+	params := []pipelinev1.Param{{
+		Name:  bundleresolution.ParamBundle,
+		Value: pipelinev1.ParamValue{StringVal: "registry.io/repo@sha256:abc"},
+	}}
+	resolveFn := func() (resolutionframework.ResolvedResource, error) {
+		return &mockResolvedResource{data: []byte("data")}, nil
+	}
+
+	// Should not panic with nil metrics
+	if _, err := cache.GetCachedOrResolveFromRemote(params, "bundles", resolveFn); err != nil {
+		t.Fatalf("resolve error with nil metrics: %v", err)
+	}
+	if _, err := cache.GetCachedOrResolveFromRemote(params, "bundles", resolveFn); err != nil {
+		t.Fatalf("cached resolve error with nil metrics: %v", err)
+	}
 }
