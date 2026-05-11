@@ -28,6 +28,7 @@ import (
 // a Tekton resource like a pipeline.yaml.
 //
 // +genclient
+// +kubebuilder:object:root=true
 // +genreconciler
 // +kubebuilder:storageversion
 type ResolutionRequest struct {
