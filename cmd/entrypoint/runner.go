@@ -19,13 +19,16 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -42,10 +45,12 @@ const (
 // realRunner actually runs commands.
 type realRunner struct {
 	sync.Mutex
-	signals       chan os.Signal
-	signalsClosed bool
-	stdoutPath    string
-	stderrPath    string
+	signals        chan os.Signal
+	signalsClosed  bool
+	stdoutPath     string
+	stderrPath     string
+	secretMaskDir  string
+	redactPatterns string
 }
 
 var _ entrypoint.Runner = (*realRunner)(nil)
@@ -86,27 +91,42 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 
 	cmd := exec.CommandContext(ctx, name, args...)
 
-	// if a standard output file is specified
-	// create the log file and add to the std multi writer
+	// Load redaction config: regex patterns and exact secret values.
+	regexPatterns, exactSecrets := rr.loadMaskingConfig()
+	makeMW := func(w io.Writer) *maskingWriter {
+		if len(regexPatterns) > 0 || len(exactSecrets) > 0 {
+			return newMaskingWriterWithConfig(w, regexPatterns, exactSecrets)
+		}
+		return newMaskingWriter(w)
+	}
+
+	stdoutMask := makeMW(os.Stdout)
+	defer stdoutMask.Flush()
 	if rr.stdoutPath != "" {
 		stdout, err := newStdLogWriter(rr.stdoutPath)
 		if err != nil {
 			return err
 		}
 		defer stdout.Close()
-		cmd.Stdout = io.MultiWriter(os.Stdout, stdout)
+		stdoutFileMask := makeMW(stdout)
+		defer stdoutFileMask.Flush()
+		cmd.Stdout = io.MultiWriter(stdoutMask, stdoutFileMask)
 	} else {
-		cmd.Stdout = os.Stdout
+		cmd.Stdout = stdoutMask
 	}
+	stderrMask := makeMW(os.Stderr)
+	defer stderrMask.Flush()
 	if rr.stderrPath != "" {
 		stderr, err := newStdLogWriter(rr.stderrPath)
 		if err != nil {
 			return err
 		}
 		defer stderr.Close()
-		cmd.Stderr = io.MultiWriter(os.Stderr, stderr)
+		stderrFileMask := makeMW(stderr)
+		defer stderrFileMask.Flush()
+		cmd.Stderr = io.MultiWriter(stderrMask, stderrFileMask)
 	} else {
-		cmd.Stderr = os.Stderr
+		cmd.Stderr = stderrMask
 	}
 
 	// dedicated PID group used to forward signals to
@@ -153,6 +173,64 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	}
 
 	return nil
+}
+
+// loadMaskingConfig reads redaction configuration from the flags set by the
+// controller. It returns regex patterns (decoded from base64) and exact secret
+// values (read from files under secretMaskDir).
+func (rr *realRunner) loadMaskingConfig() (regexPatterns []string, exactSecrets []string) {
+	if rr.redactPatterns != "" {
+		decoded, err := base64.StdEncoding.DecodeString(rr.redactPatterns)
+		if err != nil {
+			log.Printf("Warning: failed to decode redact_patterns: %v", err)
+		} else {
+			for _, line := range strings.Split(string(decoded), "\n") {
+				line = strings.TrimSpace(line)
+				if line != "" {
+					regexPatterns = append(regexPatterns, line)
+				}
+			}
+		}
+	}
+
+	if rr.secretMaskDir != "" {
+		exactSecrets = loadSecretsFromDir(rr.secretMaskDir)
+	}
+
+	return regexPatterns, exactSecrets
+}
+
+// loadSecretsFromDir walks the secret mask directory and reads every file's
+// content as an exact string to redact. Each mounted Secret becomes a
+// subdirectory; each key in the Secret becomes a file.
+func loadSecretsFromDir(dir string) []string {
+	var secrets []string
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			return nil
+		}
+		// Skip Kubernetes-internal symlinks (e.g. ..data, ..2024_01_01)
+		if strings.HasPrefix(info.Name(), "..") {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			log.Printf("Warning: failed to read secret file %s: %v", path, err)
+			return nil
+		}
+		val := strings.TrimSpace(string(data))
+		if val != "" {
+			secrets = append(secrets, val)
+		}
+		return nil
+	})
+	if err != nil {
+		log.Printf("Warning: failed to walk secret mask dir %s: %v", dir, err)
+	}
+	return secrets
 }
 
 // newStdLogWriter create a new file writer that used for collecting std log

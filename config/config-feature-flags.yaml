@@ -138,3 +138,7 @@ data:
   # If set to "false", exponential backoff will be disabled.
   # For advanced tuning of backoff parameters, update the 'wait-exponential-backoff' ConfigMap.
   enable-wait-exponential-backoff: "false"
+  # Setting this flag to "true" will enable masking of secret values in step logs.
+  # When enabled, secret values from environment variables and volume mounts are
+  # mounted into step containers and redacted from stdout/stderr.
+  enable-secret-masking: "false"
