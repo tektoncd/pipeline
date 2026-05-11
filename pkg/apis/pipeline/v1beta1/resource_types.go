@@ -26,11 +26,13 @@ import (
 // It has been migrated to the result package and kept for backward compatibility
 type RunResult = result.RunResult
 
-// PipelineResourceResult has been deprecated with the migration of PipelineResources
+// PipelineResourceResult has been deprecated with the migration of PipelineResources.
+//
 // Deprecated: Use RunResult instead
 type PipelineResourceResult = result.RunResult
 
-// ResultType of PipelineResourceResult has been deprecated with the migration of PipelineResources
+// ResultType of PipelineResourceResult has been deprecated with the migration of PipelineResources.
+//
 // Deprecated: v1beta1.ResultType is only kept for backward compatibility
 type ResultType = result.ResultType
 
@@ -49,10 +51,12 @@ type PipelineResourceType = resource.PipelineResourceType
 
 const (
 	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
+	//
 	// Deprecated: Unused, preserved only for backwards compatibility
 	PipelineResourceTypeGit PipelineResourceType = resource.PipelineResourceTypeGit
 
 	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.
+	//
 	// Deprecated: Unused, preserved only for backwards compatibility
 	PipelineResourceTypeStorage PipelineResourceType = resource.PipelineResourceTypeStorage
 )

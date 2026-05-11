@@ -33,21 +33,20 @@ import (
 )
 
 const (
-	scmTokenSecretBase    = "tekton-e2e-scm-token"
-	scmTokenSecretKey     = "token"
-	scmRemoteTaskPath     = "tasks/remote-task.yaml"
-	scmRemoteOrg          = "test-org"
-	scmRemoteRepo         = "test-repo"
-	scmRemoteBranch       = "main"
-	scmRemoteUser         = "tekton-bot"
-	scmRemoteUserPassword = "ab_d1234HIJKL"
-	// Defined in git-resolver/gitea.yaml's "gitea" StatefulSet, in the env for the "configure-gitea" init container
-	scmGiteaAdminPassword = "giteaPassword1234"
-	systemNamespace       = "tekton-pipelines"
+	scmTokenSecretBase    = "tekton-e2e-scm-token"   //nolint:unused,nolintlint
+	scmTokenSecretKey     = "token"                  //nolint:unused,nolintlint
+	scmRemoteTaskPath     = "tasks/remote-task.yaml" //nolint:unused,nolintlint
+	scmRemoteOrg          = "test-org"               //nolint:unused,nolintlint
+	scmRemoteRepo         = "test-repo"              //nolint:unused,nolintlint
+	scmRemoteBranch       = "main"                   //nolint:unused,nolintlint
+	scmRemoteUser         = "tekton-bot"             //nolint:unused,nolintlint
+	scmRemoteUserPassword = "ab_d1234HIJKL"          //nolint:unused,nolintlint
+	scmGiteaAdminPassword = "giteaPassword1234"      //nolint:unused,nolintlint
+	systemNamespace       = "tekton-pipelines"       //nolint:unused,nolintlint
 )
 
 var (
-	defaultSvcRE = regexp.MustCompile(`\.default\.svc\.cluster`)
+	defaultSvcRE = regexp.MustCompile(`\.default\.svc\.cluster`) //nolint:unused // used by resolvers_gitea_test.go
 
 	hubFeatureFlags = requireAllGates(map[string]string{
 		"enable-hub-resolver": "true",

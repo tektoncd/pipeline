@@ -124,11 +124,11 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 // ValidateUpdate validates the update of a TaskRunSpec
 func (ts *TaskRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.FieldError) {
 	if !apis.IsInUpdate(ctx) {
-		return
+		return errs
 	}
 	oldObj, ok := apis.GetBaseline(ctx).(*TaskRun)
 	if !ok || oldObj == nil {
-		return
+		return errs
 	}
 
 	if (oldObj.Spec.ManagedBy == nil) != (ts.ManagedBy == nil) || (oldObj.Spec.ManagedBy != nil && *oldObj.Spec.ManagedBy != *ts.ManagedBy) {
@@ -165,7 +165,7 @@ func (ts *TaskRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.FieldErro
 		errs = errs.Also(apis.ErrInvalidValue("Once the TaskRun has started, only status and statusMessage updates are allowed", ""))
 	}
 
-	return
+	return errs
 }
 
 // validateInlineParameters validates that any parameters called in the

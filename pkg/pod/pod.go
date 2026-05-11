@@ -208,7 +208,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	if sidecarLogsResultsEnabled {
 		if taskSpec.Results != nil || artifactsPathReferenced(steps) {
 			// create a results sidecar
-			resultsSidecar, err := createResultsSidecar(taskSpec, b.Images.SidecarLogResultsImage, securityContextConfig, windows, pollingInterval)
+			resultsSidecar, err := createResultsSidecar(ctx, taskSpec, b.Images.SidecarLogResultsImage, securityContextConfig, windows, pollingInterval)
 			if err != nil {
 				return nil, err
 			}
@@ -637,7 +637,7 @@ func entrypointInitContainer(image string, steps []v1.Step, securityContext Secu
 // whether it will run on a windows node, and whether the sidecar should include a security context
 // that will allow it to run in namespaces with "restricted" pod security admission.
 // It will also provide arguments to the binary that allow it to surface the step results.
-func createResultsSidecar(taskSpec v1.TaskSpec, image string, securityContext SecurityContextConfig, windows bool, pollingInterval time.Duration) (v1.Sidecar, error) {
+func createResultsSidecar(ctx context.Context, taskSpec v1.TaskSpec, image string, securityContext SecurityContextConfig, windows bool, pollingInterval time.Duration) (v1.Sidecar, error) {
 	names := make([]string, 0, len(taskSpec.Results))
 	for _, r := range taskSpec.Results {
 		names = append(names, r.Name)
@@ -678,7 +678,7 @@ func createResultsSidecar(taskSpec v1.TaskSpec, image string, securityContext Se
 
 	// When using Kubernetes native sidecar support, add the kubernetes-sidecar-mode flag
 	// to prevent the sidecar from exiting after processing results
-	if config.FromContextOrDefaults(context.Background()).FeatureFlags.EnableKubernetesSidecar {
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
 		command = append(command, "-kubernetes-sidecar-mode", "true")
 	}
 

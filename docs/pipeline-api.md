@@ -11433,8 +11433,8 @@ string
 (<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
 </p>
 <div>
-<p>PipelineResourceResult has been deprecated with the migration of PipelineResources
-Deprecated: Use RunResult instead</p>
+<p>PipelineResourceResult has been deprecated with the migration of PipelineResources.</p>
+<p>Deprecated: Use RunResult instead</p>
 </div>
 <h3 id="tekton.dev/v1beta1.PipelineResourceType">PipelineResourceType
 </h3>
@@ -13233,8 +13233,8 @@ string
 <h3 id="tekton.dev/v1beta1.ResultType">ResultType
 </h3>
 <div>
-<p>ResultType of PipelineResourceResult has been deprecated with the migration of PipelineResources
-Deprecated: v1beta1.ResultType is only kept for backward compatibility</p>
+<p>ResultType of PipelineResourceResult has been deprecated with the migration of PipelineResources.</p>
+<p>Deprecated: v1beta1.ResultType is only kept for backward compatibility</p>
 </div>
 <h3 id="tekton.dev/v1beta1.ResultValue">ResultValue
 </h3>
@@ -16139,8 +16139,8 @@ See TaskRun.status (API version: tekton.dev/v1beta1)</p>
 <td>
 <em>(Optional)</em>
 <p>Results from Resources built during the TaskRun.
-This is tomb-stoned along with the removal of pipelineResources
-Deprecated: this field is not populated and is preserved only for backwards compatibility</p>
+This is tomb-stoned along with the removal of pipelineResources.</p>
+<p>Deprecated: this field is not populated and is preserved only for backwards compatibility</p>
 </td>
 </tr>
 <tr>

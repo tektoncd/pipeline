@@ -17,10 +17,12 @@ limitations under the License.
 package resource
 
 import (
+	"encoding/hex"
 	"fmt"
 	"hash"
 	"hash/fnv"
 	"sort"
+	"strings"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
@@ -81,12 +83,12 @@ func nameHasher() hash.Hash {
 // so that the full hash is always preserved, maintaining determinism and
 // uniqueness.
 func sanitizedName(prefix string, hasher hash.Hash) string {
-	hex := fmt.Sprintf("%x", hasher.Sum(nil))
-	maxPrefixLen := maxLength - len(hex) - 1 // 1 for the "-" separator
+	hexStr := hex.EncodeToString(hasher.Sum(nil))
+	maxPrefixLen := maxLength - len(hexStr) - 1 // 1 for the "-" separator
 	if len(prefix) > maxPrefixLen {
 		prefix = prefix[:maxPrefixLen]
 	}
-	return fmt.Sprintf("%s-%s", prefix, hex)
+	return fmt.Sprintf("%s-%s", prefix, hexStr)
 }
 
 // GenerateDeterministicNameFromSpec makes a best-effort attempt to create a
@@ -142,23 +144,24 @@ func GenerateDeterministicNameFromSpec(prefix, base string, resolutionSpec *v1be
 // when a resolver error occurred.  The TaskRef name does not have to be set, where
 // the specific resolver gets the name from the parameters.
 func GenerateErrorLogString(resolverType string, params v1.Params) string {
-	paramString := fmt.Sprintf("resolver type %s\n", resolverType)
+	var b strings.Builder
+	fmt.Fprintf(&b, "resolver type %s\n", resolverType)
 	for _, p := range params {
 		if p.Name == ParamName {
 			name := p.Value.StringVal
 			if p.Value.Type != v1.ParamTypeString {
 				asJSON, err := p.Value.MarshalJSON()
 				if err != nil {
-					paramString += fmt.Sprintf("name could not be marshalled: %s\n", err.Error())
+					fmt.Fprintf(&b, "name could not be marshalled: %s\n", err.Error())
 					continue
 				}
 				name = string(asJSON)
 			}
-			paramString += fmt.Sprintf("name = %s\n", name)
+			fmt.Fprintf(&b, "name = %s\n", name)
 		}
 		if p.Name == ParamURL {
-			paramString += fmt.Sprintf("url = %s\n", p.Value.StringVal)
+			fmt.Fprintf(&b, "url = %s\n", p.Value.StringVal)
 		}
 	}
-	return paramString
+	return b.String()
 }

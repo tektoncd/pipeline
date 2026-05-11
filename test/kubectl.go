@@ -19,16 +19,17 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"os/exec"
 	"regexp"
 )
 
 var (
-	defaultNamespaceRE = regexp.MustCompile("namespace: default")
+	defaultNamespaceRE = regexp.MustCompile("namespace: default") //nolint:unused // used by e2e tests
 )
 
-func kubectlCreate(input []byte, namespace string) ([]byte, error) {
-	cmd := exec.Command("kubectl", "create", "-n", namespace, "-f", "-")
+func kubectlCreate(input []byte, namespace string) ([]byte, error) { //nolint:unused // used by e2e tests
+	cmd := exec.CommandContext(context.Background(), "kubectl", "create", "-n", namespace, "-f", "-")
 	cmd.Stdin = bytes.NewReader(input)
 	return cmd.CombinedOutput()
 }

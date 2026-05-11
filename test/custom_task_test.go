@@ -386,7 +386,7 @@ spec:
 func applyV1Beta1Controller(t *testing.T) {
 	t.Helper()
 	t.Log("Creating Wait v1beta1.CustomRun Custom Task Controller...")
-	cmd := exec.Command("ko", "apply", "--platform", "linux/amd64,linux/arm64,linux/s390x,linux/ppc64le", "-f", "./config/controller.yaml")
+	cmd := exec.CommandContext(context.Background(), "ko", "apply", "--platform", "linux/amd64,linux/arm64,linux/s390x,linux/ppc64le", "-f", "./config/controller.yaml")
 	cmd.Dir = betaWaitTaskDir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -397,7 +397,7 @@ func applyV1Beta1Controller(t *testing.T) {
 func cleanUpV1beta1Controller(t *testing.T) {
 	t.Helper()
 	t.Log("Tearing down Wait v1beta1.CustomRun Custom Task Controller...")
-	cmd := exec.Command("ko", "delete", "-f", "./config/controller.yaml")
+	cmd := exec.CommandContext(context.Background(), "ko", "delete", "-f", "./config/controller.yaml")
 	cmd.Dir = betaWaitTaskDir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -703,12 +703,5 @@ func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
 				t.Errorf("CustomRun status differed. -want, +got: %v", d)
 			}
 		})
-	}
-}
-
-func resetConfigMap(ctx context.Context, t *testing.T, c *clients, namespace, configName string, values map[string]string) {
-	t.Helper()
-	if err := updateConfigMap(ctx, c.KubeClient, namespace, configName, values); err != nil {
-		t.Log(err)
 	}
 }

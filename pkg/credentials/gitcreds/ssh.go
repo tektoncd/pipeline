@@ -96,7 +96,8 @@ func (dc *sshGitConfig) Write(directory string) error {
 			host = k
 			port = defaultPort
 		}
-		configEntry := fmt.Sprintf(`Host %s
+		var configEntryBuilder strings.Builder
+		fmt.Fprintf(&configEntryBuilder, `Host %s
     HostName %s
     Port %s
 `, host, host, port)
@@ -104,13 +105,13 @@ func (dc *sshGitConfig) Write(directory string) error {
 			if err := e.Write(sshDir); err != nil {
 				return err
 			}
-			configEntry += fmt.Sprintf(`    IdentityFile %s
+			fmt.Fprintf(&configEntryBuilder, `    IdentityFile %s
 `, e.path(sshDir))
 			if e.knownHosts != "" {
 				knownHosts = append(knownHosts, e.knownHosts)
 			}
 		}
-		configEntries = append(configEntries, configEntry)
+		configEntries = append(configEntries, configEntryBuilder.String())
 	}
 	configPath := filepath.Join(sshDir, "config")
 	configContent := strings.Join(configEntries, "")

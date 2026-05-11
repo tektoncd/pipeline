@@ -21,6 +21,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -240,13 +241,14 @@ func assertEvents(
 		t.Fatalf("Failed to collect matching events: %q", err)
 	}
 	if len(events) != expectedEventsAmount {
-		collectedEvents := ""
+		var collectedEventsBuilder strings.Builder
 		for i, event := range events {
-			collectedEvents += fmt.Sprintf("%#v", event)
+			fmt.Fprintf(&collectedEventsBuilder, "%#v", event)
 			if i < (len(events) - 1) {
-				collectedEvents += ", "
+				collectedEventsBuilder.WriteString(", ")
 			}
 		}
+		collectedEvents := collectedEventsBuilder.String()
 		t.Fatalf(
 			"Expected %d number of successful events from parent PipelineRun, child PipelineRun and "+
 				"TaskRun but got %d; list of received events: %#v",

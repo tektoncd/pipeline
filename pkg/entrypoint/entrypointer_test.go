@@ -2240,7 +2240,7 @@ type fakeExitErrorRunner struct{ args *[]string }
 
 func (f *fakeExitErrorRunner) Run(ctx context.Context, args ...string) error {
 	f.args = &args
-	return exec.Command("ls", "/bogus/path").Run()
+	return exec.CommandContext(context.Background(), "ls", "/bogus/path").Run() //nolint:contextcheck,nolintlint
 }
 
 type fakeLongRunner struct {

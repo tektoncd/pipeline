@@ -28,14 +28,17 @@ type PipelineResourceType = string
 
 const (
 	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
+	//
 	// Deprecated: Unused, preserved only for backwards compatibility
 	PipelineResourceTypeGit PipelineResourceType = "git"
 
 	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.
+	//
 	// Deprecated: Unused, preserved only for backwards compatibility
 	PipelineResourceTypeStorage PipelineResourceType = "storage"
 
 	// PipelineResourceTypeGCS is the subtype for the GCSResources, which is backed by a GCS blob/directory.
+	//
 	// Deprecated: Unused, preserved only for backwards compatibility
 	PipelineResourceTypeGCS PipelineResourceType = "gcs"
 )

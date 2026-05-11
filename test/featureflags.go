@@ -160,7 +160,7 @@ func getAPIFeatureGate() (string, error) {
 		ns = "tekton-pipelines"
 	}
 
-	cmd := exec.Command("kubectl", "get", "configmap", "feature-flags", "-n", ns, "-o", `jsonpath="{.data['enable-api-fields']}"`)
+	cmd := exec.CommandContext(context.Background(), "kubectl", "get", "configmap", "feature-flags", "-n", ns, "-o", `jsonpath="{.data['enable-api-fields']}"`) //nolint:gosec,nolintlint
 	output, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("error getting feature-flags configmap: %w", err)

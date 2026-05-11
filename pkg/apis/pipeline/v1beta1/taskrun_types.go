@@ -312,7 +312,8 @@ type TaskRunStatusFields struct {
 	RetriesStatus RetriesStatus `json:"retriesStatus,omitempty"`
 
 	// Results from Resources built during the TaskRun.
-	// This is tomb-stoned along with the removal of pipelineResources
+	// This is tomb-stoned along with the removal of pipelineResources.
+	//
 	// Deprecated: this field is not populated and is preserved only for backwards compatibility
 	// +optional
 	// +listType=atomic
