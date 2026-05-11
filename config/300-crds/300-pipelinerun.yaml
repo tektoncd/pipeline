@@ -2379,6 +2379,8 @@ spec:
                             once we're confident old PipelineRuns have been cleaned up.
                             See issue #8359 for context.
                           type: boolean
+                        enableTrustedCACerts:
+                          type: boolean
                         enableWaitExponentialBackoff:
                           type: boolean
                         enforceNonfalsifiability:
@@ -2397,6 +2399,8 @@ spec:
                           type: boolean
                         setSecurityContextReadOnlyRootFilesystem:
                           type: boolean
+                        trustedCACertConfigMapName:
+                          type: string
                         verificationNoMatchPolicy:
                           description: |-
                             VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
@@ -2757,6 +2761,8 @@ spec:
                                       once we're confident old PipelineRuns have been cleaned up.
                                       See issue #8359 for context.
                                     type: boolean
+                                  enableTrustedCACerts:
+                                    type: boolean
                                   enableWaitExponentialBackoff:
                                     type: boolean
                                   enforceNonfalsifiability:
@@ -2775,6 +2781,8 @@ spec:
                                     type: boolean
                                   setSecurityContextReadOnlyRootFilesystem:
                                     type: boolean
+                                  trustedCACertConfigMapName:
+                                    type: string
                                   verificationNoMatchPolicy:
                                     description: |-
                                       VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
@@ -3028,6 +3036,8 @@ spec:
                                             once we're confident old PipelineRuns have been cleaned up.
                                             See issue #8359 for context.
                                           type: boolean
+                                        enableTrustedCACerts:
+                                          type: boolean
                                         enableWaitExponentialBackoff:
                                           type: boolean
                                         enforceNonfalsifiability:
@@ -3046,6 +3056,8 @@ spec:
                                           type: boolean
                                         setSecurityContextReadOnlyRootFilesystem:
                                           type: boolean
+                                        trustedCACertConfigMapName:
+                                          type: string
                                         verificationNoMatchPolicy:
                                           description: |-
                                             VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
@@ -5472,6 +5484,8 @@ spec:
                             once we're confident old PipelineRuns have been cleaned up.
                             See issue #8359 for context.
                           type: boolean
+                        enableTrustedCACerts:
+                          type: boolean
                         enableWaitExponentialBackoff:
                           type: boolean
                         enforceNonfalsifiability:
@@ -5490,6 +5504,8 @@ spec:
                           type: boolean
                         setSecurityContextReadOnlyRootFilesystem:
                           type: boolean
+                        trustedCACertConfigMapName:
+                          type: string
                         verificationNoMatchPolicy:
                           description: |-
                             VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
