@@ -4062,3 +4062,82 @@ func TestCreateResultsSidecarWithWaitForever(t *testing.T) {
 		})
 	}
 }
+
+func TestPodBuild_CompressTerminationMessage(t *testing.T) {
+	for _, tc := range []struct {
+		desc         string
+		featureFlags map[string]string
+		wantFlag     bool
+	}{
+		{
+			desc:         "compression enabled with termination-message extraction",
+			featureFlags: map[string]string{"enable-termination-message-compression": "true"},
+			wantFlag:     true,
+		},
+		{
+			desc:         "compression enabled but sidecar-logs active",
+			featureFlags: map[string]string{"enable-termination-message-compression": "true", "results-from": "sidecar-logs"},
+			wantFlag:     false,
+		},
+		{
+			desc:         "compression disabled",
+			featureFlags: map[string]string{},
+			wantFlag:     false,
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			names.TestingSeed()
+			store := config.NewStore(logtesting.TestLogger(t))
+			store.OnConfigChanged(
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data:       tc.featureFlags,
+				},
+			)
+			store.OnConfigChanged(
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+				},
+			)
+			kubeclient := fakek8s.NewSimpleClientset(
+				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
+			)
+			tr := &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "taskrun-compress",
+					Namespace:   "default",
+					Annotations: map[string]string{ReleaseAnnotation: fakeVersion},
+				},
+			}
+			ts := v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name:    "step",
+					Image:   "image",
+					Command: []string{"cmd"},
+				}},
+			}
+
+			builder := Builder{
+				Images:          images,
+				KubeClient:      kubeclient,
+				EntrypointCache: fakeCache{},
+			}
+			got, err := builder.Build(store.ToContext(t.Context()), tr, ts)
+			if err != nil {
+				t.Fatalf("builder.Build: %v", err)
+			}
+
+			stepContainer := got.Spec.Containers[0]
+			hasFlag := false
+			for _, arg := range stepContainer.Args {
+				if arg == "-compress_termination_message=true" {
+					hasFlag = true
+					break
+				}
+			}
+			if hasFlag != tc.wantFlag {
+				t.Errorf("compress_termination_message flag: got %v, want %v; args: %v", hasFlag, tc.wantFlag, stepContainer.Args)
+			}
+		})
+	}
+}
