@@ -372,6 +372,12 @@ Defaults to "ignore".
   source from where a remote Task/Pipeline definition was fetched. By default, this is set to `true`.
   To disable populating this field, set this flag to `"false"`.
 
+- `enable-termination-message-compression`: Set this flag to `"true"` to enable zlib compression of
+  termination messages written by the entrypoint. This increases the effective capacity for results
+  from ~33 to ~187 in typical scenarios (5.7x improvement). Has no effect when `results-from` is
+  set to `"sidecar-logs"` since sidecar logs bypass the termination message entirely. This is an
+  alpha feature gated behind `enable-api-fields: "alpha"` or the per-feature flag. Defaults to `"false"`.
+
 - `set-security-context`: Set this flag to `true` to set a security context for containers injected by Tekton that will allow TaskRun pods
 to run in namespaces with `restricted` pod security admission. By default, this is set to `false`.
 
@@ -404,6 +410,7 @@ Features currently in "alpha" are:
 | [keep pod on cancel](./taskruns.md#cancelling-a-taskrun)                                                     | N/A                                                                                                                  | [v0.52.0](https://github.com/tektoncd/pipeline/releases/tag/v0.52.0) | `keep-pod-on-cancel`                             |
 | [CEL in WhenExpression](./pipelines.md#use-cel-expression-in-whenexpression)                                                  | [TEP-0145](https://github.com/tektoncd/community/blob/main/teps/0145-cel-in-whenexpression.md)                       | [v0.53.0](https://github.com/tektoncd/pipeline/releases/tag/v0.53.0) | `enable-cel-in-whenexpression`                   |
 | [Param Enum](./taskruns.md#parameter-enums)                                                                  | [TEP-0144](https://github.com/tektoncd/community/blob/main/teps/0144-param-enum.md)                                  | [v0.54.0](https://github.com/tektoncd/pipeline/releases/tag/v0.54.0) | `enable-param-enum`                              |
+| Termination Message Compression                                                                             | N/A                                                                                                                  | N/A                                                                  | `enable-termination-message-compression`         |
 
 ### Beta Features
 

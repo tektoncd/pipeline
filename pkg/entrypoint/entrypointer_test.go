@@ -28,6 +28,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -2312,4 +2313,60 @@ func getMockSpireClient(ctx context.Context) (spire.EntrypointerAPIClient, spire
 
 func ptr[T any](value T) *T {
 	return &value
+}
+
+func TestWriteTerminationMessage_Compression(t *testing.T) {
+	results := []result.RunResult{
+		{Key: "foo", Value: "bar", ResultType: result.TaskRunResultType},
+		{Key: "baz", Value: "qux", ResultType: result.TaskRunResultType},
+	}
+
+	for _, tc := range []struct {
+		desc     string
+		compress bool
+	}{
+		{desc: "plain JSON", compress: false},
+		{desc: "compressed", compress: true},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			tmpFile := filepath.Join(t.TempDir(), "termination")
+			e := Entrypointer{
+				CompressTerminationMessage: tc.compress,
+			}
+			if err := e.writeTerminationMessage(tmpFile, results); err != nil {
+				t.Fatalf("writeTerminationMessage: %v", err)
+			}
+
+			fileContents, err := os.ReadFile(tmpFile)
+			if err != nil {
+				t.Fatalf("reading termination file: %v", err)
+			}
+
+			hasPrefix := strings.HasPrefix(string(fileContents), "tknz:")
+			if tc.compress {
+				// Compressed output may fall back to plain JSON if compression
+				// doesn't save space for small payloads, so we accept either.
+				// What matters is that the round-trip through parse works.
+				logger, _ := logging.NewLogger("", "status")
+				parsed, err := termination.ParseMessage(logger, string(fileContents))
+				if err != nil {
+					t.Fatalf("ParseMessage failed: %v", err)
+				}
+				if len(parsed) != len(results) {
+					t.Errorf("expected %d results, got %d", len(results), len(parsed))
+				}
+			} else {
+				if hasPrefix {
+					t.Errorf("expected plain JSON, got compressed output with tknz: prefix")
+				}
+				var parsed []result.RunResult
+				if err := json.Unmarshal(fileContents, &parsed); err != nil {
+					t.Fatalf("plain JSON unmarshal failed: %v", err)
+				}
+				if len(parsed) != len(results) {
+					t.Errorf("expected %d results, got %d", len(results), len(parsed))
+				}
+			}
+		})
+	}
 }
