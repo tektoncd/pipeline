@@ -247,7 +247,21 @@ func ValidateStepResults(ctx context.Context, results []StepResult) (errs *apis.
 }
 
 // ValidateStepResultsVariables validates if the StepResults referenced in step script are defined in step's results.
+// It only validates $(step.results.<name>.path) references. Task-level $(results.<name>.path) references
+// are validated separately by validateTaskResultsVariables which has the task results context.
 func ValidateStepResultsVariables(ctx context.Context, results []StepResult, script string) (errs *apis.FieldError) {
+	resultsNames := sets.NewString()
+	for _, r := range results {
+		resultsNames.Insert(r.Name)
+	}
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(script, "step.results", resultsNames).ViaField("script"))
+	return errs
+}
+
+// ValidateStepActionResultsVariables validates if the results referenced in a StepAction script are defined
+// in the StepAction's results. Unlike ValidateStepResultsVariables, this also validates $(results.<name>.path)
+// references since a standalone StepAction has no task-level result context.
+func ValidateStepActionResultsVariables(ctx context.Context, results []StepResult, script string) (errs *apis.FieldError) {
 	resultsNames := sets.NewString()
 	for _, r := range results {
 		resultsNames.Insert(r.Name)
