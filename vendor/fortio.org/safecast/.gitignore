@@ -23,3 +23,11 @@ go.work.sum
 
 # env file
 .env
+# Apple stuff
+.DS_Store
+# Local linter run
+.golangci.yml
+# Grol save state
+.gr
+# vscode
+tasks.json
