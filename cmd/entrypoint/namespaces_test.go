@@ -19,6 +19,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"errors"
 	"os/exec"
 	"testing"
@@ -38,13 +39,13 @@ func TestDropNetworking(t *testing.T) {
 	// but it includes things like CAP_SYS_ADMIN, kernel.unprivileged_userns_clone=1
 	// and maybe others.
 	// For the sake of this test just check it first.
-	testCmd := exec.Command("true")
+	testCmd := exec.CommandContext(context.Background(), "true")
 	dropNetworking(testCmd)
 	if _, err := testCmd.CombinedOutput(); err != nil {
 		t.Skipf("skipping test as required namespace features are not available: %v", err)
 	}
 
-	cmd := exec.Command("curl", "google.com")
+	cmd := exec.CommandContext(context.Background(), "curl", "google.com")
 	dropNetworking(cmd)
 	b, err := cmd.CombinedOutput()
 	if err == nil {
@@ -54,8 +55,8 @@ func TestDropNetworking(t *testing.T) {
 	// Other things (env, etc.) should all be the same
 	cmds := []string{"env", "whoami", "pwd", "uname"}
 	for _, cmd := range cmds {
-		withNetworking := exec.Command(cmd)
-		withoutNetworking := exec.Command(cmd)
+		withNetworking := exec.CommandContext(context.Background(), cmd)
+		withoutNetworking := exec.CommandContext(context.Background(), cmd)
 		dropNetworking(withoutNetworking)
 
 		b1, err1 := withNetworking.CombinedOutput()

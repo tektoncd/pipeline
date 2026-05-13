@@ -768,10 +768,12 @@ func TestLookForArtifacts(t *testing.T) {
 			if (err != nil) != tc.wantErr {
 				t.Errorf("error checking failed, wantErr: %v, got: %v", tc.wantErr, err)
 			}
-			want := ""
+			var wantBuilder strings.Builder
 			for _, logResult := range tc.expected {
-				want += mustJSON(logResult) + "\n"
+				wantBuilder.WriteString(mustJSON(logResult))
+				wantBuilder.WriteString("\n")
 			}
+			want := wantBuilder.String()
 			got := buf.String()
 
 			if d := cmp.Diff(want, got); d != "" {

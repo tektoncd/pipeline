@@ -203,9 +203,9 @@ func orderContainers(ctx context.Context, commonExtraEntrypointArgs []string, st
 		argsForEntrypoint = append(argsForEntrypoint, "--")
 		argsForEntrypoint = append(argsForEntrypoint, args...)
 
-		steps[i].Command = []string{entrypointBinary}
-		steps[i].Args = argsForEntrypoint
-		steps[i].TerminationMessagePath = terminationPath
+		steps[i].Command = []string{entrypointBinary}     //nolint:gosec,nolintlint
+		steps[i].Args = argsForEntrypoint                 //nolint:gosec,nolintlint
+		steps[i].TerminationMessagePath = terminationPath //nolint:gosec,nolintlint
 		if (i == 0 && waitForReadyAnnotation) || enableKeepPodOnCancel {
 			// Mount the Downward volume into the first step container.
 			// if enableKeepPodOnCancel is true, mount the Downward volume into all the steps.

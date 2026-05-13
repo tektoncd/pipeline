@@ -77,13 +77,14 @@ func (c *defaultPVCHandler) CreatePVCFromVolumeClaimTemplate(ctx context.Context
 	case apierrors.IsNotFound(err):
 		_, err := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Create(ctx, claim, metav1.CreateOptions{})
 		if err != nil {
-			if apierrors.IsAlreadyExists(err) {
+			switch {
+			case apierrors.IsAlreadyExists(err):
 				c.logger.Infof("Tried to create PersistentVolumeClaim %s in namespace %s, but it already exists",
 					claim.Name, claim.Namespace)
-			} else if isRetryableError(err) {
+			case isRetryableError(err):
 				// This is a retry-able error
 				return fmt.Errorf("%w for %s: %v", ErrPvcCreationFailedRetryable, claim.Name, err.Error())
-			} else {
+			default:
 				return fmt.Errorf("%w for %s: %v", ErrPvcCreationFailed, claim.Name, err.Error())
 			}
 		} else {

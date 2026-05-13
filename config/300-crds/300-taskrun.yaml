@@ -1846,7 +1846,8 @@ spec:
                 resourcesResult:
                   description: |-
                     Results from Resources built during the TaskRun.
-                    This is tomb-stoned along with the removal of pipelineResources
+                    This is tomb-stoned along with the removal of pipelineResources.
+
                     Deprecated: this field is not populated and is preserved only for backwards compatibility
                   type: array
                   items:

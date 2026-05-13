@@ -855,7 +855,7 @@ func getGitCmd(t *testing.T, dir string) func(...string) *exec.Cmd {
 				"-c", "user.name=PipelinesTests",
 			},
 			args...)
-		return exec.Command("git", args...)
+		return exec.CommandContext(context.Background(), "git", args...)
 	}
 }
 

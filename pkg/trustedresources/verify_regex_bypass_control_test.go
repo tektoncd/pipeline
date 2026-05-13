@@ -116,10 +116,8 @@ func TestGetMatchedPolicies_AlreadyAnchoredPatterns(t *testing.T) {
 				if len(matched) != 1 {
 					t.Fatalf("expected 1 matched policy, got %d", len(matched))
 				}
-			} else {
-				if err == nil {
-					t.Fatalf("expected no match for pattern %q against source %q, but got a match", tc.pattern, tc.source)
-				}
+			} else if err == nil {
+				t.Fatalf("expected no match for pattern %q against source %q, but got a match", tc.pattern, tc.source)
 			}
 		})
 	}

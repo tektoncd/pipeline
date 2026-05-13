@@ -146,13 +146,14 @@ spec:
 				t.Fatalf("Failed to collect matching events: %q", err)
 			}
 			if len(events) != td.expectedNumberOfEvents {
-				collectedEvents := ""
+				var collectedEventsBuilder strings.Builder
 				for i, event := range events {
-					collectedEvents += fmt.Sprintf("%#v", event)
+					fmt.Fprintf(&collectedEventsBuilder, "%#v", event)
 					if i < (len(events) - 1) {
-						collectedEvents += ", "
+						collectedEventsBuilder.WriteString(", ")
 					}
 				}
+				collectedEvents := collectedEventsBuilder.String()
 				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", td.expectedNumberOfEvents, len(events), collectedEvents)
 			}
 			t.Log("Checking if parameter replacements have been updated in the spec.")
@@ -358,13 +359,14 @@ spec:
 				t.Fatalf("Failed to collect matching events: %q", err)
 			}
 			if len(events) != td.expectedNumberOfEvents {
-				collectedEvents := ""
+				var collectedEventsBuilder strings.Builder
 				for i, event := range events {
-					collectedEvents += fmt.Sprintf("%#v", event)
+					fmt.Fprintf(&collectedEventsBuilder, "%#v", event)
 					if i < (len(events) - 1) {
-						collectedEvents += ", "
+						collectedEventsBuilder.WriteString(", ")
 					}
 				}
+				collectedEvents := collectedEventsBuilder.String()
 				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of received events : %#v", td.expectedNumberOfEvents, len(events), collectedEvents)
 			}
 
