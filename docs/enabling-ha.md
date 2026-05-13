@@ -11,7 +11,6 @@ weight: 106
   - [Controller HA](#controller-ha)
     - [Configuring Controller Replicas](#configuring-controller-replicas)
     - [Configuring Leader Election](#configuring-leader-election)
-    - [Horizontal Scaling with Leader Election Buckets](#horizontal-scaling-with-leader-election-buckets)
     - [Disabling Controller HA](#disabling-controller-ha)
   - [Webhook HA](#webhook-ha)
     - [Configuring Webhook Replicas](#configuring-webhook-replicas)
@@ -50,8 +49,6 @@ Leader election can be configured in [config-leader-election.yaml](./../config/c
 
 _Note_: The maximum value of `data.buckets` at this time is 10.
 
-### Horizontal Scaling with Leader Election Buckets
-
 The controller uses Knative's bucket-based leader election to distribute reconciliation work. The key space is partitioned into buckets, each backed by a Kubernetes `Lease` object. Replicas compete for leases, and the holder of a lease reconciles all resources whose keys hash into that bucket.
 
 #### Scaling with a Deployment
@@ -76,7 +73,9 @@ With 10 buckets and 5 replicas, each replica owns roughly 2 buckets. If a replic
 
 #### Scaling with a StatefulSet (without the Tekton Operator)
 
-For environments that do not use the [Tekton Operator](https://github.com/tektoncd/operator), you can convert the controller Deployment to a StatefulSet for stable network identities and predictable bucket assignment:
+This approach applies only to environments that **do not use the [Tekton Operator](https://tekton.dev/docs/operator/)**. When the Operator manages the controller Deployment, converting it to a StatefulSet is not supported; use the Deployment-based approach above instead.
+
+For bare-kubectl installations, you can convert the controller Deployment to a StatefulSet for stable network identities and predictable bucket assignment:
 
 ```yaml
 apiVersion: apps/v1
