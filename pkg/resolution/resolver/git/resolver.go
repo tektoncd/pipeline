@@ -271,7 +271,6 @@ func (g *GitResolver) ResolveGitClone(ctx context.Context) (framework.ResolvedRe
 	}, nil
 }
 
-
 var _ framework.ConfigWatcher = &Resolver{}
 
 // GetConfigName returns the name of the git resolver's configmap.
