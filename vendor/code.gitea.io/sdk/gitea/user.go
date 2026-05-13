@@ -26,6 +26,8 @@ type User struct {
 	Email    string `json:"email"`
 	// URL to the user's avatar
 	AvatarURL string `json:"avatar_url"`
+	// URL to the user's profile
+	HTMLURL string `json:"html_url"`
 	// User locale
 	Language string `json:"language"`
 	// Is the user an administrator

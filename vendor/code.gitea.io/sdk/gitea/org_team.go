@@ -13,14 +13,15 @@ import (
 
 // Team represents a team in an organization
 type Team struct {
-	ID                      int64          `json:"id"`
-	Name                    string         `json:"name"`
-	Description             string         `json:"description"`
-	Organization            *Organization  `json:"organization"`
-	Permission              AccessMode     `json:"permission"`
-	CanCreateOrgRepo        bool           `json:"can_create_org_repo"`
-	IncludesAllRepositories bool           `json:"includes_all_repositories"`
-	Units                   []RepoUnitType `json:"units"`
+	ID                      int64             `json:"id"`
+	Name                    string            `json:"name"`
+	Description             string            `json:"description"`
+	Organization            *Organization     `json:"organization"`
+	Permission              AccessMode        `json:"permission"`
+	CanCreateOrgRepo        bool              `json:"can_create_org_repo"`
+	IncludesAllRepositories bool              `json:"includes_all_repositories"`
+	Units                   []RepoUnitType    `json:"units"`
+	UnitsMap                map[string]string `json:"units_map"`
 }
 
 // RepoUnitType represent all unit types of a repo gitea currently offer
@@ -120,12 +121,13 @@ func (c *Client) SearchOrgTeams(org string, opt *SearchTeamsOptions) ([]*Team, *
 
 // CreateTeamOption options for creating a team
 type CreateTeamOption struct {
-	Name                    string         `json:"name"`
-	Description             string         `json:"description"`
-	Permission              AccessMode     `json:"permission"`
-	CanCreateOrgRepo        bool           `json:"can_create_org_repo"`
-	IncludesAllRepositories bool           `json:"includes_all_repositories"`
-	Units                   []RepoUnitType `json:"units"`
+	Name                    string            `json:"name"`
+	Description             string            `json:"description"`
+	Permission              AccessMode        `json:"permission"`
+	CanCreateOrgRepo        bool              `json:"can_create_org_repo"`
+	IncludesAllRepositories bool              `json:"includes_all_repositories"`
+	Units                   []RepoUnitType    `json:"units"`
+	UnitsMap                map[string]string `json:"units_map"`
 }
 
 // Validate the CreateTeamOption struct
@@ -166,12 +168,13 @@ func (c *Client) CreateTeam(org string, opt CreateTeamOption) (*Team, *Response,
 
 // EditTeamOption options for editing a team
 type EditTeamOption struct {
-	Name                    string         `json:"name"`
-	Description             *string        `json:"description"`
-	Permission              AccessMode     `json:"permission"`
-	CanCreateOrgRepo        *bool          `json:"can_create_org_repo"`
-	IncludesAllRepositories *bool          `json:"includes_all_repositories"`
-	Units                   []RepoUnitType `json:"units"`
+	Name                    string            `json:"name"`
+	Description             *string           `json:"description"`
+	Permission              AccessMode        `json:"permission"`
+	CanCreateOrgRepo        *bool             `json:"can_create_org_repo"`
+	IncludesAllRepositories *bool             `json:"includes_all_repositories"`
+	Units                   []RepoUnitType    `json:"units"`
+	UnitsMap                map[string]string `json:"units_map"`
 }
 
 // Validate the EditTeamOption struct
@@ -202,14 +205,12 @@ func (c *Client) EditTeam(id int64, opt EditTeamOption) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("PATCH", fmt.Sprintf("/teams/%d", id), jsonHeader, bytes.NewReader(body))
-	return resp, err
+	return c.doRequestWithStatusHandle("PATCH", fmt.Sprintf("/teams/%d", id), jsonHeader, bytes.NewReader(body))
 }
 
 // DeleteTeam deletes a team of an organization
 func (c *Client) DeleteTeam(id int64) (*Response, error) {
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/teams/%d", id), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/teams/%d", id), nil, nil)
 }
 
 // ListTeamMembersOptions options for listing team's members
@@ -240,8 +241,7 @@ func (c *Client) AddTeamMember(id int64, user string) (*Response, error) {
 	if err := escapeValidatePathSegments(&user); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("PUT", fmt.Sprintf("/teams/%d/members/%s", id, user), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("PUT", fmt.Sprintf("/teams/%d/members/%s", id, user), nil, nil)
 }
 
 // RemoveTeamMember removes a member from a team
@@ -249,8 +249,7 @@ func (c *Client) RemoveTeamMember(id int64, user string) (*Response, error) {
 	if err := escapeValidatePathSegments(&user); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/teams/%d/members/%s", id, user), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/teams/%d/members/%s", id, user), nil, nil)
 }
 
 // ListTeamRepositoriesOptions options for listing team's repositories
@@ -266,13 +265,22 @@ func (c *Client) ListTeamRepositories(id int64, opt ListTeamRepositoriesOptions)
 	return repos, resp, err
 }
 
+// GetTeamRepository gets a repository that belongs to a team.
+func (c *Client) GetTeamRepository(id int64, org, repo string) (*Repository, *Response, error) {
+	if err := escapeValidatePathSegments(&org, &repo); err != nil {
+		return nil, nil, err
+	}
+	result := new(Repository)
+	resp, err := c.getParsedResponse("GET", fmt.Sprintf("/teams/%d/repos/%s/%s", id, org, repo), nil, nil, result)
+	return result, resp, err
+}
+
 // AddTeamRepository adds a repository to a team
 func (c *Client) AddTeamRepository(id int64, org, repo string) (*Response, error) {
 	if err := escapeValidatePathSegments(&org, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("PUT", fmt.Sprintf("/teams/%d/repos/%s/%s", id, org, repo), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("PUT", fmt.Sprintf("/teams/%d/repos/%s/%s", id, org, repo), nil, nil)
 }
 
 // RemoveTeamRepository removes a repository from a team
@@ -280,6 +288,5 @@ func (c *Client) RemoveTeamRepository(id int64, org, repo string) (*Response, er
 	if err := escapeValidatePathSegments(&org, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/teams/%d/repos/%s/%s", id, org, repo), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/teams/%d/repos/%s/%s", id, org, repo), nil, nil)
 }

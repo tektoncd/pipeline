@@ -17,6 +17,7 @@ type searchUsersResponse struct {
 type SearchUsersOption struct {
 	ListOptions
 	KeyWord string
+	UID     int64
 }
 
 // QueryEncode turns options into querystring argument
@@ -30,6 +31,9 @@ func (opt *SearchUsersOption) QueryEncode() string {
 	}
 	if len(opt.KeyWord) > 0 {
 		query.Add("q", opt.KeyWord)
+	}
+	if opt.UID > 0 {
+		query.Add("uid", fmt.Sprintf("%d", opt.UID))
 	}
 	return query.Encode()
 }

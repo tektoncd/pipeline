@@ -15,7 +15,7 @@ import (
 
 // TagProtection represents a tag protection for a repository
 type TagProtection struct {
-	Id                 int64     `json:"id"`
+	ID                 int64     `json:"id"`
 	NamePattern        string    `json:"name_pattern"`
 	WhitelistUsernames []string  `json:"whitelist_usernames"`
 	WhitelistTeams     []string  `json:"whitelist_teams"`
@@ -120,6 +120,5 @@ func (c *Client) DeleteTagProtection(owner, repo string, id int64) (*Response, e
 		return nil, err
 	}
 
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/tag_protections/%d", owner, repo, id), jsonHeader, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/tag_protections/%d", owner, repo, id), jsonHeader, nil)
 }

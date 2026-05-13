@@ -25,26 +25,30 @@ type GitObject struct {
 	URL  string `json:"url"`
 }
 
-// GetRepoRef get one ref's information of one repository
+// GetRepoRef gets one exact ref from a repository.
+//
+// The underlying API returns a filtered list for /git/refs/{ref}, so this
+// method resolves the exact ref from that list. It may return HTTP errors from
+// the underlying API call, or an error when the server response only contains
+// partial matches.
 func (c *Client) GetRepoRef(user, repo, ref string) (*Reference, *Response, error) {
-	if err := escapeValidatePathSegments(&user, &repo); err != nil {
-		return nil, nil, err
-	}
-	ref = strings.TrimPrefix(ref, "refs/")
-	ref = pathEscapeSegments(ref)
-	r := new(Reference)
-	resp, err := c.getParsedResponse("GET", fmt.Sprintf("/repos/%s/%s/git/refs/%s", user, repo, ref), nil, nil, &r)
-	if _, ok := err.(*json.UnmarshalTypeError); ok {
-		// Multiple refs
-		return nil, resp, errors.New("no exact match found for this ref")
-	} else if err != nil {
+	refs, resp, err := c.GetRepoRefs(user, repo, ref)
+	if err != nil {
 		return nil, resp, err
 	}
 
-	return r, resp, nil
+	normalizedRef := "refs/" + strings.TrimPrefix(ref, "refs/")
+	for _, repoRef := range refs {
+		if repoRef == nil || repoRef.Ref != normalizedRef {
+			continue
+		}
+		return repoRef, resp, nil
+	}
+
+	return nil, resp, errors.New("no exact match found for this ref")
 }
 
-// GetRepoRefs get list of ref's information of one repository
+// GetRepoRefs gets the refs from a repository that match a partial or full ref.
 func (c *Client) GetRepoRefs(user, repo, ref string) ([]*Reference, *Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo); err != nil {
 		return nil, nil, err
@@ -75,4 +79,14 @@ func (c *Client) GetRepoRefs(user, repo, ref string) ([]*Reference, *Response, e
 	}
 
 	return nil, resp, fmt.Errorf("unmarshalling failed for both single and multiple refs: %s and %s", refErr, refsErr)
+}
+
+// ListAllGitRefs gets all refs from a repository without filtering.
+func (c *Client) ListAllGitRefs(owner, repo string) ([]*Reference, *Response, error) {
+	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
+		return nil, nil, err
+	}
+	refs := make([]*Reference, 0, 10)
+	resp, err := c.getParsedResponse("GET", fmt.Sprintf("/repos/%s/%s/git/refs", owner, repo), nil, nil, &refs)
+	return refs, resp, err
 }

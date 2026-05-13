@@ -54,7 +54,7 @@ func SetGiteaVersion(v string) ClientOption {
 		c.getVersionOnce.Do(func() {
 			c.serverVersion, err = version.NewVersion(v)
 		})
-		return
+		return err
 	}
 }
 
@@ -69,8 +69,13 @@ var (
 	version1_15_0 = version.Must(version.NewVersion("1.15.0"))
 	version1_16_0 = version.Must(version.NewVersion("1.16.0"))
 	version1_17_0 = version.Must(version.NewVersion("1.17.0"))
+	version1_18_0 = version.Must(version.NewVersion("1.18.0"))
+	version1_21_0 = version.Must(version.NewVersion("1.21.0"))
 	version1_22_0 = version.Must(version.NewVersion("1.22.0"))
 	version1_23_0 = version.Must(version.NewVersion("1.23.0"))
+	version1_24_0 = version.Must(version.NewVersion("1.24.0"))
+	version1_25_0 = version.Must(version.NewVersion("1.25.0"))
+	version1_26_0 = version.Must(version.NewVersion("1.26.0"))
 )
 
 // ErrUnknownVersion is an unknown version from the API
@@ -123,5 +128,5 @@ func (c *Client) loadServerVersion() (err error) {
 			return
 		}
 	})
-	return
+	return err
 }

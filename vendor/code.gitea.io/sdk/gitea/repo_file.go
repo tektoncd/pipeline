@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // FileOptions options for all file APIs
@@ -22,6 +23,8 @@ type FileOptions struct {
 	BranchName string `json:"branch"`
 	// new_branch (optional) will make a new branch from `branch` before creating the file
 	NewBranchName string `json:"new_branch"`
+	// force_push (optional) will do a force-push if the new branch already exists
+	ForcePush bool `json:"force_push"`
 	// `author` and `committer` are optional (if only one is given, it will be used for the other, otherwise the authenticated user will be used)
 	Author    Identity          `json:"author"`
 	Committer Identity          `json:"committer"`
@@ -71,9 +74,15 @@ type FileLinksResponse struct {
 
 // ContentsResponse contains information about a repo's entry's (dir, file, symlink, submodule) metadata and content
 type ContentsResponse struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
-	SHA  string `json:"sha"`
+	Name          string  `json:"name"`
+	Path          string  `json:"path"`
+	SHA           string  `json:"sha"`
+	LastCommitSha *string `json:"last_commit_sha,omitempty"`
+	// swagger:strfmt date-time
+	LastCommitterDate *time.Time `json:"last_committer_date,omitempty"`
+	// swagger:strfmt date-time
+	LastAuthorDate    *time.Time `json:"last_author_date,omitempty"`
+	LastCommitMessage *string    `json:"last_commit_message,omitempty"`
 	// `type` will be `file`, `dir`, `symlink`, or `submodule`
 	Type string `json:"type"`
 	Size int64  `json:"size"`
@@ -90,7 +99,8 @@ type ContentsResponse struct {
 	// `submodule_git_url` is populated when `type` is `submodule`, otherwise null
 	SubmoduleGitURL *string            `json:"submodule_git_url"`
 	Links           *FileLinksResponse `json:"_links"`
-	LastCommitSha   string             `json:"last_commit_sha"`
+	LfsOid          *string            `json:"lfs_oid,omitempty"`
+	LfsSize         *int64             `json:"lfs_size,omitempty"`
 }
 
 // FileCommitResponse contains information generated from a Git commit for a repo's file.
@@ -126,7 +136,11 @@ func (c *Client) GetFile(owner, repo, ref, filepath string, resolveLFS ...bool) 
 	if reader == nil {
 		return nil, resp, err
 	}
-	defer reader.Close()
+	defer func() {
+		if closeErr := reader.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
 
 	data, err2 := io.ReadAll(reader)
 	if err2 != nil {
