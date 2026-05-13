@@ -1,6 +1,6 @@
 module github.com/tektoncd/pipeline/test/wait-task-beta
 
-go 1.25.7
+go 1.26
 
 require (
 	github.com/google/go-cmp v0.7.0
