@@ -56,6 +56,10 @@ type PriorityWriteSchedulerConfig struct {
 // frames by following HTTP/2 priorities as described in RFC 7540 Section 5.3.
 // If cfg is nil, default options are used.
 func NewPriorityWriteScheduler(cfg *PriorityWriteSchedulerConfig) WriteScheduler {
+	return newPriorityWriteSchedulerRFC7540(cfg)
+}
+
+func newPriorityWriteSchedulerRFC7540(cfg *PriorityWriteSchedulerConfig) WriteScheduler {
 	if cfg == nil {
 		// For justification of these defaults, see:
 		// https://docs.google.com/document/d/1oLhNg1skaWD4_DtaoCxdSRN5erEXrH-KnLrMwEpOtFY
@@ -214,8 +218,8 @@ func (z sortPriorityNodeSiblingsRFC7540) Swap(i, k int) { z[i], z[k] = z[k], z[i
 func (z sortPriorityNodeSiblingsRFC7540) Less(i, k int) bool {
 	// Prefer the subtree that has sent fewer bytes relative to its weight.
 	// See sections 5.3.2 and 5.3.4.
-	wi, bi := float64(z[i].weight+1), float64(z[i].subtreeBytes)
-	wk, bk := float64(z[k].weight+1), float64(z[k].subtreeBytes)
+	wi, bi := float64(z[i].weight)+1, float64(z[i].subtreeBytes)
+	wk, bk := float64(z[k].weight)+1, float64(z[k].subtreeBytes)
 	if bi == 0 && bk == 0 {
 		return wi >= wk
 	}
@@ -302,7 +306,6 @@ func (ws *priorityWriteSchedulerRFC7540) CloseStream(streamID uint32) {
 
 	q := n.q
 	ws.queuePool.put(&q)
-	n.q.s = nil
 	if ws.maxClosedNodesInTree > 0 {
 		ws.addClosedOrIdleNode(&ws.closedNodes, ws.maxClosedNodesInTree, n)
 	} else {
