@@ -2366,6 +2366,8 @@ spec:
                           type: boolean
                         enableParamEnum:
                           type: boolean
+                        enablePodRescheduling:
+                          type: boolean
                         enableProvenanceInStatus:
                           type: boolean
                         enableStepActions:
@@ -2746,6 +2748,8 @@ spec:
                                     type: boolean
                                   enableParamEnum:
                                     type: boolean
+                                  enablePodRescheduling:
+                                    type: boolean
                                   enableProvenanceInStatus:
                                     type: boolean
                                   enableStepActions:
@@ -3018,6 +3022,8 @@ spec:
                                         enableKubernetesSidecar:
                                           type: boolean
                                         enableParamEnum:
+                                          type: boolean
+                                        enablePodRescheduling:
                                           type: boolean
                                         enableProvenanceInStatus:
                                           type: boolean
@@ -5464,6 +5470,8 @@ spec:
                         enableKubernetesSidecar:
                           type: boolean
                         enableParamEnum:
+                          type: boolean
+                        enablePodRescheduling:
                           type: boolean
                         enableProvenanceInStatus:
                           type: boolean
