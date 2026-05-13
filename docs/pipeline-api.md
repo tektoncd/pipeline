@@ -5559,6 +5559,10 @@ killed due to running out of memory (OOMKilled).</p>
 <td><p>TaskRunReasonPodEvicted indicates that the TaskRun&rsquo;s pod was evicted
 (e.g., due to exceeding ephemeral storage limits or node pressure).</p>
 </td>
+</tr><tr><td><p>&#34;PodRescheduled&#34;</p></td>
+<td><p>TaskRunReasonPodRescheduled indicates the TaskRun&rsquo;s pod is being
+rescheduled because it failed before any step code executed.</p>
+</td>
 </tr><tr><td><p>&#34;ResourceVerificationFailed&#34;</p></td>
 <td><p>TaskRunReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,
 it could be the content has changed, signature is invalid or public key is invalid</p>

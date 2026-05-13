@@ -8203,3 +8203,207 @@ spec:
 		t.Errorf("Expected Tekton-managed TaskRun to be running, but it was not")
 	}
 }
+
+func TestReconcilePodRescheduling(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		failureReason    v1.TaskRunReason
+		featureEnabled   bool
+		rescheduleCount  string
+		expectReschedule bool
+		expectAnnotation string
+		retries          int
+		expectRetry      bool
+	}{
+		{
+			name:             "InitContainerFailed with feature enabled reschedules pod",
+			failureReason:    v1.TaskRunReasonInitContainerFailed,
+			featureEnabled:   true,
+			rescheduleCount:  "",
+			expectReschedule: true,
+			expectAnnotation: "1",
+		},
+		{
+			name:             "InitContainerOOM with feature enabled reschedules pod",
+			failureReason:    v1.TaskRunReasonInitContainerOOM,
+			featureEnabled:   true,
+			rescheduleCount:  "",
+			expectReschedule: true,
+			expectAnnotation: "1",
+		},
+		{
+			name:             "PodEvicted with feature enabled reschedules pod",
+			failureReason:    v1.TaskRunReasonPodEvicted,
+			featureEnabled:   true,
+			rescheduleCount:  "",
+			expectReschedule: true,
+			expectAnnotation: "1",
+		},
+		{
+			name:             "InitContainerFailed increments existing count",
+			failureReason:    v1.TaskRunReasonInitContainerFailed,
+			featureEnabled:   true,
+			rescheduleCount:  "2",
+			expectReschedule: true,
+			expectAnnotation: "3",
+		},
+		{
+			name:             "max reschedule count reached falls through",
+			failureReason:    v1.TaskRunReasonInitContainerFailed,
+			featureEnabled:   true,
+			rescheduleCount:  "3",
+			expectReschedule: false,
+		},
+		{
+			name:             "feature disabled does not reschedule",
+			failureReason:    v1.TaskRunReasonInitContainerFailed,
+			featureEnabled:   false,
+			rescheduleCount:  "",
+			expectReschedule: false,
+		},
+		{
+			name:             "StepFailed is not reschedulable",
+			failureReason:    v1.TaskRunReasonStepFailed,
+			featureEnabled:   true,
+			rescheduleCount:  "",
+			expectReschedule: false,
+		},
+		{
+			name:             "max reschedule exhausted falls through to user retry",
+			failureReason:    v1.TaskRunReasonInitContainerFailed,
+			featureEnabled:   true,
+			rescheduleCount:  "3",
+			retries:          2,
+			expectReschedule: false,
+			expectRetry:      true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			taskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: test-taskrun-reschedule
+  namespace: foo
+spec:
+  retries: %d
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - status: "False"
+    type: Succeeded
+    reason: %s
+    message: "init container failed"
+  podName: test-taskrun-reschedule-pod
+  startTime: "2022-01-01T00:00:00Z"
+  completionTime: "2022-01-01T00:01:00Z"
+`, tc.retries, tc.failureReason))
+
+			if tc.rescheduleCount != "" {
+				taskRun.Annotations = map[string]string{
+					v1.TaskRunPodRescheduleCountAnnotation: tc.rescheduleCount,
+				}
+			}
+
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-taskrun-reschedule-pod",
+					Namespace: "foo",
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodFailed,
+				},
+			}
+
+			featureFlagData := map[string]string{}
+			if tc.featureEnabled {
+				featureFlagData[config.EnablePodRescheduling] = "true"
+			}
+
+			d := test.Data{
+				TaskRuns: []*v1.TaskRun{taskRun},
+				Tasks:    []*v1.Task{simpleTask},
+				Pods:     []*corev1.Pod{pod},
+				ConfigMaps: []*corev1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+						Data:       featureFlagData,
+					},
+				},
+			}
+
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			clients := testAssets.Clients
+
+			if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+				t.Fatalf("Unexpected error reconciling: %v", err)
+			}
+
+			reconciledTR, err := clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Failed to get TaskRun: %v", err)
+			}
+
+			condition := reconciledTR.Status.GetCondition(apis.ConditionSucceeded)
+
+			switch {
+			case tc.expectReschedule:
+				if reconciledTR.Status.PodName != "" {
+					t.Errorf("Expected PodName to be cleared after reschedule, got %q", reconciledTR.Status.PodName)
+				}
+				if condition.Reason != v1.TaskRunReasonPodRescheduled.String() {
+					t.Errorf("Expected reason %q, got %q", v1.TaskRunReasonPodRescheduled, condition.Reason)
+				}
+				if !condition.IsUnknown() {
+					t.Errorf("Expected condition to be Unknown after reschedule, got %v", condition.Status)
+				}
+				got := reconciledTR.Annotations[v1.TaskRunPodRescheduleCountAnnotation]
+				if got != tc.expectAnnotation {
+					t.Errorf("Expected annotation %q = %q, got %q", v1.TaskRunPodRescheduleCountAnnotation, tc.expectAnnotation, got)
+				}
+				if reconciledTR.Status.StartTime != nil {
+					t.Errorf("Expected StartTime to be nil after reschedule")
+				}
+				if reconciledTR.Status.CompletionTime != nil {
+					t.Errorf("Expected CompletionTime to be nil after reschedule")
+				}
+			case tc.expectRetry:
+				if reconciledTR.Status.PodName != "" {
+					t.Errorf("Expected PodName to be cleared after retry, got %q", reconciledTR.Status.PodName)
+				}
+				if condition.Reason != v1.TaskRunReasonToBeRetried.String() {
+					t.Errorf("Expected reason %q after retry, got %q", v1.TaskRunReasonToBeRetried, condition.Reason)
+				}
+				if len(reconciledTR.Status.RetriesStatus) != 1 {
+					t.Errorf("Expected 1 retry status entry, got %d", len(reconciledTR.Status.RetriesStatus))
+				}
+			default:
+				if condition.IsFalse() && condition.Reason != tc.failureReason.String() {
+					t.Errorf("Expected reason %q to be preserved, got %q", tc.failureReason, condition.Reason)
+				}
+			}
+		})
+	}
+}
+
+func TestIsReschedulableFailure(t *testing.T) {
+	for _, tc := range []struct {
+		reason string
+		want   bool
+	}{
+		{v1.TaskRunReasonInitContainerFailed.String(), true},
+		{v1.TaskRunReasonInitContainerOOM.String(), true},
+		{v1.TaskRunReasonPodEvicted.String(), true},
+		{v1.TaskRunReasonStepFailed.String(), false},
+		{v1.TaskRunReasonStepOOM.String(), false},
+		{v1.TaskRunReasonSidecarFailed.String(), false},
+		{v1.TaskRunReasonFailed.String(), false},
+		{v1.TaskRunReasonCancelled.String(), false},
+	} {
+		t.Run(tc.reason, func(t *testing.T) {
+			if got := isReschedulableFailure(tc.reason); got != tc.want {
+				t.Errorf("isReschedulableFailure(%q) = %v, want %v", tc.reason, got, tc.want)
+			}
+		})
+	}
+}
