@@ -7,15 +7,31 @@ package gitea
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
+// ListIssueSubscribersOptions options for listing issue subscribers
+type ListIssueSubscribersOptions struct {
+	ListOptions
+}
+
 // GetIssueSubscribers get list of users who subscribed on an issue
+//
+// Deprecated: Use ListIssueSubscribers instead, which supports pagination.
 func (c *Client) GetIssueSubscribers(owner, repo string, index int64) ([]*User, *Response, error) {
+	return c.ListIssueSubscribers(owner, repo, index, ListIssueSubscribersOptions{})
+}
+
+// ListIssueSubscribers get list of users who subscribed on an issue with pagination
+func (c *Client) ListIssueSubscribers(owner, repo string, index int64, opt ListIssueSubscribersOptions) ([]*User, *Response, error) {
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, nil, err
 	}
-	subscribers := make([]*User, 0, 10)
-	resp, err := c.getParsedResponse("GET", fmt.Sprintf("/repos/%s/%s/issues/%d/subscriptions", owner, repo, index), nil, nil, &subscribers)
+	link, _ := url.Parse(fmt.Sprintf("/repos/%s/%s/issues/%d/subscriptions", owner, repo, index))
+	opt.setDefaults()
+	link.RawQuery = opt.getURLQuery().Encode()
+	subscribers := make([]*User, 0, opt.PageSize)
+	resp, err := c.getParsedResponse("GET", link.String(), nil, nil, &subscribers)
 	return subscribers, resp, err
 }
 
