@@ -260,11 +260,23 @@ const (
 	// container (prepare, place-scripts, working-dir-initializer) failed
 	// (non-OOM), e.g., due to node memory pressure or runtime errors.
 	TaskRunReasonInitContainerFailed TaskRunReason = "InitContainerFailed"
+	// TaskRunReasonPodRescheduled indicates the TaskRun's pod is being
+	// rescheduled because it failed before any step code executed.
+	TaskRunReasonPodRescheduled TaskRunReason = "PodRescheduled"
 	// TaskRunReasonFailureIgnored is the reason set when the Taskrun has failed due to pod execution error and the failure is ignored for the owning PipelineRun.
 	// TaskRuns failed due to reconciler/validation error should not use this reason.
 	TaskRunReasonFailureIgnored TaskRunReason = "FailureIgnored"
 	// TaskRunReasonPending is the reason set when the TaskRun is in the pending state
 	TaskRunReasonPending TaskRunReason = "TaskRunPending"
+)
+
+const (
+	// TaskRunPodRescheduleCountAnnotation tracks how many times a TaskRun pod
+	// has been rescheduled due to pre-step failures.
+	TaskRunPodRescheduleCountAnnotation = "pipeline.tekton.dev/pod-reschedule-count"
+	// MaxPodRescheduleCount is the maximum number of times a TaskRun pod
+	// can be rescheduled before falling through to normal failure handling.
+	MaxPodRescheduleCount = 3
 )
 
 func (t TaskRunReason) String() string {
