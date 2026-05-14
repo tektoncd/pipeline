@@ -73,7 +73,7 @@ spec:
   steps:
 
   - name: container-registry-auth
-    image: cgr.dev/chainguard/crane:latest-dev@sha256:902dacf36fa75f5f871c13a3c71ff4d6019ee7bb417dad5a79fab74009e12406
+    image: cgr.dev/chainguard/crane:latest-dev@sha256:71d9d1bf5c6871846bd85653adddfb176a8c412016d015bf06f7a1fe1c84a79f
     script: |
       #!/bin/sh
       set -ex
@@ -92,7 +92,7 @@ spec:
       cp ${DOCKER_CONFIG} /workspace/docker-config.json
 
   - name: create-ko-yaml
-    image: cgr.dev/chainguard/go:latest-dev@sha256:a4477c3f1f6a0ad461035d4994b6bdc672740fe5d2e15c36c451e13f5c893f51
+    image: cgr.dev/chainguard/go:latest-dev@sha256:a174ef04b3d0254db274b88bd418e20579182ceebc66eb051df69a81affe3db7
     script: |
       #!/bin/sh
       set -ex
@@ -130,7 +130,7 @@ spec:
       cat /workspace/.ko.yaml
 
   - name: run-ko
-    image: ghcr.io/tektoncd/plumbing/ko@sha256:23f1b4980b4cba96eebb32802b61703b1e382563f39fffaa43bde92f103bf3bb
+    image: ghcr.io/tektoncd/plumbing/ko@sha256:987bfc94f101540c71c94062923a5b2fbf145a5784e7efb2782a05f1e66adb04
     env:
     - name: KO_DOCKER_REPO
       value: $(params.imageRegistry)/$(params.imageRegistryPath)
@@ -199,7 +199,7 @@ spec:
       sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/release.notags.yaml
 
   - name: koparse
-    image: ghcr.io/tektoncd/plumbing/koparse@sha256:15b3ef8dc31151b3a527dc842111e78d3eb2dc336d3c959411c945a0ca31e0f4
+    image: ghcr.io/tektoncd/plumbing/koparse@sha256:2627c0fb7a32509b1b69a04ef7e6d3ad0ff415ce8fc1167f2f2bbcea5d8fdc6e
     script: |
       set -ex
 
@@ -233,7 +233,7 @@ spec:
         ${PRESERVE_IMPORT_PATH} > /workspace/built_images
 
   - name: tag-images
-    image: cgr.dev/chainguard/crane:latest-dev@sha256:902dacf36fa75f5f871c13a3c71ff4d6019ee7bb417dad5a79fab74009e12406
+    image: cgr.dev/chainguard/crane:latest-dev@sha256:71d9d1bf5c6871846bd85653adddfb176a8c412016d015bf06f7a1fe1c84a79f
     script: |
       #!/bin/sh
       set -ex
