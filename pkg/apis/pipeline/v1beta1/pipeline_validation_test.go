@@ -620,6 +620,24 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			Message: `PipelineTask OnError cannot be set to "continue" when Retries is greater than 0`,
 			Paths:   []string{""},
 		},
+	}, {
+		name: "invalid variable reference in pipeline task param",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					Params: Params{{
+						Name: "SCRIPT", Value: ParamValue{Type: ParamTypeString, StringVal: "echo $(env_value_set_from_yq)"},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalid variable reference "$(env_value_set_from_yq)", must start with a valid prefix: params, tasks, finally, context, or workspaces`,
+			Paths:   []string{"spec.tasks[0].params[SCRIPT].value"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

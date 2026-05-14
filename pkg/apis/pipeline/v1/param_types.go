@@ -260,6 +260,9 @@ func (p Param) ParseTaskandResultName() (string, string) {
 	if expressions, ok := p.GetVarSubstitutionExpressions(); ok {
 		for _, expression := range expressions {
 			subExpressions := strings.Split(expression, ".")
+			if len(subExpressions) < 4 {
+				continue
+			}
 			pipelineTaskName := subExpressions[1]
 			if len(subExpressions) == 4 {
 				return pipelineTaskName, ""
