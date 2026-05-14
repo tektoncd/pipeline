@@ -418,6 +418,16 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 	logger := logging.FromContext(ctx)
 
 	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	if afterCondition.IsFalse() && !tr.IsCancelled() && isReschedulableFailure(afterCondition.Reason) {
+		cfg := config.FromContextOrDefaults(ctx)
+		if cfg.FeatureFlags.EnablePodRescheduling {
+			if rescheduled, err := c.rescheduleTaskRunPod(ctx, tr); err != nil {
+				logger.Errorf("Failed to reschedule pod for TaskRun %q: %v", tr.Name, err)
+			} else if rescheduled {
+				afterCondition = tr.Status.GetCondition(apis.ConditionSucceeded)
+			}
+		}
+	}
 	if afterCondition.IsFalse() && !tr.IsCancelled() && tr.IsRetriable() {
 		retryTaskRun(tr, afterCondition.Message)
 		afterCondition = tr.Status.GetCondition(apis.ConditionSucceeded)
@@ -1259,4 +1269,60 @@ func retryTaskRun(tr *v1.TaskRun, message string) {
 	tr.Status.Results = nil
 	taskRunCondSet := apis.NewBatchConditionSet()
 	taskRunCondSet.Manage(&tr.Status).MarkUnknown(apis.ConditionSucceeded, v1.TaskRunReasonToBeRetried.String(), message)
+}
+
+var reschedulableReasons = map[string]struct{}{
+	v1.TaskRunReasonInitContainerFailed.String(): {},
+	v1.TaskRunReasonInitContainerOOM.String():    {},
+	v1.TaskRunReasonPodEvicted.String():          {},
+}
+
+func isReschedulableFailure(reason string) bool {
+	_, ok := reschedulableReasons[reason]
+	return ok
+}
+
+func (c *Reconciler) rescheduleTaskRunPod(ctx context.Context, tr *v1.TaskRun) (bool, error) {
+	logger := logging.FromContext(ctx)
+
+	count := 0
+	if tr.Annotations != nil {
+		if v, ok := tr.Annotations[v1.TaskRunPodRescheduleCountAnnotation]; ok {
+			if _, err := fmt.Sscanf(v, "%d", &count); err != nil {
+				logger.Warnf("Invalid pod reschedule count annotation %q: %v", v, err)
+			}
+		}
+	}
+
+	if count >= v1.MaxPodRescheduleCount {
+		logger.Infof("TaskRun %q reached max pod reschedule count (%d), not rescheduling", tr.Name, v1.MaxPodRescheduleCount)
+		return false, nil
+	}
+
+	if tr.Status.PodName != "" {
+		if err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete(ctx, tr.Status.PodName, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
+			return false, fmt.Errorf("deleting pod %s for reschedule: %w", tr.Status.PodName, err)
+		}
+	}
+
+	count++
+	if tr.Annotations == nil {
+		tr.Annotations = make(map[string]string)
+	}
+	tr.Annotations[v1.TaskRunPodRescheduleCountAnnotation] = fmt.Sprintf("%d", count)
+
+	condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	msg := fmt.Sprintf("pod failed before step execution (%s), rescheduling (attempt %d/%d)", condition.Reason, count, v1.MaxPodRescheduleCount)
+	logger.Infof("Rescheduling pod for TaskRun %q: %s", tr.Name, msg)
+
+	tr.Status.StartTime = nil
+	tr.Status.CompletionTime = nil
+	tr.Status.PodName = ""
+	taskRunCondSet := apis.NewBatchConditionSet()
+	taskRunCondSet.Manage(&tr.Status).MarkUnknown(apis.ConditionSucceeded, v1.TaskRunReasonPodRescheduled.String(), msg)
+
+	recorder := controller.GetEventRecorder(ctx)
+	recorder.Eventf(tr, corev1.EventTypeWarning, v1.TaskRunReasonPodRescheduled.String(), msg)
+
+	return true, nil
 }

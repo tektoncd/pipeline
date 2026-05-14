@@ -145,3 +145,8 @@ data:
   # Alpha feature — this is a short-term measure. External result storage
   # (TEP-0164) will address the underlying 4KB limitation.
   enable-termination-message-compression: "false"
+  # Setting this flag to "true" will enable automatic rescheduling of TaskRun pods
+  # that fail before any step code executes (e.g., init container failures, pod eviction).
+  # The controller will retry pod creation up to 3 times before marking the TaskRun as failed.
+  # This does not consume the user's retry budget (spec.retries).
+  enable-pod-rescheduling: "false"

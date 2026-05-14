@@ -121,6 +121,11 @@ const (
 	EnableTerminationMessageCompression = "enable-termination-message-compression"
 	// DefaultEnableTerminationMessageCompression is the default value for EnableTerminationMessageCompression
 	DefaultEnableTerminationMessageCompression = false
+	// EnablePodRescheduling is the flag to enable automatic rescheduling of TaskRun pods
+	// that fail before any step code executes (e.g., init container failures, pod eviction).
+	EnablePodRescheduling = "enable-pod-rescheduling"
+	// DefaultEnablePodRescheduling is the default value for EnablePodRescheduling
+	DefaultEnablePodRescheduling = false
 
 	// EnableStepActions is the flag to enable step actions (no-op since it's stable)
 	EnableStepActions = "enable-step-actions"
@@ -235,6 +240,7 @@ type FeatureFlags struct {
 	EnableKubernetesSidecar      bool   `json:"enableKubernetesSidecar,omitempty"`
 	EnableWaitExponentialBackoff         bool `json:"enableWaitExponentialBackoff,omitempty"`
 	EnableTerminationMessageCompression bool `json:"enableTerminationMessageCompression,omitempty"`
+	EnablePodRescheduling               bool `json:"enablePodRescheduling,omitempty"`
 	// DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
 	// to allow deletion of PipelineRuns created before v0.62.x.
 	// This field is not used and can be removed in a future release
@@ -349,6 +355,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setPerFeatureFlag(EnableTerminationMessageCompression, DefaultEnableTerminationMessageCompressionFlag, &tc.EnableTerminationMessageCompression); err != nil {
+		return nil, err
+	}
+	if err := setFeature(EnablePodRescheduling, DefaultEnablePodRescheduling, &tc.EnablePodRescheduling); err != nil {
 		return nil, err
 	}
 
