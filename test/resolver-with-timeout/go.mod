@@ -1,6 +1,6 @@
 module resolver_with_timeout
 
-go 1.25.0
+go 1.26
 
 require (
 	github.com/tektoncd/pipeline v1.0.1
