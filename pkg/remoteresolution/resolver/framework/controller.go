@@ -24,9 +24,11 @@ import (
 	rrinformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
 	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	framework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"github.com/tektoncd/pipeline/pkg/tracing"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/clock"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	secretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -49,6 +51,8 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 		kubeclientset := kubeclient.Get(ctx)
 		rrclientset := rrclient.Get(ctx)
 		rrInformer := rrinformer.Get(ctx)
+		secretInformer := secretinformer.Get(ctx)
+		tracerProvider := tracing.New("resolver-framework", logger.Named("tracing"))
 
 		if err := resolver.Initialize(ctx); err != nil {
 			panic(err.Error())
@@ -60,6 +64,7 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 			resolutionRequestLister:    rrInformer.Lister(),
 			resolutionRequestClientSet: rrclientset,
 			resolver:                   resolver,
+			tracerProvider:             tracerProvider,
 		}
 
 		watchConfigChanges(ctx, r, cmw)
@@ -76,6 +81,10 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 			WorkQueueName: "TektonResolverFramework." + resolverName,
 			Logger:        logger,
 		})
+
+		if _, err := secretInformer.Informer().AddEventHandler(controller.HandleAll(tracerProvider.Handler)); err != nil {
+			logging.FromContext(ctx).Panicf("Couldn't register Secret informer event handler: %w", err)
+		}
 
 		_, err := rrInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: framework.FilterResolutionRequestsBySelector(resolver.GetSelector(ctx)),
@@ -135,5 +144,8 @@ func applyModifiersAndDefaults(ctx context.Context, r *Reconciler, modifiers []R
 
 	if r.Clock == nil {
 		r.Clock = clock.RealClock{}
+	}
+	if r.tracerProvider == nil {
+		r.tracerProvider = tracing.New("resolver-framework", logging.FromContext(ctx).Named("tracing"))
 	}
 }
