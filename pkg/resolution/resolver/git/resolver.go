@@ -33,7 +33,6 @@ import (
 	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/cache"
 	"k8s.io/client-go/kubernetes"
@@ -537,9 +536,11 @@ func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey
 		return nil, err
 	}
 
-	ok := false
-
 	// NOTE(chmouel): only cache secrets when user hasn't passed params in their resolver configuration
+	// Track whether the secret was user-specified (via resolver params) before
+	// the nil check mutates apiSecret. This determines whether namespace
+	// fallback to config/system namespace is allowed.
+	userSpecified := apiSecret != nil
 	cacheSecret := false
 	if apiSecret == nil {
 		cacheSecret = true
@@ -563,6 +564,14 @@ func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey
 		}
 	}
 	if apiSecret.ns == "" {
+		if userSpecified {
+			// User-specified secret: refuse to fall back to config or system
+			// namespace. This prevents silent privilege escalation from the
+			// user's namespace to the system namespace when RequestNamespace
+			// is not available in the context.
+			return nil, errors.New("cannot get API token, secret not accessible: request namespace not available in context")
+		}
+		// Config-sourced secret: admin controls all values, fallback is safe
 		apiSecret.ns = conf.APISecretNamespace
 		if apiSecret.ns == "" {
 			apiSecret.ns = os.Getenv("SYSTEM_NAMESPACE")
@@ -570,7 +579,7 @@ func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey
 	}
 
 	if cacheSecret {
-		val, ok := g.Cache.Get(apiSecret)
+		val, ok := g.Cache.Get(*apiSecret)
 		if ok {
 			return val.([]byte), nil
 		}
@@ -578,24 +587,19 @@ func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey
 
 	secret, err := g.KubeClient.CoreV1().Secrets(apiSecret.ns).Get(ctx, apiSecret.name, metav1.GetOptions{})
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			notFoundErr := fmt.Errorf("cannot get API token, secret %s not found in namespace %s", apiSecret.name, apiSecret.ns)
-			g.Logger.Info(notFoundErr)
-			return nil, notFoundErr
-		}
-		wrappedErr := fmt.Errorf("error reading API token from secret %s in namespace %s: %w", apiSecret.name, apiSecret.ns, err)
-		g.Logger.Info(wrappedErr)
-		return nil, wrappedErr
+		// Use a single generic error message for all secret access failures
+		// to prevent secret enumeration via distinct error strings.
+		g.Logger.Debugf("secret lookup failed: ns=%s name=%s err=%v", apiSecret.ns, apiSecret.name, err)
+		return nil, fmt.Errorf("cannot get API token, secret not accessible in namespace %s", apiSecret.ns)
 	}
 
 	secretVal, ok := secret.Data[apiSecret.key]
 	if !ok {
-		err := fmt.Errorf("cannot get API token, key %s not found in secret %s in namespace %s", apiSecret.key, apiSecret.name, apiSecret.ns)
-		g.Logger.Info(err)
-		return nil, err
+		g.Logger.Debugf("secret key not found in secret: ns=%s name=%s", apiSecret.ns, apiSecret.name)
+		return nil, fmt.Errorf("cannot get API token, secret not accessible in namespace %s", apiSecret.ns)
 	}
 	if cacheSecret {
-		g.Cache.Add(apiSecret, secretVal, ttl)
+		g.Cache.Add(*apiSecret, secretVal, ttl)
 	}
 	return secretVal, nil
 }
