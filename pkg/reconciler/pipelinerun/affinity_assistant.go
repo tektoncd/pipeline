@@ -53,6 +53,9 @@ const (
 	// This annotation only affects volumeClaimTemplate workspaces; user-provided persistentVolumeClaim
 	// workspaces are never deleted.
 	AutoCleanupPVCAnnotation = "tekton.dev/auto-cleanup-pvc"
+
+	// volumeNameMaxLength is the maximum length for a Kubernetes volume name.
+	volumeNameMaxLength = 63
 )
 
 var (
@@ -307,6 +310,20 @@ func getStatefulSetLabels(pr *v1.PipelineRun, affinityAssistantName string) map[
 	return labels
 }
 
+// sanitizeVolumeName returns a volume-safe name that is at most volumeNameMaxLength characters.
+// If the name is already short enough, it is returned as-is.
+// Otherwise, it is truncated and a short hash is appended to preserve uniqueness.
+func sanitizeVolumeName(name string) string {
+	if len(name) <= volumeNameMaxLength {
+		return name
+	}
+	hashBytes := sha256.Sum256([]byte(name))
+	hashStr := hex.EncodeToString(hashBytes[:])[:10]
+	// truncate prefix to leave room for "-" + 10-char hash = 11 chars
+	prefix := name[:volumeNameMaxLength-11]
+	return fmt.Sprintf("%s-%s", prefix, hashStr)
+}
+
 // affinityAssistantStatefulSet returns an Affinity Assistant as a StatefulSet based on the AffinityAssistantBehavior
 // with the given AffinityAssistantTemplate applied to the StatefulSet PodTemplateSpec.
 // The VolumeClaimTemplates and Volume of StatefulSet reference the PipelineRun WorkspaceBinding VolumeClaimTempalte and the PVCs respectively.
@@ -321,9 +338,14 @@ func affinityAssistantStatefulSet(aaBehavior aa.AffinityAssistantBehavior, name 
 		tpl = pod.MergeAAPodTemplateWithDefault(pr.Spec.TaskRunTemplate.PodTemplate.ToAffinityAssistantTemplate(), defaultAATpl)
 	}
 
+	// Sanitize VolumeClaimTemplate names to stay within Kubernetes' 63-char volume name limit.
+	for i := range claimTemplates {
+		claimTemplates[i].Name = sanitizeVolumeName(claimTemplates[i].Name)
+	}
+
 	var mounts []corev1.VolumeMount
 	for _, claimTemplate := range claimTemplates {
-		mounts = append(mounts, corev1.VolumeMount{Name: claimTemplate.Name, MountPath: claimTemplate.Name})
+		mounts = append(mounts, corev1.VolumeMount{Name: claimTemplate.Name, MountPath: "/" + claimTemplate.Name})
 	}
 
 	securityContext := &corev1.SecurityContext{}
