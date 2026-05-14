@@ -242,13 +242,17 @@ type PipelineTask struct {
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 
-	// PipelineRef is a reference to a pipeline definition
-	// Note: PipelineRef is in preview mode and not yet supported
+	// PipelineRef is a reference to a pipeline definition.
+	// This is an alpha field. You must set the "enable-api-fields" feature flag
+	// to "alpha" for this field to be supported. When enabled, the referenced
+	// Pipeline is executed as a child PipelineRun owned by the parent PipelineRun.
 	// +optional
 	PipelineRef *PipelineRef `json:"pipelineRef,omitempty"`
 
-	// PipelineSpec is a specification of a pipeline
-	// Note: PipelineSpec is in preview mode and not yet supported
+	// PipelineSpec is a specification of a pipeline.
+	// This is an alpha field. You must set the "enable-api-fields" feature flag
+	// to "alpha" for this field to be supported. When enabled, the embedded
+	// Pipeline is executed as a child PipelineRun owned by the parent PipelineRun.
 	// Specifying PipelineSpec can be disabled by setting
 	// `disable-inline-spec` feature flag.
 	// See Pipeline.spec (API version: tekton.dev/v1)

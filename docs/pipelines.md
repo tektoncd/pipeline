@@ -504,7 +504,7 @@ tasks:
 
 > :seedling: **Specifying `pipelines` in `PipelineTasks` is an [alpha](additional-configs.md#alpha-features) feature.**
 > The `enable-api-fields` feature flag must be set to `"alpha"` to specify `PipelineRef` or `PipelineSpec` in a `PipelineTask`.
-> This feature is in **Preview Only** mode and not yet supported/implemented.
+> When enabled, the parent `PipelineRun` reconciles a child `PipelineRun` for each `PipelineTask` that uses `pipelineRef` or `pipelineSpec`. See [Pipelines in Pipelines](./pipelines-in-pipelines.md) for details and [known limitations](./pipelines-in-pipelines.md#known-limitations).
 
 Apart from `taskRef` and `taskSpec`, `pipelineRef` and `pipelineSpec` allows you to specify a `pipeline`  in `pipelineTask`.
 This allows you to generate a child `pipelineRun` which is inherited by the parent `pipelineRun`.
@@ -1058,7 +1058,7 @@ tasks:
 Compose a set of `Tasks` as a unit of execution using `Pipelines` in `Pipelines`, which allows for guarding a `Task` and
 its dependent `Tasks` (as a sub-`Pipeline`) using `when` expressions.
 
-**Note:** `Pipelines` in `Pipelines` is an [experimental feature](https://github.com/tektoncd/experimental/tree/main/pipelines-in-pipelines)
+**Note:** `Pipelines` in `Pipelines` is an [alpha feature](./pipelines-in-pipelines.md). The `enable-api-fields` feature flag must be set to `"alpha"`.
 
 Taking the use case below, a user who wants to guard `manual-approval` and its dependent `Tasks`:
 

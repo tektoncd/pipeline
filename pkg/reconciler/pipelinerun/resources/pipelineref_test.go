@@ -1399,3 +1399,180 @@ func signInterface(signer signature.Signer, i interface{}) ([]byte, error) {
 
 	return sig, nil
 }
+
+func TestGetChildPipelineFunc_Local(t *testing.T) {
+	ctx := context.Background()
+	cfg := config.NewStore(logging.FromContext(ctx))
+	ctx = cfg.ToContext(ctx)
+
+	childPipeline := parse.MustParseV1Pipeline(t, `
+metadata:
+  name: child-pipeline
+  namespace: default
+spec:
+  tasks:
+  - name: child-task
+    taskSpec:
+      steps:
+      - name: step1
+        image: mirror.gcr.io/busybox
+`)
+	tektonClient := fake.NewSimpleClientset(childPipeline)
+
+	pr := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+	}
+	pipelineRef := &v1.PipelineRef{Name: "child-pipeline"}
+
+	fn := resources.GetChildPipelineFunc(ctx, fakek8s.NewSimpleClientset(), tektonClient, nil, pr, pipelineRef, nil)
+	p, refSource, vr, err := fn(ctx, "child-pipeline")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if p.Name != "child-pipeline" {
+		t.Errorf("expected pipeline name 'child-pipeline', got %q", p.Name)
+	}
+	if refSource != nil {
+		t.Errorf("expected nil refSource for local resolution, got %v", refSource)
+	}
+	if vr != nil {
+		t.Errorf("expected nil verification result for local resolution, got %v", vr)
+	}
+}
+
+func TestGetChildPipelineFunc_NilPipelineRef(t *testing.T) {
+	ctx := context.Background()
+	cfg := config.NewStore(logging.FromContext(ctx))
+	ctx = cfg.ToContext(ctx)
+
+	childPipeline := parse.MustParseV1Pipeline(t, `
+metadata:
+  name: child-pipeline
+  namespace: default
+spec:
+  tasks:
+  - name: child-task
+    taskSpec:
+      steps:
+      - name: step1
+        image: mirror.gcr.io/busybox
+`)
+	tektonClient := fake.NewSimpleClientset(childPipeline)
+
+	pr := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+	}
+
+	// nil pipelineRef should fall through to local resolver
+	fn := resources.GetChildPipelineFunc(ctx, fakek8s.NewSimpleClientset(), tektonClient, nil, pr, nil, nil)
+	p, _, _, err := fn(ctx, "child-pipeline")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if p.Name != "child-pipeline" {
+		t.Errorf("expected pipeline name 'child-pipeline', got %q", p.Name)
+	}
+}
+
+func TestGetChildPipelineFunc_LocalNotFound(t *testing.T) {
+	ctx := context.Background()
+	cfg := config.NewStore(logging.FromContext(ctx))
+	ctx = cfg.ToContext(ctx)
+
+	tektonClient := fake.NewSimpleClientset() // no pipelines
+	pr := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+	}
+	pipelineRef := &v1.PipelineRef{Name: "nonexistent"}
+
+	fn := resources.GetChildPipelineFunc(ctx, fakek8s.NewSimpleClientset(), tektonClient, nil, pr, pipelineRef, nil)
+	_, _, _, err := fn(ctx, "nonexistent")
+	if err == nil {
+		t.Fatal("expected error for nonexistent pipeline, got nil")
+	}
+}
+
+// TestGetChildPipelineFunc_ResolverWithoutRequester covers the dispatcher branch where
+// the PipelineRef has a Resolver set but the caller did not supply a remote-resolution
+// Requester. The dispatcher must fall through to the local resolver rather than panic
+// or attempt remote resolution.
+func TestGetChildPipelineFunc_ResolverWithoutRequester(t *testing.T) {
+	ctx := context.Background()
+	cfg := config.NewStore(logging.FromContext(ctx))
+	ctx = cfg.ToContext(ctx)
+
+	childPipeline := parse.MustParseV1Pipeline(t, `
+metadata:
+  name: child-pipeline
+  namespace: default
+spec:
+  tasks:
+  - name: child-task
+    taskSpec:
+      steps:
+      - name: step1
+        image: mirror.gcr.io/busybox
+`)
+	tektonClient := fake.NewSimpleClientset(childPipeline)
+
+	pr := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+	}
+	pipelineRef := &v1.PipelineRef{
+		Name:        "child-pipeline",
+		ResolverRef: v1.ResolverRef{Resolver: "git"},
+	}
+
+	fn := resources.GetChildPipelineFunc(ctx, fakek8s.NewSimpleClientset(), tektonClient, nil /* requester */, pr, pipelineRef, nil)
+	p, refSource, vr, err := fn(ctx, "child-pipeline")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if p.Name != "child-pipeline" {
+		t.Errorf("expected pipeline name 'child-pipeline', got %q", p.Name)
+	}
+	if refSource != nil {
+		t.Errorf("expected nil refSource for local resolution, got %v", refSource)
+	}
+	if vr != nil {
+		t.Errorf("expected nil verification result for local resolution, got %v", vr)
+	}
+}
+
+// TestGetChildPipelineFunc_RemoteResolution covers the dispatcher branch where the
+// PipelineRef has a Resolver set and a Requester is supplied: the resolver path must
+// be taken and the resolved Pipeline returned to the caller. This mirrors the pattern
+// used by TestGetPipelineFunc_RemoteResolution.
+func TestGetChildPipelineFunc_RemoteResolution(t *testing.T) {
+	ctx, clients := getFakePipelineClient(t)
+	ctx = cfgtesting.EnableStableAPIFields(ctx)
+	cfg := config.FromContextOrDefaults(ctx)
+	ctx = config.ToContext(ctx, cfg)
+
+	pipelineYAML := strings.Join([]string{
+		"kind: Pipeline",
+		"apiVersion: tekton.dev/v1",
+		pipelineYAMLString,
+	}, "\n")
+	wantPipeline := parse.MustParseV1PipelineAndSetDefaults(t, pipelineYAMLString)
+
+	pipelineRef := &v1.PipelineRef{ResolverRef: v1.ResolverRef{Resolver: "git"}}
+	resolved := resolution.NewResolvedResource([]byte(pipelineYAML), nil /* annotations */, sampleRefSource.DeepCopy(), nil /* data error */)
+	requester := resolution.NewRequester(resolved, nil, resource.ResolverPayload{})
+
+	pr := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+	}
+
+	fn := resources.GetChildPipelineFunc(ctx, fakek8s.NewSimpleClientset(), clients, requester, pr, pipelineRef, nil)
+	resolvedPipeline, resolvedRefSource, _, err := fn(ctx, pipelineRef.Name)
+	if err != nil {
+		t.Fatalf("failed to call pipelinefn: %s", err.Error())
+	}
+	if d := cmp.Diff(wantPipeline, resolvedPipeline); d != "" {
+		t.Errorf("resolved pipeline did not match: %s", diff.PrintWantGot(d))
+	}
+	if d := cmp.Diff(sampleRefSource, resolvedRefSource); d != "" {
+		t.Errorf("refSources did not match: %s", diff.PrintWantGot(d))
+	}
+}

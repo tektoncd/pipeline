@@ -3110,8 +3110,10 @@ PipelineRef
 </td>
 <td>
 <em>(Optional)</em>
-<p>PipelineRef is a reference to a pipeline definition
-Note: PipelineRef is in preview mode and not yet supported</p>
+<p>PipelineRef is a reference to a pipeline definition.
+This is an alpha field. You must set the &ldquo;enable-api-fields&rdquo; feature flag
+to &ldquo;alpha&rdquo; for this field to be supported. When enabled, the referenced
+Pipeline is executed as a child PipelineRun owned by the parent PipelineRun.</p>
 </td>
 </tr>
 <tr>
@@ -3125,8 +3127,10 @@ PipelineSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>PipelineSpec is a specification of a pipeline
-Note: PipelineSpec is in preview mode and not yet supported
+<p>PipelineSpec is a specification of a pipeline.
+This is an alpha field. You must set the &ldquo;enable-api-fields&rdquo; feature flag
+to &ldquo;alpha&rdquo; for this field to be supported. When enabled, the embedded
+Pipeline is executed as a child PipelineRun owned by the parent PipelineRun.
 Specifying PipelineSpec can be disabled by setting
 <code>disable-inline-spec</code> feature flag.
 See Pipeline.spec (API version: tekton.dev/v1)</p>
@@ -12477,8 +12481,10 @@ PipelineRef
 </td>
 <td>
 <em>(Optional)</em>
-<p>PipelineRef is a reference to a pipeline definition
-Note: PipelineRef is in preview mode and not yet supported</p>
+<p>PipelineRef is a reference to a pipeline definition.
+This is an alpha field. You must set the &ldquo;enable-api-fields&rdquo; feature flag
+to &ldquo;alpha&rdquo; for this field to be supported. When enabled, the referenced
+Pipeline is executed as a child PipelineRun owned by the parent PipelineRun.</p>
 </td>
 </tr>
 <tr>
@@ -12492,8 +12498,10 @@ PipelineSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>PipelineSpec is a specification of a pipeline
-Note: PipelineSpec is in preview mode and not yet supported
+<p>PipelineSpec is a specification of a pipeline.
+This is an alpha field. You must set the &ldquo;enable-api-fields&rdquo; feature flag
+to &ldquo;alpha&rdquo; for this field to be supported. When enabled, the embedded
+Pipeline is executed as a child PipelineRun owned by the parent PipelineRun.
 Specifying PipelineSpec can be disabled by setting
 <code>disable-inline-spec</code> feature flag.
 See Pipeline.spec (API version: tekton.dev/v1beta1)</p>
