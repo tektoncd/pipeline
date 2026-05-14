@@ -52,6 +52,10 @@ var (
 	// ReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,
 	// it could be the content has changed, signature is invalid or public key is invalid
 	ReasonResourceVerificationFailed = v1.TaskRunReasonResourceVerificationFailed.String()
+
+	// ErrResultNotFound is returned when a specific result key is not found in the
+	// list of RunResults. Callers should check for this with errors.Is.
+	ErrResultNotFound = errors.New("result not found")
 )
 
 const (
@@ -331,12 +335,12 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 					errs = append(errs, err)
 				}
 				time, err := extractStartedAtTimeFromResults(results)
-				if err != nil {
+				if err != nil && !errors.Is(err, ErrResultNotFound) {
 					logger.Errorf("error setting the start time of step %q in taskrun %q: %v", s.Name, tr.Name, err)
 					errs = append(errs, err)
 				}
 				exitCode, err := extractExitCodeFromResults(results)
-				if err != nil {
+				if err != nil && !errors.Is(err, ErrResultNotFound) {
 					logger.Errorf("error extracting the exit code of step %q in taskrun %q: %v", s.Name, tr.Name, err)
 					errs = append(errs, err)
 				}
@@ -566,7 +570,7 @@ func extractStartedAtTimeFromResults(results []result.RunResult) (*metav1.Time, 
 			return &startedAt, nil
 		}
 	}
-	return nil, nil //nolint:nilnil // would be more ergonomic to return a sentinel error
+	return nil, ErrResultNotFound
 }
 
 func extractExitCodeFromResults(results []result.RunResult) (*int32, error) {
@@ -581,7 +585,7 @@ func extractExitCodeFromResults(results []result.RunResult) (*int32, error) {
 			return &exitCode, nil
 		}
 	}
-	return nil, nil //nolint:nilnil // would be more ergonomic to return a sentinel error
+	return nil, ErrResultNotFound
 }
 
 func extractTerminationReasonFromResults(results []result.RunResult) string {
