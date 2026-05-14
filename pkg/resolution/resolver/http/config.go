@@ -21,6 +21,11 @@ const (
 	// the maximum duration of a resolution request for a file from http.
 	TimeoutKey = "fetch-timeout"
 
+	// BlockPrivateIPsKey is the configuration field name for controlling
+	// whether the HTTP resolver blocks requests to private, loopback,
+	// link-local, and unspecified IP addresses. Defaults to "true".
+	BlockPrivateIPsKey = "block-private-ips"
+
 	// maxResponseBodySize is the maximum response body size the HTTP resolver
 	// will read. This is hardcoded to 1 MiB which is below the etcd maximum
 	// object size (1.5 MiB), leaving room for the ResolutionRequest CRD
