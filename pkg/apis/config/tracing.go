@@ -33,8 +33,14 @@ const (
 	// tracingCredentialsSecretKey is the name of the secret which contains credentials for tracing endpoint
 	tracingCredentialsSecretKey = "credentialsSecret"
 
+	// tracingSamplingRatioKey is the configmap key for trace sampling ratio
+	tracingSamplingRatioKey = "sampling-ratio"
+
 	// DefaultEndpoint is the default destination for sending traces
 	DefaultEndpoint = "http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces"
+
+	// DefaultSamplingRatio is the default trace sampling ratio (1.0 = sample everything)
+	DefaultSamplingRatio = 1.0
 )
 
 // DefaultTracing holds all the default configurations for tracing
@@ -46,6 +52,7 @@ type Tracing struct {
 	Enabled           bool
 	Endpoint          string
 	CredentialsSecret string
+	SamplingRatio     float64
 }
 
 // Equals returns true if two Configs are identical
@@ -60,7 +67,8 @@ func (cfg *Tracing) Equals(other *Tracing) bool {
 
 	return other.Enabled == cfg.Enabled &&
 		other.Endpoint == cfg.Endpoint &&
-		other.CredentialsSecret == cfg.CredentialsSecret
+		other.CredentialsSecret == cfg.CredentialsSecret &&
+		other.SamplingRatio == cfg.SamplingRatio
 }
 
 // GetTracingConfigName returns the name of the configmap containing all
@@ -75,8 +83,9 @@ func GetTracingConfigName() string {
 // newTracingFromMap returns a Config given a map from ConfigMap
 func newTracingFromMap(config map[string]string) (*Tracing, error) {
 	t := Tracing{
-		Enabled:  false,
-		Endpoint: DefaultEndpoint,
+		Enabled:       false,
+		Endpoint:      DefaultEndpoint,
+		SamplingRatio: DefaultSamplingRatio,
 	}
 
 	if endpoint, ok := config[tracingEndpointKey]; ok {
@@ -94,6 +103,18 @@ func newTracingFromMap(config map[string]string) (*Tracing, error) {
 		}
 		t.Enabled = e
 	}
+
+	if ratio, ok := config[tracingSamplingRatioKey]; ok {
+		r, err := strconv.ParseFloat(ratio, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing tracing sampling-ratio %q: %w", ratio, err)
+		}
+		if r < 0 || r > 1 {
+			return nil, fmt.Errorf("sampling-ratio %v must be between 0.0 and 1.0", r)
+		}
+		t.SamplingRatio = r
+	}
+
 	return &t, nil
 }
 
