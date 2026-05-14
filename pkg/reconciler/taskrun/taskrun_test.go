@@ -3026,6 +3026,80 @@ status:
 	}
 }
 
+func TestReconcilePodFailuresWithEventMessage(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-imagepull-event
+  namespace: foo
+spec:
+  taskSpec:
+    steps:
+    - image: registry.example.com/private:v1
+status:
+  podName: "pod-1"
+  steps:
+  - container: step-unnamed-0
+    name: unnamed-0
+    imageID: registry.example.com/private:v1
+  taskSpec:
+    steps:
+    - image: registry.example.com/private:v1
+`)
+	taskRun.Status.Steps[0].Waiting = &corev1.ContainerStateWaiting{
+		Reason:  "ImagePullBackOff",
+		Message: `Back-off pulling image "registry.example.com/private:v1"`,
+	}
+
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Pods: []*corev1.Pod{{
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-1", Namespace: "foo"},
+		}},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+
+	// Create a pod event that mimics what kubelet would produce
+	_, err := testAssets.Clients.Kube.CoreV1().Events("foo").Create(testAssets.Ctx, &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pod-1.image-pull-failed",
+			Namespace: "foo",
+		},
+		InvolvedObject: corev1.ObjectReference{
+			Name: "pod-1",
+			Kind: "Pod",
+		},
+		Reason:        "Failed",
+		Message:       `Failed to pull image "registry.example.com/private:v1": rpc error: code = Unknown desc = unauthorized: authentication required`,
+		LastTimestamp:  metav1.Now(),
+		Type:          "Warning",
+		Source:        corev1.EventSource{Component: "kubelet"},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create test event: %v", err)
+	}
+
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+		t.Fatalf("Unexpected error when reconciling: %v", err)
+	}
+
+	newTr, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected TaskRun to exist: %v", err)
+	}
+
+	condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil {
+		t.Fatal("Expected a condition on the TaskRun")
+	}
+	if !strings.Contains(condition.Message, "unauthorized: authentication required") {
+		t.Errorf("Expected condition message to contain the event message with registry error details, got: %s", condition.Message)
+	}
+	if !strings.Contains(condition.Message, "The most recent event message") {
+		t.Errorf("Expected condition message to include event forwarding prefix, got: %s", condition.Message)
+	}
+}
+
 func TestReconcileContainerFailures(t *testing.T) {
 	testCases := []struct {
 		name           string
