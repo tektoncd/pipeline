@@ -671,7 +671,7 @@ type PipelineTaskRunSpec struct {
 	Metadata *PipelineTaskMetadata `json:"metadata,omitempty"`
 
 	// Compute resources to use for this TaskRun
-	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
+	ComputeResources *ComputeResourceRequirements `json:"computeResources,omitempty"`
 
 	// Duration after which the TaskRun times out. Overrides the timeout specified
 	// on the Task's spec if specified. Takes lower precedence to PipelineRun's

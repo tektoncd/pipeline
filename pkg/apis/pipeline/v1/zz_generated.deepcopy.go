@@ -999,7 +999,7 @@ func (in *PipelineTaskRunSpec) DeepCopyInto(out *PipelineTaskRunSpec) {
 	}
 	if in.ComputeResources != nil {
 		in, out := &in.ComputeResources, &out.ComputeResources
-		*out = new(corev1.ResourceRequirements)
+		*out = new(ComputeResourceRequirements)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Timeout != nil {
@@ -1949,7 +1949,7 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 	}
 	if in.ComputeResources != nil {
 		in, out := &in.ComputeResources, &out.ComputeResources
-		*out = new(corev1.ResourceRequirements)
+		*out = new(ComputeResourceRequirements)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.ManagedBy != nil {
