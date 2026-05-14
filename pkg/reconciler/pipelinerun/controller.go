@@ -31,6 +31,7 @@ import (
 	resolutionclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client"
 	resolutioninformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
 	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
+	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolution "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
 	"github.com/tektoncd/pipeline/pkg/tracing"
@@ -102,6 +103,14 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 				PromoteFilterFunc: pipelineRunFilterManagedBy,
 			}
 		})
+
+		if err := pipelineRunInformer.Informer().SetTransform(reconciler.StripManagedFields); err != nil {
+			logging.FromContext(ctx).Panicf("Failed to set PipelineRun informer transform: %v", err)
+		}
+
+		if err := taskRunInformer.Informer().SetTransform(reconciler.StripManagedFields); err != nil {
+			logging.FromContext(ctx).Panicf("Failed to set TaskRun informer transform: %v", err)
+		}
 
 		if _, err := secretinformer.Informer().AddEventHandler(controller.HandleAll(tracerProvider.Handler)); err != nil {
 			logging.FromContext(ctx).Panicf("Couldn't register Secret informer event handler: %w", err)
