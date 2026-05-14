@@ -820,10 +820,16 @@ func validateGraph(tasks []PipelineTask) (errs *apis.FieldError) {
 }
 
 func validateMatrix(ctx context.Context, tasks []PipelineTask) (errs *apis.FieldError) {
+	hasMatrix := false
 	for idx, task := range tasks {
-		errs = errs.Also(task.validateMatrix(ctx).ViaIndex(idx))
+		if task.IsMatrixed() {
+			errs = errs.Also(task.validateMatrix(ctx).ViaIndex(idx))
+			hasMatrix = true
+		}
 	}
-	errs = errs.Also(validateTaskResultsFromMatrixedPipelineTasksConsumed(tasks))
+	if hasMatrix {
+		errs = errs.Also(validateTaskResultsFromMatrixedPipelineTasksConsumed(tasks))
+	}
 	return errs
 }
 
