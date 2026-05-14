@@ -18,9 +18,15 @@ package framework
 
 import (
 	"context"
+	"fmt"
+	"slices"
+	"time"
 
+	pipelineapi "github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/yaml"
 )
 
 // Resolver is the interface to implement for type-specific resource
@@ -53,5 +59,72 @@ type Resolver interface {
 	// ResolutionRequest will not be updated with a failed status.
 	// See github.com/tektoncd/pipeline/pkg/resolution/common/errors.go for
 	// the definition of a transient error.
-	Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (framework.ResolvedResource, error)
+	Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (ResolvedResource, error)
+}
+
+// ConfigWatcher is the interface to implement if your resolver accepts
+// additional configuration from an admin. Examples of how this
+// might be used:
+// - your resolver might require an allow-list of repositories or registries
+// - your resolver might allow request timeout settings to be configured
+// - your resolver might need an API endpoint or base url to be set
+//
+// When your resolver implements this interface it will be able to
+// access configuration from the context it receives in calls to
+// ValidateParams and Resolve.
+type ConfigWatcher interface {
+	// GetConfigName should return a string name for its
+	// configuration to be referenced by. This will map to the name
+	// of a ConfigMap in the same namespace as the resolver.
+	GetConfigName(ctx context.Context) string
+}
+
+// TimedResolution is an optional interface that a resolver can
+// implement to override the default resolution request timeout.
+//
+// There are two timeouts that a resolution request adheres to: First
+// there is a global timeout that the core ResolutionRequest reconciler
+// enforces on _all_ requests. This prevents zombie requests (such as
+// those with a misconfigured `type`) sticking around in perpetuity.
+// Second there are resolver-specific timeouts that default to 1 minute.
+//
+// A resolver implemeting the TimedResolution interface sets the maximum
+// duration of any single request to this resolver.
+//
+// The core ResolutionRequest reconciler's global timeout overrides any
+// resolver-specific timeout.
+type TimedResolution interface {
+	// GetResolutionTimeout receives the current request's context
+	// object, which includes any request-scoped data like
+	// resolver config and the request's originating namespace,
+	// along with a default.
+	GetResolutionTimeout(ctx context.Context, timeout time.Duration, params map[string]string) (time.Duration, error)
+}
+
+// ResolvedResource returns the data and annotations of a successful
+// resource fetch.
+type ResolvedResource interface {
+	Data() []byte
+	Annotations() map[string]string
+	RefSource() *pipelinev1.RefSource
+}
+
+// ValidateResolvedResource validates that the ResolvedResource's data is a
+// kubernetes object and a Tekton kind. This ensures non-k8s data (e.g. tokens) or non-tekton
+// k8s objects (e.g. Secrets) are not written into the unprivileged ResolutionRequest objects.
+func ValidateResolvedResource(resource ResolvedResource) error {
+	var metadata struct {
+		APIVersion string
+		Kind       string
+	}
+	if err := yaml.Unmarshal(resource.Data(), &metadata); err != nil {
+		return fmt.Errorf("decoding error: %w", err)
+	}
+	// gv is not nil when there is an error
+	gv, _ := schema.ParseGroupVersion(metadata.APIVersion)
+
+	if gv.Group != pipelineapi.GroupName || !slices.Contains(allowedResourceKinds, metadata.Kind) {
+		return fmt.Errorf("resolved data is not of a supported type, must be of Group: %s, Kinds: %v", pipelineapi.GroupName, allowedResourceKinds)
+	}
+	return nil
 }
