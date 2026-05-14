@@ -453,11 +453,16 @@ func getTaskTagName(tr *v1.TaskRun) string {
 // IsPartOfPipeline return true if TaskRun is a part of a Pipeline.
 // It also return the name of Pipeline and PipelineRun
 func IsPartOfPipeline(tr *v1.TaskRun) (bool, string, string) {
-	if pipelineName, ok := tr.Labels[pipeline.PipelineLabelKey]; ok {
-		if pipelineRun, ok := tr.Labels[pipeline.PipelineRunLabelKey]; ok {
-			return true, pipelineName, pipelineRun
+	pipelineName, plOk := tr.Labels[pipeline.PipelineLabelKey]
+	pipelineRunName, plrOk := tr.Labels[pipeline.PipelineRunLabelKey]
+
+	if plOk && plrOk {
+		if pipelineName == pipelineRunName {
+			pipelineName = anonymous
 		}
+		return true, pipelineName, pipelineRunName
 	}
+
 	return false, "", ""
 }
 

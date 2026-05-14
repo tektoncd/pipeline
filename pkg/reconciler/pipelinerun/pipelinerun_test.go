@@ -7528,6 +7528,7 @@ metadata:
   annotations:
     io.annotation: value
 `)
+
 	refSource := &v1.RefSource{
 		URI: "abc.com",
 		Digest: map[string]string{
@@ -7551,6 +7552,23 @@ metadata:
 	}
 	want.ObjectMeta.Labels["tekton.dev/pipeline"] = pr.ObjectMeta.Name
 
+	prWithGeneratedName := pr.DeepCopy()
+	prWithGeneratedName.GenerateName = pr.Name + "-"
+	prWithGeneratedName.ObjectMeta.Labels["tekton.dev/pipeline"] = pr.Name
+	prWithGeneratedName.Spec.PipelineSpec = ps.DeepCopy()
+	prWithGeneratedName.Name = prWithGeneratedName.GenerateName + "abc123"
+
+	wantForGeneratedName := prWithGeneratedName.DeepCopy()
+	wantForGeneratedName.Status = v1.PipelineRunStatus{
+		PipelineRunStatusFields: v1.PipelineRunStatusFields{
+			PipelineSpec: ps.DeepCopy(),
+			Provenance: &v1.Provenance{
+				RefSource:    refSource.DeepCopy(),
+				FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
+			},
+		},
+	}
+
 	type args struct {
 		pipelineSpec       *v1.PipelineSpec
 		resolvedObjectMeta *resolutionutil.ResolvedObjectMeta
@@ -7558,12 +7576,14 @@ metadata:
 
 	tests := []struct {
 		name            string
+		pr              *v1.PipelineRun
 		reconcile1Args  *args
 		reconcile2Args  *args
 		wantPipelineRun *v1.PipelineRun
 	}{
 		{
 			name: "spec and source are available in the same reconcile",
+			pr:   pr,
 			reconcile1Args: &args{
 				pipelineSpec: &ps,
 				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
@@ -7579,6 +7599,7 @@ metadata:
 		},
 		{
 			name: "spec comes in the first reconcile and source comes in next reconcile",
+			pr:   pr,
 			reconcile1Args: &args{
 				pipelineSpec: &ps,
 				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
@@ -7593,22 +7614,38 @@ metadata:
 			},
 			wantPipelineRun: want,
 		},
+		{
+			name: "pipelineRun name is not overwritten when generateName is used with pipelineSpec",
+			pr:   prWithGeneratedName,
+			reconcile1Args: &args{
+				pipelineSpec: &ps,
+				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
+					ObjectMeta: &prWithGeneratedName.ObjectMeta,
+					RefSource:  refSource.DeepCopy(),
+				},
+			},
+			reconcile2Args: &args{
+				pipelineSpec:       &ps,
+				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{},
+			},
+			wantPipelineRun: wantForGeneratedName,
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// mock first reconcile
-			if err := storePipelineSpecAndMergeMeta(t.Context(), pr, tc.reconcile1Args.pipelineSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
+			if err := storePipelineSpecAndMergeMeta(t.Context(), tc.pr, tc.reconcile1Args.pipelineSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
-			if d := cmp.Diff(tc.wantPipelineRun, pr); d != "" {
+			if d := cmp.Diff(tc.wantPipelineRun, tc.pr); d != "" {
 				t.Fatal(diff.PrintWantGot(d))
 			}
 
 			// mock second reconcile
-			if err := storePipelineSpecAndMergeMeta(t.Context(), pr, tc.reconcile2Args.pipelineSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
+			if err := storePipelineSpecAndMergeMeta(t.Context(), tc.pr, tc.reconcile2Args.pipelineSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
-			if d := cmp.Diff(tc.wantPipelineRun, pr); d != "" {
+			if d := cmp.Diff(tc.wantPipelineRun, tc.pr); d != "" {
 				t.Fatal(diff.PrintWantGot(d))
 			}
 		})
@@ -19059,6 +19096,94 @@ spec:
 	// Verify its status was updated
 	if !reconciledTekton.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
 		t.Errorf("Expected Tekton-managed PipelineRun to be running, but it was not")
+	}
+}
+
+func TestPropagatePipelineNameLabelToPipelineRun_AnonymousPipeline(t *testing.T) {
+	tcs := []struct {
+		name      string
+		pr        *v1.PipelineRun
+		wantLabel string
+	}{
+		{
+			name: "pipelineSpec with no name and no generateName uses pipelinerun name",
+			pr: &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "my-pipelinerun",
+				},
+				Spec: v1.PipelineRunSpec{
+					PipelineSpec: &v1.PipelineSpec{},
+				},
+			},
+			wantLabel: "my-pipelinerun",
+		},
+		{
+			name: "pipelineSpec with generateName uses trimmed generateName prefix",
+			pr: &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:         "my-pipeline-abcde",
+					GenerateName: "my-pipeline-",
+				},
+				Spec: v1.PipelineRunSpec{
+					PipelineSpec: &v1.PipelineSpec{},
+				},
+			},
+			wantLabel: "my-pipeline",
+		},
+		{
+			name: "pipelineSpec with generateName that has no trailing hyphen is used as-is",
+			pr: &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:         "my-pipeline-abcde",
+					GenerateName: "my-pipeline",
+				},
+				Spec: v1.PipelineRunSpec{
+					PipelineSpec: &v1.PipelineSpec{},
+				},
+			},
+			wantLabel: "my-pipeline",
+		},
+		{
+			name: "existing pipeline label is preserved and not overwritten",
+			pr: &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:         "my-pipelinerun",
+					GenerateName: "my-pipeline-",
+					Labels: map[string]string{
+						pipeline.PipelineLabelKey: "already-set",
+					},
+				},
+				Spec: v1.PipelineRunSpec{
+					PipelineSpec: &v1.PipelineSpec{},
+				},
+			},
+			wantLabel: "already-set",
+		},
+		{
+			name: "pipelineRef with name uses pipeline name not generateName",
+			pr: &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:         "my-pipelinerun-abcde",
+					GenerateName: "my-pipelinerun-",
+				},
+				Spec: v1.PipelineRunSpec{
+					PipelineRef: &v1.PipelineRef{Name: "the-pipeline"},
+				},
+			},
+			wantLabel: "the-pipeline",
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := propagatePipelineNameLabelToPipelineRun(tc.pr); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			got := tc.pr.Labels[pipeline.PipelineLabelKey]
+			if got != tc.wantLabel {
+				t.Errorf("pipeline label = %q, want %q", got, tc.wantLabel)
+			}
+		})
 	}
 }
 
