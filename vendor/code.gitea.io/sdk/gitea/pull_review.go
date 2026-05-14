@@ -92,6 +92,11 @@ type CreatePullReviewComment struct {
 	NewLineNum int64 `json:"new_position"`
 }
 
+// CreatePullReviewCommentReplyOptions are options to reply to a pull request review comment.
+type CreatePullReviewCommentReplyOptions struct {
+	Body string `json:"body"`
+}
+
 // SubmitPullReviewOptions are options to submit a pending pull review
 type SubmitPullReviewOptions struct {
 	State ReviewStateType `json:"event"`
@@ -142,6 +147,14 @@ func (opt CreatePullReviewComment) Validate() error {
 	}
 	if opt.NewLineNum != 0 && opt.OldLineNum != 0 {
 		return fmt.Errorf("old and new line num are set, cant identify the code comment position")
+	}
+	return nil
+}
+
+// Validate the CreatePullReviewCommentReplyOptions struct.
+func (opt CreatePullReviewCommentReplyOptions) Validate() error {
+	if len(strings.TrimSpace(opt.Body)) == 0 {
+		return fmt.Errorf("body is empty")
 	}
 	return nil
 }
@@ -202,8 +215,7 @@ func (c *Client) DeletePullReview(owner, repo string, index, id int64) (*Respons
 		return nil, err
 	}
 
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/pulls/%d/reviews/%d", owner, repo, index, id), jsonHeader, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/pulls/%d/reviews/%d", owner, repo, index, id), jsonHeader, nil)
 }
 
 // CreatePullReview create a review to an pull request
@@ -225,6 +237,28 @@ func (c *Client) CreatePullReview(owner, repo string, index int64, opt CreatePul
 	r := new(PullReview)
 	resp, err := c.getParsedResponse("POST",
 		fmt.Sprintf("/repos/%s/%s/pulls/%d/reviews", owner, repo, index),
+		jsonHeader, bytes.NewReader(body), r)
+	return r, resp, err
+}
+
+// CreatePullReviewCommentReply replies to a pull request review comment.
+// Available on Gitea main/nightly; first released version not assigned yet.
+// Upstream: gitea/gitea#36683 (331450b17a025ce78b5bf9405ca8d684607680ef).
+func (c *Client) CreatePullReviewCommentReply(owner, repo string, index, id int64, opt CreatePullReviewCommentReplyOptions) (*PullReviewComment, *Response, error) {
+	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
+		return nil, nil, err
+	}
+	if err := opt.Validate(); err != nil {
+		return nil, nil, err
+	}
+	body, err := json.Marshal(&opt)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	r := new(PullReviewComment)
+	resp, err := c.getParsedResponse("POST",
+		fmt.Sprintf("/repos/%s/%s/pulls/%d/comments/%d/replies", owner, repo, index, id),
 		jsonHeader, bytes.NewReader(body), r)
 	return r, resp, err
 }
@@ -265,10 +299,9 @@ func (c *Client) CreateReviewRequests(owner, repo string, index int64, opt PullR
 		return nil, err
 	}
 
-	_, resp, err := c.getResponse("POST",
+	return c.doRequestWithStatusHandle("POST",
 		fmt.Sprintf("/repos/%s/%s/pulls/%d/requested_reviewers", owner, repo, index),
 		jsonHeader, bytes.NewReader(body))
-	return resp, err
 }
 
 // DeleteReviewRequests delete review requests to an pull request
@@ -284,10 +317,9 @@ func (c *Client) DeleteReviewRequests(owner, repo string, index int64, opt PullR
 		return nil, err
 	}
 
-	_, resp, err := c.getResponse("DELETE",
+	return c.doRequestWithStatusHandle("DELETE",
 		fmt.Sprintf("/repos/%s/%s/pulls/%d/requested_reviewers", owner, repo, index),
 		jsonHeader, bytes.NewReader(body))
-	return resp, err
 }
 
 // DismissPullReview dismiss a review for a pull request
@@ -303,10 +335,9 @@ func (c *Client) DismissPullReview(owner, repo string, index, id int64, opt Dism
 		return nil, err
 	}
 
-	_, resp, err := c.getResponse("POST",
+	return c.doRequestWithStatusHandle("POST",
 		fmt.Sprintf("/repos/%s/%s/pulls/%d/reviews/%d/dismissals", owner, repo, index, id),
 		jsonHeader, bytes.NewReader(body))
-	return resp, err
 }
 
 // UnDismissPullReview cancel to dismiss a review for a pull request
@@ -318,8 +349,27 @@ func (c *Client) UnDismissPullReview(owner, repo string, index, id int64) (*Resp
 		return nil, err
 	}
 
-	_, resp, err := c.getResponse("POST",
+	return c.doRequestWithStatusHandle("POST",
 		fmt.Sprintf("/repos/%s/%s/pulls/%d/reviews/%d/undismissals", owner, repo, index, id),
 		jsonHeader, nil)
-	return resp, err
+}
+
+// ResolvePullReviewComment resolves a pull-request review comment conversation.
+// Available on Gitea main/nightly; first released version not assigned yet.
+// Upstream: gitea/gitea#36441 (c2dea22926f9e7a40aa47296e7b9bc3d1c5b039e).
+func (c *Client) ResolvePullReviewComment(owner, repo string, commentID int64) (*Response, error) {
+	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
+		return nil, err
+	}
+	return c.doRequestWithStatusHandle("POST", fmt.Sprintf("/repos/%s/%s/pulls/comments/%d/resolve", owner, repo, commentID), nil, nil)
+}
+
+// UnresolvePullReviewComment unresolves a pull-request review comment conversation.
+// Available on Gitea main/nightly; first released version not assigned yet.
+// Upstream: gitea/gitea#36441 (c2dea22926f9e7a40aa47296e7b9bc3d1c5b039e).
+func (c *Client) UnresolvePullReviewComment(owner, repo string, commentID int64) (*Response, error) {
+	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
+		return nil, err
+	}
+	return c.doRequestWithStatusHandle("POST", fmt.Sprintf("/repos/%s/%s/pulls/comments/%d/unresolve", owner, repo, commentID), nil, nil)
 }
