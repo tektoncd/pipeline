@@ -62,10 +62,20 @@ func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekto
 			if taskrun.Status.Provenance != nil {
 				refSource = taskrun.Status.Provenance.RefSource
 			}
+			// Use the persisted resolved task namespace from Status if available,
+			// otherwise fall back to the TaskRun's namespace. This ensures that
+			// on subsequent reconciles (when TaskSpec is cached in status), the
+			// returned Task metadata preserves the original resolved namespace.
+			// Status is used instead of annotations because it is controller-managed
+			// and cannot be injected by users or malicious Tasks.
+			taskNamespace := taskrun.Namespace
+			if taskrun.Status.ResolvedTaskNamespace != "" {
+				taskNamespace = taskrun.Status.ResolvedTaskNamespace
+			}
 			return &v1.Task{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
-					Namespace: taskrun.Namespace,
+					Namespace: taskNamespace,
 				},
 				Spec: *taskrun.Status.TaskSpec,
 			}, refSource, nil, nil
@@ -138,29 +148,35 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 // It also requires a kubeclient, tektonclient, requester in case it needs to find that task in
 // cluster or authorize against an external repository. It will figure out whether it needs to look in the cluster or in
 // a remote location to fetch the reference.
-func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester, tr *v1.TaskRun, taskSpec v1.TaskSpec, step *v1.Step) GetStepAction {
+func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester, tr *v1.TaskRun, taskSpec v1.TaskSpec, step *v1.Step, taskNamespace string) GetStepAction {
 	trName := tr.Name
-	namespace := tr.Namespace
 	if step.Ref != nil && step.Ref.Resolver != "" && requester != nil {
 		// Return an inline function that implements GetStepAction by calling Resolver.Get with the specified StepAction type and
 		// casting it to a StepAction.
 		return func(ctx context.Context, name string) (*v1beta1.StepAction, *v1.RefSource, error) {
 			// Perform params replacements for StepAction resolver params
 			ApplyParameterSubstitutionInResolverParams(tr, taskSpec, step)
+			// ResolutionRequests must be created in the TaskRun's namespace, not the
+			// Task's namespace, because Kubernetes does not support cross-namespace
+			// owner references. The TaskRun owns the ResolutionRequest, so both must
+			// live in the same namespace.
 			resolverPayload := remoteresource.ResolverPayload{
 				Name:      trName,
-				Namespace: namespace,
+				Namespace: tr.Namespace,
 				ResolutionSpec: &resolutionV1beta1.ResolutionRequestSpec{
 					Params: step.Ref.Params,
 					URL:    step.Ref.Name,
 				},
 			}
 			resolver := resolution.NewResolver(requester, tr, string(step.Ref.Resolver), resolverPayload)
-			return resolveStepAction(ctx, resolver, name, namespace, k8s, tekton)
+			return resolveStepAction(ctx, resolver, name, tr.Namespace, k8s, tekton)
 		}
 	}
+	// For local (non-resolver) StepAction lookups, use taskNamespace — the namespace
+	// where the resolved Task lives. StepActions referenced by a Task should be looked
+	// up in the Task's namespace.
 	local := &LocalStepActionRefResolver{
-		Namespace:    namespace,
+		Namespace:    taskNamespace,
 		Tektonclient: tekton,
 	}
 	return local.GetStepAction
