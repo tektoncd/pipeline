@@ -913,7 +913,6 @@ func terminateStepsInPod(tr *v1.TaskRun, taskRunReason v1.TaskRunReason) {
 				ExitCode:   1,
 				StartedAt:  step.Running.StartedAt,
 				FinishedAt: *tr.Status.CompletionTime,
-				// TODO(#7385): replace with more pod/container termination reason instead of overloading taskRunReason
 				Reason:  taskRunReason.String(),
 				Message: fmt.Sprintf("Step %s terminated as pod %s is terminated", step.Name, tr.Status.PodName),
 			}
@@ -927,7 +926,6 @@ func terminateStepsInPod(tr *v1.TaskRun, taskRunReason v1.TaskRunReason) {
 				ExitCode:   1,
 				StartedAt:  tr.CreationTimestamp, // startedAt cannot be null due to CRD schema validation
 				FinishedAt: *tr.Status.CompletionTime,
-				// TODO(#7385): replace with more pod/container termination reason instead of overloading taskRunReason
 				Reason:  taskRunReason.String(),
 				Message: fmt.Sprintf("Step %s terminated as pod %s is terminated", step.Name, tr.Status.PodName),
 			}
