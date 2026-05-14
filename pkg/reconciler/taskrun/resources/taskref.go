@@ -27,7 +27,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionV1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
-	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
+	resolutionhelper "github.com/tektoncd/pipeline/pkg/reconciler/resolution"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/remote/resolution"
 	remoteresource "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
@@ -232,10 +232,7 @@ func resolveStepAction(ctx context.Context, resolver remote.Resolver, name, name
 	}
 	switch obj := obj.(type) {
 	case *v1beta1.StepAction:
-		// Cleanup object from things we don't care about
-		// FIXME: extract this in a function
-		obj.ObjectMeta.OwnerReferences = nil
-		o, err := apiserver.DryRunValidate(ctx, namespace, obj, tekton)
+		o, _, err := resolutionhelper.CleanupAndValidate(ctx, namespace, obj, nil, tekton, nil, nil)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -245,10 +242,7 @@ func resolveStepAction(ctx context.Context, resolver remote.Resolver, name, name
 		}
 	case *v1alpha1.StepAction:
 		obj.SetDefaults(ctx)
-		// Cleanup object from things we don't care about
-		// FIXME: extract this in a function
-		obj.ObjectMeta.OwnerReferences = nil
-		o, err := apiserver.DryRunValidate(ctx, namespace, obj, tekton)
+		o, _, err := resolutionhelper.CleanupAndValidate(ctx, namespace, obj, nil, tekton, nil, nil)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -283,14 +277,7 @@ func readRuntimeObjectAsTask(ctx context.Context, namespace string, obj runtime.
 	switch obj := obj.(type) {
 	case *v1beta1.Task:
 		obj.SetDefaults(ctx)
-		// Cleanup object from things we don't care about
-		// FIXME: extract this in a function
-		obj.ObjectMeta.OwnerReferences = nil
-		// Verify the Task once we fetch from the remote resolution, mutating, validation and conversion of the task should happen after the verification, since signatures are based on the remote task contents
-		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
-		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
-		// without actually creating the Task on the cluster.
-		o, err := apiserver.DryRunValidate(ctx, namespace, obj, tekton)
+		o, vr, err := resolutionhelper.CleanupAndValidate(ctx, namespace, obj, k8s, tekton, refSource, verificationPolicies)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -305,25 +292,17 @@ func readRuntimeObjectAsTask(ctx context.Context, namespace string, obj runtime.
 			if err := mutatedTask.ConvertTo(ctx, t); err != nil {
 				return nil, nil, fmt.Errorf("failed to convert obj %s into Pipeline", mutatedTask.GetObjectKind().GroupVersionKind().String())
 			}
-			return t, &vr, nil
+			return t, vr, nil
 		}
 	case *v1.Task:
-		// This SetDefaults is currently not necessary, but for consistency, it is recommended to add it.
-		// Avoid forgetting to add it in the future when there is a v2 version, causing similar problems.
 		obj.SetDefaults(ctx)
-		// Cleanup object from things we don't care about
-		// FIXME: extract this in a function
-		obj.ObjectMeta.OwnerReferences = nil
-		vr := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
-		// Issue a dry-run request to create the remote Task, so that it can undergo validation from validating admission webhooks
-		// without actually creating the Task on the cluster
-		o, err := apiserver.DryRunValidate(ctx, namespace, obj, tekton)
+		o, vr, err := resolutionhelper.CleanupAndValidate(ctx, namespace, obj, k8s, tekton, refSource, verificationPolicies)
 		if err != nil {
 			return nil, nil, err
 		}
 		if mutatedTask, ok := o.(*v1.Task); ok {
 			mutatedTask.ObjectMeta = obj.ObjectMeta
-			return mutatedTask, &vr, nil
+			return mutatedTask, vr, nil
 		}
 	}
 	return nil, nil, errors.New("resource is not a task")
