@@ -3147,6 +3147,56 @@ PipelineTaskOnErrorType
 can be set to [ continue | stopAndFail ]</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>stepSpecs</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunStepSpec">
+[]TaskRunStepSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StepSpecs is used to override the compute resources of steps in the
+referenced Task at the Pipeline level. These values take precedence over
+the Task&rsquo;s step resources but can be overridden by PipelineRun&rsquo;s
+taskRunSpecs[].stepSpecs.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sidecarSpecs</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunSidecarSpec">
+[]TaskRunSidecarSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SidecarSpecs is used to override the compute resources of sidecars in the
+referenced Task at the Pipeline level. These values take precedence over
+the Task&rsquo;s sidecar resources but can be overridden by PipelineRun&rsquo;s
+taskRunSpecs[].sidecarSpecs.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>computeResources</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Compute resources to use for this PipelineTask. These values take
+precedence over the Task&rsquo;s compute resources but can be overridden by
+PipelineRun&rsquo;s taskRunSpecs[].computeResources.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.PipelineTaskMetadata">PipelineTaskMetadata

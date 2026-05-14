@@ -183,6 +183,8 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(pt.validateEnabledInlineSpec(ctx))
 
 	errs = errs.Also(pt.validateEmbeddedOrType())
+
+	errs = errs.Also(pt.validateComputeResourceOverrides(ctx))
 	// taskKinds contains the kinds when the apiVersion is not set, they are not custom tasks,
 	// if apiVersion is set they are custom tasks.
 	taskKinds := map[TaskKind]bool{
@@ -984,4 +986,44 @@ func (ps *PipelineSpec) GetIndexingReferencesToArrayParams() sets.String {
 		arrayIndexParamRefs = append(arrayIndexParamRefs, extractArrayIndexingParamRefs(p)...)
 	}
 	return sets.NewString(arrayIndexParamRefs...)
+}
+
+// validateComputeResourceOverrides validates the StepSpecs, SidecarSpecs, and
+// ComputeResources fields on a PipelineTask. These follow the same validation
+// rules as the equivalent fields on PipelineTaskRunSpec.
+func (pt PipelineTask) validateComputeResourceOverrides(ctx context.Context) (errs *apis.FieldError) {
+	hasOverrides := pt.StepSpecs != nil || pt.SidecarSpecs != nil || pt.ComputeResources != nil
+	if !hasOverrides {
+		return nil
+	}
+
+	// These fields are only meaningful for regular tasks (not custom tasks).
+	isCustom := (pt.TaskRef != nil && pt.TaskRef.IsCustomTask()) ||
+		(pt.TaskSpec != nil && pt.TaskSpec.IsCustomTask())
+	if isCustom {
+		if pt.StepSpecs != nil {
+			errs = errs.Also(apis.ErrInvalidValue("stepSpecs cannot be used with custom tasks", "stepSpecs"))
+		}
+		if pt.SidecarSpecs != nil {
+			errs = errs.Also(apis.ErrInvalidValue("sidecarSpecs cannot be used with custom tasks", "sidecarSpecs"))
+		}
+		if pt.ComputeResources != nil {
+			errs = errs.Also(apis.ErrInvalidValue("computeResources cannot be used with custom tasks", "computeResources"))
+		}
+		return errs
+	}
+
+	if pt.StepSpecs != nil {
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepSpecs", config.BetaAPIFields).ViaField("stepSpecs"))
+		errs = errs.Also(validateStepSpecs(pt.StepSpecs).ViaField("stepSpecs"))
+	}
+	if pt.SidecarSpecs != nil {
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "sidecarSpecs", config.BetaAPIFields).ViaField("sidecarSpecs"))
+		errs = errs.Also(validateSidecarSpecs(pt.SidecarSpecs).ViaField("sidecarSpecs"))
+	}
+	if pt.ComputeResources != nil {
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "computeResources", config.BetaAPIFields).ViaField("computeResources"))
+		errs = errs.Also(validateTaskRunComputeResources(pt.ComputeResources, pt.StepSpecs))
+	}
+	return errs
 }

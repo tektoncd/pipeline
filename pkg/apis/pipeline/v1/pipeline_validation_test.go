@@ -25,6 +25,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
+	corev1resources "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
@@ -4955,6 +4957,231 @@ func TestGetIndexingReferencesToArrayParams(t *testing.T) {
 			got := tt.spec.GetIndexingReferencesToArrayParams()
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Errorf("wrong array index references: %s", d)
+			}
+		})
+	}
+}
+
+func TestPipelineTask_ValidateComputeResourceOverrides(t *testing.T) {
+	tests := []struct {
+		name    string
+		pt      PipelineTask
+		wc      func(context.Context) context.Context
+		wantErr *apis.FieldError
+	}{{
+		name: "stepSpecs rejected when enable-api-fields is stable",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			StepSpecs: []TaskRunStepSpec{{
+				Name: "step1",
+				ComputeResources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}},
+		},
+		wc:      cfgtesting.EnableStableAPIFields,
+		wantErr: apis.ErrGeneric(`stepSpecs requires "enable-api-fields" feature gate to be "alpha" or "beta" but it is "stable"`).ViaField("stepSpecs"),
+	}, {
+		name: "sidecarSpecs rejected when enable-api-fields is stable",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			SidecarSpecs: []TaskRunSidecarSpec{{
+				Name: "sidecar1",
+				ComputeResources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}},
+		},
+		wc:      cfgtesting.EnableStableAPIFields,
+		wantErr: apis.ErrGeneric(`sidecarSpecs requires "enable-api-fields" feature gate to be "alpha" or "beta" but it is "stable"`).ViaField("sidecarSpecs"),
+	}, {
+		name: "computeResources rejected when enable-api-fields is stable",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
+			},
+		},
+		wc:      cfgtesting.EnableStableAPIFields,
+		wantErr: apis.ErrGeneric(`computeResources requires "enable-api-fields" feature gate to be "alpha" or "beta" but it is "stable"`).ViaField("computeResources"),
+	}, {
+		name: "stepSpecs accepted when enable-api-fields is beta",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			StepSpecs: []TaskRunStepSpec{{
+				Name: "step1",
+				ComputeResources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}},
+		},
+		wc: cfgtesting.EnableBetaAPIFields,
+	}, {
+		name: "sidecarSpecs accepted when enable-api-fields is beta",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			SidecarSpecs: []TaskRunSidecarSpec{{
+				Name: "sidecar1",
+				ComputeResources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}},
+		},
+		wc: cfgtesting.EnableBetaAPIFields,
+	}, {
+		name: "computeResources accepted when enable-api-fields is beta",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
+			},
+		},
+		wc: cfgtesting.EnableBetaAPIFields,
+	}, {
+		name: "missing stepSpecs name",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			StepSpecs: []TaskRunStepSpec{{
+				ComputeResources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}},
+		},
+		wc:      cfgtesting.EnableBetaAPIFields,
+		wantErr: apis.ErrMissingField("stepSpecs[0].name"),
+	}, {
+		name: "duplicate stepSpecs names",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			StepSpecs: []TaskRunStepSpec{{
+				Name: "step1",
+				ComputeResources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}, {
+				Name: "step1",
+				ComputeResources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
+				},
+			}},
+		},
+		wc:      cfgtesting.EnableBetaAPIFields,
+		wantErr: apis.ErrMultipleOneOf("stepSpecs[1].name"),
+	}, {
+		name: "missing sidecarSpecs name",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			SidecarSpecs: []TaskRunSidecarSpec{{
+				ComputeResources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}},
+		},
+		wc:      cfgtesting.EnableBetaAPIFields,
+		wantErr: apis.ErrMissingField("sidecarSpecs[0].name"),
+	}, {
+		name: "duplicate sidecarSpecs names",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			SidecarSpecs: []TaskRunSidecarSpec{{
+				Name: "sidecar1",
+				ComputeResources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}, {
+				Name: "sidecar1",
+				ComputeResources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
+				},
+			}},
+		},
+		wc:      cfgtesting.EnableBetaAPIFields,
+		wantErr: apis.ErrMultipleOneOf("sidecarSpecs[1].name"),
+	}, {
+		name: "computeResources and stepSpecs with resources produces mutual exclusion error",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			StepSpecs: []TaskRunStepSpec{{
+				Name: "step1",
+				ComputeResources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}},
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
+			},
+		},
+		wc: cfgtesting.EnableBetaAPIFields,
+		wantErr: apis.ErrMultipleOneOf(
+			"stepSpecs.resources",
+			"computeResources",
+		),
+	}, {
+		name: "stepSpecs without resources coexists with computeResources",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			StepSpecs: []TaskRunStepSpec{{
+				Name: "step1",
+			}},
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
+			},
+		},
+		wc: cfgtesting.EnableBetaAPIFields,
+	}, {
+		name: "stepSpecs rejected on custom task",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{APIVersion: "example.com/v1", Kind: "Example"},
+			StepSpecs: []TaskRunStepSpec{{
+				Name: "step1",
+				ComputeResources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}},
+		},
+		wc:      cfgtesting.EnableBetaAPIFields,
+		wantErr: apis.ErrInvalidValue("stepSpecs cannot be used with custom tasks", "stepSpecs"),
+	}, {
+		name: "computeResources rejected on custom task",
+		pt: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{APIVersion: "example.com/v1", Kind: "Example"},
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
+			},
+		},
+		wc:      cfgtesting.EnableBetaAPIFields,
+		wantErr: apis.ErrInvalidValue("computeResources cannot be used with custom tasks", "computeResources"),
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+			if tt.wc != nil {
+				ctx = tt.wc(ctx)
+			}
+			err := tt.pt.Validate(ctx)
+			if tt.wantErr != nil {
+				if err == nil {
+					t.Fatalf("PipelineTask.Validate() did not return error, want %v", tt.wantErr)
+				}
+				if d := cmp.Diff(tt.wantErr.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+					t.Errorf("PipelineTask.Validate() errors diff %s", diff.PrintWantGot(d))
+				}
+			} else if err != nil {
+				t.Errorf("PipelineTask.Validate() returned unexpected error: %v", err)
 			}
 		})
 	}

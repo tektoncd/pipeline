@@ -19114,6 +19114,369 @@ func TestMemberOfLookup(t *testing.T) {
 			actual := memberOfLookup(tc.spec, tc.taskName)
 			if actual != tc.expected {
 				t.Errorf("memberOfLookup() = %q, expected %q", actual, tc.expected)
+||||||| parent of fd75640a6 (fix: add feature gate checks, cross-layer validation, and tests)
+func TestReconcile_PipelineTaskComputeResourceOverrides(t *testing.T) {
+	testCases := []struct {
+		name                     string
+		pipeline                 *v1.Pipeline
+		pipelineRun              *v1.PipelineRun
+		expectedStepSpecs        []v1.TaskRunStepSpec
+		expectedSidecarSpecs     []v1.TaskRunSidecarSpec
+		expectedComputeResources *corev1.ResourceRequirements
+	}{{
+		name: "Pipeline-level stepSpecs applied when PipelineRun does not override",
+		pipeline: parse.MustParseV1Pipeline(t, `
+metadata:
+  name: p
+  namespace: default
+spec:
+  tasks:
+  - name: task1
+    stepSpecs:
+    - name: build
+      computeResources:
+        requests:
+          memory: "4Gi"
+    taskSpec:
+      steps:
+      - name: build
+        image: foo
+`),
+		pipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineRef:
+    name: p
+`),
+		expectedStepSpecs: []v1.TaskRunStepSpec{{
+			Name: "build",
+			ComputeResources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")},
+			},
+		}},
+	}, {
+		name: "PipelineRun-level stepSpecs override Pipeline-level",
+		pipeline: parse.MustParseV1Pipeline(t, `
+metadata:
+  name: p
+  namespace: default
+spec:
+  tasks:
+  - name: task1
+    stepSpecs:
+    - name: build
+      computeResources:
+        requests:
+          memory: "4Gi"
+    taskSpec:
+      steps:
+      - name: build
+        image: foo
+`),
+		pipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineRef:
+    name: p
+  taskRunSpecs:
+  - pipelineTaskName: task1
+    stepSpecs:
+    - name: build
+      computeResources:
+        requests:
+          memory: "8Gi"
+`),
+		expectedStepSpecs: []v1.TaskRunStepSpec{{
+			Name: "build",
+			ComputeResources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("8Gi")},
+			},
+		}},
+	}, {
+		name: "Pipeline-level sidecarSpecs applied when PipelineRun does not override",
+		pipeline: parse.MustParseV1Pipeline(t, `
+metadata:
+  name: p
+  namespace: default
+spec:
+  tasks:
+  - name: task1
+    sidecarSpecs:
+    - name: logging
+      computeResources:
+        requests:
+          cpu: "250m"
+    taskSpec:
+      steps:
+      - name: build
+        image: foo
+      sidecars:
+      - name: logging
+        image: log-image
+`),
+		pipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineRef:
+    name: p
+`),
+		expectedSidecarSpecs: []v1.TaskRunSidecarSpec{{
+			Name: "logging",
+			ComputeResources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("250m")},
+			},
+		}},
+	}, {
+		name: "PipelineRun-level sidecarSpecs override Pipeline-level",
+		pipeline: parse.MustParseV1Pipeline(t, `
+metadata:
+  name: p
+  namespace: default
+spec:
+  tasks:
+  - name: task1
+    sidecarSpecs:
+    - name: logging
+      computeResources:
+        requests:
+          cpu: "250m"
+    taskSpec:
+      steps:
+      - name: build
+        image: foo
+      sidecars:
+      - name: logging
+        image: log-image
+`),
+		pipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineRef:
+    name: p
+  taskRunSpecs:
+  - pipelineTaskName: task1
+    sidecarSpecs:
+    - name: logging
+      computeResources:
+        requests:
+          cpu: "500m"
+`),
+		expectedSidecarSpecs: []v1.TaskRunSidecarSpec{{
+			Name: "logging",
+			ComputeResources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("500m")},
+			},
+		}},
+	}, {
+		name: "PipelineRun-level computeResources override Pipeline-level",
+		pipeline: parse.MustParseV1Pipeline(t, `
+metadata:
+  name: p
+  namespace: default
+spec:
+  tasks:
+  - name: task1
+    computeResources:
+      requests:
+        cpu: "1"
+    taskSpec:
+      steps:
+      - name: build
+        image: foo
+`),
+		pipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineRef:
+    name: p
+  taskRunSpecs:
+  - pipelineTaskName: task1
+    computeResources:
+      requests:
+        cpu: "2"
+`),
+		expectedComputeResources: &corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("2")},
+		},
+	}, {
+		name: "Pipeline-level computeResources applied when PipelineRun does not override",
+		pipeline: parse.MustParseV1Pipeline(t, `
+metadata:
+  name: p
+  namespace: default
+spec:
+  tasks:
+  - name: task1
+    computeResources:
+      requests:
+        cpu: "1"
+    taskSpec:
+      steps:
+      - name: build
+        image: foo
+`),
+		pipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineRef:
+    name: p
+`),
+		expectedComputeResources: &corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
+		},
+	}, {
+		name: "Cross-layer: PipelineRun stepSpecs with resources clears Pipeline computeResources",
+		pipeline: parse.MustParseV1Pipeline(t, `
+metadata:
+  name: p
+  namespace: default
+spec:
+  tasks:
+  - name: task1
+    computeResources:
+      requests:
+        cpu: "1"
+    taskSpec:
+      steps:
+      - name: build
+        image: foo
+`),
+		pipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineRef:
+    name: p
+  taskRunSpecs:
+  - pipelineTaskName: task1
+    stepSpecs:
+    - name: build
+      computeResources:
+        requests:
+          memory: "2Gi"
+`),
+		expectedStepSpecs: []v1.TaskRunStepSpec{{
+			Name: "build",
+			ComputeResources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+			},
+		}},
+		// computeResources should be nil because per-step resources take precedence
+		expectedComputeResources: nil,
+	}, {
+		name: "Cross-layer: Pipeline stepSpecs with resources clears PipelineRun computeResources",
+		pipeline: parse.MustParseV1Pipeline(t, `
+metadata:
+  name: p
+  namespace: default
+spec:
+  tasks:
+  - name: task1
+    stepSpecs:
+    - name: build
+      computeResources:
+        requests:
+          memory: "4Gi"
+    taskSpec:
+      steps:
+      - name: build
+        image: foo
+`),
+		pipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineRef:
+    name: p
+  taskRunSpecs:
+  - pipelineTaskName: task1
+    computeResources:
+      requests:
+        cpu: "2"
+`),
+		// When both computeResources and stepSpecs with per-step resources exist,
+		// the stepSpecs remain (Pipeline-level since PipelineRun didn't override)
+		// and computeResources is cleared.
+		expectedStepSpecs: []v1.TaskRunStepSpec{{
+			Name: "build",
+			ComputeResources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")},
+			},
+		}},
+		expectedComputeResources: nil,
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				PipelineRuns: []*v1.PipelineRun{tc.pipelineRun},
+				Pipelines:    []*v1.Pipeline{tc.pipeline},
+			}
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+
+			reconciledRun, clients := prt.reconcileRun("default", tc.pipelineRun.Name, []string{}, false)
+
+			if reconciledRun.Status.CompletionTime != nil {
+				t.Errorf("Expected no CompletionTime on valid PipelineRun, but got %v", reconciledRun.Status.CompletionTime)
+			}
+
+			TaskRunList, err := clients.Pipeline.TektonV1().TaskRuns("default").List(prt.TestAssets.Ctx, metav1.ListOptions{})
+			if err != nil {
+				t.Fatalf("Failure to list TaskRuns: %s", err)
+			}
+			if len(TaskRunList.Items) != 1 {
+				t.Fatalf("Expected 1 TaskRun, got %d", len(TaskRunList.Items))
+			}
+			tr := TaskRunList.Items[0]
+
+			// Verify StepSpecs
+			if tc.expectedStepSpecs != nil {
+				if d := cmp.Diff(tc.expectedStepSpecs, tr.Spec.StepSpecs); d != "" {
+					t.Errorf("StepSpecs mismatch (-want +got):\n%s", d)
+				}
+			} else {
+				if len(tr.Spec.StepSpecs) > 0 {
+					t.Errorf("Expected no StepSpecs, got %v", tr.Spec.StepSpecs)
+				}
+			}
+
+			// Verify SidecarSpecs
+			if tc.expectedSidecarSpecs != nil {
+				if d := cmp.Diff(tc.expectedSidecarSpecs, tr.Spec.SidecarSpecs); d != "" {
+					t.Errorf("SidecarSpecs mismatch (-want +got):\n%s", d)
+				}
+			} else {
+				if len(tr.Spec.SidecarSpecs) > 0 {
+					t.Errorf("Expected no SidecarSpecs, got %v", tr.Spec.SidecarSpecs)
+				}
+			}
+
+			// Verify ComputeResources
+			if tc.expectedComputeResources != nil {
+				if tr.Spec.ComputeResources == nil {
+					t.Errorf("Expected ComputeResources %v, got nil", tc.expectedComputeResources)
+				} else if d := cmp.Diff(*tc.expectedComputeResources, *tr.Spec.ComputeResources); d != "" {
+					t.Errorf("ComputeResources mismatch (-want +got):\n%s", d)
+				}
+			} else {
+				if tr.Spec.ComputeResources != nil {
+					t.Errorf("Expected no ComputeResources, got %v", tr.Spec.ComputeResources)
+				}
 			}
 		})
 	}
