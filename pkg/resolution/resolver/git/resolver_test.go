@@ -387,6 +387,7 @@ type params struct {
 	configKey   string
 	gitToken    string
 	gitTokenKey string
+	usernameKey string
 }
 
 func TestResolve(t *testing.T) {
@@ -468,6 +469,7 @@ func TestResolve(t *testing.T) {
 		args              *params
 		config            map[string]string
 		apiToken          string
+		username          string
 		expectedCommitSHA string
 		expectedStatus    *v1beta1.ResolutionRequestStatus
 		expectedErr       error
@@ -535,6 +537,18 @@ func TestResolve(t *testing.T) {
 		expectedCommitSHA: commitSHAsInAnonRepo[2],
 		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte(mainContent)),
 	}, {
+		name: "clone: secret for git clone with username",
+		args: &params{
+			pathInRepo:  "./released",
+			url:         anonFakeRepoURL,
+			gitToken:    "tokenKey-secret",
+			gitTokenKey: "tokenKey",
+			namespace:   "foo",
+			usernameKey: "username",
+		},
+		expectedCommitSHA: commitSHAsInAnonRepo[2],
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte("released content in main branch and in tag v1")),
+	}, {
 		name: "clone: secret for git clone does not exist",
 		args: &params{
 			pathInRepo:  "./released",
@@ -585,6 +599,27 @@ func TestResolve(t *testing.T) {
 			APISecretNamespaceKey: system.Namespace(),
 		},
 		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData(mainTaskYAML),
+	}, {
+		name: "api: successful task with username",
+		args: &params{
+			revision:    "main",
+			pathInRepo:  "tasks/example-task.yaml",
+			org:         testOrg,
+			repo:        testRepo,
+			usernameKey: "usernameKey",
+		},
+		config: map[string]string{
+			ServerURLKey:          "fake",
+			SCMTypeKey:            "fake",
+			APISecretNameKey:      "tokenKey-secret",
+			APISecretKeyKey:       "tokenKey",
+			APISecretNamespaceKey: system.Namespace(),
+			APIUsernameSecretKey:  "usernameKey",
+		},
+		apiToken:          "some-tokenKey",
+		username:          "some-username",
 		expectedCommitSHA: commitSHAsInSCMRepo[0],
 		expectedStatus:    resolution.CreateResolutionRequestStatusWithData(mainTaskYAML),
 	}, {
@@ -901,29 +936,46 @@ func TestResolve(t *testing.T) {
 			}
 
 			frtesting.RunResolverReconcileTest(ctx, t, d, resolver, request, expectedStatus, tc.expectedErr, func(resolver framework.Resolver, testAssets test.Assets) {
-				var secretName, secretNameKey, secretNamespace string
+				var secretName, secretTokenKey, secretUsernameKey, secretNamespace string
 				if tc.config[tc.configIdentifer+APISecretNameKey] != "" && tc.config[tc.configIdentifer+APISecretNamespaceKey] != "" && tc.config[tc.configIdentifer+APISecretKeyKey] != "" && tc.apiToken != "" {
-					secretName, secretNameKey, secretNamespace = tc.config[tc.configIdentifer+APISecretNameKey], tc.config[tc.configIdentifer+APISecretKeyKey], tc.config[tc.configIdentifer+APISecretNamespaceKey]
+					secretName, secretTokenKey, secretNamespace = tc.config[tc.configIdentifer+APISecretNameKey], tc.config[tc.configIdentifer+APISecretKeyKey], tc.config[tc.configIdentifer+APISecretNamespaceKey]
 				}
 
+				secretUsernameKey = tc.config[tc.configIdentifer+APIUsernameSecretKey]
+
 				if tc.args.token != "" && tc.args.namespace != "" && tc.args.tokenKey != "" {
-					secretName, secretNameKey, secretNamespace = tc.args.token, tc.args.tokenKey, tc.args.namespace
+					secretName, secretTokenKey, secretNamespace = tc.args.token, tc.args.tokenKey, tc.args.namespace
 				}
 
 				if tc.args.gitToken != "" && tc.args.gitTokenKey != "" && tc.args.namespace != "" {
-					secretName, secretNameKey, secretNamespace = tc.args.gitToken, tc.args.gitTokenKey, tc.args.namespace
+					secretName, secretTokenKey, secretNamespace = tc.args.gitToken, tc.args.gitTokenKey, tc.args.namespace
 				}
-				if secretName == "" || secretNameKey == "" || secretNamespace == "" {
+
+				if tc.args.usernameKey != "" {
+					secretUsernameKey = tc.args.usernameKey
+				}
+
+				if secretName == "" || secretTokenKey == "" || secretNamespace == "" {
 					return
 				}
+
+				encode := func(s string) []byte {
+					return []byte(base64.StdEncoding.Strict().EncodeToString([]byte(s)))
+				}
+
+				var data = make(map[string][]byte)
+				data[secretTokenKey] = encode(tc.apiToken)
+
+				if secretUsernameKey != "" {
+					data[secretUsernameKey] = encode(tc.username)
+				}
+
 				tokenSecret := &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      secretName,
 						Namespace: secretNamespace,
 					},
-					Data: map[string][]byte{
-						secretNameKey: []byte(base64.StdEncoding.Strict().EncodeToString([]byte(tc.apiToken))),
-					},
+					Data: data,
 					Type: corev1.SecretTypeOpaque,
 				}
 				if _, err := testAssets.Clients.Kube.CoreV1().Secrets(secretNamespace).Create(ctx, tokenSecret, metav1.CreateOptions{}); err != nil {
@@ -990,6 +1042,10 @@ func createRequest(args *params) *v1beta1.ResolutionRequest {
 				Name:  GitTokenKeyParam,
 				Value: *pipelinev1.NewStructuredValues(args.gitTokenKey),
 			})
+			rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
+				Name:  UsernameKeyParam,
+				Value: *pipelinev1.NewStructuredValues(args.usernameKey),
+			})
 		}
 	} else {
 		rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
@@ -1008,6 +1064,10 @@ func createRequest(args *params) *v1beta1.ResolutionRequest {
 			rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
 				Name:  TokenKeyParam,
 				Value: *pipelinev1.NewStructuredValues(args.tokenKey),
+			})
+			rr.Spec.Params = append(rr.Spec.Params, pipelinev1.Param{
+				Name:  UsernameKeyParam,
+				Value: *pipelinev1.NewStructuredValues(args.usernameKey),
 			})
 		}
 	}
