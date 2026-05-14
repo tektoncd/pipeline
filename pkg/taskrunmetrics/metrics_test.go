@@ -617,6 +617,47 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		expectedCount:    1,
 		expectedDuration: 60,
 	}, {
+		name: "for succeeded taskrun in anonymous pipelinerun",
+		taskRun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "taskrun-1", Namespace: "ns",
+				Labels: map[string]string{
+					// anonymous pipeline: both labels share the same value
+					pipeline.PipelineLabelKey:    "pipelinerun-1",
+					pipeline.PipelineRunLabelKey: "pipelinerun-1",
+				},
+			},
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{Name: "task-1"},
+			},
+			Status: v1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
+		beforeCondition:  nil,
+		countWithReason:  false,
+		taskrunLevel:     config.TaskrunLevelAtTaskrun,
+		pipelinerunLevel: config.PipelinerunLevelAtPipelinerun,
+		expectedTags: map[string]string{
+			"pipeline":    "anonymous",
+			"pipelinerun": "pipelinerun-1",
+			"task":        "task-1",
+			"taskrun":     "taskrun-1",
+			"namespace":   "ns",
+			"status":      "success",
+		},
+		expectedCount:    1,
+		expectedDuration: 60,
+	}, {
 		name: "for succeeded taskrun ref cluster task",
 		taskRun: &v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns", Labels: map[string]string{
@@ -1326,6 +1367,19 @@ func TestTaskRunIsOfPipelinerun(t *testing.T) {
 		expectedValue:         true,
 		expetectedPipeline:    "pipeline",
 		expetectedPipelineRun: "pipelinerun",
+	}, {
+		name: "anonymous pipeline (pipeline label == pipelinerun label)",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey:    "pipelinerun-xyz",
+					pipeline.PipelineRunLabelKey: "pipelinerun-xyz",
+				},
+			},
+		},
+		expectedValue:         true,
+		expetectedPipeline:    "anonymous",
+		expetectedPipelineRun: "pipelinerun-xyz",
 	}, {
 		name:          "no",
 		tr:            &v1.TaskRun{},

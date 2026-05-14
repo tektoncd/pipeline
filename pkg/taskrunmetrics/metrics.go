@@ -455,6 +455,12 @@ func getTaskTagName(tr *v1.TaskRun) string {
 func IsPartOfPipeline(tr *v1.TaskRun) (bool, string, string) {
 	if pipelineName, ok := tr.Labels[pipeline.PipelineLabelKey]; ok {
 		if pipelineRun, ok := tr.Labels[pipeline.PipelineRunLabelKey]; ok {
+			// When the pipeline label equals the pipelinerun label, the pipeline
+			// was defined inline (anonymous). Use "anonymous" to avoid high cardinality
+			// metrics from unique PipelineRun names.
+			if pipelineName == pipelineRun {
+				pipelineName = anonymous
+			}
 			return true, pipelineName, pipelineRun
 		}
 	}
