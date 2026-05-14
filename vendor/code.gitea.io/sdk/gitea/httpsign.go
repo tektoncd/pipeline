@@ -139,6 +139,15 @@ func newHTTPSign(config *HTTPSignConfig) (*HTTPSign, error) {
 	}, nil
 }
 
+// SignWithAlgorithm implements ssh.AlgorithmSigner, required by 42wim/httpsig v1.2.4+
+// when signing with RSA keys.
+func (h *HTTPSign) SignWithAlgorithm(rand io.Reader, data []byte, algorithm string) (*ssh.Signature, error) {
+	if as, ok := h.Signer.(ssh.AlgorithmSigner); ok {
+		return as.SignWithAlgorithm(rand, data, algorithm)
+	}
+	return h.Sign(rand, data)
+}
+
 // SignRequest signs a HTTP request
 func (c *Client) SignRequest(r *http.Request) error {
 	var contents []byte
@@ -147,7 +156,7 @@ func (c *Client) SignRequest(r *http.Request) error {
 
 	if c.httpsigner.cert {
 		// add our certificate to the headers to sign
-		pubkey, _ := ssh.ParsePublicKey(c.httpsigner.Signer.PublicKey().Marshal())
+		pubkey, _ := ssh.ParsePublicKey(c.httpsigner.PublicKey().Marshal())
 		if cert, ok := pubkey.(*ssh.Certificate); ok {
 			certString := base64.RawStdEncoding.EncodeToString(cert.Marshal())
 			r.Header.Add("x-ssh-certificate", certString)
@@ -175,17 +184,26 @@ func (c *Client) SignRequest(r *http.Request) error {
 	}
 
 	// create a signer for the request and headers, the signature will be valid for 10 seconds
-	var (
-		signer httpsig.SSHSigner
-		err    error
-	)
+	var err error
 
 	// use legacyhttpsig to sign with RSA-SHA1 on older gitea releases
 	if err = c.checkServerVersionGreaterThanOrEqual(version1_23_0); err != nil {
-		signer, _, err = legacyhttpsig.NewSSHSigner(c.httpsigner.Signer, httpsig.DigestSha512, headersToSign, legacyhttpsig.Signature, 10)
-	} else {
-		signer, _, err = httpsig.NewSSHSigner(c.httpsigner.Signer, httpsig.DigestSha512, headersToSign, httpsig.Signature, 10)
+		// Legacy signer
+		legacySigner, _, err := legacyhttpsig.NewSSHSigner(c.httpsigner, httpsig.DigestSha512, headersToSign, legacyhttpsig.Signature, 10)
+		if err != nil {
+			return fmt.Errorf("legacy httpsig.NewSSHSigner failed: %s", err)
+		}
+
+		// sign the request, use the fingerprint if we don't have a certificate
+		keyID := "gitea"
+		if !c.httpsigner.cert {
+			keyID = ssh.FingerprintSHA256(c.httpsigner.PublicKey())
+		}
+
+		return legacySigner.SignRequest(keyID, r, contents)
 	}
+	// Modern signer
+	modernSigner, _, err := httpsig.NewSSHSigner(c.httpsigner, httpsig.DigestSha512, headersToSign, httpsig.Signature, 10)
 	if err != nil {
 		return fmt.Errorf("httpsig.NewSSHSigner failed: %s", err)
 	}
@@ -193,15 +211,10 @@ func (c *Client) SignRequest(r *http.Request) error {
 	// sign the request, use the fingerprint if we don't have a certificate
 	keyID := "gitea"
 	if !c.httpsigner.cert {
-		keyID = ssh.FingerprintSHA256(c.httpsigner.Signer.PublicKey())
+		keyID = ssh.FingerprintSHA256(c.httpsigner.PublicKey())
 	}
 
-	err = signer.SignRequest(keyID, r, contents)
-	if err != nil {
-		return fmt.Errorf("httpsig.Signrequest failed: %s", err)
-	}
-
-	return nil
+	return modernSigner.SignRequest(keyID, r, contents)
 }
 
 // findCertSigner returns the Signer containing a valid certificate
