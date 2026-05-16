@@ -84,36 +84,14 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 	if isDisabled(ctx) {
 		return errors.New(disabledError)
 	}
-
-	paramsMap := extractParams(req.Params)
-
-	// Validate URL param if provided.
-	if paramURL := paramsMap[ParamURL]; paramURL != "" {
-		if err := validateHubURL(paramURL); err != nil {
-			return fmt.Errorf("failed to validate params: invalid url param: %w", err)
-		}
+	paramsMap, err := populateDefaultParams(ctx, req.Params)
+	if err != nil {
+		return fmt.Errorf("failed to populate default params: %w", err)
 	}
-
-	// For TektonHub type with no env var URL, check if url param or ConfigMap URLs are available.
-	hasURLOverride := paramsMap[ParamURL] != ""
-	conf := resolutionframework.GetResolverConfigFromContext(ctx)
-	hubType := paramsMap[hub.ParamType]
-	if hubType == "" {
-		hubType = conf[hub.ConfigType]
+	if err := r.validateParamsForResolve(ctx, paramsMap); err != nil {
+		return fmt.Errorf("failed to validate params: %w", err)
 	}
-	if hubType == hub.TektonHubType && r.TektonHubURL == "" {
-		if hasURLOverride {
-			// URL param overrides the env var, pass a placeholder to skip the env var check.
-			return hub.ValidateParams(ctx, req.Params, "url-param-configured")
-		}
-		configURLs, _ := parseURLList(conf[ConfigTektonHubURLs])
-		if len(configURLs) > 0 {
-			// ConfigMap URLs are available, skip the env var check.
-			return hub.ValidateParams(ctx, req.Params, "configmap-urls-configured")
-		}
-	}
-
-	return hub.ValidateParams(ctx, req.Params, r.TektonHubURL)
+	return nil
 }
 
 // Resolve uses the given params to resolve the requested file or resource.
