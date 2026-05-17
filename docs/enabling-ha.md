@@ -11,6 +11,7 @@ weight: 106
   - [Controller HA](#controller-ha)
     - [Configuring Controller Replicas](#configuring-controller-replicas)
     - [Configuring Leader Election](#configuring-leader-election)
+    - [Horizontal Scaling with Buckets](#horizontal-scaling-with-buckets)
     - [Disabling Controller HA](#disabling-controller-ha)
   - [Webhook HA](#webhook-ha)
     - [Configuring Webhook Replicas](#configuring-webhook-replicas)
@@ -48,6 +49,30 @@ Leader election can be configured in [config-leader-election.yaml](./../config/c
 | `data.retryPeriod`   | 2s       |
 
 _Note_: The maximum value of `data.buckets` at this time is 10.
+
+### Horizontal Scaling with Buckets
+
+The `data.buckets` parameter controls how many partitions the reconciler key space is split into. With M buckets and N replicas, each replica competes to become the leader for one or more buckets, and the owner of a bucket handles reconciliation for the keys in that bucket.
+
+**Important:** simply adding more replicas without increasing `data.buckets` does not improve throughput. With the default of `buckets: "1"`, only one replica reconciles at a time regardless of replica count; the rest act as standbys.
+
+To enable true active/active horizontal scaling, set `data.buckets` equal to the number of replicas you intend to run (up to the maximum of 10):
+
+```sh
+# 1. Patch the leader election ConfigMap to match your replica count
+kubectl -n tekton-pipelines patch configmap config-leader-election-controller \
+  --type merge \
+  -p '{"data": {"buckets": "3"}}'
+
+# 2. Scale the controller deployment
+kubectl -n tekton-pipelines scale deployment tekton-pipelines-controller --replicas=3
+```
+
+With 3 buckets and 3 replicas, each replica owns one bucket and reconciles roughly one third of the workload concurrently.
+
+If you run more replicas than buckets (for example, 5 replicas with 3 buckets), the extra replicas wait in standby and take over ownership of a bucket only when an owner becomes unavailable. This provides redundancy without additional parallelism.
+
+Because the maximum bucket count is 10, the controller supports up to 10 replicas contributing to reconciliation at the same time. Additional replicas beyond the bucket count act as hot standbys.
 
 ### Disabling Controller HA
 
