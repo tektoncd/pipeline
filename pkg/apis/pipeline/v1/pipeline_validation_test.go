@@ -207,7 +207,7 @@ func TestPipeline_Validate_Success(t *testing.T) {
 							Name: "name2",
 							Value: ParamValue{
 								Type:      ParamTypeString,
-								StringVal: "$(tasks.pipeline-words.results.hello) + $(pipeline-words)",
+								StringVal: "$(tasks.pipeline-words.results.hello) + $(params.pipeline-words.hello)",
 							},
 						},
 					},
@@ -265,7 +265,7 @@ func TestPipeline_Validate_Success(t *testing.T) {
 							Name: "name2",
 							Value: ParamValue{
 								Type:      ParamTypeString,
-								StringVal: "$(tasks.pipeline-words.results.hello[*]) + $(pipeline-words)",
+								StringVal: "$(tasks.pipeline-words.results.hello[*]) + $(params.pipeline-words.hello)",
 							},
 						},
 					},
@@ -692,6 +692,24 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `PipelineTask OnError cannot be set to "continue" when Retries is greater than 0`,
 			Paths:   []string{""},
+		},
+	}, {
+		name: "invalid variable reference in pipeline task param",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					Params: Params{{
+						Name: "SCRIPT", Value: ParamValue{Type: ParamTypeString, StringVal: "echo $(env_value_set_from_yq)"},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalid variable reference "$(env_value_set_from_yq)", must start with a valid prefix: params, tasks, finally, context, or workspaces`,
+			Paths:   []string{"spec.tasks[0].params[SCRIPT].value"},
 		},
 	}}
 	for _, tt := range tests {
