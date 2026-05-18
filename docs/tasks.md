@@ -1071,8 +1071,12 @@ For example, you can use `Volumes` to do the following:
 - Mount a [Kubernetes `ConfigMap`](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/)
   as `Volume` source.
 - Mount a host's Docker socket to use a `Dockerfile` for building container images.
-  **Note:** Building a container image on-cluster using `docker build` is **very
-  unsafe** and is mentioned only for the sake of the example. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
+  **Note:** Giving a `Step` access to the host's Docker daemon is **very unsafe**:
+  the container can often write to the node filesystem, affect other builds using
+  the same daemon, and affect control plane workloads scheduled on the same host.
+  It is also not portable because many Kubernetes clusters do not expose a Docker
+  daemon socket. Prefer a Docker daemon sidecar or a Dockerfile build tool such as
+  [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
 
 ### Specifying Step Template
 
@@ -1133,7 +1137,48 @@ For further information, see [`Sidecars` in `TaskRuns`](taskruns.md#specifying-s
 Refer to the detailed instructions listed in [additional config](additional-configs.md#enabling-larger-results-using-sidecar-logs)
 to learn how to enable this feature.
 
-In the example below, a `Step` uses a Docker-in-Docker `Sidecar` to build a Docker image:
+When a `Sidecar` provides a Docker daemon, the Docker client `Step` and the
+daemon run in the same `Pod`. The client can communicate with the daemon in two
+common ways:
+
+- Over the `Pod` network, usually by setting `DOCKER_HOST` to
+  `tcp://localhost:2376`. Use TLS for this mode: let the Docker-in-Docker
+  sidecar generate certificates with `DOCKER_TLS_CERTDIR`, mount the generated
+  client certificates into the client `Step`, and set `DOCKER_TLS_VERIFY` and
+  `DOCKER_CERT_PATH` in the client `Step`.
+- Over a shared Unix socket, by mounting the same `emptyDir` volume at
+  `/var/run` or another socket directory in both containers. Any container with
+  that mount can control the daemon.
+
+Running a Docker-in-Docker sidecar usually requires
+`securityContext.privileged: true`, as shown below, because the daemon manages
+nested containers and storage. The `TaskRun` must run in a namespace or with a
+service account that cluster admission policy allows to create privileged
+containers.
+
+Keep all Docker commands that need to share a daemon in the same `Task`. Each
+`TaskRun` gets a different `Pod`, so containers, networks, and Docker Compose
+services created by one `Task` are not available to another `Task`. Images built
+against the sidecar daemon are also local to that daemon unless you push them to
+a registry or store them somewhere else outside the daemon.
+
+For codebases that use Docker Compose for integration tests, either run
+`docker compose up`, the tests, and cleanup steps in one `Task` against the same
+sidecar daemon, or translate the Compose services into Tekton `Sidecars` and run
+the test client in `Steps` that share the same `Pod`.
+
+If a Docker client `Step` fails with an error such as `Cannot connect to the
+Docker daemon at tcp://localhost:2376`, inspect the sidecar container as well as
+the step container. Use `kubectl logs pod/<taskrun-pod> -c <sidecar-name>` and
+`kubectl describe pod/<taskrun-pod>` to check whether the daemon is still
+starting, crashed, failed a probe, or did not share the expected TLS
+certificates.
+
+For a complete Docker-in-Docker sidecar example that uses TLS, see
+[`dind-sidecar.yaml`](../examples/v1/taskruns/dind-sidecar.yaml).
+
+In the example below, a `Step` uses a Docker-in-Docker `Sidecar` and a shared
+Unix socket volume to build a Docker image:
 
 ```yaml
 steps:
@@ -1242,10 +1287,25 @@ more examples.
 
 ### Building and pushing a Docker image
 
-The following example `Task` builds and pushes a `Dockerfile`-built image.
+The following example `Task` builds and pushes a `Dockerfile`-built image by
+mounting the host's Docker daemon socket.
 
-**Note:** Building a container image using `docker build` on-cluster is **very
-unsafe** and is shown here only as a demonstration. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
+**Note:** Mounting the host's Docker socket is **very unsafe** and is shown here
+only as a demonstration. Access to the socket is usually equivalent to root
+access on the node: a build can mount or modify the host filesystem, interfere
+with other builds using the same daemon, and affect workloads such as the
+Pipelines controller if they run on the same host. It also ties the `Task` to
+cluster implementation details. For example, `/var/run/docker.sock` may exist on
+a minikube node that uses Docker, but clusters that use `containerd` or CRI-O
+usually do not provide a Docker daemon socket at that path.
+
+Cluster operators who support this pattern should isolate these builds onto
+dedicated nodes or sandboxed runtimes such as a `RuntimeClass` backed by Kata
+Containers or nested virtualization. Admission policy must also allow the
+`hostPath` socket mount, and some platforms require a service account or
+namespace with privileged workload permissions. Prefer a Docker daemon sidecar
+or a Dockerfile build tool such as [kaniko](https://github.com/GoogleContainerTools/kaniko)
+for portable `Tasks`.
 
 ```yaml
 spec:
