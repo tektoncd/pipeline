@@ -902,8 +902,8 @@ github.com/sigstore/protobuf-specs v0.5.0 h1:F8YTI65xOHw70NrvPwJ5PhAzsvTnuJMGLkA
 github.com/sigstore/protobuf-specs v0.5.0/go.mod h1:+gXR+38nIa2oEupqDdzg4qSBT0Os+sP7oYv6alWewWc=
 github.com/sigstore/sigstore v1.10.5 h1:KqrOjDhNOVY+uOzQFat2FrGLClPPCb3uz8pK3wuI+ow=
 github.com/sigstore/sigstore v1.10.5/go.mod h1:k/mcVVXw3I87dYG/iCVTSW2xTrW7vPzxxGic4KqsqXs=
-github.com/sigstore/sigstore/pkg/signature/kms/aws v1.10.5 h1:aqHRubTITULckG9JAcq2FEhtKkT/RRE8oErfuV3smSI=
-github.com/sigstore/sigstore/pkg/signature/kms/aws v1.10.5/go.mod h1:h9eK9QyPqpFskF/ewFkRLtwh4/Q3FLc2/DXbym4IHN8=
+github.com/sigstore/sigstore/pkg/signature/kms/aws v1.10.6 h1:5OgLJUqWaw6+I0BM4W1eUEzCWzZT/hu1lXkw0oGyays=
+github.com/sigstore/sigstore/pkg/signature/kms/aws v1.10.6/go.mod h1:h9eK9QyPqpFskF/ewFkRLtwh4/Q3FLc2/DXbym4IHN8=
 github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.5 h1:+9C6CUkv+J4iT67Lx+H1EGBfAdoAHqXumHadeIj9jA4=
 github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.5/go.mod h1:myZsg7wRiy/vf102g5uUAitYhtXCwepmAGxgHG1VHuE=
 github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.10.5 h1:BpQx6AhjwIN9LmlO4ypkcMcHiWiepgZQGSw5U69frHU=
