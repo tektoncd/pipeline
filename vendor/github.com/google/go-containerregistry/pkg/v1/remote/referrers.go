@@ -67,7 +67,7 @@ func (f *fetcher) fetchReferrers(ctx context.Context, filter map[string]string, 
 
 	var b []byte
 	if resp.StatusCode == http.StatusOK && resp.Header.Get("Content-Type") == string(types.OCIImageIndex) {
-		b, err = io.ReadAll(resp.Body)
+		b, err = io.ReadAll(io.LimitReader(resp.Body, manifestLimit))
 		if err != nil {
 			return nil, err
 		}
