@@ -25,7 +25,6 @@ import (
 	"github.com/docker/cli/cli/config/configfile"
 	"github.com/docker/cli/cli/config/types"
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/mitchellh/go-homedir"
 )
 
 // Resource represents a registry or repository that can be authenticated against.
@@ -95,7 +94,7 @@ func (dk *defaultKeychain) ResolveContext(_ context.Context, target Resource) (A
 
 	// First, check $HOME/.docker/config.json
 	foundDockerConfig := false
-	home, err := homedir.Dir()
+	home, err := os.UserHomeDir()
 	if err == nil {
 		foundDockerConfig = fileExists(filepath.Join(home, ".docker/config.json"))
 	}
