@@ -33,6 +33,10 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote/internal/authchallenge"
 )
 
+// maxTokenBodySize limits bearer token response body reads to prevent OOM
+// when a token endpoint returns an unexpectedly large body.
+const maxTokenBodySize = 64 * 1024 // 64 KiB
+
 type Token struct {
 	Token        string `json:"token"`
 	AccessToken  string `json:"access_token,omitempty"`
@@ -86,7 +90,7 @@ func fromChallenge(reg name.Registry, auth authn.Authenticator, t http.RoundTrip
 	// registry can supply a realm pointing at an internal service or cloud
 	// metadata endpoint (e.g. 169.254.169.254), causing SSRF when the client
 	// subsequently fetches a token.
-	if err := validateRealmURL(realm, pr.Insecure); err != nil {
+	if err := validateRealmURL(realm, reg.RegistryStr(), pr.Insecure); err != nil {
 		return nil, fmt.Errorf("invalid realm in www-authenticate: %w", err)
 	}
 	service := pr.Parameters["service"]
@@ -105,10 +109,24 @@ func fromChallenge(reg name.Registry, auth authn.Authenticator, t http.RoundTrip
 	}, nil
 }
 
+// realmRedirectCheck mimics the default http.Client redirect policy but also
+// validates each redirect URL with validateRealmURL.
+func realmRedirectCheck(registryHost string, insecure bool) func(*http.Request, []*http.Request) error {
+	return func(req *http.Request, via []*http.Request) error {
+		if len(via) >= 10 {
+			return fmt.Errorf("stopped after 10 redirects")
+		}
+		if err := validateRealmURL(req.URL.String(), registryHost, insecure); err != nil {
+			return fmt.Errorf("refusing token-server redirect to %q: %w", req.URL, err)
+		}
+		return nil
+	}
+}
+
 // validateRealmURL returns an error if the realm URL uses a disallowed scheme
-// or resolves to a private / link-local IP address. This prevents a crafted
-// WWW-Authenticate header from redirecting token fetches to internal services.
-func validateRealmURL(realm string, insecure bool) error {
+// or resolves to a private / link-local IP address. Realm URLs matching the
+// registry host:port are always allowed. See #2258.
+func validateRealmURL(realm, registryHost string, insecure bool) error {
 	u, err := url.Parse(realm)
 	if err != nil {
 		return fmt.Errorf("parsing realm %q: %w", realm, err)
@@ -123,6 +141,10 @@ func validateRealmURL(realm string, insecure bool) error {
 	default:
 		return fmt.Errorf("realm scheme %q not allowed; must be https (or http for insecure registries)", u.Scheme)
 	}
+	// Always allow realms matching the registry host:port.
+	if registryHost != "" && u.Host == registryHost {
+		return nil
+	}
 	// Reject IP literals that resolve to private or link-local ranges.
 	// This blocks direct references to RFC 1918 addresses, loopback, and
 	// link-local ranges including the cloud instance metadata service
@@ -130,7 +152,7 @@ func validateRealmURL(realm string, insecure bool) error {
 	// here; callers should apply network-level controls if needed.
 	host := u.Hostname()
 	if ip := net.ParseIP(host); ip != nil {
-		if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() {
+		if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() || ip.IsUnspecified() {
 			return fmt.Errorf("realm host %q is a private or link-local address", host)
 		}
 	}
@@ -374,7 +396,8 @@ func (bt *bearerTransport) refreshOauth(ctx context.Context) ([]byte, error) {
 		v.Set("access_type", "offline")
 	}
 
-	client := http.Client{Transport: bt.inner}
+	allowInsecure := bt.scheme == "http"
+	client := http.Client{Transport: bt.inner, CheckRedirect: realmRedirectCheck(bt.registry.RegistryStr(), allowInsecure)}
 	req, err := http.NewRequest(http.MethodPost, u.String(), strings.NewReader(v.Encode()))
 	if err != nil {
 		return nil, err
@@ -397,7 +420,7 @@ func (bt *bearerTransport) refreshOauth(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 
-	return io.ReadAll(resp.Body)
+	return io.ReadAll(io.LimitReader(resp.Body, maxTokenBodySize))
 }
 
 // https://docs.docker.com/registry/spec/auth/token/
@@ -411,7 +434,8 @@ func (bt *bearerTransport) refreshBasic(ctx context.Context) ([]byte, error) {
 		auth:   bt.basic,
 		target: u.Host,
 	}
-	client := http.Client{Transport: b}
+	allowInsecure := bt.scheme == "http"
+	client := http.Client{Transport: b, CheckRedirect: realmRedirectCheck(bt.registry.RegistryStr(), allowInsecure)}
 
 	v := u.Query()
 	bt.mx.RLock()
@@ -441,5 +465,5 @@ func (bt *bearerTransport) refreshBasic(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 
-	return io.ReadAll(resp.Body)
+	return io.ReadAll(io.LimitReader(resp.Body, maxTokenBodySize))
 }
