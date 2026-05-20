@@ -43,7 +43,7 @@ require (
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20260414223304-7a662782a11f
 	github.com/sigstore/sigstore/pkg/signature/kms/aws v1.10.5
 	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.6
-	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.10.5
+	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.10.6
 	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.10.5
 	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.43.0
