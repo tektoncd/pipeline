@@ -2731,6 +2731,124 @@ status:
 	}
 }
 
+func TestReconcileOnCancelledTaskRunPreservesPreviousCondition(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-quota-then-cancelled
+  namespace: foo
+spec:
+  status: TaskRunCancelled
+  statusMessage: "TaskRun cancelled as the PipelineRun it belongs to has timed out."
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+    reason: ExceededResourceQuota
+    message: 'TaskRun Pod exceeded available resources: pods "test-pod" is forbidden: exceeded quota'
+  podName: test-taskrun-quota-then-cancelled-pod
+`)
+	pod, err := makePod(taskRun, simpleTask)
+	if err != nil {
+		t.Fatalf("MakePod: %v", err)
+	}
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Tasks:    []*v1.Task{simpleTask},
+		Pods:     []*corev1.Pod{pod},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+	}
+	newTr, err := clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	cond := newTr.Status.GetCondition(apis.ConditionSucceeded)
+	if cond == nil {
+		t.Fatal("Expected Succeeded condition to be set")
+	}
+	if cond.Status != corev1.ConditionFalse {
+		t.Errorf("Expected condition status False, got %s", cond.Status)
+	}
+	if cond.Reason != v1.TaskRunReasonCancelled.String() {
+		t.Errorf("Expected reason %s, got %s", v1.TaskRunReasonCancelled.String(), cond.Reason)
+	}
+	if !strings.Contains(cond.Message, "ExceededResourceQuota") {
+		t.Errorf("Expected condition message to contain previous reason ExceededResourceQuota, got: %s", cond.Message)
+	}
+	if !strings.Contains(cond.Message, "exceeded quota") {
+		t.Errorf("Expected condition message to contain previous message about exceeded quota, got: %s", cond.Message)
+	}
+	if !strings.Contains(cond.Message, "TaskRun cancelled as the PipelineRun it belongs to has timed out.") {
+		t.Errorf("Expected condition message to contain the cancellation reason, got: %s", cond.Message)
+	}
+}
+
+func TestReconcileOnTimedOutTaskRunPreservesPreviousCondition(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-quota-then-timedout
+  namespace: foo
+spec:
+  taskRef:
+    name: test-task
+  timeout: 10s
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+    reason: ExceededResourceQuota
+    message: 'TaskRun Pod exceeded available resources: pods "test-pod" is forbidden: exceeded quota'
+  startTime: "2021-12-31T23:59:45Z"
+`)
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Tasks:    []*v1.Task{simpleTask},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+		t.Fatalf("Unexpected error when reconciling timed out TaskRun : %v", err)
+	}
+	newTr, err := clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected timed out TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	cond := newTr.Status.GetCondition(apis.ConditionSucceeded)
+	if cond == nil {
+		t.Fatal("Expected Succeeded condition to be set")
+	}
+	if cond.Status != corev1.ConditionFalse {
+		t.Errorf("Expected condition status False, got %s", cond.Status)
+	}
+	if cond.Reason != v1.TaskRunReasonTimedOut.String() {
+		t.Errorf("Expected reason %s, got %s", v1.TaskRunReasonTimedOut.String(), cond.Reason)
+	}
+	if !strings.Contains(cond.Message, "failed to finish within") {
+		t.Errorf("Expected condition message to contain timeout message, got: %s", cond.Message)
+	}
+	if !strings.Contains(cond.Message, "ExceededResourceQuota") {
+		t.Errorf("Expected condition message to contain previous reason ExceededResourceQuota, got: %s", cond.Message)
+	}
+	if !strings.Contains(cond.Message, "exceeded quota") {
+		t.Errorf("Expected condition message to contain previous message about exceeded quota, got: %s", cond.Message)
+	}
+}
+
 func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 	taskRun := parse.MustParseV1TaskRun(t, `
 metadata:
@@ -8306,5 +8424,102 @@ spec:
 	}
 	if !reconciledTekton.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
 		t.Errorf("Expected Tekton-managed TaskRun to be running, but it was not")
+	}
+}
+
+func TestAppendPreviousConditionContext(t *testing.T) {
+	tests := []struct {
+		name             string
+		prevReason       string
+		prevMessage      string
+		newMessage       string
+		expectAppend     bool
+		expectedContains []string
+	}{
+		{
+			name:         "no previous condition",
+			newMessage:   "TaskRun was cancelled",
+			expectAppend: false,
+		},
+		{
+			name:         "previous reason is Started - skip",
+			prevReason:   v1.TaskRunReasonStarted.String(),
+			prevMessage:  "some message",
+			newMessage:   "TaskRun was cancelled",
+			expectAppend: false,
+		},
+		{
+			name:         "previous reason is Running - skip",
+			prevReason:   v1.TaskRunReasonRunning.String(),
+			prevMessage:  "Not all Steps in the Task have finished executing",
+			newMessage:   "TaskRun was cancelled",
+			expectAppend: false,
+		},
+		{
+			name:         "previous reason is Pending - skip",
+			prevReason:   v1.TaskRunReasonPending.String(),
+			prevMessage:  "TaskRun is pending",
+			newMessage:   "TaskRun was cancelled",
+			expectAppend: false,
+		},
+		{
+			name:        "previous reason is ExceededResourceQuota - preserve",
+			prevReason:  "ExceededResourceQuota",
+			prevMessage: `TaskRun Pod exceeded available resources: pods "test-pod" is forbidden: exceeded quota`,
+			newMessage:  "TaskRun was cancelled. TaskRun cancelled as the PipelineRun it belongs to has timed out.",
+			expectAppend: true,
+			expectedContains: []string{
+				"TaskRun was cancelled",
+				"ExceededResourceQuota",
+				"exceeded quota",
+			},
+		},
+		{
+			name:        "previous reason is ImagePullBackOff - preserve",
+			prevReason:  "TaskRunImagePullFailed",
+			prevMessage: "The step image failed to pull",
+			newMessage:  "TaskRun was cancelled",
+			expectAppend: true,
+			expectedContains: []string{
+				"TaskRun was cancelled",
+				"TaskRunImagePullFailed",
+				"failed to pull",
+			},
+		},
+		{
+			name:         "previous condition has empty message - skip",
+			prevReason:   "SomeReason",
+			prevMessage:  "",
+			newMessage:   "TaskRun was cancelled",
+			expectAppend: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var prevCondition *apis.Condition
+			if tc.prevReason != "" {
+				prevCondition = &apis.Condition{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionUnknown,
+					Reason:  tc.prevReason,
+					Message: tc.prevMessage,
+				}
+			}
+
+			result := appendPreviousConditionContext(prevCondition, tc.newMessage)
+
+			if tc.expectAppend {
+				for _, expected := range tc.expectedContains {
+					if !strings.Contains(result, expected) {
+						t.Errorf("Expected result to contain %q, got: %s", expected, result)
+					}
+				}
+			} else {
+				if result != tc.newMessage {
+					t.Errorf("Expected message to be unchanged %q, got: %s", tc.newMessage, result)
+				}
+			}
+		})
 	}
 }
