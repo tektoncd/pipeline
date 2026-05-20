@@ -17,6 +17,7 @@ package registry
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -35,13 +36,22 @@ func (m *diskHandler) blobHashPath(h v1.Hash) string {
 }
 
 func (m *diskHandler) Stat(_ context.Context, _ string, h v1.Hash) (int64, error) {
-	fi, err := os.Stat(m.blobHashPath(h))
+	f, err := os.Open(m.blobHashPath(h))
 	if errors.Is(err, os.ErrNotExist) {
 		return 0, errNotFound
 	} else if err != nil {
 		return 0, err
 	}
-	return fi.Size(), nil
+	defer f.Close()
+
+	got, size, err := v1.SHA256(f)
+	if err != nil {
+		return 0, err
+	}
+	if got != h {
+		return 0, fmt.Errorf("%w: blob %s has digest %s", errNotFound, h, got)
+	}
+	return size, nil
 }
 func (m *diskHandler) Get(_ context.Context, _ string, h v1.Hash) (io.ReadCloser, error) {
 	return os.Open(m.blobHashPath(h))
