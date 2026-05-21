@@ -48,6 +48,15 @@ const (
 
 var supportedKinds = []string{"task", "pipeline", "stepaction"}
 
+// hubHTTPClient is the package-level HTTP client used to talk to a Hub
+// endpoint. It wires framework.RestrictedHTTPTransport so DNS resolution to
+// loopback / private / link-local addresses is refused at dial time,
+// addressing the "block private IPs" goal in #9602 for the deprecated hub
+// resolver as well.
+var hubHTTPClient = &http.Client{
+	Transport: framework.RestrictedHTTPTransport(),
+}
+
 // Resolver implements a framework.Resolver that can fetch files from OCI bundles.
 //
 // Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/hub.Resolver] instead.
@@ -224,7 +233,7 @@ func fetchHubResource(ctx context.Context, apiEndpoint string, v interface{}) er
 	}
 
 	// #nosec G704 -- URL cannot be constant in this case.
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := hubHTTPClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("requesting resource from Hub: %w", err)
 	}

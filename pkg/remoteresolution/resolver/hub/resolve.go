@@ -33,6 +33,15 @@ import (
 
 var errNoVersionFound = errors.New("no version found")
 
+// hubHTTPClient is the package-level HTTP client used to talk to a Hub
+// endpoint. It wires resolutionframework.RestrictedHTTPTransport so DNS
+// resolution to loopback / private / link-local addresses is refused at
+// dial time, addressing the "block private IPs" goal in #9602 for the
+// hub resolver.
+var hubHTTPClient = &http.Client{
+	Transport: resolutionframework.RestrictedHTTPTransport(),
+}
+
 // Response types for hub API calls.
 
 type tektonHubDataResponse struct {
@@ -111,7 +120,7 @@ func fetchHubResource(ctx context.Context, apiEndpoint string, v any) error {
 	}
 
 	// #nosec G704 -- URL cannot be constant in this case.
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := hubHTTPClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("requesting resource from Hub: %w", err)
 	}
