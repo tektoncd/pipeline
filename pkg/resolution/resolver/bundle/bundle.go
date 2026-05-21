@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -28,6 +29,35 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
+
+// bundleRegistryTransport is the package-level HTTP transport used to talk
+// to the OCI registry when fetching tekton bundles. Its dialer refuses
+// connections to loopback, RFC1918, link-local, multicast, CGNAT and IPv6
+// ULA addresses, applying the "block private IPs" goal of #9602 to the
+// bundle resolver's OCI fetch path. Exposed as a package variable so tests
+// that rely on a loopback httptest registry can swap in an unrestricted
+// transport for their duration via SetRegistryTransportForTest.
+var bundleRegistryTransport http.RoundTripper = framework.RestrictedHTTPTransport()
+
+// SetRegistryTransportForTest swaps the package-level OCI registry
+// transport and returns the previous value. Production callers must never
+// invoke this — it exists so the broader test suite can install a
+// permissive transport that allows loopback dials to httptest registries.
+// Restoring the returned RoundTripper is the caller's responsibility.
+func SetRegistryTransportForTest(t http.RoundTripper) http.RoundTripper {
+	prev := bundleRegistryTransport
+	bundleRegistryTransport = t
+	return prev
+}
+
+// ResetRegistryTransportForTest reinstalls the production restricted
+// transport and returns the prior value so tests that need to exercise the
+// dial guard explicitly can restore whatever was installed before.
+func ResetRegistryTransportForTest() http.RoundTripper {
+	prev := bundleRegistryTransport
+	bundleRegistryTransport = framework.RestrictedHTTPTransport()
+	return prev
+}
 
 const (
 	// MaximumBundleObjects defines the maximum number of objects in a bundle
@@ -143,14 +173,21 @@ func retrieveImage(ctx context.Context, keychain authn.Keychain, ref string) (st
 	if err != nil {
 		return "", nil, fmt.Errorf("%s is an unparseable image reference: %w", ref, err)
 	}
+	// remote.WithTransport routes all registry traffic — auth challenge,
+	// manifest, layers — through a transport whose dialer rejects loopback
+	// / RFC1918 / link-local / CGNAT / IPv6 ULA addresses. Without this,
+	// name.ParseReference accepts references like 169.254.169.254/foo:bar
+	// and remote.Image dials them from inside the controller pod.
+	transportOpt := remote.WithTransport(bundleRegistryTransport)
 	customRetryBackoff, err := GetBundleResolverBackoff(ctx)
 	if err == nil {
 		img, err := remote.Image(imgRef, remote.WithAuthFromKeychain(keychain), remote.WithContext(ctx),
-			remote.WithRetryBackoff(customRetryBackoff))
+			remote.WithRetryBackoff(customRetryBackoff), transportOpt)
 
 		return imgRef.Context().Name(), img, err
 	} else {
-		img, err := remote.Image(imgRef, remote.WithAuthFromKeychain(keychain), remote.WithContext(ctx))
+		img, err := remote.Image(imgRef, remote.WithAuthFromKeychain(keychain), remote.WithContext(ctx),
+			transportOpt)
 
 		return imgRef.Context().Name(), img, err
 	}
