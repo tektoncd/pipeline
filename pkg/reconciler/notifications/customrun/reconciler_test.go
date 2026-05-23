@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/notifications/customrun"
 	ntesting "github.com/tektoncd/pipeline/pkg/reconciler/notifications/testing"
 	"github.com/tektoncd/pipeline/test"
+	"go.opentelemetry.io/otel/trace/noop"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -119,7 +120,7 @@ func TestReconcileKind_CloudEvents(t *testing.T) {
 			defer cancel()
 			clients := testAssets.Clients
 			ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
-			reconciler := customrun.NewReconciler(ceClient, cacheClient)
+			reconciler := customrun.NewReconciler(ceClient, cacheClient, noop.NewTracerProvider())
 
 			if err := reconciler.ReconcileKind(testAssets.Ctx, &customRun); err != nil {
 				t.Errorf("didn't expect an error, but got one: %v", err)
@@ -196,7 +197,7 @@ func TestReconcileKind_DefaultEnabled(t *testing.T) {
 	testAssets, cancel := ntesting.InitializeTestAssets(t, &d)
 	defer cancel()
 	ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
-	reconciler := customrun.NewReconciler(ceClient, cacheClient)
+	reconciler := customrun.NewReconciler(ceClient, cacheClient, noop.NewTracerProvider())
 
 	if err := reconciler.ReconcileKind(testAssets.Ctx, &customRun); err != nil {
 		t.Errorf("didn't expect an error, but got one: %v", err)
@@ -277,7 +278,7 @@ func TestReconcile_CloudEvents_Disabled(t *testing.T) {
 			defer cancel()
 			clients := testAssets.Clients
 			ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
-			reconciler := customrun.NewReconciler(ceClient, cacheClient)
+			reconciler := customrun.NewReconciler(ceClient, cacheClient, noop.NewTracerProvider())
 
 			if err := reconciler.ReconcileKind(testAssets.Ctx, &customRun); err != nil {
 				t.Fatalf("didn't expect an error, but got one: %v", err)
