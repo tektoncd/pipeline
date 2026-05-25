@@ -341,6 +341,7 @@ type StepTemplate struct {
 	//
 	// Deprecated: This field will be removed in a future release.
 	//
+	// +optional
 	DeprecatedName string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
 	// Default image name to use for each Step.
 	// More info: https://kubernetes.io/docs/concepts/containers/images
