@@ -14742,6 +14742,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Default name for each Step specified as a DNS_LABEL.
 Each Step in a Task must have a unique name.
 Cannot be updated.</p>
