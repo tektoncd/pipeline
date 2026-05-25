@@ -601,11 +601,11 @@ func TestPodBuild(t *testing.T) {
 						VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceCPU:    resource.MustParse("100m"),
 								corev1.ResourceMemory: resource.MustParse("32Mi"),
 							},
 							Limits: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceCPU:    resource.MustParse("100m"),
 								corev1.ResourceMemory: resource.MustParse("32Mi"),
 							},
 						},
@@ -1068,11 +1068,11 @@ _EOF_
 						VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceCPU:    resource.MustParse("100m"),
 								corev1.ResourceMemory: resource.MustParse("32Mi"),
 							},
 							Limits: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceCPU:    resource.MustParse("100m"),
 								corev1.ResourceMemory: resource.MustParse("32Mi"),
 							},
 						},
@@ -1196,11 +1196,11 @@ _EOF_
 						VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceCPU:    resource.MustParse("100m"),
 								corev1.ResourceMemory: resource.MustParse("32Mi"),
 							},
 							Limits: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("10m"),
+								corev1.ResourceCPU:    resource.MustParse("100m"),
 								corev1.ResourceMemory: resource.MustParse("32Mi"),
 							},
 						},
@@ -2816,11 +2816,11 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount, debugScriptsVolumeMount},
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
 				corev1.ResourceMemory: resource.MustParse("32Mi"),
 			},
 			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
 				corev1.ResourceMemory: resource.MustParse("32Mi"),
 			},
 		},
@@ -3548,11 +3548,11 @@ func TestPrepareInitContainers(t *testing.T) {
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("10m"),
-					corev1.ResourceMemory: resource.MustParse("16Mi"),
+					corev1.ResourceMemory: resource.MustParse("32Mi"),
 				},
 				Limits: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("10m"),
-					corev1.ResourceMemory: resource.MustParse("16Mi"),
+					corev1.ResourceMemory: resource.MustParse("32Mi"),
 				},
 			},
 		},
@@ -3572,11 +3572,11 @@ func TestPrepareInitContainers(t *testing.T) {
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("10m"),
-					corev1.ResourceMemory: resource.MustParse("16Mi"),
+					corev1.ResourceMemory: resource.MustParse("32Mi"),
 				},
 				Limits: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("10m"),
-					corev1.ResourceMemory: resource.MustParse("16Mi"),
+					corev1.ResourceMemory: resource.MustParse("32Mi"),
 				},
 			},
 		},
@@ -3598,11 +3598,11 @@ func TestPrepareInitContainers(t *testing.T) {
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("10m"),
-					corev1.ResourceMemory: resource.MustParse("16Mi"),
+					corev1.ResourceMemory: resource.MustParse("32Mi"),
 				},
 				Limits: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("10m"),
-					corev1.ResourceMemory: resource.MustParse("16Mi"),
+					corev1.ResourceMemory: resource.MustParse("32Mi"),
 				},
 			},
 			SecurityContext: SecurityContextConfig{
@@ -3627,11 +3627,11 @@ func TestPrepareInitContainers(t *testing.T) {
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("10m"),
-					corev1.ResourceMemory: resource.MustParse("16Mi"),
+					corev1.ResourceMemory: resource.MustParse("32Mi"),
 				},
 				Limits: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("10m"),
-					corev1.ResourceMemory: resource.MustParse("16Mi"),
+					corev1.ResourceMemory: resource.MustParse("32Mi"),
 				},
 			},
 		},
@@ -3654,11 +3654,11 @@ func TestPrepareInitContainers(t *testing.T) {
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("10m"),
-					corev1.ResourceMemory: resource.MustParse("16Mi"),
+					corev1.ResourceMemory: resource.MustParse("32Mi"),
 				},
 				Limits: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("10m"),
-					corev1.ResourceMemory: resource.MustParse("16Mi"),
+					corev1.ResourceMemory: resource.MustParse("32Mi"),
 				},
 			},
 			SecurityContext: WindowsSecurityContext,
