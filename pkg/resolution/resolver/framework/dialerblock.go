@@ -14,12 +14,59 @@ limitations under the License.
 package framework
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
 	"syscall"
 	"time"
 )
+
+// BlockPrivateIPsConfigKey is the resolver ConfigMap key that toggles the
+// dial guard. When unset or "true", the resolver refuses to dial private
+// network address classes. When "false", the resolver falls back to the
+// stdlib default transport so operators can point bundle/hub resolution at
+// in-cluster registries or other private endpoints.
+const BlockPrivateIPsConfigKey = "block-private-ips"
+
+// DefaultBlockPrivateIPs is the default value applied when
+// BlockPrivateIPsConfigKey is missing from a resolver's ConfigMap. The
+// secure-by-default position is to block private targets.
+const DefaultBlockPrivateIPs = true
+
+// BlockPrivateIPs reports whether the resolver should refuse to dial
+// loopback / RFC1918 / RFC4193 / link-local / multicast / CGNAT /
+// unspecified addresses. Reads BlockPrivateIPsConfigKey from the
+// resolver-scoped ConfigMap attached to ctx by the framework; falls back
+// to DefaultBlockPrivateIPs when the ConfigMap or key is absent.
+func BlockPrivateIPs(ctx context.Context) bool {
+	conf := GetResolverConfigFromContext(ctx)
+	if conf == nil {
+		return DefaultBlockPrivateIPs
+	}
+	v, ok := conf[BlockPrivateIPsConfigKey]
+	if !ok {
+		return DefaultBlockPrivateIPs
+	}
+	switch v {
+	case "false", "False", "FALSE", "0", "no", "No", "off", "Off":
+		return false
+	default:
+		return true
+	}
+}
+
+// ResolverHTTPTransport returns the *http.Transport a resolver should use
+// for outbound HTTP / OCI registry traffic. When BlockPrivateIPs(ctx) is
+// true the dialer refuses private/loopback/link-local/multicast/CGNAT/
+// unspecified addresses; when false the stdlib default transport is used
+// so operators can intentionally target in-cluster or private endpoints.
+func ResolverHTTPTransport(ctx context.Context) http.RoundTripper {
+	if BlockPrivateIPs(ctx) {
+		return RestrictedHTTPTransport()
+	}
+	return http.DefaultTransport
+}
 
 // RestrictedAddrError is returned by the dial control callback when a
 // connection target resolves to a disallowed address class (loopback,

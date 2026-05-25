@@ -49,12 +49,27 @@ const (
 var supportedKinds = []string{"task", "pipeline", "stepaction"}
 
 // hubHTTPClient is the package-level HTTP client used to talk to a Hub
-// endpoint. It wires framework.RestrictedHTTPTransport so DNS resolution to
+// endpoint when the hubresolver-config `block-private-ips` toggle is at
+// its secure-by-default value of "true". It wires
+// framework.RestrictedHTTPTransport so DNS resolution to
 // loopback / private / link-local addresses is refused at dial time,
 // addressing the "block private IPs" goal in #9602 for the deprecated hub
-// resolver as well.
+// resolver as well. When operators opt out by setting
+// `block-private-ips: "false"` in hubresolver-config, fetchHubResource
+// uses the stdlib default client instead.
 var hubHTTPClient = &http.Client{
 	Transport: framework.RestrictedHTTPTransport(),
+}
+
+// hubHTTPClientForCtx returns the HTTP client fetchHubResource should
+// use for ctx. When ctx carries a hubresolver-config ConfigMap with
+// `block-private-ips: "false"`, the stdlib default client is returned so
+// in-cluster or otherwise-private Hub endpoints become reachable.
+func hubHTTPClientForCtx(ctx context.Context) *http.Client {
+	if framework.BlockPrivateIPs(ctx) {
+		return hubHTTPClient
+	}
+	return http.DefaultClient
 }
 
 // Resolver implements a framework.Resolver that can fetch files from OCI bundles.
@@ -233,7 +248,7 @@ func fetchHubResource(ctx context.Context, apiEndpoint string, v interface{}) er
 	}
 
 	// #nosec G704 -- URL cannot be constant in this case.
-	resp, err := hubHTTPClient.Do(req)
+	resp, err := hubHTTPClientForCtx(ctx).Do(req)
 	if err != nil {
 		return fmt.Errorf("requesting resource from Hub: %w", err)
 	}

@@ -31,12 +31,17 @@ import (
 )
 
 // bundleRegistryTransport is the package-level HTTP transport used to talk
-// to the OCI registry when fetching tekton bundles. Its dialer refuses
-// connections to loopback, RFC1918, link-local, multicast, CGNAT and IPv6
-// ULA addresses, applying the "block private IPs" goal of #9602 to the
-// bundle resolver's OCI fetch path. Exposed as a package variable so tests
-// that rely on a loopback httptest registry can swap in an unrestricted
-// transport for their duration via SetRegistryTransportForTest.
+// to the OCI registry when fetching tekton bundles when the
+// bundleresolver-config `block-private-ips` toggle is at its secure-by-
+// default value of "true". Its dialer refuses connections to loopback,
+// RFC1918, link-local, multicast, CGNAT and IPv6 ULA addresses, applying
+// the "block private IPs" goal of #9602 to the bundle resolver's OCI
+// fetch path. Exposed as a package variable so tests that rely on a
+// loopback httptest registry can swap in an unrestricted transport for
+// their duration via SetRegistryTransportForTest. Operators who need to
+// reach an in-cluster registry can opt out by setting
+// `block-private-ips: "false"` in the bundleresolver-config ConfigMap,
+// which causes retrieveImage to use the stdlib default transport.
 var bundleRegistryTransport http.RoundTripper = framework.RestrictedHTTPTransport()
 
 // SetRegistryTransportForTest swaps the package-level OCI registry
@@ -178,7 +183,17 @@ func retrieveImage(ctx context.Context, keychain authn.Keychain, ref string) (st
 	// / RFC1918 / link-local / CGNAT / IPv6 ULA addresses. Without this,
 	// name.ParseReference accepts references like 169.254.169.254/foo:bar
 	// and remote.Image dials them from inside the controller pod.
-	transportOpt := remote.WithTransport(bundleRegistryTransport)
+	//
+	// Operators who intentionally point the bundle resolver at an
+	// in-cluster registry (a Service ClusterIP, a sidecar, or a private
+	// endpoint) can opt out by setting `block-private-ips: "false"` in
+	// the bundleresolver-config ConfigMap, in which case the stdlib
+	// default transport is used instead.
+	transport := bundleRegistryTransport
+	if !framework.BlockPrivateIPs(ctx) {
+		transport = http.DefaultTransport
+	}
+	transportOpt := remote.WithTransport(transport)
 	customRetryBackoff, err := GetBundleResolverBackoff(ctx)
 	if err == nil {
 		img, err := remote.Image(imgRef, remote.WithAuthFromKeychain(keychain), remote.WithContext(ctx),

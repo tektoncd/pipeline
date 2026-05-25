@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"sync"
 
@@ -53,6 +54,52 @@ var cacheResolverFeatureFlags = requireAllGates(map[string]string{
 	"enable-api-fields":       "beta",
 })
 
+// allowBundleResolverPrivateRegistry patches the bundleresolver-config
+// ConfigMap to set block-private-ips=false so the resolver will dial the
+// in-cluster test registry Service ClusterIP (RFC1918). Without this the
+// secure-by-default restricted dialer refuses the connection and
+// TestBundleResolverCache* cases fail with "restricted dial: refusing
+// to dial ...: RFC1918/RFC4193 private address". The original value is
+// restored via t.Cleanup. Pass through ctx so the cleanup also runs if
+// the test is canceled.
+func allowBundleResolverPrivateRegistry(ctx context.Context, t *testing.T, c *clients) {
+	t.Helper()
+	resolverNS := resolverconfig.ResolversNamespace(system.Namespace())
+	cmName := "bundleresolver-config"
+	cm, err := c.KubeClient.CoreV1().ConfigMaps(resolverNS).Get(ctx, cmName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get ConfigMap %s/%s: %v", resolverNS, cmName, err)
+	}
+	if cm.Data == nil {
+		cm.Data = map[string]string{}
+	}
+	oldVal, hadOld := cm.Data["block-private-ips"]
+	cm.Data["block-private-ips"] = "false"
+	if _, err := c.KubeClient.CoreV1().ConfigMaps(resolverNS).Update(ctx, cm, metav1.UpdateOptions{}); err != nil {
+		t.Fatalf("Failed to update ConfigMap %s/%s: %v", resolverNS, cmName, err)
+	}
+	// Give the configstore watcher time to propagate the new value into
+	// the resolver pod's in-memory context before the test fires.
+	time.Sleep(3 * time.Second)
+	t.Cleanup(func() {
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		got, err := c.KubeClient.CoreV1().ConfigMaps(resolverNS).Get(cleanupCtx, cmName, metav1.GetOptions{})
+		if err != nil {
+			t.Logf("Cleanup: failed to get ConfigMap %s/%s: %v", resolverNS, cmName, err)
+			return
+		}
+		if hadOld {
+			got.Data["block-private-ips"] = oldVal
+		} else {
+			delete(got.Data, "block-private-ips")
+		}
+		if _, err := c.KubeClient.CoreV1().ConfigMaps(resolverNS).Update(cleanupCtx, got, metav1.UpdateOptions{}); err != nil {
+			t.Logf("Cleanup: failed to restore ConfigMap %s/%s: %v", resolverNS, cmName, err)
+		}
+	})
+}
+
 var cacheGitFeatureFlags = requireAllGates(map[string]string{
 	"enable-git-resolver": "true",
 	"enable-api-fields":   "beta",
@@ -65,6 +112,7 @@ func TestBundleResolverCache(t *testing.T) {
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+	allowBundleResolverPrivateRegistry(ctx, t, c)
 
 	// GIVEN
 	replicas := 1
@@ -91,6 +139,7 @@ func TestBundleResolverCacheWithFourResolverReplicas(t *testing.T) {
 	c, namespace := setup(ctx, t, withRegistry, cacheResolverFeatureFlags)
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+	allowBundleResolverPrivateRegistry(ctx, t, c)
 
 	// GIVEN
 	replicas := 4
@@ -418,6 +467,7 @@ func TestResolverCacheIsolation(t *testing.T) {
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+	allowBundleResolverPrivateRegistry(ctx, t, c)
 
 	// Create a Task in the namespace for testing cluster resolver
 	taskName := helpers.ObjectNameForTest(t)
@@ -505,6 +555,7 @@ func TestResolverCacheComprehensive(t *testing.T) {
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+	allowBundleResolverPrivateRegistry(ctx, t, c)
 
 	// Create a Task in the namespace for testing cluster resolver
 	taskName := helpers.ObjectNameForTest(t)
@@ -604,6 +655,7 @@ func TestResolverCacheErrorHandling(t *testing.T) {
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+	allowBundleResolverPrivateRegistry(ctx, t, c)
 
 	// Test with invalid cache mode (should fail with error due to centralized validation)
 	tr1 := newGitCloneBundleTaskRun(t, namespace, "error-test-invalid", "invalid")
@@ -657,6 +709,7 @@ func TestResolverCacheInvalidParams(t *testing.T) {
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+	allowBundleResolverPrivateRegistry(ctx, t, c)
 
 	// Set up local bundle registry
 	taskName := helpers.ObjectNameForTest(t)
