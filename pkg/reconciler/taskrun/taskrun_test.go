@@ -355,11 +355,11 @@ func placeToolsInitContainer(steps []string) corev1.Container {
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse("10m"),
-				corev1.ResourceMemory: resource.MustParse("16Mi"),
+				corev1.ResourceMemory: resource.MustParse("32Mi"),
 			},
 			Limits: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse("10m"),
-				corev1.ResourceMemory: resource.MustParse("16Mi"),
+				corev1.ResourceMemory: resource.MustParse("32Mi"),
 			},
 		},
 	}

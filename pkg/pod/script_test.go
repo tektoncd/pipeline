@@ -162,11 +162,11 @@ _EOF_
 		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
 				corev1.ResourceMemory: resource.MustParse("32Mi"),
 			},
 			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
 				corev1.ResourceMemory: resource.MustParse("32Mi"),
 			},
 		},
@@ -478,11 +478,11 @@ debug-fail-continue-heredoc-randomly-generated-6nl7g
 				VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount, debugScriptsVolumeMount},
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceCPU:    resource.MustParse("100m"),
 						corev1.ResourceMemory: resource.MustParse("32Mi"),
 					},
 					Limits: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceCPU:    resource.MustParse("100m"),
 						corev1.ResourceMemory: resource.MustParse("32Mi"),
 					},
 				},
@@ -631,11 +631,11 @@ debug-beforestep-fail-continue-heredoc-randomly-generated-6nl7g
 				VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount, debugScriptsVolumeMount},
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceCPU:    resource.MustParse("100m"),
 						corev1.ResourceMemory: resource.MustParse("32Mi"),
 					},
 					Limits: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceCPU:    resource.MustParse("100m"),
 						corev1.ResourceMemory: resource.MustParse("32Mi"),
 					},
 				},
@@ -724,11 +724,11 @@ _EOF_
 		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
 				corev1.ResourceMemory: resource.MustParse("32Mi"),
 			},
 			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
 				corev1.ResourceMemory: resource.MustParse("32Mi"),
 			},
 		},
@@ -821,11 +821,11 @@ no-shebang
 		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
 				corev1.ResourceMemory: resource.MustParse("32Mi"),
 			},
 			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
 				corev1.ResourceMemory: resource.MustParse("32Mi"),
 			},
 		},
@@ -914,11 +914,11 @@ sidecar-1
 		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
 				corev1.ResourceMemory: resource.MustParse("32Mi"),
 			},
 			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
 				corev1.ResourceMemory: resource.MustParse("32Mi"),
 			},
 		},
@@ -986,11 +986,11 @@ sidecar-1
 		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
 				corev1.ResourceMemory: resource.MustParse("32Mi"),
 			},
 			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
 				corev1.ResourceMemory: resource.MustParse("32Mi"),
 			},
 		},
