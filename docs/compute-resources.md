@@ -317,9 +317,11 @@ Kubernetes allows users to define [ResourceQuotas](https://kubernetes.io/docs/co
 which restrict the maximum resource requests and limits of all pods running in a namespace.
 
 Tekton's internal containers (`prepare`, `place-scripts`, `working-dir-initializer`,
-`sidecar-tekton-log-results`) ship with minimal default resource requests so that pods can be
-scheduled in namespaces with ResourceQuotas without requiring a LimitRange. These defaults can
-be overridden using the `default-container-resource-requirements` ConfigMap
+`sidecar-tekton-log-results`) ship with minimal default resource requests and limits so that pods can be
+scheduled in namespaces with ResourceQuotas without requiring a LimitRange. The default requests and limits
+are `10m` CPU / `32Mi` memory for `prepare`, `10m` CPU / `16Mi` memory for `working-dir-initializer`,
+`100m` CPU / `32Mi` memory for `place-scripts`, and `50m` CPU / `32Mi` memory for `sidecar-tekton-log-results`.
+These defaults can be overridden using the `default-container-resource-requirements` ConfigMap
 (see [Configuring default resources requirements](./additional-configs.md#configuring-default-resources-requirements)).
 
 `Step` and `Sidecar` resource requirements can be configured directly through the API, as described in

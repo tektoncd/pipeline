@@ -103,11 +103,11 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Ste
 		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    internalContainerDefaultCPU,
+				corev1.ResourceCPU:    internalContainerDefaultScriptCPU,
 				corev1.ResourceMemory: internalContainerDefaultMemoryMedium,
 			},
 			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    internalContainerDefaultCPU,
+				corev1.ResourceCPU:    internalContainerDefaultScriptCPU,
 				corev1.ResourceMemory: internalContainerDefaultMemoryMedium,
 			},
 		},

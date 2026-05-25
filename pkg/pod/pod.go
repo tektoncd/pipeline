@@ -139,11 +139,16 @@ var (
 	// MaxActiveDeadlineSeconds is a maximum permitted value to be used for a task with no timeout
 	MaxActiveDeadlineSeconds = int64(math.MaxInt32)
 
-	// internalContainerDefaultCPU is the default CPU request for init containers (prepare, place-scripts, working-dir-initializer).
+	// internalContainerDefaultCPU is the default CPU request for lightweight init containers (prepare, working-dir-initializer).
 	internalContainerDefaultCPU = resource.MustParse("10m")
+	// internalContainerDefaultScriptCPU is the default CPU request for the script materialization init container.
+	// This init container can process large inline scripts, so avoid throttling it as aggressively as the lightweight init containers.
+	internalContainerDefaultScriptCPU = resource.MustParse("100m")
 	// internalContainerDefaultSidecarCPU is the default CPU request for the results sidecar which runs continuously.
 	internalContainerDefaultSidecarCPU = resource.MustParse("50m")
-	// internalContainerDefaultMemorySmall is the default memory request (16Mi) for prepare and working-dir-initializer.
+	// internalContainerDefaultPrepareMemory is the default memory request for the prepare init container.
+	internalContainerDefaultPrepareMemory = resource.MustParse("32Mi")
+	// internalContainerDefaultMemorySmall is the default memory request (16Mi) for working-dir-initializer.
 	internalContainerDefaultMemorySmall = resource.MustParse("16Mi")
 	// internalContainerDefaultMemoryMedium is the default memory request (32Mi) for place-scripts and results sidecar.
 	internalContainerDefaultMemoryMedium = resource.MustParse("32Mi")
@@ -661,11 +666,11 @@ func entrypointInitContainer(image string, steps []v1.Step, securityContext Secu
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceCPU:    internalContainerDefaultCPU,
-				corev1.ResourceMemory: internalContainerDefaultMemorySmall,
+				corev1.ResourceMemory: internalContainerDefaultPrepareMemory,
 			},
 			Limits: corev1.ResourceList{
 				corev1.ResourceCPU:    internalContainerDefaultCPU,
-				corev1.ResourceMemory: internalContainerDefaultMemorySmall,
+				corev1.ResourceMemory: internalContainerDefaultPrepareMemory,
 			},
 		},
 	}
