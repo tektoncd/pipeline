@@ -8527,7 +8527,6 @@ func getTaskRunStatus(t string, status corev1.ConditionStatus) *v1.PipelineRunTa
 	}
 }
 
-
 // this test validates taskSpec metadata is embedded into task run
 func TestReconcilePipeline_TaskSpecMetadata(t *testing.T) {
 	names.TestingSeed()
