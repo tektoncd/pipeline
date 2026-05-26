@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1348,8 +1349,11 @@ func (c *Reconciler) rescheduleTaskRunPod(ctx context.Context, tr *v1.TaskRun) (
 	count := 0
 	if tr.Annotations != nil {
 		if v, ok := tr.Annotations[v1.TaskRunPodRescheduleCountAnnotation]; ok {
-			if _, err := fmt.Sscanf(v, "%d", &count); err != nil {
+			var err error
+			count, err = strconv.Atoi(v)
+			if err != nil {
 				logger.Warnf("Invalid pod reschedule count annotation %q: %v", v, err)
+				return false, nil
 			}
 		}
 	}
@@ -1360,6 +1364,18 @@ func (c *Reconciler) rescheduleTaskRunPod(ctx context.Context, tr *v1.TaskRun) (
 	}
 
 	if tr.Status.PodName != "" {
+		// Check if the pod still exists before incrementing the reschedule count.
+		// This makes the operation idempotent: if the controller re-processes the
+		// same failure (e.g., after a crash), it won't double-count reschedules.
+		_, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
+		if k8serrors.IsNotFound(err) {
+			// Pod already deleted — this is a re-entrant call, skip incrementing.
+			logger.Infof("Pod %q already deleted for TaskRun %q, skipping reschedule increment", tr.Status.PodName, tr.Name)
+			return false, nil
+		}
+		if err != nil {
+			return false, fmt.Errorf("checking pod %s existence for reschedule: %w", tr.Status.PodName, err)
+		}
 		if err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete(ctx, tr.Status.PodName, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
 			return false, fmt.Errorf("deleting pod %s for reschedule: %w", tr.Status.PodName, err)
 		}
@@ -1369,13 +1385,18 @@ func (c *Reconciler) rescheduleTaskRunPod(ctx context.Context, tr *v1.TaskRun) (
 	if tr.Annotations == nil {
 		tr.Annotations = make(map[string]string)
 	}
-	tr.Annotations[v1.TaskRunPodRescheduleCountAnnotation] = fmt.Sprintf("%d", count)
+	tr.Annotations[v1.TaskRunPodRescheduleCountAnnotation] = strconv.Itoa(count)
 
 	condition := tr.Status.GetCondition(apis.ConditionSucceeded)
 	msg := fmt.Sprintf("pod failed before step execution (%s), rescheduling (attempt %d/%d)", condition.Reason, count, v1.MaxPodRescheduleCount)
 	logger.Infof("Rescheduling pod for TaskRun %q: %s", tr.Name, msg)
 
-	tr.Status.StartTime = nil
+	// Clear stale status fields from the previous pod attempt so they don't
+	// leak into the new pod's lifecycle.
+	tr.Status.Steps = nil
+	tr.Status.Sidecars = nil
+	tr.Status.Results = nil
+	tr.Status.Artifacts = nil
 	tr.Status.CompletionTime = nil
 	tr.Status.PodName = ""
 	taskRunCondSet := apis.NewBatchConditionSet()

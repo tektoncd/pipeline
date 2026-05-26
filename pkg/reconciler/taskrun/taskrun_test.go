@@ -8689,11 +8689,23 @@ status:
 				if got != tc.expectAnnotation {
 					t.Errorf("Expected annotation %q = %q, got %q", v1.TaskRunPodRescheduleCountAnnotation, tc.expectAnnotation, got)
 				}
-				if reconciledTR.Status.StartTime != nil {
-					t.Errorf("Expected StartTime to be nil after reschedule")
+				if reconciledTR.Status.StartTime == nil {
+					t.Errorf("Expected StartTime to be preserved across reschedules")
 				}
 				if reconciledTR.Status.CompletionTime != nil {
 					t.Errorf("Expected CompletionTime to be nil after reschedule")
+				}
+				if reconciledTR.Status.Steps != nil {
+					t.Errorf("Expected Steps to be cleared after reschedule, got %v", reconciledTR.Status.Steps)
+				}
+				if reconciledTR.Status.Sidecars != nil {
+					t.Errorf("Expected Sidecars to be cleared after reschedule, got %v", reconciledTR.Status.Sidecars)
+				}
+				if reconciledTR.Status.Results != nil {
+					t.Errorf("Expected Results to be cleared after reschedule, got %v", reconciledTR.Status.Results)
+				}
+				if reconciledTR.Status.Artifacts != nil {
+					t.Errorf("Expected Artifacts to be cleared after reschedule, got %v", reconciledTR.Status.Artifacts)
 				}
 			case tc.expectRetry:
 				if reconciledTR.Status.PodName != "" {
