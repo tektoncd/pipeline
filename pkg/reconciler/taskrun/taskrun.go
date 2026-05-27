@@ -1378,7 +1378,6 @@ func retryTaskRun(tr *v1.TaskRun, message string) {
 var reschedulableReasons = map[string]struct{}{
 	v1.TaskRunReasonInitContainerFailed.String(): {},
 	v1.TaskRunReasonInitContainerOOM.String():    {},
-	v1.TaskRunReasonPodEvicted.String():          {},
 }
 
 func isReschedulableFailure(reason string) bool {
