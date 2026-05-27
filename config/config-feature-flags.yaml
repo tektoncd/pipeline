@@ -154,9 +154,6 @@ data:
   # to override specific configuration fields for their namespace.
   # Default: "false" (namespace overrides are ignored).
   per-namespace-configuration: "false"
-  # Maximum number of namespace configs held in the LRU cache.
-  # Tune for clusters with many namespaces.
-  # namespace-config-cache-size: "1000"
   # Comma-separated list of additional fields that operators can lock from being
   # overridden per namespace (beyond the built-in non-overridable set).
   # Example: "coschedule,enable-step-actions"

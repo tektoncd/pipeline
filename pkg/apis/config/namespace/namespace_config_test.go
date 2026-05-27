@@ -23,8 +23,10 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"go.uber.org/zap/zaptest"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
@@ -319,6 +321,70 @@ func TestWithNamespaceConfig(t *testing.T) {
 	}
 	if mergedCfg.Defaults.DefaultServiceAccount != "team-alpha-sa" {
 		t.Errorf("expected DefaultServiceAccount=team-alpha-sa, got %q", mergedCfg.Defaults.DefaultServiceAccount)
+	}
+}
+
+func TestWithNamespaceConfigPreservesClusterConfig(t *testing.T) {
+	logger := zaptest.NewLogger(t).Sugar()
+
+	defaultsCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      NamespaceDefaultsConfigMapName,
+			Namespace: "team-alpha",
+			Labels: map[string]string{
+				PartOfLabel:          PartOfValue,
+				NamespaceConfigLabel: "true",
+			},
+		},
+		Data: map[string]string{
+			"default-timeout-minutes": "120",
+		},
+	}
+	flagsCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      NamespaceFeatureFlagsConfigMapName,
+			Namespace: "team-alpha",
+			Labels: map[string]string{
+				PartOfLabel:          PartOfValue,
+				NamespaceConfigLabel: "true",
+			},
+		},
+		Data: map[string]string{
+			"enable-cel-in-whenexpression": "true",
+		},
+	}
+	cache := newTestCache(t, defaultsCM, flagsCM)
+
+	cfg := &config.Config{
+		Defaults:     config.DefaultConfig.DeepCopy(),
+		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
+	}
+	cfg.FeatureFlags.PerNamespaceConfiguration = true
+	cfg.FeatureFlags.EnableTerminationMessageCompression = true
+	cfg.Defaults.DefaultPodTemplate = &pod.Template{NodeSelector: map[string]string{"disk": "ssd"}}
+	cfg.Defaults.DefaultAAPodTemplate = &pod.AffinityAssistantTemplate{NodeSelector: map[string]string{"zone": "west"}}
+	cfg.Defaults.DefaultContainerResourceRequirements = map[string]corev1.ResourceRequirements{
+		config.ResourceRequirementDefaultContainerKey: {
+			Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")},
+		},
+	}
+
+	ctx := WithNamespaceConfig(config.ToContext(context.Background(), cfg), cache, "team-alpha", logger)
+	mergedCfg := config.FromContext(ctx)
+	if mergedCfg.Defaults.DefaultTimeoutMinutes != 120 {
+		t.Errorf("expected DefaultTimeoutMinutes=120, got %d", mergedCfg.Defaults.DefaultTimeoutMinutes)
+	}
+	if diff := cmp.Diff(cfg.Defaults.DefaultPodTemplate, mergedCfg.Defaults.DefaultPodTemplate); diff != "" {
+		t.Errorf("DefaultPodTemplate was not preserved: %s", diff)
+	}
+	if diff := cmp.Diff(cfg.Defaults.DefaultAAPodTemplate, mergedCfg.Defaults.DefaultAAPodTemplate); diff != "" {
+		t.Errorf("DefaultAAPodTemplate was not preserved: %s", diff)
+	}
+	if diff := cmp.Diff(cfg.Defaults.DefaultContainerResourceRequirements, mergedCfg.Defaults.DefaultContainerResourceRequirements); diff != "" {
+		t.Errorf("DefaultContainerResourceRequirements was not preserved: %s", diff)
+	}
+	if !mergedCfg.FeatureFlags.EnableTerminationMessageCompression {
+		t.Error("expected EnableTerminationMessageCompression to remain true")
 	}
 }
 
