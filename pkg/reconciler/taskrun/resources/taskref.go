@@ -39,6 +39,20 @@ import (
 	"knative.dev/pkg/kmeta"
 )
 
+const clusterResolverType = "cluster"
+
+// ResolvedTaskNamespaceForStepActions returns the namespace StepActions should be
+// resolved from for the TaskRun's resolved Task. Only the in-cluster resolver is
+// allowed to move StepAction lookup out of the TaskRun namespace; namespaces on
+// externally resolved Tasks are untrusted metadata and must not authorize local
+// cross-namespace StepAction reads.
+func ResolvedTaskNamespaceForStepActions(taskrun *v1.TaskRun, resolvedTaskNamespace string) string {
+	if taskrun != nil && taskrun.Spec.TaskRef != nil && taskrun.Spec.TaskRef.Resolver == clusterResolverType && resolvedTaskNamespace != "" {
+		return resolvedTaskNamespace
+	}
+	return taskrun.Namespace
+}
+
 // GetTaskKind returns the referenced Task kind (Task, ...) if the TaskRun is using TaskRef.
 func GetTaskKind(taskrun *v1.TaskRun) v1.TaskKind {
 	kind := v1.NamespacedTaskKind
@@ -62,16 +76,7 @@ func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekto
 			if taskrun.Status.Provenance != nil {
 				refSource = taskrun.Status.Provenance.RefSource
 			}
-			// Use the persisted resolved task namespace from Status if available,
-			// otherwise fall back to the TaskRun's namespace. This ensures that
-			// on subsequent reconciles (when TaskSpec is cached in status), the
-			// returned Task metadata preserves the original resolved namespace.
-			// Status is used instead of annotations because it is controller-managed
-			// and cannot be injected by users or malicious Tasks.
-			taskNamespace := taskrun.Namespace
-			if taskrun.Status.ResolvedTaskNamespace != "" {
-				taskNamespace = taskrun.Status.ResolvedTaskNamespace
-			}
+			taskNamespace := ResolvedTaskNamespaceForStepActions(taskrun, taskrun.Status.ResolvedTaskNamespace)
 			return &v1.Task{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
