@@ -122,7 +122,7 @@ const (
 	// DefaultEnableTerminationMessageCompression is the default value for EnableTerminationMessageCompression
 	DefaultEnableTerminationMessageCompression = false
 	// EnablePodRescheduling is the flag to enable automatic rescheduling of TaskRun pods
-	// that fail before any step code executes (e.g., init container failures, pod eviction).
+	// that fail because a Tekton-managed init container fails before any step code executes.
 	EnablePodRescheduling = "enable-pod-rescheduling"
 	// DefaultEnablePodRescheduling is the default value for EnablePodRescheduling
 	DefaultEnablePodRescheduling = false

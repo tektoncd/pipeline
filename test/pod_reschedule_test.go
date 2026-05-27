@@ -44,21 +44,37 @@ func TestPodReschedulingFeatureFlag(t *testing.T) {
 	defer cancel()
 	c, namespace := setup(ctx, t)
 
-	previousValue := ""
-	updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), map[string]string{
+	featureFlags, err := c.KubeClient.CoreV1().ConfigMaps(system.Namespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get ConfigMap %q: %v", config.GetFeatureFlagsConfigName(), err)
+	}
+	previousValue := "false"
+	if featureFlags.Data != nil {
+		if value, ok := featureFlags.Data[config.EnablePodRescheduling]; ok {
+			previousValue = value
+		}
+	}
+
+	if err := updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), map[string]string{
 		config.EnablePodRescheduling: "true",
-	})
+	}); err != nil {
+		t.Fatalf("Failed to enable %q: %v", config.EnablePodRescheduling, err)
+	}
+
+	restoreFeatureFlag := func() {
+		if err := updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), map[string]string{
+			config.EnablePodRescheduling: previousValue,
+		}); err != nil {
+			t.Errorf("Failed to restore %q to %q: %v", config.EnablePodRescheduling, previousValue, err)
+		}
+	}
 
 	knativetest.CleanupOnInterrupt(func() {
-		updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), map[string]string{
-			config.EnablePodRescheduling: previousValue,
-		})
+		restoreFeatureFlag()
 		tearDown(ctx, t, c, namespace)
 	}, t.Logf)
 	defer func() {
-		updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), map[string]string{
-			config.EnablePodRescheduling: previousValue,
-		})
+		restoreFeatureFlag()
 		tearDown(ctx, t, c, namespace)
 	}()
 
