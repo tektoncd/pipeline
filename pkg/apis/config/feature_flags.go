@@ -126,10 +126,6 @@ const (
 	PerNamespaceConfigurationKey = "per-namespace-configuration"
 	// DefaultPerNamespaceConfiguration is the default value for per-namespace-configuration.
 	DefaultPerNamespaceConfiguration = false
-	// NamespaceConfigCacheSizeKey is the flag to set the LRU cache size for namespace configs.
-	NamespaceConfigCacheSizeKey = "namespace-config-cache-size"
-	// DefaultNamespaceConfigCacheSize is the default cache size for namespace configs.
-	DefaultNamespaceConfigCacheSize = 1000
 	// NonOverridableFieldsKey is the flag for operator-locked fields.
 	NonOverridableFieldsKey = "non-overridable-fields"
 
@@ -249,8 +245,6 @@ type FeatureFlags struct {
 	// PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
 	// are honored (TEP-0085). Default: false.
 	PerNamespaceConfiguration bool `json:"perNamespaceConfiguration,omitempty"`
-	// NamespaceConfigCacheSize is the max number of namespace configs held in the LRU cache.
-	NamespaceConfigCacheSize int `json:"namespaceConfigCacheSize,omitempty"`
 	// NonOverridableFields is a comma-separated list of additional fields that operators
 	// can lock from being overridden per namespace.
 	NonOverridableFields string `json:"nonOverridableFields,omitempty"`
@@ -374,15 +368,6 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	// TEP-0085: Per-namespace configuration fields
 	if err := setFeature(PerNamespaceConfigurationKey, DefaultPerNamespaceConfiguration, &tc.PerNamespaceConfiguration); err != nil {
 		return nil, err
-	}
-
-	tc.NamespaceConfigCacheSize = DefaultNamespaceConfigCacheSize
-	if cfg, ok := cfgMap[NamespaceConfigCacheSizeKey]; ok {
-		v, err := strconv.Atoi(cfg)
-		if err != nil {
-			return nil, fmt.Errorf("failed parsing feature flags config %q: %w", NamespaceConfigCacheSizeKey, err)
-		}
-		tc.NamespaceConfigCacheSize = v
 	}
 
 	if cfg, ok := cfgMap[NonOverridableFieldsKey]; ok {

@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"sigs.k8s.io/yaml"
 )
 
 // nsConfigCacheKey is the context key for storing the NamespaceConfigCache.
@@ -125,7 +126,6 @@ var NonOverridableFields = map[string]bool{
 	"default-step-ref-concurrency-limit":   true,
 	// Per-namespace config fields themselves
 	"per-namespace-configuration": true,
-	"namespace-config-cache-size": true,
 	"non-overridable-fields":      true,
 }
 
@@ -371,7 +371,6 @@ func WithNamespaceConfig(ctx context.Context, cache *NamespaceConfigCache, names
 		} else {
 			// Preserve per-namespace-configuration fields from the cluster config
 			mergedFlags.PerNamespaceConfiguration = cfg.FeatureFlags.PerNamespaceConfiguration
-			mergedFlags.NamespaceConfigCacheSize = cfg.FeatureFlags.NamespaceConfigCacheSize
 			mergedFlags.NonOverridableFields = cfg.FeatureFlags.NonOverridableFields
 			mergedCfg.FeatureFlags = mergedFlags
 			if logger != nil {
@@ -426,7 +425,21 @@ func configToDefaultsMap(d *config.Defaults) map[string]string {
 	if len(d.DefaultForbiddenEnv) > 0 {
 		m["default-forbidden-env"] = strings.Join(d.DefaultForbiddenEnv, ",")
 	}
+	setYAMLValue(m, "default-pod-template", d.DefaultPodTemplate)
+	setYAMLValue(m, "default-affinity-assistant-pod-template", d.DefaultAAPodTemplate)
+	if len(d.DefaultContainerResourceRequirements) > 0 {
+		setYAMLValue(m, "default-container-resource-requirements", d.DefaultContainerResourceRequirements)
+	}
 	return m
+}
+
+func setYAMLValue(m map[string]string, key string, value interface{}) {
+	if value == nil {
+		return
+	}
+	if data, err := yaml.Marshal(value); err == nil {
+		m[key] = string(data)
+	}
 }
 
 // configToFeatureFlagsMap converts a FeatureFlags struct back to a map[string]string for merging.
@@ -458,5 +471,6 @@ func configToFeatureFlagsMap(f *config.FeatureFlags) map[string]string {
 		"enable-concise-resolver-syntax":                 strconv.FormatBool(f.EnableConciseResolverSyntax),
 		"enable-kubernetes-sidecar":                      strconv.FormatBool(f.EnableKubernetesSidecar),
 		"enable-wait-exponential-backoff":                strconv.FormatBool(f.EnableWaitExponentialBackoff),
+		"enable-termination-message-compression":         strconv.FormatBool(f.EnableTerminationMessageCompression),
 	}
 }
