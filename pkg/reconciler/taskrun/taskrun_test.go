@@ -8742,7 +8742,6 @@ func TestIsReschedulableFailure(t *testing.T) {
 		t.Run(tc.reason, func(t *testing.T) {
 			if got := isReschedulableFailure(tc.reason); got != tc.want {
 				t.Errorf("isReschedulableFailure(%q) = %v, want %v", tc.reason, got, tc.want)
-
 			}
 		})
 	}

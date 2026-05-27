@@ -793,8 +793,8 @@ indicates the specific failure type:
 ### Automatic Pod Rescheduling
 
 When the `enable-pod-rescheduling` feature flag is set to `"true"`, the controller will automatically
-reschedule a `TaskRun`'s pod if it fails before any step code executes. This covers the following
-failure reasons: `InitContainerFailed`, `InitContainerOOM`, and `PodEvicted`.
+reschedule a `TaskRun`'s pod if it fails before any step code executes. This covers failures
+from Tekton-managed init containers, specifically `InitContainerFailed` and `InitContainerOOM`.
 
 The controller will retry pod creation up to 3 times. The current reschedule count is tracked in
 the annotation `pipeline.tekton.dev/pod-reschedule-count`. This mechanism does **not** consume
