@@ -79,7 +79,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	defer span.End()
 
 	logger := logging.FromContext(ctx)
-	logger.Infof("Reconciling TaskRun notifications for %s/%s", tr.Namespace, tr.Name)
+	logger.Debugf("Reconciling TaskRun notifications for %s/%s", tr.Namespace, tr.Name)
 
 	// We pass 'r' as it satisfies the EventClientsProvider interface.
 	err := notifications.ReconcileRunObject(ctx, r, tr)
