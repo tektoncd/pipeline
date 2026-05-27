@@ -2387,9 +2387,6 @@ spec:
                           type: string
                         maxResultSize:
                           type: integer
-                        namespaceConfigCacheSize:
-                          description: NamespaceConfigCacheSize is the max number of namespace configs held in the LRU cache.
-                          type: integer
                         nonOverridableFields:
                           description: |-
                             NonOverridableFields is a comma-separated list of additional fields that operators
@@ -2780,9 +2777,6 @@ spec:
                                     type: string
                                   maxResultSize:
                                     type: integer
-                                  namespaceConfigCacheSize:
-                                    description: NamespaceConfigCacheSize is the max number of namespace configs held in the LRU cache.
-                                    type: integer
                                   nonOverridableFields:
                                     description: |-
                                       NonOverridableFields is a comma-separated list of additional fields that operators
@@ -3065,9 +3059,6 @@ spec:
                                         enforceNonfalsifiability:
                                           type: string
                                         maxResultSize:
-                                          type: integer
-                                        namespaceConfigCacheSize:
-                                          description: NamespaceConfigCacheSize is the max number of namespace configs held in the LRU cache.
                                           type: integer
                                         nonOverridableFields:
                                           description: |-
@@ -5524,9 +5515,6 @@ spec:
                         enforceNonfalsifiability:
                           type: string
                         maxResultSize:
-                          type: integer
-                        namespaceConfigCacheSize:
-                          description: NamespaceConfigCacheSize is the max number of namespace configs held in the LRU cache.
                           type: integer
                         nonOverridableFields:
                           description: |-
