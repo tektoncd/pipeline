@@ -2129,7 +2129,14 @@ echo hello
 		},
 		Spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{
-				Name: "my-task",
+				ResolverRef: v1.ResolverRef{
+					Resolver: "cluster",
+					Params: v1.Params{
+						{Name: "name", Value: *v1.NewStructuredValues("my-task")},
+						{Name: "namespace", Value: *v1.NewStructuredValues(taskSourceNamespace)},
+						{Name: "kind", Value: *v1.NewStructuredValues("task")},
+					},
+				},
 			},
 			ServiceAccountName: "default",
 		},
@@ -2173,5 +2180,19 @@ echo hello
 	// Without the Status field, should fall back to TaskRun's namespace
 	if actualTask2.Namespace != taskRunNamespace {
 		t.Errorf("expected task namespace %q (TaskRun namespace fallback), got %q", taskRunNamespace, actualTask2.Namespace)
+	}
+
+	// Non-cluster resolvers must not be able to authorize cross-namespace local
+	// StepAction reads by returning arbitrary metadata.namespace values.
+	taskRunExternalResolver := taskRun.DeepCopy()
+	taskRunExternalResolver.Spec.TaskRef.Resolver = "git"
+
+	fn3 := resources.GetTaskFuncFromTaskRun(ctx, kubeclient, tektonclient, nil, taskRunExternalResolver, []*v1alpha1.VerificationPolicy{})
+	actualTask3, _, _, err := fn3(ctx, "my-task")
+	if err != nil {
+		t.Fatalf("failed to call GetTaskFuncFromTaskRun with external resolver: %s", err.Error())
+	}
+	if actualTask3.Namespace != taskRunNamespace {
+		t.Errorf("expected external resolver task namespace %q (TaskRun namespace fallback), got %q", taskRunNamespace, actualTask3.Namespace)
 	}
 }
