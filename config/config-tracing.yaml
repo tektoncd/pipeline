@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# NOTE: Exported traces may include Kubernetes resource identifiers (e.g. TaskRun/PipelineRun
+# names and namespaces) as span attributes. Treat the trace backend as a trusted observability
+# system. See docs/developers/tracing.md for details.
 apiVersion: v1
 kind: ConfigMap
 metadata:

@@ -51,7 +51,7 @@ func ReconcileRunObject(ctx context.Context, e EventClientsProvider, readOnlyRun
 	ctx = cloudevent.ToContext(ctx, e.GetCloudEventsClient())
 	ctx = cache.ToContext(ctx, e.GetCacheClient())
 
-	logger.Infof("reconciling %s", readOnlyRun.GetObjectMeta().GetName())
+	logger.Debugf("reconciling %s", readOnlyRun.GetObjectMeta().GetName())
 
 	condition := readOnlyRun.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 	logger.Debugf("%s %s, condition: %s", readOnlyRun.GetObjectKind().GroupVersionKind().Kind, readOnlyRun.GetObjectMeta().GetName(), condition)
