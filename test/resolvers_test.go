@@ -22,7 +22,6 @@ package test
 
 import (
 	"fmt"
-	"regexp"
 	"testing"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -33,23 +32,7 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
-const (
-	scmTokenSecretBase    = "tekton-e2e-scm-token"
-	scmTokenSecretKey     = "token"
-	scmRemoteTaskPath     = "tasks/remote-task.yaml"
-	scmRemoteOrg          = "test-org"
-	scmRemoteRepo         = "test-repo"
-	scmRemoteBranch       = "main"
-	scmRemoteUser         = "tekton-bot"
-	scmRemoteUserPassword = "ab_d1234HIJKL"
-	// Defined in git-resolver/gitea.yaml's "gitea" StatefulSet, in the env for the "configure-gitea" init container
-	scmGiteaAdminPassword = "giteaPassword1234"
-	systemNamespace       = "tekton-pipelines"
-)
-
 var (
-	defaultSvcRE = regexp.MustCompile(`\.default\.svc\.cluster`)
-
 	hubFeatureFlags = requireAllGates(map[string]string{
 		"enable-hub-resolver": "true",
 		"enable-api-fields":   "beta",

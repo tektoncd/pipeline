@@ -17,6 +17,7 @@ limitations under the License.
 package resource
 
 import (
+	"encoding/hex"
 	"fmt"
 	"hash"
 	"hash/fnv"
@@ -81,12 +82,12 @@ func nameHasher() hash.Hash {
 // so that the full hash is always preserved, maintaining determinism and
 // uniqueness.
 func sanitizedName(prefix string, hasher hash.Hash) string {
-	hex := fmt.Sprintf("%x", hasher.Sum(nil))
-	maxPrefixLen := maxLength - len(hex) - 1 // 1 for the "-" separator
+	sumHex := hex.EncodeToString(hasher.Sum(nil))
+	maxPrefixLen := maxLength - len(sumHex) - 1 // 1 for the "-" separator
 	if len(prefix) > maxPrefixLen {
 		prefix = prefix[:maxPrefixLen]
 	}
-	return fmt.Sprintf("%s-%s", prefix, hex)
+	return fmt.Sprintf("%s-%s", prefix, sumHex)
 }
 
 // GenerateDeterministicNameFromSpec makes a best-effort attempt to create a

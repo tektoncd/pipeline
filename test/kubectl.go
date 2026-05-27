@@ -1,3 +1,6 @@
+//go:build examples || (e2e && gitea)
+// +build examples e2e,gitea
+
 /*
  Copyright 2022 The Tekton Authors
 
