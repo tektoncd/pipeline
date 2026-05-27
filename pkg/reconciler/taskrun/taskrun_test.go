@@ -1584,10 +1584,12 @@ spec:
 				t.Fatalf("Expected to see a permanent error when reconciling invalid TaskRun, got %s instead", reconcileErr)
 			}
 
-			// Check actions and events
+			// Check actions and events. The namespace config informer adds a filtered
+			// cluster-wide ConfigMap list/watch before the controller's normal config
+			// store list/watch.
 			actions := clients.Kube.Actions()
-			if len(actions) != 2 {
-				t.Errorf("expected 2 actions, got %d. Actions: %#v", len(actions), actions)
+			if len(actions) != 4 {
+				t.Errorf("expected 4 actions, got %d. Actions: %#v", len(actions), actions)
 			}
 
 			err := k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
@@ -1844,6 +1846,7 @@ status:
         maxResultSize: 4096
         coschedule: "workspaces"
         disableInlineSpec: ""
+        namespaceConfigCacheSize: 1000
   provenance:
     featureFlags:
       runningInEnvWithInjectedSidecars: true
@@ -1857,6 +1860,7 @@ status:
       maxResultSize: 4096
       coschedule: "workspaces"
       disableInlineSpec: ""
+      namespaceConfigCacheSize: 1000
 `, pipelineErrors.UserErrorLabel, pipelineErrors.UserErrorLabel))
 		reconciliatonError = errors.New("Provided results don't match declared results; may be invalid JSON or missing result declaration:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
 		toBeRetriedTaskRun = parse.MustParseV1TaskRun(t, `
@@ -1912,6 +1916,7 @@ status:
       maxResultSize: 4096
       coschedule: "workspaces"
       disableInlineSpec: ""
+      namespaceConfigCacheSize: 1000
 `)
 		toBeRetriedWithResultsTaskRun = parse.MustParseV1TaskRun(t, `
 metadata:
@@ -2442,10 +2447,11 @@ status:
 		t.Fatalf("Expected to see no error when reconciling TaskRun with Permanent Error but was not none")
 	}
 
-	// Check actions
+	// Check actions. The namespace config informer adds a filtered cluster-wide
+	// ConfigMap list/watch before the controller's normal config store list/watch.
 	actions := clients.Kube.Actions()
-	if len(actions) != 2 || !actions[0].Matches("list", "configmaps") || !actions[1].Matches("watch", "configmaps") {
-		t.Errorf("expected 3 actions (list configmaps, and watch configmaps) created by the reconciler,"+
+	if len(actions) != 4 || !actions[0].Matches("list", "configmaps") || !actions[1].Matches("watch", "configmaps") || !actions[2].Matches("list", "configmaps") || !actions[3].Matches("watch", "configmaps") {
+		t.Errorf("expected 4 actions (namespace config list/watch, then config store list/watch) created by the reconciler,"+
 			" got %d. Actions: %#v", len(actions), actions)
 	}
 
