@@ -8766,12 +8766,11 @@ func TestReconcilePodRescheduling(t *testing.T) {
 			expectAnnotation: "1",
 		},
 		{
-			name:             "PodEvicted with feature enabled reschedules pod",
+			name:             "PodEvicted is not reschedulable",
 			failureReason:    v1.TaskRunReasonPodEvicted,
 			featureEnabled:   true,
 			rescheduleCount:  "",
-			expectReschedule: true,
-			expectAnnotation: "1",
+			expectReschedule: false,
 		},
 		{
 			name:             "InitContainerFailed increments existing count",
@@ -8939,7 +8938,7 @@ func TestIsReschedulableFailure(t *testing.T) {
 	}{
 		{v1.TaskRunReasonInitContainerFailed.String(), true},
 		{v1.TaskRunReasonInitContainerOOM.String(), true},
-		{v1.TaskRunReasonPodEvicted.String(), true},
+		{v1.TaskRunReasonPodEvicted.String(), false},
 		{v1.TaskRunReasonStepFailed.String(), false},
 		{v1.TaskRunReasonStepOOM.String(), false},
 		{v1.TaskRunReasonSidecarFailed.String(), false},
