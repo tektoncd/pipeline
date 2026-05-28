@@ -1085,7 +1085,7 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 
 // applyParamsContextsResultsAndWorkspaces applies paramater, context, results and workspace substitutions to the TaskSpec.
 func applyParamsContextsResultsAndWorkspaces(ctx context.Context,c *Reconciler, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*v1.TaskSpec, error) {
-	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createPod")
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "applyParamsContextsResultsAndWorkspaces")
 	defer span.End()
 
 	ts := rtr.TaskSpec.DeepCopy()
