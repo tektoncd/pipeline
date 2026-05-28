@@ -38,6 +38,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"go.opentelemetry.io/otel"
 )
 
 const (
@@ -391,7 +392,10 @@ func getTaskParameters(spec *v1.TaskSpec, tr *v1.TaskRun, defaults ...v1.ParamSp
 }
 
 // ApplyParameters applies the params from a TaskRun.Parameters to a TaskSpec
-func ApplyParameters(spec *v1.TaskSpec, tr *v1.TaskRun, defaults ...v1.ParamSpec) *v1.TaskSpec {
+func ApplyParameters(ctx context.Context, spec *v1.TaskSpec, tr *v1.TaskRun, defaults ...v1.ParamSpec) *v1.TaskSpec {
+	tracer := otel.Tracer("tektoncd/pipeline")
+	ctx, span := tracer.Start(ctx, "ApplyParameters")
+	defer span.End()
 	stringReplacements, arrayReplacements, objectReplacements := getTaskParameters(spec, tr, defaults...)
 	return ApplyReplacements(spec, stringReplacements, arrayReplacements, objectReplacements)
 }
@@ -504,7 +508,10 @@ func getContextReplacements(taskName string, tr *v1.TaskRun) map[string]string {
 
 // ApplyContexts applies the substitution from $(context.(taskRun|task).*) with the specified values.
 // Uses "" as a default if a value is not available.
-func ApplyContexts(spec *v1.TaskSpec, taskName string, tr *v1.TaskRun) *v1.TaskSpec {
+func ApplyContexts(ctx context.Context, spec *v1.TaskSpec, taskName string, tr *v1.TaskRun) *v1.TaskSpec {
+	tracer := otel.Tracer("tektoncd/pipeline")
+	ctx, span := tracer.Start(ctx, "ApplyContexts")
+	defer span.End()
 	return ApplyReplacements(spec, getContextReplacements(taskName, tr), map[string][]string{}, map[string]map[string]string{})
 }
 
@@ -512,6 +519,11 @@ func ApplyContexts(spec *v1.TaskSpec, taskName string, tr *v1.TaskRun) *v1.TaskS
 // volumes that bindings are realized with in the task spec and the PersistentVolumeClaim names for the
 // workspaces.
 func ApplyWorkspaces(ctx context.Context, spec *v1.TaskSpec, declarations []v1.WorkspaceDeclaration, bindings []v1.WorkspaceBinding, vols map[string]corev1.Volume) *v1.TaskSpec {
+
+	tracer := otel.Tracer("tektoncd/pipeline")
+	ctx, span := tracer.Start(ctx, "ApplyWorkspaces")
+	defer span.End()
+	
 	stringReplacements := map[string]string{}
 
 	bindNames := sets.NewString()
@@ -544,7 +556,11 @@ func ApplyWorkspaces(ctx context.Context, spec *v1.TaskSpec, declarations []v1.W
 }
 
 // ApplyParametersToWorkspaceBindings applies parameters to the WorkspaceBindings of a TaskRun. It takes a TaskSpec and a TaskRun as input and returns the modified TaskRun.
-func ApplyParametersToWorkspaceBindings(ts *v1.TaskSpec, tr *v1.TaskRun) *v1.TaskRun {
+func ApplyParametersToWorkspaceBindings(ctx context.Context, ts *v1.TaskSpec, tr *v1.TaskRun) *v1.TaskRun {
+	tracer := otel.Tracer("tektoncd/pipeline")
+	ctx, span := tracer.Start(ctx, "ApplyParametersToWorkspaceBindings")
+	defer span.End()
+
 	tsCopy := ts.DeepCopy()
 	parameters, _, _ := getTaskParameters(tsCopy, tr, tsCopy.Params...)
 	tr.Spec.Workspaces = workspace.ReplaceWorkspaceBindingsVars(tr.Spec.Workspaces, parameters)
@@ -587,7 +603,10 @@ func applyWorkspaceMountPath(variable string, spec *v1.TaskSpec, declaration v1.
 
 // ApplyResults applies the substitution from values in results and step results which are referenced in spec as subitems
 // of the replacementStr.
-func ApplyResults(spec *v1.TaskSpec) *v1.TaskSpec {
+func ApplyResults(ctx context.Context, spec *v1.TaskSpec) *v1.TaskSpec {
+	tracer := otel.Tracer("tektoncd/pipeline")
+	ctx, span := tracer.Start(ctx, "ApplyResults")
+	defer span.End()
 	// Apply all the Step Result replacements
 	for i := range spec.Steps {
 		stringReplacements := getStepResultReplacements(spec.Steps[i], i)
@@ -634,7 +653,11 @@ func getTaskResultReplacements(spec *v1.TaskSpec) map[string]string {
 }
 
 // ApplyArtifacts replaces the occurrences of artifacts.path and step.artifacts.path with the absolute tekton internal path
-func ApplyArtifacts(spec *v1.TaskSpec) *v1.TaskSpec {
+func ApplyArtifacts(ctx context.Context, spec *v1.TaskSpec) *v1.TaskSpec {
+	tracer := otel.Tracer("tektoncd/pipeline")
+	ctx, span := tracer.Start(ctx, "ApplyArtifacts")
+	defer span.End()
+
 	for i := range spec.Steps {
 		stringReplacements := getArtifactReplacements(spec.Steps[i], i)
 		container.ApplyStepReplacements(&spec.Steps[i], stringReplacements, map[string][]string{})
@@ -653,7 +676,11 @@ func getArtifactReplacements(step v1.Step, idx int) map[string]string {
 
 // ApplyStepExitCodePath replaces the occurrences of exitCode path with the absolute tekton internal path
 // Replace $(steps.<step-name>.exitCode.path) with pipeline.StepPath/<step-name>/exitCode
-func ApplyStepExitCodePath(spec *v1.TaskSpec) *v1.TaskSpec {
+func ApplyStepExitCodePath(ctx context.Context, spec *v1.TaskSpec) *v1.TaskSpec {
+	tracer := otel.Tracer("tektoncd/pipeline")
+	ctx, span := tracer.Start(ctx, "ApplyStepExitCodePath")
+	defer span.End()
+	
 	stringReplacements := map[string]string{}
 
 	for i, step := range spec.Steps {
@@ -664,7 +691,10 @@ func ApplyStepExitCodePath(spec *v1.TaskSpec) *v1.TaskSpec {
 
 // ApplyCredentialsPath applies a substitution of the key $(credentials.path) with the path that credentials
 // from annotated secrets are written to.
-func ApplyCredentialsPath(spec *v1.TaskSpec, path string) *v1.TaskSpec {
+func ApplyCredentialsPath(ctx context.Context, spec *v1.TaskSpec, path string) *v1.TaskSpec {
+	tracer := otel.Tracer("tektoncd/pipeline")
+	ctx, span := tracer.Start(ctx, "ApplyCredentialsPath")
+	defer span.End()
 	stringReplacements := map[string]string{
 		"credentials.path": path,
 	}
