@@ -47,7 +47,7 @@ require (
 	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.9.5
 	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.9.5
 	go.opentelemetry.io/otel v1.43.0
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.43.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.42.0
 	go.opentelemetry.io/otel/sdk v1.43.0
 	go.opentelemetry.io/otel/trace v1.43.0
 	k8s.io/utils v0.0.0-20241210054802-24370beab758
@@ -224,7 +224,7 @@ require (
 	golang.org/x/tools v0.44.0 // indirect
 	google.golang.org/api v0.233.0 // indirect
 	google.golang.org/genproto v0.0.0-20250303144028-a0af3efb3deb // indirect
-	google.golang.org/grpc v1.80.0
+	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

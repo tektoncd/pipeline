@@ -399,14 +399,14 @@ func (b *pickfirstBalancer) startFirstPassLocked() {
 	b.firstPass = true
 	b.numTF = 0
 	// Reset the connection attempt record for existing SubConns.
-	for _, sd := range b.subConns.All() {
+	for _, sd := range b.subConns.Values() {
 		sd.connectionFailedInFirstPass = false
 	}
 	b.requestConnectionLocked()
 }
 
 func (b *pickfirstBalancer) closeSubConnsLocked() {
-	for _, sd := range b.subConns.All() {
+	for _, sd := range b.subConns.Values() {
 		sd.subConn.Shutdown()
 	}
 	b.subConns = resolver.NewAddressMapV2[*scData]()
@@ -506,7 +506,7 @@ func (b *pickfirstBalancer) reconcileSubConnsLocked(newAddrs []resolver.Address)
 		newAddrsMap.Set(addr, true)
 	}
 
-	for oldAddr := range b.subConns.All() {
+	for _, oldAddr := range b.subConns.Keys() {
 		if _, ok := newAddrsMap.Get(oldAddr); ok {
 			continue
 		}
@@ -520,7 +520,7 @@ func (b *pickfirstBalancer) reconcileSubConnsLocked(newAddrs []resolver.Address)
 // becomes ready, which means that all other subConn must be shutdown.
 func (b *pickfirstBalancer) shutdownRemainingLocked(selected *scData) {
 	b.cancelConnectionTimer()
-	for _, sd := range b.subConns.All() {
+	for _, sd := range b.subConns.Values() {
 		if sd.subConn != selected.subConn {
 			sd.subConn.Shutdown()
 		}
@@ -771,7 +771,7 @@ func (b *pickfirstBalancer) endFirstPassIfPossibleLocked(lastErr error) {
 	}
 	// Connect() has been called on all the SubConns. The first pass can be
 	// ended if all the SubConns have reported a failure.
-	for _, sd := range b.subConns.All() {
+	for _, sd := range b.subConns.Values() {
 		if !sd.connectionFailedInFirstPass {
 			return
 		}
@@ -782,7 +782,7 @@ func (b *pickfirstBalancer) endFirstPassIfPossibleLocked(lastErr error) {
 		Picker:            &picker{err: lastErr},
 	})
 	// Start re-connecting all the SubConns that are already in IDLE.
-	for _, sd := range b.subConns.All() {
+	for _, sd := range b.subConns.Values() {
 		if sd.rawConnectivityState == connectivity.Idle {
 			sd.subConn.Connect()
 		}

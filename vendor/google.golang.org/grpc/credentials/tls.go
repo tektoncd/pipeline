@@ -22,6 +22,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -51,21 +52,22 @@ func (t TLSInfo) AuthType() string {
 }
 
 // ValidateAuthority validates the provided authority being used to override the
-// :authority header by verifying it against the peer certificate. It returns a
+// :authority header by verifying it against the peer certificates. It returns a
 // non-nil error if the validation fails.
 func (t TLSInfo) ValidateAuthority(authority string) error {
+	var errs []error
 	host, _, err := net.SplitHostPort(authority)
 	if err != nil {
 		host = authority
 	}
-
-	// Verify authority against the leaf certificate.
-	if len(t.State.PeerCertificates) == 0 {
-		// This is not expected to happen as the TLS handshake has already
-		// completed and should have populated PeerCertificates.
-		return fmt.Errorf("credentials: no peer certificates found to verify authority %q", host)
+	for _, cert := range t.State.PeerCertificates {
+		var err error
+		if err = cert.VerifyHostname(host); err == nil {
+			return nil
+		}
+		errs = append(errs, err)
 	}
-	return t.State.PeerCertificates[0].VerifyHostname(host)
+	return fmt.Errorf("credentials: invalid authority %q: %v", authority, errors.Join(errs...))
 }
 
 // cipherSuiteLookup returns the string version of a TLS cipher suite ID.

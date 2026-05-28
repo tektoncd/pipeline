@@ -187,7 +187,8 @@ func (es *endpointSharding) UpdateClientConnState(state balancer.ClientConnState
 		}
 	}
 	// Delete old children that are no longer present.
-	for e, child := range children.All() {
+	for _, e := range children.Keys() {
+		child, _ := children.Get(e)
 		if _, ok := newChildren.Get(e); !ok {
 			child.closeLocked()
 		}
@@ -211,7 +212,7 @@ func (es *endpointSharding) ResolverError(err error) {
 		es.updateState()
 	}()
 	children := es.children.Load()
-	for _, child := range children.All() {
+	for _, child := range children.Values() {
 		child.resolverErrorLocked(err)
 	}
 }
@@ -224,7 +225,7 @@ func (es *endpointSharding) Close() {
 	es.childMu.Lock()
 	defer es.childMu.Unlock()
 	children := es.children.Load()
-	for _, child := range children.All() {
+	for _, child := range children.Values() {
 		child.closeLocked()
 	}
 }
@@ -232,7 +233,7 @@ func (es *endpointSharding) Close() {
 func (es *endpointSharding) ExitIdle() {
 	es.childMu.Lock()
 	defer es.childMu.Unlock()
-	for _, bw := range es.children.Load().All() {
+	for _, bw := range es.children.Load().Values() {
 		if !bw.isClosed {
 			bw.child.ExitIdle()
 		}
@@ -254,7 +255,7 @@ func (es *endpointSharding) updateState() {
 	children := es.children.Load()
 	childStates := make([]ChildState, 0, children.Len())
 
-	for _, child := range children.All() {
+	for _, child := range children.Values() {
 		childState := child.childState
 		childStates = append(childStates, childState)
 		childPicker := childState.State.Picker
