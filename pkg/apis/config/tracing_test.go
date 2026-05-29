@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	test "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestNewTracingFromConfigMap(t *testing.T) {
@@ -58,6 +59,65 @@ func TestNewTracingFromConfigMap(t *testing.T) {
 				}
 			} else {
 				t.Errorf("NewTracingFromConfigMap(actual) = %v", err)
+			}
+		})
+	}
+}
+
+func TestNewTracingFromConfigMapSamplingRatio(t *testing.T) {
+	testCases := []struct {
+		name    string
+		value   string
+		want    float64
+		wantErr bool
+	}{
+		{
+			name:  "zero",
+			value: "0.0",
+			want:  0.0,
+		},
+		{
+			name:  "one",
+			value: "1.0",
+			want:  1.0,
+		},
+		{
+			name:  "half",
+			value: "0.5",
+			want:  0.5,
+		},
+		{
+			name:    "negative",
+			value:   "-0.1",
+			wantErr: true,
+		},
+		{
+			name:    "greater than one",
+			value:   "1.1",
+			wantErr: true,
+		},
+		{
+			name:    "not a number",
+			value:   "abc",
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cm := &corev1.ConfigMap{Data: map[string]string{"sampling-ratio": tc.value}}
+			got, err := config.NewTracingFromConfigMap(cm)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("NewTracingFromConfigMap() expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("NewTracingFromConfigMap() = %v", err)
+			}
+			if got.SamplingRatio != tc.want {
+				t.Fatalf("SamplingRatio = %v, want %v", got.SamplingRatio, tc.want)
 			}
 		})
 	}

@@ -17,11 +17,13 @@ limitations under the License.
 package tracing
 
 import (
+	"context"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,6 +43,41 @@ func TestNewTracerProvider(t *testing.T) {
 	if span.IsRecording() {
 		t.Fatalf("Span is recording before configuration")
 	}
+}
+
+func TestCreateTracerProviderSamplingRatio(t *testing.T) {
+	cfg := &config.Tracing{
+		Enabled:       true,
+		Endpoint:      "http://localhost:4318/v1/traces",
+		SamplingRatio: 0.0,
+	}
+
+	tp, err := createTracerProvider("test-service", cfg, "", "")
+	if err != nil {
+		t.Fatalf("createTracerProvider() = %v", err)
+	}
+	if shutdown, ok := tp.(interface{ Shutdown(context.Context) error }); ok {
+		defer shutdown.Shutdown(context.Background())
+	}
+
+	_, root := tp.Tracer("tracer").Start(t.Context(), "root")
+	if root.IsRecording() {
+		t.Fatalf("root span is recording with sampling-ratio 0.0")
+	}
+	root.End()
+
+	sampledParent := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    trace.TraceID{1},
+		SpanID:     trace.SpanID{2},
+		TraceFlags: trace.FlagsSampled,
+		Remote:     true,
+	})
+	ctx := trace.ContextWithRemoteSpanContext(t.Context(), sampledParent)
+	_, child := tp.Tracer("tracer").Start(ctx, "child")
+	if !child.IsRecording() {
+		t.Fatalf("child span with sampled parent is not recording")
+	}
+	child.End()
 }
 
 func TestOnStore(t *testing.T) {
