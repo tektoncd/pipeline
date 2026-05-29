@@ -52,6 +52,7 @@ func tracerProviderFromContext(ctx context.Context) trace.TracerProvider {
 	return trace.NewNoopTracerProvider()
 }
 
+//nolint:spancheck // Callers own and end the returned span with defer span.End().
 func StartResolverSpan(ctx context.Context, resolverType string) (context.Context, trace.Span) {
 	ctx, span := tracerProviderFromContext(ctx).Tracer(TracerName).Start(ctx, spanNameResolverResolve)
 	span.SetAttributes(attribute.String(attributeResolverType, resolverType))
