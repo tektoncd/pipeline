@@ -128,7 +128,7 @@ func TestInitTracingRootSpanLifecycle(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 	exporter := tracetest.NewInMemoryExporter()
 	tracerProvider := tracesdk.NewTracerProvider(tracesdk.WithSyncer(exporter))
-	defer tracerProvider.Shutdown(t.Context())
+	defer func() { _ = tracerProvider.Shutdown(t.Context()) }()
 
 	tr := &v1.TaskRun{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "testns"}}
 	_, span := initTracing(t.Context(), tracerProvider, tr)
