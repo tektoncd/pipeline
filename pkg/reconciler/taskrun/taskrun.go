@@ -136,6 +136,10 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	defer span.End()
 
 	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
+	if spanCtx := span.SpanContext(); spanCtx.IsValid() {
+		logger = logger.With(zap.String("traceID", spanCtx.TraceID().String()), zap.String("spanID", spanCtx.SpanID().String()))
+		ctx = logging.WithLogger(ctx, logger)
+	}
 	// Read the initial condition
 	before := tr.Status.GetCondition(apis.ConditionSucceeded)
 
