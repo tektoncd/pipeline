@@ -41,6 +41,12 @@ Further documentation available:
 
 ## Release
 
+### v1.13
+- **Latest Release**: [v1.13.0][v1.13-0] (2026-05-29) ([docs][v1.13-0-docs], [examples][v1.13-0-examples])
+- **Initial Release**: [v1.13.0][v1.13-0] (2026-05-29)
+- **End of Life**: 2026-06-29
+- **Patch Releases**: [v1.13.0][v1.13-0]
+
 ### v1.12 (LTS)
 - **Latest Release**: [v1.12.0][v1.12-0] (2026-05-04) ([docs][v1.12-0-docs], [examples][v1.12-0-examples])
 - **Initial Release**: [v1.12.0][v1.12-0] (2026-05-04)
@@ -340,6 +346,7 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [release-notes-standards]:
     https://github.com/tektoncd/community/blob/main/standards.md#release-notes
 
+[v1.13-0]: https://github.com/tektoncd/pipeline/releases/tag/v1.13.0
 [v1.12-0]: https://github.com/tektoncd/pipeline/releases/tag/v1.12.0
 [v1.11-1]: https://github.com/tektoncd/pipeline/releases/tag/v1.11.1
 [v1.11-0]: https://github.com/tektoncd/pipeline/releases/tag/v1.11.0
@@ -458,6 +465,7 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [v0-37-5]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.5
 [v0-37-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.0
 
+[v1.13-0-docs]: https://github.com/tektoncd/pipeline/tree/v1.13.0/docs#tekton-pipelines
 [v1.12-0-docs]: https://github.com/tektoncd/pipeline/tree/v1.12.0/docs#tekton-pipelines
 [v1.11-1-docs]: https://github.com/tektoncd/pipeline/tree/v1.11.1/docs#tekton-pipelines
 [v1.11-0-docs]: https://github.com/tektoncd/pipeline/tree/v1.11.0/docs#tekton-pipelines
@@ -519,6 +527,7 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [v0-38-4-docs]: https://github.com/tektoncd/pipeline/tree/v0.38.4/docs#tekton-pipelines
 [v0-37-5-docs]: https://github.com/tektoncd/pipeline/tree/v0.37.5/docs#tekton-pipelines
 
+[v1.13-0-examples]: https://github.com/tektoncd/pipeline/tree/v1.13.0/examples#examples
 [v1.12-0-examples]: https://github.com/tektoncd/pipeline/tree/v1.12.0/examples#examples
 [v1.11-1-examples]: https://github.com/tektoncd/pipeline/tree/v1.11.1/examples#examples
 [v1.11-0-examples]: https://github.com/tektoncd/pipeline/tree/v1.11.0/examples#examples
