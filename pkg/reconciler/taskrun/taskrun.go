@@ -131,7 +131,8 @@ var (
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
-	ctx = initTracing(ctx, c.tracerProvider, tr)
+	ctx, rootSpan := initTracing(ctx, c.tracerProvider, tr)
+	defer rootSpan.End()
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:ReconcileKind")
 	defer span.End()
 
