@@ -30,7 +30,7 @@ import (
 func TestRecordSpanError(t *testing.T) {
 	exporter := tracetest.NewInMemoryExporter()
 	tracerProvider := tracesdk.NewTracerProvider(tracesdk.WithSyncer(exporter))
-	defer tracerProvider.Shutdown(t.Context())
+	defer func() { _ = tracerProvider.Shutdown(t.Context()) }()
 
 	_, span := tracerProvider.Tracer(TracerName).Start(t.Context(), "test")
 	recordSpanError(span, errors.New("boom"))
