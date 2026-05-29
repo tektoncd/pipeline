@@ -42,7 +42,7 @@ require (
 	github.com/google/cel-go v0.28.1
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20260414223304-7a662782a11f
 	github.com/sigstore/sigstore/pkg/signature/kms/aws v1.10.6
-	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.6
+	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.8
 	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.10.6
 	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.10.6
 	go.opentelemetry.io/otel v1.44.0
@@ -114,7 +114,7 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
-	github.com/secure-systems-lab/go-securesystemslib v0.9.1 // indirect
+	github.com/secure-systems-lab/go-securesystemslib v0.11.0 // indirect
 	github.com/sigstore/protobuf-specs v0.5.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
