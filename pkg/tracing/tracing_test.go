@@ -56,8 +56,10 @@ func TestCreateTracerProviderSamplingRatio(t *testing.T) {
 	if err != nil {
 		t.Fatalf("createTracerProvider() = %v", err)
 	}
-	if shutdown, ok := tp.(interface{ Shutdown(context.Context) error }); ok {
-		defer shutdown.Shutdown(context.Background())
+	if shutdown, ok := tp.(interface {
+		Shutdown(ctx context.Context) error
+	}); ok {
+		defer func() { _ = shutdown.Shutdown(context.Background()) }()
 	}
 
 	_, root := tp.Tracer("tracer").Start(t.Context(), "root")
