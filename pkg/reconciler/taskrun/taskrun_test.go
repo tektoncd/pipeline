@@ -8358,10 +8358,10 @@ func TestAppendPreviousConditionContext(t *testing.T) {
 			expectAppend: false,
 		},
 		{
-			name:        "previous reason is ExceededResourceQuota - preserve",
-			prevReason:  "ExceededResourceQuota",
-			prevMessage: `TaskRun Pod exceeded available resources: pods "test-pod" is forbidden: exceeded quota`,
-			newMessage:  "TaskRun was cancelled. TaskRun cancelled as the PipelineRun it belongs to has timed out.",
+			name:         "previous reason is ExceededResourceQuota - preserve",
+			prevReason:   "ExceededResourceQuota",
+			prevMessage:  `TaskRun Pod exceeded available resources: pods "test-pod" is forbidden: exceeded quota`,
+			newMessage:   "TaskRun was cancelled. TaskRun cancelled as the PipelineRun it belongs to has timed out.",
 			expectAppend: true,
 			expectedContains: []string{
 				"TaskRun was cancelled",
@@ -8370,10 +8370,10 @@ func TestAppendPreviousConditionContext(t *testing.T) {
 			},
 		},
 		{
-			name:        "previous reason is ImagePullBackOff - preserve",
-			prevReason:  "TaskRunImagePullFailed",
-			prevMessage: "The step image failed to pull",
-			newMessage:  "TaskRun was cancelled",
+			name:         "previous reason is ImagePullBackOff - preserve",
+			prevReason:   "TaskRunImagePullFailed",
+			prevMessage:  "The step image failed to pull",
+			newMessage:   "TaskRun was cancelled",
 			expectAppend: true,
 			expectedContains: []string{
 				"TaskRun was cancelled",
@@ -8410,10 +8410,8 @@ func TestAppendPreviousConditionContext(t *testing.T) {
 						t.Errorf("Expected result to contain %q, got: %s", expected, result)
 					}
 				}
-			} else {
-				if result != tc.newMessage {
-					t.Errorf("Expected message to be unchanged %q, got: %s", tc.newMessage, result)
-				}
+			} else if result != tc.newMessage {
+				t.Errorf("Expected message to be unchanged %q, got: %s", tc.newMessage, result)
 			}
 		})
 	}
