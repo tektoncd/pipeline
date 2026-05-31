@@ -22,10 +22,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jenkins-x/go-scm/scm"
-	"github.com/jenkins-x/go-scm/scm/factory"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/internal/scmclient"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -72,7 +71,7 @@ type Resolver struct {
 	ttl        time.Duration
 
 	// Function for creating a SCM client so we can change it in tests.
-	clientFunc func(string, string, string, ...factory.ClientOptionFunc) (*scm.Client, error)
+	clientFunc func(string, string, string) (scmclient.SCMClient, error)
 }
 
 // Initialize performs any setup required by the git resolver.
@@ -86,7 +85,7 @@ func (r *Resolver) Initialize(ctx context.Context) error {
 		r.ttl = ttl
 	}
 	if r.clientFunc == nil {
-		r.clientFunc = factory.NewClient
+		r.clientFunc = scmclient.New
 	}
 	return nil
 }
