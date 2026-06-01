@@ -403,7 +403,7 @@ func TestNewTransformer(t *testing.T) {
 							Name: "prepare",
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceCPU:    resource.MustParse("100m"),
 									corev1.ResourceMemory: resource.MustParse("16Mi"),
 								},
 							},
@@ -412,7 +412,7 @@ func TestNewTransformer(t *testing.T) {
 							Name: "place-scripts",
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceCPU:    resource.MustParse("100m"),
 									corev1.ResourceMemory: resource.MustParse("32Mi"),
 								},
 							},
@@ -421,7 +421,7 @@ func TestNewTransformer(t *testing.T) {
 							Name: "working-dir-initializer",
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceCPU:    resource.MustParse("100m"),
 									corev1.ResourceMemory: resource.MustParse("16Mi"),
 								},
 							},
@@ -433,7 +433,7 @@ func TestNewTransformer(t *testing.T) {
 							Name: "sidecar-tekton-log-results",
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceCPU:    resource.MustParse("100m"),
 									corev1.ResourceMemory: resource.MustParse("32Mi"),
 								},
 							},
@@ -557,7 +557,7 @@ func TestNewTransformer(t *testing.T) {
 							Name: "prepare",
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceCPU:    resource.MustParse("100m"),
 									corev1.ResourceMemory: resource.MustParse("16Mi"),
 								},
 							},
@@ -566,7 +566,7 @@ func TestNewTransformer(t *testing.T) {
 							Name: "place-scripts",
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceCPU:    resource.MustParse("100m"),
 									corev1.ResourceMemory: resource.MustParse("32Mi"),
 								},
 							},
@@ -578,7 +578,7 @@ func TestNewTransformer(t *testing.T) {
 							Name: "sidecar-tekton-log-results",
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceCPU:    resource.MustParse("100m"),
 									corev1.ResourceMemory: resource.MustParse("32Mi"),
 								},
 							},
@@ -604,7 +604,7 @@ func TestNewTransformer(t *testing.T) {
 								Name: "prepare",
 								Resources: corev1.ResourceRequirements{
 									Requests: corev1.ResourceList{
-										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceCPU:    resource.MustParse("100m"),
 										corev1.ResourceMemory: resource.MustParse("16Mi"),
 									},
 								},
@@ -614,7 +614,7 @@ func TestNewTransformer(t *testing.T) {
 								Name: "place-scripts",
 								Resources: corev1.ResourceRequirements{
 									Requests: corev1.ResourceList{
-										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceCPU:    resource.MustParse("100m"),
 										corev1.ResourceMemory: resource.MustParse("32Mi"),
 									},
 								},
@@ -628,7 +628,7 @@ func TestNewTransformer(t *testing.T) {
 								Name: "sidecar-tekton-log-results",
 								Resources: corev1.ResourceRequirements{
 									Requests: corev1.ResourceList{
-										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceCPU:    resource.MustParse("100m"),
 										corev1.ResourceMemory: resource.MustParse("32Mi"),
 									},
 								},
@@ -651,7 +651,7 @@ func TestNewTransformer(t *testing.T) {
 							Name: "prepare",
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceCPU:    resource.MustParse("100m"),
 									corev1.ResourceMemory: resource.MustParse("16Mi"),
 								},
 							},
@@ -795,7 +795,7 @@ func TestNewTransformer(t *testing.T) {
 							Name: "sidecar-tekton-log-results",
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceCPU:    resource.MustParse("100m"),
 									corev1.ResourceMemory: resource.MustParse("32Mi"),
 								},
 							},
@@ -850,7 +850,7 @@ func TestNewTransformer(t *testing.T) {
 							Name: "sidecar-tekton-log-results",
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceCPU:    resource.MustParse("100m"),
 									corev1.ResourceMemory: resource.MustParse("32Mi"),
 								},
 							},

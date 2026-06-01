@@ -239,6 +239,47 @@ data:
 
 Any resource requirements set at the `Task` and `TaskRun` levels will override the default one specified in the `config-defaults` configmap.
 
+### Performance tuning
+
+CPU **limits** on init containers cause [CFS throttling](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#how-pods-with-resource-limits-are-run),
+which can significantly slow down TaskRun execution — especially for the `prepare` init container that copies
+the entrypoint binary into every pod.
+
+If your namespace does **not** enforce a `ResourceQuota`, you can remove CPU limits entirely by specifying only
+`requests`. This lets init containers burst to use available CPU and complete in under a second:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-container-resource-requirements: |
+    prepare:
+      requests:
+        cpu: "100m"
+        memory: "64Mi"
+    place-scripts:
+      requests:
+        cpu: "100m"
+        memory: "32Mi"
+    working-dir-initializer:
+      requests:
+        cpu: "100m"
+        memory: "16Mi"
+```
+
+The following table shows the impact of different CPU limits on a simple single-step TaskRun
+(measured on a kind cluster, averaged over 5 warm runs):
+
+| `prepare` CPU config | TaskRun avg | PipelineRun avg |
+|---|---|---|
+| No limits (v1.12 behavior) | ~5s | ~5s |
+| Requests only (no limit) | ~5s | ~5s |
+| 100m (requests=limits) | ~6s | ~6s |
+| 10m (requests=limits) | ~21s | ~20s |
+
 ## Customizing basic execution parameters
 
 You can specify your own values that replace the default service account (`ServiceAccount`), timeout (`Timeout`), resolver (`Resolver`), and Pod template (`PodTemplate`) values used by Tekton Pipelines in `TaskRun` and `PipelineRun` definitions. To do so, modify the ConfigMap `config-defaults` with your desired values.

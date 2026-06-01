@@ -140,14 +140,16 @@ var (
 	MaxActiveDeadlineSeconds = int64(math.MaxInt32)
 
 	// internalContainerDefaultCPU is the default CPU request for lightweight init containers (prepare, working-dir-initializer).
-	internalContainerDefaultCPU = resource.MustParse("10m")
+	// Must be high enough to avoid CFS throttling; 10m causes a 3-4x regression (see #10152).
+	internalContainerDefaultCPU = resource.MustParse("100m")
 	// internalContainerDefaultScriptCPU is the default CPU request for the script materialization init container.
 	// This init container can process large inline scripts, so avoid throttling it as aggressively as the lightweight init containers.
 	internalContainerDefaultScriptCPU = resource.MustParse("100m")
 	// internalContainerDefaultSidecarCPU is the default CPU request for the results sidecar which runs continuously.
 	internalContainerDefaultSidecarCPU = resource.MustParse("50m")
 	// internalContainerDefaultPrepareMemory is the default memory request for the prepare init container.
-	internalContainerDefaultPrepareMemory = resource.MustParse("32Mi")
+	// The prepare container copies the ~63MB entrypoint binary; 32Mi can cause OOMKill (see #10152).
+	internalContainerDefaultPrepareMemory = resource.MustParse("64Mi")
 	// internalContainerDefaultMemorySmall is the default memory request (16Mi) for working-dir-initializer.
 	internalContainerDefaultMemorySmall = resource.MustParse("16Mi")
 	// internalContainerDefaultMemoryMedium is the default memory request (32Mi) for place-scripts and results sidecar.

@@ -317,12 +317,26 @@ Kubernetes allows users to define [ResourceQuotas](https://kubernetes.io/docs/co
 which restrict the maximum resource requests and limits of all pods running in a namespace.
 
 Tekton's internal containers (`prepare`, `place-scripts`, `working-dir-initializer`,
-`sidecar-tekton-log-results`) ship with minimal default resource requests and limits so that pods can be
-scheduled in namespaces with ResourceQuotas without requiring a LimitRange. The default requests and limits
-are `10m` CPU / `32Mi` memory for `prepare`, `10m` CPU / `16Mi` memory for `working-dir-initializer`,
-`100m` CPU / `32Mi` memory for `place-scripts`, and `50m` CPU / `32Mi` memory for `sidecar-tekton-log-results`.
+`sidecar-tekton-log-results`) ship with default resource requests and limits so that pods can be
+scheduled in namespaces with ResourceQuotas without requiring a LimitRange. The defaults are:
+
+| Container | CPU | Memory |
+|---|---|---|
+| `prepare` | 100m | 64Mi |
+| `place-scripts` | 100m | 32Mi |
+| `working-dir-initializer` | 100m | 16Mi |
+| `sidecar-tekton-log-results` | 50m | 32Mi |
+
+Requests and limits are set to the same value (Guaranteed QoS when step containers also match).
+
 These defaults can be overridden using the `default-container-resource-requirements` ConfigMap
 (see [Configuring default resources requirements](./additional-configs.md#configuring-default-resources-requirements)).
+
+> **Performance note:** CPU limits on init containers cause
+> [CFS throttling](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#how-pods-with-resource-limits-are-run).
+> If you do not need ResourceQuota compatibility, you can set only requests (omitting limits)
+> to allow init containers to burst beyond their reservation. See the
+> [performance tuning section](./additional-configs.md#performance-tuning) for details.
 
 `Step` and `Sidecar` resource requirements can be configured directly through the API, as described in
 [Task Resource Requirements](#task-resource-requirements). You can also deploy a LimitRange
