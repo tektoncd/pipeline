@@ -22,7 +22,6 @@ import (
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"knative.dev/pkg/logging"
@@ -62,7 +61,6 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, tr *v
 	// Create a new root span since there was no parent spanContext provided through annotations
 	ctxWithTrace, span := tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:Reconciler")
 	defer span.End()
-	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 
 	pro.Inject(ctxWithTrace, propagation.MapCarrier(spanContext))
 
