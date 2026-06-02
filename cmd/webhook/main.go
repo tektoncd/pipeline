@@ -17,7 +17,10 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -32,7 +35,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution"
 	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"knative.dev/pkg/apis"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -81,15 +86,7 @@ func newDefaultingAdmissionController(name string) func(context.Context, configm
 		store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
 		store.WatchConfigs(cmw)
 
-		// TEP-0085: Create filtered informer for per-namespace defaulting.
-		// The webhook's injection context is namespace-scoped (tekton-pipelines),
-		// but we need a cluster-scoped informer to read namespace ConfigMaps.
-		kubeclientset := kubeclient.Get(ctx)
-		nsConfigFactory, nsConfigCMInformer := nsconfig.NewNamespaceConfigInformer(kubeclientset, nsconfig.DefaultResyncPeriod)
-		nsConfigCMInformer.Informer().AddEventHandler(nsconfig.LogEventHandlers(logging.FromContext(ctx).Named("ns-config"))) //nolint:errcheck
-		nsConfigFactory.Start(ctx.Done())
-		nsConfigFactory.WaitForCacheSync(ctx.Done())
-		nsConfigCache := nsconfig.NewNamespaceConfigCache(nsConfigCMInformer.Lister())
+		nsConfigCache := newNamespaceConfigCache(ctx)
 
 		return defaulting.NewAdmissionController(ctx,
 
@@ -105,10 +102,7 @@ func newDefaultingAdmissionController(name string) func(context.Context, configm
 
 			// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 			func(ctx context.Context) context.Context {
-				ctx = store.ToContext(ctx)
-				// TEP-0085: Inject namespace config cache into context for SetDefaults
-				ctx = nsconfig.ToContext(ctx, nsConfigCache)
-				return ctx
+				return withNamespaceConfigForAdmission(store.ToContext(ctx), nsConfigCache)
 			},
 
 			// Whether to disallow unknown fields.
@@ -117,11 +111,52 @@ func newDefaultingAdmissionController(name string) func(context.Context, configm
 	}
 }
 
+func newNamespaceConfigCache(ctx context.Context) *nsconfig.NamespaceConfigCache {
+	// TEP-0085: Create filtered informer for per-namespace configuration.
+	// The webhook's injection context is namespace-scoped (tekton-pipelines),
+	// but we need a cluster-scoped informer to read namespace ConfigMaps.
+	kubeclientset := kubeclient.Get(ctx)
+	nsConfigFactory, nsConfigCMInformer := nsconfig.NewNamespaceConfigInformer(kubeclientset, nsconfig.DefaultResyncPeriod)
+	nsConfigCMInformer.Informer().AddEventHandler(nsconfig.LogEventHandlers(logging.FromContext(ctx).Named("ns-config"))) //nolint:errcheck
+	nsConfigFactory.Start(ctx.Done())
+	nsConfigFactory.WaitForCacheSync(ctx.Done())
+	return nsconfig.NewNamespaceConfigCache(nsConfigCMInformer.Lister())
+}
+
+func withNamespaceConfigForAdmission(ctx context.Context, nsConfigCache *nsconfig.NamespaceConfigCache) context.Context {
+	ctx = nsconfig.ToContext(ctx, nsConfigCache)
+	namespace := admissionRequestNamespaceFromContext(ctx)
+	if namespace == "" {
+		return ctx
+	}
+	return nsconfig.WithNamespaceConfig(ctx, nsConfigCache, namespace, logging.FromContext(ctx).Named("ns-config"))
+}
+
+func admissionRequestNamespaceFromContext(ctx context.Context) string {
+	req := apis.GetHTTPRequest(ctx)
+	if req == nil || req.Body == nil {
+		return ""
+	}
+
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return ""
+	}
+	req.Body = io.NopCloser(bytes.NewReader(body))
+
+	review := &admissionv1.AdmissionReview{}
+	if err := json.Unmarshal(body, review); err != nil || review.Request == nil {
+		return ""
+	}
+	return review.Request.Namespace
+}
+
 func newValidationAdmissionController(name string) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		// Decorate contexts with the current state of the config.
 		store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
 		store.WatchConfigs(cmw)
+		nsConfigCache := newNamespaceConfigCache(ctx)
 		return validation.NewAdmissionController(ctx,
 
 			// Name of the validation webhook, it is based on the value of the environment variable WEBHOOK_ADMISSION_CONTROLLER_NAME
@@ -136,7 +171,7 @@ func newValidationAdmissionController(name string) func(context.Context, configm
 
 			// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 			func(ctx context.Context) context.Context {
-				return store.ToContext(ctx)
+				return withNamespaceConfigForAdmission(store.ToContext(ctx), nsConfigCache)
 			},
 
 			// Whether to disallow unknown fields.
