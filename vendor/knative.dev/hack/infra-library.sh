@@ -84,7 +84,8 @@ function dump_cluster_state() {
 # Create a test cluster and run the tests if provided.
 # Parameters: $1 - cluster provider name, e.g. gke
 #             $2 - custom flags supported by kntest
-#             $3 - test command to run after cluster is created
+#             $3 - extra gcloud flags (gke only)
+#             $4 - test command to run after cluster is created
 function create_test_cluster() {
   # Fail fast during setup.
   set -o errexit
@@ -96,7 +97,7 @@ function create_test_cluster() {
 
   case "$1" in
     gke) create_gke_test_cluster "$2" "$3" "$4" "${5:-}" ;;
-    kind) create_kind_test_cluster "$2" "$3" "${4:-}" ;;
+    kind) create_kind_test_cluster "$2" "${4:-}" ;;
     *) echo "unsupported provider: $1"; exit 1 ;;
   esac
 
