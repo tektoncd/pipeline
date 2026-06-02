@@ -192,13 +192,19 @@ func newConfigValidationController(name string) func(context.Context, configmap.
 			"/config-validation",
 
 			// The configmaps to validate.
-			configmap.Constructors{
-				logging.ConfigMapName():                   logging.NewConfigFromConfigMap,
-				defaultconfig.GetDefaultsConfigName():     defaultconfig.NewDefaultsFromConfigMap,
-				pkgleaderelection.ConfigMapName():         pkgleaderelection.NewConfigFromConfigMap,
-				defaultconfig.GetFeatureFlagsConfigName(): defaultconfig.NewFeatureFlagsFromConfigMap,
-			},
+			configValidationConstructors(),
 		)
+	}
+}
+
+func configValidationConstructors() configmap.Constructors {
+	return configmap.Constructors{
+		logging.ConfigMapName():                     logging.NewConfigFromConfigMap,
+		defaultconfig.GetDefaultsConfigName():       defaultconfig.NewDefaultsFromConfigMap,
+		nsconfig.NamespaceDefaultsConfigMapName:     defaultconfig.NewDefaultsFromConfigMap,
+		pkgleaderelection.ConfigMapName():           pkgleaderelection.NewConfigFromConfigMap,
+		defaultconfig.GetFeatureFlagsConfigName():   defaultconfig.NewFeatureFlagsFromConfigMap,
+		nsconfig.NamespaceFeatureFlagsConfigMapName: defaultconfig.NewFeatureFlagsFromConfigMap,
 	}
 }
 
