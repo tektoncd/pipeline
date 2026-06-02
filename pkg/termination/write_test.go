@@ -17,6 +17,7 @@ package termination_test
 
 import (
 	"errors"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -63,6 +64,63 @@ func TestExistingFile(t *testing.T) {
 		if d := cmp.Diff(want, string(fileContents)); d != "" {
 			t.Fatalf("Diff %s", diff.PrintWantGot(d))
 		}
+	}
+}
+
+func TestWriteMessageDoesNotWarnForUnparseableExistingFile(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		existing string
+	}{
+		{
+			name:     "empty",
+			existing: "",
+		}, {
+			name:     "invalid json",
+			existing: "not-json",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpFile, err := os.CreateTemp(t.TempDir(), "tempFile")
+			if err != nil {
+				t.Fatal("Cannot create temporary file", err)
+			}
+			if _, err := tmpFile.WriteString(tt.existing); err != nil {
+				t.Fatalf("Cannot write existing contents: %v", err)
+			}
+			if err := tmpFile.Close(); err != nil {
+				t.Fatal("Cannot close temporary file", err)
+			}
+
+			var logOutput strings.Builder
+			oldLogger := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&logOutput, nil)))
+			t.Cleanup(func() {
+				slog.SetDefault(oldLogger)
+			})
+
+			output := []result.RunResult{{
+				Key:   "key1",
+				Value: "hello",
+			}}
+
+			if err := termination.WriteMessage(tmpFile.Name(), output); err != nil {
+				t.Fatalf("WriteMessage: %v", err)
+			}
+
+			if strings.Contains(logOutput.String(), "Failed to parse existing termination message") {
+				t.Fatalf("WriteMessage logged parse warning for %s existing termination message: %s", tt.name, logOutput.String())
+			}
+
+			fileContents, err := os.ReadFile(tmpFile.Name())
+			if err != nil {
+				t.Fatalf("ReadFile: %v", err)
+			}
+			want := `[{"key":"key1","value":"hello"}]`
+			if d := cmp.Diff(want, string(fileContents)); d != "" {
+				t.Fatalf("Diff %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
