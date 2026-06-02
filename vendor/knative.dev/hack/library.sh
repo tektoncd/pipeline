@@ -35,6 +35,13 @@ if [[ ! -v GOPATH ]]; then
   fi
 fi
 
+# Pinned tool versions
+readonly GUM_VERSION="v0.14.1"
+readonly GOTESTSUM_VERSION="v1.13.0"
+readonly GOTESTFMT_VERSION="v2.5.0"
+readonly TERMINAL_TO_HTML_VERSION="v3.10.0"
+readonly GO_LICENSES_VERSION="v2.0.1"
+
 # Useful environment variables
 [[ -v PROW_JOB_ID ]] && IS_PROW=1 || IS_PROW=0
 readonly IS_PROW
@@ -265,7 +272,7 @@ function gum_banner() {
 
 # Simple info banner for logging purposes.
 function gum_style() {
-  go_run github.com/charmbracelet/gum@v0.14.1 style "$@"
+  go_run "github.com/charmbracelet/gum@${GUM_VERSION}" style "$@"
 }
 
 # Checks whether the given function exists.
@@ -588,7 +595,7 @@ function report_go_test() {
   logfile="${logfile/.xml/.jsonl}"
   echo "Running go test with args: ${go_test_args[*]}"
   local gotest_retcode=0
-  go_run gotest.tools/gotestsum@v1.13.0 \
+  go_run "gotest.tools/gotestsum@${GOTESTSUM_VERSION}" \
     --format "${GO_TEST_VERBOSITY:-testname}" \
     --junitfile "${xml}" \
     --junitfile-testsuite-name relative \
@@ -601,14 +608,14 @@ function report_go_test() {
   echo "Test log (JSONL) written to ${logfile}"
 
   ansilog="${logfile/.jsonl/-ansi.log}"
-  go_run github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@v2.5.0 \
+  go_run "github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@${GOTESTFMT_VERSION}" \
     -input "${logfile}" \
     -showteststatus \
     -nofail > "$ansilog"
   echo "Test log (ANSI) written to ${ansilog}"
 
   htmllog="${logfile/.jsonl/.html}"
-  go_run github.com/buildkite/terminal-to-html/v3/cmd/terminal-to-html@v3.10.0 \
+  go_run "github.com/buildkite/terminal-to-html/v3/cmd/terminal-to-html@${TERMINAL_TO_HTML_VERSION}" \
     --preview < "$ansilog" > "$htmllog"
   echo "Test log (HTML) written to ${htmllog}"
 
@@ -831,7 +838,7 @@ function __go_update_deps_for_module() {
     FLOATING_DEPS+=( $(go_run knative.dev/toolbox/buoy@latest float ./go.mod "${buoyArgs[@]}") )
     if [[ ${#FLOATING_DEPS[@]} > 0 ]]; then
       echo "Floating deps to ${FLOATING_DEPS[@]}"
-      go get -d ${FLOATING_DEPS[@]}
+      go get ${FLOATING_DEPS[@]}
     else
       echo "Nothing to upgrade."
     fi
@@ -921,10 +928,14 @@ function run_kntest() {
 }
 
 # Run go-licenses to check for forbidden licenses.
+# Extra flags can be passed via the GO_LICENSES_FLAGS environment variable.
 function check_licenses() {
-  # Check that we don't have any forbidden licenses.
-  go_run github.com/google/go-licenses@v1.6.0 \
-    check "${REPO_ROOT_DIR}/..." || \
+  # Pin GOTOOLCHAIN to the project's Go version so that go-licenses is
+  # compiled with the same toolchain.  GOTOOLCHAIN=auto (the go_run default)
+  # may select a different Go, causing isStdLib() path mismatches.
+  GOTOOLCHAIN="$(go env GOVERSION)" \
+  go_run "github.com/google/go-licenses/v2@${GO_LICENSES_VERSION}" \
+    check ${GO_LICENSES_FLAGS:-} "${REPO_ROOT_DIR}/..." || \
     { echo "--- FAIL: go-licenses failed the license check"; return 1; }
 }
 
