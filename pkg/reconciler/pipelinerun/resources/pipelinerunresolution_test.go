@@ -1445,7 +1445,7 @@ func TestIsSkipped(t *testing.T) {
 				if rpt == nil {
 					t.Fatalf("Could not get task %s from the state: %v", taskName, tc.state)
 				}
-				if d := cmp.Diff(isSkipped, rpt.Skip(&facts).IsSkipped); d != "" {
+				if d := cmp.Diff(isSkipped, rpt.Skip(context.Background(), &facts).IsSkipped); d != "" {
 					t.Errorf("Didn't get expected isSkipped from task %s: %s", taskName, diff.PrintWantGot(d))
 				}
 			}
@@ -2555,7 +2555,7 @@ func TestSkipBecauseParentTaskWasSkipped(t *testing.T) {
 				if rpt == nil {
 					t.Fatalf("Could not get task %s from the state: %v", taskName, tc.state)
 				}
-				if d := cmp.Diff(isSkipped, rpt.skipBecauseParentTaskWasSkipped(&facts)); d != "" {
+				if d := cmp.Diff(isSkipped, rpt.skipBecauseParentTaskWasSkipped(context.Background(), &facts)); d != "" {
 					t.Errorf("Didn't get expected isSkipped from task %s: %s", taskName, diff.PrintWantGot(d))
 				}
 			}
@@ -3493,7 +3493,7 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 			for i := range state {
 				if i > 0 { // first one is a dag task that produces a result
 					finallyTaskName := state[i].PipelineTask.Name
-					if d := cmp.Diff(tc.expected[finallyTaskName], state[i].IsFinallySkipped(facts).IsSkipped); d != "" {
+					if d := cmp.Diff(tc.expected[finallyTaskName], state[i].IsFinallySkipped(context.Background(), facts).IsSkipped); d != "" {
 						t.Fatalf("Didn't get expected isFinallySkipped from finally task %s: %s", finallyTaskName, diff.PrintWantGot(d))
 					}
 				}
@@ -3623,7 +3623,7 @@ func TestResolvedPipelineRunTask_IsFinallySkippedByCondition(t *testing.T) {
 			}
 
 			for _, state := range tc.state[1:] {
-				got := state.IsFinallySkipped(facts)
+				got := state.IsFinallySkipped(context.Background(), facts)
 				if d := cmp.Diff(tc.want, got); d != "" {
 					t.Errorf("IsFinallySkipped: %s", diff.PrintWantGot(d))
 				}
@@ -5676,7 +5676,7 @@ func TestEvaluateCEL_valid(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.rpt.EvaluateCEL()
+			err := tc.rpt.EvaluateCEL(context.Background())
 			if err != nil {
 				t.Fatalf("Got unexpected err:%v", err)
 			}
@@ -5713,7 +5713,7 @@ func TestEvaluateCEL_invalid(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.rpt.EvaluateCEL()
+			err := tc.rpt.EvaluateCEL(context.Background())
 			if err == nil {
 				t.Fatalf("Expected err but got nil")
 			}

@@ -795,8 +795,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	}
 
 	// Evaluate the CEL of PipelineTask after the variable substitutions and validations.
+	// tracer := c.tracerProvider.Tracer(TracerName)
 	for _, rpt := range pipelineRunFacts.State {
-		err := rpt.EvaluateCEL()
+		err := rpt.EvaluateCEL(ctx)
 		if err != nil {
 			logger.Errorf("Error evaluating CEL %s: %v", pr.Name, err)
 			pr.Status.MarkFailed(string(v1.PipelineRunReasonCELEvaluationFailed),
@@ -927,10 +928,10 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	after = pr.Status.GetCondition(apis.ConditionSucceeded)
 	pr.Status.StartTime = pipelineRunFacts.State.AdjustStartTime(pr.Status.StartTime)
 
-	pr.Status.ChildReferences = pipelineRunFacts.GetChildReferences()
+	pr.Status.ChildReferences = pipelineRunFacts.GetChildReferences(ctx)
 
-	pr.Status.SkippedTasks = pipelineRunFacts.GetSkippedTasks()
-	pipelineTaskStatus := pipelineRunFacts.GetPipelineTaskStatus()
+	pr.Status.SkippedTasks = pipelineRunFacts.GetSkippedTasks(ctx)
+	pipelineTaskStatus := pipelineRunFacts.GetPipelineTaskStatus(ctx)
 	finalPipelineTaskStatus := pipelineRunFacts.GetPipelineFinalTaskStatus()
 	pipelineTaskStatus = kmap.Union(pipelineTaskStatus, finalPipelineTaskStatus)
 
@@ -964,7 +965,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 	recorder := controller.GetEventRecorder(ctx)
 
 	// nextRpts holds a list of pipeline tasks which should be executed next
-	nextRpts, err := pipelineRunFacts.DAGExecutionQueue()
+	nextRpts, err := pipelineRunFacts.DAGExecutionQueue(ctx)
 	if err != nil {
 		logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
 		return controller.NewPermanentError(err)
@@ -1000,10 +1001,10 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 		}
 	}
 	// GetFinalTasks only returns final tasks when a DAG is complete
-	fNextRpts := pipelineRunFacts.GetFinalTasks()
+	fNextRpts := pipelineRunFacts.GetFinalTasks(ctx)
 	if len(fNextRpts) != 0 {
 		// apply the runtime context just before creating taskRuns for final tasks in queue
-		resources.ApplyPipelineTaskStateContext(fNextRpts, pipelineRunFacts.GetPipelineTaskStatus())
+		resources.ApplyPipelineTaskStateContext(fNextRpts, pipelineRunFacts.GetPipelineTaskStatus(ctx))
 
 		// Before creating TaskRun for scheduled final task, check if it's consuming a task result
 		// Resolve and apply task result wherever applicable, report warning in case resolution fails
@@ -1015,7 +1016,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 			}
 			resources.ApplyTaskResults(resources.PipelineRunState{rpt}, resolvedResultRefs)
 
-			if err := rpt.EvaluateCEL(); err != nil {
+			if err := rpt.EvaluateCEL(ctx); err != nil {
 				logger.Errorf("Final task %q is not executed, due to error evaluating CEL %s: %v", rpt.PipelineTask.Name, pr.Name, err)
 				pr.Status.MarkFailed(string(v1.PipelineRunReasonCELEvaluationFailed),
 					"Error evaluating CEL %s: %v", pr.Name, pipelineErrors.WrapUserError(err))
@@ -1028,7 +1029,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 
 	// If FinallyStartTime is not set, and one or more final tasks has been created
 	// Try to set the FinallyStartTime of this PipelineRun
-	if pr.Status.FinallyStartTime == nil && pipelineRunFacts.IsFinalTaskStarted() {
+	if pr.Status.FinallyStartTime == nil && pipelineRunFacts.IsFinalTaskStarted(ctx) {
 		c.setFinallyStartedTimeIfNeeded(pr, pipelineRunFacts)
 	}
 
@@ -1039,7 +1040,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 			c.setFinallyStartedTimeIfNeeded(pr, pipelineRunFacts)
 		}
 
-		if rpt == nil || rpt.Skip(pipelineRunFacts).IsSkipped || rpt.IsFinallySkipped(pipelineRunFacts).IsSkipped {
+		if rpt == nil || rpt.Skip(ctx, pipelineRunFacts).IsSkipped || rpt.IsFinallySkipped(ctx, pipelineRunFacts).IsSkipped {
 			continue
 		}
 

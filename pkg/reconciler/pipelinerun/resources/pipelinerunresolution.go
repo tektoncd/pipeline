@@ -34,6 +34,9 @@ import (
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"github.com/tektoncd/pipeline/pkg/substitution"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/kmeta"
@@ -101,8 +104,13 @@ type ResolvedPipelineTask struct {
 }
 
 // EvaluateCEL evaluate the CEL expressions, and store the evaluated results in EvaluatedCEL
-func (t *ResolvedPipelineTask) EvaluateCEL() error {
+func (t *ResolvedPipelineTask) EvaluateCEL(ctx context.Context) error {
+	_, span := otel.Tracer("TracerName").Start(ctx, "EvaluateCEL")
+	defer span.End()
+
 	if t.PipelineTask != nil {
+		span.SetAttributes(attribute.String("PipelineTask", t.PipelineTask.Name))
+
 		// Each call to this function will reset this field to prevent additional CELs.
 		t.EvaluatedCEL = make(map[string]bool)
 		for _, we := range t.PipelineTask.When {
@@ -111,31 +119,48 @@ func (t *ResolvedPipelineTask) EvaluateCEL() error {
 			}
 			_, ok := t.EvaluatedCEL[we.CEL]
 			if !ok {
+
+				_, exprSpan := otel.Tracer("TracerName").Start(ctx, "EvaluateWhenExpression")
+				exprSpan.SetAttributes(attribute.String("CEL", we.CEL))
 				// Create a program environment configured with the standard library of CEL functions and macros
 				// The error is omitted because not environment declarations are passed in.
 				env, _ := cel.NewEnv()
 				// Parse and Check the CEL to get the Abstract Syntax Tree
 				ast, iss := env.Compile(we.CEL)
 				if iss.Err() != nil {
+					exprSpan.SetStatus(codes.Error, "Parse and Check the CEL error")
+					exprSpan.RecordError(iss.Err())
+					exprSpan.End()
 					return iss.Err()
 				}
 				// Generate an evaluatable instance of the Ast within the environment
 				prg, err := env.Program(ast)
 				if err != nil {
+					exprSpan.SetStatus(codes.Error, "Generate an evaluatable instance error")
+					exprSpan.RecordError(err)
+					exprSpan.End()
 					return err
 				}
 				// Evaluate the CEL expression
 				out, _, err := prg.Eval(map[string]interface{}{})
 				if err != nil {
+					exprSpan.SetStatus(codes.Error, "Evaluate the CEL expression error")
+					exprSpan.RecordError(err)
+					exprSpan.End()
 					return err
 				}
 
 				b, ok := out.Value().(bool)
 				if ok {
 					t.EvaluatedCEL[we.CEL] = b
+					exprSpan.SetAttributes(attribute.Bool("CEL.result", b))
 				} else {
-					return fmt.Errorf("The CEL expression %s is not evaluated to a boolean", we.CEL)
+					err := fmt.Errorf("The CEL expression %s is not evaluated to a boolean", we.CEL)
+					exprSpan.RecordError(err)
+					exprSpan.End()
+					return err
 				}
+				exprSpan.End()
 			}
 		}
 	}
@@ -143,8 +168,8 @@ func (t *ResolvedPipelineTask) EvaluateCEL() error {
 }
 
 // isDone returns true only if the task is skipped, succeeded or failed
-func (t ResolvedPipelineTask) isDone(facts *PipelineRunFacts) bool {
-	return t.Skip(facts).IsSkipped || t.isSuccessful() || t.isFailure() || t.isValidationFailed(facts.ValidationFailedTask)
+func (t ResolvedPipelineTask) isDone(ctx context.Context, facts *PipelineRunFacts) bool {
+	return t.Skip(ctx, facts).IsSkipped || t.isSuccessful() || t.isFailure() || t.isValidationFailed(facts.ValidationFailedTask)
 }
 
 // IsRunning returns true only if the task is neither succeeded, cancelled nor failed
@@ -419,21 +444,21 @@ func (t ResolvedPipelineTask) haveAnyCustomRunsFailed() bool {
 	return false
 }
 
-func (t *ResolvedPipelineTask) checkParentsDone(facts *PipelineRunFacts) bool {
+func (t *ResolvedPipelineTask) checkParentsDone(ctx context.Context, facts *PipelineRunFacts) bool {
 	if facts.isFinalTask(t.PipelineTask.Name) {
 		return true
 	}
 	stateMap := facts.State.ToMap()
 	node := facts.TasksGraph.Nodes[t.PipelineTask.Name]
 	for _, p := range node.Prev {
-		if !stateMap[p.Key].isDone(facts) {
+		if !stateMap[p.Key].isDone(ctx, facts) {
 			return false
 		}
 	}
 	return true
 }
 
-func (t *ResolvedPipelineTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
+func (t *ResolvedPipelineTask) skip(ctx context.Context, facts *PipelineRunFacts) TaskSkipStatus {
 	var skippingReason v1.SkippingReason
 
 	switch {
@@ -445,15 +470,15 @@ func (t *ResolvedPipelineTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
 		skippingReason = v1.GracefullyCancelledSkip
 	case facts.IsGracefullyStopped():
 		skippingReason = v1.GracefullyStoppedSkip
-	case t.skipBecauseWhenExpressionsEvaluatedToFalse(facts):
+	case t.skipBecauseWhenExpressionsEvaluatedToFalse(ctx, facts):
 		skippingReason = v1.WhenExpressionsSkip
-	case t.skipBecauseParentTaskWasSkipped(facts):
+	case t.skipBecauseParentTaskWasSkipped(ctx, facts):
 		skippingReason = v1.ParentTasksSkip
-	case t.skipBecauseResultReferencesAreMissing(facts):
+	case t.skipBecauseResultReferencesAreMissing(ctx, facts):
 		skippingReason = v1.MissingResultsSkip
-	case t.skipBecausePipelineRunPipelineTimeoutReached(facts):
+	case t.skipBecausePipelineRunPipelineTimeoutReached(ctx, facts):
 		skippingReason = v1.PipelineTimedOutSkip
-	case t.skipBecausePipelineRunTasksTimeoutReached(facts):
+	case t.skipBecausePipelineRunTasksTimeoutReached(ctx, facts):
 		skippingReason = v1.TasksTimedOutSkip
 	case t.skipBecauseEmptyArrayInMatrixParams():
 		skippingReason = v1.EmptyArrayInMatrixParams
@@ -473,21 +498,29 @@ func (t *ResolvedPipelineTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
 // (3) its parent task was skipped
 // (4) Pipeline is in stopping state (one of the PipelineTasks failed)
 // (5) Pipeline is gracefully cancelled or stopped
-func (t *ResolvedPipelineTask) Skip(facts *PipelineRunFacts) TaskSkipStatus {
+func (t *ResolvedPipelineTask) Skip(ctx context.Context, facts *PipelineRunFacts) TaskSkipStatus {
 	if facts.SkipCache == nil {
 		facts.SkipCache = make(map[string]TaskSkipStatus)
 	}
 	if _, cached := facts.SkipCache[t.PipelineTask.Name]; !cached {
-		facts.SkipCache[t.PipelineTask.Name] = t.skip(facts)
+		facts.SkipCache[t.PipelineTask.Name] = t.skip(ctx, facts)
 	}
 	return facts.SkipCache[t.PipelineTask.Name]
 }
 
 // skipBecauseWhenExpressionsEvaluatedToFalse confirms that the when expressions have completed evaluating, and
 // it returns true if any of the when expressions evaluate to false
-func (t *ResolvedPipelineTask) skipBecauseWhenExpressionsEvaluatedToFalse(facts *PipelineRunFacts) bool {
-	if t.checkParentsDone(facts) {
-		if !t.PipelineTask.When.AllowsExecution(t.EvaluatedCEL) {
+func (t *ResolvedPipelineTask) skipBecauseWhenExpressionsEvaluatedToFalse(ctx context.Context, facts *PipelineRunFacts) bool {
+
+	_, span := otel.Tracer("TracerName").Start(ctx, "skipBecauseWhenExpressionsEvaluatedToFalse")
+	defer span.End()
+
+	if t.checkParentsDone(ctx, facts) {
+		allows := t.PipelineTask.When.AllowsExecution(t.EvaluatedCEL)
+		span.SetAttributes(attribute.Bool("when_allows_execution", allows))
+
+		if !allows {
+			span.SetAttributes(attribute.String("when_skip_reason", "whenExpressionSkip"))
 			return true
 		}
 	}
@@ -500,12 +533,12 @@ func (t *ResolvedPipelineTask) skipBecauseWhenExpressionsEvaluatedToFalse(facts 
 //	    if yes, it ignores this parent skip and continue evaluating other parent tasks
 //	    if no, it returns true to skip the current task because this parent task was skipped
 //	if no, it continues checking the other parent tasks
-func (t *ResolvedPipelineTask) skipBecauseParentTaskWasSkipped(facts *PipelineRunFacts) bool {
+func (t *ResolvedPipelineTask) skipBecauseParentTaskWasSkipped(ctx context.Context, facts *PipelineRunFacts) bool {
 	stateMap := facts.State.ToMap()
 	node := facts.TasksGraph.Nodes[t.PipelineTask.Name]
 	for _, p := range node.Prev {
 		parentTask := stateMap[p.Key]
-		if parentSkipStatus := parentTask.Skip(facts); parentSkipStatus.IsSkipped {
+		if parentSkipStatus := parentTask.Skip(ctx, facts); parentSkipStatus.IsSkipped {
 			// if the parent task was skipped due to its `when` expressions,
 			// then we should ignore that and continue evaluating if we should skip because of other parent tasks
 			if parentSkipStatus.SkippingReason == v1.WhenExpressionsSkip {
@@ -519,14 +552,14 @@ func (t *ResolvedPipelineTask) skipBecauseParentTaskWasSkipped(facts *PipelineRu
 
 // skipBecauseResultReferencesAreMissing checks if the task references results that cannot be resolved, which is a
 // reason for skipping the task, and applies result references if found
-func (t *ResolvedPipelineTask) skipBecauseResultReferencesAreMissing(facts *PipelineRunFacts) bool {
-	if t.checkParentsDone(facts) && t.hasResultReferences() {
+func (t *ResolvedPipelineTask) skipBecauseResultReferencesAreMissing(ctx context.Context, facts *PipelineRunFacts) bool {
+	if t.checkParentsDone(ctx, facts) && t.hasResultReferences() {
 		resolvedResultRefs, pt, err := ResolveResultRefs(facts.State, PipelineRunState{t})
 		rpt := facts.State.ToMap()[pt]
 		if rpt != nil {
 			if err != nil &&
 				(t.PipelineTask.OnError == v1.PipelineTaskContinue ||
-					(t.IsFinalTask(facts) || rpt.Skip(facts).SkippingReason == v1.WhenExpressionsSkip)) {
+					(t.IsFinalTask(facts) || rpt.Skip(ctx, facts).SkippingReason == v1.WhenExpressionsSkip)) {
 				return true
 			}
 		}
@@ -538,8 +571,8 @@ func (t *ResolvedPipelineTask) skipBecauseResultReferencesAreMissing(facts *Pipe
 
 // skipBecausePipelineRunPipelineTimeoutReached returns true if the task shouldn't be launched because the elapsed time since
 // the PipelineRun started is greater than the PipelineRun's pipeline timeout
-func (t *ResolvedPipelineTask) skipBecausePipelineRunPipelineTimeoutReached(facts *PipelineRunFacts) bool {
-	if t.checkParentsDone(facts) {
+func (t *ResolvedPipelineTask) skipBecausePipelineRunPipelineTimeoutReached(ctx context.Context, facts *PipelineRunFacts) bool {
+	if t.checkParentsDone(ctx, facts) {
 		if facts.TimeoutsState.PipelineTimeout != nil && *facts.TimeoutsState.PipelineTimeout != config.NoTimeoutDuration && facts.TimeoutsState.StartTime != nil {
 			// If the elapsed time since the PipelineRun's start time is greater than the PipelineRun's Pipeline timeout, skip.
 			return facts.TimeoutsState.Clock.Since(*facts.TimeoutsState.StartTime) > *facts.TimeoutsState.PipelineTimeout
@@ -551,8 +584,8 @@ func (t *ResolvedPipelineTask) skipBecausePipelineRunPipelineTimeoutReached(fact
 
 // skipBecausePipelineRunTasksTimeoutReached returns true if the task shouldn't be launched because the elapsed time since
 // the PipelineRun started is greater than the PipelineRun's tasks timeout
-func (t *ResolvedPipelineTask) skipBecausePipelineRunTasksTimeoutReached(facts *PipelineRunFacts) bool {
-	if t.checkParentsDone(facts) && !t.IsFinalTask(facts) {
+func (t *ResolvedPipelineTask) skipBecausePipelineRunTasksTimeoutReached(ctx context.Context, facts *PipelineRunFacts) bool {
+	if t.checkParentsDone(ctx, facts) && !t.IsFinalTask(facts) {
 		if facts.TimeoutsState.TasksTimeout != nil && *facts.TimeoutsState.TasksTimeout != config.NoTimeoutDuration && facts.TimeoutsState.StartTime != nil {
 			// If the elapsed time since the PipelineRun's start time is greater than the PipelineRun's Tasks timeout, skip.
 			return facts.TimeoutsState.Clock.Since(*facts.TimeoutsState.StartTime) > *facts.TimeoutsState.TasksTimeout
@@ -564,8 +597,8 @@ func (t *ResolvedPipelineTask) skipBecausePipelineRunTasksTimeoutReached(facts *
 
 // skipBecausePipelineRunFinallyTimeoutReached returns true if the task shouldn't be launched because the elapsed time since
 // finally tasks started being executed is greater than the PipelineRun's finally timeout
-func (t *ResolvedPipelineTask) skipBecausePipelineRunFinallyTimeoutReached(facts *PipelineRunFacts) bool {
-	if t.checkParentsDone(facts) && t.IsFinalTask(facts) {
+func (t *ResolvedPipelineTask) skipBecausePipelineRunFinallyTimeoutReached(ctx context.Context, facts *PipelineRunFacts) bool {
+	if t.checkParentsDone(ctx, facts) && t.IsFinalTask(facts) {
 		if facts.TimeoutsState.FinallyTimeout != nil && *facts.TimeoutsState.FinallyTimeout != config.NoTimeoutDuration && facts.TimeoutsState.FinallyStartTime != nil {
 			// If the elapsed time since the PipelineRun's finally start time is greater than the PipelineRun's finally timeout, skip.
 			return facts.TimeoutsState.Clock.Since(*facts.TimeoutsState.FinallyStartTime) > *facts.TimeoutsState.FinallyTimeout
@@ -594,21 +627,21 @@ func (t *ResolvedPipelineTask) IsFinalTask(facts *PipelineRunFacts) bool {
 }
 
 // IsFinallySkipped returns true if a finally task is not executed and skipped due to task result validation failure
-func (t *ResolvedPipelineTask) IsFinallySkipped(facts *PipelineRunFacts) TaskSkipStatus {
+func (t *ResolvedPipelineTask) IsFinallySkipped(ctx context.Context, facts *PipelineRunFacts) TaskSkipStatus {
 	var skippingReason v1.SkippingReason
 
 	switch {
 	case t.isScheduled():
 		skippingReason = v1.None
-	case facts.checkDAGTasksDone() && facts.isFinalTask(t.PipelineTask.Name):
+	case facts.checkDAGTasksDone(ctx) && facts.isFinalTask(t.PipelineTask.Name):
 		switch {
-		case t.skipBecauseResultReferencesAreMissing(facts):
+		case t.skipBecauseResultReferencesAreMissing(ctx, facts):
 			skippingReason = v1.MissingResultsSkip
-		case t.skipBecauseWhenExpressionsEvaluatedToFalse(facts):
+		case t.skipBecauseWhenExpressionsEvaluatedToFalse(ctx, facts):
 			skippingReason = v1.WhenExpressionsSkip
-		case t.skipBecausePipelineRunPipelineTimeoutReached(facts):
+		case t.skipBecausePipelineRunPipelineTimeoutReached(ctx, facts):
 			skippingReason = v1.PipelineTimedOutSkip
-		case t.skipBecausePipelineRunFinallyTimeoutReached(facts):
+		case t.skipBecausePipelineRunFinallyTimeoutReached(ctx, facts):
 			skippingReason = v1.FinallyTimedOutSkip
 		case t.skipBecauseEmptyArrayInMatrixParams():
 			skippingReason = v1.EmptyArrayInMatrixParams
