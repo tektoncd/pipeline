@@ -55,12 +55,23 @@ func writeMessage(path string, pro []result.RunResult, compress bool) error {
 	// if the file at path exists, concatenate the new values otherwise create it
 	fileContents, err := os.ReadFile(path)
 	if err == nil {
-		existing, parseErr := parseExisting(fileContents)
-		if parseErr != nil {
-			slog.Warn("Failed to parse existing termination message, previous results will be lost",
-				"error", parseErr, "path", path)
-		} else {
-			pro = append(existing, pro...)
+		// The termination message file can already exist but be empty before the
+		// entrypoint writes any results. Treat that the same as a missing file so
+		// steps do not emit a warning for normal first writes.
+		if len(bytes.TrimSpace(fileContents)) > 0 {
+			existing, parseErr := parseExisting(fileContents)
+			if parseErr != nil {
+				// When compression is disabled, invalid existing contents are simply
+				// overwritten by the new result payload. Avoid emitting a warning from
+				// the non-compression path. When compression is enabled, keep the warning
+				// because parsing failures might indicate a malformed compressed payload.
+				if compress {
+					slog.Warn("Failed to parse existing termination message, previous results will be lost",
+						"error", parseErr, "path", path)
+				}
+			} else {
+				pro = append(existing, pro...)
+			}
 		}
 	} else if !os.IsNotExist(err) {
 		return err
