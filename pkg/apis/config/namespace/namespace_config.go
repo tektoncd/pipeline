@@ -71,40 +71,44 @@ const (
 
 	// DefaultResyncPeriod is the default resync period for the namespace config informer.
 	DefaultResyncPeriod = 10 * time.Minute
+
+	configValueTrue              = "true"
+	exampleConfigKey             = "_example"
+	defaultServiceAccountKey     = "default-service-account"
+	defaultTimeoutMinutesKey     = "default-timeout-minutes"
+	maxResultSizeKey             = "max-result-size"
+	coscheduleKey                = "coschedule"
+	enableCELInWhenExpressionKey = "enable-cel-in-whenexpression"
+	enforceNonfalsifiabilityKey  = "enforce-nonfalsifiability"
+	setSecurityContextKey        = "set-security-context"
+	defaultResolverTypeKey       = "default-resolver-type"
+	enableStepActionsKey         = "enable-step-actions"
 )
 
 // OverridableDefaultsFields lists config-defaults fields that can be overridden per namespace.
+// Phase 1 is intentionally limited to TaskRun/PipelineRun admission and reconciliation defaults.
 var OverridableDefaultsFields = map[string]bool{
-	"default-service-account":                 true,
-	"default-timeout-minutes":                 true,
+	defaultServiceAccountKey:                  true,
+	defaultTimeoutMinutesKey:                  true,
 	"default-managed-by-label-value":          true,
 	"default-pod-template":                    true,
-	"default-affinity-assistant-pod-template": true,
 	"default-task-run-workspace-binding":      true,
 	"default-max-matrix-combinations-count":   true,
-	"default-resolver-type":                   true,
 	"default-imagepullbackoff-timeout":        true,
 	"default-container-resource-requirements": true,
-	"default-maximum-resolution-timeout":      true,
-	"default-cloud-events-sink":               true,
 }
 
 // OverridableFeatureFlagsFields lists feature-flags fields that can be overridden per namespace.
+// Phase 1 is intentionally limited to flags used by TaskRun/PipelineRun admission and reconciliation.
 var OverridableFeatureFlagsFields = map[string]bool{
 	"running-in-environment-with-injected-sidecars": true,
 	"await-sidecar-readiness":                       true,
-	"require-git-ssh-secret-known-hosts":            true,
-	"send-cloudevents-for-runs":                     true,
-	"enable-provenance-in-status":                   true,
-	"max-result-size":                               true,
-	"coschedule":                                    true,
+	maxResultSizeKey:                                true,
+	coscheduleKey:                                   true,
 	"keep-pod-on-cancel":                            true,
-	"enable-cel-in-whenexpression":                  true,
-	"enable-step-actions":                           true,
+	enableCELInWhenExpressionKey:                    true,
 	"enable-artifacts":                              true,
 	"enable-param-enum":                             true,
-	"disable-inline-spec":                           true,
-	"enable-concise-resolver-syntax":                true,
 	"enable-kubernetes-sidecar":                     true,
 	"enable-wait-exponential-backoff":               true,
 }
@@ -112,12 +116,13 @@ var OverridableFeatureFlagsFields = map[string]bool{
 // NonOverridableFields lists fields that can NEVER be overridden per namespace, regardless of operator settings.
 var NonOverridableFields = map[string]bool{
 	// Security-critical fields
-	"enforce-nonfalsifiability":                      true,
-	"set-security-context":                           true,
+	enforceNonfalsifiabilityKey:                      true,
+	setSecurityContextKey:                            true,
 	"set-security-context-read-only-root-filesystem": true,
 	"trusted-resources-verification-no-match-policy": true,
 	"default-forbidden-env":                          true,
 	"disable-creds-init":                             true,
+	"disable-inline-spec":                            true,
 	// Stability gate field
 	"enable-api-fields": true,
 	// Infrastructure fields
@@ -157,7 +162,7 @@ type NamespaceConfigCache struct {
 // cache sync before using the lister. The informer is registered with the
 // factory before returning so that factory.Start will include it.
 func NewNamespaceConfigInformer(kubeClient kubernetes.Interface, resyncPeriod time.Duration) (informers.SharedInformerFactory, coreinformers.ConfigMapInformer) {
-	labelSelector := labels.Set{NamespaceConfigLabel: "true"}.AsSelector().String()
+	labelSelector := labels.Set{NamespaceConfigLabel: configValueTrue}.AsSelector().String()
 	factory := informers.NewSharedInformerFactoryWithOptions(kubeClient, resyncPeriod,
 		informers.WithTweakListOptions(func(opts *metav1.ListOptions) {
 			opts.LabelSelector = labelSelector
@@ -270,7 +275,7 @@ func MergeConfigMaps(globalData, namespaceData map[string]string, overridableFie
 	}
 
 	for k, v := range namespaceData {
-		if k == "_example" {
+		if k == exampleConfigKey {
 			continue
 		}
 		if NonOverridableFields[k] {
@@ -389,7 +394,7 @@ func WithNamespaceConfig(ctx context.Context, cache *NamespaceConfigCache, names
 func getOverriddenFields(nsData map[string]string, overridableFields map[string]bool, operatorLockedFields map[string]bool) []string {
 	var overridden []string
 	for k := range nsData {
-		if k == "_example" {
+		if k == exampleConfigKey {
 			continue
 		}
 		if NonOverridableFields[k] || (operatorLockedFields != nil && operatorLockedFields[k]) {
@@ -408,12 +413,12 @@ func configToDefaultsMap(d *config.Defaults) map[string]string {
 		return map[string]string{}
 	}
 	m := map[string]string{
-		"default-timeout-minutes":               strconv.Itoa(d.DefaultTimeoutMinutes),
-		"default-service-account":               d.DefaultServiceAccount,
+		defaultTimeoutMinutesKey:                strconv.Itoa(d.DefaultTimeoutMinutes),
+		defaultServiceAccountKey:                d.DefaultServiceAccount,
 		"default-managed-by-label-value":        d.DefaultManagedByLabelValue,
 		"default-cloud-events-sink":             d.DefaultCloudEventsSink,
 		"default-max-matrix-combinations-count": strconv.Itoa(d.DefaultMaxMatrixCombinationsCount),
-		"default-resolver-type":                 d.DefaultResolverType,
+		defaultResolverTypeKey:                  d.DefaultResolverType,
 		"default-imagepullbackoff-timeout":      d.DefaultImagePullBackOffTimeout.String(),
 		"default-maximum-resolution-timeout":    d.DefaultMaximumResolutionTimeout.String(),
 		"default-sidecar-log-polling-interval":  d.DefaultSidecarLogPollingInterval.String(),
@@ -425,8 +430,12 @@ func configToDefaultsMap(d *config.Defaults) map[string]string {
 	if len(d.DefaultForbiddenEnv) > 0 {
 		m["default-forbidden-env"] = strings.Join(d.DefaultForbiddenEnv, ",")
 	}
-	setYAMLValue(m, "default-pod-template", d.DefaultPodTemplate)
-	setYAMLValue(m, "default-affinity-assistant-pod-template", d.DefaultAAPodTemplate)
+	if d.DefaultPodTemplate != nil {
+		setYAMLValue(m, "default-pod-template", d.DefaultPodTemplate)
+	}
+	if d.DefaultAAPodTemplate != nil {
+		setYAMLValue(m, "default-affinity-assistant-pod-template", d.DefaultAAPodTemplate)
+	}
 	if len(d.DefaultContainerResourceRequirements) > 0 {
 		setYAMLValue(m, "default-container-resource-requirements", d.DefaultContainerResourceRequirements)
 	}
@@ -454,17 +463,17 @@ func configToFeatureFlagsMap(f *config.FeatureFlags) map[string]string {
 		"enable-api-fields":                              f.EnableAPIFields,
 		"send-cloudevents-for-runs":                      strconv.FormatBool(f.SendCloudEventsForRuns),
 		"await-sidecar-readiness":                        strconv.FormatBool(f.AwaitSidecarReadiness),
-		"enforce-nonfalsifiability":                      f.EnforceNonfalsifiability,
+		enforceNonfalsifiabilityKey:                      f.EnforceNonfalsifiability,
 		"trusted-resources-verification-no-match-policy": f.VerificationNoMatchPolicy,
 		"enable-provenance-in-status":                    strconv.FormatBool(f.EnableProvenanceInStatus),
 		"results-from":                                   f.ResultExtractionMethod,
-		"max-result-size":                                strconv.FormatInt(int64(f.MaxResultSize), 10),
-		"set-security-context":                           strconv.FormatBool(f.SetSecurityContext),
+		maxResultSizeKey:                                 strconv.FormatInt(int64(f.MaxResultSize), 10),
+		setSecurityContextKey:                            strconv.FormatBool(f.SetSecurityContext),
 		"set-security-context-read-only-root-filesystem": strconv.FormatBool(f.SetSecurityContextReadOnlyRootFilesystem),
-		"coschedule":                                     f.Coschedule,
+		coscheduleKey:                                    f.Coschedule,
 		"keep-pod-on-cancel":                             strconv.FormatBool(f.EnableKeepPodOnCancel),
-		"enable-cel-in-whenexpression":                   strconv.FormatBool(f.EnableCELInWhenExpression),
-		"enable-step-actions":                            strconv.FormatBool(f.EnableStepActions),
+		enableCELInWhenExpressionKey:                     strconv.FormatBool(f.EnableCELInWhenExpression),
+		enableStepActionsKey:                             strconv.FormatBool(f.EnableStepActions),
 		"enable-artifacts":                               strconv.FormatBool(f.EnableArtifacts),
 		"enable-param-enum":                              strconv.FormatBool(f.EnableParamEnum),
 		"disable-inline-spec":                            f.DisableInlineSpec,

@@ -85,6 +85,36 @@ func TestWithNamespaceConfigForAdmissionAppliesValidationFeatureFlagOverrides(t 
 	}
 }
 
+func TestConfigValidationConstructorsValidateNamespaceConfigMaps(t *testing.T) {
+	constructors := configValidationConstructors()
+
+	defaultsConstructor, ok := constructors[nsconfig.NamespaceDefaultsConfigMapName].(func(*corev1.ConfigMap) (*defaultconfig.Defaults, error))
+	if !ok {
+		t.Fatalf("missing namespace defaults constructor")
+	}
+	if _, err := defaultsConstructor(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: nsconfig.NamespaceDefaultsConfigMapName},
+		Data: map[string]string{
+			"default-timeout-minutes": "not-an-int",
+		},
+	}); err == nil {
+		t.Fatalf("expected invalid namespace defaults ConfigMap to fail validation")
+	}
+
+	featureFlagsConstructor, ok := constructors[nsconfig.NamespaceFeatureFlagsConfigMapName].(func(*corev1.ConfigMap) (*defaultconfig.FeatureFlags, error))
+	if !ok {
+		t.Fatalf("missing namespace feature flags constructor")
+	}
+	if _, err := featureFlagsConstructor(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: nsconfig.NamespaceFeatureFlagsConfigMapName},
+		Data: map[string]string{
+			defaultconfig.EnableCELInWhenExpression: "not-a-bool",
+		},
+	}); err == nil {
+		t.Fatalf("expected invalid namespace feature flags ConfigMap to fail validation")
+	}
+}
+
 func admissionReviewHTTPRequest(t *testing.T, namespace string) *http.Request {
 	t.Helper()
 	review := &admissionv1.AdmissionReview{
@@ -96,7 +126,7 @@ func admissionReviewHTTPRequest(t *testing.T, namespace string) *http.Request {
 	if err != nil {
 		t.Fatalf("Marshal AdmissionReview: %v", err)
 	}
-	return httptest.NewRequest("POST", "/", bytes.NewReader(body))
+	return httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewReader(body))
 }
 
 func newTestNamespaceConfigCache(t *testing.T, cms ...*corev1.ConfigMap) *nsconfig.NamespaceConfigCache {
