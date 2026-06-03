@@ -17,6 +17,7 @@ limitations under the License.
 package resources_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -31,7 +32,6 @@ import (
 	"k8s.io/utils/ptr"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
-	"context"
 )
 
 var (
@@ -2901,7 +2901,7 @@ func TestApplyCredentialsPath(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			got := resources.ApplyCredentialsPath(t.Context(),&tc.spec, tc.path)
+			got := resources.ApplyCredentialsPath(t.Context(), &tc.spec, tc.path)
 			if d := cmp.Diff(&tc.want, got); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
@@ -3285,7 +3285,7 @@ func TestApplyParametersToWorkspaceBindings(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			   got := resources.ApplyParametersToWorkspaceBindings(context.Background(), tt.ts, tt.tr)
+			got := resources.ApplyParametersToWorkspaceBindings(context.Background(), tt.ts, tt.tr)
 			if d := cmp.Diff(got, tt.want); d != "" {
 				t.Errorf("ApplyParametersToWorkspaceBindings() %v, diff %v", tt.name, d)
 			}
