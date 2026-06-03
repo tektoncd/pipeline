@@ -2710,6 +2710,46 @@ func TestMakeTaskRunStatus_KubernetesNativeSidecar(t *testing.T) {
 		want: v1.TaskRunStatus{
 			Status: statusSuccess(),
 		},
+	}, {
+		desc: "test init container OOM with kubernetes native sidecar",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              "pod",
+				Namespace:         "foo",
+				CreationTimestamp: metav1.Now(),
+			},
+			Spec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name: "prepare",
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-simple",
+				}},
+			},
+		},
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodFailed,
+			InitContainerStatuses: []corev1.ContainerStatus{{
+				Name: "prepare",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 137,
+						Reason:   "OOMKilled",
+					},
+				},
+			}},
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-simple",
+				State: corev1.ContainerState{
+					Waiting: &corev1.ContainerStateWaiting{
+						Reason: "PodInitializing",
+					},
+				},
+			}},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusFailure(v1.TaskRunReasonInitContainerOOM.String(), `init container failed, "prepare" exited with code 137: OOMKilled`),
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			if reflect.DeepEqual(c.pod, corev1.Pod{}) {
