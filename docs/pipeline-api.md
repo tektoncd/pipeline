@@ -2301,6 +2301,10 @@ pipeline will stop once all running tasks complete their work</p>
 </tr><tr><td><p>&#34;PipelineRunTimeout&#34;</p></td>
 <td><p>PipelineRunReasonTimedOut is the reason set when the PipelineRun has timed out</p>
 </td>
+</tr><tr><td><p>&#34;PipelineRunTimeoutRunningFinally&#34;</p></td>
+<td><p>PipelineRunReasonTimedOutRunningFinally indicates that the tasks timeout has been exceeded
+and no new DAG tasks will be scheduled, but final tasks are now running</p>
+</td>
 </tr></tbody>
 </table>
 <h3 id="tekton.dev/v1.PipelineRunResult">PipelineRunResult

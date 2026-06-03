@@ -96,7 +96,7 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Ste
 	}
 
 	placeScriptsInit := corev1.Container{
-		Name:         "place-scripts",
+		Name:         ContainerNamePlaceScripts,
 		Image:        shellImage,
 		Command:      []string{shellCommand},
 		Args:         []string{shellArg, ""},

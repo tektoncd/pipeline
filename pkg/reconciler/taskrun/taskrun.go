@@ -184,6 +184,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	// If the TaskRun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
 		message := fmt.Sprintf("TaskRun %q was cancelled. %s", tr.Name, tr.Spec.StatusMessage)
+		message = appendPreviousConditionContext(before, message)
 		err := c.failTaskRun(ctx, tr, v1.TaskRunReasonCancelled, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
@@ -203,11 +204,15 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 			logger.Warnf("Failed to update step statuses from pod before timeout: %v", err)
 		}
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout(ctx))
+		message = appendPreviousConditionContext(before, message)
 		err := c.failTaskRun(ctx, tr, v1.TaskRunReasonTimedOut, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
 
 	// Check for Pod Failures
+	// Note: appendPreviousConditionContext is intentionally NOT used here because
+	// checkPodFailed already provides a specific, actionable error message derived
+	// from the current pod state (e.g., ImagePullBackOff, CreateContainerConfigError).
 	if failed, reason, message := c.checkPodFailed(ctx, tr); failed {
 		err := c.failTaskRun(ctx, tr, reason, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
@@ -904,6 +909,28 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 	}
 
 	return nil
+}
+
+// appendPreviousConditionContext preserves diagnostic context from the previous Succeeded
+// condition when a TaskRun is being failed (e.g. due to cancellation or timeout). If the
+// condition had a meaningful prior reason (not just Started/Running/Pending), the previous
+// reason and message are appended to the new message so operators can see why the TaskRun
+// was in its prior state. The prevCondition should be captured before InitializeConditions
+// can overwrite it (e.g. the "before" variable from ReconcileKind).
+func appendPreviousConditionContext(prevCondition *apis.Condition, message string) string {
+	if prevCondition == nil {
+		return message
+	}
+	switch prevCondition.Reason {
+	case v1.TaskRunReasonStarted.String(),
+		v1.TaskRunReasonRunning.String(),
+		v1.TaskRunReasonPending.String():
+		return message
+	}
+	if prevCondition.Message != "" {
+		return fmt.Sprintf("%s\nPrevious status: [%s] %s", message, prevCondition.Reason, prevCondition.Message)
+	}
+	return message
 }
 
 // updateStepStatusesFromPod fetches the pod and updates step statuses in the TaskRun

@@ -557,9 +557,6 @@ func TestPodBuild(t *testing.T) {
 				}, {
 					Name:  "sidecar-sc-name",
 					Image: "sidecar-image",
-					Resources: corev1.ResourceRequirements{
-						Requests: nil,
-					},
 				}},
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -2052,9 +2049,6 @@ _EOF_
 						"-step-results",
 						"{}",
 					},
-					Resources: corev1.ResourceRequirements{
-						Requests: nil,
-					},
 					VolumeMounts: append([]corev1.VolumeMount{
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
 						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
@@ -2134,9 +2128,6 @@ _EOF_
 						"-step-results",
 						"{\"step-name\":[\"step-foo\"]}",
 					},
-					Resources: corev1.ResourceRequirements{
-						Requests: nil,
-					},
 					VolumeMounts: append([]corev1.VolumeMount{
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
 						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
@@ -2209,9 +2200,6 @@ _EOF_
 						"",
 						"-step-results",
 						"{}",
-					},
-					Resources: corev1.ResourceRequirements{
-						Requests: nil,
 					},
 					VolumeMounts: append([]corev1.VolumeMount{
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
@@ -2289,9 +2277,6 @@ _EOF_
 						"step-name",
 						"-step-results",
 						"{}",
-					},
-					Resources: corev1.ResourceRequirements{
-						Requests: nil,
 					},
 					VolumeMounts: append([]corev1.VolumeMount{
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
@@ -2375,9 +2360,6 @@ _EOF_
 						"-step-results",
 						"{\"step-name\":[\"step-foo\"]}",
 					},
-					Resources: corev1.ResourceRequirements{
-						Requests: nil,
-					},
 					VolumeMounts: append([]corev1.VolumeMount{
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
 						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
@@ -2453,9 +2435,6 @@ _EOF_
 						"step-name",
 						"-step-results",
 						"{}",
-					},
-					Resources: corev1.ResourceRequirements{
-						Requests: nil,
 					},
 					VolumeMounts: append([]corev1.VolumeMount{
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
