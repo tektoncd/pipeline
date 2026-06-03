@@ -1,0 +1,121 @@
+# Pipelines-in-Pipelines example: two levels of pipelineRef nesting that
+# propagate multiple params and multiple workspaces through every level
+# (parent -> child -> grandchild). Requires the alpha feature flag
+# (enable-api-fields: alpha) to be set on the cluster.
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: grandchild-pipeline
+spec:
+  description: Innermost Pipeline; receives params and two workspaces from its callers.
+  params:
+    - name: greeting
+      type: string
+    - name: target
+      type: string
+  workspaces:
+    - name: source
+    - name: shared-config
+  tasks:
+    - name: show
+      params:
+        - name: greeting
+          value: $(params.greeting)
+        - name: target
+          value: $(params.target)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: shared-config
+          workspace: shared-config
+      taskSpec:
+        params:
+          - name: greeting
+          - name: target
+        workspaces:
+          - name: source
+          - name: shared-config
+        steps:
+          - name: greet
+            image: mirror.gcr.io/busybox
+            script: |
+              echo "$(params.greeting), $(params.target)!"
+              echo "source workspace at $(workspaces.source.path):"
+              ls -la $(workspaces.source.path)
+              cat $(workspaces.shared-config.path)/note 2>/dev/null || echo "(no note in shared-config)"
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: child-pipeline-complex
+spec:
+  description: Intermediate Pipeline; forwards params and workspaces to grandchild via pipelineRef.
+  params:
+    - name: greeting
+      type: string
+    - name: target
+      type: string
+  workspaces:
+    - name: source
+    - name: shared-config
+  tasks:
+    - name: grandchild
+      pipelineRef:
+        name: grandchild-pipeline
+      params:
+        - name: greeting
+          value: $(params.greeting)
+        - name: target
+          value: $(params.target)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: shared-config
+          workspace: shared-config
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: pipelines-in-pipelines-ref-complex
+spec:
+  description: Two-level nested pipelineRef with multiple params and multiple workspaces.
+  params:
+    - name: greeting
+      type: string
+    - name: target
+      type: string
+  workspaces:
+    - name: source
+    - name: shared-config
+  tasks:
+    - name: child
+      pipelineRef:
+        name: child-pipeline-complex
+      params:
+        - name: greeting
+          value: $(params.greeting)
+        - name: target
+          value: $(params.target)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: shared-config
+          workspace: shared-config
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipelines-in-pipelines-ref-complex-run-
+spec:
+  pipelineRef:
+    name: pipelines-in-pipelines-ref-complex
+  params:
+    - name: greeting
+      value: hello
+    - name: target
+      value: pipelines-in-pipelines
+  workspaces:
+    - name: source
+      emptyDir: {}
+    - name: shared-config
+      emptyDir: {}
