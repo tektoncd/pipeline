@@ -137,9 +137,6 @@ func (s StepTemplate) convertTo(ctx context.Context, sink *v1.StepTemplate) {
 	sink.VolumeDevices = s.VolumeDevices
 	sink.ImagePullPolicy = s.ImagePullPolicy
 	sink.SecurityContext = s.SecurityContext
-	// TODO(#4546): Handle deprecated fields
-	// Name, Ports, LivenessProbe, ReadinessProbe, StartupProbe, Lifecycle, TerminationMessagePath
-	// TerminationMessagePolicy, Stdin, StdinOnce, TTY
 }
 
 func (s *StepTemplate) convertFrom(ctx context.Context, source *v1.StepTemplate) {
