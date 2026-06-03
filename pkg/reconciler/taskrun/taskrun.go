@@ -113,8 +113,8 @@ const (
 
 var (
 	// Check that our Reconciler implements taskrunreconciler.Interface
-	noopTracer trace.Tracer = trace.NewNoopTracerProvider().Tracer("")
-	_ taskrunreconciler.Interface = (*Reconciler)(nil)
+	noopTracer trace.Tracer                = trace.NewNoopTracerProvider().Tracer("")
+	_          taskrunreconciler.Interface = (*Reconciler)(nil)
 
 	// Pod failure reasons that trigger failure of the TaskRun
 	// Note: ErrImagePull is intentionally not included as it's a transient state
@@ -185,6 +185,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	// If the TaskRun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
 		message := fmt.Sprintf("TaskRun %q was cancelled. %s", tr.Name, tr.Spec.StatusMessage)
+		message = appendPreviousConditionContext(before, message)
 		err := c.failTaskRun(ctx, tr, v1.TaskRunReasonCancelled, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
@@ -204,11 +205,15 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 			logger.Warnf("Failed to update step statuses from pod before timeout: %v", err)
 		}
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout(ctx))
+		message = appendPreviousConditionContext(before, message)
 		err := c.failTaskRun(ctx, tr, v1.TaskRunReasonTimedOut, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
 
 	// Check for Pod Failures
+	// Note: appendPreviousConditionContext is intentionally NOT used here because
+	// checkPodFailed already provides a specific, actionable error message derived
+	// from the current pod state (e.g., ImagePullBackOff, CreateContainerConfigError).
 	if failed, reason, message := c.checkPodFailed(ctx, tr); failed {
 		err := c.failTaskRun(ctx, tr, reason, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
@@ -718,6 +723,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	}
 
 	resources.ApplyParametersToWorkspaceBindings(ctx, noopTracer, rtr.TaskSpec, tr)
+	resources.ApplyParametersToWorkspaceBindings(ctx, noopTracer, rtr.TaskSpec, tr)
 	// Get the randomized volume names assigned to workspace bindings
 	workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
 
@@ -907,6 +913,28 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 	return nil
 }
 
+// appendPreviousConditionContext preserves diagnostic context from the previous Succeeded
+// condition when a TaskRun is being failed (e.g. due to cancellation or timeout). If the
+// condition had a meaningful prior reason (not just Started/Running/Pending), the previous
+// reason and message are appended to the new message so operators can see why the TaskRun
+// was in its prior state. The prevCondition should be captured before InitializeConditions
+// can overwrite it (e.g. the "before" variable from ReconcileKind).
+func appendPreviousConditionContext(prevCondition *apis.Condition, message string) string {
+	if prevCondition == nil {
+		return message
+	}
+	switch prevCondition.Reason {
+	case v1.TaskRunReasonStarted.String(),
+		v1.TaskRunReasonRunning.String(),
+		v1.TaskRunReasonPending.String():
+		return message
+	}
+	if prevCondition.Message != "" {
+		return fmt.Sprintf("%s\nPrevious status: [%s] %s", message, prevCondition.Reason, prevCondition.Message)
+	}
+	return message
+}
+
 // updateStepStatusesFromPod fetches the pod and updates step statuses in the TaskRun
 // This is called before failing a TaskRun to ensure step statuses are populated
 func (c *Reconciler) updateStepStatusesFromPod(ctx context.Context, tr *v1.TaskRun) error {
@@ -1007,6 +1035,7 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 
 	// Apply path substitutions for the legacy credentials helper (aka "creds-init")
 	ts = resources.ApplyCredentialsPath(ctx, noopTracer, ts, pipeline.CredsDir)
+	ts = resources.ApplyCredentialsPath(ctx, noopTracer, ts, pipeline.CredsDir)
 
 	// Apply parameter substitution to PodTemplate if it exists
 	if tr.Spec.PodTemplate != nil {
@@ -1088,6 +1117,9 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 func applyParamsContextsResultsAndWorkspaces(ctx context.Context, c *Reconciler, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*v1.TaskSpec, error) {
 	tracer := c.tracerProvider.Tracer(TracerName)
 	ctx, span := tracer.Start(ctx, "applyParamsContextsResultsAndWorkspaces")
+func applyParamsContextsResultsAndWorkspaces(ctx context.Context, c *Reconciler, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*v1.TaskSpec, error) {
+	tracer := c.tracerProvider.Tracer(TracerName)
+	ctx, span := tracer.Start(ctx, "applyParamsContextsResultsAndWorkspaces")
 	defer span.End()
 
 	ts := rtr.TaskSpec.DeepCopy()
@@ -1097,16 +1129,21 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, c *Reconciler,
 	}
 	// Apply parameter substitution from the taskrun.
 	ts = resources.ApplyParameters(ctx, tracer, ts, tr, defaults...)
+	ts = resources.ApplyParameters(ctx, tracer, ts, tr, defaults...)
 
 	// Apply context substitution from the taskrun
+	ts = resources.ApplyContexts(ctx, tracer, ts, rtr.TaskName, tr)
 	ts = resources.ApplyContexts(ctx, tracer, ts, rtr.TaskName, tr)
 
 	// Apply task result substitution
 	ts = resources.ApplyResults(ctx, tracer, ts)
+	ts = resources.ApplyResults(ctx, tracer, ts)
 
 	// Apply step Artifacts substitution
 	ts = resources.ApplyArtifacts(ctx, tracer, ts)
+	ts = resources.ApplyArtifacts(ctx, tracer, ts)
 	// Apply step exitCode path substitution
+	ts = resources.ApplyStepExitCodePath(ctx, tracer, ts)
 	ts = resources.ApplyStepExitCodePath(ctx, tracer, ts)
 
 	// Apply workspace resource substitution
@@ -1128,6 +1165,7 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, c *Reconciler,
 			ts.Workspaces = append(ts.Workspaces, v1.WorkspaceDeclaration{Name: trw.Name})
 		}
 	}
+	ts = resources.ApplyWorkspaces(ctx, noopTracer, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
 	ts = resources.ApplyWorkspaces(ctx, noopTracer, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
 
 	return ts, nil

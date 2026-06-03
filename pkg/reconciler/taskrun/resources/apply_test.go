@@ -18,6 +18,7 @@ package resources_test
 
 import (
 	"context"
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -28,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -36,6 +38,7 @@ import (
 )
 
 var (
+	noopTracer     = trace.NewNoopTracerProvider().Tracer("tektoncd/pipeline")
 	noopTracer     = trace.NewNoopTracerProvider().Tracer("tektoncd/pipeline")
 	simpleTaskSpec = &v1.TaskSpec{
 		Sidecars: []v1.Sidecar{{
@@ -771,6 +774,7 @@ func TestApplyArrayParameters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := resources.ApplyParameters(t.Context(), noopTracer, tt.args.ts, tt.args.tr, tt.args.dp...)
+			got := resources.ApplyParameters(t.Context(), noopTracer, tt.args.ts, tt.args.tr, tt.args.dp...)
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 			}
@@ -1314,6 +1318,7 @@ func TestApplyParameters(t *testing.T) {
 			},
 		},
 	}
+	got := resources.ApplyParameters(t.Context(), noopTracer, simpleTaskSpec, tr, dp...)
 	got := resources.ApplyParameters(t.Context(), noopTracer, simpleTaskSpec, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
@@ -1860,6 +1865,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 		},
 	}
 	got := resources.ApplyParameters(t.Context(), noopTracer, simpleTaskSpecArrayIndexing, tr, dp...)
+	got := resources.ApplyParameters(t.Context(), noopTracer, simpleTaskSpecArrayIndexing, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 	}
@@ -2230,6 +2236,7 @@ func TestApplyObjectParameters(t *testing.T) {
 		},
 	}
 	got := resources.ApplyParameters(t.Context(), noopTracer, objectParamTaskSpec, tr, dp...)
+	got := resources.ApplyParameters(t.Context(), noopTracer, objectParamTaskSpec, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 	}
@@ -2308,6 +2315,7 @@ func TestApplyStepParameters(t *testing.T) {
 			},
 		}}
 	})
+	got := resources.ApplyParameters(t.Context(), noopTracer, stepParamTaskSpec, tr, dp...)
 	got := resources.ApplyParameters(t.Context(), noopTracer, stepParamTaskSpec, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
@@ -2471,6 +2479,7 @@ func TestApplyWorkspaces(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			vols := workspace.CreateVolumes(tc.binds)
 			got := resources.ApplyWorkspaces(t.Context(), noopTracer, tc.spec, tc.decls, tc.binds, vols)
+			got := resources.ApplyWorkspaces(t.Context(), noopTracer, tc.spec, tc.decls, tc.binds, vols)
 			if d := cmp.Diff(tc.want, got); d != "" {
 				t.Errorf("TestApplyWorkspaces() got diff %s", diff.PrintWantGot(d))
 			}
@@ -2539,6 +2548,7 @@ func TestApplyWorkspaces_IsolatedWorkspaces(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := t.Context()
 			vols := workspace.CreateVolumes(tc.binds)
+			got := resources.ApplyWorkspaces(ctx, noopTracer, tc.spec, tc.decls, tc.binds, vols)
 			got := resources.ApplyWorkspaces(ctx, noopTracer, tc.spec, tc.decls, tc.binds, vols)
 			if d := cmp.Diff(tc.want, got); d != "" {
 				t.Errorf("TestApplyWorkspaces() got diff %s", diff.PrintWantGot(d))
@@ -2751,6 +2761,7 @@ func TestContext(t *testing.T) {
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
 			got := resources.ApplyContexts(t.Context(), noopTracer, &tc.spec, tc.taskName, &tc.tr)
+			got := resources.ApplyContexts(t.Context(), noopTracer, &tc.spec, tc.taskName, &tc.tr)
 			if d := cmp.Diff(&tc.want, got); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
@@ -2791,6 +2802,7 @@ func TestTaskResults(t *testing.T) {
 		spec.Steps[1].Script = "#!/usr/bin/env bash\ndate | tee /tekton/results/current-date-human-readable"
 		spec.Steps[2].Script = "#!/usr/bin/env bash\ndate | tee /tekton/results/current-date-human-readable"
 	})
+	got := resources.ApplyResults(context.Background(), noopTracer, ts)
 	got := resources.ApplyResults(context.Background(), noopTracer, ts)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyTaskResults() got diff %s", diff.PrintWantGot(d))
@@ -2836,6 +2848,7 @@ func TestStepResults(t *testing.T) {
 		spec.Steps[2].Script = "#!/usr/bin/env bash\ndate | tee /tekton/steps/step-print-date-human-readable-again/results/current-date-human-readable"
 	})
 	got := resources.ApplyResults(context.Background(), noopTracer, ts)
+	got := resources.ApplyResults(context.Background(), noopTracer, ts)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyTaskResults() got diff %s", diff.PrintWantGot(d))
 	}
@@ -2861,6 +2874,7 @@ func TestApplyStepExitCodePath(t *testing.T) {
 		spec.Steps[1].Script = "#!/usr/bin/env bash\ncat /tekton/steps/step-unnamed-0/exitCode"
 		spec.Steps[2].Script = "#!/usr/bin/env bash\ncat /tekton/steps/step-failing-step/exitCode"
 	})
+	got := resources.ApplyStepExitCodePath(context.Background(), noopTracer, ts)
 	got := resources.ApplyStepExitCodePath(context.Background(), noopTracer, ts)
 	if d := cmp.Diff(expected, got); d != "" {
 		t.Errorf("ApplyStepExitCodePath() got diff %s", diff.PrintWantGot(d))
@@ -2903,6 +2917,7 @@ func TestApplyCredentialsPath(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
+			got := resources.ApplyCredentialsPath(t.Context(), noopTracer, &tc.spec, tc.path)
 			got := resources.ApplyCredentialsPath(t.Context(), noopTracer, &tc.spec, tc.path)
 			if d := cmp.Diff(&tc.want, got); d != "" {
 				t.Error(diff.PrintWantGot(d))
@@ -3288,6 +3303,7 @@ func TestApplyParametersToWorkspaceBindings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := resources.ApplyParametersToWorkspaceBindings(context.Background(), noopTracer, tt.ts, tt.tr)
+			got := resources.ApplyParametersToWorkspaceBindings(context.Background(), noopTracer, tt.ts, tt.tr)
 			if d := cmp.Diff(got, tt.want); d != "" {
 				t.Errorf("ApplyParametersToWorkspaceBindings() %v, diff %v", tt.name, d)
 			}
@@ -3313,6 +3329,7 @@ func TestArtifacts(t *testing.T) {
 		spec.Steps[0].Args[0] = "/tekton/steps/step-name1/artifacts/provenance.json"
 		spec.Steps[0].Script = "#!/usr/bin/env bash\n echo -n /tekton/steps/step-name1/artifacts/provenance.json"
 	})
+	got := resources.ApplyArtifacts(context.Background(), noopTracer, ts)
 	got := resources.ApplyArtifacts(context.Background(), noopTracer, ts)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyArtifacts() got diff %s", diff.PrintWantGot(d))
