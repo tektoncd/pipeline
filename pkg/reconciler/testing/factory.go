@@ -9,6 +9,7 @@ import (
 	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"knative.dev/pkg/kmeta"
 )
 
 var (
@@ -94,6 +95,8 @@ spec:
         - name: mystep
           image: mirror.gcr.io/busybox
           script: 'echo "Hello from child PipelineRun 1!"'
+  taskRunTemplate:
+    serviceAccountName: default
 `, childPipelineTaskName1),
 	)
 
@@ -115,6 +118,8 @@ spec:
     - name: %s
       taskRef:
         name: %s
+  taskRunTemplate:
+    serviceAccountName: default
 `, childPipelineTaskName2, taskName),
 	)
 
@@ -179,10 +184,369 @@ spec:
         - name: mystep
           image: mirror.gcr.io/busybox
           script: 'echo "Hello from child PipelineRun!"'
+  taskRunTemplate:
+    serviceAccountName: default
 `, childPipelineTaskName),
 	)
 
 	return parentPipeline, parentPipelineRun, expectedChildPipelineRun
+}
+
+// OnePipelineRefInPipeline creates a standalone child Pipeline and a parent Pipeline that references
+// the child via pipelineRef (instead of inline pipelineSpec). It also creates the according PipelineRun
+// for it and the expected child PipelineRun against which the test will validate.
+func OnePipelineRefInPipeline(t *testing.T, namespace, parentPipelineRunName string) (*v1.Pipeline, *v1.Pipeline, *v1.PipelineRun, *v1.PipelineRun) {
+	t.Helper()
+	uid := "bar"
+	parentPipelineName := "parent-pipeline"
+	childPipelineName := "child-pipeline"
+	childPipelineTaskName := "child-pipeline-task"
+
+	childPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: %s
+    taskSpec:
+      steps:
+      - name: mystep
+        image: mirror.gcr.io/busybox
+        script: 'echo "Hello from child PipelineRun!"'
+`, childPipelineName, namespace, childPipelineTaskName))
+
+	parentPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: %s
+    pipelineRef:
+      name: %s
+`, parentPipelineName, namespace, childPipelineName, childPipelineName))
+
+	parentPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+  uid: %s
+spec:
+  pipelineRef:
+    name: %s
+`, parentPipelineRunName, namespace, uid, parentPipelineName))
+
+	expectedName := parentPipelineRunName + "-" + childPipelineName
+	childObjectMeta := childPipelineRunWithObjectMeta(
+		expectedName,
+		namespace,
+		parentPipelineRunName,
+		parentPipelineName,
+		childPipelineName,
+		uid,
+	)
+	// Override the pipeline label with the child's actual pipeline name
+	// (the reconciler does this to avoid propagating the parent's label).
+	childObjectMeta.Labels[pipeline.PipelineLabelKey] = childPipelineName
+	expectedChildPipelineRun := parse.MustParseChildPipelineRunWithObjectMeta(
+		t,
+		childObjectMeta,
+		fmt.Sprintf(`
+spec:
+  pipelineRef:
+    name: %s
+  taskRunTemplate:
+    serviceAccountName: default
+`, childPipelineName),
+	)
+
+	return parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun
+}
+
+// OnePipelineRefInPipelineWithParams creates a parent Pipeline that references a child Pipeline
+// via pipelineRef with params passed through. It returns (parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun).
+func OnePipelineRefInPipelineWithParams(t *testing.T, namespace, parentPipelineRunName string) (*v1.Pipeline, *v1.Pipeline, *v1.PipelineRun, *v1.PipelineRun) {
+	t.Helper()
+	uid := "bar"
+	parentPipelineName := "parent-pipeline"
+	childPipelineName := "child-pipeline"
+	childPipelineTaskName := "child-pipeline-task"
+
+	childPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  params:
+  - name: msg
+    type: string
+  tasks:
+  - name: %s
+    taskSpec:
+      params:
+      - name: msg
+        type: string
+      steps:
+      - name: mystep
+        image: mirror.gcr.io/busybox
+        script: 'echo $(params.msg)'
+    params:
+    - name: msg
+      value: $(params.msg)
+`, childPipelineName, namespace, childPipelineTaskName))
+
+	parentPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  params:
+  - name: greeting
+    type: string
+  tasks:
+  - name: %s
+    pipelineRef:
+      name: %s
+    params:
+    - name: msg
+      value: $(params.greeting)
+`, parentPipelineName, namespace, childPipelineName, childPipelineName))
+
+	parentPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+  uid: %s
+spec:
+  pipelineRef:
+    name: %s
+  params:
+  - name: greeting
+    value: hello-world
+`, parentPipelineRunName, namespace, uid, parentPipelineName))
+
+	expectedName := parentPipelineRunName + "-" + childPipelineName
+	childObjectMeta := childPipelineRunWithObjectMeta(
+		expectedName,
+		namespace,
+		parentPipelineRunName,
+		parentPipelineName,
+		childPipelineName,
+		uid,
+	)
+	childObjectMeta.Labels[pipeline.PipelineLabelKey] = childPipelineName
+	expectedChildPipelineRun := parse.MustParseChildPipelineRunWithObjectMeta(
+		t,
+		childObjectMeta,
+		fmt.Sprintf(`
+spec:
+  pipelineRef:
+    name: %s
+  params:
+  - name: msg
+    value: hello-world
+  taskRunTemplate:
+    serviceAccountName: default
+`, childPipelineName),
+	)
+
+	return parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun
+}
+
+// OnePipelineRefInPipelineWithWorkspaces creates a parent Pipeline that references a child Pipeline
+// via pipelineRef with workspaces mapped through. It returns (parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun).
+func OnePipelineRefInPipelineWithWorkspaces(t *testing.T, namespace, parentPipelineRunName string) (*v1.Pipeline, *v1.Pipeline, *v1.PipelineRun, *v1.PipelineRun) {
+	t.Helper()
+	uid := "bar"
+	parentPipelineName := "parent-pipeline"
+	childPipelineName := "child-pipeline"
+	childPipelineTaskName := "child-pipeline-task"
+
+	childPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  workspaces:
+  - name: child-ws
+  tasks:
+  - name: %s
+    taskSpec:
+      steps:
+      - name: mystep
+        image: mirror.gcr.io/busybox
+        script: 'ls $(workspaces.child-ws.path)'
+      workspaces:
+      - name: child-ws
+    workspaces:
+    - name: child-ws
+      workspace: child-ws
+`, childPipelineName, namespace, childPipelineTaskName))
+
+	parentPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  workspaces:
+  - name: parent-ws
+  tasks:
+  - name: %s
+    pipelineRef:
+      name: %s
+    workspaces:
+    - name: child-ws
+      workspace: parent-ws
+`, parentPipelineName, namespace, childPipelineName, childPipelineName))
+
+	parentPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+  uid: %s
+spec:
+  pipelineRef:
+    name: %s
+  workspaces:
+  - name: parent-ws
+    emptyDir: {}
+`, parentPipelineRunName, namespace, uid, parentPipelineName))
+
+	expectedName := parentPipelineRunName + "-" + childPipelineName
+	childObjectMeta := childPipelineRunWithObjectMeta(
+		expectedName,
+		namespace,
+		parentPipelineRunName,
+		parentPipelineName,
+		childPipelineName,
+		uid,
+	)
+	childObjectMeta.Labels[pipeline.PipelineLabelKey] = childPipelineName
+	expectedChildPipelineRun := parse.MustParseChildPipelineRunWithObjectMeta(
+		t,
+		childObjectMeta,
+		fmt.Sprintf(`
+spec:
+  pipelineRef:
+    name: %s
+  workspaces:
+  - name: child-ws
+    emptyDir: {}
+  taskRunTemplate:
+    serviceAccountName: default
+`, childPipelineName),
+	)
+
+	return parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun
+}
+
+// OnePipelineRefInPipelineWithParamsAndWorkspaces creates a parent Pipeline that references a child Pipeline
+// via pipelineRef with both params and workspaces. It returns (parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun).
+func OnePipelineRefInPipelineWithParamsAndWorkspaces(t *testing.T, namespace, parentPipelineRunName string) (*v1.Pipeline, *v1.Pipeline, *v1.PipelineRun, *v1.PipelineRun) {
+	t.Helper()
+	uid := "bar"
+	parentPipelineName := "parent-pipeline"
+	childPipelineName := "child-pipeline"
+	childPipelineTaskName := "child-pipeline-task"
+
+	childPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  params:
+  - name: msg
+    type: string
+  workspaces:
+  - name: child-ws
+  tasks:
+  - name: %s
+    taskSpec:
+      params:
+      - name: msg
+        type: string
+      steps:
+      - name: mystep
+        image: mirror.gcr.io/busybox
+        script: 'echo $(params.msg) && ls $(workspaces.child-ws.path)'
+      workspaces:
+      - name: child-ws
+    params:
+    - name: msg
+      value: $(params.msg)
+    workspaces:
+    - name: child-ws
+      workspace: child-ws
+`, childPipelineName, namespace, childPipelineTaskName))
+
+	parentPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  params:
+  - name: greeting
+    type: string
+  workspaces:
+  - name: parent-ws
+  tasks:
+  - name: %s
+    pipelineRef:
+      name: %s
+    params:
+    - name: msg
+      value: $(params.greeting)
+    workspaces:
+    - name: child-ws
+      workspace: parent-ws
+`, parentPipelineName, namespace, childPipelineName, childPipelineName))
+
+	parentPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+  uid: %s
+spec:
+  pipelineRef:
+    name: %s
+  params:
+  - name: greeting
+    value: hello-world
+  workspaces:
+  - name: parent-ws
+    emptyDir: {}
+`, parentPipelineRunName, namespace, uid, parentPipelineName))
+
+	expectedName := parentPipelineRunName + "-" + childPipelineName
+	childObjectMeta := childPipelineRunWithObjectMeta(
+		expectedName,
+		namespace,
+		parentPipelineRunName,
+		parentPipelineName,
+		childPipelineName,
+		uid,
+	)
+	childObjectMeta.Labels[pipeline.PipelineLabelKey] = childPipelineName
+	expectedChildPipelineRun := parse.MustParseChildPipelineRunWithObjectMeta(
+		t,
+		childObjectMeta,
+		fmt.Sprintf(`
+spec:
+  pipelineRef:
+    name: %s
+  params:
+  - name: msg
+    value: hello-world
+  workspaces:
+  - name: child-ws
+    emptyDir: {}
+  taskRunTemplate:
+    serviceAccountName: default
+`, childPipelineName),
+	)
+
+	return parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun
 }
 
 func WithAnnotationAndLabel(pr *v1.PipelineRun, withUnused bool) *v1.PipelineRun {
@@ -277,7 +641,7 @@ spec:
 `, parentPipelineRunName, namespace, uid, parentPipelineName))
 
 	// expected child pipeline run created by parent
-	expectedChildName := parentPipelineRunName + "-" + childPipelineName
+	expectedChildName := kmeta.ChildName(parentPipelineRunName, "-"+childPipelineName)
 	expectedChildPipelineRun := parse.MustParseChildPipelineRunWithObjectMeta(
 		t,
 		childPipelineRunWithObjectMeta(
@@ -301,11 +665,13 @@ spec:
             - name: mystep
               image: mirror.gcr.io/busybox
               script: 'echo "Hello from grandchild Pipeline!"'
+  taskRunTemplate:
+    serviceAccountName: default
 `, grandchildPipelineName, grandchildPipelineTaskName),
 	)
 
 	// expected grandchild pipeline run created by child
-	expectedGrandchildName := expectedChildName + "-" + grandchildPipelineName
+	expectedGrandchildName := kmeta.ChildName(expectedChildName, "-"+grandchildPipelineName)
 	expectedGrandchildPipelineRun := parse.MustParseChildPipelineRunWithObjectMeta(
 		t,
 		childPipelineRunWithObjectMeta(
@@ -326,8 +692,589 @@ spec:
         - name: mystep
           image: mirror.gcr.io/busybox
           script: 'echo "Hello from grandchild Pipeline!"'
+  taskRunTemplate:
+    serviceAccountName: default
 `, grandchildPipelineTaskName),
 	)
 
 	return parentPipeline, parentPipelineRun, expectedChildPipelineRun, expectedGrandchildPipelineRun
+}
+
+// NestedPipelineRefsInPipeline creates a three-level nested pipeline structure using PipelineRef:
+// Parent Pipeline (A) -> Child Pipeline (B) via PipelineRef -> Grandchild Pipeline (C) via PipelineRef
+// Returns all three pipelines, the parent PipelineRun, expected child PipelineRun, and expected grandchild PipelineRun.
+func NestedPipelineRefsInPipeline(t *testing.T, namespace, parentPipelineRunName string) (*v1.Pipeline, *v1.Pipeline, *v1.Pipeline, *v1.PipelineRun, *v1.PipelineRun, *v1.PipelineRun) {
+	t.Helper()
+	uid := "nested-ref"
+	parentPipelineName := "parent-pipeline"
+	childPipelineName := "child-ppl"
+	grandchildPipelineName := "grandchild-ppl"
+	grandchildTaskName := "grandchild-task"
+
+	grandchildPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: %s
+    taskSpec:
+      steps:
+      - name: mystep
+        image: mirror.gcr.io/busybox
+        script: 'echo "Hello from grandchild Pipeline!"'
+`, grandchildPipelineName, namespace, grandchildTaskName))
+
+	childPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: %s
+    pipelineRef:
+      name: %s
+`, childPipelineName, namespace, grandchildPipelineName, grandchildPipelineName))
+
+	parentPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: %s
+    pipelineRef:
+      name: %s
+`, parentPipelineName, namespace, childPipelineName, childPipelineName))
+
+	parentPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+  uid: %s
+spec:
+  pipelineRef:
+    name: %s
+`, parentPipelineRunName, namespace, uid, parentPipelineName))
+
+	// expected child pipeline run created by parent
+	expectedChildName := kmeta.ChildName(parentPipelineRunName, "-"+childPipelineName)
+	childObjectMeta := childPipelineRunWithObjectMeta(
+		expectedChildName,
+		namespace,
+		parentPipelineRunName,
+		parentPipelineName,
+		childPipelineName,
+		uid,
+	)
+	childObjectMeta.Labels[pipeline.PipelineLabelKey] = childPipelineName
+	expectedChildPipelineRun := parse.MustParseChildPipelineRunWithObjectMeta(
+		t,
+		childObjectMeta,
+		fmt.Sprintf(`
+spec:
+  pipelineRef:
+    name: %s
+  taskRunTemplate:
+    serviceAccountName: default
+`, childPipelineName),
+	)
+
+	// expected grandchild pipeline run created by child
+	expectedGrandchildName := kmeta.ChildName(expectedChildName, "-"+grandchildPipelineName)
+	grandchildObjectMeta := childPipelineRunWithObjectMeta(
+		expectedGrandchildName,
+		namespace,
+		expectedChildName,
+		expectedChildName,
+		grandchildPipelineName,
+		"", // keep empty, UID is not set on actual child PipelineRun by fake client
+	)
+	grandchildObjectMeta.Labels[pipeline.PipelineLabelKey] = grandchildPipelineName
+	expectedGrandchildPipelineRun := parse.MustParseChildPipelineRunWithObjectMeta(
+		t,
+		grandchildObjectMeta,
+		fmt.Sprintf(`
+spec:
+  pipelineRef:
+    name: %s
+  taskRunTemplate:
+    serviceAccountName: default
+`, grandchildPipelineName),
+	)
+
+	return parentPipeline, childPipeline, grandchildPipeline, parentPipelineRun, expectedChildPipelineRun, expectedGrandchildPipelineRun
+}
+
+// SelfReferencingPipelineRefCycle returns a Pipeline whose only PipelineTask
+// has a pipelineRef back to itself, and a PipelineRun that runs it. The
+// PipelineRun is pre-labelled with tekton.dev/pipeline so unit-level reconcile
+// tests (which seed the run directly) exercise the cycle-detection label walk.
+// Shared by unit and e2e tests for self-cycle detection.
+func SelfReferencingPipelineRefCycle(t *testing.T, namespace, parentPipelineRunName string) (*v1.Pipeline, *v1.PipelineRun) {
+	t.Helper()
+	pipelineName := "self-ref-pipeline"
+	pipelineObj := &v1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{Name: pipelineName, Namespace: namespace},
+		Spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{{
+			Name:        "ref-self",
+			PipelineRef: &v1.PipelineRef{Name: pipelineName},
+		}}},
+	}
+	pipelineRun := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      parentPipelineRunName,
+			Namespace: namespace,
+			Labels:    map[string]string{pipeline.PipelineLabelKey: pipelineName},
+		},
+		Spec: v1.PipelineRunSpec{PipelineRef: &v1.PipelineRef{Name: pipelineName}},
+	}
+	return pipelineObj, pipelineRun
+}
+
+// TwoLevelPipelineRefCycle returns Pipelines pipeline-a and pipeline-b where
+// each references the other via pipelineRef, plus a PipelineRun that runs
+// pipeline-a. Shared by unit and e2e tests for two-level cycle detection.
+func TwoLevelPipelineRefCycle(t *testing.T, namespace, parentPipelineRunName string) (*v1.Pipeline, *v1.Pipeline, *v1.PipelineRun) {
+	t.Helper()
+	const (
+		pipelineAName = "pipeline-a"
+		pipelineBName = "pipeline-b"
+	)
+	pipelineA := &v1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{Name: pipelineAName, Namespace: namespace},
+		Spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{{
+			Name:        pipelineBName,
+			PipelineRef: &v1.PipelineRef{Name: pipelineBName},
+		}}},
+	}
+	pipelineB := &v1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{Name: pipelineBName, Namespace: namespace},
+		Spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{{
+			Name:        pipelineAName,
+			PipelineRef: &v1.PipelineRef{Name: pipelineAName},
+		}}},
+	}
+	parentPipelineRun := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      parentPipelineRunName,
+			Namespace: namespace,
+			Labels:    map[string]string{pipeline.PipelineLabelKey: pipelineAName},
+		},
+		Spec: v1.PipelineRunSpec{PipelineRef: &v1.PipelineRef{Name: pipelineAName}},
+	}
+	return pipelineA, pipelineB, parentPipelineRun
+}
+
+// OnePipelineRefMissing returns a parent Pipeline that references a
+// non-existent Pipeline by name, plus a PipelineRun that runs the parent.
+// Shared by unit and e2e tests for the missing-child-pipeline failure path.
+func OnePipelineRefMissing(t *testing.T, namespace, parentPipelineRunName string) (*v1.Pipeline, *v1.PipelineRun) {
+	t.Helper()
+	parentPipeline := &v1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{Name: "parent-ref-not-found", Namespace: namespace},
+		Spec: v1.PipelineSpec{Tasks: []v1.PipelineTask{{
+			Name:        "ref-nonexistent",
+			PipelineRef: &v1.PipelineRef{Name: "nonexistent-pipeline"},
+		}}},
+	}
+	parentPipelineRun := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: parentPipelineRunName, Namespace: namespace},
+		Spec:       v1.PipelineRunSpec{PipelineRef: &v1.PipelineRef{Name: "parent-ref-not-found"}},
+	}
+	return parentPipeline, parentPipelineRun
+}
+
+// OnePipelineRefMissingWorkspace returns a parent Pipeline that references a
+// child Pipeline declaring a workspace, where the parent omits the
+// corresponding binding — so the child PipelineRun fails workspace
+// validation.
+func OnePipelineRefMissingWorkspace(t *testing.T, namespace, parentPipelineRunName string) (*v1.Pipeline, *v1.Pipeline, *v1.PipelineRun) {
+	t.Helper()
+	childPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: child-pipeline-workspace
+  namespace: %s
+spec:
+  workspaces:
+  - name: child-ws
+  tasks:
+  - name: use-workspace
+    taskSpec:
+      steps:
+      - name: ls
+        image: mirror.gcr.io/busybox
+        script: |
+          ls $(workspaces.shared.path)
+      workspaces:
+      - name: shared
+    workspaces:
+    - name: shared
+      workspace: child-ws
+`, namespace))
+	parentPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: parent-pipeline-missing-ws
+  namespace: %s
+spec:
+  tasks:
+  - name: child-pipeline-workspace
+    pipelineRef:
+      name: child-pipeline-workspace
+`, namespace))
+	parentPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: parent-pipeline-missing-ws
+`, parentPipelineRunName, namespace))
+	return parentPipeline, childPipeline, parentPipelineRun
+}
+
+// pinpChildTaskSpecPipeline returns a minimal standalone child Pipeline with a
+// single taskSpec task, for use as a pipelineRef target in PinP tests. The task
+// echoes the pipeline name so child PipelineRuns are distinguishable at runtime.
+func pinpChildTaskSpecPipeline(t *testing.T, name, namespace string) *v1.Pipeline {
+	t.Helper()
+	return parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: run
+    taskSpec:
+      steps:
+      - name: echo
+        image: mirror.gcr.io/busybox
+        script: 'echo %s'
+`, name, namespace, name))
+}
+
+// MultiplePipelineRefsInPipeline returns a parent Pipeline with two pipelineRef
+// PipelineTasks (each targeting a standalone child Pipeline), the two child
+// Pipelines, the parent PipelineRun, and the two expected child PipelineRuns.
+// Shared by unit and e2e tests for the multi-child pipelineRef path.
+func MultiplePipelineRefsInPipeline(t *testing.T, namespace, parentPipelineRunName string) (*v1.Pipeline, []*v1.Pipeline, *v1.PipelineRun, []*v1.PipelineRun) {
+	t.Helper()
+	childA := pinpChildTaskSpecPipeline(t, "child-a", namespace)
+	childB := pinpChildTaskSpecPipeline(t, "child-b", namespace)
+
+	parentPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: parent-multi-ref
+  namespace: %s
+spec:
+  tasks:
+  - name: child-a
+    pipelineRef:
+      name: child-a
+  - name: child-b
+    pipelineRef:
+      name: child-b
+`, namespace))
+
+	parentPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: parent-multi-ref
+`, parentPipelineRunName, namespace))
+
+	var expectedChildPipelineRuns []*v1.PipelineRun
+	for _, name := range []string{"child-a", "child-b"} {
+		expectedChildPipelineRuns = append(expectedChildPipelineRuns, &v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: kmeta.ChildName(parentPipelineRunName, "-"+name), Namespace: namespace},
+			Spec:       v1.PipelineRunSpec{PipelineRef: &v1.PipelineRef{Name: name}},
+		})
+	}
+
+	return parentPipeline, []*v1.Pipeline{childA, childB}, parentPipelineRun, expectedChildPipelineRuns
+}
+
+// MixedPipelineRefSpecAndTaskRefInPipeline returns a parent Pipeline that mixes
+// the three child kinds in one Pipeline: a pipelineRef child, an inline
+// pipelineSpec child, and a regular taskRef task. It returns the referenced
+// Task, the parent Pipeline, the standalone child Pipeline (the pipelineRef
+// target), the parent PipelineRun, and the expected pipelineRef and pipelineSpec
+// child PipelineRuns. Shared by unit and e2e tests for the mixed-children path.
+func MixedPipelineRefSpecAndTaskRefInPipeline(t *testing.T, namespace, parentPipelineRunName string) (*v1.Task, *v1.Pipeline, *v1.Pipeline, *v1.PipelineRun, *v1.PipelineRun, *v1.PipelineRun) {
+	t.Helper()
+	helloTask := parse.MustParseV1Task(t, fmt.Sprintf(`
+metadata:
+  name: hello-task
+  namespace: %s
+spec:
+  steps:
+  - name: echo
+    image: mirror.gcr.io/busybox
+    script: 'echo hello'
+`, namespace))
+
+	childRef := pinpChildTaskSpecPipeline(t, "child-ref", namespace)
+
+	parentPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: parent-mixed
+  namespace: %s
+spec:
+  tasks:
+  - name: ref-child
+    pipelineRef:
+      name: child-ref
+  - name: spec-child
+    pipelineSpec:
+      tasks:
+      - name: inline
+        taskSpec:
+          steps:
+          - name: echo
+            image: mirror.gcr.io/busybox
+            script: 'echo spec-child'
+  - name: direct-task
+    taskRef:
+      name: hello-task
+`, namespace))
+
+	parentPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: parent-mixed
+`, parentPipelineRunName, namespace))
+
+	expectedRefChild := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: kmeta.ChildName(parentPipelineRunName, "-ref-child"), Namespace: namespace},
+		Spec:       v1.PipelineRunSpec{PipelineRef: &v1.PipelineRef{Name: "child-ref"}},
+	}
+	// The pipelineSpec child carries the inline spec copied from the parent's
+	// spec-child task, so createKindsMap can derive its leaf TaskRun and
+	// assertPinP can diff the resolved spec.
+	expectedSpecChild := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: kmeta.ChildName(parentPipelineRunName, "-spec-child"), Namespace: namespace},
+		Spec:       v1.PipelineRunSpec{PipelineSpec: parentPipeline.Spec.Tasks[1].PipelineSpec},
+	}
+
+	return helloTask, parentPipeline, childRef, parentPipelineRun, expectedRefChild, expectedSpecChild
+}
+
+// PipelineRefInPipelineWhenSkipped returns a parent Pipeline whose only
+// PipelineTask references a child Pipeline but is guarded by a when expression
+// that evaluates to false, plus the child Pipeline and the parent PipelineRun.
+// No child PipelineRun is expected. Shared by unit and e2e tests for the
+// when-expression-skips-child path.
+func PipelineRefInPipelineWhenSkipped(t *testing.T, namespace, parentPipelineRunName string) (*v1.Pipeline, *v1.Pipeline, *v1.PipelineRun) {
+	t.Helper()
+	childPipeline := pinpChildTaskSpecPipeline(t, "child-skip", namespace)
+
+	// "run" is not in ["no"], so the guard is false and the task is skipped.
+	parentPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: parent-when-skip
+  namespace: %s
+spec:
+  tasks:
+  - name: maybe-child
+    when:
+    - input: "run"
+      operator: in
+      values: ["no"]
+    pipelineRef:
+      name: child-skip
+`, namespace))
+
+	parentPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: parent-when-skip
+`, parentPipelineRunName, namespace))
+
+	return parentPipeline, childPipeline, parentPipelineRun
+}
+
+// PipelineRefInFinally returns a parent Pipeline with a main task and a finally
+// PipelineTask that references a child Pipeline, plus the child Pipeline, the
+// parent PipelineRun, and the expected finally child PipelineRun. Used by e2e
+// tests for the pipelineRef-in-finally path.
+func PipelineRefInFinally(t *testing.T, namespace, parentPipelineRunName string) (*v1.Pipeline, *v1.Pipeline, *v1.PipelineRun, *v1.PipelineRun) {
+	t.Helper()
+	finallyChild := pinpChildTaskSpecPipeline(t, "child-finally", namespace)
+
+	parentPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: parent-finally
+  namespace: %s
+spec:
+  tasks:
+  - name: main
+    taskSpec:
+      steps:
+      - name: echo
+        image: mirror.gcr.io/busybox
+        script: 'echo main'
+  finally:
+  - name: cleanup-child
+    pipelineRef:
+      name: child-finally
+`, namespace))
+
+	parentPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: parent-finally
+`, parentPipelineRunName, namespace))
+
+	expectedChildPipelineRun := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: kmeta.ChildName(parentPipelineRunName, "-cleanup-child"), Namespace: namespace},
+		Spec:       v1.PipelineRunSpec{PipelineRef: &v1.PipelineRef{Name: "child-finally"}},
+	}
+
+	return parentPipeline, finallyChild, parentPipelineRun, expectedChildPipelineRun
+}
+
+// PipelineRefWithPVCWorkspace returns a parent Pipeline that writes a file to a
+// PVC-backed workspace and then maps that same workspace into a child Pipeline
+// via pipelineRef, where a task in the child reads the file back. It returns the
+// child Pipeline, the parent Pipeline, the parent PipelineRun (with a
+// volumeClaimTemplate workspace), and the expected child PipelineRun. The parent
+// only succeeds if the child sees the parent-written data, proving the volume is
+// shared across the parent->child boundary. Used by e2e tests.
+func PipelineRefWithPVCWorkspace(t *testing.T, namespace, parentPipelineRunName string) (*v1.Pipeline, *v1.Pipeline, *v1.PipelineRun, *v1.PipelineRun) {
+	t.Helper()
+	childPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: child-reader
+  namespace: %s
+spec:
+  workspaces:
+  - name: child-ws
+  tasks:
+  - name: read
+    workspaces:
+    - name: ws
+      workspace: child-ws
+    taskSpec:
+      workspaces:
+      - name: ws
+      steps:
+      - name: read
+        image: mirror.gcr.io/busybox
+        script: |
+          grep -q hello-pinp $(workspaces.ws.path)/data
+`, namespace))
+
+	parentPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: parent-pvc-ws
+  namespace: %s
+spec:
+  workspaces:
+  - name: shared
+  tasks:
+  - name: write
+    workspaces:
+    - name: ws
+      workspace: shared
+    taskSpec:
+      workspaces:
+      - name: ws
+      steps:
+      - name: write
+        image: mirror.gcr.io/busybox
+        script: |
+          echo hello-pinp > $(workspaces.ws.path)/data
+  - name: reader-child
+    runAfter: [write]
+    workspaces:
+    - name: child-ws
+      workspace: shared
+    pipelineRef:
+      name: child-reader
+`, namespace))
+
+	parentPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: parent-pvc-ws
+  workspaces:
+  - name: shared
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 16Mi
+`, parentPipelineRunName, namespace))
+
+	expectedChildPipelineRun := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: kmeta.ChildName(parentPipelineRunName, "-reader-child"), Namespace: namespace},
+		Spec:       v1.PipelineRunSpec{PipelineRef: &v1.PipelineRef{Name: "child-reader"}},
+	}
+
+	return parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun
+}
+
+// ChildPipelineViaClusterResolver returns a parent Pipeline whose PipelineTask
+// resolves its child Pipeline through the cluster resolver (rather than a local
+// name ref), plus the resolved child Pipeline, the parent PipelineRun, and the
+// expected child PipelineRun. The expected child PipelineRun carries only the
+// resolved tekton.dev/pipeline label (its Spec is left empty because the
+// reconciler stores the resolver ref, which tests don't reconstruct). Used by
+// e2e tests for the child-pipeline-via-resolver path.
+func ChildPipelineViaClusterResolver(t *testing.T, namespace, parentPipelineRunName string) (*v1.Pipeline, *v1.Pipeline, *v1.PipelineRun, *v1.PipelineRun) {
+	t.Helper()
+	resolvedChild := pinpChildTaskSpecPipeline(t, "resolved-child", namespace)
+
+	parentPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: parent-resolver
+  namespace: %s
+spec:
+  tasks:
+  - name: via-resolver
+    pipelineRef:
+      resolver: cluster
+      params:
+      - name: kind
+        value: pipeline
+      - name: name
+        value: resolved-child
+      - name: namespace
+        value: %s
+`, namespace, namespace))
+
+	parentPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: parent-resolver
+`, parentPipelineRunName, namespace))
+
+	expectedChildPipelineRun := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      kmeta.ChildName(parentPipelineRunName, "-via-resolver"),
+			Namespace: namespace,
+			Labels:    map[string]string{pipeline.PipelineLabelKey: "resolved-child"},
+		},
+	}
+
+	return parentPipeline, resolvedChild, parentPipelineRun, expectedChildPipelineRun
 }

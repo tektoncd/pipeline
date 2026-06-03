@@ -1,0 +1,36 @@
+# Pipelines-in-Pipelines example: a parent Pipeline that references a
+# standalone child Pipeline via `pipelineRef`. Requires the alpha feature
+# flag (enable-api-fields: alpha) to be set on the cluster. One level of
+# nesting (parent -> child).
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: child-pipeline
+spec:
+  description: A child Pipeline referenced by name from another Pipeline.
+  tasks:
+    - name: hello
+      taskSpec:
+        steps:
+          - name: echo
+            image: mirror.gcr.io/busybox
+            script: 'echo "hello from the referenced child Pipeline"'
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: pipelines-in-pipelines-ref
+spec:
+  description: Run the referenced child Pipeline via pipelineRef.
+  tasks:
+    - name: child
+      pipelineRef:
+        name: child-pipeline
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipelines-in-pipelines-ref-run-
+spec:
+  pipelineRef:
+    name: pipelines-in-pipelines-ref
