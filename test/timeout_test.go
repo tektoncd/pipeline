@@ -201,13 +201,19 @@ spec:
 		t.Logf("Error in taskRun %s status: %s\n", taskRun.Name, err)
 		t.Errorf("Expected: %s", failMsg)
 	}
-
-	tr, err := c.V1TaskRunClient.Get(ctx, taskRun.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Errorf("Error getting Taskrun: %v", err)
-	}
-	if tr == nil {
-		t.Fatalf("no TaskRun details available")
+	var tr *v1.TaskRun
+	if err := pollImmediateWithContext(ctx, func() (bool, error) {
+		got, getErr := c.V1TaskRunClient.Get(ctx, taskRun.Name, metav1.GetOptions{})
+		if getErr != nil {
+			return true, getErr
+		}
+		if len(got.Status.Steps) < 3 {
+			return false, nil
+		}
+		tr = got
+		return true, nil
+	}); err != nil {
+		t.Fatalf("TaskRun %s step statuses were never fully populated (want 3): %v", taskRun.Name, err)
 	}
 	if tr.Status.Steps[0].Terminated == nil {
 		t.Errorf("step-no-timeout should have Completed.")
