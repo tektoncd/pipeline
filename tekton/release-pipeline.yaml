@@ -396,10 +396,15 @@ spec:
 
                   if [ -n "${TRANSPARENCY}" ]; then
                     # URL format: https://rekor.sigstore.dev/api/v1/log/entries?logIndex=NNNN
-                    REKOR_UUID=$(echo "${TRANSPARENCY}" | grep -oE 'logIndex=[0-9]+' | cut -d= -f2)
+                    # Fetch the full entry UUID from the Rekor API (logIndex alone is not the UUID)
+                    REKOR_UUID=$(wget -qO- "${TRANSPARENCY}" | sed -n 's/.*"\([0-9a-f]\{64,\}\)".*/\1/p' | head -1)
                     if [ -z "${REKOR_UUID}" ]; then
-                      echo "WARNING: Could not extract logIndex from transparency URL: ${TRANSPARENCY}"
-                      REKOR_UUID="unknown"
+                      echo "WARNING: Could not fetch Rekor UUID from: ${TRANSPARENCY}"
+                      # Fall back to logIndex
+                      REKOR_UUID=$(echo "${TRANSPARENCY}" | grep -oE 'logIndex=[0-9]+' | cut -d= -f2)
+                      if [ -z "${REKOR_UUID}" ]; then
+                        REKOR_UUID="unknown"
+                      fi
                     fi
                     echo "Rekor UUID: ${REKOR_UUID}"
                     printf '%s' "${REKOR_UUID}" > "$(results.rekor-uuid.path)"
