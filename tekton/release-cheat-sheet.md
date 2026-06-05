@@ -89,9 +89,6 @@ it automatically triggers a patch release via the PAC incoming webhook.
 
 1. Announce the release in Slack channels #general, #announcements and #pipelines.
 
-1. Update [the plumbing repo](https://github.com/tektoncd/plumbing/blob/main/tekton/cd/pipeline/overlays/oci-ci-cd/kustomization.yaml)
-   to deploy the latest version to the dogfooding cluster.
-
 1. Update [the plumbing repo](https://github.com/tektoncd/plumbing/blob/d244554a42d7b6a5f1180c58c513eeecc9febcde/tekton/cd/pipeline/overlays/oci-ci-cd/kustomization.yaml#L4) to deploy the latest version to the dogfooging cluster on OCI.
 
 1. For major releases, update the [website sync configuration](https://github.com/tektoncd/website/blob/main/sync/config/pipelines.yaml)
