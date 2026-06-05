@@ -906,8 +906,8 @@ github.com/sigstore/sigstore/pkg/signature/kms/aws v1.10.6 h1:5OgLJUqWaw6+I0BM4W
 github.com/sigstore/sigstore/pkg/signature/kms/aws v1.10.6/go.mod h1:h9eK9QyPqpFskF/ewFkRLtwh4/Q3FLc2/DXbym4IHN8=
 github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.8 h1:8Mt7J36GcUEmbiJaiFhz2tud5ZIgkfVVCe2H/WJCHmw=
 github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.8/go.mod h1:YiTpAsxoWXhF9KlLOVWCh7BckN5cYO8X01WufDq1ido=
-github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.10.6 h1:C4rrjnIWR7i9GoIpI2x9irNkUqVqAst2f3xIGMugDP8=
-github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.10.6/go.mod h1:ejMD/17lMJ4HykQRPdj5NNr+OQYIEZto8HjDKghVMOA=
+github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.10.8 h1:MxpAIMZVzn0Tpbarc9ax1I498oQBp7oYSMgoMSsOmKI=
+github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.10.8/go.mod h1:bnAUEkFNam6STvkVZhptVwWzWR5pS24CEtQ+lhxu7S0=
 github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.10.6 h1:otSDRygk1TdzEiUBFyaGygT+qdwSnM9RT1i6BQMHmEY=
 github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.10.6/go.mod h1:Ee/enmyxi/RFLVlajbnjgH2wOWQwlJ0wY8qZrk43hEw=
 github.com/sirupsen/logrus v1.0.4-0.20170822132746-89742aefa4b2/go.mod h1:pMByvHTf9Beacp5x1UXfOR9xyW/9antXMhjMPG0dEzc=
