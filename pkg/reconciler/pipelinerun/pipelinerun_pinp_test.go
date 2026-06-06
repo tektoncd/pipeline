@@ -1105,50 +1105,29 @@ func TestReconcile_ChildPipelineRunPipelineRefCycleDetection_TwoLevel(t *testing
 func TestReconcile_ChildPipelineRunPipelineRefParentNotFound(t *testing.T) {
 	names.TestingSeed()
 	namespace := "foo"
-	controller := true
 
-	grandchildPipeline := &v1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: "grandchild-pipeline", Namespace: namespace},
-		Spec: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Name: "grandchild-task",
-				TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
-					Steps: []v1.Step{{Name: "mystep", Image: "mirror.gcr.io/busybox", Script: "echo hi"}},
-				}},
-			}},
-		},
-	}
-	// child-pipeline has a pipelineRef task, so reconciling its PipelineRun runs
-	// cycle detection with target "grandchild-pipeline".
-	childPipeline := &v1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: "child-pipeline", Namespace: namespace},
-		Spec: v1.PipelineSpec{
-			Tasks: []v1.PipelineTask{{
-				Name:        "ref-grandchild",
-				PipelineRef: &v1.PipelineRef{Name: "grandchild-pipeline"},
-			}},
-		},
-	}
-	// pr is owned by a PipelineRun that is never seeded, so the ancestor walk
-	// hits a NotFound and must terminate without reporting a cycle.
-	pr := &v1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "child-pr",
-			Namespace: namespace,
-			Labels:    map[string]string{pipeline.PipelineLabelKey: "child-pipeline"},
-			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion: "tekton.dev/v1",
-				Kind:       "PipelineRun",
-				Name:       "missing-parent",
-				Controller: &controller,
-			}},
-		},
-		Spec: v1.PipelineRunSpec{PipelineRef: &v1.PipelineRef{Name: "child-pipeline"}},
-	}
+	// Reuse the standard one-level pipelineRef fixture: the "child-pr" PipelineRun
+	// references parent-pipeline, whose pipelineRef task makes reconciling it run
+	// cycle detection. The expected-child return value is unused here.
+	parentPipeline, childPipeline, pr, _ := th.OnePipelineRefInPipeline(t, namespace, "child-pr")
+
+	// Stamp the tekton.dev/pipeline label the reconciler would set on this run, so
+	// the ancestor walk evaluates a real, non-target label (target is the child
+	// "child-pipeline") before reaching the missing parent.
+	pr.Labels = map[string]string{pipeline.PipelineLabelKey: "parent-pipeline"}
+	// Own pr with a PipelineRun that is never seeded, so the ancestor walk hits a
+	// NotFound from the lister and must terminate without reporting a cycle.
+	controller := true
+	pr.OwnerReferences = []metav1.OwnerReference{{
+		APIVersion: "tekton.dev/v1",
+		Kind:       "PipelineRun",
+		Name:       "missing-parent",
+		Controller: &controller,
+	}}
 
 	testData := test.Data{
 		PipelineRuns: []*v1.PipelineRun{pr},
-		Pipelines:    []*v1.Pipeline{childPipeline, grandchildPipeline},
+		Pipelines:    []*v1.Pipeline{parentPipeline, childPipeline},
 		ConfigMaps:   th.NewAlphaFeatureFlagsConfigMapInSlice(),
 	}
 
