@@ -79,7 +79,6 @@ func missingParamsNames(neededParams sets.String, providedParams sets.String, pa
 	return missingParamsNamesWithNoDefaults
 }
 func wrongTypeParamsNames(params []v1.Param, matrix v1.Params, neededParamsTypes map[string]v1.ParamType) []string {
-
 	var wrongTypeParamNames []string
 	for _, param := range params {
 		if _, ok := neededParamsTypes[param.Name]; !ok {
@@ -303,7 +302,6 @@ func mismatchedTypesResults(tr *v1.TaskRun, specResults []v1.TaskResult) map[str
 	}
 
 	// collect mismatched types for results, and correct results in filteredResults
-	
 	for _, trr := range tr.Status.Results {
 		needed, ok := neededTypes[trr.Name]
 		if ok && needed != string(trr.Type) {
