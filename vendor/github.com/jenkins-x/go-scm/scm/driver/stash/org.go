@@ -7,6 +7,7 @@ package stash
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"github.com/jenkins-x/go-scm/scm"
 )
@@ -45,7 +46,7 @@ func (s *organizationService) ListTeamMembers(ctx context.Context, id int, role 
 
 func (s *organizationService) ListOrgMembers(ctx context.Context, org string, opts *scm.ListOptions) ([]*scm.TeamMember, *scm.Response, error) {
 	opts.Size = 1000
-	path := fmt.Sprintf("rest/api/1.0/projects/%s/permissions/users?%s", org, encodeListOptions(opts))
+	path := projectUsersPermissionsPath(org, opts)
 	out := new(participants)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
 	if !out.pagination.LastPage.Bool {
@@ -61,7 +62,7 @@ func (s *organizationService) IsMember(ctx context.Context, org, user string) (b
 		Size: 1000,
 	}
 	// Check if user has permissions in the project
-	path := fmt.Sprintf("rest/api/1.0/projects/%s/permissions/users?%s", org, encodeListOptions(opts))
+	path := projectUsersPermissionsPath(org, opts)
 	out := new(participants)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
 	if err != nil {
@@ -72,35 +73,46 @@ func (s *organizationService) IsMember(ctx context.Context, org, user string) (b
 		res.Page.Next = opts.Page + 1
 	}
 	for _, participant := range out.Values {
-		if participant.User.Name == user || participant.User.Slug == user {
-			return true, res, err
+		if isRequestedUser(user, participant.User.Name, participant.User.Slug) {
+			return true, res, nil
 		}
 	}
 	// Retrieve the list of groups attached to the project
-	groups, err := getProjectGroups(ctx, org, s, opts)
+	groups, err := getProjectGroups(ctx, org, s.client, opts)
 	if err != nil {
 		return false, res, err
 	}
+	if isUserInGroups(ctx, user, groups, s.client, opts) {
+		return true, res, nil
+	}
+	return false, res, nil
+}
+
+func isUserInGroups(ctx context.Context, requestedUser string, groups []*projGroup, client *wrapper, opts *scm.ListOptions) bool {
 	for _, pgroup := range groups {
-		// Get list of users in a group
-		users, err := usersInGroups(ctx, pgroup.Group.Name, s, opts)
+		users, err := usersInGroups(ctx, pgroup.Group.Name, client, opts)
 		if err != nil {
-			return false, res, err
+			continue
 		}
 		for _, member := range users {
-			if member.Name == user || member.Slug == user {
-				return true, res, err
+			if isRequestedUser(requestedUser, member.Name, member.Slug) {
+				return true
 			}
 		}
 	}
-	return false, res, err
+
+	return false
+}
+
+func isRequestedUser(requested, name, slug string) bool {
+	return name == requested || slug == requested
 }
 
 // getProjectGroups returns the groups which have some permissions in the project
-func getProjectGroups(ctx context.Context, org string, os *organizationService, opts *scm.ListOptions) ([]*projGroup, error) {
+func getProjectGroups(ctx context.Context, org string, client *wrapper, opts *scm.ListOptions) ([]*projGroup, error) {
 	path := fmt.Sprintf("rest/api/1.0/projects/%s/permissions/groups?%s", org, encodeListOptions(opts))
 	out := new(projGroups)
-	res, err := os.client.do(ctx, "GET", path, nil, out)
+	res, err := client.do(ctx, "GET", path, nil, out)
 	if err != nil {
 		return nil, err
 	}
@@ -112,10 +124,10 @@ func getProjectGroups(ctx context.Context, org string, os *organizationService, 
 }
 
 // usersInGroups returns the members/users in a group
-func usersInGroups(ctx context.Context, group string, os *organizationService, opts *scm.ListOptions) ([]*member, error) {
-	path := fmt.Sprintf("rest/api/1.0/admin/groups/more-members?context=%s&%s", group, encodeListOptions(opts))
+func usersInGroups(ctx context.Context, group string, client *wrapper, opts *scm.ListOptions) ([]*member, error) {
+	path := fmt.Sprintf("rest/api/1.0/admin/groups/more-members?context=%s&%s", url.QueryEscape(group), encodeListOptions(opts))
 	out := new(members)
-	res, err := os.client.do(ctx, "GET", path, nil, out)
+	res, err := client.do(ctx, "GET", path, nil, out)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +142,7 @@ func (s *organizationService) IsAdmin(ctx context.Context, org, user string) (bo
 	opts := &scm.ListOptions{
 		Size: 1000,
 	}
-	path := fmt.Sprintf("rest/api/1.0/projects/%s/permissions/users?%s", org, encodeListOptions(opts))
+	path := projectUsersPermissionsPath(org, opts)
 	out := new(participants)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
 	if !out.pagination.LastPage.Bool {
@@ -138,7 +150,7 @@ func (s *organizationService) IsAdmin(ctx context.Context, org, user string) (bo
 		res.Page.Next = opts.Page + 1
 	}
 	for _, participant := range out.Values {
-		if (participant.User.Name == user || participant.User.Slug == user) && apiStringToPermission(participant.Permission) == scm.AdminPermission {
+		if isRequestedUser(user, participant.User.Name, participant.User.Slug) && apiStringToPermission(participant.Permission) == scm.AdminPermission {
 			return true, res, err
 		}
 	}
@@ -169,7 +181,7 @@ func (s *organizationService) ListMemberships(ctx context.Context, opts *scm.Lis
 }
 
 func convertParticipantsToTeamMembers(from *participants) []*scm.TeamMember {
-	var teamMembers []*scm.TeamMember
+	teamMembers := make([]*scm.TeamMember, 0, len(from.Values))
 	for _, f := range from.Values {
 		teamMembers = append(teamMembers, &scm.TeamMember{Login: f.User.Name})
 	}
@@ -177,11 +189,15 @@ func convertParticipantsToTeamMembers(from *participants) []*scm.TeamMember {
 }
 
 func convertProjectList(from []project) []*scm.Organization {
-	var to []*scm.Organization
+	to := make([]*scm.Organization, 0, len(from))
 	for _, v := range from {
 		to = append(to, convertProject(v))
 	}
 	return to
+}
+
+func projectUsersPermissionsPath(org string, opts *scm.ListOptions) string {
+	return fmt.Sprintf("rest/api/1.0/projects/%s/permissions/users?%s", org, encodeListOptions(opts))
 }
 
 func convertProject(from project) *scm.Organization {
