@@ -36,20 +36,6 @@ updates:
             - version-update:semver-major
             - version-update:semver-minor
     - package-ecosystem: gomod
-      directory: /test/custom-task-ctrls/wait-task-alpha
-      schedule:
-        interval: daily
-      labels:
-        - ok-to-test
-        - dependencies
-        - release-note-none
-        - kind/misc
-      ignore:
-        - dependency-name: k8s.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-    - package-ecosystem: gomod
       directory: /test/custom-task-ctrls/wait-task-beta
       schedule:
         interval: daily
@@ -119,25 +105,6 @@ updates:
             - version-update:semver-minor
     - package-ecosystem: gomod
       directory: /tools
-      target-branch: release-v1.12.x
-      schedule:
-        interval: daily
-      labels:
-        - ok-to-test
-        - dependencies
-        - release-note-none
-        - kind/misc
-      ignore:
-        - dependency-name: k8s.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-    - package-ecosystem: gomod
-      directory: /test/custom-task-ctrls/wait-task-alpha
       target-branch: release-v1.12.x
       schedule:
         interval: daily
@@ -248,25 +215,6 @@ updates:
             - version-update:semver-minor
     - package-ecosystem: gomod
       directory: /tools
-      target-branch: release-v1.9.x
-      schedule:
-        interval: daily
-      labels:
-        - ok-to-test
-        - dependencies
-        - release-note-none
-        - kind/misc
-      ignore:
-        - dependency-name: k8s.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-    - package-ecosystem: gomod
-      directory: /test/custom-task-ctrls/wait-task-alpha
       target-branch: release-v1.9.x
       schedule:
         interval: daily
@@ -377,25 +325,6 @@ updates:
             - version-update:semver-minor
     - package-ecosystem: gomod
       directory: /tools
-      target-branch: release-v1.6.x
-      schedule:
-        interval: daily
-      labels:
-        - ok-to-test
-        - dependencies
-        - release-note-none
-        - kind/misc
-      ignore:
-        - dependency-name: k8s.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-    - package-ecosystem: gomod
-      directory: /test/custom-task-ctrls/wait-task-alpha
       target-branch: release-v1.6.x
       schedule:
         interval: daily
@@ -506,25 +435,6 @@ updates:
             - version-update:semver-minor
     - package-ecosystem: gomod
       directory: /tools
-      target-branch: release-v1.3.x
-      schedule:
-        interval: daily
-      labels:
-        - ok-to-test
-        - dependencies
-        - release-note-none
-        - kind/misc
-      ignore:
-        - dependency-name: k8s.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-    - package-ecosystem: gomod
-      directory: /test/custom-task-ctrls/wait-task-alpha
       target-branch: release-v1.3.x
       schedule:
         interval: daily
