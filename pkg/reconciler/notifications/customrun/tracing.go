@@ -31,8 +31,6 @@ import (
 const (
 	// TracerName is the name of the tracer.
 	TracerName = "CustomRunNotificationsReconciler"
-	// TracerProviderName is the service name registered with the tracing provider.
-	TracerProviderName = "customrun-notifications-reconciler"
 	// SpanContextAnnotation is the annotation key used to propagate span context.
 	SpanContextAnnotation = "tekton.dev/customrunSpanContext"
 )
