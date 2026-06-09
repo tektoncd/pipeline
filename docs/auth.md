@@ -341,7 +341,7 @@ specified in the `Secret`.
        b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAA...
        ...
        -----END OPENSSH PRIVATE KEY-----
-     # known-hosts is not mandatory, but its use is strongly encouraged for security reasons.
+     # known_hosts is not mandatory, but its use is strongly encouraged for security reasons.
      # If it is not provided then the git server's public key will be requested
      # when the repo is first fetched.
      known_hosts: |
