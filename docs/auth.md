@@ -323,9 +323,9 @@ specified in the `Secret`.
 
 1. Generate a new SSH key with `ssh-keygen` command (optionally specify the file path in which the key will be saved, default is `~/.ssh/<key-name>`)
 
-2. View public key with `cat ~/.ssh/<key-name>.pub` and add it to GitHub (under Settings > SSH and GPG Keys > New SSH key)
+1. View public key with `cat ~/.ssh/<key-name>.pub` and add it to GitHub (under Settings > SSH and GPG Keys > New SSH key)
 
-3. In `secret.yaml`, define a `Secret` containing your SSH private key:
+1. In `secret.yaml`, define a `Secret` containing your SSH private key:
 
    ```yaml
    apiVersion: v1
@@ -352,10 +352,10 @@ specified in the `Secret`.
 
    In the above example, the value for `tekton.dev/git-0` specifies the URL for which Tekton will use this `Secret`,
    as described in [Understanding credential selection](#understanding-credential-selection).
-   
+
    You can view your private key with `cat ~/.ssh/<key-name>` and get GitHub's public key with `ssh-keyscan github.com`
 
-5. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
+1. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
 
    ```yaml
    apiVersion: v1
@@ -366,7 +366,7 @@ specified in the `Secret`.
      - name: ssh-key
    ```
 
-6. In `run.yaml`, associate the `ServiceAccount` with your `Run` by doing one of the following:
+1. In `run.yaml`, associate the `ServiceAccount` with your `Run` by doing one of the following:
 
    - Associate the `ServiceAccount` with your `TaskRun`:
 
@@ -395,7 +395,7 @@ specified in the `Secret`.
        name: demo-pipeline
    ```
 
-7. Execute the `Run`:
+1. Execute the `Run`:
 
    ```shell
    kubectl apply --filename secret.yaml,serviceaccount.yaml,run.yaml
