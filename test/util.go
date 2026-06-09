@@ -76,7 +76,7 @@ func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testi
 
 	cache.Get(ctx).Clear()
 
-	namespace := names.SimpleNameGenerator.RestrictLength("arendelle") + utilrand.String(10)
+	namespace := names.SimpleNameGenerator.RestrictLength("arendelle")+utilrand.String(10)
 	initializeLogsAndMetrics(t)
 
 	// Inline controller logs from SYSTEM_NAMESPACE into the t.Log output.
