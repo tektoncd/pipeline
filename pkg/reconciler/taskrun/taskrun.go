@@ -113,7 +113,8 @@ const (
 
 var (
 	// Check that our Reconciler implements taskrunreconciler.Interface
-	_ taskrunreconciler.Interface = (*Reconciler)(nil)
+	noopTracer trace.Tracer                = trace.NewNoopTracerProvider().Tracer("")
+	_          taskrunreconciler.Interface = (*Reconciler)(nil)
 
 	// Pod failure reasons that trigger failure of the TaskRun
 	// Note: ErrImagePull is intentionally not included as it's a transient state
@@ -721,7 +722,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		tr.Spec.Workspaces = taskRunWorkspaces
 	}
 
-	resources.ApplyParametersToWorkspaceBindings(ctx, rtr.TaskSpec, tr)
+	resources.ApplyParametersToWorkspaceBindings(ctx, noopTracer, rtr.TaskSpec, tr)
 	// Get the randomized volume names assigned to workspace bindings
 	workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
 
@@ -1032,7 +1033,7 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 	}
 
 	// Apply path substitutions for the legacy credentials helper (aka "creds-init")
-	ts = resources.ApplyCredentialsPath(ctx, ts, pipeline.CredsDir)
+	ts = resources.ApplyCredentialsPath(ctx, noopTracer, ts, pipeline.CredsDir)
 
 	// Apply parameter substitution to PodTemplate if it exists
 	if tr.Spec.PodTemplate != nil {
@@ -1112,7 +1113,8 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 
 // applyParamsContextsResultsAndWorkspaces applies paramater, context, results and workspace substitutions to the TaskSpec.
 func applyParamsContextsResultsAndWorkspaces(ctx context.Context, c *Reconciler, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*v1.TaskSpec, error) {
-	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "applyParamsContextsResultsAndWorkspaces")
+	tracer := c.tracerProvider.Tracer(TracerName)
+	ctx, span := tracer.Start(ctx, "applyParamsContextsResultsAndWorkspaces")
 	defer span.End()
 
 	ts := rtr.TaskSpec.DeepCopy()
@@ -1121,18 +1123,18 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, c *Reconciler,
 		defaults = append(defaults, ts.Params...)
 	}
 	// Apply parameter substitution from the taskrun.
-	ts = resources.ApplyParameters(ctx, ts, tr, defaults...)
+	ts = resources.ApplyParameters(ctx, tracer, ts, tr, defaults...)
 
 	// Apply context substitution from the taskrun
-	ts = resources.ApplyContexts(ctx, ts, rtr.TaskName, tr)
+	ts = resources.ApplyContexts(ctx, tracer, ts, rtr.TaskName, tr)
 
 	// Apply task result substitution
-	ts = resources.ApplyResults(ctx, ts)
+	ts = resources.ApplyResults(ctx, tracer, ts)
 
 	// Apply step Artifacts substitution
-	ts = resources.ApplyArtifacts(ctx, ts)
+	ts = resources.ApplyArtifacts(ctx, tracer, ts)
 	// Apply step exitCode path substitution
-	ts = resources.ApplyStepExitCodePath(ctx, ts)
+	ts = resources.ApplyStepExitCodePath(ctx, tracer, ts)
 
 	// Apply workspace resource substitution
 	// propagate workspaces from taskrun to task.
@@ -1153,7 +1155,7 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, c *Reconciler,
 			ts.Workspaces = append(ts.Workspaces, v1.WorkspaceDeclaration{Name: trw.Name})
 		}
 	}
-	ts = resources.ApplyWorkspaces(ctx, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
+	ts = resources.ApplyWorkspaces(ctx, noopTracer, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
 
 	return ts, nil
 }
