@@ -511,7 +511,6 @@ func (t *ResolvedPipelineTask) Skip(ctx context.Context, facts *PipelineRunFacts
 // skipBecauseWhenExpressionsEvaluatedToFalse confirms that the when expressions have completed evaluating, and
 // it returns true if any of the when expressions evaluate to false
 func (t *ResolvedPipelineTask) skipBecauseWhenExpressionsEvaluatedToFalse(ctx context.Context, facts *PipelineRunFacts) bool {
-
 	_, span := otel.Tracer("TracerName").Start(ctx, "skipBecauseWhenExpressionsEvaluatedToFalse")
 	defer span.End()
 
