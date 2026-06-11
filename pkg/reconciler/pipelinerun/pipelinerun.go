@@ -21,8 +21,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -181,7 +181,7 @@ var (
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Pipeline Run
 // resource with the current status of the resource.
-func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgreconciler.Event {
+func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) (reconcileErr pkgreconciler.Event) {
 	logger := logging.FromContext(ctx)
 	ctx = initTracing(ctx, c.tracerProvider, pr)
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "PipelineRun:ReconcileKind")
@@ -202,6 +202,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 	defer func() {
 		if err := c.syncMetadata(ctx, pr); err != nil {
 			logger.Warn("Failed to sync PipelineRun metadata", zap.Error(err))
+			events.EmitError(controller.GetEventRecorder(ctx), err, pr)
+			reconcileErr = errors.Join(reconcileErr, err)
 		}
 	}()
 
@@ -1920,7 +1922,7 @@ func (c *Reconciler) syncMetadata(ctx context.Context, pr *v1.PipelineRun) error
 	mergedLabels := kmap.Union(existing.Labels, pr.Labels)
 	mergedAnnotations := kmap.Union(existing.Annotations, pr.Annotations)
 
-	if reflect.DeepEqual(mergedLabels, existing.ObjectMeta.Labels) && reflect.DeepEqual(mergedAnnotations, existing.ObjectMeta.Annotations) {
+	if maps.Equal(mergedLabels, existing.ObjectMeta.Labels) && maps.Equal(mergedAnnotations, existing.ObjectMeta.Annotations) {
 		return nil
 	}
 
