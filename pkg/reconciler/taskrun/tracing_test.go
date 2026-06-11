@@ -14,9 +14,8 @@ limitations under the License.
 package taskrun
 
 import (
-	"testing"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
@@ -24,6 +23,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"testing"
 )
 
 func TestInitTracing(t *testing.T) {
@@ -135,7 +135,6 @@ func TestApplyHelperSpansParented(t *testing.T) {
 	tr := &v1.TaskRun{ObjectMeta: metav1.ObjectMeta{Name: "tr", Namespace: "ns"}}
 	ctx, parentSpan := tracer.Start(t.Context(), "applyParamsContextsResultsAndWorkspaces")
 
-
 	resources.ApplyParameters(ctx, tracer, spec, tr)
 	resources.ApplyContexts(ctx, tracer, spec, "my-task", tr)
 	resources.ApplyWorkspaces(ctx, tracer, spec,
@@ -155,7 +154,7 @@ func TestApplyHelperSpansParented(t *testing.T) {
 	}
 
 	spans := exporter.GetSpans()
-	
+
 	byName := make(map[string]*tracetest.SpanStub, len(spans))
 	for i := range spans {
 		byName[spans[i].Name] = &spans[i]
