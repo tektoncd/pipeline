@@ -3817,6 +3817,77 @@ spec:
 	}
 }
 
+// TestReconcile_SyncMetadataFailure verifies that when the deferred syncMetadata
+// call fails (metadata Update returns an error), the error is propagated back
+// from ReconcileKind and an error event is emitted.
+func TestReconcile_SyncMetadataFailure(t *testing.T) {
+	pipelineRun := parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pr-sync-fail
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+status:
+  conditions:
+  - reason: Running
+    status: Unknown
+    type: Succeeded
+  startTime: "2024-01-23T09:55:17Z"
+`)
+	pipeline := parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: unit-test
+    taskRef:
+      name: unit-test-task
+`)
+
+	d := test.Data{
+		PipelineRuns: []*v1.PipelineRun{pipelineRun},
+		Pipelines:    []*v1.Pipeline{pipeline},
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+
+	// Make metadata Update fail.
+	updateErr := errors.New("injected metadata update failure")
+	testAssets.Clients.Pipeline.PrependReactor("update", "pipelineruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		// Only fail the metadata update (not status updates).
+		if action.GetSubresource() == "" {
+			ua := action.(ktesting.UpdateAction)
+			return true, ua.GetObject(), updateErr
+		}
+		return false, nil, nil
+	})
+
+	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, "foo/test-pr-sync-fail")
+	if err == nil {
+		t.Fatal("Expected error from Reconcile when syncMetadata fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "injected metadata update failure") {
+		t.Errorf("Expected error to contain syncMetadata failure, got: %v", err)
+	}
+
+	// Verify an error event was emitted by draining the recorder channel.
+	foundErrorEvent := false
+	for range 10 {
+		select {
+		case event := <-testAssets.Recorder.Events:
+			if strings.Contains(event, "Warning") && strings.Contains(event, "injected metadata update failure") {
+				foundErrorEvent = true
+			}
+		default:
+		}
+	}
+	if !foundErrorEvent {
+		t.Error("Expected a Warning error event from syncMetadata failure, but none was found")
+	}
+}
+
 func TestReconcilePropagateLabelsAndAnnotations(t *testing.T) {
 	names.TestingSeed()
 

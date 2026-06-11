@@ -20,7 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -129,7 +129,7 @@ var (
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Task Run
 // resource with the current status of the resource.
-func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgreconciler.Event {
+func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) (reconcileErr pkgreconciler.Event) {
 	logger := logging.FromContext(ctx)
 	ctx = initTracing(ctx, c.tracerProvider, tr)
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:ReconcileKind")
@@ -142,10 +142,14 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	}
 
 	// Set the release annotation early so it's available throughout reconciliation.
-	if tr.Annotations == nil {
-		tr.Annotations = make(map[string]string, 1)
+	// Only set for TaskRuns that haven't completed yet, to avoid overwriting
+	// the annotation with the current controller version on resyncs of done runs.
+	if !tr.IsDone() {
+		if tr.Annotations == nil {
+			tr.Annotations = make(map[string]string, 1)
+		}
+		tr.Annotations[podconvert.ReleaseAnnotation] = changeset.Get()
 	}
-	tr.Annotations[podconvert.ReleaseAnnotation] = changeset.Get()
 
 	// Sync metadata (labels/annotations) at the end of every reconciliation.
 	// This is deferred to ensure it runs on every exit path.
@@ -154,6 +158,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	defer func() {
 		if err := c.syncMetadata(ctx, tr); err != nil {
 			logger.Warn("Failed to sync TaskRun metadata", zap.Error(err))
+			events.EmitError(controller.GetEventRecorder(ctx), err, tr)
+			reconcileErr = errors.Join(reconcileErr, err)
 		}
 	}()
 	// Read the initial condition
@@ -869,7 +875,7 @@ func (c *Reconciler) syncMetadata(ctx context.Context, tr *v1.TaskRun) (err erro
 		tr.Annotations,
 	)
 
-	if reflect.DeepEqual(mergedLabels, existing.ObjectMeta.Labels) && reflect.DeepEqual(mergedAnnotations, existing.ObjectMeta.Annotations) {
+	if maps.Equal(mergedLabels, existing.ObjectMeta.Labels) && maps.Equal(mergedAnnotations, existing.ObjectMeta.Annotations) {
 		return nil
 	}
 

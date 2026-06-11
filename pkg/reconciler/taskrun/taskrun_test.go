@@ -7843,8 +7843,9 @@ status:
 		name:    "completed",
 		taskRun: taskRunCompleted,
 		wantAnnotations: map[string]string{
-			// annotation always reflects the controller version that processed the run
-			"pipeline.tekton.dev/release": fakeVersion,
+			// annotation not updated: the run is already terminal on entry, so the
+			// release annotation is left frozen at its existing value
+			"pipeline.tekton.dev/release": "release-sha",
 		},
 	}, {
 		name:    "cancelled",
@@ -7874,6 +7875,69 @@ status:
 				t.Errorf("TaskRun annotations doesn't match %s", diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+// TestReconcile_SyncMetadataFailure verifies that when the deferred syncMetadata
+// call fails (metadata Update returns an error), the error is propagated back
+// from ReconcileKind and an error event is emitted.
+func TestReconcile_SyncMetadataFailure(t *testing.T) {
+	// Use a cancelled TaskRun so reconciliation is short but still mutates
+	// metadata (release annotation is set for non-done runs).
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-sync-fail
+  namespace: foo
+spec:
+  status: TaskRunCancelled
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - reason: Pending
+    status: Unknown
+    type: Succeeded
+`)
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Tasks:    []*v1.Task{simpleTask},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+
+	// Make metadata Update fail.
+	updateErr := errors.New("injected metadata update failure")
+	testAssets.Clients.Pipeline.PrependReactor("update", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		ua := action.(ktesting.UpdateAction)
+		obj := ua.GetObject()
+		// Only fail the metadata update (not status updates).
+		if action.GetSubresource() == "" {
+			return true, obj, updateErr
+		}
+		return false, nil, nil
+	})
+
+	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun))
+	if err == nil {
+		t.Fatal("Expected error from Reconcile when syncMetadata fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "injected metadata update failure") {
+		t.Errorf("Expected error to contain syncMetadata failure, got: %v", err)
+	}
+
+	// Verify an error event was emitted by draining the recorder channel.
+	foundErrorEvent := false
+	for range 10 {
+		select {
+		case event := <-testAssets.Recorder.Events:
+			if strings.Contains(event, "Warning") && strings.Contains(event, "injected metadata update failure") {
+				foundErrorEvent = true
+			}
+		default:
+		}
+	}
+	if !foundErrorEvent {
+		t.Error("Expected a Warning error event from syncMetadata failure, but none was found")
 	}
 }
 
