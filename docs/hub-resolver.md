@@ -43,7 +43,7 @@ for the name, namespace and defaults that the resolver ships with.
 | `default-tekton-hub-catalog`| The default tekton hub catalog from where to pull the resource.| `Tekton`               |
 | `default-artifact-hub-task-catalog`| The default artifact hub catalog from where to pull the resource for task kind.| `tekton-catalog-tasks`               |
 | `default-artifact-hub-pipeline-catalog`| The default artifact hub catalog from where to pull the resource for pipeline kind.  | `tekton-catalog-pipelines`               |
-| `default-kind`              | The default object kind for references.              | `task`, `pipeline` , `stepaction`     |
+| `default-kind`              | The default object kind for references.              | `task`, `pipeline` , `stepaction`      |
 | `default-type`              | The default hub from where to pull the resource.     | `artifact`, `tekton`   |
 | `artifact-hub-urls`         | Ordered YAML list of Artifact Hub API URLs to try. First successful response wins. If not set, the `ARTIFACT_HUB_API` env var or default is used. URLs must use `http` or `https` scheme. | See [below](#configuring-multiple-hub-urls) |
 | `tekton-hub-urls`           | Ordered YAML list of Tekton Hub API URLs to try. First successful response wins. If not set, the `TEKTON_HUB_API` env var is used. URLs must use `http` or `https` scheme. | See [below](#configuring-multiple-hub-urls) |
