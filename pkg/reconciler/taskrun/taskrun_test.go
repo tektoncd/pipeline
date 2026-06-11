@@ -7843,8 +7843,9 @@ status:
 		name:    "completed",
 		taskRun: taskRunCompleted,
 		wantAnnotations: map[string]string{
-			// annotation always reflects the controller version that processed the run
-			"pipeline.tekton.dev/release": fakeVersion,
+			// annotation not updated: the run is already terminal on entry, so the
+			// release annotation is left frozen at its existing value
+			"pipeline.tekton.dev/release": "release-sha",
 		},
 	}, {
 		name:    "cancelled",
