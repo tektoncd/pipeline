@@ -14,6 +14,7 @@ limitations under the License.
 package taskrun
 
 import (
+	"testing"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"go.opentelemetry.io/otel"
@@ -23,7 +24,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
 
 func TestInitTracing(t *testing.T) {
