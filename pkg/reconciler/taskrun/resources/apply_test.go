@@ -18,7 +18,6 @@ package resources_test
 
 import (
 	"context"
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -28,7 +27,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
-	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
