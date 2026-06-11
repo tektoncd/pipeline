@@ -192,4 +192,3 @@ func TestApplyHelperSpansParented(t *testing.T) {
 		}
 	}
 }
-
