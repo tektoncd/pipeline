@@ -5829,6 +5829,69 @@ status:
 	}
 }
 
+func TestTerminateStepsInPod_CancelledTimestamps(t *testing.T) {
+	completionTime := metav1.NewTime(time.Date(2025, 1, 10, 20, 8, 0, 0, time.UTC))
+	runningStartedAt := metav1.NewTime(time.Date(2025, 1, 10, 19, 55, 0, 0, time.UTC))
+
+	tests := []struct {
+		name        string
+		step        v1.StepState
+		wantStarted metav1.Time
+	}{
+		{
+			name: "running step preserves original StartedAt",
+			step: v1.StepState{
+				Name: "running-step",
+				ContainerState: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{
+						StartedAt: runningStartedAt,
+					},
+				},
+			},
+			wantStarted: runningStartedAt,
+		},
+		{
+			name: "waiting step gets StartedAt == FinishedAt == CompletionTime",
+			step: v1.StepState{
+				Name: "waiting-step",
+				ContainerState: corev1.ContainerState{
+					Waiting: &corev1.ContainerStateWaiting{
+						Reason: "PodInitializing",
+					},
+				},
+			},
+			wantStarted: completionTime,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := &v1.TaskRun{
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						PodName:        "test-pod",
+						CompletionTime: &completionTime,
+						Steps:          []v1.StepState{tc.step},
+					},
+				},
+			}
+
+			terminateStepsInPod(tr, v1.TaskRunReasonCancelled)
+
+			step := tr.Status.Steps[0]
+			if step.Terminated == nil {
+				t.Fatalf("expected Terminated state, got nil")
+			}
+			if !step.Terminated.StartedAt.Time.Equal(tc.wantStarted.Time) {
+				t.Errorf("StartedAt = %v, want %v", step.Terminated.StartedAt.Time, tc.wantStarted.Time)
+			}
+			if !step.Terminated.FinishedAt.Time.Equal(completionTime.Time) {
+				t.Errorf("FinishedAt = %v, want %v", step.Terminated.FinishedAt.Time, completionTime.Time)
+			}
+		})
+	}
+}
+
 func Test_storeTaskSpecAndConfigSource(t *testing.T) {
 	tr := parse.MustParseV1TaskRun(t, `
 metadata:

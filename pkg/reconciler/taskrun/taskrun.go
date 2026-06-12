@@ -1005,7 +1005,6 @@ func (c *Reconciler) updateStepStatusesFromPod(ctx context.Context, tr *v1.TaskR
 // terminateStepsInPod updates step states for TaskRun on TaskRun object since pod has been deleted for cancel or timeout
 func terminateStepsInPod(tr *v1.TaskRun, taskRunReason v1.TaskRunReason) {
 	for i, step := range tr.Status.Steps {
-		// If running, include StartedAt for when step began running
 		if step.Running != nil {
 			step.Terminated = &corev1.ContainerStateTerminated{
 				ExitCode:   1,
@@ -1020,10 +1019,11 @@ func terminateStepsInPod(tr *v1.TaskRun, taskRunReason v1.TaskRunReason) {
 			tr.Status.Steps[i] = step
 		}
 
+		// Waiting steps never started; synthesize StartedAt == FinishedAt == CompletionTime.
 		if step.Waiting != nil {
 			step.Terminated = &corev1.ContainerStateTerminated{
 				ExitCode:   1,
-				StartedAt:  tr.CreationTimestamp, // startedAt cannot be null due to CRD schema validation
+				StartedAt:  *tr.Status.CompletionTime,
 				FinishedAt: *tr.Status.CompletionTime,
 				// TODO(#7385): replace with more pod/container termination reason instead of overloading taskRunReason
 				Reason:  taskRunReason.String(),

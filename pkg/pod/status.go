@@ -375,6 +375,10 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 				terminationReason = getTerminationReason(state.Terminated.Reason, terminationFromResults, exitCode)
 			}
 		}
+		if state.Terminated != nil && state.Terminated.Reason == v1.TaskRunReasonCancelled.String() {
+			state.Terminated.StartedAt = state.Terminated.FinishedAt
+			terminationReason = v1.TaskRunReasonCancelled.String()
+		}
 		stepState := v1.StepState{
 			ContainerState:    *state.DeepCopy(),
 			Name:              TrimStepPrefix(s.Name),
