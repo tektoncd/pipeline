@@ -5986,6 +5986,154 @@ status:
 	}
 }
 
+func TestTerminateStepsInPod_CancelledTimestamps(t *testing.T) {
+	completionTime := metav1.NewTime(time.Date(2025, 1, 10, 20, 7, 22, 0, time.UTC))
+
+	t.Run("completed then running steps", func(t *testing.T) {
+		// Model the real #8479 scenario: step-1 completed, step-2 was actively
+		// running user code, step-3's entrypoint was running but waiting on
+		// step-2, and step-4 was still waiting to start.
+		activeStepStartedAt := metav1.NewTime(time.Date(2025, 1, 10, 20, 7, 15, 0, time.UTC))
+
+		tr := &v1.TaskRun{
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					PodName:        "test-pod",
+					CompletionTime: &completionTime,
+					Steps: []v1.StepState{
+						{
+							Name: "step-1",
+							ContainerState: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{
+									ExitCode:   0,
+									StartedAt:  metav1.NewTime(time.Date(2025, 1, 10, 20, 7, 17, 0, time.UTC)),
+									FinishedAt: metav1.NewTime(time.Date(2025, 1, 10, 20, 7, 18, 0, time.UTC)),
+									Reason:     "Completed",
+								},
+							},
+						},
+						{
+							// Active Running step: all previous steps completed.
+							Name: "step-2",
+							ContainerState: corev1.ContainerState{
+								Running: &corev1.ContainerStateRunning{
+									StartedAt: activeStepStartedAt,
+								},
+							},
+						},
+						{
+							// Entrypoint polling for step-2; never executed.
+							Name: "step-3",
+							ContainerState: corev1.ContainerState{
+								Running: &corev1.ContainerStateRunning{
+									StartedAt: metav1.NewTime(time.Date(2025, 1, 10, 20, 7, 15, 0, time.UTC)),
+								},
+							},
+						},
+						{
+							Name: "step-4",
+							ContainerState: corev1.ContainerState{
+								Waiting: &corev1.ContainerStateWaiting{Reason: "PodInitializing"},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		terminateStepsInPod(tr, v1.TaskRunReasonCancelled)
+
+		// step-1 (Completed): untouched.
+		if tr.Status.Steps[0].Terminated.Reason != "Completed" {
+			t.Errorf("step-1 Reason = %q, want Completed", tr.Status.Steps[0].Terminated.Reason)
+		}
+		// step-2 (active): preserves StartedAt, FinishedAt = CompletionTime.
+		s2 := tr.Status.Steps[1]
+		if s2.Terminated == nil {
+			t.Fatal("step-2: expected Terminated, got nil")
+		}
+		if !s2.Terminated.StartedAt.Time.Equal(activeStepStartedAt.Time) {
+			t.Errorf("step-2 StartedAt = %v, want %v (preserved)", s2.Terminated.StartedAt.Time, activeStepStartedAt.Time)
+		}
+		if !s2.Terminated.FinishedAt.Time.Equal(completionTime.Time) {
+			t.Errorf("step-2 FinishedAt = %v, want %v", s2.Terminated.FinishedAt.Time, completionTime.Time)
+		}
+		// step-3 (waiting entrypoint): zero duration.
+		s3 := tr.Status.Steps[2]
+		if s3.Terminated == nil {
+			t.Fatal("step-3: expected Terminated, got nil")
+		}
+		if !s3.Terminated.StartedAt.Time.Equal(completionTime.Time) {
+			t.Errorf("step-3 StartedAt = %v, want %v", s3.Terminated.StartedAt.Time, completionTime.Time)
+		}
+		// step-4 (Waiting): zero duration.
+		s4 := tr.Status.Steps[3]
+		if s4.Terminated == nil {
+			t.Fatal("step-4: expected Terminated, got nil")
+		}
+		if !s4.Terminated.StartedAt.Time.Equal(completionTime.Time) {
+			t.Errorf("step-4 StartedAt = %v, want %v", s4.Terminated.StartedAt.Time, completionTime.Time)
+		}
+	})
+
+	t.Run("waiting then running", func(t *testing.T) {
+		// Step 1 is Waiting (e.g. ImagePullBackOff), step 2's container is
+		// Running but its entrypoint is polling for step 1's post file.
+		// Because step 1 never completed, step 2 could not have started
+		// its user command — both should get zero duration.
+		tr := &v1.TaskRun{
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					PodName:        "test-pod",
+					CompletionTime: &completionTime,
+					Steps: []v1.StepState{
+						{
+							Name: "step-1",
+							ContainerState: corev1.ContainerState{
+								Waiting: &corev1.ContainerStateWaiting{Reason: "ImagePullBackOff"},
+							},
+						},
+						{
+							Name: "step-2",
+							ContainerState: corev1.ContainerState{
+								Running: &corev1.ContainerStateRunning{
+									StartedAt: metav1.NewTime(time.Date(2025, 1, 10, 20, 7, 15, 0, time.UTC)),
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		terminateStepsInPod(tr, v1.TaskRunReasonCancelled)
+
+		// step-1 (Waiting): zero duration.
+		s1 := tr.Status.Steps[0]
+		if s1.Terminated == nil {
+			t.Fatal("step-1: expected Terminated, got nil")
+		}
+		if !s1.Terminated.StartedAt.Time.Equal(completionTime.Time) {
+			t.Errorf("step-1 StartedAt = %v, want %v", s1.Terminated.StartedAt.Time, completionTime.Time)
+		}
+		if !s1.Terminated.FinishedAt.Time.Equal(completionTime.Time) {
+			t.Errorf("step-1 FinishedAt = %v, want %v", s1.Terminated.FinishedAt.Time, completionTime.Time)
+		}
+		// step-2 (Running after Waiting): zero duration — step 1 never
+		// completed so the entrypoint was still polling.
+		s2 := tr.Status.Steps[1]
+		if s2.Terminated == nil {
+			t.Fatal("step-2: expected Terminated, got nil")
+		}
+		if !s2.Terminated.StartedAt.Time.Equal(completionTime.Time) {
+			t.Errorf("step-2 StartedAt = %v, want %v", s2.Terminated.StartedAt.Time, completionTime.Time)
+		}
+		if !s2.Terminated.FinishedAt.Time.Equal(completionTime.Time) {
+			t.Errorf("step-2 FinishedAt = %v, want %v", s2.Terminated.FinishedAt.Time, completionTime.Time)
+		}
+	})
+}
+
 func Test_storeTaskSpecAndConfigSource(t *testing.T) {
 	tr := parse.MustParseV1TaskRun(t, `
 metadata:

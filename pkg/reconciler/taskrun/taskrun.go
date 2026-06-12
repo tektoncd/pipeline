@@ -1327,12 +1327,23 @@ func (c *Reconciler) updateStepStatusesFromPod(ctx context.Context, tr *v1.TaskR
 
 // terminateStepsInPod updates step states for TaskRun on TaskRun object since pod has been deleted for cancel or timeout
 func terminateStepsInPod(tr *v1.TaskRun, taskRunReason v1.TaskRunReason) {
+	// In Tekton's sequential model a Running step was actively executing only
+	// if every earlier step already completed. Later Running containers and
+	// those after a Waiting step are entrypoints polling for a predecessor's
+	// post file; their StartedAt is container-creation time (#8479).
+	activeRunningStepSeen := false
+	allPreviousCompleted := true
 	for i, step := range tr.Status.Steps {
-		// If running, include StartedAt for when step began running
 		if step.Running != nil {
+			startedAt := *tr.Status.CompletionTime
+			if !activeRunningStepSeen && allPreviousCompleted {
+				// First Running step after only completed steps; keep its start time.
+				startedAt = step.Running.StartedAt
+				activeRunningStepSeen = true
+			}
 			step.Terminated = &corev1.ContainerStateTerminated{
 				ExitCode:   1,
-				StartedAt:  step.Running.StartedAt,
+				StartedAt:  startedAt,
 				FinishedAt: *tr.Status.CompletionTime,
 				// TODO(#7385): replace with more pod/container termination reason instead of overloading taskRunReason
 				Reason:  taskRunReason.String(),
@@ -1341,12 +1352,12 @@ func terminateStepsInPod(tr *v1.TaskRun, taskRunReason v1.TaskRunReason) {
 			step.TerminationReason = taskRunReason.String()
 			step.Running = nil
 			tr.Status.Steps[i] = step
-		}
-
-		if step.Waiting != nil {
+			allPreviousCompleted = false
+		} else if step.Waiting != nil {
+			// Waiting steps never started; synthesize StartedAt == FinishedAt == CompletionTime.
 			step.Terminated = &corev1.ContainerStateTerminated{
 				ExitCode:   1,
-				StartedAt:  tr.CreationTimestamp, // startedAt cannot be null due to CRD schema validation
+				StartedAt:  *tr.Status.CompletionTime,
 				FinishedAt: *tr.Status.CompletionTime,
 				// TODO(#7385): replace with more pod/container termination reason instead of overloading taskRunReason
 				Reason:  taskRunReason.String(),
@@ -1355,6 +1366,7 @@ func terminateStepsInPod(tr *v1.TaskRun, taskRunReason v1.TaskRunReason) {
 			step.TerminationReason = taskRunReason.String()
 			step.Waiting = nil
 			tr.Status.Steps[i] = step
+			allPreviousCompleted = false
 		}
 	}
 }
