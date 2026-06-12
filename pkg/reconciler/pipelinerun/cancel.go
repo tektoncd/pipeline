@@ -28,6 +28,9 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -72,33 +75,65 @@ func init() {
 	}
 }
 
-func cancelCustomRun(ctx context.Context, runName string, namespace string, clientSet clientset.Interface) error {
+func cancelCustomRun(ctx context.Context, tp trace.TracerProvider, runName string, namespace string, clientSet clientset.Interface) error {
+	ctx, span := tp.Tracer(TracerName).Start(ctx, "cancelCustomRun",
+		trace.WithAttributes(
+			attribute.String("customrun.name", runName),
+			attribute.String("customrun.namespace", namespace),
+		))
+	defer span.End()
+
 	_, err := clientSet.TektonV1beta1().CustomRuns(namespace).Patch(ctx, runName, types.JSONPatchType, cancelCustomRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
 		// The resource may have been deleted in the meanwhile, but we should
 		// still be able to cancel the PipelineRun
+		span.SetAttributes(attribute.Bool("customrun.not_found", true))
 		return nil
+	}
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
 	}
 	return err
 }
 
-func cancelTaskRun(ctx context.Context, taskRunName string, namespace string, clientSet clientset.Interface) error {
+func cancelTaskRun(ctx context.Context, tp trace.TracerProvider, taskRunName string, namespace string, clientSet clientset.Interface) error {
+	ctx, span := tp.Tracer(TracerName).Start(ctx, "cancelTaskRun",
+		trace.WithAttributes(
+			attribute.String("taskrun.name", taskRunName),
+			attribute.String("taskrun.namespace", namespace),
+		))
+	defer span.End()
+
 	_, err := clientSet.TektonV1().TaskRuns(namespace).Patch(ctx, taskRunName, types.JSONPatchType, cancelTaskRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
 		// The resource may have been deleted in the meanwhile, but we should
 		// still be able to cancel the PipelineRun
+		span.SetAttributes(attribute.Bool("taskrun.not_found", true))
 		return nil
 	}
 	if pipelineErrors.IsImmutableTaskRunSpecError(err) {
 		// The TaskRun may have completed and the spec field is immutable, we should ignore this error.
+		span.SetAttributes(attribute.Bool("taskrun.spec_immutable", true))
 		return nil
+	}
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
 	}
 	return err
 }
 
 // cancelPipelineRun marks the PipelineRun as cancelled and any resolved TaskRun(s) too.
-func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface) error {
-	errs := cancelPipelineTaskRuns(ctx, logger, pr, clientSet)
+func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, tp trace.TracerProvider, pr *v1.PipelineRun, clientSet clientset.Interface) error {
+	ctx, span := tp.Tracer(TracerName).Start(ctx, "cancelPipelineRun",
+		trace.WithAttributes(
+			attribute.String("pipelinerun.name", pr.Name),
+			attribute.String("pipelinerun.namespace", pr.Namespace),
+		))
+	defer span.End()
+
+	errs := cancelPipelineTaskRuns(ctx, logger, tp, pr, clientSet)
 
 	// If we successfully cancelled all the TaskRuns and Runs, we can consider the PipelineRun cancelled.
 	if len(errs) == 0 {
@@ -112,6 +147,8 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.Pi
 		})
 		// update pr completed time
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+
+		span.SetAttributes(attribute.String("pipelinerun.cancel_result", "success"))
 	} else {
 		e := strings.Join(errs, "\n")
 		// Indicate that we failed to cancel the PipelineRun
@@ -121,18 +158,29 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.Pi
 			Reason:  v1.PipelineRunReasonCouldntCancel.String(),
 			Message: fmt.Sprintf("PipelineRun %q was cancelled but had errors trying to cancel TaskRuns and/or Runs: %s", pr.Name, e),
 		})
-		return fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
+		combinedErr := fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
+		span.SetStatus(codes.Error, combinedErr.Error())
+		span.RecordError(combinedErr)
+		return combinedErr
 	}
 	return nil
 }
 
 // cancelPipelineTaskRuns patches `TaskRun` and `Run` with canceled status
-func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface) []string {
-	return cancelPipelineTaskRunsForTaskNames(ctx, logger, pr, clientSet, sets.NewString())
+func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, tp trace.TracerProvider, pr *v1.PipelineRun, clientSet clientset.Interface) []string {
+	return cancelPipelineTaskRunsForTaskNames(ctx, logger, tp, pr, clientSet, sets.NewString())
 }
 
 // cancelPipelineTaskRunsForTaskNames patches `TaskRun`s and `Run`s for the given task names, or all if no task names are given, with canceled status
-func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface, taskNames sets.String) []string {
+func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.SugaredLogger, tp trace.TracerProvider, pr *v1.PipelineRun, clientSet clientset.Interface, taskNames sets.String) []string {
+	ctx, span := tp.Tracer(TracerName).Start(ctx, "cancelPipelineTaskRunsForTaskNames",
+		trace.WithAttributes(
+			attribute.String("pipelinerun.name", pr.Name),
+			attribute.String("pipelinerun.namespace", pr.Namespace),
+			attribute.Int("tasknames.filter_count", taskNames.Len()),
+		))
+	defer span.End()
+
 	errs := []string{}
 
 	trNames, customRunNames, err := getChildObjectsFromPRStatusForTaskNames(ctx, pr.Status, taskNames)
@@ -140,10 +188,15 @@ func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.Sugared
 		errs = append(errs, err.Error())
 	}
 
+	span.SetAttributes(
+		attribute.Int("taskruns.count", len(trNames)),
+		attribute.Int("customruns.count", len(customRunNames)),
+	)
+
 	for _, taskRunName := range trNames {
 		logger.Infof("cancelling TaskRun %s", taskRunName)
 
-		if err := cancelTaskRun(ctx, taskRunName, pr.Namespace, clientSet); err != nil {
+		if err := cancelTaskRun(ctx, tp, taskRunName, pr.Namespace, clientSet); err != nil {
 			errs = append(errs, fmt.Errorf("failed to patch TaskRun `%s` with cancellation: %w", taskRunName, err).Error())
 			continue
 		}
@@ -152,10 +205,16 @@ func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.Sugared
 	for _, runName := range customRunNames {
 		logger.Infof("cancelling CustomRun %s", runName)
 
-		if err := cancelCustomRun(ctx, runName, pr.Namespace, clientSet); err != nil {
+		if err := cancelCustomRun(ctx, tp, runName, pr.Namespace, clientSet); err != nil {
 			errs = append(errs, fmt.Errorf("failed to patch CustomRun `%s` with cancellation: %w", runName, err).Error())
 			continue
 		}
+	}
+
+	if len(errs) > 0 {
+		combined := strings.Join(errs, "; ")
+		span.SetStatus(codes.Error, combined)
+		span.RecordError(fmt.Errorf("%s", combined))
 	}
 	return errs
 }
@@ -189,8 +248,16 @@ func getChildObjectsFromPRStatusForTaskNames(ctx context.Context, prs v1.Pipelin
 }
 
 // gracefullyCancelPipelineRun marks any non-final resolved TaskRun(s) as cancelled and runs finally.
-func gracefullyCancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface) error {
-	errs := cancelPipelineTaskRuns(ctx, logger, pr, clientSet)
+func gracefullyCancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, tp trace.TracerProvider, pr *v1.PipelineRun, clientSet clientset.Interface) error {
+	ctx, span := tp.Tracer(TracerName).Start(ctx, "gracefullyCancelPipelineRun",
+		trace.WithAttributes(
+			attribute.String("pipelinerun.name", pr.Name),
+			attribute.String("pipelinerun.namespace", pr.Namespace),
+			attribute.Bool("pipelinerun.graceful", true),
+		))
+	defer span.End()
+
+	errs := cancelPipelineTaskRuns(ctx, logger, tp, pr, clientSet)
 
 	// If we successfully cancelled all the TaskRuns and Runs, we can proceed with the PipelineRun reconciliation to trigger finally.
 	if len(errs) > 0 {
@@ -202,7 +269,11 @@ func gracefullyCancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger,
 			Reason:  v1.PipelineRunReasonCouldntCancel.String(),
 			Message: fmt.Sprintf("PipelineRun %q was cancelled but had errors trying to cancel TaskRuns and/or Runs: %s", pr.Name, e),
 		})
-		return fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
+		combinedErr := fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
+		span.SetStatus(codes.Error, combinedErr.Error())
+		span.RecordError(combinedErr)
+		return combinedErr
 	}
+	span.SetAttributes(attribute.String("pipelinerun.cancel_result", "success_will_run_finally"))
 	return nil
 }

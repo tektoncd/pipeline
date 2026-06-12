@@ -206,7 +206,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 	// before and it kept failing. One reason that can happen is exceeding etcd request size limit. Finishing it early
 	// makes sure the request size is manageable
 	if !pr.IsDone() && pr.HasTimedOutForALongTime(ctx, c.Clock) && !pr.IsTimeoutConditionSet() {
-		if err := timeoutPipelineRun(ctx, logger, pr, c.PipelineClientSet); err != nil {
+		if err := timeoutPipelineRun(ctx, logger, c.tracerProvider, pr, c.PipelineClientSet); err != nil {
 			return err
 		}
 		if err := c.finishReconcileUpdateEmitEvents(ctx, pr, before, nil); err != nil {
@@ -261,7 +261,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 
 	// If the pipelinerun is cancelled, cancel tasks and update status
 	if pr.IsCancelled() {
-		err := cancelPipelineRun(ctx, logger, pr, c.PipelineClientSet)
+		err := cancelPipelineRun(ctx, logger, c.tracerProvider, pr, c.PipelineClientSet)
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 	}
 
@@ -836,7 +836,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	// check if pipeline run is gracefully cancelled and there are active pipeline task runs, which require cancelling
 	if pr.IsGracefullyCancelled() && pipelineRunFacts.IsRunning() {
 		// If the pipelinerun is cancelled, cancel tasks, but run finally
-		err := gracefullyCancelPipelineRun(ctx, logger, pr, c.PipelineClientSet)
+		err := gracefullyCancelPipelineRun(ctx, logger, c.tracerProvider, pr, c.PipelineClientSet)
 		if err != nil {
 			// failed to cancel tasks, maybe retry would help (don't return permanent error)
 			return err
@@ -902,7 +902,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 			}
 			if tasksToTimeOut.Len() > 0 {
 				logger.Debugf("PipelineRun tasks timeout of %s reached, cancelling tasks", tasksTimeout)
-				errs := timeoutPipelineTasksForTaskNames(ctx, logger, pr, c.PipelineClientSet, tasksToTimeOut)
+				errs := timeoutPipelineTasksForTaskNames(ctx, logger, c.tracerProvider, pr, c.PipelineClientSet, tasksToTimeOut)
 				if len(errs) > 0 {
 					errString := strings.Join(errs, "\n")
 					logger.Errorf("Failed to timeout tasks for PipelineRun %s/%s: %s", pr.Namespace, pr.Name, errString)
@@ -919,7 +919,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		}
 		if tasksToTimeOut.Len() > 0 {
 			logger.Debugf("PipelineRun finally timeout of %s reached, cancelling finally tasks", finallyTimeout)
-			errs := timeoutPipelineTasksForTaskNames(ctx, logger, pr, c.PipelineClientSet, tasksToTimeOut)
+			errs := timeoutPipelineTasksForTaskNames(ctx, logger, c.tracerProvider, pr, c.PipelineClientSet, tasksToTimeOut)
 			if len(errs) > 0 {
 				errString := strings.Join(errs, "\n")
 				logger.Errorf("Failed to timeout finally tasks for PipelineRun %s/%s: %s", pr.Namespace, pr.Name, errString)
@@ -937,7 +937,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 
 	// If the pipelinerun has timed out, mark tasks as timed out and update status
 	if pr.HasTimedOut(ctx, c.Clock) {
-		if err := timeoutPipelineRun(ctx, logger, pr, c.PipelineClientSet); err != nil {
+		if err := timeoutPipelineRun(ctx, logger, c.tracerProvider, pr, c.PipelineClientSet); err != nil {
 			return err
 		}
 	}
