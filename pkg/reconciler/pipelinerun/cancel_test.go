@@ -28,6 +28,8 @@ import (
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
+	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -421,4 +423,77 @@ func TestGetChildObjectsFromPRStatusForTaskNames(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCancelPipelineRunEmitsSpan(t *testing.T) {
+	sr := tracetest.NewSpanRecorder()
+	tp := tracesdk.NewTracerProvider(tracesdk.WithSpanProcessor(sr))
+
+	pr := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled", Namespace: "foo"},
+		Spec:       v1.PipelineRunSpec{Status: v1.PipelineRunSpecStatusCancelled},
+	}
+
+	ctx, _ := ttesting.SetupFakeContext(t)
+	cfg := config.NewStore(logtesting.TestLogger(t))
+	ctx = cfg.ToContext(ctx)
+	// Put a span on the context so the cancel helpers create their child spans
+	// against the recording provider.
+	ctx, root := tp.Tracer("test").Start(ctx, "root")
+	defer root.End()
+	c, _ := test.SeedTestData(t, ctx, test.Data{PipelineRuns: []*v1.PipelineRun{pr}})
+
+	if err := cancelPipelineRun(ctx, logtesting.TestLogger(t), pr, c.Pipeline); err != nil {
+		t.Fatalf("cancelPipelineRun returned an unexpected error: %v", err)
+	}
+
+	var found bool
+	for _, s := range sr.Ended() {
+		if s.Name() == "cancelPipelineRun" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected a %q span to be recorded, got %v", "cancelPipelineRun", spanNames(sr.Ended()))
+	}
+}
+
+func TestTimeoutPipelineRunEmitsSpan(t *testing.T) {
+	sr := tracetest.NewSpanRecorder()
+	tp := tracesdk.NewTracerProvider(tracesdk.WithSpanProcessor(sr))
+
+	pr := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-timeout", Namespace: "foo"},
+	}
+
+	ctx, _ := ttesting.SetupFakeContext(t)
+	cfg := config.NewStore(logtesting.TestLogger(t))
+	ctx = cfg.ToContext(ctx)
+	// Put a span on the context so the timeout helpers create their child spans
+	// against the recording provider.
+	ctx, root := tp.Tracer("test").Start(ctx, "root")
+	defer root.End()
+	c, _ := test.SeedTestData(t, ctx, test.Data{PipelineRuns: []*v1.PipelineRun{pr}})
+
+	if err := timeoutPipelineRun(ctx, logtesting.TestLogger(t), pr, c.Pipeline); err != nil {
+		t.Fatalf("timeoutPipelineRun returned an unexpected error: %v", err)
+	}
+
+	var found bool
+	for _, s := range sr.Ended() {
+		if s.Name() == "timeoutPipelineRun" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected a %q span to be recorded, got %v", "timeoutPipelineRun", spanNames(sr.Ended()))
+	}
+}
+
+func spanNames(spans []tracesdk.ReadOnlySpan) []string {
+	names := make([]string, 0, len(spans))
+	for _, s := range spans {
+		names = append(names, s.Name())
+	}
+	return names
 }
