@@ -457,23 +457,25 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 	logger := logging.FromContext(ctx)
 
 	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	var rescheduleErr error
 	if afterCondition.IsFalse() && !tr.IsCancelled() && isReschedulableFailure(afterCondition.Reason) {
 		cfg := config.FromContextOrDefaults(ctx)
 		if cfg.FeatureFlags.EnablePodRescheduling {
 			if rescheduled, err := c.rescheduleTaskRunPod(ctx, tr); err != nil {
 				logger.Errorf("Failed to reschedule pod for TaskRun %q: %v", tr.Name, err)
+				rescheduleErr = err
 			} else if rescheduled {
 				afterCondition = tr.Status.GetCondition(apis.ConditionSucceeded)
 			}
 		}
 	}
-	if afterCondition.IsFalse() && !tr.IsCancelled() && tr.IsRetriable() {
+	if rescheduleErr == nil && afterCondition.IsFalse() && !tr.IsCancelled() && tr.IsRetriable() {
 		retryTaskRun(tr, afterCondition.Message)
 		afterCondition = tr.Status.GetCondition(apis.ConditionSucceeded)
 	}
 	events.Emit(ctx, beforeCondition, afterCondition, tr)
 
-	errs := []error{previousError}
+	errs := []error{previousError, rescheduleErr}
 
 	// If the Run has been completed before and remains so at present,
 	// no need to update the labels and annotations
@@ -1352,7 +1354,10 @@ func (c *Reconciler) rescheduleTaskRunPod(ctx context.Context, tr *v1.TaskRun) (
 			count, err = strconv.Atoi(v)
 			if err != nil {
 				logger.Warnf("Invalid pod reschedule count annotation %q: %v", v, err)
-				return false, nil
+				count = 0
+			} else if count < 0 {
+				logger.Warnf("Invalid negative pod reschedule count annotation %q", v)
+				count = 0
 			}
 		}
 	}
@@ -1363,14 +1368,13 @@ func (c *Reconciler) rescheduleTaskRunPod(ctx context.Context, tr *v1.TaskRun) (
 	}
 
 	if tr.Status.PodName != "" {
-		// Check if the pod still exists before incrementing the reschedule count.
-		// This makes the operation idempotent: if the controller re-processes the
-		// same failure (e.g., after a crash), it won't double-count reschedules.
+		// Check the pod before incrementing the reschedule count so transient API
+		// errors do not consume either the pod-reschedule budget or spec.retries.
+		// If the pod is already gone, continue and clear the stale status below.
 		_, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
 		if k8serrors.IsNotFound(err) {
-			// Pod already deleted — this is a re-entrant call, skip incrementing.
-			logger.Infof("Pod %q already deleted for TaskRun %q, skipping reschedule increment", tr.Status.PodName, tr.Name)
-			return false, nil
+			logger.Infof("Pod %q already deleted for TaskRun %q, continuing reschedule", tr.Status.PodName, tr.Name)
+			err = nil
 		}
 		if err != nil {
 			return false, fmt.Errorf("checking pod %s existence for reschedule: %w", tr.Status.PodName, err)

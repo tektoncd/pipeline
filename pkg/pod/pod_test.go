@@ -78,6 +78,103 @@ func init() {
 	os.Setenv("KO_DATA_PATH", "./testdata/")
 }
 
+func TestTaskRunPodNameSuffix(t *testing.T) {
+	failedRetryStatus := v1.TaskRunStatus{
+		Status: duckv1.Status{
+			Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+			}},
+		},
+	}
+	podRescheduledStatus := v1.TaskRunStatus{
+		Status: duckv1.Status{
+			Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionUnknown,
+				Reason: v1.TaskRunReasonPodRescheduled.String(),
+			}},
+		},
+	}
+
+	for _, tc := range []struct {
+		name string
+		tr   *v1.TaskRun
+		want string
+	}{
+		{
+			name: "initial pod",
+			tr:   &v1.TaskRun{},
+			want: "-pod",
+		}, {
+			name: "retry pod",
+			tr: &v1.TaskRun{
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						RetriesStatus: []v1.TaskRunStatus{failedRetryStatus, failedRetryStatus},
+					},
+				},
+			},
+			want: "-pod-retry2",
+		}, {
+			name: "rescheduled pod",
+			tr: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{v1.TaskRunPodRescheduleCountAnnotation: "2"},
+				},
+				Status: podRescheduledStatus,
+			},
+			want: "-pod-reschedule2",
+		}, {
+			name: "retry and rescheduled pod",
+			tr: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{v1.TaskRunPodRescheduleCountAnnotation: "3"},
+				},
+				Status: v1.TaskRunStatus{
+					Status: podRescheduledStatus.Status,
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						RetriesStatus: []v1.TaskRunStatus{failedRetryStatus},
+					},
+				},
+			},
+			want: "-pod-retry1-reschedule3",
+		}, {
+			name: "reschedule annotation ignored without PodRescheduled condition",
+			tr: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{v1.TaskRunPodRescheduleCountAnnotation: "2"},
+				},
+			},
+			want: "-pod",
+		}, {
+			name: "invalid reschedule annotation ignored",
+			tr: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{v1.TaskRunPodRescheduleCountAnnotation: "not-a-number"},
+				},
+				Status: podRescheduledStatus,
+			},
+			want: "-pod",
+		}, {
+			name: "negative reschedule annotation ignored",
+			tr: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{v1.TaskRunPodRescheduleCountAnnotation: "-1"},
+				},
+				Status: podRescheduledStatus,
+			},
+			want: "-pod",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := taskRunPodNameSuffix(tc.tr); got != tc.want {
+				t.Errorf("taskRunPodNameSuffix() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestPodBuild(t *testing.T) {
 	secretsVolume := corev1.Volume{
 		Name:         "tekton-creds-8e736f4e",

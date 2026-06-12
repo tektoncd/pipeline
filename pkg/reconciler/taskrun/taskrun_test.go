@@ -8534,14 +8534,16 @@ func TestAppendPreviousConditionContext(t *testing.T) {
 
 func TestReconcilePodRescheduling(t *testing.T) {
 	for _, tc := range []struct {
-		name             string
-		failureReason    v1.TaskRunReason
-		featureEnabled   bool
-		rescheduleCount  string
-		expectReschedule bool
-		expectAnnotation string
-		retries          int
-		expectRetry      bool
+		name                 string
+		failureReason        v1.TaskRunReason
+		featureEnabled       bool
+		rescheduleCount      string
+		deletePodError       bool
+		expectReschedule     bool
+		expectAnnotation     string
+		retries              int
+		expectRetry          bool
+		expectReconcileError bool
 	}{
 		{
 			name:             "InitContainerFailed with feature enabled reschedules pod",
@@ -8575,6 +8577,22 @@ func TestReconcilePodRescheduling(t *testing.T) {
 			expectAnnotation: "3",
 		},
 		{
+			name:             "negative reschedule count is clamped to zero",
+			failureReason:    v1.TaskRunReasonInitContainerFailed,
+			featureEnabled:   true,
+			rescheduleCount:  "-1000",
+			expectReschedule: true,
+			expectAnnotation: "1",
+		},
+		{
+			name:             "invalid reschedule count is clamped to zero",
+			failureReason:    v1.TaskRunReasonInitContainerFailed,
+			featureEnabled:   true,
+			rescheduleCount:  "not-a-number",
+			expectReschedule: true,
+			expectAnnotation: "1",
+		},
+		{
 			name:             "max reschedule count reached falls through",
 			failureReason:    v1.TaskRunReasonInitContainerFailed,
 			featureEnabled:   true,
@@ -8603,6 +8621,16 @@ func TestReconcilePodRescheduling(t *testing.T) {
 			retries:          2,
 			expectReschedule: false,
 			expectRetry:      true,
+		},
+		{
+			name:                 "reschedule delete error does not consume user retry",
+			failureReason:        v1.TaskRunReasonInitContainerFailed,
+			featureEnabled:       true,
+			deletePodError:       true,
+			retries:              2,
+			expectReschedule:     false,
+			expectRetry:          false,
+			expectReconcileError: true,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -8661,8 +8689,18 @@ status:
 			testAssets, cancel := getTaskRunController(t, d)
 			defer cancel()
 			clients := testAssets.Clients
+			if tc.deletePodError {
+				clients.Kube.PrependReactor("delete", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
+					return true, nil, errors.New("delete failed")
+				})
+			}
 
-			if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+			err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun))
+			if tc.expectReconcileError {
+				if err == nil {
+					t.Fatalf("Expected reconcile error, got nil")
+				}
+			} else if err != nil {
 				t.Fatalf("Unexpected error reconciling: %v", err)
 			}
 
@@ -8719,6 +8757,9 @@ status:
 			default:
 				if condition.IsFalse() && condition.Reason != tc.failureReason.String() {
 					t.Errorf("Expected reason %q to be preserved, got %q", tc.failureReason, condition.Reason)
+				}
+				if len(reconciledTR.Status.RetriesStatus) != 0 {
+					t.Errorf("Expected no retry status entries, got %d", len(reconciledTR.Status.RetriesStatus))
 				}
 			}
 		})
