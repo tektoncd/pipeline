@@ -40,11 +40,11 @@ func GetTaskRunStatusForPipelineTask(ctx context.Context, client versioned.Inter
 	}
 
 	tr, err := client.TektonV1().TaskRuns(ns).Get(ctx, childRef.Name, metav1.GetOptions{})
-	if err != nil && !k8serrors.IsNotFound(err) {
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil, fmt.Errorf("%w: TaskRun %s", ErrNotFound, childRef.Name)
+		}
 		return nil, err
-	}
-	if tr == nil {
-		return nil, ErrNotFound
 	}
 
 	return &tr.Status, nil
@@ -58,11 +58,11 @@ func GetCustomRunStatusForPipelineTask(ctx context.Context, client versioned.Int
 	switch childRef.Kind {
 	case "CustomRun":
 		r, err := client.TektonV1beta1().CustomRuns(ns).Get(ctx, childRef.Name, metav1.GetOptions{})
-		if err != nil && !k8serrors.IsNotFound(err) {
+		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				return nil, fmt.Errorf("%w: CustomRun %s", ErrNotFound, childRef.Name)
+			}
 			return nil, err
-		}
-		if r == nil {
-			return nil, ErrNotFound
 		}
 		runStatus = &r.Status
 	default:
