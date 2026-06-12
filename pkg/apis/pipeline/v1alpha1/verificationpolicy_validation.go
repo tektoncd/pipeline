@@ -101,13 +101,17 @@ func (r *ResourcePattern) Validate(ctx context.Context) (errs *apis.FieldError) 
 		return errs
 	}
 
+	// Heuristic check: a pattern like `^a$|b` passes the prefix/suffix test
+	// without being fully anchored. That is acceptable for a warning-level
+	// diagnostic. Note this is a UX guardrail only: the substring-matching
+	// bypass is already prevented at evaluation time by getMatchedPolicies,
+	// which strips the resolver prefix and anchors the pattern.
 	if !strings.HasPrefix(r.Pattern, "^") || !strings.HasSuffix(r.Pattern, "$") {
 		errs = errs.Also(apis.ErrGeneric(
-			fmt.Sprintf("resource pattern %q is not anchored with ^ and $; "+
-				"unanchored patterns may match unintended resource URIs — "+
-				"consider using ^%s$ to match the full URI", r.Pattern, r.Pattern),
+			fmt.Sprintf("resource pattern %q is not anchored with ^ and $ and may match unintended resource URIs; "+
+				"see https://tekton.dev/docs/pipelines/trusted-resources/ for guidance on writing anchored patterns", r.Pattern),
 			"pattern",
-		))
+		).At(apis.WarningLevel))
 	}
 
 	return errs
