@@ -113,8 +113,7 @@ const (
 
 var (
 	// Check that our Reconciler implements taskrunreconciler.Interface
-	noopTracer trace.Tracer                = trace.NewNoopTracerProvider().Tracer("")
-	_          taskrunreconciler.Interface = (*Reconciler)(nil)
+	_ taskrunreconciler.Interface = (*Reconciler)(nil)
 
 	// Pod failure reasons that trigger failure of the TaskRun
 	// Note: ErrImagePull is intentionally not included as it's a transient state
@@ -665,7 +664,8 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 // error but it does not sync updates back to etcd. It does not emit events.
 // `reconcile` consumes spec and resources returned by `prepare`
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resources.ResolvedTask) error {
-	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "reconcile")
+	tracer := c.tracerProvider.Tracer(TracerName)
+	ctx, span := tracer.Start(ctx, "reconcile")
 	defer span.End()
 
 	logger := logging.FromContext(ctx)
@@ -722,7 +722,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		tr.Spec.Workspaces = taskRunWorkspaces
 	}
 
-	resources.ApplyParametersToWorkspaceBindings(ctx, noopTracer, rtr.TaskSpec, tr)
+	resources.ApplyParametersToWorkspaceBindings(ctx, tracer, rtr.TaskSpec, tr)
 	// Get the randomized volume names assigned to workspace bindings
 	workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
 
@@ -1002,7 +1002,8 @@ func terminateStepsInPod(tr *v1.TaskRun, taskRunReason v1.TaskRunReason) {
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
 // TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
 func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*corev1.Pod, error) {
-	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createPod")
+	tracer := c.tracerProvider.Tracer(TracerName)
+	ctx, span := tracer.Start(ctx, "createPod")
 	defer span.End()
 	logger := logging.FromContext(ctx)
 
@@ -1033,7 +1034,7 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 	}
 
 	// Apply path substitutions for the legacy credentials helper (aka "creds-init")
-	ts = resources.ApplyCredentialsPath(ctx, noopTracer, ts, pipeline.CredsDir)
+	ts = resources.ApplyCredentialsPath(ctx, tracer, ts, pipeline.CredsDir)
 
 	// Apply parameter substitution to PodTemplate if it exists
 	if tr.Spec.PodTemplate != nil {
@@ -1155,7 +1156,7 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, c *Reconciler,
 			ts.Workspaces = append(ts.Workspaces, v1.WorkspaceDeclaration{Name: trw.Name})
 		}
 	}
-	ts = resources.ApplyWorkspaces(ctx, noopTracer, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
+	ts = resources.ApplyWorkspaces(ctx, tracer, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
 
 	return ts, nil
 }

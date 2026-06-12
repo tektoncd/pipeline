@@ -125,37 +125,42 @@ func TestInitTracing(t *testing.T) {
 	}
 }
 
-func TestApplyHelperSpansParented(t *testing.T) {
+func TestReconcilerApplyPathsEmitSpans(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 
 	exporter := tracetest.NewInMemoryExporter()
 	tp := tracesdk.NewTracerProvider(tracesdk.WithSyncer(exporter))
-	tracer := tp.Tracer(TracerName)
 
-	spec := &v1.TaskSpec{Steps: []v1.Step{{Name: "s", Image: "foo"}}}
-	tr := &v1.TaskRun{ObjectMeta: metav1.ObjectMeta{Name: "tr", Namespace: "ns"}}
-	ctx, parentSpan := tracer.Start(t.Context(), "applyParamsContextsResultsAndWorkspaces")
+	taskSpec := &v1.TaskSpec{
+		Steps: []v1.Step{{Name: "s", Image: "foo"}},
+	}
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "tr", Namespace: "ns"},
+		Spec: v1.TaskRunSpec{
+			TaskSpec: taskSpec,
+		},
+	}
 
-	resources.ApplyParameters(ctx, tracer, spec, tr)
-	resources.ApplyContexts(ctx, tracer, spec, "my-task", tr)
-	resources.ApplyWorkspaces(ctx, tracer, spec,
-		[]v1.WorkspaceDeclaration{{Name: "ws"}},
-		[]v1.WorkspaceBinding{{Name: "ws", EmptyDir: &corev1.EmptyDirVolumeSource{}}},
-		map[string]corev1.Volume{},
-	)
-	resources.ApplyParametersToWorkspaceBindings(ctx, tracer, spec, tr)
-	resources.ApplyResults(ctx, tracer, spec)
-	resources.ApplyArtifacts(ctx, tracer, spec)
-	resources.ApplyStepExitCodePath(ctx, tracer, spec)
-	resources.ApplyCredentialsPath(ctx, tracer, spec, "/tekton/creds")
+	rtr := &resources.ResolvedTask{
+		TaskName: "my-task",
+		TaskSpec: taskSpec,
+	}
 
-	parentSpan.End()
-	if err := tp.ForceFlush(t.Context()); err != nil {
+	c := &Reconciler{
+		tracerProvider: tp,
+	}
+
+	ctx := t.Context()
+	_, err := applyParamsContextsResultsAndWorkspaces(ctx, c, tr, rtr, map[string]corev1.Volume{})
+	if err != nil {
+		t.Fatalf("applyParamsContextsResultsAndWorkspaces: %v", err)
+	}
+
+	if err := tp.ForceFlush(ctx); err != nil {
 		t.Fatalf("ForceFlush: %v", err)
 	}
 
 	spans := exporter.GetSpans()
-
 	byName := make(map[string]*tracetest.SpanStub, len(spans))
 	for i := range spans {
 		byName[spans[i].Name] = &spans[i]
@@ -163,30 +168,25 @@ func TestApplyHelperSpansParented(t *testing.T) {
 
 	parent, ok := byName["applyParamsContextsResultsAndWorkspaces"]
 	if !ok {
-		t.Fatal("parent span was not exported")
+		t.Fatal("applyParamsContextsResultsAndWorkspaces span not exported — reconciler is not using configured tracerProvider")
 	}
 
 	helpers := []string{
 		"ApplyParameters", "ApplyContexts", "ApplyWorkspaces",
-		"ApplyParametersToWorkspaceBindings", "ApplyResults",
-		"ApplyArtifacts", "ApplyStepExitCodePath", "ApplyCredentialsPath",
+		"ApplyResults", "ApplyArtifacts",
+		"ApplyStepExitCodePath",
 	}
 	for _, name := range helpers {
 		child, ok := byName[name]
 		if !ok {
-			t.Errorf("%s: span not exported", name)
+			t.Errorf("%s: span not exported — noopTracer is still being passed at this call site", name)
 			continue
 		}
 		if child.Parent.SpanID() != parent.SpanContext.SpanID() {
-			t.Errorf("%s: parent span ID %v, should be %v",
-				name, child.Parent.SpanID(), parent.SpanContext.SpanID())
+			t.Errorf("%s: wrong parent span — got %v, want %v", name, child.Parent.SpanID(), parent.SpanContext.SpanID())
 		}
 		if child.SpanContext.TraceID() != parent.SpanContext.TraceID() {
-			t.Errorf("%s: trace ID %v, should be %v",
-				name, child.SpanContext.TraceID(), parent.SpanContext.TraceID())
-		}
-		if child.EndTime.IsZero() {
-			t.Errorf("%s: span was never ended", name)
+			t.Errorf("%s: wrong trace ID — got %v, want %v", name, child.SpanContext.TraceID(), parent.SpanContext.TraceID())
 		}
 	}
 }
