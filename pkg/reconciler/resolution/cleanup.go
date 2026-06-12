@@ -18,6 +18,7 @@ package resolution
 
 import (
 	"context"
+	"fmt"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -29,44 +30,55 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// CleanupAndValidate performs the common post-resolve cleanup pattern:
-//  1. Saves the original ObjectMeta
-//  2. Clears OwnerReferences
-//  3. Optionally verifies the resource via trustedresources (when verificationPolicies is non-nil)
-//  4. Dry-run validates via the API server
-//  5. Restores ObjectMeta on the mutated object
+// CleanupAndValidate performs the common post-resolve pattern for resource
+// kinds covered by trustedresources verification (Task, Pipeline):
+//  1. Clears OwnerReferences on the resolved object
+//  2. Verifies the resource via trustedresources (always; with no matching
+//     policies the result is driven by the trusted-resources no-match-policy)
+//  3. Dry-run validates via the API server
 //
-// It returns the mutated runtime.Object from dry-run validation and an optional VerificationResult.
+// It returns the mutated runtime.Object from dry-run validation and the
+// VerificationResult. The helper does not preserve ObjectMeta: callers that
+// need the original metadata on the mutated object must restore it themselves.
 func CleanupAndValidate(
 	ctx context.Context,
 	namespace string,
-	obj metav1.Object,
+	obj runtime.Object,
 	k8s kubernetes.Interface,
 	tekton clientset.Interface,
 	refSource *v1.RefSource,
 	verificationPolicies []*v1alpha1.VerificationPolicy,
 ) (runtime.Object, *trustedresources.VerificationResult, error) {
-	originalMeta := obj.GetOwnerReferences()
-	_ = originalMeta // saved for documentation; we restore full ObjectMeta below via caller
-
-	obj.SetOwnerReferences(nil)
-
-	var vr *trustedresources.VerificationResult
-	if verificationPolicies != nil {
-		result := trustedresources.VerifyResource(ctx, obj, k8s, refSource, verificationPolicies)
-		vr = &result
-	}
-
-	runtimeObj, ok := obj.(runtime.Object)
+	metaObj, ok := obj.(metav1.Object)
 	if !ok {
-		// This should never happen since all Tekton API types implement runtime.Object
-		panic("obj does not implement runtime.Object")
+		return nil, nil, fmt.Errorf("object %T does not implement metav1.Object", obj)
 	}
+	metaObj.SetOwnerReferences(nil)
 
-	mutated, err := apiserver.DryRunValidate(ctx, namespace, runtimeObj, tekton)
+	result := trustedresources.VerifyResource(ctx, metaObj, k8s, refSource, verificationPolicies)
+
+	mutated, err := apiserver.DryRunValidate(ctx, namespace, obj, tekton)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return mutated, vr, nil
+	return mutated, &result, nil
+}
+
+// CleanupAndDryRun performs the same OwnerReferences cleanup and dry-run
+// validation as CleanupAndValidate but without trustedresources verification,
+// for resource kinds that verification does not cover (e.g. StepAction).
+func CleanupAndDryRun(
+	ctx context.Context,
+	namespace string,
+	obj runtime.Object,
+	tekton clientset.Interface,
+) (runtime.Object, error) {
+	metaObj, ok := obj.(metav1.Object)
+	if !ok {
+		return nil, fmt.Errorf("object %T does not implement metav1.Object", obj)
+	}
+	metaObj.SetOwnerReferences(nil)
+
+	return apiserver.DryRunValidate(ctx, namespace, obj, tekton)
 }

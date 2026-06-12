@@ -232,7 +232,7 @@ func resolveStepAction(ctx context.Context, resolver remote.Resolver, name, name
 	}
 	switch obj := obj.(type) {
 	case *v1beta1.StepAction:
-		o, _, err := resolutionhelper.CleanupAndValidate(ctx, namespace, obj, nil, tekton, nil, nil)
+		o, err := resolutionhelper.CleanupAndDryRun(ctx, namespace, obj, tekton)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -242,7 +242,7 @@ func resolveStepAction(ctx context.Context, resolver remote.Resolver, name, name
 		}
 	case *v1alpha1.StepAction:
 		obj.SetDefaults(ctx)
-		o, _, err := resolutionhelper.CleanupAndValidate(ctx, namespace, obj, nil, tekton, nil, nil)
+		o, err := resolutionhelper.CleanupAndDryRun(ctx, namespace, obj, tekton)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -290,7 +290,7 @@ func readRuntimeObjectAsTask(ctx context.Context, namespace string, obj runtime.
 			}
 			mutatedTask.ObjectMeta = obj.ObjectMeta
 			if err := mutatedTask.ConvertTo(ctx, t); err != nil {
-				return nil, nil, fmt.Errorf("failed to convert obj %s into Pipeline", mutatedTask.GetObjectKind().GroupVersionKind().String())
+				return nil, nil, fmt.Errorf("failed to convert obj %s into Task", mutatedTask.GetObjectKind().GroupVersionKind().String())
 			}
 			return t, vr, nil
 		}
