@@ -113,7 +113,8 @@ const (
 
 var (
 	// Check that our Reconciler implements taskrunreconciler.Interface
-	_ taskrunreconciler.Interface = (*Reconciler)(nil)
+	noopTracer trace.Tracer                = trace.NewNoopTracerProvider().Tracer("")
+	_          taskrunreconciler.Interface = (*Reconciler)(nil)
 
 	// Pod failure reasons that trigger failure of the TaskRun
 	// Note: ErrImagePull is intentionally not included as it's a transient state
@@ -136,10 +137,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	defer span.End()
 
 	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
-	if spanCtx := span.SpanContext(); spanCtx.IsValid() {
-		logger = logger.With(zap.String("traceID", spanCtx.TraceID().String()), zap.String("spanID", spanCtx.SpanID().String()))
-		ctx = logging.WithLogger(ctx, logger)
-	}
 	// Read the initial condition
 	before := tr.Status.GetCondition(apis.ConditionSucceeded)
 
@@ -590,43 +587,27 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		Kind:     resources.GetTaskKind(tr),
 	}
 
-	if err := func() error {
-		_, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "validateTaskSpecRequestResources")
-		defer span.End()
-		return validateTaskSpecRequestResources(taskSpec)
-	}(); err != nil {
+	if err := validateTaskSpecRequestResources(taskSpec); err != nil {
 		logger.Errorf("TaskRun %s taskSpec request resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
-	if err := func() error {
-		spanCtx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "ValidateResolvedTask")
-		defer span.End()
-		return ValidateResolvedTask(spanCtx, tr.Spec.Params, &v1.Matrix{}, rtr)
-	}(); err != nil {
+	if err := ValidateResolvedTask(ctx, tr.Spec.Params, &v1.Matrix{}, rtr); err != nil {
 		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableParamEnum {
-		if err := func() error {
-			spanCtx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "ValidateEnumParam")
-			defer span.End()
-			return ValidateEnumParam(spanCtx, tr.Spec.Params, rtr.TaskSpec.Params)
-		}(); err != nil {
+		if err := ValidateEnumParam(ctx, tr.Spec.Params, rtr.TaskSpec.Params); err != nil {
 			logger.Errorf("TaskRun %q Param Enum validation failed: %v", tr.Name, err)
 			tr.Status.MarkResourceFailed(v1.TaskRunReasonInvalidParamValue, err)
 			return nil, nil, controller.NewPermanentError(err)
 		}
 	}
 
-	if err := func() error {
-		_, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "ValidateParamArrayIndex")
-		defer span.End()
-		return resources.ValidateParamArrayIndex(rtr.TaskSpec, tr.Spec.Params)
-	}(); err != nil {
+	if err := resources.ValidateParamArrayIndex(rtr.TaskSpec, tr.Spec.Params); err != nil {
 		logger.Errorf("TaskRun %q Param references are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -651,11 +632,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	} else {
 		workspaceDeclarations = taskSpec.Workspaces
 	}
-	if err := func() error {
-		spanCtx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "ValidateBindings")
-		defer span.End()
-		return workspace.ValidateBindings(spanCtx, workspaceDeclarations, tr.Spec.Workspaces)
-	}(); err != nil {
+	if err := workspace.ValidateBindings(ctx, workspaceDeclarations, tr.Spec.Workspaces); err != nil {
 		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -673,11 +650,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		}
 	}
 
-	if err := func() error {
-		_, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "validateOverrides")
-		defer span.End()
-		return validateOverrides(taskSpec, &tr.Spec)
-	}(); err != nil {
+	if err := validateOverrides(taskSpec, &tr.Spec); err != nil {
 		logger.Errorf("TaskRun %q step or sidecar overrides are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -749,7 +722,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		tr.Spec.Workspaces = taskRunWorkspaces
 	}
 
-	resources.ApplyParametersToWorkspaceBindings(ctx, rtr.TaskSpec, tr)
+	resources.ApplyParametersToWorkspaceBindings(ctx, noopTracer, rtr.TaskSpec, tr)
 	// Get the randomized volume names assigned to workspace bindings
 	workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
 
@@ -792,11 +765,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		return err
 	}
 
-	if err := func() error {
-		_, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "validateTaskRunResults")
-		defer span.End()
-		return validateTaskRunResults(tr, rtr.TaskSpec)
-	}(); err != nil {
+	if err := validateTaskRunResults(tr, rtr.TaskSpec); err != nil {
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return err
 	}
@@ -1064,7 +1033,7 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 	}
 
 	// Apply path substitutions for the legacy credentials helper (aka "creds-init")
-	ts = resources.ApplyCredentialsPath(ctx, ts, pipeline.CredsDir)
+	ts = resources.ApplyCredentialsPath(ctx, noopTracer, ts, pipeline.CredsDir)
 
 	// Apply parameter substitution to PodTemplate if it exists
 	if tr.Spec.PodTemplate != nil {
@@ -1143,8 +1112,9 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 }
 
 // applyParamsContextsResultsAndWorkspaces applies paramater, context, results and workspace substitutions to the TaskSpec.
-func applyParamsContextsResultsAndWorkspaces(ctx context.Context,c *Reconciler, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*v1.TaskSpec, error) {
-	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createPod")
+func applyParamsContextsResultsAndWorkspaces(ctx context.Context, c *Reconciler, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*v1.TaskSpec, error) {
+	tracer := c.tracerProvider.Tracer(TracerName)
+	ctx, span := tracer.Start(ctx, "applyParamsContextsResultsAndWorkspaces")
 	defer span.End()
 
 	ts := rtr.TaskSpec.DeepCopy()
@@ -1153,18 +1123,18 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context,c *Reconciler, 
 		defaults = append(defaults, ts.Params...)
 	}
 	// Apply parameter substitution from the taskrun.
-	ts = resources.ApplyParameters(ctx,ts, tr, defaults...)
+	ts = resources.ApplyParameters(ctx, tracer, ts, tr, defaults...)
 
 	// Apply context substitution from the taskrun
-	ts = resources.ApplyContexts(ctx, ts, rtr.TaskName, tr)
+	ts = resources.ApplyContexts(ctx, tracer, ts, rtr.TaskName, tr)
 
 	// Apply task result substitution
-	ts = resources.ApplyResults(ctx, ts)
+	ts = resources.ApplyResults(ctx, tracer, ts)
 
 	// Apply step Artifacts substitution
-	ts = resources.ApplyArtifacts(ctx, ts)
+	ts = resources.ApplyArtifacts(ctx, tracer, ts)
 	// Apply step exitCode path substitution
-	ts = resources.ApplyStepExitCodePath(ctx, ts)
+	ts = resources.ApplyStepExitCodePath(ctx, tracer, ts)
 
 	// Apply workspace resource substitution
 	// propagate workspaces from taskrun to task.
@@ -1185,7 +1155,7 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context,c *Reconciler, 
 			ts.Workspaces = append(ts.Workspaces, v1.WorkspaceDeclaration{Name: trw.Name})
 		}
 	}
-	ts = resources.ApplyWorkspaces(ctx, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
+	ts = resources.ApplyWorkspaces(ctx, noopTracer, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
 
 	return ts, nil
 }
