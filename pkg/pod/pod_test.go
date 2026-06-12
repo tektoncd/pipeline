@@ -105,7 +105,7 @@ func TestTaskRunPodNameSuffix(t *testing.T) {
 		{
 			name: "initial pod",
 			tr:   &v1.TaskRun{},
-			want: "-pod",
+			want: initialTaskRunPodNameSuffix,
 		}, {
 			name: "retry pod",
 			tr: &v1.TaskRun{
@@ -146,7 +146,7 @@ func TestTaskRunPodNameSuffix(t *testing.T) {
 					Annotations: map[string]string{v1.TaskRunPodRescheduleCountAnnotation: "2"},
 				},
 			},
-			want: "-pod",
+			want: initialTaskRunPodNameSuffix,
 		}, {
 			name: "invalid reschedule annotation ignored",
 			tr: &v1.TaskRun{
@@ -155,7 +155,7 @@ func TestTaskRunPodNameSuffix(t *testing.T) {
 				},
 				Status: podRescheduledStatus,
 			},
-			want: "-pod",
+			want: initialTaskRunPodNameSuffix,
 		}, {
 			name: "negative reschedule annotation ignored",
 			tr: &v1.TaskRun{
@@ -164,7 +164,7 @@ func TestTaskRunPodNameSuffix(t *testing.T) {
 				},
 				Status: podRescheduledStatus,
 			},
-			want: "-pod",
+			want: initialTaskRunPodNameSuffix,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -2884,7 +2884,7 @@ _EOF_
 			if err != nil {
 				t.Fatalf("builder.Build: %v", err)
 			}
-			expectedName := testTaskRunName + "-pod"
+			expectedName := testTaskRunName + initialTaskRunPodNameSuffix
 			if c.wantPodName != "" {
 				expectedName = c.wantPodName
 			}
@@ -3102,7 +3102,7 @@ debug-fail-continue-heredoc-randomly-generated-mz4c7
 				t.Fatalf("builder.Build: %v", err)
 			}
 
-			expectedName := kmeta.ChildName(tr.Name, "-pod")
+			expectedName := kmeta.ChildName(tr.Name, initialTaskRunPodNameSuffix)
 			if d := cmp.Diff(expectedName, got.Name); d != "" {
 				t.Errorf("Pod name does not match: %q", d)
 			}
@@ -3460,7 +3460,7 @@ func TestPodBuildwithSpireEnabled(t *testing.T) {
 				t.Fatalf("builder.Build: %v", err)
 			}
 
-			want := kmeta.ChildName(tr.Name, "-pod")
+			want := kmeta.ChildName(tr.Name, initialTaskRunPodNameSuffix)
 			if d := cmp.Diff(want, got.Name); d != "" {
 				t.Errorf("Unexpected pod name, diff=%s", diff.PrintWantGot(d))
 			}

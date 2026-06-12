@@ -81,6 +81,8 @@ const (
 	// TerminationReasonCancelled indicates a step was cancelled.
 	TerminationReasonCancelled = "Cancelled"
 
+	initialTaskRunPodNameSuffix = "-pod"
+
 	StepArtifactPathPattern = "step.artifacts.path"
 
 	// K8s version to determine if to use native k8s sidecar or Tekton sidecar
@@ -177,7 +179,7 @@ type Builder struct {
 type Transformer func(*corev1.Pod) (*corev1.Pod, error)
 
 func taskRunPodNameSuffix(taskRun *v1.TaskRun) string {
-	podNameSuffix := "-pod"
+	podNameSuffix := initialTaskRunPodNameSuffix
 	if taskRunRetries := len(taskRun.Status.RetriesStatus); taskRunRetries > 0 {
 		podNameSuffix = fmt.Sprintf("%s-retry%d", podNameSuffix, taskRunRetries)
 	}
