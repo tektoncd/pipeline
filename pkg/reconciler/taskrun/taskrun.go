@@ -114,6 +114,7 @@ const (
 var (
 	// Check that our Reconciler implements taskrunreconciler.Interface
 	_ taskrunreconciler.Interface = (*Reconciler)(nil)
+	
 
 	// Pod failure reasons that trigger failure of the TaskRun
 	// Note: ErrImagePull is intentionally not included as it's a transient state
