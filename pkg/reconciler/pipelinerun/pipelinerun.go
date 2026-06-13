@@ -62,7 +62,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -190,8 +189,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 	defer span.End()
 
 	span.SetAttributes(
-		attribute.String("tekton.pipelinerun.name", pr.Name),
-		semconv.K8SNamespaceName(pr.Namespace),
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
 	)
 	if spanCtx := span.SpanContext(); spanCtx.IsValid() {
 		logger = logger.With(zap.String("traceID", spanCtx.TraceID().String()), zap.String("spanID", spanCtx.SpanID().String()))
@@ -346,7 +345,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 func (c *Reconciler) durationAndCountMetrics(ctx context.Context, pr *v1.PipelineRun, beforeCondition *apis.Condition) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "durationAndCountMetrics")
 	defer span.End()
-	span.SetAttributes(attribute.String("tekton.pipelinerun.name", pr.Name), attribute.Bool("tekton.pipelinerun.done", pr.IsDone()))
+	span.SetAttributes(attribute.String("pipelinerun", pr.Name), attribute.Bool("done", pr.IsDone()))
 	logger := logging.FromContext(ctx)
 	if pr.IsDone() {
 		err := c.metrics.DurationAndCount(ctx, pr, beforeCondition)
@@ -359,7 +358,7 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, pr *v1.Pipelin
 func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1.PipelineRun, beforeCondition *apis.Condition, previousError error) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "finishReconcileUpdateEmitEvents")
 	defer span.End()
-	span.SetAttributes(attribute.String("tekton.pipelinerun.name", pr.Name))
+	span.SetAttributes(attribute.String("pipelinerun", pr.Name))
 	logger := logging.FromContext(ctx)
 
 	afterCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
@@ -400,9 +399,9 @@ func (c *Reconciler) resolvePipelineState(
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "resolvePipelineState")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("tekton.pipelinerun.name", pr.Name),
-		semconv.K8SNamespaceName(pr.Namespace),
-		attribute.Int("tekton.pipeline.task.count", len(pipelineTasks)),
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
+		attribute.Int("task.count", len(pipelineTasks)),
 	)
 
 	// List VerificationPolicies once per reconcile for trusted resources (used by all pipeline tasks).
@@ -554,8 +553,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "reconcile")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("tekton.pipelinerun.name", pr.Name),
-		semconv.K8SNamespaceName(pr.Namespace),
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
 	)
 	logger := logging.FromContext(ctx)
 	pr.SetDefaults(ctx)
@@ -1002,8 +1001,8 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "runNextSchedulableTask")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("tekton.pipelinerun.name", pr.Name),
-		semconv.K8SNamespaceName(pr.Namespace),
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
 	)
 
 	logger := logging.FromContext(ctx)
@@ -1156,8 +1155,8 @@ func (c *Reconciler) createChildPipelineRuns(
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createChildPipelineRuns")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("tekton.pipelinerun.name", pr.Name),
-		attribute.String("tekton.pipeline.task.name", rpt.PipelineTask.Name),
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("pipelinetask", rpt.PipelineTask.Name),
 	)
 
 	var childPipelineRuns []*v1.PipelineRun
@@ -1183,10 +1182,10 @@ func (c *Reconciler) createChildPipelineRun(
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createChildPipelineRun")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("tekton.pipelinerun.name", pr.Name),
-		semconv.K8SNamespaceName(pr.Namespace),
-		attribute.String("tekton.pipeline.task.name", rpt.PipelineTask.Name),
-		attribute.String("tekton.child.pipelinerun.name", childPipelineRunName),
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
+		attribute.String("pipelinetask", rpt.PipelineTask.Name),
+		attribute.String("child.pipelinerun", childPipelineRunName),
 	)
 
 	logger := logging.FromContext(ctx)
@@ -1342,9 +1341,9 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createTaskRuns")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("tekton.pipelinerun.name", pr.Name),
-		attribute.String("tekton.pipeline.task.name", rpt.PipelineTask.Name),
-		attribute.Int("tekton.taskrun.count", len(rpt.TaskRunNames)),
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("pipelinetask", rpt.PipelineTask.Name),
+		attribute.Int("taskrun.count", len(rpt.TaskRunNames)),
 	)
 
 	var matrixCombinations []v1.Params
@@ -1396,10 +1395,10 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 		}
 	}()
 	span.SetAttributes(
-		attribute.String("tekton.pipelinerun.name", pr.Name),
-		semconv.K8SNamespaceName(pr.Namespace),
-		attribute.String("tekton.pipeline.task.name", rpt.PipelineTask.Name),
-		attribute.String("tekton.taskrun.name", taskRunName),
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
+		attribute.String("pipelinetask", rpt.PipelineTask.Name),
+		attribute.String("taskrun", taskRunName),
 	)
 	logger := logging.FromContext(ctx)
 	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask, pr.Status, facts)
@@ -1516,8 +1515,8 @@ func (c *Reconciler) createCustomRuns(ctx context.Context, rpt *resources.Resolv
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createCustomRuns")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("tekton.pipelinerun.name", pr.Name),
-		attribute.String("tekton.pipeline.task.name", rpt.PipelineTask.Name),
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("pipelinetask", rpt.PipelineTask.Name),
 	)
 	var matrixCombinations []v1.Params
 
@@ -1549,10 +1548,10 @@ func (c *Reconciler) createCustomRun(ctx context.Context, runName string, params
 		}
 	}()
 	span.SetAttributes(
-		attribute.String("tekton.pipelinerun.name", pr.Name),
-		semconv.K8SNamespaceName(pr.Namespace),
-		attribute.String("tekton.pipeline.task.name", rpt.PipelineTask.Name),
-		attribute.String("tekton.customrun.name", runName),
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
+		attribute.String("pipelinetask", rpt.PipelineTask.Name),
+		attribute.String("customrun", runName),
 	)
 	logger := logging.FromContext(ctx)
 	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask, pr.Status, facts)
@@ -1973,7 +1972,7 @@ func addMetadataByPrecedence(metadata map[string]string, addedMetadata map[strin
 func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1.PipelineRun) (*v1.PipelineRun, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updateLabelsAndAnnotations")
 	defer span.End()
-	span.SetAttributes(attribute.String("tekton.pipelinerun.name", pr.Name))
+	span.SetAttributes(attribute.String("pipelinerun", pr.Name))
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting PipelineRun %s when updating labels/annotations: %w", pr.Name, err)
@@ -2034,8 +2033,8 @@ func (c *Reconciler) updatePipelineRunStatusFromInformer(ctx context.Context, pr
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updatePipelineRunStatusFromInformer")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("tekton.pipelinerun.name", pr.Name),
-		semconv.K8SNamespaceName(pr.Namespace),
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
 	)
 	logger := logging.FromContext(ctx)
 
