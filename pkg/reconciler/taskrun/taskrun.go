@@ -56,7 +56,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -137,8 +136,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	defer span.End()
 
 	span.SetAttributes(
-		attribute.String("tekton.taskrun.name", tr.Name),
-		semconv.K8SNamespaceName(tr.Namespace),
+		attribute.String("taskrun", tr.Name),
+		attribute.String("namespace", tr.Namespace),
 	)
 	if spanCtx := span.SpanContext(); spanCtx.IsValid() {
 		logger = logger.With(zap.String("traceID", spanCtx.TraceID().String()), zap.String("spanID", spanCtx.SpanID().String()))
@@ -378,7 +377,7 @@ func (c *Reconciler) checkContainerFailure(
 func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "durationAndCountMetrics")
 	defer span.End()
-	span.SetAttributes(attribute.String("tekton.taskrun.name", tr.Name), attribute.Bool("tekton.taskrun.done", tr.IsDone()))
+	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.Bool("done", tr.IsDone()))
 	logger := logging.FromContext(ctx)
 	if tr.IsDone() {
 		if err := c.metrics.DurationAndCount(ctx, tr, beforeCondition); err != nil {
@@ -420,9 +419,9 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "stopSidecars")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("tekton.taskrun.name", tr.Name),
-		semconv.K8SNamespaceName(tr.Namespace),
-		attribute.String("tekton.taskrun.pod", tr.Status.PodName),
+		attribute.String("taskrun", tr.Name),
+		attribute.String("namespace", tr.Namespace),
+		attribute.String("pod", tr.Status.PodName),
 	)
 	logger := logging.FromContext(ctx)
 	// do not continue without knowing the associated pod
@@ -467,7 +466,7 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
 func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "finishReconcileUpdateEmitEvents")
 	defer span.End()
-	span.SetAttributes(attribute.String("tekton.taskrun.name", tr.Name))
+	span.SetAttributes(attribute.String("taskrun", tr.Name))
 	logger := logging.FromContext(ctx)
 
 	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
@@ -508,8 +507,8 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "prepare")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("tekton.taskrun.name", tr.Name),
-		semconv.K8SNamespaceName(tr.Namespace),
+		attribute.String("taskrun", tr.Name),
+		attribute.String("namespace", tr.Namespace),
 	)
 	logger := logging.FromContext(ctx)
 	tr.SetDefaults(ctx)
@@ -710,9 +709,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "reconcile")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("tekton.taskrun.name", tr.Name),
-		semconv.K8SNamespaceName(tr.Namespace),
-		attribute.Int("tekton.task.step.count", len(rtr.TaskSpec.Steps)),
+		attribute.String("taskrun", tr.Name),
+		attribute.String("namespace", tr.Namespace),
+		attribute.Int("step.count", len(rtr.TaskSpec.Steps)),
 	)
 
 	logger := logging.FromContext(ctx)
@@ -828,7 +827,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr *v1.TaskRun, taskSpec *v1.TaskSpec) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updateTaskRunWithDefaultWorkspaces")
 	defer span.End()
-	span.SetAttributes(attribute.String("tekton.taskrun.name", tr.Name))
+	span.SetAttributes(attribute.String("taskrun", tr.Name))
 	configMap := config.FromContextOrDefaults(ctx)
 	defaults := configMap.Defaults
 	if defaults.DefaultTaskRunWorkspaceBinding != "" {
@@ -872,7 +871,7 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1.Task
 			span.RecordError(err)
 		}
 	}()
-	span.SetAttributes(attribute.String("tekton.taskrun.name", tr.Name))
+	span.SetAttributes(attribute.String("taskrun", tr.Name))
 	// Ensure the TaskRun is properly decorated with the version of the Tekton controller processing it.
 	if tr.Annotations == nil {
 		tr.Annotations = make(map[string]string, 1)
@@ -937,9 +936,9 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "failTaskRun")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("tekton.taskrun.name", tr.Name),
-		semconv.K8SNamespaceName(tr.Namespace),
-		attribute.String("tekton.taskrun.failure.reason", string(reason)),
+		attribute.String("taskrun", tr.Name),
+		attribute.String("namespace", tr.Namespace),
+		attribute.String("failure.reason", string(reason)),
 	)
 	logger := logging.FromContext(ctx)
 
@@ -1075,9 +1074,9 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 		}
 	}()
 	span.SetAttributes(
-		attribute.String("tekton.taskrun.name", tr.Name),
-		semconv.K8SNamespaceName(tr.Namespace),
-		attribute.Int("tekton.task.step.count", len(ts.Steps)),
+		attribute.String("taskrun", tr.Name),
+		attribute.String("namespace", tr.Namespace),
+		attribute.Int("step.count", len(ts.Steps)),
 	)
 	logger := logging.FromContext(ctx)
 
