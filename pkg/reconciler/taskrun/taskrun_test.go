@@ -4558,7 +4558,7 @@ spec:
 	}
 	ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
 	workspaceVolumes := workspace.CreateVolumes(taskRun.Spec.Workspaces)
-	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, taskRun, rtr, workspaceVolumes)
+	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, r, taskRun, rtr, workspaceVolumes)
 	if err != nil {
 		t.Fatalf("update task spec threw error %v", err)
 	}
@@ -4666,7 +4666,7 @@ spec:
 
 	workspaceVolumes := workspace.CreateVolumes(taskRun.Spec.Workspaces)
 	ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
-	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, taskRun, rtr, workspaceVolumes)
+	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, r, taskRun, rtr, workspaceVolumes)
 	if err != nil {
 		t.Errorf("update task spec threw an error: %v", err)
 	}
@@ -4912,7 +4912,7 @@ spec:
 			}
 
 			workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
-			taskSpec, err := applyParamsContextsResultsAndWorkspaces(testAssets.Ctx, tr, rtr, workspaceVolumes)
+			taskSpec, err := applyParamsContextsResultsAndWorkspaces(testAssets.Ctx, r, tr, rtr, workspaceVolumes)
 			if err != nil {
 				t.Fatalf("update task spec threw error %v", err)
 			}

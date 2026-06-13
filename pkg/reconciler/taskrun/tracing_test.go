@@ -14,13 +14,16 @@ limitations under the License.
 package taskrun
 
 import (
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"testing"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -119,5 +122,58 @@ func TestInitTracing(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestReconcilerApplyPathsEmitSpans(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+	tp := tracesdk.NewTracerProvider(tracesdk.WithSyncer(exporter))
+
+	taskSpec := &v1.TaskSpec{
+		Steps: []v1.Step{{Name: "s", Image: "foo"}},
+	}
+
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "tr",
+			Namespace: "ns",
+		},
+		Spec: v1.TaskRunSpec{
+			TaskSpec: taskSpec,
+		},
+	}
+
+	rtr := &resources.ResolvedTask{
+		TaskName: "my-task",
+		TaskSpec: taskSpec,
+	}
+
+	r := &Reconciler{
+		tracerProvider: tp,
+	}
+
+	_, err := applyParamsContextsResultsAndWorkspaces(
+		t.Context(),
+		r,
+		tr,
+		rtr,
+		map[string]corev1.Volume{},
+	)
+	if err != nil {
+		t.Fatalf("applyParamsContextsResultsAndWorkspaces() = %v", err)
+	}
+
+	spans := exporter.GetSpans()
+
+	found := false
+	for _, s := range spans {
+		if s.Name == "applyParamsContextsResultsAndWorkspaces" {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Fatal("applyParamsContextsResultsAndWorkspaces span not exported")
 	}
 }
