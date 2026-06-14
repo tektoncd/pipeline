@@ -18,6 +18,7 @@ package k8sevent
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -25,6 +26,8 @@ import (
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -37,6 +40,29 @@ const (
 	// EventReasonError is the reason set for events related to TaskRuns / PipelineRuns reconcile errors
 	EventReasonError = "Error"
 )
+
+// traceAnnotations extracts the W3C Trace Context from the context and returns
+// annotations suitable for AnnotatedEventf. If the span context is not valid,
+// it returns nil (falling back to un-annotated events).
+func traceAnnotations(ctx context.Context) map[string]string {
+	sc := trace.SpanFromContext(ctx).SpanContext()
+	if !sc.IsValid() {
+		return nil
+	}
+	return map[string]string{
+		"traceparent": fmt.Sprintf("00-%s-%s-%s", sc.TraceID(), sc.SpanID(), sc.TraceFlags()),
+	}
+}
+
+// emitEvent emits a Kubernetes event with trace context annotations when available.
+func emitEvent(ctx context.Context, recorder record.EventRecorder, object runtime.Object, eventType, reason, message string) {
+	annotations := traceAnnotations(ctx)
+	if annotations != nil {
+		recorder.AnnotatedEventf(object, annotations, eventType, reason, "%s", message)
+	} else {
+		recorder.Event(object, eventType, reason, message)
+	}
+}
 
 // EmitK8sEvents emits kubernetes events for object
 // k8s events are always sent if afterCondition is different from beforeCondition
@@ -54,19 +80,19 @@ func EmitK8sEvents(ctx context.Context, beforeCondition *apis.Condition, afterCo
 		// If the condition changed, and the target condition is not empty, we send an event
 		switch afterCondition.Status {
 		case corev1.ConditionTrue:
-			recorder.Event(object, corev1.EventTypeNormal, EventReasonSucceded, afterCondition.Message)
+			emitEvent(ctx, recorder, object, corev1.EventTypeNormal, EventReasonSucceded, afterCondition.Message)
 		case corev1.ConditionFalse:
-			recorder.Event(object, corev1.EventTypeWarning, EventReasonFailed, afterCondition.Message)
+			emitEvent(ctx, recorder, object, corev1.EventTypeWarning, EventReasonFailed, afterCondition.Message)
 		case corev1.ConditionUnknown:
 			if beforeCondition == nil {
 				// If the condition changed, the status is "unknown", and there was no condition before,
 				// we emit the "Started event". We ignore further updates of the "unknown" status.
-				recorder.Event(object, corev1.EventTypeNormal, EventReasonStarted, "")
+				emitEvent(ctx, recorder, object, corev1.EventTypeNormal, EventReasonStarted, "")
 			} else {
 				// If the condition changed, the status is "unknown", and there was a condition before,
 				// we emit an event that matches the reason and message of the condition.
 				// This is used for instance to signal the transition from "started" to "running"
-				recorder.Event(object, corev1.EventTypeNormal, afterCondition.Reason, afterCondition.Message)
+				emitEvent(ctx, recorder, object, corev1.EventTypeNormal, afterCondition.Reason, afterCondition.Message)
 			}
 		}
 	}
