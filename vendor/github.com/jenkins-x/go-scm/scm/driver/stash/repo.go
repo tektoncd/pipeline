@@ -265,11 +265,36 @@ func (s *repositoryService) IsCollaborator(ctx context.Context, repo, user strin
 		return false, resp, err
 	}
 	for k := range users {
-		if users[k].Name == user || users[k].Login == user {
-			return true, resp, err
+		if isRequestedUser(user, users[k].Name, users[k].Login) {
+			return true, resp, nil
 		}
 	}
-	return false, resp, err
+
+	namespace, name := scm.Split(repo)
+	opts := &scm.ListOptions{Size: 1000}
+	groups, err := getRepoGroups(ctx, namespace, name, s.client, opts)
+	if err != nil {
+		return false, resp, err
+	}
+	if isUserInGroups(ctx, user, groups, s.client, opts) {
+		return true, resp, nil
+	}
+
+	return false, resp, nil
+}
+
+func getRepoGroups(ctx context.Context, namespace, name string, client *wrapper, opts *scm.ListOptions) ([]*projGroup, error) {
+	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/permissions/groups?%s", namespace, name, encodeListOptions(opts))
+	out := new(projGroups)
+	res, err := client.do(ctx, "GET", path, nil, out)
+	if err != nil {
+		return nil, err
+	}
+	if !out.LastPage.Bool {
+		res.Page.First = 1
+		res.Page.Next = opts.Page + 1
+	}
+	return out.Values, nil
 }
 
 func (s *repositoryService) ListCollaborators(ctx context.Context, repo string, opts *scm.ListOptions) ([]scm.User, *scm.Response, error) {
@@ -278,7 +303,7 @@ func (s *repositoryService) ListCollaborators(ctx context.Context, repo string, 
 	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/permissions/users?%s", namespace, name, encodeListOptions(opts))
 	out := new(participants)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -364,7 +389,7 @@ func (s *repositoryService) List(ctx context.Context, opts *scm.ListOptions) ([]
 	path := fmt.Sprintf("rest/api/1.0/repos?%s", encodeListRoleOptions(opts))
 	out := new(repositories)
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -375,7 +400,7 @@ func (s *repositoryService) ListOrganisation(ctx context.Context, org string, op
 	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos?%s", org, encodeListRoleOptions(opts))
 	out := new(repositories)
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -401,7 +426,7 @@ func (s *repositoryService) ListHooks(ctx context.Context, repo string, opts *sc
 	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/webhooks?%s", namespace, name, encodeListOptions(opts))
 	out := new(hooks)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -413,7 +438,7 @@ func (s *repositoryService) ListStatus(ctx context.Context, _, ref string, opts 
 	path := fmt.Sprintf("rest/build-status/1.0/commits/%s?%s", url.PathEscape(ref), encodeListOptions(opts))
 	out := new(statuses)
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
