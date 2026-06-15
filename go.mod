@@ -28,7 +28,7 @@ require (
 	k8s.io/api v0.35.5
 	k8s.io/apimachinery v0.36.1
 	k8s.io/client-go v0.35.5
-	k8s.io/code-generator v0.35.5
+	k8s.io/code-generator v0.35.6
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a
 	knative.dev/hack v0.0.0-20260421155212-aeb7b4a9bf96 // indirect
