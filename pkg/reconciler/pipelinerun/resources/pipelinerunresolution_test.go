@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -3803,10 +3804,11 @@ func TestGetNamesOfTaskRuns(t *testing.T) {
 	}}
 
 	for _, tc := range []struct {
-		name        string
-		ptName      string
-		prName      string
-		wantTrNames []string
+		name         string
+		ptName       string
+		prName       string
+		includeNames []string
+		wantTrNames  []string
 	}{{
 		name:        "existing taskruns",
 		ptName:      "mytask",
@@ -3838,13 +3840,25 @@ func TestGetNamesOfTaskRuns(t *testing.T) {
 			"pipeline-run-0123456789-012345607ad8c7aac5873cdfabe472a68996b-0",
 			"pipeline-run-0123456789-012345607ad8c7aac5873cdfabe472a68996b-1",
 		},
+	}, {
+		name:         "new taskruns with matrix include names",
+		ptName:       "mynewtask",
+		includeNames: []string{"robots-txt", "default-config-macro"},
+		wantTrNames:  []string{"mypipelinerun-mynewtask-default-config-macro", "mypipelinerun-mynewtask-robots-txt"},
+	}, {
+		// When TaskRuns already exist in the child references, their names must be reused
+		// verbatim for idempotency - the Matrix include names must not change them.
+		name:         "existing taskruns take precedence over matrix include names",
+		ptName:       "mytask",
+		includeNames: []string{"robots-txt", "default-config-macro"},
+		wantTrNames:  []string{"mypipelinerun-mytask-0", "mypipelinerun-mytask-1"},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			testPrName := prName
 			if tc.prName != "" {
 				testPrName = tc.prName
 			}
-			namesOfTaskRunsFromChildRefs := GetNamesOfTaskRuns(childRefs, tc.ptName, testPrName, 2)
+			namesOfTaskRunsFromChildRefs := GetNamesOfTaskRuns(childRefs, tc.ptName, testPrName, 2, tc.includeNames)
 			sort.Strings(namesOfTaskRunsFromChildRefs)
 			if d := cmp.Diff(tc.wantTrNames, namesOfTaskRunsFromChildRefs); d != "" {
 				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
@@ -3869,6 +3883,7 @@ func TestGetNamesOfRuns(t *testing.T) {
 		name         string
 		ptName       string
 		prName       string
+		includeNames []string
 		wantRunNames []string
 	}{{
 		name:         "existing runs",
@@ -3901,13 +3916,18 @@ func TestGetNamesOfRuns(t *testing.T) {
 			"pipeline-run-0123456789-012345607ad8c7aac5873cdfabe472a68996b-0",
 			"pipeline-run-0123456789-012345607ad8c7aac5873cdfabe472a68996b-1",
 		},
+	}, {
+		name:         "new runs with matrix include names",
+		ptName:       "mynewtask",
+		includeNames: []string{"robots-txt", "default-config-macro"},
+		wantRunNames: []string{"mypipelinerun-mynewtask-default-config-macro", "mypipelinerun-mynewtask-robots-txt"},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			testPrName := prName
 			if tc.prName != "" {
 				testPrName = tc.prName
 			}
-			namesOfRunsFromChildRefs := getNamesOfCustomRuns(childRefs, tc.ptName, testPrName, 2)
+			namesOfRunsFromChildRefs := getNamesOfCustomRuns(childRefs, tc.ptName, testPrName, 2, tc.includeNames)
 			sort.Strings(namesOfRunsFromChildRefs)
 			if d := cmp.Diff(tc.wantRunNames, namesOfRunsFromChildRefs); d != "" {
 				t.Errorf("getRunName: %s", diff.PrintWantGot(d))
@@ -3981,6 +4001,8 @@ func TestGetNamesOfChildPipelineRuns(t *testing.T) {
 		name         string
 		ptName       string
 		prName       string
+		numberOfRuns int
+		includeNames []string
 		wantCprNames []string
 	}{{
 		name:         "existing child pipelinerun",
@@ -4010,16 +4032,135 @@ func TestGetNamesOfChildPipelineRuns(t *testing.T) {
 		wantCprNames: []string{
 			"pipeline-run-0123456789-012345628c128b6df49e753c1f628b073961e99",
 		},
+	}, {
+		name:         "new child pipelineruns with matrix include names",
+		ptName:       "mynewchildpipelinetask",
+		numberOfRuns: 2,
+		includeNames: []string{"linux-build", "windows-build"},
+		wantCprNames: []string{"mypipelinerun-mynewchildpipelinetask-linux-build", "mypipelinerun-mynewchildpipelinetask-windows-build"},
+	}, {
+		name:         "new child pipelinerun with single matrix include name",
+		ptName:       "mynewchildpipelinetask",
+		numberOfRuns: 1,
+		includeNames: []string{"linux-build"},
+		wantCprNames: []string{"mypipelinerun-mynewchildpipelinetask-linux-build"},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			testPrName := prName
 			if tc.prName != "" {
 				testPrName = tc.prName
 			}
-			namesOfChildPipelineRunsFromChildRefs := GetNamesOfChildPipelineRuns(childRefs, tc.ptName, testPrName, 1)
+			numberOfRuns := tc.numberOfRuns
+			if numberOfRuns == 0 {
+				numberOfRuns = 1
+			}
+			namesOfChildPipelineRunsFromChildRefs := GetNamesOfChildPipelineRuns(childRefs, tc.ptName, testPrName, numberOfRuns, tc.includeNames)
 			sort.Strings(namesOfChildPipelineRunsFromChildRefs)
 			if d := cmp.Diff(tc.wantCprNames, namesOfChildPipelineRunsFromChildRefs); d != "" {
 				t.Errorf("GetNamesOfChildPipelineRuns: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+// TestGetNamesOfTaskRunsWithIncludeNamesTruncation verifies that, even when the
+// PipelineRun name, PipelineTask name and/or Matrix include names are long enough
+// to exceed the 63 character Kubernetes name limit, the generated names remain
+// valid (<= 63 chars) and unique. When the include name (with its delimiter) is
+// short enough to be kept intact the readable "-<includeName>" suffix is preserved;
+// when it is too long, kmeta.ChildName falls back to a hash that is still valid and
+// unique but no longer ends in the literal include name.
+func TestGetNamesOfTaskRunsWithIncludeNamesTruncation(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		ptName          string
+		prName          string
+		includeNames    []string
+		suffixPreserved bool
+	}{{
+		name:            "long pipelinerun name",
+		ptName:          "build",
+		prName:          "pipeline-run-0123456789-0123456789-0123456789-0123456789",
+		includeNames:    []string{"linux-amd64", "windows-amd64"},
+		suffixPreserved: true,
+	}, {
+		name:            "long pipelinetask and pipelinerun name",
+		ptName:          "build-0123456789-0123456789-0123456789-0123456789-0123456789",
+		prName:          "pipeline-run-0123456789-0123456789-0123456789-0123456789",
+		includeNames:    []string{"linux-amd64", "windows-amd64"},
+		suffixPreserved: true,
+	}, {
+		name:            "long include names that still fit",
+		ptName:          "build",
+		prName:          "pipeline-run",
+		includeNames:    []string{"linux-amd64-0123456789-0123456789-0123456789", "linux-arm64-0123456789-0123456789-0123456789"},
+		suffixPreserved: true,
+	}, {
+		// The include names (with their delimiter) are too long for kmeta.ChildName to keep
+		// intact alongside the already-long base name, so the generated names are hashed. They
+		// must still be valid and unique, but no longer end in the literal include name.
+		name:            "include names too long to preserve",
+		ptName:          "build-0123456789-0123456789-0123456789-0123456789-0123456789",
+		prName:          "pipeline-run-0123456789-0123456789-0123456789-0123456789",
+		includeNames:    []string{"linux-amd64-0123456789-0123456789-0123456789", "linux-arm64-0123456789-0123456789-0123456789"},
+		suffixPreserved: false,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			names := GetNamesOfTaskRuns(nil, tc.ptName, tc.prName, len(tc.includeNames), tc.includeNames)
+			if len(names) != len(tc.includeNames) {
+				t.Fatalf("expected %d names, got %d: %v", len(tc.includeNames), len(names), names)
+			}
+			seen := make(map[string]struct{}, len(names))
+			for i, n := range names {
+				if len(n) > 63 {
+					t.Errorf("generated name %q exceeds 63 characters (got %d)", n, len(n))
+				}
+				if _, dup := seen[n]; dup {
+					t.Errorf("generated name %q is not unique", n)
+				}
+				seen[n] = struct{}{}
+				if suffix := "-" + tc.includeNames[i]; tc.suffixPreserved && !strings.HasSuffix(n, suffix) {
+					t.Errorf("generated name %q does not end with include name suffix %q", n, suffix)
+				}
+			}
+		})
+	}
+}
+
+// TestGetNamesOfRunsPreservesIncludeNameOrder verifies that the generated names are
+// returned in the same order as the Matrix include entries. The reconciler relies on
+// this positional contract: when the child runs are created, the i-th generated name
+// is paired with the i-th matrix combination (and therefore the i-th set of params),
+// so any reordering here would silently attach the wrong params to a named child run.
+// The include names below are deliberately NOT in sorted order so that an accidental
+// sort (or any other reordering) is caught.
+func TestGetNamesOfRunsPreservesIncludeNameOrder(t *testing.T) {
+	const prName = "mypipelinerun"
+	const ptName = "mytask"
+	includeNames := []string{"zebra", "alpha", "mango"}
+	want := []string{
+		"mypipelinerun-mytask-zebra",
+		"mypipelinerun-mytask-alpha",
+		"mypipelinerun-mytask-mango",
+	}
+
+	for _, tc := range []struct {
+		name string
+		got  []string
+	}{{
+		name: "TaskRuns",
+		got:  GetNamesOfTaskRuns(nil, ptName, prName, len(includeNames), includeNames),
+	}, {
+		name: "CustomRuns",
+		got:  getNamesOfCustomRuns(nil, ptName, prName, len(includeNames), includeNames),
+	}, {
+		name: "ChildPipelineRuns",
+		got:  GetNamesOfChildPipelineRuns(nil, ptName, prName, len(includeNames), includeNames),
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Intentionally do NOT sort tc.got: the order itself is the contract under test.
+			if d := cmp.Diff(want, tc.got); d != "" {
+				t.Errorf("%s did not preserve include name order: %s", tc.name, diff.PrintWantGot(d))
 			}
 		})
 	}
