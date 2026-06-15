@@ -18,7 +18,6 @@ package k8sevent
 
 import (
 	"context"
-	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -27,7 +26,8 @@ import (
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
 
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 const (
@@ -41,27 +41,30 @@ const (
 	EventReasonError = "Error"
 )
 
-// traceAnnotations extracts the W3C Trace Context from the context and returns
-// annotations suitable for AnnotatedEventf. If the span context is not valid,
-// it returns nil (falling back to un-annotated events).
+// traceAnnotations extracts the trace context from ctx using the globally
+// configured OpenTelemetry propagator and returns it as event annotations.
+// Using the configured propagator (rather than formatting traceparent by hand)
+// keeps this consistent with the rest of Tekton's tracing setup and preserves
+// additional fields such as tracestate when the propagator emits them.
+// It returns nil when no trace context is present, so callers fall back to
+// un-annotated events.
 func traceAnnotations(ctx context.Context) map[string]string {
-	sc := trace.SpanFromContext(ctx).SpanContext()
-	if !sc.IsValid() {
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	if len(carrier) == 0 {
 		return nil
 	}
-	return map[string]string{
-		"traceparent": fmt.Sprintf("00-%s-%s-%s", sc.TraceID(), sc.SpanID(), sc.TraceFlags()),
-	}
+	return carrier
 }
 
-// emitEvent emits a Kubernetes event with trace context annotations when available.
+// emitEvent emits a Kubernetes event, attaching trace context annotations when
+// they are available so the event can be correlated with a distributed trace.
 func emitEvent(ctx context.Context, recorder record.EventRecorder, object runtime.Object, eventType, reason, message string) {
-	annotations := traceAnnotations(ctx)
-	if annotations != nil {
+	if annotations := traceAnnotations(ctx); annotations != nil {
 		recorder.AnnotatedEventf(object, annotations, eventType, reason, "%s", message)
-	} else {
-		recorder.Event(object, eventType, reason, message)
+		return
 	}
+	recorder.Event(object, eventType, reason, message)
 }
 
 // EmitK8sEvents emits kubernetes events for object
@@ -98,9 +101,11 @@ func EmitK8sEvents(ctx context.Context, beforeCondition *apis.Condition, afterCo
 	}
 }
 
-// EmitError emits a failure associated to an error
-func EmitError(c record.EventRecorder, err error, object runtime.Object) {
+// EmitError emits a failure associated to an error, attaching trace context
+// annotations from ctx when available so the error event can be correlated
+// with a distributed trace.
+func EmitError(ctx context.Context, c record.EventRecorder, err error, object runtime.Object) {
 	if err != nil {
-		c.Event(object, corev1.EventTypeWarning, EventReasonError, err.Error())
+		emitEvent(ctx, c, object, corev1.EventTypeWarning, EventReasonError, err.Error())
 	}
 }
