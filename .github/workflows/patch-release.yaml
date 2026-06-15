@@ -17,8 +17,8 @@ name: Patch Release
         type: boolean
         default: true
   schedule:
-    # Weekly on Thursday at 10:00 UTC
-    - cron: "0 10 * * 4"
+    # Weekly on Tuesday at 10:00 UTC
+    - cron: "0 10 * * 2"
 
 permissions: {}
 
