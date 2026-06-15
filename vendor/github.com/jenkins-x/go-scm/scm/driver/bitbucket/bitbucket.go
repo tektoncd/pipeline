@@ -84,7 +84,7 @@ func (c *wrapper) do(ctx context.Context, method, path string, in, out interface
 	}
 
 	// execute the http request
-	res, err := c.Client.Do(ctx, req)
+	res, err := c.Do(ctx, req)
 	if err != nil {
 		return nil, err
 	}
