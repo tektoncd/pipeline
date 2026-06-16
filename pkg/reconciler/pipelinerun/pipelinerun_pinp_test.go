@@ -695,6 +695,40 @@ func TestReconcile_ChildPipelineRunPipelineRefWithParamsAndWorkspaces(t *testing
 	)
 }
 
+// TestReconcile_ChildPipelineRunPipelineRefWithServiceAccount verifies that the parent
+// PipelineRun's taskRunTemplate.serviceAccountName propagates to the child PipelineRun spec
+// (TEP-0056, issue #10180).
+func TestReconcile_ChildPipelineRunPipelineRefWithServiceAccount(t *testing.T) {
+	names.TestingSeed()
+	namespace := "foo"
+	parentPipelineRunName := "parent-pipeline-run"
+
+	parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun :=
+		th.OnePipelineRefInPipelineWithServiceAccount(t, namespace, parentPipelineRunName, "pinp-sa")
+
+	testData := test.Data{
+		PipelineRuns: []*v1.PipelineRun{parentPipelineRun},
+		Pipelines:    []*v1.Pipeline{parentPipeline, childPipeline},
+		ConfigMaps:   th.NewAlphaFeatureFlagsConfigMapInSlice(),
+	}
+
+	reconciledRun, childPipelineRuns := reconcileOncePinP(
+		t,
+		testData,
+		namespace,
+		parentPipelineRunName,
+		[]string{"Normal Started", "Normal Running Tasks Completed: 0"},
+	)
+
+	validatePinP(
+		t,
+		reconciledRun.Status,
+		reconciledRun.Name,
+		childPipelineRuns,
+		[]*v1.PipelineRun{expectedChildPipelineRun},
+	)
+}
+
 // TestReconcile_ChildPipelineRunsMultiplePipelineRefs verifies that a parent
 // Pipeline with more than one pipelineRef PipelineTask produces one child
 // PipelineRun per task in a single reconcile — exercising the loop over

@@ -549,6 +549,80 @@ spec:
 	return parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun
 }
 
+// OnePipelineRefInPipelineWithServiceAccount creates a parent Pipeline that references a child
+// Pipeline via pipelineRef, where the parent PipelineRun sets a non-default ServiceAccountName on
+// its taskRunTemplate, and an expected child PipelineRun carrying the same ServiceAccountName
+// (TEP-0056, issue #10180). It returns (parentPipeline, childPipeline, parentPipelineRun,
+// expectedChildPipelineRun).
+func OnePipelineRefInPipelineWithServiceAccount(t *testing.T, namespace, parentPipelineRunName, serviceAccountName string) (*v1.Pipeline, *v1.Pipeline, *v1.PipelineRun, *v1.PipelineRun) {
+	t.Helper()
+	uid := "bar"
+	parentPipelineName := "parent-pipeline"
+	childPipelineName := "child-pipeline"
+	childPipelineTaskName := "child-pipeline-task"
+
+	childPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: %s
+    taskSpec:
+      steps:
+      - name: mystep
+        image: mirror.gcr.io/busybox
+        script: 'echo "Hello from child PipelineRun!"'
+`, childPipelineName, namespace, childPipelineTaskName))
+
+	parentPipeline := parse.MustParseV1Pipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: %s
+    pipelineRef:
+      name: %s
+`, parentPipelineName, namespace, childPipelineName, childPipelineName))
+
+	parentPipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+  uid: %s
+spec:
+  pipelineRef:
+    name: %s
+  taskRunTemplate:
+    serviceAccountName: %s
+`, parentPipelineRunName, namespace, uid, parentPipelineName, serviceAccountName))
+
+	expectedName := parentPipelineRunName + "-" + childPipelineName
+	childObjectMeta := childPipelineRunWithObjectMeta(
+		expectedName,
+		namespace,
+		parentPipelineRunName,
+		parentPipelineName,
+		childPipelineName,
+		uid,
+	)
+	childObjectMeta.Labels[pipeline.PipelineLabelKey] = childPipelineName
+	expectedChildPipelineRun := parse.MustParseChildPipelineRunWithObjectMeta(
+		t,
+		childObjectMeta,
+		fmt.Sprintf(`
+spec:
+  pipelineRef:
+    name: %s
+  taskRunTemplate:
+    serviceAccountName: %s
+`, childPipelineName, serviceAccountName),
+	)
+
+	return parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun
+}
+
 func WithAnnotationAndLabel(pr *v1.PipelineRun, withUnused bool) *v1.PipelineRun {
 	if pr.Annotations == nil {
 		pr.Annotations = map[string]string{}

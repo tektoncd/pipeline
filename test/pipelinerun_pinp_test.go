@@ -286,6 +286,44 @@ func TestPipelineRun_PinP_OneChildPipelineRunFromPipelineRef(t *testing.T) {
 	assertEvents(ctx, t, expectedEventsAmount, expectedKinds, c, namespace)
 }
 
+// TestPipelineRun_PinP_ChildPipelineRunInheritsServiceAccount verifies that the parent
+// PipelineRun's taskRunTemplate.serviceAccountName propagates to the child PipelineRun and
+// reaches execution on the child's TaskRun (TEP-0056, issue #10180).
+// @test:execution=parallel
+func TestPipelineRun_PinP_ChildPipelineRunInheritsServiceAccount(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{
+		"enable-api-fields": "alpha",
+	}))
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	const serviceAccountName = "pinp-sa"
+
+	// GIVEN
+	t.Logf("Setting up custom ServiceAccount %q and PinP resources in namespace %q", serviceAccountName, namespace)
+	createServiceAccountWithSecret(ctx, t, c, namespace, serviceAccountName, "pinp-sa-secret")
+	parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun :=
+		th.OnePipelineRefInPipelineWithServiceAccount(t, namespace, "parent-pipeline-run-sa", serviceAccountName)
+	parentPipelineRun = th.WithAnnotationAndLabel(parentPipelineRun, false)
+	expectedKinds := createKindsMap(parentPipelineRun, []*v1.PipelineRun{expectedChildPipelineRun}, []*v1.Pipeline{parentPipeline, childPipeline})
+	expectedEventsAmount := 3
+
+	// WHEN
+	createResourcesAndWaitForPipelineRunSuccess(ctx, t, c, namespace, []*v1.Pipeline{parentPipeline, childPipeline}, parentPipelineRun, nil)
+
+	// THEN
+	// assertPinP validates the child's labels/annotations/status, but it deliberately
+	// ignores ServiceAccountName in its spec diff (ignoreSAPipelineRunSpec), so the
+	// ServiceAccount propagation is verified explicitly below.
+	assertPinP(ctx, t, c, expectedChildPipelineRun)
+	checkServiceAccountPropagationToChild(ctx, t, c, expectedChildPipelineRun.Name, serviceAccountName)
+	assertEvents(ctx, t, expectedEventsAmount, expectedKinds, c, namespace)
+}
+
 // @test:execution=parallel
 func TestPipelineRun_PinP_TwoLevelDeepNestedChildPipelineRunsWithPipelineRef(t *testing.T) {
 	t.Parallel()
@@ -637,6 +675,72 @@ func checkAnnotationPropagationToChildPipelineRun(
 
 	if len(annotations) > 0 {
 		t.Logf("Propagated annotations: %#v", annotations)
+	}
+}
+
+// createServiceAccountWithSecret creates an Opaque Secret and a ServiceAccount that
+// references it, mirroring the Secret+ServiceAccount setup in serviceaccount_test.go.
+func createServiceAccountWithSecret(ctx context.Context, t *testing.T, c *clients, namespace, serviceAccountName, secretName string) {
+	t.Helper()
+
+	if _, err := c.KubeClient.CoreV1().Secrets(namespace).Create(ctx, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: secretName},
+		Type:       corev1.SecretTypeOpaque,
+		Data:       map[string][]byte{"foo": []byte("bar")},
+	}, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Secret %q: %s", secretName, err)
+	}
+	if _, err := c.KubeClient.CoreV1().ServiceAccounts(namespace).Create(ctx, &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: serviceAccountName},
+		Secrets:    []corev1.ObjectReference{{Name: secretName}},
+	}, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create ServiceAccount %q: %s", serviceAccountName, err)
+	}
+}
+
+// checkServiceAccountPropagationToChild verifies that the parent's ServiceAccount propagated to
+// the child PipelineRun and reached execution. It asserts the ServiceAccountName at three layers:
+// the child PipelineRun's taskRunTemplate, the child's TaskRun(s), and the executing pod(s). The
+// child PipelineRun spec alone is the struct the reconciler copied; the TaskRun and pod prove the
+// ServiceAccount reached the Kubernetes scheduling layer (mirrors serviceaccount_test.go).
+func checkServiceAccountPropagationToChild(ctx context.Context, t *testing.T, c *clients, childPipelineRunName, expectedServiceAccountName string) {
+	t.Helper()
+
+	childPr, err := c.V1PipelineRunClient.Get(ctx, childPipelineRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Couldn't get child PipelineRun %q: %s", childPipelineRunName, err)
+	}
+	if got := childPr.Spec.TaskRunTemplate.ServiceAccountName; got != expectedServiceAccountName {
+		t.Errorf("Child PipelineRun %q taskRunTemplate.serviceAccountName = %q, want %q", childPipelineRunName, got, expectedServiceAccountName)
+	}
+
+	taskRuns, err := c.V1TaskRunClient.List(ctx, metav1.ListOptions{
+		LabelSelector: pipeline.PipelineRunLabelKey + "=" + childPipelineRunName,
+	})
+	if err != nil {
+		t.Fatalf("Couldn't list TaskRuns for child PipelineRun %q: %s", childPipelineRunName, err)
+	}
+	if len(taskRuns.Items) == 0 {
+		t.Fatalf("Expected at least one TaskRun for child PipelineRun %q, got none", childPipelineRunName)
+	}
+	for _, tr := range taskRuns.Items {
+		if got := tr.Spec.ServiceAccountName; got != expectedServiceAccountName {
+			t.Errorf("Child TaskRun %q ServiceAccountName = %q, want %q", tr.Name, got, expectedServiceAccountName)
+		}
+
+		// The pod is where execution actually happens — assert it runs under the SA too.
+		pods, err := c.KubeClient.CoreV1().Pods(tr.Namespace).List(ctx, metav1.ListOptions{
+			LabelSelector: pipeline.TaskRunLabelKey + "=" + tr.Name,
+		})
+		if err != nil {
+			t.Fatalf("Couldn't list Pods for child TaskRun %q: %s", tr.Name, err)
+		}
+		if len(pods.Items) != 1 {
+			t.Fatalf("Expected exactly 1 pod for child TaskRun %q, got %d", tr.Name, len(pods.Items))
+		}
+		if got := pods.Items[0].Spec.ServiceAccountName; got != expectedServiceAccountName {
+			t.Errorf("Child TaskRun %q pod %q ServiceAccountName = %q, want %q", tr.Name, pods.Items[0].Name, got, expectedServiceAccountName)
+		}
 	}
 }
 
