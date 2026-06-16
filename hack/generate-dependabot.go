@@ -38,6 +38,7 @@ type Ecosystem struct {
 	Labels           []string                 `yaml:"labels"`
 	Ignore           []map[string]interface{} `yaml:"ignore,omitempty"`
 	Groups           map[string]interface{}   `yaml:"groups,omitempty"`
+	Cooldown         map[string]interface{}   `yaml:"cooldown,omitempty"`
 }
 
 // DependabotConfig represents the generated dependabot.yml structure
@@ -55,6 +56,7 @@ type Update struct {
 	Labels           []string                 `yaml:"labels"`
 	Ignore           []map[string]interface{} `yaml:"ignore,omitempty"`
 	Groups           map[string]interface{}   `yaml:"groups,omitempty"`
+	Cooldown         map[string]interface{}   `yaml:"cooldown,omitempty"`
 }
 
 func main() {
@@ -132,6 +134,7 @@ func generateDependabotConfig(config Config) DependabotConfig {
 			Labels:           ecosystem.Labels,
 			Ignore:           ecosystem.Ignore,
 			Groups:           ecosystem.Groups,
+			Cooldown:         ecosystem.Cooldown,
 		}
 		dependabotConfig.Updates = append(dependabotConfig.Updates, update)
 	}
@@ -160,6 +163,7 @@ func generateDependabotConfig(config Config) DependabotConfig {
 				Labels:           ecosystem.Labels,
 				Ignore:           ignore,
 				Groups:           ecosystem.Groups,
+				Cooldown:         ecosystem.Cooldown,
 			}
 			dependabotConfig.Updates = append(dependabotConfig.Updates, update)
 		}
