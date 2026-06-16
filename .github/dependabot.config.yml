@@ -48,21 +48,6 @@ ecosystems:
           - go.opentelemetry.io/*
           - go.opentelemetry.io/contrib/*
           - knative.dev/pkg
-      golang-x:
-        patterns:
-          - golang.org/x/*
-      grpc-protobuf:
-        patterns:
-          - google.golang.org/grpc
-          - google.golang.org/protobuf
-          - google.golang.org/genproto*
-      container-registry:
-        patterns:
-          - github.com/google/go-containerregistry*
-      scm:
-        patterns:
-          - github.com/jenkins-x/go-scm
-          - code.gitea.io/sdk/gitea
     cooldown:
       default-days: 7
       semver-major-days: 30
@@ -91,21 +76,6 @@ ecosystems:
           - go.opentelemetry.io/*
           - go.opentelemetry.io/contrib/*
           - knative.dev/pkg
-      golang-x:
-        patterns:
-          - golang.org/x/*
-      grpc-protobuf:
-        patterns:
-          - google.golang.org/grpc
-          - google.golang.org/protobuf
-          - google.golang.org/genproto*
-      container-registry:
-        patterns:
-          - github.com/google/go-containerregistry*
-      scm:
-        patterns:
-          - github.com/jenkins-x/go-scm
-          - code.gitea.io/sdk/gitea
     cooldown:
       default-days: 7
       semver-major-days: 30
@@ -134,21 +104,6 @@ ecosystems:
           - go.opentelemetry.io/*
           - go.opentelemetry.io/contrib/*
           - knative.dev/pkg
-      golang-x:
-        patterns:
-          - golang.org/x/*
-      grpc-protobuf:
-        patterns:
-          - google.golang.org/grpc
-          - google.golang.org/protobuf
-          - google.golang.org/genproto*
-      container-registry:
-        patterns:
-          - github.com/google/go-containerregistry*
-      scm:
-        patterns:
-          - github.com/jenkins-x/go-scm
-          - code.gitea.io/sdk/gitea
     cooldown:
       default-days: 7
       semver-major-days: 30
