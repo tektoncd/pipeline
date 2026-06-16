@@ -620,6 +620,67 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			Message: `PipelineTask OnError cannot be set to "continue" when Retries is greater than 0`,
 			Paths:   []string{""},
 		},
+	}, {
+		name: "invalid variable reference in pipeline task param",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					Params: Params{{
+						Name: "SCRIPT", Value: ParamValue{Type: ParamTypeString, StringVal: "echo $(env_value_set_from_yq)"},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalid variable reference "$(env_value_set_from_yq)", must start with a valid prefix: params, tasks, finally, context, or workspaces; if you meant a shell variable, use ${VAR} instead`,
+			Paths:   []string{"spec.tasks[0].params[SCRIPT].value"},
+		},
+	}, {
+		name: "invalid variable reference in matrix param",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					Matrix: &Matrix{
+						Params: Params{{
+							Name: "IMAGE", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(invalid_ref)", "image2"}},
+						}},
+					},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalid variable reference "$(invalid_ref)", must start with a valid prefix: params, tasks, finally, context, or workspaces; if you meant a shell variable, use ${VAR} instead`,
+			Paths:   []string{"spec.tasks[0].matrix.params[IMAGE].value"},
+		},
+	}, {
+		name: "invalid variable reference in matrix include param",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					Matrix: &Matrix{
+						Include: IncludeParamsList{{
+							Name: "build-1",
+							Params: Params{{
+								Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "$(invalid_ref)"},
+							}},
+						}},
+					},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalid variable reference "$(invalid_ref)", must start with a valid prefix: params, tasks, finally, context, or workspaces; if you meant a shell variable, use ${VAR} instead`,
+			Paths:   []string{"spec.tasks[0].matrix.include[0].params[IMAGE].value"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -4927,6 +4988,101 @@ func TestGetIndexingReferencesToArrayParams(t *testing.T) {
 			got := tt.spec.GetIndexingReferencesToArrayParams()
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Errorf("wrong array index references: %s", d)
+			}
+		})
+	}
+}
+
+func TestValidatePipelineRefResultReferencesDisallowed(t *testing.T) {
+	// happy path: a PinP task that is not consumed by any result reference is allowed.
+	t.Run("pipelineRef task not referenced", func(t *testing.T) {
+		tasks := []PipelineTask{
+			{
+				Name:        "child",
+				PipelineRef: &PipelineRef{Name: "child-pipeline"},
+			},
+			{
+				Name:    "consumer",
+				TaskRef: &TaskRef{Name: "echo"},
+				Params: Params{{
+					Name:  "msg",
+					Value: *NewStructuredValues("hello"),
+				}},
+			},
+		}
+		if err := validatePipelineRefResultReferencesDisallowed(tasks, nil); err != nil {
+			t.Errorf("unexpected error for non-referencing pipeline: %v", err)
+		}
+	})
+
+	tests := []struct {
+		desc    string
+		tasks   []PipelineTask
+		finally []PipelineTask
+		wantMsg string
+	}{{
+		desc: "task params reference a pipelineRef task result",
+		tasks: []PipelineTask{
+			{
+				Name:        "child",
+				PipelineRef: &PipelineRef{Name: "child-pipeline"},
+			},
+			{
+				Name:    "consumer",
+				TaskRef: &TaskRef{Name: "echo"},
+				Params: Params{{
+					Name:  "msg",
+					Value: *NewStructuredValues("$(tasks.child.results.out)"),
+				}},
+			},
+		},
+		wantMsg: `invalid value: result reference to pipelineTask "child" is not supported: referenced task uses pipelineRef or pipelineSpec and result propagation from child Pipelines is not yet implemented: tasks[1]`,
+	}, {
+		desc: "task when expression references a pipelineSpec task result",
+		tasks: []PipelineTask{
+			{
+				Name:         "child",
+				PipelineSpec: &PipelineSpec{},
+			},
+			{
+				Name:    "consumer",
+				TaskRef: &TaskRef{Name: "echo"},
+				WhenExpressions: WhenExpressions{{
+					Input:    "$(tasks.child.results.out)",
+					Operator: "in",
+					Values:   []string{"go"},
+				}},
+			},
+		},
+		wantMsg: `invalid value: result reference to pipelineTask "child" is not supported: referenced task uses pipelineRef or pipelineSpec and result propagation from child Pipelines is not yet implemented: tasks[1]`,
+	}, {
+		desc: "finally task references a pipelineRef task result",
+		tasks: []PipelineTask{
+			{
+				Name:        "child",
+				PipelineRef: &PipelineRef{Name: "child-pipeline"},
+			},
+		},
+		finally: []PipelineTask{
+			{
+				Name:    "notify",
+				TaskRef: &TaskRef{Name: "notify"},
+				Params: Params{{
+					Name:  "msg",
+					Value: *NewStructuredValues("$(tasks.child.results.out)"),
+				}},
+			},
+		},
+		wantMsg: `invalid value: result reference to pipelineTask "child" is not supported: referenced task uses pipelineRef or pipelineSpec and result propagation from child Pipelines is not yet implemented: finally[0]`,
+	}}
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			err := validatePipelineRefResultReferencesDisallowed(tc.tasks, tc.finally)
+			if err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+			if d := cmp.Diff(tc.wantMsg, err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("unexpected error diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

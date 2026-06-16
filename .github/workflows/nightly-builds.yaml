@@ -1,5 +1,7 @@
 name: Tekton Nightly Build
 
+permissions: {}
+
 "on":
   schedule:
     # Run at 03:00 UTC daily
@@ -38,7 +40,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -52,7 +54,7 @@ jobs:
           echo "latest_sha=${latest_sha}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Kind cluster
-        uses: chainguard-dev/actions/setup-kind@c69a264ec2a5934c3186c618f368fc1c86f16cff  # v1.6.19
+        uses: chainguard-dev/actions/setup-kind@3b7bbeebc3a5d2bc37aa008350202651c32a26e1  # v1.6.22
         with:
           k8s-version: ${{ env.KUBERNETES_VERSION }}
 

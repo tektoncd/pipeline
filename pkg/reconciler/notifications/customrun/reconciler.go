@@ -25,6 +25,9 @@ import (
 	customrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/customrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/notifications"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
@@ -32,6 +35,7 @@ import (
 type Reconciler struct {
 	cloudEventClient cloudevent.CEClient
 	cacheClient      *bc.BigCache
+	tracerProvider   trace.TracerProvider
 }
 
 // NewReconciler creates a new Reconciler with the given clients.
@@ -39,6 +43,7 @@ func NewReconciler(ceClient cloudevent.CEClient, cacheClient *bc.BigCache) *Reco
 	return &Reconciler{
 		cloudEventClient: ceClient,
 		cacheClient:      cacheClient,
+		tracerProvider:   otel.GetTracerProvider(),
 	}
 }
 
@@ -64,5 +69,9 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, customRun *v1beta1.Custo
 	if !configs.FeatureFlags.SendCloudEventsForRuns {
 		return nil
 	}
+	ctx = initTracing(ctx, c.tracerProvider, customRun)
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "ReconcileKind")
+	defer span.End()
+	span.SetAttributes(attribute.String("customrun", customRun.Name), attribute.String("namespace", customRun.Namespace))
 	return notifications.ReconcileRunObject(ctx, c, customRun)
 }

@@ -343,7 +343,7 @@ spec:
             description: Whether Chains signing succeeded (true, failed, or timeout)
         steps:
           - name: wait-and-extract
-            image: docker.io/library/alpine/k8s:1.32.2
+            image: docker.io/alpine/k8s:1.32.2@sha256:15cfdf84d6de3559bc54d7479eb4e8aadbf71f6d7f08782cb1e91f3446f4b2d8
             script: |
               #!/bin/sh
               set -e
@@ -396,10 +396,15 @@ spec:
 
                   if [ -n "${TRANSPARENCY}" ]; then
                     # URL format: https://rekor.sigstore.dev/api/v1/log/entries?logIndex=NNNN
-                    REKOR_UUID=$(echo "${TRANSPARENCY}" | grep -oE 'logIndex=[0-9]+' | cut -d= -f2)
+                    # Fetch the full entry UUID from the Rekor API (logIndex alone is not the UUID)
+                    REKOR_UUID=$(wget -qO- "${TRANSPARENCY}" | sed -n 's/.*"\([0-9a-f]\{64,\}\)".*/\1/p' | head -1)
                     if [ -z "${REKOR_UUID}" ]; then
-                      # Might be a direct UUID format
-                      REKOR_UUID="${TRANSPARENCY}"
+                      echo "WARNING: Could not fetch Rekor UUID from: ${TRANSPARENCY}"
+                      # Fall back to logIndex
+                      REKOR_UUID=$(echo "${TRANSPARENCY}" | grep -oE 'logIndex=[0-9]+' | cut -d= -f2)
+                      if [ -z "${REKOR_UUID}" ]; then
+                        REKOR_UUID="unknown"
+                      fi
                     fi
                     echo "Rekor UUID: ${REKOR_UUID}"
                     printf '%s' "${REKOR_UUID}" > "$(results.rekor-uuid.path)"
@@ -411,7 +416,7 @@ spec:
                 fi
 
                 ATTEMPT=$((ATTEMPT + 1))
-                echo "  Attempt ${ATTEMPT}/${MAX_ATTEMPTS} - signing status: '${SIGNED}'"
+                echo "  Attempt ${ATTEMPT}/${MAX_ATTEMPTS} - signing status: '${SIGNED:-pending}'"
                 sleep 30
               done
 
@@ -457,7 +462,7 @@ spec:
           - name: workarea
         steps:
           - name: setup
-            image: docker.io/library/alpine:3.21
+            image: docker.io/library/alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
             script: |
               #!/bin/sh
               set -e
@@ -467,17 +472,6 @@ spec:
               VERSION="$(params.versionTag)"
               PREVIOUS="$(params.previousReleaseTag)"
               NAME="$(params.releaseName)"
-
-              # The create-draft-release-oci task expects:
-              #   <workspace>/repo    -> git checkout
-              #   <workspace>/release -> release artifacts
-              # The release pipeline uses:
-              #   <workspace>/git     -> git checkout
-              #   <workspace>/bucket/<versionTag> -> release artifacts
-              ln -sfn "${WORKAREA}/git" "${WORKAREA}/repo"
-              ln -sfn "${WORKAREA}/bucket/${VERSION}" "${WORKAREA}/release"
-              echo "Created workspace symlinks:"
-              ls -la "${WORKAREA}/repo" "${WORKAREA}/release"
 
               # Strip github.com/ prefix from package for the draft release task
               # (it expects org/repo format, e.g. tektoncd/pipeline)
@@ -523,11 +517,8 @@ spec:
         params:
           - name: url
             value: https://github.com/tektoncd/plumbing
-          # Pinned to current HEAD. Update after tektoncd/plumbing#3169 merges
-          # (modernizes hub→gh, adds flexible path params, removing the need
-          # for the prepare-draft-release symlink task).
           - name: revision
-            value: c6ccd417b39dd9d0c3055795f00cbce051f6bc9e
+            value: 7abffd25eb2e578e6698a9ff13470d04906f79e6
           - name: pathInRepo
             value: tekton/resources/release/base/github_release_oci.yaml
       params:
@@ -543,6 +534,10 @@ spec:
           value: $(tasks.prepare-draft-release.results.previous-tag)
         - name: rekor-uuid
           value: $(tasks.wait-for-chains.results.rekor-uuid)
+        - name: source-subpath
+          value: git
+        - name: release-subpath
+          value: bucket/$(params.versionTag)
       workspaces:
         - name: shared
           workspace: workarea

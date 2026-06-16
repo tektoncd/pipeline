@@ -87,12 +87,18 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineWorkspacesDeclarations(ps.Workspaces))
 	// Validate the pipeline's results
 	errs = errs.Also(validatePipelineResults(ps.Results, ps.Tasks, ps.Finally))
+	// Reject result references to PipelineTasks that use pipelineRef or pipelineSpec.
+	// Result propagation from a child Pipeline is not implemented in the initial
+	// Pipelines-in-Pipelines alpha; see docs/pipelines-in-pipelines.md#limitations.
+	errs = errs.Also(validatePipelineRefResultReferencesDisallowed(ps.Tasks, ps.Finally))
 	errs = errs.Also(validateTasksAndFinallySection(ps))
 	errs = errs.Also(validateFinalTasks(ps.Tasks, ps.Finally))
 	errs = errs.Also(validateWhenExpressions(ctx, ps.Tasks, ps.Finally))
 	errs = errs.Also(validateArtifactReference(ctx, ps.Tasks, ps.Finally))
 	errs = errs.Also(validateMatrix(ctx, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validateMatrix(ctx, ps.Finally).ViaField("finally"))
+	errs = errs.Also(validateVarSubstitutionExpressions(ps.Tasks, "tasks"))
+	errs = errs.Also(validateVarSubstitutionExpressions(ps.Finally, "finally"))
 	return errs
 }
 
@@ -743,6 +749,43 @@ func taskContainsResult(resultExpression string, pipelineTaskNames sets.String, 
 	return true
 }
 
+// validatePipelineRefResultReferencesDisallowed rejects any result reference
+// (`$(tasks.<name>.results.*)` or `$(finally.<name>.results.*)`) whose target
+// PipelineTask is a Pipeline-in-Pipeline (uses pipelineRef or pipelineSpec).
+//
+// Result propagation from a child Pipeline is not yet implemented: the
+// reconciler's convertToResultRefs path reads from ResolvedPipelineTask.TaskRuns
+// which is empty for a child-pipeline task, so without this guard such a
+// reference would panic the controller at runtime. Once propagation lands,
+// this guard can be removed.
+func validatePipelineRefResultReferencesDisallowed(tasks []PipelineTask, finally []PipelineTask) (errs *apis.FieldError) {
+	pipelineRefTasks := sets.NewString()
+	for _, t := range tasks {
+		if t.PipelineRef != nil || t.PipelineSpec != nil {
+			pipelineRefTasks.Insert(t.Name)
+		}
+	}
+	if pipelineRefTasks.Len() == 0 {
+		return nil
+	}
+
+	check := func(pts []PipelineTask, field string) {
+		for idx, pt := range pts {
+			for _, ref := range PipelineTaskResultRefs(&pt) {
+				if pipelineRefTasks.Has(ref.PipelineTask) {
+					errs = errs.Also(apis.ErrInvalidValue(
+						fmt.Sprintf("result reference to pipelineTask %q is not supported: referenced task uses pipelineRef or pipelineSpec and result propagation from child Pipelines is not yet implemented",
+							ref.PipelineTask),
+						"").ViaFieldIndex(field, idx))
+				}
+			}
+		}
+	}
+	check(tasks, "tasks")
+	check(finally, "finally")
+	return errs
+}
+
 func validateTasksAndFinallySection(ps *PipelineSpec) *apis.FieldError {
 	if len(ps.Finally) != 0 && len(ps.Tasks) == 0 {
 		return apis.ErrInvalidValue(fmt.Sprintf("spec.tasks is empty but spec.finally has %d tasks", len(ps.Finally)), "finally")
@@ -824,6 +867,69 @@ func validateMatrix(ctx context.Context, tasks []PipelineTask) (errs *apis.Field
 		errs = errs.Also(task.validateMatrix(ctx).ViaIndex(idx))
 	}
 	errs = errs.Also(validateTaskResultsFromMatrixedPipelineTasksConsumed(tasks))
+	return errs
+}
+
+func validateVarSubstitutionExpressions(tasks []PipelineTask, fieldPath string) (errs *apis.FieldError) {
+	validPrefixes := sets.NewString("params", "tasks", "finally", "context", "workspaces")
+	for idx, task := range tasks {
+		for _, param := range task.Params {
+			if expressions, ok := param.GetVarSubstitutionExpressions(); ok {
+				for _, expression := range expressions {
+					prefix := strings.SplitN(expression, ".", 2)[0]
+					if !validPrefixes.Has(prefix) {
+						errs = errs.Also(apis.ErrInvalidValue(
+							fmt.Sprintf("invalid variable reference %q, must start with a valid prefix: params, tasks, finally, context, or workspaces; if you meant a shell variable, use ${VAR} instead", "$("+expression+")"),
+							"value",
+						).ViaFieldKey("params", param.Name).ViaFieldIndex(fieldPath, idx))
+					}
+				}
+			}
+		}
+		for i, we := range task.When {
+			if expressions, ok := we.GetVarSubstitutionExpressions(); ok {
+				for _, expression := range expressions {
+					prefix := strings.SplitN(expression, ".", 2)[0]
+					if !validPrefixes.Has(prefix) {
+						errs = errs.Also(apis.ErrInvalidValue(
+							fmt.Sprintf("invalid variable reference %q, must start with a valid prefix: params, tasks, finally, context, or workspaces; if you meant a shell variable, use ${VAR} instead", "$("+expression+")"),
+							"",
+						).ViaFieldIndex("when", i).ViaFieldIndex(fieldPath, idx))
+					}
+				}
+			}
+		}
+		if task.IsMatrixed() {
+			for _, param := range task.Matrix.Params {
+				if expressions, ok := param.GetVarSubstitutionExpressions(); ok {
+					for _, expression := range expressions {
+						prefix := strings.SplitN(expression, ".", 2)[0]
+						if !validPrefixes.Has(prefix) {
+							errs = errs.Also(apis.ErrInvalidValue(
+								fmt.Sprintf("invalid variable reference %q, must start with a valid prefix: params, tasks, finally, context, or workspaces; if you meant a shell variable, use ${VAR} instead", "$("+expression+")"),
+								"value",
+							).ViaFieldKey("matrix.params", param.Name).ViaFieldIndex(fieldPath, idx))
+						}
+					}
+				}
+			}
+			for i, include := range task.Matrix.Include {
+				for _, param := range include.Params {
+					if expressions, ok := param.GetVarSubstitutionExpressions(); ok {
+						for _, expression := range expressions {
+							prefix := strings.SplitN(expression, ".", 2)[0]
+							if !validPrefixes.Has(prefix) {
+								errs = errs.Also(apis.ErrInvalidValue(
+									fmt.Sprintf("invalid variable reference %q, must start with a valid prefix: params, tasks, finally, context, or workspaces; if you meant a shell variable, use ${VAR} instead", "$("+expression+")"),
+									"value",
+								).ViaFieldKey("params", param.Name).ViaFieldIndex("matrix.include", i).ViaFieldIndex(fieldPath, idx))
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 	return errs
 }
 

@@ -124,6 +124,11 @@ You must install these tools:
    [`delve`](https://github.com/go-delve/delve/tree/master/Documentation/installation) is needed if you want to setup
    a debugging of the Tekton controller in VSCode or your IDE of choice.
 
+1. (Optional)
+   [`gotestsum`](https://github.com/gotestyourself/gotestsum) improves test
+   output formatting. When installed, `make test-unit` will automatically use
+   it. Install with `go install gotest.tools/gotestsum@latest`.
+
 ### Configure environment
 
 To [build, deploy and run your Tekton Objects with `ko`](#install-pipeline), you'll need to set these environment variables:
@@ -404,6 +409,37 @@ To make changes to these CRDs, you will probably interact with:
 #### Testing
 
 For comprehensive testing documentation, including how to run different test suites and understand test categorization, see the [Testing Guide](./test/README.md).
+
+##### Unit tests with `gotestsum`
+
+The `make test-unit` target automatically detects and uses [`gotestsum`](https://github.com/gotestyourself/gotestsum) when available, falling back to `go test` otherwise. `gotestsum` provides improved test output formatting compared to plain `go test`.
+
+The default output format is `testdox`. You can override it via the `DEFAULT_GOTESTSUM_FORMAT` variable:
+
+```shell
+# Use the default testdox format
+make test-unit
+
+# Override the output format
+make test-unit DEFAULT_GOTESTSUM_FORMAT=pkgname
+
+# Or add to your .envrc to make it permanent
+export DEFAULT_GOTESTSUM_FORMAT=pkgname
+```
+
+Available formats:
+
+| Format | Description |
+|--------|-------------|
+| `dots` | Print a character for each test |
+| `dots-v2` | Dots format, one package per line |
+| `pkgname` | Print a line for each package (gotestsum default) |
+| `pkgname-and-test-fails` | Line per package and failed test output |
+| `testname` | Print a line for each test and package |
+| `testdox` | Print a sentence for each test (**Makefile default**) |
+| `github-actions` | testname with GitHub Actions log grouping |
+| `standard-quiet` | Standard `go test` format |
+| `standard-verbose` | Standard `go test -v` format |
 
 ---
 
