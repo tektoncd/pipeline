@@ -13,7 +13,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru v1.0.2
-	github.com/jenkins-x/go-scm v1.15.28
+	github.com/jenkins-x/go-scm v1.15.30
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pkg/errors v0.9.1
@@ -26,7 +26,7 @@ require (
 	golang.org/x/oauth2 v0.36.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	k8s.io/api v0.35.6
-	k8s.io/apimachinery v0.36.1
+	k8s.io/apimachinery v0.36.2
 	k8s.io/client-go v0.35.6
 	k8s.io/code-generator v0.35.6
 	k8s.io/klog v1.0.0
@@ -135,7 +135,7 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
-	k8s.io/streaming v0.36.1 // indirect
+	k8s.io/streaming v0.36.2 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
 )
