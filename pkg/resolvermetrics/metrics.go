@@ -33,11 +33,14 @@ const (
 	StatusError          = "error"
 	StatusTimeout        = "timeout"
 	StatusInvalidRequest = "invalid_request"
+
+	ResourceKindUnknown = "unknown"
 )
 
 var (
 	resolverTypeKey = attribute.Key("resolver_type")
 	statusKey       = attribute.Key("status")
+	resourceKindKey = attribute.Key("resource_kind")
 )
 
 // Recorder holds OpenTelemetry instruments for resolver metrics.
@@ -110,14 +113,18 @@ func NewRecorder() (*Recorder, error) {
 }
 
 // RecordResolution records the duration and count of a resolution request.
-func (r *Recorder) RecordResolution(ctx context.Context, resolverType, status string, duration time.Duration) {
+func (r *Recorder) RecordResolution(ctx context.Context, resolverType, status, resourceKind string, duration time.Duration) {
 	if r == nil || !r.initialized {
 		return
+	}
+	if resourceKind == "" {
+		resourceKind = ResourceKindUnknown
 	}
 
 	attrs := metric.WithAttributes(
 		resolverTypeKey.String(resolverType),
 		statusKey.String(status),
+		resourceKindKey.String(resourceKind),
 	)
 
 	r.resolutionDuration.Record(ctx, duration.Seconds(), attrs)

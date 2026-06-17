@@ -75,7 +75,7 @@ func TestNewRecorder(t *testing.T) {
 		t.Fatal("Recorder not initialized")
 	}
 
-	rec.RecordResolution(context.Background(), "git", StatusSuccess, 100*time.Millisecond)
+	rec.RecordResolution(context.Background(), "git", StatusSuccess, "Task", 100*time.Millisecond)
 	rm := collectMetrics(t, reader)
 
 	duration := findMetric(rm, "tekton_pipelines_resolver_resolution_duration_seconds")
@@ -97,7 +97,7 @@ func TestRecordResolutionSuccess(t *testing.T) {
 		t.Fatalf("NewRecorder() error: %v", err)
 	}
 
-	rec.RecordResolution(context.Background(), "git", StatusSuccess, 500*time.Millisecond)
+	rec.RecordResolution(context.Background(), "git", StatusSuccess, "Task", 500*time.Millisecond)
 
 	rm := collectMetrics(t, reader)
 
@@ -118,6 +118,7 @@ func TestRecordResolutionSuccess(t *testing.T) {
 	}
 	assertAttribute(t, sum.DataPoints[0].Attributes, "resolver_type", "git")
 	assertAttribute(t, sum.DataPoints[0].Attributes, "status", "success")
+	assertAttribute(t, sum.DataPoints[0].Attributes, "resource_kind", "Task")
 }
 
 func TestRecordResolutionError(t *testing.T) {
@@ -129,7 +130,7 @@ func TestRecordResolutionError(t *testing.T) {
 		t.Fatalf("NewRecorder() error: %v", err)
 	}
 
-	rec.RecordResolution(context.Background(), "hub", StatusError, 200*time.Millisecond)
+	rec.RecordResolution(context.Background(), "hub", StatusError, ResourceKindUnknown, 200*time.Millisecond)
 
 	rm := collectMetrics(t, reader)
 
@@ -140,6 +141,7 @@ func TestRecordResolutionError(t *testing.T) {
 	sum := total.Data.(metricdata.Sum[int64])
 	assertAttribute(t, sum.DataPoints[0].Attributes, "resolver_type", "hub")
 	assertAttribute(t, sum.DataPoints[0].Attributes, "status", "error")
+	assertAttribute(t, sum.DataPoints[0].Attributes, "resource_kind", ResourceKindUnknown)
 }
 
 func TestRecordResolutionTimeout(t *testing.T) {
@@ -151,7 +153,7 @@ func TestRecordResolutionTimeout(t *testing.T) {
 		t.Fatalf("NewRecorder() error: %v", err)
 	}
 
-	rec.RecordResolution(context.Background(), "bundles", StatusTimeout, 60*time.Second)
+	rec.RecordResolution(context.Background(), "bundles", StatusTimeout, ResourceKindUnknown, 60*time.Second)
 
 	rm := collectMetrics(t, reader)
 
@@ -162,6 +164,7 @@ func TestRecordResolutionTimeout(t *testing.T) {
 	sum := total.Data.(metricdata.Sum[int64])
 	assertAttribute(t, sum.DataPoints[0].Attributes, "resolver_type", "bundles")
 	assertAttribute(t, sum.DataPoints[0].Attributes, "status", "timeout")
+	assertAttribute(t, sum.DataPoints[0].Attributes, "resource_kind", ResourceKindUnknown)
 }
 
 func TestRecordResolutionDuration(t *testing.T) {
@@ -173,7 +176,7 @@ func TestRecordResolutionDuration(t *testing.T) {
 		t.Fatalf("NewRecorder() error: %v", err)
 	}
 
-	rec.RecordResolution(context.Background(), "cluster", StatusSuccess, 250*time.Millisecond)
+	rec.RecordResolution(context.Background(), "cluster", StatusSuccess, "Pipeline", 250*time.Millisecond)
 
 	rm := collectMetrics(t, reader)
 
@@ -293,7 +296,7 @@ func TestRecordResolutionInvalidRequest(t *testing.T) {
 		t.Fatalf("NewRecorder() error: %v", err)
 	}
 
-	rec.RecordResolution(context.Background(), "http", StatusInvalidRequest, 5*time.Millisecond)
+	rec.RecordResolution(context.Background(), "http", StatusInvalidRequest, ResourceKindUnknown, 5*time.Millisecond)
 
 	rm := collectMetrics(t, reader)
 	total := findMetric(rm, "tekton_pipelines_resolver_resolution_total")
@@ -303,11 +306,12 @@ func TestRecordResolutionInvalidRequest(t *testing.T) {
 	sum := total.Data.(metricdata.Sum[int64])
 	assertAttribute(t, sum.DataPoints[0].Attributes, "status", "invalid_request")
 	assertAttribute(t, sum.DataPoints[0].Attributes, "resolver_type", "http")
+	assertAttribute(t, sum.DataPoints[0].Attributes, "resource_kind", ResourceKindUnknown)
 }
 
 func TestRecordResolutionNilRecorder(t *testing.T) {
 	var rec *Recorder
-	rec.RecordResolution(context.Background(), "git", StatusSuccess, time.Second)
+	rec.RecordResolution(context.Background(), "git", StatusSuccess, "Task", time.Second)
 	rec.RecordCacheHit(context.Background(), "git")
 	rec.RecordCacheMiss(context.Background(), "git")
 	rec.RecordSingleflightDedup(context.Background(), "git")
@@ -327,7 +331,7 @@ func TestRecordResolutionConcurrency(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			rec.RecordResolution(context.Background(), "git", StatusSuccess, time.Millisecond)
+			rec.RecordResolution(context.Background(), "git", StatusSuccess, "Task", time.Millisecond)
 		}()
 	}
 	wg.Wait()

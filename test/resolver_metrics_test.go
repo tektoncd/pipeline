@@ -106,6 +106,7 @@ spec:
 	assertMetricExists(t, metrics, totalMetricName)
 	assertMetricHasLabel(t, metrics, totalMetricName, "resolver_type", "cluster")
 	assertMetricHasLabel(t, metrics, totalMetricName, "status", resolvermetrics.StatusSuccess)
+	assertMetricHasLabel(t, metrics, totalMetricName, "resource_kind", "Task")
 	assertMetricExists(t, metrics, durationMetricName)
 }
 
@@ -153,7 +154,7 @@ spec:
 
 	assertMetricExists(t, metrics, totalMetricName)
 	assertMetricCounterValue(t, metrics, totalMetricName,
-		map[string]string{"resolver_type": "cluster", "status": resolvermetrics.StatusError},
+		map[string]string{"resolver_type": "cluster", "status": resolvermetrics.StatusError, "resource_kind": resolvermetrics.ResourceKindUnknown},
 	)
 }
 
@@ -220,6 +221,7 @@ spec:
 
 	// Verify cluster resolver metrics exist
 	assertMetricHasLabel(t, metrics, totalMetricName, "resolver_type", "cluster")
+	assertMetricHasLabel(t, metrics, totalMetricName, "resource_kind", "Task")
 }
 
 // scrapeResolverMetrics fetches Prometheus metrics from the resolver pod.
