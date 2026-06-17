@@ -41,6 +41,7 @@ import (
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/reconciler"
+	"sigs.k8s.io/yaml"
 )
 
 // defaultMaximumResolutionDuration is the maximum amount of time
@@ -124,9 +125,10 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 	startTime := r.Clock.Now()
 	resolverType := rr.Labels[resolutioncommon.LabelKeyResolverType]
 	metricsStatus := resolvermetrics.StatusError
+	resourceKind := resolvermetrics.ResourceKindUnknown
 	defer func() {
 		if r.metrics != nil && metricsStatus != "" {
-			r.metrics.RecordResolution(ctx, resolverType, metricsStatus, r.Clock.Now().Sub(startTime))
+			r.metrics.RecordResolution(ctx, resolverType, metricsStatus, resourceKind, r.Clock.Now().Sub(startTime))
 		}
 	}()
 
@@ -210,6 +212,7 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 		}
 	case resource := <-resourceChan:
 		metricsStatus = resolvermetrics.StatusSuccess
+		resourceKind = resolvedResourceKind(resource)
 		return r.writeResolvedData(ctx, rr, resource)
 	}
 
@@ -287,4 +290,14 @@ func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.Resoluti
 func isInvalidRequestError(err error) bool {
 	var invalidErr *resolutioncommon.InvalidRequestError
 	return errors.As(err, &invalidErr)
+}
+
+func resolvedResourceKind(resource framework.ResolvedResource) string {
+	var metadata struct {
+		Kind string
+	}
+	if err := yaml.Unmarshal(resource.Data(), &metadata); err != nil || metadata.Kind == "" {
+		return resolvermetrics.ResourceKindUnknown
+	}
+	return metadata.Kind
 }
