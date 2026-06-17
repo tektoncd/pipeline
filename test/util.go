@@ -76,7 +76,6 @@ func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testi
 	cache.Get(ctx).Clear()
 
 	namespace := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("arendelle")
-
 	initializeLogsAndMetrics(t)
 
 	// Inline controller logs from SYSTEM_NAMESPACE into the t.Log output.
@@ -84,7 +83,12 @@ func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testi
 	t.Cleanup(cancel)
 
 	c := newClients(t, knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
-	createNamespace(ctx, t, namespace, c.KubeClient)
+	// clients will be recreated according to namespace
+	finalNamespace := createNamespace(ctx, t, namespace, c.KubeClient)
+	if finalNamespace != namespace {
+		namespace = finalNamespace
+		c = newClients(t, knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
+	}
 	verifyServiceAccountExistence(ctx, t, namespace, c.KubeClient)
 
 	for _, f := range fn {
@@ -149,20 +153,33 @@ func initializeLogsAndMetrics(t *testing.T) {
 	})
 }
 
-func createNamespace(ctx context.Context, t *testing.T, namespace string, kubeClient kubernetes.Interface) {
+func createNamespace(ctx context.Context, t *testing.T, namespace string, kubeClient kubernetes.Interface) string {
 	t.Helper()
 	t.Logf("Create namespace %s to deploy to", namespace)
 	labels := map[string]string{
 		"tekton.dev/test-e2e": "true",
 	}
-	if _, err := kubeClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   namespace,
-			Labels: labels,
-		},
-	}, metav1.CreateOptions{}); err != nil {
+
+	for range 5 {
+		_, err := kubeClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   namespace,
+				Labels: labels,
+			},
+		}, metav1.CreateOptions{})
+
+		if err == nil {
+			return namespace
+		}
+		if errors.IsAlreadyExists(err) {
+			t.Logf("Namespace %s already exists, retrying", namespace)
+			namespace = names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("arendelle")
+			continue
+		}
 		t.Fatalf("Failed to create namespace %s for tests: %s", namespace, err)
 	}
+	t.Fatalf("Failed to create unique namespace after retries")
+	return ""
 }
 
 func getDefaultSA(ctx context.Context, t *testing.T, kubeClient kubernetes.Interface, namespace string) string {
