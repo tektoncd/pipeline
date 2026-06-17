@@ -136,6 +136,80 @@ spec:
       cpu: 2
 ```
 
+## Variable Substitution in Compute Resources
+
+Tekton supports [variable substitution](./variables.md) in `computeResources` fields, allowing
+resource requests and limits to be parameterized:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: build
+spec:
+  params:
+    - name: MEMORY_REQUEST
+      type: string
+      default: "128Mi"
+    - name: MEMORY_LIMIT
+      type: string
+      default: "256Mi"
+  steps:
+    - name: build
+      image: golang:1.22
+      computeResources:
+        requests:
+          memory: $(params.MEMORY_REQUEST)
+        limits:
+          memory: $(params.MEMORY_LIMIT)
+```
+
+This is useful when the same Task is used across multiple projects with different resource
+requirements. Instead of duplicating the Task, pipeline or TaskRun authors can pass the
+resource values as parameters:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: build-large
+spec:
+  taskRef:
+    name: build
+  params:
+    - name: MEMORY_REQUEST
+      value: "1Gi"
+    - name: MEMORY_LIMIT
+      value: "2Gi"
+```
+
+Variable substitution also works with task results in `PipelineRun.spec.taskRunSpecs`,
+enabling dynamic resource sizing based on runtime information:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+spec:
+  pipelineRef:
+    name: my-pipeline
+  taskRunSpecs:
+    - pipelineTaskName: build
+      stepSpecs:
+        - name: build
+          computeResources:
+            requests:
+              memory: $(tasks.get-config.results.memory_request)
+            limits:
+              memory: $(tasks.get-config.results.memory_limit)
+```
+
+> **Note:** When using parameterized compute resources, consider using
+> [LimitRanges](https://kubernetes.io/docs/concepts/policy/limit-range/) and
+> [ResourceQuotas](https://kubernetes.io/docs/concepts/policy/resource-quotas/)
+> to guard against resource exhaustion from excessively large values.
+> Invalid quantities (e.g. non-numeric strings) will be caught at pod creation
+> time with a clear error.
+
 ## LimitRange Support
 
 Kubernetes allows users to configure [LimitRanges]((https://kubernetes.io/docs/concepts/policy/limit-range/)),

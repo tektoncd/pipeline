@@ -521,6 +521,13 @@ func validateStepVariables(ctx context.Context, step Step, prefix string, vars s
 		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v.SubPath, prefix, vars).ViaField("SubPath").ViaFieldIndex("volumeMount", i))
 	}
 	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(string(step.OnError), prefix, vars).ViaField("onError"))
+	// Validate variable references in compute resources
+	for k, v := range step.ComputeResources.RawRequests {
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v, prefix, vars).ViaField(string(k)).ViaField("requests").ViaField("computeResources"))
+	}
+	for k, v := range step.ComputeResources.RawLimits {
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v, prefix, vars).ViaField(string(k)).ViaField("limits").ViaField("computeResources"))
+	}
 	return errs
 }
 

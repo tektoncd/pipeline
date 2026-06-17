@@ -337,6 +337,21 @@ func TestStepValidateError(t *testing.T) {
 			Message: "invalid value: -10s",
 			Paths:   []string{"negative timeout"},
 		},
+	}, {
+		name: "invalid compute resource raw value",
+		Step: v1.Step{
+			Image: "myimage",
+			ComputeResources: v1.ComputeResourceRequirements{
+				RawRequests: map[corev1.ResourceName]string{
+					corev1.ResourceMemory: "notaref",
+				},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: notaref`,
+			Paths:   []string{"computeResources.requests.memory"},
+			Details: "must be a valid quantity or a variable reference like $(params.name)",
+		},
 	}}
 	for _, st := range tests {
 		t.Run(st.name, func(t *testing.T) {
