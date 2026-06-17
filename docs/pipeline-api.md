@@ -1771,6 +1771,113 @@ IncludeParamsList
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.Notice">Notice
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
+</p>
+<div>
+<p>Notice represents a structured message emitted by a controller that does not affect the run&rsquo;s success/failure status.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>level</code><br/>
+<em>
+<a href="#tekton.dev/v1.NoticeLevel">
+NoticeLevel
+</a>
+</em>
+</td>
+<td>
+<p>Level indicates the severity of the notice.
+Valid values: &ldquo;info&rdquo;, &ldquo;warning&rdquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>message</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Message is the human-readable notice text.
+Maximum length: 1024 characters.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>step</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Step is the name of the step that emitted this notice.
+Empty for controller-emitted notices.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>file</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>File is the source file path related to this notice.
+Used by VCS integrations to create inline annotations.
+Maximum length: 256 characters.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startLine</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StartLine is the starting line number in the source file (1-based).
+Pointer type so that absence (nil) is distinguishable from line 0.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.NoticeLevel">NoticeLevel
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.Notice">Notice</a>)
+</p>
+<div>
+<p>NoticeLevel indicates the severity of a notice.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;info&#34;</p></td>
+<td><p>NoticeLevelInfo represents an informational message, no action needed.</p>
+</td>
+</tr><tr><td><p>&#34;warning&#34;</p></td>
+<td><p>NoticeLevelWarning represents something to address, but not blocking.</p>
+</td>
+</tr></tbody>
+</table>
 <h3 id="tekton.dev/v1.OnErrorType">OnErrorType
 (<code>string</code> alias)</h3>
 <p>
@@ -6133,6 +6240,20 @@ Artifacts
 <td>
 <em>(Optional)</em>
 <p>Artifacts are the list of artifacts written out by the task&rsquo;s containers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>notices</code><br/>
+<em>
+<a href="#tekton.dev/v1.Notice">
+[]Notice
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Notices are structured messages emitted by controllers that do not affect the task&rsquo;s success/failure status.</p>
 </td>
 </tr>
 <tr>

@@ -7278,8 +7278,10 @@ status:
 		name                          string
 		task                          []*v1.Task
 		noMatchPolicy                 string
+		enableNotices                 bool
 		verificationPolicies          []*v1alpha1.VerificationPolicy
 		wantTrustedResourcesCondition *apis.Condition
+		wantNotices                   []v1.Notice
 	}{
 		{
 			name:                          "ignore no match policy",
@@ -7291,6 +7293,16 @@ status:
 			noMatchPolicy:                 config.WarnNoMatchPolicy,
 			verificationPolicies:          noMatchPolicy,
 			wantTrustedResourcesCondition: failNoMatchCondition,
+		}, {
+			name:                          "warn no match policy with notices enabled",
+			noMatchPolicy:                 config.WarnNoMatchPolicy,
+			enableNotices:                 true,
+			verificationPolicies:          noMatchPolicy,
+			wantTrustedResourcesCondition: failNoMatchCondition,
+			wantNotices: []v1.Notice{{
+				Level:   v1.NoticeLevelWarning,
+				Message: failNoMatchCondition.Message,
+			}},
 		}, {
 			name:                          "pass enforce policy",
 			noMatchPolicy:                 config.FailNoMatchPolicy,
@@ -7313,9 +7325,12 @@ status:
 					},
 				},
 			}
+			if tc.enableNotices {
+				cms[0].Data[config.EnableNotices] = "true"
+			}
 			rr := getResolvedResolutionRequest(t, resolverName, signedTaskBytes, tr.Namespace, tr.Name)
 			d := test.Data{
-				TaskRuns:             []*v1.TaskRun{tr},
+				TaskRuns:             []*v1.TaskRun{tr.DeepCopy()},
 				ConfigMaps:           cms,
 				VerificationPolicies: tc.verificationPolicies,
 				ResolutionRequests:   []*resolutionv1beta1.ResolutionRequest{&rr},
@@ -7342,6 +7357,9 @@ status:
 			}
 			gotVerificationCondition := reconciledRun.Status.GetCondition(trustedresources.ConditionTrustedResourcesVerified)
 			if d := cmp.Diff(tc.wantTrustedResourcesCondition, gotVerificationCondition, ignoreLastTransitionTime); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+			if d := cmp.Diff(tc.wantNotices, reconciledRun.Status.Notices); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})
