@@ -576,6 +576,12 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 				Status:  corev1.ConditionFalse,
 				Message: taskMeta.VerificationResult.Err.Error(),
 			})
+			if config.FromContextOrDefaults(ctx).FeatureFlags.EnableNotices {
+				tr.Status.AddControllerNotice(v1.Notice{
+					Level:   v1.NoticeLevelWarning,
+					Message: taskMeta.VerificationResult.Err.Error(),
+				})
+			}
 		case trustedresources.VerificationPass:
 			tr.Status.SetCondition(&apis.Condition{
 				Type:   trustedresources.ConditionTrustedResourcesVerified,
