@@ -236,15 +236,15 @@ type FeatureFlags struct {
 	Coschedule                               string `json:"coschedule,omitempty"`
 	EnableCELInWhenExpression                bool   `json:"enableCELInWhenExpression,omitempty"`
 	// EnableStepActions is a no-op flag since StepActions are stable
-	EnableStepActions            bool   `json:"enableStepActions,omitempty"`
-	EnableParamEnum              bool   `json:"enableParamEnum,omitempty"`
-	EnableDefaultResults         bool   `json:"enableDefaultResults,omitempty"`
-	EnableArtifacts              bool   `json:"enableArtifacts,omitempty"`
-	DisableInlineSpec            string `json:"disableInlineSpec,omitempty"`
-	EnableConciseResolverSyntax  bool   `json:"enableConciseResolverSyntax,omitempty"`
-	EnableKubernetesSidecar      bool   `json:"enableKubernetesSidecar,omitempty"`
-	EnableWaitExponentialBackoff         bool `json:"enableWaitExponentialBackoff,omitempty"`
-	EnableTerminationMessageCompression bool `json:"enableTerminationMessageCompression,omitempty"`
+	EnableStepActions                   bool   `json:"enableStepActions,omitempty"`
+	EnableParamEnum                     bool   `json:"enableParamEnum,omitempty"`
+	EnableDefaultResults                bool   `json:"enableDefaultResults,omitempty"`
+	EnableArtifacts                     bool   `json:"enableArtifacts,omitempty"`
+	DisableInlineSpec                   string `json:"disableInlineSpec,omitempty"`
+	EnableConciseResolverSyntax         bool   `json:"enableConciseResolverSyntax,omitempty"`
+	EnableKubernetesSidecar             bool   `json:"enableKubernetesSidecar,omitempty"`
+	EnableWaitExponentialBackoff        bool   `json:"enableWaitExponentialBackoff,omitempty"`
+	EnableTerminationMessageCompression bool   `json:"enableTerminationMessageCompression,omitempty"`
 	// DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
 	// to allow deletion of PipelineRuns created before v0.62.x.
 	// This field is not used and can be removed in a future release
