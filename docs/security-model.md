@@ -41,7 +41,7 @@ Cluster administrators who want to restrict what kinds of Pods can be created mu
 
 Tekton ships ClusterRole definitions that aggregate into the Kubernetes `edit` role. This means users with `edit` permissions on a namespace gain the ability to create and manage Tekton resources.
 
-This is consistent with standard Kubernetes design. Users with `edit` access can already create `Pods`, `Deployments`, `Jobs`, and other workload resources. Aggregating Tekton's custom resources into the `edit` role does not expand a user's effective privileges beyond what they already have in the cluster. If your security model requires that `edit` users cannot create workloads, you should restrict the built-in `edit` ClusterRole using RBAC deny policies or admission controls, not by filing a Tekton vulnerability report.
+This is consistent with standard Kubernetes design. Users with `edit` access can already create `Pods`, `Deployments`, `Jobs`, and other workload resources. Aggregating Tekton's custom resources into the `edit` role does not expand a user's effective privileges beyond what they already have in the cluster. If your security model requires that `edit` users cannot create workloads, you should restrict workload creation using admission controllers (such as Pod Security Admission, OPA Gatekeeper, or Kyverno), not by filing a Tekton vulnerability report.
 
 ---
 
@@ -51,7 +51,7 @@ This is consistent with standard Kubernetes design. Users with `edit` access can
 
 Tekton's `TaskRun` and `PipelineRun` resources expose a `podTemplate` field that allows callers to configure Pod-level settings, including security contexts, volume mounts, and node selectors.
 
-A user with permission to create a `TaskRun` can use `podTemplate` to request a privileged container, a `hostPath` mount, or other elevated configurations. This is not a Tekton vulnerability. That user already has permission to create native Pods with the same settings. Tekton submitting that Pod spec to the API server is the expected behavior.
+A user with permission to create a `TaskRun` can use `podTemplate` to request a privileged container, a `hostPath` mount, or other elevated configurations. This is not a Tekton vulnerability. By design, granting a user permission to create a `TaskRun` intentionally delegates the ability to configure Pod-level settings to that user through the Tekton controller. This is an expected trust delegation, not a privilege escalation vulnerability.
 
 The correct enforcement layer is the cluster's admission control policy. If your organization wants to prevent privileged containers, deploy and enforce Pod Security Admission at the `restricted` or `baseline` profile. If a report claims that `podTemplate` "bypasses" Tekton security controls, that claim assumes Tekton is responsible for controls it explicitly delegates to the cluster operator. We will decline such reports and explain why.
 
@@ -71,7 +71,7 @@ Documentation errors, inaccurate examples, or content that does not match implem
 
 ## In Scope: What We Want Reported
 
-The following categories represent genuine Tekton security concerns. If you have found something in one of these areas, please report it through the process described in [SECURITY.md](../SECURITY.md).
+The following categories represent genuine Tekton security concerns. If you have found something in one of these areas, please report it through the process described in [SECURITY.md](https://github.com/tektoncd/.github/blob/main/SECURITY.md).
 
 ### Bypass of Tekton's Internal Validation
 
@@ -79,7 +79,7 @@ Tekton enforces certain constraints at the controller level: path validation for
 
 ### Controller Denial of Service via Malformed Resources
 
-If a crafted `TaskRun`, `PipelineRun`, or other Tekton custom resource causes a controller to panic, enter an unrecoverable state, consume unbounded memory, or cease processing legitimate work, that is a DoS vulnerability. This includes unsafe streaming patterns such as reading an HTTP response body with `io.ReadAll` without enforcing a size cap, where a malicious remote endpoint or user-controlled payload could cause the controller to exhaust memory.
+If a crafted `TaskRun`, `PipelineRun`, or other Tekton custom resource causes a controller to panic, enter an unrecoverable state, consume unbounded memory, or cease processing legitimate work, that is a DoS vulnerability. This includes unsafe streaming patterns such as unbounded reads from remote endpoints, where a malicious remote endpoint or user-controlled payload could cause the controller to exhaust memory.
 
 ### Secret or Credential Leakage from Controllers
 
@@ -87,7 +87,7 @@ If Tekton's controllers or resolvers expose secrets, tokens, or credentials in w
 
 ### Trust Verification Bypass in TrustedResources / VerificationPolicy
 
-Tekton's `TrustedResources` feature and `VerificationPolicy` resources implement supply chain integrity checks via image and bundle signature verification. A vulnerability that allows an attacker to substitute an unverified or maliciously modified resource while convincing Tekton that verification passed is a serious supply chain security issue and should be reported immediately.
+Tekton's `TrustedResources` feature and `VerificationPolicy` resources implement supply chain integrity checks via image and bundle signature verification. A vulnerability that allows an attacker to substitute an unverified or maliciously modified resource while convincing Tekton that verification passed is a serious supply chain security issue and should be reported immediately. (Note: These are currently considered alpha features).
 
 ### Unbounded Resource Consumption Without Operator Remediation
 
@@ -99,7 +99,7 @@ If a Tekton control plane component consumes unbounded CPU, memory, or network r
 
 ### Reporting
 
-Submit vulnerability reports through GitHub's private security advisory feature on the [Tekton Pipelines repository](https://github.com/tektoncd/pipeline/security/advisories/new), or by emailing the maintainer list listed in `SECURITY.md`. Do not open a public GitHub issue for potential vulnerabilities.
+Submit vulnerability reports through GitHub's private security advisory feature on the [Tekton Pipelines repository](https://github.com/tektoncd/pipeline/security/advisories/new), or by emailing the maintainer list listed in [SECURITY.md](https://github.com/tektoncd/.github/blob/main/SECURITY.md). Do not open a public GitHub issue for potential vulnerabilities.
 
 Include as much of the following as you have available: a description of the finding, the affected component and version, a reproduction case or proof-of-concept, and your assessment of impact and exploitability.
 
