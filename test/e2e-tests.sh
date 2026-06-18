@@ -182,7 +182,7 @@ function set_enable_default_results() {
     printf "Invalid value for enable-default-results %s\n" ${method}
     exit 255
   fi
-  printf "Setting enable-default-results to %s\n", ${method}
+  printf "Setting enable-default-results to %s\n" ${method}
   jsonpatch=$(printf "{\"data\": {\"enable-default-results\": \"%s\"}}" $1)
   echo "feature-flags ConfigMap patch: ${jsonpatch}"
   with_retries kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
