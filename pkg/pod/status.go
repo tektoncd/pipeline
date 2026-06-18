@@ -52,11 +52,11 @@ var (
 	// ReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,
 	// it could be the content has changed, signature is invalid or public key is invalid
 	ReasonResourceVerificationFailed = v1.TaskRunReasonResourceVerificationFailed.String()
-
-	// ErrResultNotFound is returned when a specific result key is not found in the
-	// list of RunResults. Callers should check for this with errors.Is.
-	ErrResultNotFound = errors.New("result not found")
 )
+
+// ErrResultNotFound is returned when a specific result key is not found in the
+// list of RunResults. Callers should check for this with errors.Is.
+var ErrResultNotFound = errors.New("result not found")
 
 const (
 	// ReasonExceededResourceQuota indicates that the TaskRun failed to create a pod due to
