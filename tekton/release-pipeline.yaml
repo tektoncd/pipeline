@@ -397,7 +397,7 @@ spec:
                   if [ -n "${TRANSPARENCY}" ]; then
                     # URL format: https://rekor.sigstore.dev/api/v1/log/entries?logIndex=NNNN
                     # Fetch the full entry UUID from the Rekor API (logIndex alone is not the UUID)
-                    REKOR_UUID=$(wget -qO- "${TRANSPARENCY}" | sed -n 's/.*"\([0-9a-f]\{64,\}\)".*/\1/p' | head -1)
+                    REKOR_UUID=$(wget -qO- "${TRANSPARENCY}" | jq -r 'keys[0]')
                     if [ -z "${REKOR_UUID}" ]; then
                       echo "WARNING: Could not fetch Rekor UUID from: ${TRANSPARENCY}"
                       # Fall back to logIndex
