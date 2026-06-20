@@ -2291,3 +2291,59 @@ func TestGetStepActionsData_InvalidStepResultReference(t *testing.T) {
 		t.Errorf("Expected error message %s but got %s", expectedError, err.Error())
 	}
 }
+
+// TestGetStepActionsDataConcurrentObjectParamDefault exercises the real concurrent resolution
+// path end to end. GetStepActionsData resolves the StepAction refs of all steps concurrently
+// (errgroup, default-step-ref-concurrency-limit defaults to 5), and each goroutine runs
+// applyStepActionParameters against the same shared TaskSpec. The object param "cfg" has both a
+// default and a TaskRun value, so resolving a step merged the TaskRun value onto the param's
+// shared default ObjectVal map. Doing that from many goroutines crashed the controller with
+// "fatal error: concurrent map writes". Run under -race to guard the whole real path; the
+// assertion also catches the single-threaded in-place mutation of the Task's default.
+func TestGetStepActionsDataConcurrentObjectParamDefault(t *testing.T) {
+	const numSteps = 16
+	stepAction := &v1beta1.StepAction{
+		ObjectMeta: metav1.ObjectMeta{Name: "echo", Namespace: "default"},
+		Spec: v1beta1.StepActionSpec{
+			Image:  "bash:latest",
+			Params: v1.ParamSpecs{{Name: "msg", Type: v1.ParamTypeString}},
+			Args:   []string{"$(params.msg)"},
+		},
+	}
+	steps := make([]v1.Step, numSteps)
+	for i := range steps {
+		steps[i] = v1.Step{
+			Ref:    &v1.Ref{Name: "echo"},
+			Params: v1.Params{{Name: "msg", Value: *v1.NewStructuredValues("hi")}},
+		}
+	}
+	taskSpec := v1.TaskSpec{
+		Params: v1.ParamSpecs{{
+			Name:       "cfg",
+			Type:       v1.ParamTypeObject,
+			Properties: map[string]v1.PropertySpec{"key": {Type: v1.ParamTypeString}},
+			Default:    &v1.ParamValue{Type: v1.ParamTypeObject, ObjectVal: map[string]string{"key": "from-default"}},
+		}},
+		Steps: steps,
+	}
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "mytaskrun", Namespace: "default"},
+		Spec: v1.TaskRunSpec{
+			TaskSpec: &taskSpec,
+			Params:   v1.Params{{Name: "cfg", Value: *v1.NewObject(map[string]string{"key": "from-taskrun"})}},
+		},
+	}
+
+	tektonclient := fake.NewSimpleClientset()
+	if err := tektonclient.Tracker().Add(stepAction); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := GetStepActionsData(t.Context(), taskSpec, tr, tektonclient, nil, nil); err != nil {
+		t.Fatalf("GetStepActionsData returned error: %v", err)
+	}
+	// Concurrent resolution must not have mutated the Task's shared object-param default.
+	if got := taskSpec.Params[0].Default.ObjectVal["key"]; got != "from-default" {
+		t.Errorf("object param default mutated by concurrent resolution: key = %q, want %q", got, "from-default")
+	}
+}
