@@ -19,6 +19,7 @@ channel for training and tutorials on Tekton!
   - [TaskRun Logic](./taskruns.md): How TaskRuns are run in pods.
   - [Resources Labeling](./resources-labelling.md): Labels applied to Tekton resources.
   - [Multi-Tenant Support](./multi-tenant-support.md): Running Tekton in multi-tenant configurations.
+  - [Profiling etcd Usage](./etcd-revision-profiling.md): Measuring the etcd revision/storage footprint of PipelineRuns.
 - [API Versioning](./api-versioning.md): How Tekton supports multiple API versions and feature gates.
 - How specific features are implemented:
   - [Results](./results-lifecycle.md)
