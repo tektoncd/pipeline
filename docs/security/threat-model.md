@@ -94,7 +94,11 @@ Tekton's `TrustedResources` feature and `VerificationPolicy` resources implement
 If a Tekton control plane component consumes unbounded CPU, memory, or network resources in response to user-provided input, and there is no operator-accessible configuration knob to cap or throttle that consumption, this represents a denial-of-service risk that belongs in Tekton's scope. Contrast this with standard workload resource consumption, which operators control via `LimitRange` and resource quotas.
 
 ---
+## Applied Guidance
 
+For concrete guidance on applying this trust model to workspace isolation, please see the [Workspace Isolation Security Best Practices](README.md).
+
+---
 ## Vulnerability Disclosure Process and Credit
 
 ### Reporting
