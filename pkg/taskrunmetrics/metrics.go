@@ -46,13 +46,13 @@ import (
 const anonymous = "anonymous"
 
 var (
-	pipelinerunTag = tag.MustNewKey("pipelinerun")
-	pipelineTag    = tag.MustNewKey("pipeline")
-	taskrunTag     = tag.MustNewKey("taskrun")
-	taskTag        = tag.MustNewKey("task")
-	namespaceTag   = tag.MustNewKey("namespace")
-	statusTag      = tag.MustNewKey("status")
-	reasonTag      = tag.MustNewKey("reason")
+	pipelinerunTag                             = tag.MustNewKey("pipelinerun")
+	pipelineTag                                = tag.MustNewKey("pipeline")
+	taskrunTag                                 = tag.MustNewKey("taskrun")
+	taskTag                                    = tag.MustNewKey("task")
+	namespaceTag                               = tag.MustNewKey("namespace")
+	statusTag                                  = tag.MustNewKey("status")
+	reasonTag                                  = tag.MustNewKey("reason")
 	trDurationView                             *view.View
 	prTRDurationView                           *view.View
 	trTotalView                                *view.View

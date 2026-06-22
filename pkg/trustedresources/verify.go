@@ -159,7 +159,7 @@ func anchorPattern(pattern string) string {
 		pattern = "^(?:" + pattern[1:]
 	}
 	if !hasEnd {
-		pattern = pattern + ")$"
+		pattern += ")$"
 	} else {
 		// Already has $, close the group before it.
 		pattern = pattern[:len(pattern)-1] + ")$"

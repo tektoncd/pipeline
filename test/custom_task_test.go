@@ -703,10 +703,3 @@ func TestWaitCustomTask_V1_PipelineRun(t *testing.T) {
 		})
 	}
 }
-
-func resetConfigMap(ctx context.Context, t *testing.T, c *clients, namespace, configName string, values map[string]string) {
-	t.Helper()
-	if err := updateConfigMap(ctx, c.KubeClient, namespace, configName, values); err != nil {
-		t.Log(err)
-	}
-}

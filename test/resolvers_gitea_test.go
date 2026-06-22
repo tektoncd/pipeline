@@ -27,6 +27,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 	"time"
 
@@ -41,6 +42,31 @@ import (
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
+
+const (
+	scmTokenSecretBase    = "tekton-e2e-scm-token"
+	scmTokenSecretKey     = "token"
+	scmRemoteTaskPath     = "tasks/remote-task.yaml"
+	scmRemoteOrg          = "test-org"
+	scmRemoteRepo         = "test-repo"
+	scmRemoteBranch       = "main"
+	scmRemoteUser         = "tekton-bot"
+	scmRemoteUserPassword = "ab_d1234HIJKL"
+	// Defined in git-resolver/gitea.yaml's "gitea" StatefulSet, in the env for the "configure-gitea" init container
+	scmGiteaAdminPassword = "giteaPassword1234"
+	systemNamespace       = "tekton-pipelines"
+)
+
+var (
+	defaultSvcRE = regexp.MustCompile(`\.default\.svc\.cluster`)
+)
+
+func resetConfigMap(ctx context.Context, t *testing.T, c *clients, namespace, configName string, values map[string]string) {
+	t.Helper()
+	if err := updateConfigMap(ctx, c.KubeClient, namespace, configName, values); err != nil {
+		t.Log(err)
+	}
+}
 
 func TestGitResolver_HTTPAuth(t *testing.T) {
 	ctx := t.Context()

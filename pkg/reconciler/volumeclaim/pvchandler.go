@@ -76,18 +76,17 @@ func (c *defaultPVCHandler) CreatePVCFromVolumeClaimTemplate(ctx context.Context
 	switch {
 	case apierrors.IsNotFound(err):
 		_, err := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Create(ctx, claim, metav1.CreateOptions{})
-		if err != nil {
-			if apierrors.IsAlreadyExists(err) {
-				c.logger.Infof("Tried to create PersistentVolumeClaim %s in namespace %s, but it already exists",
-					claim.Name, claim.Namespace)
-			} else if isRetryableError(err) {
-				// This is a retry-able error
-				return fmt.Errorf("%w for %s: %v", ErrPvcCreationFailedRetryable, claim.Name, err.Error())
-			} else {
-				return fmt.Errorf("%w for %s: %v", ErrPvcCreationFailed, claim.Name, err.Error())
-			}
-		} else {
+		switch {
+		case err == nil:
 			c.logger.Infof("Created PersistentVolumeClaim %s in namespace %s", claim.Name, claim.Namespace)
+		case apierrors.IsAlreadyExists(err):
+			c.logger.Infof("Tried to create PersistentVolumeClaim %s in namespace %s, but it already exists",
+				claim.Name, claim.Namespace)
+		case isRetryableError(err):
+			// This is a retry-able error
+			return fmt.Errorf("%w for %s: %v", ErrPvcCreationFailedRetryable, claim.Name, err.Error())
+		default:
+			return fmt.Errorf("%w for %s: %v", ErrPvcCreationFailed, claim.Name, err.Error())
 		}
 	case err != nil:
 		return fmt.Errorf("failed to retrieve PVC %s: %w", claim.Name, err)
