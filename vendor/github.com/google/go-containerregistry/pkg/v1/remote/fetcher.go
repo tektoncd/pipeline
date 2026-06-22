@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/google/go-containerregistry/internal/limit"
 	"github.com/google/go-containerregistry/internal/redact"
 	"github.com/google/go-containerregistry/internal/verify"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -168,7 +169,7 @@ func (f *fetcher) fetchManifest(ctx context.Context, ref name.Reference, accepta
 		return nil, nil, err
 	}
 
-	manifest, err := io.ReadAll(io.LimitReader(resp.Body, manifestLimit))
+	manifest, err := limit.ReadAll(resp.Body, manifestLimit)
 	if err != nil {
 		return nil, nil, err
 	}
