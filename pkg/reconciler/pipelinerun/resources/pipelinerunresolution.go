@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -951,11 +952,13 @@ func getTaskRunNamesFromChildRefs(childRefs []v1.ChildStatusReference, ptName st
 // single-combination include-only matrix - otherwise the numeric index is used so behavior remains
 // fully backward compatible.
 func getNewRunNames(ptName, prName string, numberOfRuns int, includeNames []string) []string {
-	// Use the Matrix include names as suffixes only when there is exactly one name per
+	// Use the Matrix include names as suffixes only when there is exactly one non-empty name per
 	// combination; otherwise fall back to numeric indexing. This is applied regardless of the
 	// number of combinations, so a single-combination include-only matrix is still named
-	// "<pr>-<pt>-<includeName>" rather than the bare "<pr>-<pt>".
-	useIncludeNames := len(includeNames) == numberOfRuns
+	// "<pr>-<pt>-<includeName>" rather than the bare "<pr>-<pt>". The non-empty check guards the
+	// exported callers (GetNamesOfTaskRuns/GetNamesOfChildPipelineRuns), which accept a raw
+	// []string: an empty suffix would otherwise produce an invalid "<pr>-<pt>-" name.
+	useIncludeNames := len(includeNames) == numberOfRuns && !slices.Contains(includeNames, "")
 
 	var runNames []string
 	// A singular, non-matrixed PipelineRun/TaskRun/CustomRun is named just "<pr>-<pt>".

@@ -4166,6 +4166,41 @@ func TestGetNamesOfRunsPreservesIncludeNameOrder(t *testing.T) {
 	}
 }
 
+// TestGetNamesOfRunsFallsBackWhenIncludeNameEmpty verifies that an empty include
+// name disqualifies include-name suffixing and the generator falls back to numeric
+// indexing. In production Matrix.IncludeNames never returns empty names, but the
+// exported name generators accept a raw []string, so an empty suffix must not be
+// used to build a name (it would yield an invalid "<pr>-<pt>-" name).
+func TestGetNamesOfRunsFallsBackWhenIncludeNameEmpty(t *testing.T) {
+	const prName = "mypipelinerun"
+	const ptName = "mytask"
+	includeNames := []string{"alpha", ""}
+	want := []string{
+		"mypipelinerun-mytask-0",
+		"mypipelinerun-mytask-1",
+	}
+
+	for _, tc := range []struct {
+		name string
+		got  []string
+	}{{
+		name: "TaskRuns",
+		got:  GetNamesOfTaskRuns(nil, ptName, prName, len(includeNames), includeNames),
+	}, {
+		name: "CustomRuns",
+		got:  getNamesOfCustomRuns(nil, ptName, prName, len(includeNames), includeNames),
+	}, {
+		name: "ChildPipelineRuns",
+		got:  GetNamesOfChildPipelineRuns(nil, ptName, prName, len(includeNames), includeNames),
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			if d := cmp.Diff(want, tc.got); d != "" {
+				t.Errorf("%s did not fall back to numeric naming: %s", tc.name, diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestIsMatrixed(t *testing.T) {
 	pr := v1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
