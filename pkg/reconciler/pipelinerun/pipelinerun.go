@@ -1163,6 +1163,7 @@ func (c *Reconciler) createChildPipelineRuns(
 	defer span.End()
 	span.SetAttributes(
 		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
 		attribute.String("pipelinetask", rpt.PipelineTask.Name),
 	)
 
@@ -1349,6 +1350,7 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 	defer span.End()
 	span.SetAttributes(
 		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
 		attribute.String("pipelinetask", rpt.PipelineTask.Name),
 		attribute.Int("taskrun.count", len(rpt.TaskRunNames)),
 	)
@@ -1523,6 +1525,7 @@ func (c *Reconciler) createCustomRuns(ctx context.Context, rpt *resources.Resolv
 	defer span.End()
 	span.SetAttributes(
 		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
 		attribute.String("pipelinetask", rpt.PipelineTask.Name),
 	)
 	var matrixCombinations []v1.Params
