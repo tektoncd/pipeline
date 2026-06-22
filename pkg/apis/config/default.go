@@ -27,6 +27,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	corev1 "k8s.io/api/core/v1"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/yaml"
 )
@@ -180,6 +181,9 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		var podTemplate pod.AffinityAssistantTemplate
 		if err := yamlUnmarshal(defaultAAPodTemplate, defaultAAPodTemplateKey, &podTemplate); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal %v", defaultAAPodTemplate)
+		}
+		if errs := podTemplate.ValidateResources(); len(errs) > 0 {
+			return nil, fmt.Errorf("invalid %s: %w", defaultAAPodTemplateKey, utilerrors.NewAggregate(errs))
 		}
 		tc.DefaultAAPodTemplate = &podTemplate
 	}
