@@ -24,6 +24,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
@@ -136,10 +137,30 @@ var (
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
+
+	// initTracing can persist span context into the status, a real write. Hold
+	// the prior value so that write is not lost when the baseline is taken
+	// after. Holding the map rather than copying it is safe because initTracing
+	// assigns a whole new map, and never writes through the one already there.
+	oldSpanContext := tr.Status.SpanContext
+
 	ctx, rootSpan := initTracing(ctx, c.tracerProvider, tr)
 	defer rootSpan.End()
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:ReconcileKind")
 	defer span.End()
+
+	// Everything the attribute needs is set up here rather than above, so a
+	// reconcile whose span does not record pays for none of it. A cluster with
+	// tracing off, or one whose trace was not sampled, reconciles as before.
+	if span.IsRecording() {
+		var metadataUpdateAttempted *atomic.Bool
+		ctx, metadataUpdateAttempted = tknreconciler.TrackMetadataUpdate(ctx)
+		oldStatus := tr.Status.DeepCopy()
+		oldStatus.SpanContext = oldSpanContext // restore the pre-initTracing value
+		defer func() {
+			tknreconciler.RecordWriteIntent(span, oldStatus, &tr.Status, metadataUpdateAttempted.Load())
+		}()
+	}
 
 	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 	if spanCtx := span.SpanContext(); spanCtx.IsValid() {
@@ -896,6 +917,7 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1.Task
 		newTr = newTr.DeepCopy()
 		newTr.Labels = kmap.Union(newTr.Labels, tr.Labels)
 		newTr.Annotations = kmap.Union(kmap.ExcludeKeys(newTr.Annotations, tknreconciler.KubectlLastAppliedAnnotationKey), tr.Annotations)
+		tknreconciler.MarkMetadataUpdate(ctx)
 		return c.PipelineClientSet.TektonV1().TaskRuns(tr.Namespace).Update(ctx, newTr, metav1.UpdateOptions{})
 	}
 	return newTr, nil

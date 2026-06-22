@@ -26,6 +26,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -190,10 +191,30 @@ var (
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
+
+	// initTracing can persist span context into the status, a real write. Hold
+	// the prior value so that write is not lost when the baseline is taken
+	// after. Holding the map rather than copying it is safe because initTracing
+	// assigns a whole new map, and never writes through the one already there.
+	oldSpanContext := pr.Status.SpanContext
+
 	ctx, rootSpan := initTracing(ctx, c.tracerProvider, pr)
 	defer rootSpan.End()
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "PipelineRun:ReconcileKind")
 	defer span.End()
+
+	// Everything the attribute needs is set up here rather than above, so a
+	// reconcile whose span does not record pays for none of it. A cluster with
+	// tracing off, or one whose trace was not sampled, reconciles as before.
+	if span.IsRecording() {
+		var metadataUpdateAttempted *atomic.Bool
+		ctx, metadataUpdateAttempted = tknreconciler.TrackMetadataUpdate(ctx)
+		oldStatus := pr.Status.DeepCopy()
+		oldStatus.SpanContext = oldSpanContext // restore the pre-initTracing value
+		defer func() {
+			tknreconciler.RecordWriteIntent(span, oldStatus, &pr.Status, metadataUpdateAttempted.Load())
+		}()
+	}
 
 	span.SetAttributes(
 		attribute.String("pipelinerun", pr.Name), attribute.String("namespace", pr.Namespace),
@@ -1948,6 +1969,7 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1.Pipe
 		// Properly merge labels and annotations, as the labels *might* have changed during the reconciliation
 		newPr.Labels = kmap.Union(newPr.Labels, pr.Labels)
 		newPr.Annotations = kmap.Union(newPr.Annotations, pr.Annotations)
+		tknreconciler.MarkMetadataUpdate(ctx)
 		return c.PipelineClientSet.TektonV1().PipelineRuns(pr.Namespace).Update(ctx, newPr, metav1.UpdateOptions{})
 	}
 	return newPr, nil
