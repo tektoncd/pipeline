@@ -3270,6 +3270,158 @@ status:
 	}
 }
 
+func TestReconcileCreateContainerErrorTimeout(t *testing.T) {
+	testCases := []struct {
+		name           string
+		reason         string
+		message        string
+		timeout        string
+		podAge         time.Duration
+		expectFailure  bool
+		expectedReason v1.TaskRunReason
+	}{{
+		name:          "CreateContainerConfigError context deadline exceeded within timeout",
+		reason:        "CreateContainerConfigError",
+		message:       "context deadline exceeded",
+		timeout:       "5m",
+		podAge:        1 * time.Minute,
+		expectFailure: false,
+	}, {
+		name:           "CreateContainerConfigError context deadline exceeded timeout exceeded",
+		reason:         "CreateContainerConfigError",
+		message:        "context deadline exceeded",
+		timeout:        "5m",
+		podAge:         10 * time.Minute,
+		expectFailure:  true,
+		expectedReason: "CreateContainerConfigError",
+	}, {
+		name:          "CreateContainerError context deadline exceeded within timeout",
+		reason:        "CreateContainerError",
+		message:       "context deadline exceeded",
+		timeout:       "5m",
+		podAge:        1 * time.Minute,
+		expectFailure: false,
+	}, {
+		name:           "CreateContainerError context deadline exceeded timeout exceeded",
+		reason:         "CreateContainerError",
+		message:        "context deadline exceeded",
+		timeout:        "5m",
+		podAge:         10 * time.Minute,
+		expectFailure:  true,
+		expectedReason: "PodCreationFailed",
+	}, {
+		name:           "CreateContainerConfigError context deadline exceeded timeout disabled",
+		reason:         "CreateContainerConfigError",
+		message:        "context deadline exceeded",
+		timeout:        "",
+		expectFailure:  true,
+		expectedReason: "CreateContainerConfigError",
+	}, {
+		name:           "CreateContainerConfigError non-timeout message with timeout configured",
+		reason:         "CreateContainerConfigError",
+		message:        "configmap \"config-for-testing\" not found",
+		timeout:        "5m",
+		podAge:         1 * time.Minute,
+		expectFailure:  true,
+		expectedReason: "CreateContainerConfigError",
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-create-container-error
+  namespace: foo
+spec:
+  taskSpec:
+    steps:
+    - image: alpine
+status:
+  podName: "test-pod"
+  steps:
+  - container: step-alpine
+    name: alpine
+    imageID: docker.io/library/alpine:latest
+`)
+			taskRun.Status.Steps[0].Waiting = &corev1.ContainerStateWaiting{
+				Reason:  tc.reason,
+				Message: tc.message,
+			}
+
+			d := test.Data{
+				TaskRuns: []*v1.TaskRun{taskRun},
+			}
+
+			if tc.timeout != "" {
+				d.ConfigMaps = []*corev1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+						Data: map[string]string{
+							"default-create-container-error-timeout": tc.timeout,
+						},
+					},
+				}
+			}
+
+			d.Pods = []*corev1.Pod{{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-pod", Namespace: "foo"},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{{
+						Type:               corev1.PodInitialized,
+						LastTransitionTime: metav1.Time{Time: now.Add(-tc.podAge)},
+					}},
+				},
+			}}
+
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+
+			if tc.expectFailure {
+				if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+					t.Fatalf("Unexpected error reconciling TaskRun: %v", err)
+				}
+
+				reconciledTr, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(
+					testAssets.Ctx, taskRun.Name, metav1.GetOptions{},
+				)
+				if err != nil {
+					t.Fatalf("Failed to get reconciled TaskRun: %v", err)
+				}
+
+				condition := reconciledTr.Status.GetCondition(apis.ConditionSucceeded)
+				if condition == nil {
+					t.Fatal("TaskRun should have a Succeeded condition")
+				}
+				if condition.Status != corev1.ConditionFalse {
+					t.Errorf("Expected TaskRun to fail, but status is: %v", condition.Status)
+				}
+				if condition.Reason != string(tc.expectedReason) {
+					t.Errorf("Expected reason %q, got %q", tc.expectedReason, condition.Reason)
+				}
+			} else {
+				err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun))
+				if err == nil {
+					t.Errorf("expected requeue error when reconciling TaskRun with transient container error")
+				} else if isRequeueError, requeueDuration := controller.IsRequeueKey(err); !isRequeueError {
+					t.Errorf("Expected requeue error, but got: %s", err.Error())
+				} else if requeueDuration < 0 {
+					t.Errorf("Expected a positive requeue duration but got %s", requeueDuration.String())
+				}
+				reconciledTr, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(
+					testAssets.Ctx, taskRun.Name, metav1.GetOptions{},
+				)
+				if err != nil {
+					t.Fatalf("Failed to get reconciled TaskRun: %v", err)
+				}
+				condition := reconciledTr.Status.GetCondition(apis.ConditionSucceeded)
+				if condition != nil && condition.Status == corev1.ConditionFalse {
+					t.Errorf("Expected TaskRun to NOT be failed during grace period, but got: %v (reason: %s)", condition.Status, condition.Reason)
+				}
+			}
+		})
+	}
+}
+
 func TestReconcileWithTimeoutDisabled(t *testing.T) {
 	type testCase struct {
 		name    string
