@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/go-containerregistry/internal/limit"
 	"github.com/google/go-containerregistry/internal/redact"
 )
 
@@ -167,7 +168,7 @@ func CheckError(resp *http.Response, codes ...int) error {
 		}
 	}
 
-	b, err := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodySize))
+	b, err := limit.ReadAll(resp.Body, maxErrorBodySize)
 	if err != nil {
 		return err
 	}
@@ -191,7 +192,7 @@ func makeError(resp *http.Response, body []byte) *Error {
 }
 
 func retryError(resp *http.Response) error {
-	b, err := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodySize))
+	b, err := limit.ReadAll(resp.Body, maxErrorBodySize)
 	if err != nil {
 		return err
 	}
