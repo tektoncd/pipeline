@@ -1261,14 +1261,12 @@ func applyVolumeClaimTemplates(workspaceBindings []v1.WorkspaceBinding, owner me
 func storeTaskSpecAndMergeMeta(ctx context.Context, tr *v1.TaskRun, ts *v1.TaskSpec, meta *resolutionutil.ResolvedObjectMeta) error {
 	// Only store the TaskSpec once, if it has never been set before.
 	if tr.Status.TaskSpec == nil {
-		// Strip documentation-only descriptions from the status snapshot to reduce etcd usage, unless opted out. See #10321.
-		if config.FromContextOrDefaults(ctx).FeatureFlags.KeepStatusSpecDescriptions {
-			tr.Status.TaskSpec = ts
-		} else {
-			stripped := ts.DeepCopy()
-			stripped.StripDescriptions()
-			tr.Status.TaskSpec = stripped
+		// Snapshot the spec, stripping documentation-only descriptions to reduce etcd usage unless opted out. See #10321.
+		snapshot := ts.DeepCopy()
+		if !config.FromContextOrDefaults(ctx).FeatureFlags.KeepStatusSpecDescriptions {
+			snapshot.StripDescriptions()
 		}
+		tr.Status.TaskSpec = snapshot
 		if meta == nil {
 			return nil
 		}
