@@ -365,6 +365,15 @@ func extractLayer(tarWriter *tar.Writer, fileMap map[string]bool, layer v1.Layer
 			}
 		}
 	}
+
+	// Drain any bytes the tar.Reader did not consume (trailing data after the
+	// end-of-archive marker) so the underlying verifying reader reaches io.EOF
+	// and the layer's digest is verified. Without this, a layer whose contents
+	// do not match the manifest's layer digest is extracted without error.
+	// pkg/v1/validate/layer.go performs the same drain.
+	if _, err := io.Copy(io.Discard, layerReader); err != nil {
+		return fmt.Errorf("verifying layer: %w", err)
+	}
 	return nil
 }
 
@@ -499,6 +508,12 @@ func layerTime(layer v1.Layer, t time.Time) (v1.Layer, error) {
 				return nil, fmt.Errorf("writing layer file: %w", err)
 			}
 		}
+	}
+
+	// Drain trailing bytes so the underlying verifying reader reaches io.EOF
+	// and the layer digest is verified (see extractLayer).
+	if _, err := io.Copy(io.Discard, layerReader); err != nil {
+		return nil, fmt.Errorf("verifying layer: %w", err)
 	}
 
 	if err := tarWriter.Close(); err != nil {
