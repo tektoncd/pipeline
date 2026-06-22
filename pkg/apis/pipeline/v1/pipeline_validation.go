@@ -243,7 +243,7 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 							return errs
 						}
 					}
-					errs = errs.Also(pt.Matrix.Include[i].When.validateWhenExpressionsFields(ctx).ViaFieldIndex("matrix.include", i))
+					errs = errs.Also(pt.Matrix.Include[i].When.validateWhenExpressionsFields(ctx).ViaField("when").ViaFieldIndex("matrix.include", i))
 				}
 			}
 		}
@@ -497,6 +497,9 @@ func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, pa
 		errs = errs.Also(validatePipelineParametersVariablesInTaskParameters(task.Params, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
 		if task.IsMatrixed() {
 			errs = errs.Also(task.Matrix.validatePipelineParametersVariablesInMatrixParameters(prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
+			for i := range task.Matrix.Include {
+				errs = errs.Also(task.Matrix.Include[i].When.validatePipelineParametersVariables(prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("matrix.include", i).ViaIndex(idx))
+			}
 		}
 		errs = errs.Also(task.When.validatePipelineParametersVariables(prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
 	}

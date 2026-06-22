@@ -4734,6 +4734,25 @@ func Test_validateMatrix(t *testing.T) {
 			},
 		}},
 		wantErrs: apis.ErrDisallowedFields("[0].matrix.include.when.cel"),
+	}, {
+		name: "invalid matrix include when expression has its error rooted at the when field",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Include: IncludeParamsList{
+					{
+						When: WhenExpressions{
+							{
+								Input:    "foo",
+								Operator: selection.In,
+							},
+						},
+					},
+				},
+			},
+		}},
+		wantErrs: apis.ErrInvalidValue("expecting non-empty values field", "").ViaIndex(0).ViaField("when").ViaFieldIndex("matrix.include", 0).ViaFieldIndex("", 0),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
