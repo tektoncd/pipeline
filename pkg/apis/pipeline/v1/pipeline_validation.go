@@ -97,8 +97,6 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateArtifactReference(ctx, ps.Tasks, ps.Finally))
 	errs = errs.Also(validateMatrix(ctx, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validateMatrix(ctx, ps.Finally).ViaField("finally"))
-	errs = errs.Also(validateVarSubstitutionExpressions(ps.Tasks, "tasks"))
-	errs = errs.Also(validateVarSubstitutionExpressions(ps.Finally, "finally"))
 	return errs
 }
 
@@ -867,69 +865,6 @@ func validateMatrix(ctx context.Context, tasks []PipelineTask) (errs *apis.Field
 		errs = errs.Also(task.validateMatrix(ctx).ViaIndex(idx))
 	}
 	errs = errs.Also(validateTaskResultsFromMatrixedPipelineTasksConsumed(tasks))
-	return errs
-}
-
-func validateVarSubstitutionExpressions(tasks []PipelineTask, fieldPath string) (errs *apis.FieldError) {
-	validPrefixes := sets.NewString("params", "tasks", "finally", "context", "workspaces")
-	for idx, task := range tasks {
-		for _, param := range task.Params {
-			if expressions, ok := param.GetVarSubstitutionExpressions(); ok {
-				for _, expression := range expressions {
-					prefix := strings.SplitN(expression, ".", 2)[0]
-					if !validPrefixes.Has(prefix) {
-						errs = errs.Also(apis.ErrInvalidValue(
-							fmt.Sprintf("invalid variable reference %q, must start with a valid prefix: params, tasks, finally, context, or workspaces; if you meant a shell variable, use ${VAR} instead", "$("+expression+")"),
-							"value",
-						).ViaFieldKey("params", param.Name).ViaFieldIndex(fieldPath, idx))
-					}
-				}
-			}
-		}
-		for i, we := range task.When {
-			if expressions, ok := we.GetVarSubstitutionExpressions(); ok {
-				for _, expression := range expressions {
-					prefix := strings.SplitN(expression, ".", 2)[0]
-					if !validPrefixes.Has(prefix) {
-						errs = errs.Also(apis.ErrInvalidValue(
-							fmt.Sprintf("invalid variable reference %q, must start with a valid prefix: params, tasks, finally, context, or workspaces; if you meant a shell variable, use ${VAR} instead", "$("+expression+")"),
-							"",
-						).ViaFieldIndex("when", i).ViaFieldIndex(fieldPath, idx))
-					}
-				}
-			}
-		}
-		if task.IsMatrixed() {
-			for _, param := range task.Matrix.Params {
-				if expressions, ok := param.GetVarSubstitutionExpressions(); ok {
-					for _, expression := range expressions {
-						prefix := strings.SplitN(expression, ".", 2)[0]
-						if !validPrefixes.Has(prefix) {
-							errs = errs.Also(apis.ErrInvalidValue(
-								fmt.Sprintf("invalid variable reference %q, must start with a valid prefix: params, tasks, finally, context, or workspaces; if you meant a shell variable, use ${VAR} instead", "$("+expression+")"),
-								"value",
-							).ViaFieldKey("matrix.params", param.Name).ViaFieldIndex(fieldPath, idx))
-						}
-					}
-				}
-			}
-			for i, include := range task.Matrix.Include {
-				for _, param := range include.Params {
-					if expressions, ok := param.GetVarSubstitutionExpressions(); ok {
-						for _, expression := range expressions {
-							prefix := strings.SplitN(expression, ".", 2)[0]
-							if !validPrefixes.Has(prefix) {
-								errs = errs.Also(apis.ErrInvalidValue(
-									fmt.Sprintf("invalid variable reference %q, must start with a valid prefix: params, tasks, finally, context, or workspaces; if you meant a shell variable, use ${VAR} instead", "$("+expression+")"),
-									"value",
-								).ViaFieldKey("params", param.Name).ViaFieldIndex("matrix.include", i).ViaFieldIndex(fieldPath, idx))
-							}
-						}
-					}
-				}
-			}
-		}
-	}
 	return errs
 }
 

@@ -59,11 +59,11 @@ func addGetIAMInfoMiddleware(stack *middleware.Stack, options Options) error {
 	)
 }
 
-func buildGetIAMInfoPath(params any) (string, error) {
+func buildGetIAMInfoPath(params interface{}) (string, error) {
 	return getIAMInfoPath, nil
 }
 
-func buildGetIAMInfoOutput(resp *smithyhttp.Response) (v any, err error) {
+func buildGetIAMInfoOutput(resp *smithyhttp.Response) (v interface{}, err error) {
 	defer func() {
 		closeErr := resp.Body.Close()
 		if err == nil {

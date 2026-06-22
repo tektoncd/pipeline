@@ -15,7 +15,8 @@ func (c *Client) DeleteOrgMembership(org, user string) (*Response, error) {
 	if err := escapeValidatePathSegments(&org, &user); err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/orgs/%s/members/%s", org, user), nil, nil)
+	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/orgs/%s/members/%s", org, user), nil, nil)
+	return resp, err
 }
 
 // ListOrgMembershipOption list OrgMembership options

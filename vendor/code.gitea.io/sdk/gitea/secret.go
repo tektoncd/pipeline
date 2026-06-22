@@ -11,8 +11,6 @@ type Secret struct {
 	Name string `json:"name"`
 	// the secret's data
 	Data string `json:"data"`
-	// the secret's description
-	Description string `json:"description"`
 	// Date and Time of secret creation
 	Created time.Time `json:"created_at"`
 }

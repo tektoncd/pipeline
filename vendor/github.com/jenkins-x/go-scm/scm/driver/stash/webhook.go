@@ -9,11 +9,11 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"slices"
 	"time"
 
 	"github.com/jenkins-x/go-scm/pkg/hmac"
 	"github.com/jenkins-x/go-scm/scm"
+	"k8s.io/utils/strings/slices"
 )
 
 // TODO(bradrydzewski) push hook does not include commit message

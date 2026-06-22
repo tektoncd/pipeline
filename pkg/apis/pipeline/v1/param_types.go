@@ -32,8 +32,6 @@ import (
 
 // ParamsPrefix is the prefix used in $(...) expressions referring to parameters
 const ParamsPrefix = "params"
-const matrixField = "matrix"
-const lengthField = "length"
 
 // ParamSpec defines arbitrary parameters needed beyond typed inputs (such as
 // resources). Parameter values are provided by users as inputs on a TaskRun
@@ -262,19 +260,12 @@ func (p Param) ParseTaskandResultName() (string, string) {
 	if expressions, ok := p.GetVarSubstitutionExpressions(); ok {
 		for _, expression := range expressions {
 			subExpressions := strings.Split(expression, ".")
-			// tasks.<name>.matrix.length
-			if len(subExpressions) == 4 &&
-				subExpressions[0] == PipelineTasks &&
-				subExpressions[2] == matrixField &&
-				subExpressions[3] == lengthField {
-				return subExpressions[1], ""
-			}
-			// tasks.<name>.matrix.<result>.length
-			if len(subExpressions) == 5 &&
-				subExpressions[0] == PipelineTasks &&
-				subExpressions[2] == matrixField &&
-				subExpressions[4] == lengthField {
-				return subExpressions[1], subExpressions[3]
+			pipelineTaskName := subExpressions[1]
+			if len(subExpressions) == 4 {
+				return pipelineTaskName, ""
+			} else if len(subExpressions) == 5 {
+				resultName := subExpressions[3]
+				return pipelineTaskName, resultName
 			}
 		}
 	}

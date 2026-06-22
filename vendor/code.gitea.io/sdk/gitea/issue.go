@@ -294,9 +294,10 @@ func (c *Client) DeleteIssue(user, repo string, id int64) (*Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo); err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("DELETE",
+	_, resp, err := c.getResponse("DELETE",
 		fmt.Sprintf("/repos/%s/%s/issues/%d", user, repo, id),
 		nil, nil)
+	return resp, err
 }
 
 func (c *Client) issueBackwardsCompatibility(issue *Issue) {

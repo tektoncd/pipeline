@@ -50,11 +50,11 @@ func addGetUserDataMiddleware(stack *middleware.Stack, options Options) error {
 		buildGetUserDataOutput)
 }
 
-func buildGetUserDataPath(params any) (string, error) {
+func buildGetUserDataPath(params interface{}) (string, error) {
 	return getUserDataPath, nil
 }
 
-func buildGetUserDataOutput(resp *smithyhttp.Response) (any, error) {
+func buildGetUserDataOutput(resp *smithyhttp.Response) (interface{}, error) {
 	return &GetUserDataOutput{
 		Content: resp.Body,
 	}, nil

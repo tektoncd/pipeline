@@ -28,12 +28,10 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-// ConfigStoreFromContext initialises the config store from the context.
-// Optional onAfterStore hooks are forwarded to config.NewStore so callers can
-// react to config changes (e.g. tracing provider updates).
-func ConfigStoreFromContext(ctx context.Context, cmw configmap.Watcher, onAfterStore ...func(name string, value interface{})) *config.Store {
+// ConfigStoreFromContext initialise the config store from the context
+func ConfigStoreFromContext(ctx context.Context, cmw configmap.Watcher) *config.Store {
 	logger := logging.FromContext(ctx)
-	configStore := config.NewStore(logger.Named("config-store"), onAfterStore...)
+	configStore := config.NewStore(logger.Named("config-store"))
 	configStore.WatchConfigs(cmw)
 	return configStore
 }

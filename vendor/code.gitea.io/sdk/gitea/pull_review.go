@@ -202,7 +202,8 @@ func (c *Client) DeletePullReview(owner, repo string, index, id int64) (*Respons
 		return nil, err
 	}
 
-	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/pulls/%d/reviews/%d", owner, repo, index, id), jsonHeader, nil)
+	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/pulls/%d/reviews/%d", owner, repo, index, id), jsonHeader, nil)
+	return resp, err
 }
 
 // CreatePullReview create a review to an pull request
@@ -264,9 +265,10 @@ func (c *Client) CreateReviewRequests(owner, repo string, index int64, opt PullR
 		return nil, err
 	}
 
-	return c.doRequestWithStatusHandle("POST",
+	_, resp, err := c.getResponse("POST",
 		fmt.Sprintf("/repos/%s/%s/pulls/%d/requested_reviewers", owner, repo, index),
 		jsonHeader, bytes.NewReader(body))
+	return resp, err
 }
 
 // DeleteReviewRequests delete review requests to an pull request
@@ -282,9 +284,10 @@ func (c *Client) DeleteReviewRequests(owner, repo string, index int64, opt PullR
 		return nil, err
 	}
 
-	return c.doRequestWithStatusHandle("DELETE",
+	_, resp, err := c.getResponse("DELETE",
 		fmt.Sprintf("/repos/%s/%s/pulls/%d/requested_reviewers", owner, repo, index),
 		jsonHeader, bytes.NewReader(body))
+	return resp, err
 }
 
 // DismissPullReview dismiss a review for a pull request
@@ -300,9 +303,10 @@ func (c *Client) DismissPullReview(owner, repo string, index, id int64, opt Dism
 		return nil, err
 	}
 
-	return c.doRequestWithStatusHandle("POST",
+	_, resp, err := c.getResponse("POST",
 		fmt.Sprintf("/repos/%s/%s/pulls/%d/reviews/%d/dismissals", owner, repo, index, id),
 		jsonHeader, bytes.NewReader(body))
+	return resp, err
 }
 
 // UnDismissPullReview cancel to dismiss a review for a pull request
@@ -314,7 +318,8 @@ func (c *Client) UnDismissPullReview(owner, repo string, index, id int64) (*Resp
 		return nil, err
 	}
 
-	return c.doRequestWithStatusHandle("POST",
+	_, resp, err := c.getResponse("POST",
 		fmt.Sprintf("/repos/%s/%s/pulls/%d/reviews/%d/undismissals", owner, repo, index, id),
 		jsonHeader, nil)
+	return resp, err
 }

@@ -49,7 +49,7 @@ func (s *organizationService) ListOrgMembers(ctx context.Context, org string, op
 	path := projectUsersPermissionsPath(org, opts)
 	out := new(participants)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
-	if !out.LastPage.Bool {
+	if !out.pagination.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -68,7 +68,7 @@ func (s *organizationService) IsMember(ctx context.Context, org, user string) (b
 	if err != nil {
 		return false, res, err
 	}
-	if !out.LastPage.Bool {
+	if !out.pagination.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -116,7 +116,7 @@ func getProjectGroups(ctx context.Context, org string, client *wrapper, opts *sc
 	if err != nil {
 		return nil, err
 	}
-	if !out.LastPage.Bool {
+	if !out.pagination.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -131,7 +131,7 @@ func usersInGroups(ctx context.Context, group string, client *wrapper, opts *scm
 	if err != nil {
 		return nil, err
 	}
-	if !out.LastPage.Bool {
+	if !out.pagination.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -145,7 +145,7 @@ func (s *organizationService) IsAdmin(ctx context.Context, org, user string) (bo
 	path := projectUsersPermissionsPath(org, opts)
 	out := new(participants)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
-	if !out.LastPage.Bool {
+	if !out.pagination.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}

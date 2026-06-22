@@ -164,7 +164,44 @@ func TestReconcile(t *testing.T) {
 					},
 				},
 			},
-			expectedErr: errors.New("error getting \"Fake\" \"foo/rr\": resolved resource validation error: resolved data is not of a supported type, must be of Group: tekton.dev, Kinds: [PipelineRun Pipeline TaskRun Task Run CustomRun StepAction]"),
+			expectedErr: errors.New("error getting \"Fake\" \"foo/rr\": resolved resource validation error: resolved data is not of a supported type, must be of Group: tekton.dev, Kinds: [Pipeline Task StepAction]"),
+		}, {
+			name: "known value invalid type",
+			inputRequest: &v1beta1.ResolutionRequest{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "resolution.tekton.dev/v1beta1",
+					Kind:       "ResolutionRequest",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "rr",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.Time{Time: time.Now()},
+					Labels: map[string]string{
+						resolutioncommon.LabelKeyResolverType: resolutionframework.LabelValueFakeResolverType,
+					},
+				},
+				Spec: v1beta1.ResolutionRequestSpec{
+					Params: []pipelinev1.Param{{
+						Name:  resolutionframework.FakeParamName,
+						Value: *pipelinev1.NewStructuredValues("bar"),
+					}},
+				},
+				Status: v1beta1.ResolutionRequestStatus{},
+			},
+			paramMap: map[string]*resolutionframework.FakeResolvedResource{
+				"bar": {
+					Content:       "{\"apiVersion\": \"tekton.dev/v1\", \"kind\": \"PipelineRun\"}",
+					AnnotationMap: map[string]string{"foo": "bar"},
+					ContentSource: &pipelinev1.RefSource{
+						URI: "https://abc.com",
+						Digest: map[string]string{
+							"sha1": "xyz",
+						},
+						EntryPoint: "foo/bar",
+					},
+				},
+			},
+			expectedErr: errors.New("error getting \"Fake\" \"foo/rr\": resolved resource validation error: resolved data is not of a supported type, must be of Group: tekton.dev, Kinds: [Pipeline Task StepAction]"),
 		}, {
 			name: "known value unknown type",
 			inputRequest: &v1beta1.ResolutionRequest{
@@ -201,7 +238,7 @@ func TestReconcile(t *testing.T) {
 					},
 				},
 			},
-			expectedErr: errors.New("error getting \"Fake\" \"foo/rr\": resolved resource validation error: resolved data is not of a supported type, must be of Group: tekton.dev, Kinds: [PipelineRun Pipeline TaskRun Task Run CustomRun StepAction]"),
+			expectedErr: errors.New("error getting \"Fake\" \"foo/rr\": resolved resource validation error: resolved data is not of a supported type, must be of Group: tekton.dev, Kinds: [Pipeline Task StepAction]"),
 		}, {
 			name: "unknown value",
 			inputRequest: &v1beta1.ResolutionRequest{

@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -21,7 +21,7 @@ import (
 // This should be used as the first resolver in the slice of resolvers when
 // resolving external configuration.
 func resolveDefaultAWSConfig(ctx context.Context, cfg *aws.Config, cfgs configs) error {
-	var sources []any
+	var sources []interface{}
 	for _, s := range cfgs {
 		sources = append(sources, s)
 	}
@@ -69,7 +69,7 @@ func resolveCustomCABundle(ctx context.Context, cfg *aws.Config, cfgs configs) e
 			tr.TLSClientConfig.RootCAs = x509.NewCertPool()
 		}
 
-		b, err := io.ReadAll(pemCerts)
+		b, err := ioutil.ReadAll(pemCerts)
 		if err != nil {
 			appendErr = fmt.Errorf("failed to read custom CA bundle PEM file")
 		}
@@ -106,9 +106,9 @@ func resolveRegion(ctx context.Context, cfg *aws.Config, configs configs) error 
 }
 
 func resolveBaseEndpoint(ctx context.Context, cfg *aws.Config, configs configs) error {
-	var downcastCfgSources []any
+	var downcastCfgSources []interface{}
 	for _, cs := range configs {
-		downcastCfgSources = append(downcastCfgSources, any(cs))
+		downcastCfgSources = append(downcastCfgSources, interface{}(cs))
 	}
 
 	if val, found, err := GetIgnoreConfiguredEndpoints(ctx, downcastCfgSources); found && val && err == nil {

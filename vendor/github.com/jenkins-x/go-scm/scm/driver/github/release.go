@@ -66,7 +66,7 @@ func (s *releaseService) Create(ctx context.Context, repo string, input *scm.Rel
 		Prerelease:  input.Prerelease,
 		Tag:         input.Tag,
 	}
-	if !in.Prerelease && !in.Draft {
+	if !(in.Prerelease || in.Draft) {
 		in.MakeLatest = "true"
 	}
 	out := new(release)
@@ -101,7 +101,7 @@ func (s *releaseService) Update(ctx context.Context, repo string, id int, input 
 	}
 	in.Draft = input.Draft
 	in.Prerelease = input.Prerelease
-	if !in.Prerelease && !in.Draft {
+	if !(in.Prerelease || in.Draft) {
 		in.MakeLatest = "true"
 	}
 	out := new(release)

@@ -59,5 +59,6 @@ func (c *Client) DeleteEmail(opt DeleteEmailOption) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("DELETE", "/user/emails", jsonHeader, bytes.NewReader(body))
+	_, resp, err := c.getResponse("DELETE", "/user/emails", jsonHeader, bytes.NewReader(body))
+	return resp, err
 }

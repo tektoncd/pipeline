@@ -68,7 +68,8 @@ func (c *Client) DeleteIssueReaction(owner, repo string, index int64, reaction s
 	if err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/issues/%d/reactions", owner, repo, index), jsonHeader, bytes.NewReader(body))
+	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/issues/%d/reactions", owner, repo, index), jsonHeader, bytes.NewReader(body))
+	return resp, err
 }
 
 // PostIssueCommentReaction add a reaction to a comment of an issue
@@ -96,7 +97,8 @@ func (c *Client) DeleteIssueCommentReaction(owner, repo string, commentID int64,
 	if err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("DELETE",
+	_, resp, err := c.getResponse("DELETE",
 		fmt.Sprintf("/repos/%s/%s/issues/comments/%d/reactions", owner, repo, commentID),
 		jsonHeader, bytes.NewReader(body))
+	return resp, err
 }

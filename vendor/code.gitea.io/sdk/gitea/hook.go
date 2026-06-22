@@ -191,7 +191,8 @@ func (c *Client) EditOrgHook(org string, id int64, opt EditHookOption) (*Respons
 	if err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("PATCH", fmt.Sprintf("/orgs/%s/hooks/%d", org, id), jsonHeader, bytes.NewReader(body))
+	_, resp, err := c.getResponse("PATCH", fmt.Sprintf("/orgs/%s/hooks/%d", org, id), jsonHeader, bytes.NewReader(body))
+	return resp, err
 }
 
 // EditMyHook modify one hook of the authenticated user, with hook id and options
@@ -200,7 +201,8 @@ func (c *Client) EditMyHook(id int64, opt EditHookOption) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("PATCH", fmt.Sprintf("/user/hooks/%d", id), jsonHeader, bytes.NewReader(body))
+	_, resp, err := c.getResponse("PATCH", fmt.Sprintf("/user/hooks/%d", id), jsonHeader, bytes.NewReader(body))
+	return resp, err
 }
 
 // EditRepoHook modify one hook of a repository, with hook id and options
@@ -212,7 +214,8 @@ func (c *Client) EditRepoHook(user, repo string, id int64, opt EditHookOption) (
 	if err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("PATCH", fmt.Sprintf("/repos/%s/%s/hooks/%d", user, repo, id), jsonHeader, bytes.NewReader(body))
+	_, resp, err := c.getResponse("PATCH", fmt.Sprintf("/repos/%s/%s/hooks/%d", user, repo, id), jsonHeader, bytes.NewReader(body))
+	return resp, err
 }
 
 // DeleteOrgHook delete one hook from an organization, with hook id
@@ -220,12 +223,14 @@ func (c *Client) DeleteOrgHook(org string, id int64) (*Response, error) {
 	if err := escapeValidatePathSegments(&org); err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/orgs/%s/hooks/%d", org, id), nil, nil)
+	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/orgs/%s/hooks/%d", org, id), nil, nil)
+	return resp, err
 }
 
 // DeleteMyHook delete one hook from the authenticated user, with hook id
 func (c *Client) DeleteMyHook(id int64) (*Response, error) {
-	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/user/hooks/%d", id), nil, nil)
+	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/user/hooks/%d", id), nil, nil)
+	return resp, err
 }
 
 // DeleteRepoHook delete one hook from a repository, with hook id
@@ -233,5 +238,6 @@ func (c *Client) DeleteRepoHook(user, repo string, id int64) (*Response, error) 
 	if err := escapeValidatePathSegments(&user, &repo); err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/hooks/%d", user, repo, id), nil, nil)
+	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/hooks/%d", user, repo, id), nil, nil)
+	return resp, err
 }

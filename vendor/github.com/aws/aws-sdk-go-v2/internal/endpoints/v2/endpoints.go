@@ -101,7 +101,7 @@ func (ps Partitions) ResolveEndpoint(region string, opts Options) (aws.Endpoint,
 		region = opts.ResolvedRegion
 	}
 
-	for i := range ps {
+	for i := 0; i < len(ps); i++ {
 		if !ps[i].canResolveEndpoint(region, opts) {
 			continue
 		}
@@ -290,8 +290,8 @@ func getByPriority(s []string, p []string, def string) string {
 		return def
 	}
 
-	for i := range p {
-		for j := range s {
+	for i := 0; i < len(p); i++ {
+		for j := 0; j < len(s); j++ {
 			if s[j] == p[i] {
 				return s[j]
 			}

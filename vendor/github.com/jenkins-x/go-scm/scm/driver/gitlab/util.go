@@ -13,7 +13,7 @@ import (
 )
 
 func encode(s string) string {
-	return strings.ReplaceAll(s, "/", "%2F")
+	return strings.Replace(s, "/", "%2F", -1)
 }
 
 func encodeListOptions(opts *scm.ListOptions) string {
