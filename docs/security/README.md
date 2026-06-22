@@ -26,6 +26,12 @@ This page describes security best practices for authoring and operating Tekton
 `TaskRuns` and `PipelineRuns` where lower-trust workloads could affect
 higher-trust workloads.
 
+The broader [Tekton Security Threat Model](threat-model.md) establishes the
+principle behind this guidance: Tekton relies on Kubernetes and the surrounding
+platform for isolation and enforcement, rather than acting as a security
+boundary itself. The workspace scenarios on this page are a worked example of
+that model.
+
 ## Workspace isolation across trust boundaries
 
 `Workspaces` are a way for `TaskRuns` and `PipelineRuns` to mount Kubernetes
