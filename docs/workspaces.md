@@ -451,7 +451,7 @@ options differ for each type. `Workspaces` support the following fields:
 If storage should be isolated for each run, use a `volumeClaimTemplate` instead of an existing
 `persistentVolumeClaim`.
 Beware that the [access mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
-configured for the `PersistentVolumeClaim` effects how you can use the volume for parallel `Tasks` in a `Pipeline`. See
+configured for the `PersistentVolumeClaim` affects how you can use the volume for parallel `Tasks` in a `Pipeline`. See
 [Specifying `workspace` order in a `Pipeline` and Affinity Assistants](#specifying-workspace-order-in-a-pipeline-and-affinity-assistants) for more information about this.
 There are two ways of using `PersistentVolumeClaims` as a `VolumeSource`.
 
