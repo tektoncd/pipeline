@@ -135,6 +135,18 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:ReconcileKind")
 	defer span.End()
 
+	// Record what this reconcile pass changes on the object (write-pressure
+	// observability). The status write is decided by the generated reconciler
+	// after this returns, so capture the baseline now and compare in the defer.
+	if span.IsRecording() {
+		oldStatus := tr.Status.DeepCopy()
+		oldLabels := maps.Clone(tr.Labels)
+		oldAnnotations := maps.Clone(tr.Annotations)
+		defer func() {
+			tknreconciler.RecordWriteOutcome(span, *oldStatus, tr.Status, oldLabels, tr.Labels, oldAnnotations, tr.Annotations)
+		}()
+	}
+
 	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 	if spanCtx := span.SpanContext(); spanCtx.IsValid() {
 		logger = logger.With(zap.String("traceID", spanCtx.TraceID().String()), zap.String("spanID", spanCtx.SpanID().String()))

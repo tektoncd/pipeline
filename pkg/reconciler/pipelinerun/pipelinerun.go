@@ -188,6 +188,18 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "PipelineRun:ReconcileKind")
 	defer span.End()
 
+	// Record what this reconcile pass changes on the object (write-pressure
+	// observability). The status write is decided by the generated reconciler
+	// after this returns, so capture the baseline now and compare in the defer.
+	if span.IsRecording() {
+		oldStatus := pr.Status.DeepCopy()
+		oldLabels := maps.Clone(pr.Labels)
+		oldAnnotations := maps.Clone(pr.Annotations)
+		defer func() {
+			tknreconciler.RecordWriteOutcome(span, *oldStatus, pr.Status, oldLabels, pr.Labels, oldAnnotations, pr.Annotations)
+		}()
+	}
+
 	span.SetAttributes(
 		attribute.String("pipelinerun", pr.Name), attribute.String("namespace", pr.Namespace),
 	)
