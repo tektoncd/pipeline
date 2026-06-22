@@ -61,7 +61,7 @@ func addGetMetadataMiddleware(stack *middleware.Stack, options Options) error {
 		buildGetMetadataOutput)
 }
 
-func buildGetMetadataPath(params any) (string, error) {
+func buildGetMetadataPath(params interface{}) (string, error) {
 	p, ok := params.(*GetMetadataInput)
 	if !ok {
 		return "", fmt.Errorf("unknown parameter type %T", params)
@@ -70,7 +70,7 @@ func buildGetMetadataPath(params any) (string, error) {
 	return appendURIPath(getMetadataPath, p.Path), nil
 }
 
-func buildGetMetadataOutput(resp *smithyhttp.Response) (any, error) {
+func buildGetMetadataOutput(resp *smithyhttp.Response) (interface{}, error) {
 	return &GetMetadataOutput{
 		Content: resp.Body,
 	}, nil

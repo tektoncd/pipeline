@@ -21,20 +21,6 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      groups:
-        kubernetes:
-            patterns:
-                - k8s.io/*
-        opentelemetry:
-            patterns:
-                - go.opentelemetry.io/*
-                - go.opentelemetry.io/contrib/*
-                - knative.dev/pkg
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /tools
       schedule:
@@ -49,20 +35,20 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      groups:
-        kubernetes:
-            patterns:
-                - k8s.io/*
-        opentelemetry:
-            patterns:
-                - go.opentelemetry.io/*
-                - go.opentelemetry.io/contrib/*
-                - knative.dev/pkg
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
+    - package-ecosystem: gomod
+      directory: /test/custom-task-ctrls/wait-task-alpha
+      schedule:
+        interval: daily
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
     - package-ecosystem: gomod
       directory: /test/custom-task-ctrls/wait-task-beta
       schedule:
@@ -77,20 +63,6 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      groups:
-        kubernetes:
-            patterns:
-                - k8s.io/*
-        opentelemetry:
-            patterns:
-                - go.opentelemetry.io/*
-                - go.opentelemetry.io/contrib/*
-                - knative.dev/pkg
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: github-actions
       directory: /
       schedule:
@@ -100,8 +72,6 @@ updates:
         - dependencies
         - release-note-none
         - kind/misc
-      cooldown:
-        default-days: 7
     - package-ecosystem: docker
       directory: /tekton
       schedule:
@@ -115,8 +85,6 @@ updates:
         all:
             patterns:
                 - '*'
-      cooldown:
-        default-days: 7
     - package-ecosystem: docker
       directory: /
       schedule:
@@ -130,8 +98,6 @@ updates:
         all:
             patterns:
                 - '*'
-      cooldown:
-        default-days: 7
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v1.12.x
@@ -151,20 +117,6 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      groups:
-        kubernetes:
-            patterns:
-                - k8s.io/*
-        opentelemetry:
-            patterns:
-                - go.opentelemetry.io/*
-                - go.opentelemetry.io/contrib/*
-                - knative.dev/pkg
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /tools
       target-branch: release-v1.12.x
@@ -184,20 +136,25 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      groups:
-        kubernetes:
-            patterns:
-                - k8s.io/*
-        opentelemetry:
-            patterns:
-                - go.opentelemetry.io/*
-                - go.opentelemetry.io/contrib/*
-                - knative.dev/pkg
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
+    - package-ecosystem: gomod
+      directory: /test/custom-task-ctrls/wait-task-alpha
+      target-branch: release-v1.12.x
+      schedule:
+        interval: daily
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
     - package-ecosystem: gomod
       directory: /test/custom-task-ctrls/wait-task-beta
       target-branch: release-v1.12.x
@@ -217,20 +174,6 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      groups:
-        kubernetes:
-            patterns:
-                - k8s.io/*
-        opentelemetry:
-            patterns:
-                - go.opentelemetry.io/*
-                - go.opentelemetry.io/contrib/*
-                - knative.dev/pkg
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: github-actions
       directory: /
       target-branch: release-v1.12.x
@@ -246,8 +189,6 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      cooldown:
-        default-days: 7
     - package-ecosystem: docker
       directory: /tekton
       target-branch: release-v1.12.x
@@ -267,8 +208,6 @@ updates:
         all:
             patterns:
                 - '*'
-      cooldown:
-        default-days: 7
     - package-ecosystem: docker
       directory: /
       target-branch: release-v1.12.x
@@ -288,8 +227,6 @@ updates:
         all:
             patterns:
                 - '*'
-      cooldown:
-        default-days: 7
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v1.9.x
@@ -309,20 +246,6 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      groups:
-        kubernetes:
-            patterns:
-                - k8s.io/*
-        opentelemetry:
-            patterns:
-                - go.opentelemetry.io/*
-                - go.opentelemetry.io/contrib/*
-                - knative.dev/pkg
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /tools
       target-branch: release-v1.9.x
@@ -342,20 +265,25 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      groups:
-        kubernetes:
-            patterns:
-                - k8s.io/*
-        opentelemetry:
-            patterns:
-                - go.opentelemetry.io/*
-                - go.opentelemetry.io/contrib/*
-                - knative.dev/pkg
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
+    - package-ecosystem: gomod
+      directory: /test/custom-task-ctrls/wait-task-alpha
+      target-branch: release-v1.9.x
+      schedule:
+        interval: daily
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
     - package-ecosystem: gomod
       directory: /test/custom-task-ctrls/wait-task-beta
       target-branch: release-v1.9.x
@@ -375,20 +303,6 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      groups:
-        kubernetes:
-            patterns:
-                - k8s.io/*
-        opentelemetry:
-            patterns:
-                - go.opentelemetry.io/*
-                - go.opentelemetry.io/contrib/*
-                - knative.dev/pkg
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: github-actions
       directory: /
       target-branch: release-v1.9.x
@@ -404,8 +318,6 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      cooldown:
-        default-days: 7
     - package-ecosystem: docker
       directory: /tekton
       target-branch: release-v1.9.x
@@ -425,8 +337,6 @@ updates:
         all:
             patterns:
                 - '*'
-      cooldown:
-        default-days: 7
     - package-ecosystem: docker
       directory: /
       target-branch: release-v1.9.x
@@ -446,8 +356,6 @@ updates:
         all:
             patterns:
                 - '*'
-      cooldown:
-        default-days: 7
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v1.6.x
@@ -467,20 +375,6 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      groups:
-        kubernetes:
-            patterns:
-                - k8s.io/*
-        opentelemetry:
-            patterns:
-                - go.opentelemetry.io/*
-                - go.opentelemetry.io/contrib/*
-                - knative.dev/pkg
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /tools
       target-branch: release-v1.6.x
@@ -500,20 +394,25 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      groups:
-        kubernetes:
-            patterns:
-                - k8s.io/*
-        opentelemetry:
-            patterns:
-                - go.opentelemetry.io/*
-                - go.opentelemetry.io/contrib/*
-                - knative.dev/pkg
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
+    - package-ecosystem: gomod
+      directory: /test/custom-task-ctrls/wait-task-alpha
+      target-branch: release-v1.6.x
+      schedule:
+        interval: daily
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
     - package-ecosystem: gomod
       directory: /test/custom-task-ctrls/wait-task-beta
       target-branch: release-v1.6.x
@@ -533,20 +432,6 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      groups:
-        kubernetes:
-            patterns:
-                - k8s.io/*
-        opentelemetry:
-            patterns:
-                - go.opentelemetry.io/*
-                - go.opentelemetry.io/contrib/*
-                - knative.dev/pkg
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: github-actions
       directory: /
       target-branch: release-v1.6.x
@@ -562,8 +447,6 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      cooldown:
-        default-days: 7
     - package-ecosystem: docker
       directory: /tekton
       target-branch: release-v1.6.x
@@ -583,8 +466,6 @@ updates:
         all:
             patterns:
                 - '*'
-      cooldown:
-        default-days: 7
     - package-ecosystem: docker
       directory: /
       target-branch: release-v1.6.x
@@ -604,8 +485,6 @@ updates:
         all:
             patterns:
                 - '*'
-      cooldown:
-        default-days: 7
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v1.3.x
@@ -625,20 +504,6 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      groups:
-        kubernetes:
-            patterns:
-                - k8s.io/*
-        opentelemetry:
-            patterns:
-                - go.opentelemetry.io/*
-                - go.opentelemetry.io/contrib/*
-                - knative.dev/pkg
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /tools
       target-branch: release-v1.3.x
@@ -658,20 +523,25 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      groups:
-        kubernetes:
-            patterns:
-                - k8s.io/*
-        opentelemetry:
-            patterns:
-                - go.opentelemetry.io/*
-                - go.opentelemetry.io/contrib/*
-                - knative.dev/pkg
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
+    - package-ecosystem: gomod
+      directory: /test/custom-task-ctrls/wait-task-alpha
+      target-branch: release-v1.3.x
+      schedule:
+        interval: daily
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
     - package-ecosystem: gomod
       directory: /test/custom-task-ctrls/wait-task-beta
       target-branch: release-v1.3.x
@@ -691,20 +561,6 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      groups:
-        kubernetes:
-            patterns:
-                - k8s.io/*
-        opentelemetry:
-            patterns:
-                - go.opentelemetry.io/*
-                - go.opentelemetry.io/contrib/*
-                - knative.dev/pkg
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: github-actions
       directory: /
       target-branch: release-v1.3.x
@@ -720,8 +576,6 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
-      cooldown:
-        default-days: 7
     - package-ecosystem: docker
       directory: /tekton
       target-branch: release-v1.3.x
@@ -741,8 +595,6 @@ updates:
         all:
             patterns:
                 - '*'
-      cooldown:
-        default-days: 7
     - package-ecosystem: docker
       directory: /
       target-branch: release-v1.3.x
@@ -762,5 +614,3 @@ updates:
         all:
             patterns:
                 - '*'
-      cooldown:
-        default-days: 7

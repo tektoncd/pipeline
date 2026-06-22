@@ -93,7 +93,8 @@ func (c *Client) AdminEditUser(user string, opt EditUserOption) (*Response, erro
 	if err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("PATCH", fmt.Sprintf("/admin/users/%s", user), jsonHeader, bytes.NewReader(body))
+	_, resp, err := c.getResponse("PATCH", fmt.Sprintf("/admin/users/%s", user), jsonHeader, bytes.NewReader(body))
+	return resp, err
 }
 
 // AdminDeleteUser delete one user according name
@@ -101,7 +102,8 @@ func (c *Client) AdminDeleteUser(user string) (*Response, error) {
 	if err := escapeValidatePathSegments(&user); err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/admin/users/%s", user), nil, nil)
+	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/admin/users/%s", user), nil, nil)
+	return resp, err
 }
 
 // AdminCreateUserPublicKey adds a public key for the user
@@ -123,5 +125,6 @@ func (c *Client) AdminDeleteUserPublicKey(user string, keyID int) (*Response, er
 	if err := escapeValidatePathSegments(&user); err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/admin/users/%s/keys/%d", user, keyID), nil, nil)
+	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/admin/users/%s/keys/%d", user, keyID), nil, nil)
+	return resp, err
 }

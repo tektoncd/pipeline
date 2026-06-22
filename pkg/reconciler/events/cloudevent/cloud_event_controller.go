@@ -25,7 +25,6 @@ import (
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -66,16 +65,11 @@ func EmitCloudEvents(ctx context.Context, object runtime.Object) {
 	ctx, span := otel.GetTracerProvider().Tracer(TracerName).Start(ctx, "EmitCloudEvents")
 	defer span.End()
 	logger := logging.FromContext(ctx)
-
 	runObject, ok := object.(v1beta1.RunObject)
 	if !ok {
 		logger.Warnf("failed to emit cloud events, runtime.Object %v is not a v1beta1.RunObject", object)
 		return
 	}
-	span.SetAttributes(
-		attribute.String("run", runObject.GetObjectMeta().GetName()),
-		attribute.String("namespace", runObject.GetObjectMeta().GetNamespace()),
-	)
 
 	sink := cloudEventsSink(ctx)
 	if sink == "" {

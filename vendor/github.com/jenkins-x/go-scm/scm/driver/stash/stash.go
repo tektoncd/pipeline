@@ -106,7 +106,7 @@ func (c *wrapper) do(ctx context.Context, method, path string, in, out interface
 	req.Header.Add("X-Atlassian-Token", "no-check")
 
 	// execute the http request
-	res, err := c.Do(ctx, req)
+	res, err := c.Client.Do(ctx, req)
 	if err != nil {
 		return nil, err
 	}

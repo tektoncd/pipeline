@@ -620,67 +620,6 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			Message: `PipelineTask OnError cannot be set to "continue" when Retries is greater than 0`,
 			Paths:   []string{""},
 		},
-	}, {
-		name: "invalid variable reference in pipeline task param",
-		p: &Pipeline{
-			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-			Spec: PipelineSpec{
-				Tasks: []PipelineTask{{
-					Name:    "foo",
-					TaskRef: &TaskRef{Name: "foo-task"},
-					Params: Params{{
-						Name: "SCRIPT", Value: ParamValue{Type: ParamTypeString, StringVal: "echo $(env_value_set_from_yq)"},
-					}},
-				}},
-			},
-		},
-		expectedError: apis.FieldError{
-			Message: `invalid value: invalid variable reference "$(env_value_set_from_yq)", must start with a valid prefix: params, tasks, finally, context, or workspaces; if you meant a shell variable, use ${VAR} instead`,
-			Paths:   []string{"spec.tasks[0].params[SCRIPT].value"},
-		},
-	}, {
-		name: "invalid variable reference in matrix param",
-		p: &Pipeline{
-			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-			Spec: PipelineSpec{
-				Tasks: []PipelineTask{{
-					Name:    "foo",
-					TaskRef: &TaskRef{Name: "foo-task"},
-					Matrix: &Matrix{
-						Params: Params{{
-							Name: "IMAGE", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(invalid_ref)", "image2"}},
-						}},
-					},
-				}},
-			},
-		},
-		expectedError: apis.FieldError{
-			Message: `invalid value: invalid variable reference "$(invalid_ref)", must start with a valid prefix: params, tasks, finally, context, or workspaces; if you meant a shell variable, use ${VAR} instead`,
-			Paths:   []string{"spec.tasks[0].matrix.params[IMAGE].value"},
-		},
-	}, {
-		name: "invalid variable reference in matrix include param",
-		p: &Pipeline{
-			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-			Spec: PipelineSpec{
-				Tasks: []PipelineTask{{
-					Name:    "foo",
-					TaskRef: &TaskRef{Name: "foo-task"},
-					Matrix: &Matrix{
-						Include: IncludeParamsList{{
-							Name: "build-1",
-							Params: Params{{
-								Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "$(invalid_ref)"},
-							}},
-						}},
-					},
-				}},
-			},
-		},
-		expectedError: apis.FieldError{
-			Message: `invalid value: invalid variable reference "$(invalid_ref)", must start with a valid prefix: params, tasks, finally, context, or workspaces; if you meant a shell variable, use ${VAR} instead`,
-			Paths:   []string{"spec.tasks[0].matrix.include[0].params[IMAGE].value"},
-		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

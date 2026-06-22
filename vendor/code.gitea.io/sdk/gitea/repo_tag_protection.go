@@ -120,5 +120,6 @@ func (c *Client) DeleteTagProtection(owner, repo string, id int64) (*Response, e
 		return nil, err
 	}
 
-	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/tag_protections/%d", owner, repo, id), jsonHeader, nil)
+	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/tag_protections/%d", owner, repo, id), jsonHeader, nil)
+	return resp, err
 }

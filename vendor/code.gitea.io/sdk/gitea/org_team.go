@@ -202,12 +202,14 @@ func (c *Client) EditTeam(id int64, opt EditTeamOption) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("PATCH", fmt.Sprintf("/teams/%d", id), jsonHeader, bytes.NewReader(body))
+	_, resp, err := c.getResponse("PATCH", fmt.Sprintf("/teams/%d", id), jsonHeader, bytes.NewReader(body))
+	return resp, err
 }
 
 // DeleteTeam deletes a team of an organization
 func (c *Client) DeleteTeam(id int64) (*Response, error) {
-	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/teams/%d", id), nil, nil)
+	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/teams/%d", id), nil, nil)
+	return resp, err
 }
 
 // ListTeamMembersOptions options for listing team's members
@@ -238,7 +240,8 @@ func (c *Client) AddTeamMember(id int64, user string) (*Response, error) {
 	if err := escapeValidatePathSegments(&user); err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("PUT", fmt.Sprintf("/teams/%d/members/%s", id, user), nil, nil)
+	_, resp, err := c.getResponse("PUT", fmt.Sprintf("/teams/%d/members/%s", id, user), nil, nil)
+	return resp, err
 }
 
 // RemoveTeamMember removes a member from a team
@@ -246,7 +249,8 @@ func (c *Client) RemoveTeamMember(id int64, user string) (*Response, error) {
 	if err := escapeValidatePathSegments(&user); err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/teams/%d/members/%s", id, user), nil, nil)
+	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/teams/%d/members/%s", id, user), nil, nil)
+	return resp, err
 }
 
 // ListTeamRepositoriesOptions options for listing team's repositories
@@ -267,7 +271,8 @@ func (c *Client) AddTeamRepository(id int64, org, repo string) (*Response, error
 	if err := escapeValidatePathSegments(&org, &repo); err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("PUT", fmt.Sprintf("/teams/%d/repos/%s/%s", id, org, repo), nil, nil)
+	_, resp, err := c.getResponse("PUT", fmt.Sprintf("/teams/%d/repos/%s/%s", id, org, repo), nil, nil)
+	return resp, err
 }
 
 // RemoveTeamRepository removes a repository from a team
@@ -275,5 +280,6 @@ func (c *Client) RemoveTeamRepository(id int64, org, repo string) (*Response, er
 	if err := escapeValidatePathSegments(&org, &repo); err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/teams/%d/repos/%s/%s", id, org, repo), nil, nil)
+	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/teams/%d/repos/%s/%s", id, org, repo), nil, nil)
+	return resp, err
 }

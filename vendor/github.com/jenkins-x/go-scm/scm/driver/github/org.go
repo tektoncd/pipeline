@@ -78,12 +78,11 @@ func (s *organizationService) IsMember(ctx context.Context, org, user string) (b
 		return false, res, err
 	}
 	code := res.Status
-	switch code {
-	case 204:
+	if code == 204 {
 		return true, res, nil
-	case 404:
+	} else if code == 404 {
 		return false, res, nil
-	case 302:
+	} else if code == 302 {
 		return false, res, fmt.Errorf("requester is not %s org member", org)
 	}
 	// Should be unreachable.

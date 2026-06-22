@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
-	"time"
 )
 
 // AccessTokenScope represents the scope for an access token.
@@ -72,8 +71,6 @@ type AccessToken struct {
 	Token          string             `json:"sha1"`
 	TokenLastEight string             `json:"token_last_eight"`
 	Scopes         []AccessTokenScope `json:"scopes"`
-	Created        time.Time          `json:"created_at,omitempty"`
-	Updated        time.Time          `json:"last_used_at,omitempty"`
 }
 
 // ListAccessTokensOptions options for listing a users's access tokens
@@ -141,5 +138,6 @@ func (c *Client) DeleteAccessToken(value interface{}) (*Response, error) {
 		return nil, fmt.Errorf("only string and int64 supported")
 	}
 
-	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/users/%s/tokens/%s", url.PathEscape(username), url.PathEscape(token)), jsonHeader, nil)
+	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/users/%s/tokens/%s", url.PathEscape(username), url.PathEscape(token)), jsonHeader, nil)
+	return resp, err
 }

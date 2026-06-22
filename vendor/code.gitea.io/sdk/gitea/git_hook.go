@@ -57,7 +57,8 @@ func (c *Client) EditRepoGitHook(user, repo, id string, opt EditGitHookOption) (
 	if err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("PATCH", fmt.Sprintf("/repos/%s/%s/hooks/git/%s", user, repo, id), jsonHeader, bytes.NewReader(body))
+	_, resp, err := c.getResponse("PATCH", fmt.Sprintf("/repos/%s/%s/hooks/git/%s", user, repo, id), jsonHeader, bytes.NewReader(body))
+	return resp, err
 }
 
 // DeleteRepoGitHook delete one Git hook from a repository
@@ -65,5 +66,6 @@ func (c *Client) DeleteRepoGitHook(user, repo, id string) (*Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo, &id); err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/hooks/git/%s", user, repo, id), nil, nil)
+	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/hooks/git/%s", user, repo, id), nil, nil)
+	return resp, err
 }

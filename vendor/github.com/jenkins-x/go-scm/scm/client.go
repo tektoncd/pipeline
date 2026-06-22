@@ -22,7 +22,7 @@ var (
 
 	// ErrNotSupported indicates a resource endpoint is not
 	// supported or implemented.
-	ErrNotSupported = errors.New("not supported")
+	ErrNotSupported = errors.New("Not Supported")
 )
 
 type (

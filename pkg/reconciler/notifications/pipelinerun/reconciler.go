@@ -24,26 +24,13 @@ import (
 	pipelinerunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/notifications"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
-	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
-)
-
-const (
-	// TracerName is the name of the tracer for the pipelinerun notifications reconciler.
-	TracerName = "PipelineRunNotificationsReconciler"
 )
 
 // Reconciler implements controller.Reconciler for PipelineRun resources.
 type Reconciler struct {
 	cloudEventClient cloudevent.CEClient
 	cacheClient      *bc.BigCache
-
-	// tracerProvider is used to create spans for distributed tracing.
-	tracerProvider trace.TracerProvider
 }
 
 // NewReconciler creates a new Reconciler with the given clients.
@@ -51,7 +38,6 @@ func NewReconciler(ceClient cloudevent.CEClient, cacheClient *bc.BigCache) *Reco
 	return &Reconciler{
 		cloudEventClient: ceClient,
 		cacheClient:      cacheClient,
-		tracerProvider:   otel.GetTracerProvider(),
 	}
 }
 
@@ -68,21 +54,5 @@ var _ pipelinerunreconciler.Interface = (*Reconciler)(nil)
 
 // ReconcileKind observes the resource conditions and triggers notifications accordingly.
 func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgreconciler.Event {
-	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "ReconcileKind",
-		trace.WithAttributes(
-			attribute.String("pipelinerun.name", pr.Name),
-			attribute.String("pipelinerun.namespace", pr.Namespace),
-		),
-	)
-	defer span.End()
-
-	logger := logging.FromContext(ctx)
-	logger.Infof("Reconciling PipelineRun notifications for %s/%s", pr.Namespace, pr.Name)
-
-	err := notifications.ReconcileRunObject(ctx, c, pr)
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		span.RecordError(err)
-	}
-	return err
+	return notifications.ReconcileRunObject(ctx, c, pr)
 }

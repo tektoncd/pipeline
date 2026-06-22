@@ -78,7 +78,8 @@ func (c *Client) DeletePackage(owner, packageType, name, version string) (*Respo
 	if err := escapeValidatePathSegments(&owner, &packageType, &name, &version); err != nil {
 		return nil, err
 	}
-	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/packages/%s/%s/%s/%s", owner, packageType, name, version), nil, nil)
+	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/packages/%s/%s/%s/%s", owner, packageType, name, version), nil, nil)
+	return resp, err
 }
 
 // ListPackageFiles lists the files within a package

@@ -42,12 +42,12 @@ const (
 
 var (
 	bufPool = sync.Pool{
-		New: func() any {
+		New: func() interface{} {
 			return bufio.NewWriter(io.Discard)
 		},
 	}
 	numBufPool = sync.Pool{
-		New: func() any {
+		New: func() interface{} {
 			b := make([]byte, 0, initialNumBufSize)
 			return &b
 		},

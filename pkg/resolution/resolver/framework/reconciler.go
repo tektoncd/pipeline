@@ -72,15 +72,9 @@ var _ reconciler.LeaderAware = &Reconciler{}
 // the framework.TimedResolution interface.
 const defaultMaximumResolutionDuration = time.Minute
 
-// allowedResourceKinds lists the kinds of resources which
-// are allowed to be resolved by resolvers
 var allowedResourceKinds = []string{
-	pipelineapi.PipelineRunControllerName,
 	pipelineapi.PipelineControllerName,
-	pipelineapi.TaskRunControllerName,
 	pipelineapi.TaskControllerName,
-	pipelineapi.RunControllerName,
-	pipelineapi.CustomRunControllerName,
 	pipelinev1beta1.StepActionKind,
 }
 

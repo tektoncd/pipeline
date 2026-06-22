@@ -675,26 +675,6 @@ func TestParseTaskandResultName(t *testing.T) {
 		param:            v1.Param{Name: "foo", Value: v1.ParamValue{StringVal: "", Type: v1.ParamTypeString}},
 		pipelineTaskName: "",
 		resultName:       "",
-	}, {
-		name:             "invalid variable reference without dots should not panic",
-		param:            v1.Param{Name: "foo", Value: v1.ParamValue{StringVal: "$(new_image)", Type: v1.ParamTypeString}},
-		pipelineTaskName: "",
-		resultName:       "",
-	}, {
-		name:             "invalid variable reference with one dot should not panic",
-		param:            v1.Param{Name: "foo", Value: v1.ParamValue{StringVal: "$(image.name)", Type: v1.ParamTypeString}},
-		pipelineTaskName: "",
-		resultName:       "",
-	}, {
-		name:             "mixed expressions: result ref and matrix context var returns matrix task name",
-		param:            v1.Param{Name: "foo", Value: v1.ParamValue{StringVal: "$(tasks.producer.results.digest) $(tasks.matrixed.matrix.length)", Type: v1.ParamTypeString}},
-		pipelineTaskName: "matrixed",
-		resultName:       "",
-	}, {
-		name:             "mixed expressions: result ref and matrix result length var returns matrix task name",
-		param:            v1.Param{Name: "foo", Value: v1.ParamValue{StringVal: "$(tasks.producer.results.digest) $(tasks.matrixed.matrix.myresult.length)", Type: v1.ParamTypeString}},
-		pipelineTaskName: "matrixed",
-		resultName:       "myresult",
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {

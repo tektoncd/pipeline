@@ -15,8 +15,7 @@ on:
     branches: [ "main" ]
 
 # Declare default permissions as read only.
-permissions:
-  contents: read
+permissions: read-all
 
 jobs:
   analysis:
