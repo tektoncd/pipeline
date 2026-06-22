@@ -76,7 +76,7 @@ func init() {
 func cancelCustomRun(ctx context.Context, runName string, namespace string, clientSet clientset.Interface) error {
 	ctx, span := tracerFromContext(ctx).Start(ctx, "cancelCustomRun")
 	defer span.End()
-	span.SetAttributes(attribute.String("customrun", runName))
+	span.SetAttributes(attribute.String("customrun", runName), attribute.String("namespace", namespace))
 
 	_, err := clientSet.TektonV1beta1().CustomRuns(namespace).Patch(ctx, runName, types.JSONPatchType, cancelCustomRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
@@ -91,7 +91,7 @@ func cancelCustomRun(ctx context.Context, runName string, namespace string, clie
 func cancelTaskRun(ctx context.Context, taskRunName string, namespace string, clientSet clientset.Interface) error {
 	ctx, span := tracerFromContext(ctx).Start(ctx, "cancelTaskRun")
 	defer span.End()
-	span.SetAttributes(attribute.String("taskrun", taskRunName))
+	span.SetAttributes(attribute.String("taskrun", taskRunName), attribute.String("namespace", namespace))
 
 	_, err := clientSet.TektonV1().TaskRuns(namespace).Patch(ctx, taskRunName, types.JSONPatchType, cancelTaskRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
