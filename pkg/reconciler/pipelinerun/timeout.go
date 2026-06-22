@@ -105,7 +105,7 @@ func timeoutPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.P
 func timeoutCustomRun(ctx context.Context, customRunName string, namespace string, clientSet clientset.Interface) error {
 	ctx, span := tracerFromContext(ctx).Start(ctx, "timeoutCustomRun")
 	defer span.End()
-	span.SetAttributes(attribute.String("customrun", customRunName))
+	span.SetAttributes(attribute.String("customrun", customRunName), attribute.String("namespace", namespace))
 
 	_, err := clientSet.TektonV1beta1().CustomRuns(namespace).Patch(ctx, customRunName, types.JSONPatchType, timeoutCustomRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
@@ -118,7 +118,7 @@ func timeoutCustomRun(ctx context.Context, customRunName string, namespace strin
 func timeoutTaskRun(ctx context.Context, taskRunName string, namespace string, clientSet clientset.Interface) error {
 	ctx, span := tracerFromContext(ctx).Start(ctx, "timeoutTaskRun")
 	defer span.End()
-	span.SetAttributes(attribute.String("taskrun", taskRunName))
+	span.SetAttributes(attribute.String("taskrun", taskRunName), attribute.String("namespace", namespace))
 
 	_, err := clientSet.TektonV1().TaskRuns(namespace).Patch(ctx, taskRunName, types.JSONPatchType, timeoutTaskRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
