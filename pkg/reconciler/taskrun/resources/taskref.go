@@ -47,7 +47,10 @@ const clusterResolverType = "cluster"
 // externally resolved Tasks are untrusted metadata and must not authorize local
 // cross-namespace StepAction reads.
 func ResolvedTaskNamespaceForStepActions(taskrun *v1.TaskRun, resolvedTaskNamespace string) string {
-	if taskrun != nil && taskrun.Spec.TaskRef != nil && taskrun.Spec.TaskRef.Resolver == clusterResolverType && resolvedTaskNamespace != "" {
+	if taskrun == nil {
+		return ""
+	}
+	if taskrun.Spec.TaskRef != nil && taskrun.Spec.TaskRef.Resolver == clusterResolverType && resolvedTaskNamespace != "" {
 		return resolvedTaskNamespace
 	}
 	return taskrun.Namespace

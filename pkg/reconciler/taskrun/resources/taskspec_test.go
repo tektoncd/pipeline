@@ -2339,7 +2339,7 @@ func TestGetStepActionsDataConcurrentObjectParamDefault(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := GetStepActionsData(t.Context(), taskSpec, tr, tektonclient, nil, nil); err != nil {
+	if _, err := GetStepActionsData(t.Context(), taskSpec, tr, tektonclient, nil, nil, tr.Namespace); err != nil {
 		t.Fatalf("GetStepActionsData returned error: %v", err)
 	}
 	// Concurrent resolution must not have mutated the Task's shared object-param default.
