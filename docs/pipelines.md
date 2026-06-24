@@ -379,7 +379,7 @@ For example, the following is a valid yaml.
 apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: pipelien-propagated-params
+  name: pipeline-propagated-params
 spec:
   params:
     - name: HELLO
