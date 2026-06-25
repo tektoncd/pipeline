@@ -28,6 +28,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -49,6 +50,9 @@ const (
 // It returns nil when no trace context is present, so callers fall back to
 // un-annotated events.
 func traceAnnotations(ctx context.Context) map[string]string {
+	if !trace.SpanContextFromContext(ctx).IsValid() {
+		return nil
+	}
 	carrier := propagation.MapCarrier{}
 	otel.GetTextMapPropagator().Inject(ctx, carrier)
 	if len(carrier) == 0 {
@@ -101,10 +105,15 @@ func EmitK8sEvents(ctx context.Context, beforeCondition *apis.Condition, afterCo
 	}
 }
 
-// EmitError emits a failure associated to an error, attaching trace context
-// annotations from ctx when available so the error event can be correlated
-// with a distributed trace.
-func EmitError(ctx context.Context, c record.EventRecorder, err error, object runtime.Object) {
+// EmitError emits a failure associated to an error.
+func EmitError(c record.EventRecorder, err error, object runtime.Object) {
+	EmitErrorWithContext(context.Background(), c, err, object)
+}
+
+// EmitErrorWithContext emits a failure associated to an error, attaching trace
+// context annotations from ctx when available so the error event can be
+// correlated with a distributed trace.
+func EmitErrorWithContext(ctx context.Context, c record.EventRecorder, err error, object runtime.Object) {
 	if err != nil {
 		emitEvent(ctx, c, object, corev1.EventTypeWarning, EventReasonError, err.Error())
 	}
