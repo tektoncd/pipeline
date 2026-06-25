@@ -372,7 +372,7 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1
 		_, err := c.updateLabelsAndAnnotations(ctx, pr)
 		if err != nil {
 			logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
-			events.EmitError(ctx, controller.GetEventRecorder(ctx), err, pr)
+			events.EmitErrorWithContext(ctx, controller.GetEventRecorder(ctx), err, pr)
 			errs = append(errs, err)
 		}
 	}

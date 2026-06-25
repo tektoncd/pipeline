@@ -29,7 +29,9 @@ import (
 // context from the context using the globally configured propagator, and
 // returns nil when no valid span context is present.
 func TestTraceAnnotations(t *testing.T) {
+	prev := otel.GetTextMapPropagator()
 	otel.SetTextMapPropagator(propagation.TraceContext{})
+	t.Cleanup(func() { otel.SetTextMapPropagator(prev) })
 
 	t.Run("no span context", func(t *testing.T) {
 		if got := traceAnnotations(context.Background()); got != nil {

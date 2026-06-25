@@ -17,7 +17,6 @@ limitations under the License.
 package k8sevent_test
 
 import (
-	"context"
 	"errors"
 	"testing"
 	"time"
@@ -261,7 +260,7 @@ func TestEmitError(t *testing.T) {
 	for _, ts := range testcases {
 		fr := record.NewFakeRecorder(1)
 		tr := &corev1.Pod{}
-		k8sevents.EmitError(context.Background(), fr, ts.err, tr)
+		k8sevents.EmitError(fr, ts.err, tr)
 		err := k8sevents.CheckEventsOrdered(t, fr.Events, ts.name, ts.wantEvents)
 		if err != nil {
 			t.Error(err.Error())
