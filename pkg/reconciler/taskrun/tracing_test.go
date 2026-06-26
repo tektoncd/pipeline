@@ -20,6 +20,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -90,7 +91,8 @@ func TestInitTracing(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			tr := tc.taskRun
-			ctx := initTracing(t.Context(), tc.tracerProvider, tr)
+			ctx, span := initTracing(t.Context(), tc.tracerProvider, tr)
+			defer span.End()
 
 			if ctx == nil {
 				t.Fatalf("returned nil context from initTracing")
@@ -119,5 +121,28 @@ func TestInitTracing(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestInitTracingRootSpanLifecycle(t *testing.T) {
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+	exporter := tracetest.NewInMemoryExporter()
+	tracerProvider := tracesdk.NewTracerProvider(tracesdk.WithSyncer(exporter))
+	defer func() { _ = tracerProvider.Shutdown(t.Context()) }()
+
+	tr := &v1.TaskRun{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "testns"}}
+	_, span := initTracing(t.Context(), tracerProvider, tr)
+
+	if got := exporter.GetSpans(); len(got) != 0 {
+		t.Fatalf("root span exported before caller ended it: got %d spans", len(got))
+	}
+
+	span.End()
+	spans := exporter.GetSpans()
+	if len(spans) != 1 {
+		t.Fatalf("exported spans = %d, want 1", len(spans))
+	}
+	if spans[0].Name != "TaskRun:Reconciler" {
+		t.Fatalf("exported span name = %q, want TaskRun:Reconciler", spans[0].Name)
 	}
 }
