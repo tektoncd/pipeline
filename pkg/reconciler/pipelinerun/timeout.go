@@ -25,6 +25,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/zap"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -71,6 +72,13 @@ func init() {
 
 // timeoutPipelineRun marks the PipelineRun as timed out and any resolved TaskRun(s) too.
 func timeoutPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.PipelineRun, clientSet clientset.Interface) error {
+	ctx, span := tracerFromContext(ctx).Start(ctx, "timeoutPipelineRun")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
+	)
+
 	errs := timeoutPipelineTasks(ctx, logger, pr, clientSet)
 
 	// If we successfully timed out all the TaskRuns and Runs, we can consider the PipelineRun timed out.
@@ -87,24 +95,36 @@ func timeoutPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.P
 			Reason:  v1.PipelineRunReasonCouldntTimeOut.String(),
 			Message: fmt.Sprintf("PipelineRun %q was timed out but had errors trying to time out TaskRuns and/or Runs: %s", pr.Name, e),
 		})
-		return fmt.Errorf("error(s) from timing out TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
+		err := fmt.Errorf("error(s) from timing out TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
+		recordSpanError(span, err)
+		return err
 	}
 	return nil
 }
 
 func timeoutCustomRun(ctx context.Context, customRunName string, namespace string, clientSet clientset.Interface) error {
+	ctx, span := tracerFromContext(ctx).Start(ctx, "timeoutCustomRun")
+	defer span.End()
+	span.SetAttributes(attribute.String("customrun", customRunName), attribute.String("namespace", namespace))
+
 	_, err := clientSet.TektonV1beta1().CustomRuns(namespace).Patch(ctx, customRunName, types.JSONPatchType, timeoutCustomRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
 		return nil
 	}
+	recordSpanError(span, err)
 	return err
 }
 
 func timeoutTaskRun(ctx context.Context, taskRunName string, namespace string, clientSet clientset.Interface) error {
+	ctx, span := tracerFromContext(ctx).Start(ctx, "timeoutTaskRun")
+	defer span.End()
+	span.SetAttributes(attribute.String("taskrun", taskRunName), attribute.String("namespace", namespace))
+
 	_, err := clientSet.TektonV1().TaskRuns(namespace).Patch(ctx, taskRunName, types.JSONPatchType, timeoutTaskRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
 		return nil
 	}
+	recordSpanError(span, err)
 	return err
 }
 

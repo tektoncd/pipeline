@@ -24,6 +24,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"knative.dev/pkg/logging"
@@ -99,4 +100,21 @@ func getMarshalledSpanFromContext(ctx context.Context) (string, error) {
 		return "", errors.New("marshalled spanContext size is too big")
 	}
 	return string(marshalled), nil
+}
+
+// tracerFromContext returns a tracer bound to the provider that created the
+// span already on ctx. Helpers such as the cancel and timeout paths run within
+// the reconcile context but do not have access to the Reconciler's
+// TracerProvider, so this keeps their spans on the same trace.
+func tracerFromContext(ctx context.Context) trace.Tracer {
+	return trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName)
+}
+
+// recordSpanError marks the span as failed and records the error, mirroring the
+// convention used by the notifications reconcilers.
+func recordSpanError(span trace.Span, err error) {
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+	}
 }
