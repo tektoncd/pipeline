@@ -145,3 +145,7 @@ data:
   # Alpha feature — this is a short-term measure. External result storage
   # (TEP-0164) will address the underlying 4KB limitation.
   enable-termination-message-compression: "false"
+  # Setting this flag to "true" will enable masking of secret values in step logs.
+  # When enabled, secret values from environment variables and volume mounts are
+  # mounted into step containers and redacted from stdout/stderr.
+  enable-secret-masking: "false"
