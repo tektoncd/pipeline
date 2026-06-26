@@ -176,7 +176,7 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
 						Name:            "affinity-assistant",
-						SecurityContext: &corev1.SecurityContext{},
+						SecurityContext: pipelinePod.LinuxSecurityContext,
 					}},
 					Volumes: []corev1.Volume{{
 						Name: "workspace-0",
@@ -203,7 +203,7 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
 						Name:            "affinity-assistant",
-						SecurityContext: &corev1.SecurityContext{},
+						SecurityContext: pipelinePod.LinuxSecurityContext,
 					}},
 				},
 			},
@@ -230,7 +230,7 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
 						Name:            "affinity-assistant",
-						SecurityContext: &corev1.SecurityContext{},
+						SecurityContext: pipelinePod.LinuxSecurityContext,
 					}},
 					Volumes: []corev1.Volume{{
 						Name: "workspace-0",
@@ -257,7 +257,7 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerPipelineRun(t *testing.T) {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
 						Name:            "affinity-assistant",
-						SecurityContext: &corev1.SecurityContext{},
+						SecurityContext: pipelinePod.LinuxSecurityContext,
 					}},
 				},
 			},
@@ -405,7 +405,7 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerWorkspaceOrDisabled(t *testin
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
 						Name:            "affinity-assistant",
-						SecurityContext: &corev1.SecurityContext{},
+						SecurityContext: pipelinePod.LinuxSecurityContext,
 					}},
 					Volumes: []corev1.Volume{{
 						Name: "workspace-0",
@@ -434,7 +434,7 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerWorkspaceOrDisabled(t *testin
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
 						Name:            "affinity-assistant",
-						SecurityContext: &corev1.SecurityContext{},
+						SecurityContext: pipelinePod.LinuxSecurityContext,
 					}},
 					Volumes: []corev1.Volume{{
 						Name: "workspace-0",
@@ -468,7 +468,7 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerWorkspaceOrDisabled(t *testin
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
 						Name:            "affinity-assistant",
-						SecurityContext: &corev1.SecurityContext{},
+						SecurityContext: pipelinePod.LinuxSecurityContext,
 					}},
 					Volumes: []corev1.Volume{{
 						Name: "workspace-0",
@@ -491,7 +491,7 @@ func TestCreateOrUpdateAffinityAssistantsAndPVCsPerWorkspaceOrDisabled(t *testin
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
 						Name:            "affinity-assistant",
-						SecurityContext: &corev1.SecurityContext{},
+						SecurityContext: pipelinePod.LinuxSecurityContext,
 					}},
 					Volumes: []corev1.Volume{{
 						Name: "workspace-0",
