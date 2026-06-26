@@ -20,6 +20,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/tektoncd/pipeline/pkg/resolvermetrics"
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
@@ -37,7 +38,11 @@ func init() {
 }
 
 func addCacheWithLoggerToCtx(ctx context.Context, _ *rest.Config) context.Context {
-	return context.WithValue(ctx, resolverCacheKey{}, createCacheOnce(ctx))
+	c := createCacheOnce(ctx)
+	if m := resolvermetrics.Get(ctx); m != nil {
+		c.SetMetrics(m)
+	}
+	return context.WithValue(ctx, resolverCacheKey{}, c)
 }
 
 func createCacheOnce(ctx context.Context) *resolverCache {

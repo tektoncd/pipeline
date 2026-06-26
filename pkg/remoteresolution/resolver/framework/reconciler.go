@@ -32,6 +32,7 @@ import (
 	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"github.com/tektoncd/pipeline/pkg/resolvermetrics"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -40,6 +41,7 @@ import (
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/reconciler"
+	"sigs.k8s.io/yaml"
 )
 
 // defaultMaximumResolutionDuration is the maximum amount of time
@@ -77,6 +79,7 @@ type Reconciler struct {
 	resolutionRequestClientSet rrclient.Interface
 
 	configStore *framework.ConfigStore
+	metrics     *resolvermetrics.Recorder
 }
 
 var _ reconciler.LeaderAware = &Reconciler{}
@@ -119,6 +122,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.ResolutionRequest) error {
+	startTime := r.Clock.Now()
+	resolverType := rr.Labels[resolutioncommon.LabelKeyResolverType]
+	metricsStatus := resolvermetrics.StatusError
+	resourceKind := resolvermetrics.ResourceKindUnknown
+	defer func() {
+		if r.metrics != nil && metricsStatus != "" {
+			r.metrics.RecordResolution(ctx, resolverType, metricsStatus, resourceKind, r.Clock.Now().Sub(startTime))
+		}
+	}()
+
 	errChan := make(chan error, 1)
 	resourceChan := make(chan framework.ResolvedResource, 1)
 
@@ -184,13 +197,22 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 	select {
 	case err := <-errChan:
 		if err != nil {
+			switch {
+			case resolutioncommon.IsErrTransient(err):
+				metricsStatus = ""
+			case isInvalidRequestError(err):
+				metricsStatus = resolvermetrics.StatusInvalidRequest
+			}
 			return r.OnError(ctx, rr, err)
 		}
 	case <-resolutionCtx.Done():
 		if err := resolutionCtx.Err(); err != nil {
+			metricsStatus = resolvermetrics.StatusTimeout
 			return r.OnError(ctx, rr, err)
 		}
 	case resource := <-resourceChan:
+		metricsStatus = resolvermetrics.StatusSuccess
+		resourceKind = resolvedResourceKind(resource)
 		return r.writeResolvedData(ctx, rr, resource)
 	}
 
@@ -263,4 +285,19 @@ func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.Resoluti
 	}
 
 	return nil
+}
+
+func isInvalidRequestError(err error) bool {
+	var invalidErr *resolutioncommon.InvalidRequestError
+	return errors.As(err, &invalidErr)
+}
+
+func resolvedResourceKind(resource framework.ResolvedResource) string {
+	var metadata struct {
+		Kind string
+	}
+	if err := yaml.Unmarshal(resource.Data(), &metadata); err != nil || metadata.Kind == "" {
+		return resolvermetrics.ResourceKindUnknown
+	}
+	return metadata.Kind
 }
