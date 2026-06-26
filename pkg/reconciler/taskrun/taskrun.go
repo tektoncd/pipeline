@@ -28,6 +28,7 @@ import (
 
 	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	nsconfig "github.com/tektoncd/pipeline/pkg/apis/config/namespace"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -94,6 +95,7 @@ type Reconciler struct {
 	pvcHandler               volumeclaim.PvcHandler
 	resolutionRequester      resolution.Requester
 	tracerProvider           trace.TracerProvider
+	namespaceConfigCache     *nsconfig.NamespaceConfigCache
 
 	// Native-sidecar detection (ServerVersion + IsNativeSidecarSupport) when EnableKubernetesSidecar
 	// is set is memoized via sync.OnceValues after lazy init guarded by nativeSidecarOnce (#9755).
@@ -131,6 +133,10 @@ var (
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
+
+	// TEP-0085: Merge namespace-scoped config overrides into the context
+	ctx = nsconfig.WithNamespaceConfig(ctx, c.namespaceConfigCache, tr.Namespace, logger)
+
 	ctx = initTracing(ctx, c.tracerProvider, tr)
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:ReconcileKind")
 	defer span.End()
