@@ -49,6 +49,8 @@ const (
 	APISecretNameKey = "api-token-secret-name"
 	// APISecretKeyKey is the config map key for the containing the token within the token secret
 	APISecretKeyKey = "api-token-secret-key"
+	// APIUsernameSecretKey is the config map key containing the username within the token secret
+	APIUsernameSecretKey = "api-username-secret-key"
 	// APISecretNamespaceKey is the config map key for the token secret's namespace
 	APISecretNamespaceKey = "api-token-secret-namespace"
 )
@@ -56,16 +58,17 @@ const (
 type GitResolverConfig map[string]ScmConfig
 
 type ScmConfig struct {
-	Timeout            string `json:"fetch-timeout"`
-	URL                string `json:"default-url"`
-	Revision           string `json:"default-revision"`
-	Org                string `json:"default-org"`
-	ServerURL          string `json:"server-url"`
-	SCMType            string `json:"scm-type"`
-	GitToken           string `json:"git-token"`
-	APISecretName      string `json:"api-token-secret-name"`
-	APISecretKey       string `json:"api-token-secret-key"`
-	APISecretNamespace string `json:"api-token-secret-namespace"`
+	Timeout              string `json:"fetch-timeout"`
+	URL                  string `json:"default-url"`
+	Revision             string `json:"default-revision"`
+	Org                  string `json:"default-org"`
+	ServerURL            string `json:"server-url"`
+	SCMType              string `json:"scm-type"`
+	GitToken             string `json:"git-token"`
+	APISecretName        string `json:"api-token-secret-name"`
+	APISecretKey         string `json:"api-token-secret-key"`
+	APIUsernameSecretKey string `json:"api-username-secret-key"`
+	APISecretNamespace   string `json:"api-token-secret-namespace"`
 }
 
 func GetGitResolverConfig(ctx context.Context) (GitResolverConfig, error) {
