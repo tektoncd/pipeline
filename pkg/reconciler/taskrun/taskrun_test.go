@@ -5857,10 +5857,13 @@ spec:
 		Description: "bar-task",
 	}
 
+	// descriptions are stripped from the status snapshot by default (#10321)
+	strippedTS := ts.DeepCopy()
+	strippedTS.StripDescriptions()
 	want := tr.DeepCopy()
 	want.Status = v1.TaskRunStatus{
 		TaskRunStatusFields: v1.TaskRunStatusFields{
-			TaskSpec: ts.DeepCopy(),
+			TaskSpec: strippedTS,
 			Provenance: &v1.Provenance{
 				RefSource:    refSource.DeepCopy(),
 				FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
@@ -5929,6 +5932,42 @@ spec:
 			}
 			if d := cmp.Diff(tc.wantTaskRun, tr); d != "" {
 				t.Fatal(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func Test_storeTaskSpec_stripsDescriptions(t *testing.T) {
+	ts := &v1.TaskSpec{
+		Description: "task desc",
+		Params:      v1.ParamSpecs{{Name: "p", Description: "param desc"}},
+		Results:     []v1.TaskResult{{Name: "r", Description: "result desc"}},
+		Workspaces:  []v1.WorkspaceDeclaration{{Name: "w", Description: "ws desc"}},
+	}
+
+	tests := []struct {
+		name         string
+		keep         bool
+		wantStripped bool
+	}{
+		{name: "default strips descriptions", keep: false, wantStripped: true},
+		{name: "opt-out keeps descriptions", keep: true, wantStripped: false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := config.ToContext(t.Context(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{KeepStatusSpecDescriptions: tc.keep},
+			})
+			tr := &v1.TaskRun{ObjectMeta: metav1.ObjectMeta{Name: "foo"}}
+			if err := storeTaskSpecAndMergeMeta(ctx, tr, ts.DeepCopy(), nil); err != nil {
+				t.Fatalf("storeTaskSpecAndMergeMeta error = %v", err)
+			}
+			got := tr.Status.TaskSpec.Description
+			if tc.wantStripped && got != "" {
+				t.Errorf("expected description stripped, got %q", got)
+			}
+			if !tc.wantStripped && got != "task desc" {
+				t.Errorf("expected description retained, got %q", got)
 			}
 		})
 	}
