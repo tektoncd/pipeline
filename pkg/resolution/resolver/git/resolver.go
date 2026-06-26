@@ -26,10 +26,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jenkins-x/go-scm/scm"
-	"github.com/jenkins-x/go-scm/scm/factory"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/internal/scmclient"
 	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
@@ -76,7 +75,7 @@ type Resolver struct {
 	ttl        time.Duration
 
 	// Used in testing
-	clientFunc func(string, string, string, ...factory.ClientOptionFunc) (*scm.Client, error)
+	clientFunc func(string, string, string) (scmclient.SCMClient, error)
 }
 
 // Initialize performs any setup required by the gitresolver.
@@ -86,7 +85,7 @@ func (r *Resolver) Initialize(ctx context.Context) error {
 	r.cache = cache.NewLRUExpireCache(cacheSize)
 	r.ttl = ttl
 	if r.clientFunc == nil {
-		r.clientFunc = factory.NewClient
+		r.clientFunc = scmclient.New
 	}
 	return nil
 }
@@ -195,7 +194,7 @@ type GitResolver struct {
 
 	// Function variables for mocking in tests
 	ResolveGitCloneFunc func(ctx context.Context) (framework.ResolvedResource, error)
-	ResolveAPIGitFunc   func(ctx context.Context, clientFunc func(string, string, string, ...factory.ClientOptionFunc) (*scm.Client, error)) (framework.ResolvedResource, error)
+	ResolveAPIGitFunc   func(ctx context.Context, clientFunc func(string, string, string) (scmclient.SCMClient, error)) (framework.ResolvedResource, error)
 }
 
 // ResolveGitClone resolves a git resource using git clone.
@@ -279,7 +278,7 @@ func (g *GitResolver) ResolveGitClone(ctx context.Context) (framework.ResolvedRe
 }
 
 // ResolveAPIGit resolves a git resource using the SCM API.
-func (g *GitResolver) ResolveAPIGit(ctx context.Context, clientFunc func(string, string, string, ...factory.ClientOptionFunc) (*scm.Client, error)) (framework.ResolvedResource, error) {
+func (g *GitResolver) ResolveAPIGit(ctx context.Context, clientFunc func(string, string, string) (scmclient.SCMClient, error)) (framework.ResolvedResource, error) {
 	if g.ResolveAPIGitFunc != nil {
 		return g.ResolveAPIGitFunc(ctx, clientFunc)
 	}
@@ -323,43 +322,44 @@ func (g *GitResolver) ResolveAPIGit(ctx context.Context, clientFunc func(string,
 	if err != nil {
 		return nil, err
 	}
-	scmClient, err := clientFunc(scmType, serverURL, string(apiToken))
+	client, err := clientFunc(scmType, serverURL, string(apiToken))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create SCM client: %w", err)
 	}
 
-	orgRepo := fmt.Sprintf("%s/%s", g.Params[OrgParam], g.Params[RepoParam])
+	org := g.Params[OrgParam]
+	repo := g.Params[RepoParam]
 	path := g.Params[PathParam]
 	ref := g.Params[RevisionParam]
 
 	// fetch the actual content from a file in the repo
-	content, _, err := scmClient.Contents.Find(ctx, orgRepo, path, ref)
+	content, err := client.GetFileContent(ctx, org, repo, path, ref)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't fetch resource content: %w", err)
 	}
-	if content == nil || len(content.Data) == 0 {
-		return nil, fmt.Errorf("no content for resource in %s %s", orgRepo, path)
+	if len(content) == 0 {
+		return nil, fmt.Errorf("no content for resource in %s/%s %s", org, repo, path)
 	}
 
 	// find the actual git commit sha by the ref
-	commit, _, err := scmClient.Git.FindCommit(ctx, orgRepo, ref)
-	if err != nil || commit == nil {
+	sha, err := client.GetCommitSHA(ctx, org, repo, ref)
+	if err != nil {
 		return nil, fmt.Errorf("couldn't fetch the commit sha for the ref %s in the repo: %w", ref, err)
 	}
 
-	// fetch the repository URL
-	repo, _, err := scmClient.Repositories.Find(ctx, orgRepo)
+	// fetch the repository clone URL
+	cloneURL, err := client.GetCloneURL(ctx, org, repo)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't fetch repository: %w", err)
 	}
 
 	return &resolvedGitResource{
-		Content:  content.Data,
-		Revision: commit.Sha,
-		Org:      g.Params[OrgParam],
-		Repo:     g.Params[RepoParam],
-		Path:     content.Path,
-		URL:      repo.Clone,
+		Content:  content,
+		Revision: sha,
+		Org:      org,
+		Repo:     repo,
+		Path:     path,
+		URL:      cloneURL,
 	}, nil
 }
 
