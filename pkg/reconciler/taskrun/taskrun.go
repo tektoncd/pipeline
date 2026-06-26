@@ -842,9 +842,15 @@ func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr 
 	return nil
 }
 
-func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1.TaskRun) (*v1.TaskRun, error) {
+func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1.TaskRun) (_ *v1.TaskRun, err error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updateLabelsAndAnnotations")
 	defer span.End()
+	defer func() {
+		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
+			span.RecordError(err)
+		}
+	}()
 	// Ensure the TaskRun is properly decorated with the version of the Tekton controller processing it.
 	if tr.Annotations == nil {
 		tr.Annotations = make(map[string]string, 1)
@@ -1032,9 +1038,15 @@ func terminateStepsInPod(tr *v1.TaskRun, taskRunReason v1.TaskRunReason) {
 
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
 // TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
-func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*corev1.Pod, error) {
+func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (_ *corev1.Pod, err error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createPod")
 	defer span.End()
+	defer func() {
+		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
+			span.RecordError(err)
+		}
+	}()
 	logger := logging.FromContext(ctx)
 
 	// We don't want to mutate tr.Status.TaskSpec inside
@@ -1056,7 +1068,6 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 		return nil, validateErr
 	}
 
-	var err error
 	ts, err = workspace.Apply(ctx, *ts, tr.Spec.Workspaces, workspaceVolumes)
 	if err != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to workspace error %v", tr.Name, err)
