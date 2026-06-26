@@ -32,6 +32,10 @@
           "description": "If specified, indicates the pod's priority. \"system-node-critical\" and \"system-cluster-critical\" are two special keywords which indicate the highest priorities with the former being the highest priority. Any other name must be defined by creating a PriorityClass object with that name. If not specified, the pod priority will be default or zero if there is no default.",
           "type": "string"
         },
+        "resources": {
+          "description": "Resources are the compute resource requirements for the affinity assistant container. If not specified, default values of 50m CPU and 100Mi memory (requests and limits) are used. This allows customization in environments with ResourceQuota or LimitRange policies.",
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "securityContext": {
           "description": "SecurityContext sets the security context for the pod",
           "$ref": "#/definitions/v1.PodSecurityContext"
@@ -123,6 +127,10 @@
         "priorityClassName": {
           "description": "If specified, indicates the pod's priority. \"system-node-critical\" and \"system-cluster-critical\" are two special keywords which indicate the highest priorities with the former being the highest priority. Any other name must be defined by creating a PriorityClass object with that name. If not specified, the pod priority will be default or zero if there is no default.",
           "type": "string"
+        },
+        "resources": {
+          "description": "Resources are the compute resource requirements for the affinity assistant container. When specified on a PipelineRun's podTemplate, these resources are applied to the affinity assistant StatefulSet. If not specified, default values of 50m CPU and 100Mi memory (requests and limits) are used.",
+          "$ref": "#/definitions/v1.ResourceRequirements"
         },
         "runtimeClassName": {
           "description": "RuntimeClassName refers to a RuntimeClass object in the node.k8s.io group, which should be used to run this pod. If no RuntimeClass resource matches the named class, the pod will not be run. If unset or empty, the \"legacy\" RuntimeClass will be used, which is an implicit class with an empty definition that uses the default runtime handler. More info: https://git.k8s.io/enhancements/keps/sig-node/runtime-class.md This is a beta feature as of Kubernetes v1.14.",
