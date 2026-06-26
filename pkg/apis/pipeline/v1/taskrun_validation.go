@@ -25,7 +25,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/strings/slices"
@@ -330,9 +329,9 @@ func validateStepSpecs(specs []TaskRunStepSpec) (errs *apis.FieldError) {
 }
 
 // validateTaskRunComputeResources ensures that compute resources are not configured at both the step level and the task level
-func validateTaskRunComputeResources(computeResources *corev1.ResourceRequirements, specs []TaskRunStepSpec) (errs *apis.FieldError) {
+func validateTaskRunComputeResources(computeResources *ComputeResourceRequirements, specs []TaskRunStepSpec) (errs *apis.FieldError) {
 	for _, spec := range specs {
-		if spec.ComputeResources.Size() != 0 && computeResources != nil {
+		if !spec.ComputeResources.IsZero() && computeResources != nil {
 			return apis.ErrMultipleOneOf(
 				"stepSpecs.resources",
 				"computeResources",

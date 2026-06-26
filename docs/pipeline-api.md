@@ -1331,8 +1331,8 @@ This field is only supported when the alpha feature gate is enabled.</p>
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
-Kubernetes core/v1.ResourceRequirements
+<a href="#tekton.dev/v1.ComputeResourceRequirements">
+ComputeResourceRequirements
 </a>
 </em>
 </td>
@@ -1591,6 +1591,79 @@ string
 <div>
 <p>Combinations is a Combination list</p>
 </div>
+<h3 id="tekton.dev/v1.ComputeResourceRequirements">ComputeResourceRequirements
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTaskRunSpec">PipelineTaskRunSpec</a>, <a href="#tekton.dev/v1.Sidecar">Sidecar</a>, <a href="#tekton.dev/v1.Step">Step</a>, <a href="#tekton.dev/v1.StepTemplate">StepTemplate</a>, <a href="#tekton.dev/v1.TaskRunSidecarSpec">TaskRunSidecarSpec</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>, <a href="#tekton.dev/v1.TaskRunStepSpec">TaskRunStepSpec</a>)
+</p>
+<div>
+<p>ComputeResourceRequirements is a Tekton-owned wrapper around corev1.ResourceRequirements
+that supports variable substitutions (e.g. $(params.MEM)) in resource quantity values.</p>
+<p>CRD schema validation uses a relaxed pattern that accepts both valid quantities and
+$(…) variable references. An alternative would be to use x-kubernetes-validations (CEL)
+rules in the CRD for more expressive server-side validation (requires K8s 1.29+).</p>
+<p>When a value contains a variable reference, it is stored in RawRequests/RawLimits as a string.
+When a value is a valid quantity, it is stored in Requests/Limits as a parsed resource.Quantity.
+After variable substitution via ApplyReplacements(), raw values become parsed quantities.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>-</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcelist-v1-core">
+Kubernetes core/v1.ResourceList
+</a>
+</em>
+</td>
+<td>
+<p>Requests holds parsed resource quantities (no variable references).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>-</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcelist-v1-core">
+Kubernetes core/v1.ResourceList
+</a>
+</em>
+</td>
+<td>
+<p>Limits holds parsed resource quantities (no variable references).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>-</code><br/>
+<em>
+map[k8s.io/api/core/v1.ResourceName]string
+</em>
+</td>
+<td>
+<p>RawRequests holds string values that contain variable references.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>-</code><br/>
+<em>
+map[k8s.io/api/core/v1.ResourceName]string
+</em>
+</td>
+<td>
+<p>RawLimits holds string values that contain variable references.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.EmbeddedTask">EmbeddedTask
 </h3>
 <p>
@@ -3372,8 +3445,8 @@ PipelineTaskMetadata
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
-Kubernetes core/v1.ResourceRequirements
+<a href="#tekton.dev/v1.ComputeResourceRequirements">
+ComputeResourceRequirements
 </a>
 </em>
 </td>
@@ -3985,8 +4058,8 @@ Cannot be updated.</p>
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
-Kubernetes core/v1.ResourceRequirements
+<a href="#tekton.dev/v1.ComputeResourceRequirements">
+ComputeResourceRequirements
 </a>
 </em>
 </td>
@@ -4579,8 +4652,8 @@ Cannot be updated.</p>
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
-Kubernetes core/v1.ResourceRequirements
+<a href="#tekton.dev/v1.ComputeResourceRequirements">
+ComputeResourceRequirements
 </a>
 </em>
 </td>
@@ -5144,8 +5217,8 @@ Cannot be updated.</p>
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
-Kubernetes core/v1.ResourceRequirements
+<a href="#tekton.dev/v1.ComputeResourceRequirements">
+ComputeResourceRequirements
 </a>
 </em>
 </td>
@@ -5702,8 +5775,8 @@ string
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
-Kubernetes core/v1.ResourceRequirements
+<a href="#tekton.dev/v1.ComputeResourceRequirements">
+ComputeResourceRequirements
 </a>
 </em>
 </td>
@@ -5916,8 +5989,8 @@ This field is only supported when the alpha feature gate is enabled.</p>
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
-Kubernetes core/v1.ResourceRequirements
+<a href="#tekton.dev/v1.ComputeResourceRequirements">
+ComputeResourceRequirements
 </a>
 </em>
 </td>
@@ -6237,8 +6310,8 @@ string
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
-Kubernetes core/v1.ResourceRequirements
+<a href="#tekton.dev/v1.ComputeResourceRequirements">
+ComputeResourceRequirements
 </a>
 </em>
 </td>

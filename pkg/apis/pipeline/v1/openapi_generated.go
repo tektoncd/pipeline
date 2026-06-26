@@ -34,6 +34,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArtifactValue":                schema_pkg_apis_pipeline_v1_ArtifactValue(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts":                    schema_pkg_apis_pipeline_v1_Artifacts(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ChildStatusReference":         schema_pkg_apis_pipeline_v1_ChildStatusReference(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ComputeResourceRequirements":  schema_pkg_apis_pipeline_v1_ComputeResourceRequirements(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.EmbeddedTask":                 schema_pkg_apis_pipeline_v1_EmbeddedTask(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.IncludeParams":                schema_pkg_apis_pipeline_v1_IncludeParams(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Matrix":                       schema_pkg_apis_pipeline_v1_Matrix(ref),
@@ -603,6 +604,17 @@ func schema_pkg_apis_pipeline_v1_ChildStatusReference(ref common.ReferenceCallba
 		},
 		Dependencies: []string{
 			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_ComputeResourceRequirements(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ComputeResourceRequirements is a Tekton-owned wrapper around corev1.ResourceRequirements that supports variable substitutions (e.g. $(params.MEM)) in resource quantity values.\n\nCRD schema validation uses a relaxed pattern that accepts both valid quantities and $(…) variable references. An alternative would be to use x-kubernetes-validations (CEL) rules in the CRD for more expressive server-side validation (requires K8s 1.29+).\n\nWhen a value contains a variable reference, it is stored in RawRequests/RawLimits as a string. When a value is a valid quantity, it is stored in Requests/Limits as a parsed resource.Quantity. After variable substitution via ApplyReplacements(), raw values become parsed quantities.",
+				Type:        []string{"object"},
+			},
+		},
 	}
 }
 
@@ -2210,7 +2222,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTaskRunSpec(ref common.ReferenceCallbac
 					"computeResources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Compute resources to use for this TaskRun",
-							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ComputeResourceRequirements"),
 						},
 					},
 					"timeout": {
@@ -2223,7 +2235,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTaskRunSpec(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineTaskMetadata", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ComputeResourceRequirements", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineTaskMetadata", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -2612,8 +2624,7 @@ func schema_pkg_apis_pipeline_v1_Sidecar(ref common.ReferenceCallback) common.Op
 					"computeResources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ComputeResources required by this Sidecar. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ComputeResourceRequirements"),
 						},
 					},
 					"volumeMounts": {
@@ -2768,7 +2779,7 @@ func schema_pkg_apis_pipeline_v1_Sidecar(ref common.ReferenceCallback) common.Op
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceUsage", "k8s.io/api/core/v1.ContainerPort", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.Lifecycle", "k8s.io/api/core/v1.Probe", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.VolumeDevice", "k8s.io/api/core/v1.VolumeMount"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ComputeResourceRequirements", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceUsage", "k8s.io/api/core/v1.ContainerPort", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.Lifecycle", "k8s.io/api/core/v1.Probe", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.VolumeDevice", "k8s.io/api/core/v1.VolumeMount"},
 	}
 }
 
@@ -2993,8 +3004,7 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 					"computeResources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ComputeResources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ComputeResourceRequirements"),
 						},
 					},
 					"volumeMounts": {
@@ -3161,7 +3171,7 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Ref", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepOutputConfig", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceUsage", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.VolumeDevice", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ComputeResourceRequirements", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Ref", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepOutputConfig", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceUsage", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.VolumeDevice", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -3443,8 +3453,7 @@ func schema_pkg_apis_pipeline_v1_StepTemplate(ref common.ReferenceCallback) comm
 					"computeResources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ComputeResources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ComputeResourceRequirements"),
 						},
 					},
 					"volumeMounts": {
@@ -3506,7 +3515,7 @@ func schema_pkg_apis_pipeline_v1_StepTemplate(ref common.ReferenceCallback) comm
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.VolumeDevice", "k8s.io/api/core/v1.VolumeMount"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ComputeResourceRequirements", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.VolumeDevice", "k8s.io/api/core/v1.VolumeMount"},
 	}
 }
 
@@ -3937,8 +3946,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunSidecarSpec(ref common.ReferenceCallback
 					"computeResources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The resource requirements to apply to the Sidecar.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ComputeResourceRequirements"),
 						},
 					},
 				},
@@ -3946,7 +3954,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunSidecarSpec(ref common.ReferenceCallback
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/api/core/v1.ResourceRequirements"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ComputeResourceRequirements"},
 	}
 }
 
@@ -4087,7 +4095,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunSpec(ref common.ReferenceCallback) commo
 					"computeResources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Compute resources to use for this TaskRun",
-							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ComputeResourceRequirements"),
 						},
 					},
 					"managedBy": {
@@ -4101,7 +4109,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunSpec(ref common.ReferenceCallback) commo
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunDebug", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceBinding", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ComputeResourceRequirements", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunDebug", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceBinding", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -4448,8 +4456,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStepSpec(ref common.ReferenceCallback) c
 					"computeResources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The resource requirements to apply to the Step.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ComputeResourceRequirements"),
 						},
 					},
 				},
@@ -4457,7 +4464,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStepSpec(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/api/core/v1.ResourceRequirements"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ComputeResourceRequirements"},
 	}
 }
 
@@ -4871,6 +4878,49 @@ func schema_pkg_apis_pipeline_v1_WorkspaceUsage(ref common.ReferenceCallback) co
 					},
 				},
 				Required: []string{"name", "mountPath"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_resourceRequirementsJSON(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "resourceRequirementsJSON is used for JSON serialization.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"requests": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"limits": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 	}
