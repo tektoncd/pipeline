@@ -50,6 +50,21 @@ type IncludeParams struct {
 	// Params takes only `Parameters` of type `"string"`
 	// The names of the `params` must match the names of the `params` in the underlying `Task`
 	Params Params `json:"params,omitempty"`
+
+	// When is a list of when expressions that need to be true for the matrix task to run
+	// +optional
+	When WhenExpressions `json:"when,omitempty"`
+}
+
+// validIncludeParams returns only the IncludeParams whose When expressions allow execution.
+func (i IncludeParamsList) validIncludeParams() IncludeParamsList {
+	validIncludes := make(IncludeParamsList, 0, len(i))
+	for _, include := range i {
+		if include.When.AllowsExecution(nil) {
+			validIncludes = append(validIncludes, include)
+		}
+	}
+	return validIncludes
 }
 
 // Combination is a map, mainly defined to hold a single combination from a Matrix with key as param.Name and value as param.Value
@@ -164,8 +179,8 @@ func (cs Combinations) fanOutMatrixParams(param Param) Combinations {
 // getIncludeCombinations generates combinations based on Matrix Include Parameters
 func (m *Matrix) getIncludeCombinations() Combinations {
 	var combinations Combinations
-	for i := range m.Include {
-		includeParams := m.Include[i].Params
+	for _, include := range m.Include.validIncludeParams() {
+		includeParams := include.Params
 		newCombination := make(Combination)
 		for _, param := range includeParams {
 			newCombination[param.Name] = param.Value.StringVal
@@ -216,12 +231,28 @@ func (c Combination) sortCombination() ([]string, Combination) {
 }
 
 // CountCombinations returns the count of Combinations of Parameters generated from the Matrix in PipelineTask.
+// Include combinations whose When expressions evaluate to false are excluded; this is intended for use at
+// runtime, after the When expressions have had their parameters substituted.
 func (m *Matrix) CountCombinations() int {
+	return m.countCombinations(m.Include.validIncludeParams())
+}
+
+// CountMaxCombinations returns the maximum possible count of Combinations of Parameters generated from the
+// Matrix in PipelineTask, ignoring any When expressions on Include entries. This is intended for validation,
+// where include.when may still reference unresolved parameters and must not be allowed to under-count and
+// bypass the max-combinations guard.
+func (m *Matrix) CountMaxCombinations() int {
+	return m.countCombinations(m.Include)
+}
+
+// countCombinations returns the count of Combinations of Parameters generated from the Matrix Parameters and
+// the provided Include Parameters.
+func (m *Matrix) countCombinations(includes IncludeParamsList) int {
 	// Iterate over Matrix Parameters and compute count of all generated Combinations
 	count := m.countGeneratedCombinationsFromParams()
 
 	// Add any additional Combinations generated from Matrix Include Parameters
-	count += m.countNewCombinationsFromInclude()
+	count += m.countNewCombinationsFromInclude(includes)
 
 	return count
 }
@@ -243,16 +274,16 @@ func (m *Matrix) countGeneratedCombinationsFromParams() int {
 
 // countNewCombinationsFromInclude returns the count of Combinations of Parameters generated from the Matrix
 // Include Parameters
-func (m *Matrix) countNewCombinationsFromInclude() int {
+func (m *Matrix) countNewCombinationsFromInclude(includes IncludeParamsList) int {
 	if !m.HasInclude() {
 		return 0
 	}
 	if !m.HasParams() {
-		return len(m.Include)
+		return len(includes)
 	}
 	count := 0
 	matrixParamMap := m.Params.extractParamMapArrVals()
-	for _, include := range m.Include {
+	for _, include := range includes {
 		for _, param := range include.Params {
 			if val, exist := matrixParamMap[param.Name]; exist {
 				// If the Matrix Include param values does not exist, a new Combination will be generated
@@ -292,7 +323,7 @@ func (m *Matrix) GetAllParams() Params {
 }
 
 func (m *Matrix) validateCombinationsCount(ctx context.Context) (errs *apis.FieldError) {
-	matrixCombinationsCount := m.CountCombinations()
+	matrixCombinationsCount := m.CountMaxCombinations()
 	maxMatrixCombinationsCount := config.FromContextOrDefaults(ctx).Defaults.DefaultMaxMatrixCombinationsCount
 	if matrixCombinationsCount > maxMatrixCombinationsCount {
 		errs = errs.Also(apis.ErrOutOfBoundsValue(matrixCombinationsCount, 0, maxMatrixCombinationsCount, "matrix"))

@@ -2486,6 +2486,32 @@ func TestValidatePipelineDeclaredParameterUsage_Failure(t *testing.T) {
 			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
 			Paths:   []string{"[0].matrix.params[b-param].value[0]"},
 		},
+	}, {
+		name: "invalid pipeline task with a matrix include when expression referencing a missing param",
+		params: []ParamSpec{{
+			Name: "foo", Type: ParamTypeString,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo-task",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			Matrix: &Matrix{
+				Include: IncludeParamsList{{
+					Name: "build-1",
+					Params: Params{{
+						Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.foo)"},
+					}},
+					When: WhenExpressions{{
+						Input:    "$(params.does-not-exist)",
+						Operator: selection.In,
+						Values:   []string{"foo"},
+					}},
+				}},
+			},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.does-not-exist)"`,
+			Paths:   []string{"[0].matrix.include[0].when[0].input"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -4707,6 +4733,43 @@ func Test_validateMatrix(t *testing.T) {
 			}},
 		}},
 		wantErrs: apis.ErrGeneric("A matrixed pipelineTask can only be consumed in aggregate using [*] notation, but is currently set to tasks.matrix-emitting-results-embedded.results.report-url[0]"),
+	}, {
+		name: "cel in matrix include when expression",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Include: IncludeParamsList{
+					{
+						When: WhenExpressions{
+							{
+								CEL: "platform == 'linux'",
+							},
+						},
+					},
+				},
+			},
+		}},
+		wantErrs: apis.ErrDisallowedFields("[0].matrix.include.when.cel"),
+	}, {
+		name: "invalid matrix include when expression has its error rooted at the when field",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Include: IncludeParamsList{
+					{
+						When: WhenExpressions{
+							{
+								Input:    "foo",
+								Operator: selection.In,
+							},
+						},
+					},
+				},
+			},
+		}},
+		wantErrs: apis.ErrInvalidValue("expecting non-empty values field", "").ViaIndex(0).ViaField("when").ViaFieldIndex("matrix.include", 0).ViaFieldIndex("", 0),
 	}, {
 		name: "invalid matrix emitting array results consumed in aggregate by another pipelineTask",
 		tasks: PipelineTaskList{{
