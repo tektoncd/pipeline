@@ -747,7 +747,7 @@ spec:
 	for _, tt := range tests {
 		ctx := t.Context()
 		tektonclient := fake.NewSimpleClientset(stepAction)
-		_, err := GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, requester)
+		_, err := GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, requester, tt.tr.Namespace)
 		if err != nil {
 			t.Fatalf("Did not expect an error but got : %s", err)
 		}
@@ -969,7 +969,7 @@ spec:
 				}
 			}
 
-			_, err := GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, requester)
+			_, err := GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, requester, tt.tr.Namespace)
 			if err != nil {
 				t.Fatalf("Did not expect an error but got : %s", err)
 			}
@@ -2005,7 +2005,7 @@ func TestGetStepActionsData(t *testing.T) {
 				}
 			}
 
-			got, err := GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, nil)
+			got, err := GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, nil, tt.tr.Namespace)
 			if err != nil {
 				t.Fatalf("Did not expect an error but got : %s", err)
 			}
@@ -2234,7 +2234,7 @@ func TestGetStepActionsData_Error(t *testing.T) {
 			ctx := t.Context()
 			tektonclient := fake.NewSimpleClientset(tt.stepAction)
 
-			_, err := GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, nil)
+			_, err := GetStepActionsData(ctx, *tt.tr.Spec.TaskSpec, tt.tr, tektonclient, nil, nil, tt.tr.Namespace)
 			if err == nil {
 				t.Fatalf("Expected to get an error but did not find any.")
 			}
@@ -2287,7 +2287,7 @@ func TestGetStepActionsData_InvalidStepResultReference(t *testing.T) {
 	expectedError := `failed to resolve step ref for step "step1" (index 0): must be one of the form 1). "steps.<stepName>.results.<resultName>"; 2). "steps.<stepName>.results.<objectResultName>.<individualAttribute>"`
 	ctx := t.Context()
 	tektonclient := fake.NewSimpleClientset(stepAction)
-	if _, err := GetStepActionsData(ctx, *tr.Spec.TaskSpec, tr, tektonclient, nil, nil); err.Error() != expectedError {
+	if _, err := GetStepActionsData(ctx, *tr.Spec.TaskSpec, tr, tektonclient, nil, nil, tr.Namespace); err.Error() != expectedError {
 		t.Errorf("Expected error message %s but got %s", expectedError, err.Error())
 	}
 }
