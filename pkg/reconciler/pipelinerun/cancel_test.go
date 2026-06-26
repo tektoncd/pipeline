@@ -28,6 +28,7 @@ import (
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
+	"go.opentelemetry.io/otel/trace"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -308,7 +309,7 @@ func TestCancelPipelineRun(t *testing.T) {
 			defer cancel()
 			c, _ := test.SeedTestData(t, ctx, d)
 
-			err := cancelPipelineRun(ctx, logtesting.TestLogger(t), tc.pipelineRun, c.Pipeline)
+			err := cancelPipelineRun(ctx, logtesting.TestLogger(t), trace.NewNoopTracerProvider(), tc.pipelineRun, c.Pipeline)
 			if tc.wantErr {
 				if err == nil {
 					t.Error("expected an error, but did not get one")

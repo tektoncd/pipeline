@@ -62,6 +62,7 @@ import (
 	"go.opentelemetry.io/otel"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+	"go.opentelemetry.io/otel/trace"
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -16783,7 +16784,7 @@ spec:
 		t.Errorf("Expected one CustomRuns in status, but found %d", customrunsCount)
 	}
 
-	err := cancelPipelineRun(prt.TestAssets.Ctx, logtesting.TestLogger(t), pr, clients.Pipeline)
+	err := cancelPipelineRun(prt.TestAssets.Ctx, logtesting.TestLogger(t), trace.NewNoopTracerProvider(), pr, clients.Pipeline)
 	if err != nil {
 		t.Fatalf("Error found: %v", err)
 	}

@@ -23,6 +23,7 @@ import (
 	_ "github.com/tektoncd/pipeline/pkg/pipelinerunmetrics/fake" // Make sure the pipelinerunmetrics are setup
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
+	"go.opentelemetry.io/otel/trace"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/apis"
@@ -256,7 +257,7 @@ func TestTimeoutPipelineRun(t *testing.T) {
 			defer cancel()
 			c, _ := test.SeedTestData(t, ctx, d)
 
-			err := timeoutPipelineRun(ctx, logtesting.TestLogger(t), tc.pipelineRun, c.Pipeline)
+			err := timeoutPipelineRun(ctx, logtesting.TestLogger(t), trace.NewNoopTracerProvider(), tc.pipelineRun, c.Pipeline)
 			if tc.wantErr {
 				if err == nil {
 					t.Error("expected an error, but did not get one")
