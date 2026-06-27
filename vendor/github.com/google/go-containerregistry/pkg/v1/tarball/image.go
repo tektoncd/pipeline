@@ -248,7 +248,7 @@ func followLinks(opener Opener, filePath string, visited map[string]bool) (io.Re
 		if err != nil {
 			return nil, err
 		}
-		if hdr.Name == filePath {
+		if path.Clean(hdr.Name) == path.Clean(filePath) {
 			if hdr.Typeflag == tar.TypeSymlink || hdr.Typeflag == tar.TypeLink {
 				currentDir := filepath.Dir(filePath)
 				return followLinks(opener, path.Join(currentDir, path.Clean(hdr.Linkname)), visited)
@@ -373,6 +373,9 @@ func (c *compressedImage) Manifest() (*v1.Manifest, error) {
 		cfg, err := partial.ConfigFile(c)
 		if err != nil {
 			return nil, err
+		}
+		if i >= len(cfg.RootFS.DiffIDs) {
+			return nil, fmt.Errorf("tarball manifest references %d layer(s) but config has %d rootfs.diff_ids; the config may not describe a runnable image (for example, a buildkit cacheconfig)", len(c.imgDescriptor.Layers), len(cfg.RootFS.DiffIDs))
 		}
 		diffid := cfg.RootFS.DiffIDs[i]
 		if d, ok := c.imgDescriptor.LayerSources[diffid]; ok {

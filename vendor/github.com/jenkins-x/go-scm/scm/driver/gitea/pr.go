@@ -97,7 +97,7 @@ func (s *pullService) Update(ctx context.Context, repo string, number int, input
 	namespace, name := scm.Split(repo)
 	in := gitea.EditPullRequestOption{
 		Title: input.Title,
-		Body:  input.Body,
+		Body:  &input.Body,
 		Base:  input.Base,
 	}
 	out, resp, err := s.client.GiteaClient.EditPullRequest(namespace, name, int64(number), in)
