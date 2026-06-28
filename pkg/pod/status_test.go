@@ -3208,8 +3208,8 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 	logger, _ := logging.NewLogger("", "status")
 	kubeclient := fakek8s.NewSimpleClientset()
 	gotTr, err := MakeTaskRunStatus(t.Context(), logger, tr, pod, kubeclient, &v1.TaskSpec{})
-	if err == nil {
-		t.Error("Expected error, got nil")
+	if err != nil {
+		t.Errorf("Unexpected error, got %v", err)
 	}
 
 	ensureTimeNotNil := cmp.Comparer(func(x, y *metav1.Time) bool {

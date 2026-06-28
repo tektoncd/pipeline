@@ -276,6 +276,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 
 	// Continue with extraction of termination messages
 	orderedStepStates := make([]v1.StepState, len(stepStatuses))
+	lastFinishedAt := defaultStartTime
 	for i, s := range stepStatuses {
 		// Avoid changing the original value by modifying the pointer value.
 		state := s.State.DeepCopy()
@@ -323,8 +324,6 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 
 				results, err := termination.ParseMessage(logger, msg)
 				if err != nil {
-					logger.Errorf("termination message could not be parsed as JSON: %v", err)
-					errs = append(errs, err)
 					// Handle unexpected pod's termination by Kubernetes.
 					terminationReason = state.Terminated.Reason
 				} else {
@@ -379,15 +378,12 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 				}
 			}
 			if state.Terminated.StartedAt.IsZero() {
-				if i != 0 {
-					state.Terminated.StartedAt = orderedStepStates[i-1].Terminated.FinishedAt
-				} else {
-					state.Terminated.StartedAt = defaultStartTime
-				}
+				state.Terminated.StartedAt = lastFinishedAt
 			}
 			if state.Terminated.FinishedAt.IsZero() {
 				state.Terminated.FinishedAt = metav1.Time{Time: time.Now()}
 			}
+			lastFinishedAt = state.Terminated.FinishedAt
 		}
 		stepState := v1.StepState{
 			ContainerState:    *state.DeepCopy(),
