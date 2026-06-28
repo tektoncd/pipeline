@@ -39,7 +39,7 @@ import (
 )
 
 var ignoreVolatileTime = cmp.Comparer(func(_, _ apis.VolatileTime) bool { return true })
-var ignoreTime = cmp.Comparer(func(_, _ metav1.Time) bool { return true })
+var ignoreContainerStateTerminatedTimes = cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt")
 
 func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 	for _, c := range []struct {
@@ -491,7 +491,7 @@ func TestMakeTaskRunStatus_StepResults(t *testing.T) {
 				}
 				return y != nil
 			})
-			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ignoreTime, ensureTimeNotNil); d != "" {
+			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ignoreContainerStateTerminatedTimes, ensureTimeNotNil); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -664,7 +664,7 @@ func TestMakeTaskRunStatus_StepProvenance(t *testing.T) {
 				}
 				return y != nil
 			})
-			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ignoreTime, ensureTimeNotNil); d != "" {
+			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ignoreContainerStateTerminatedTimes, ensureTimeNotNil); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -806,7 +806,7 @@ func TestMakeTaskRunStatus_StepArtifacts(t *testing.T) {
 				}
 				return y != nil
 			})
-			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ignoreTime, ensureTimeNotNil); d != "" {
+			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ignoreContainerStateTerminatedTimes, ensureTimeNotNil); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -2335,7 +2335,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				}
 				return y != nil
 			})
-			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ignoreTime, ensureTimeNotNil); d != "" {
+			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ignoreContainerStateTerminatedTimes, ensureTimeNotNil); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 			if tr.Status.StartTime.Time != c.want.StartTime.Time {
@@ -2407,7 +2407,7 @@ func TestMakeRunStatus_OnError(t *testing.T) {
 				t.Errorf("Unexpected err in MakeTaskRunResult: %s", err)
 			}
 
-			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime, ignoreTime); d != "" {
+			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -2533,7 +2533,7 @@ func TestMakeTaskRunStatus_SidecarNotCompleted(t *testing.T) {
 				},
 			})
 			got, _ := MakeTaskRunStatus(ctx, logger, tr, &c.pod, kubeclient, &c.taskSpec)
-			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime, ignoreTime); d != "" {
+			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime); d != "" {
 				t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
 			}
 		})
@@ -2798,7 +2798,7 @@ func TestMakeTaskRunStatus_KubernetesNativeSidecar(t *testing.T) {
 				},
 			})
 			got, _ := MakeTaskRunStatus(ctx, logger, tr, &c.pod, kubeclient, &c.taskSpec)
-			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime, ignoreTime); d != "" {
+			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime); d != "" {
 				t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
 			}
 		})
@@ -3088,7 +3088,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				}
 				return y != nil
 			})
-			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ignoreTime, ensureTimeNotNil); d != "" {
+			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ignoreContainerStateTerminatedTimes, ensureTimeNotNil); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 			if tr.Status.StartTime.Time != c.want.StartTime.Time {
@@ -3136,7 +3136,6 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
 						Message:  "this is a non-json termination message. dont panic!",
-						Reason:   "ContainerStatusUnknown",
 					},
 				},
 			}, {
@@ -3149,24 +3148,20 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 		},
 	}
 	wantTr := v1.TaskRunStatus{
-		Status: statusFailure(v1.TaskRunReasonStepFailed.String(), "\"step-non-json\" exited with code 1: ContainerStatusUnknown"),
+		Status: statusFailure(v1.TaskRunReasonStepFailed.String(), "\"step-non-json\" exited with code 1"),
 		TaskRunStatusFields: v1.TaskRunStatusFields{
 			PodName: "pod",
 			Steps: []v1.StepState{{
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						ExitCode:   1,
-						Message:    "this is a non-json termination message. dont panic!",
-						Reason:     "ContainerStatusUnknown",
-						StartedAt:  metav1.Time{Time: time.Now()},
-						FinishedAt: metav1.Time{Time: time.Now()},
+						ExitCode: 1,
+						Message:  "this is a non-json termination message. dont panic!",
 					},
 				},
-				Name:              "non-json",
-				Container:         "step-non-json",
-				Results:           []v1.TaskRunResult{},
-				ImageID:           "image",
-				TerminationReason: "ContainerStatusUnknown",
+				Name:      "non-json",
+				Container: "step-non-json",
+				Results:   []v1.TaskRunResult{},
+				ImageID:   "image",
 			}, {
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{},
@@ -3208,8 +3203,8 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 	logger, _ := logging.NewLogger("", "status")
 	kubeclient := fakek8s.NewSimpleClientset()
 	gotTr, err := MakeTaskRunStatus(t.Context(), logger, tr, pod, kubeclient, &v1.TaskSpec{})
-	if err == nil {
-		t.Error("Expected error, got nil")
+	if err != nil {
+		t.Errorf("Unexpected error, got %v", err)
 	}
 
 	ensureTimeNotNil := cmp.Comparer(func(x, y *metav1.Time) bool {
@@ -3218,7 +3213,7 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 		}
 		return y != nil
 	})
-	if d := cmp.Diff(wantTr, gotTr, ignoreVolatileTime, ensureTimeNotNil, cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt")); d != "" {
+	if d := cmp.Diff(wantTr, gotTr, ignoreVolatileTime, ensureTimeNotNil, ignoreContainerStateTerminatedTimes); d != "" {
 		t.Errorf("Diff %s", diff.PrintWantGot(d))
 	}
 }
@@ -3226,6 +3221,7 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 func TestMakeRunStatusJSONError_missingTime(t *testing.T) {
 	startTime := time.Date(2022, 1, 1, 1, 1, 1, 1, time.UTC)
 	finishTime := time.Date(2022, 1, 1, 1, 2, 1, 1, time.UTC)
+	earlyFinishTime := finishTime.Add(-time.Hour)
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod",
@@ -3240,6 +3236,8 @@ func TestMakeRunStatusJSONError_missingTime(t *testing.T) {
 				Name: "step-two",
 			}, {
 				Name: "step-three",
+			}, {
+				Name: "step-four",
 			}},
 		},
 		Status: corev1.PodStatus{
@@ -3279,6 +3277,14 @@ func TestMakeRunStatusJSONError_missingTime(t *testing.T) {
 						FinishedAt: metav1.Time{Time: finishTime},
 					},
 				},
+			}, {
+				Name:    "step-four",
+				ImageID: "image",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						FinishedAt: metav1.Time{Time: earlyFinishTime},
+					},
+				},
 			}},
 		},
 	}
@@ -3296,8 +3302,8 @@ func TestMakeRunStatusJSONError_missingTime(t *testing.T) {
 	gotTr, _ := MakeTaskRunStatus(t.Context(), logger, tr, pod, kubeclient, &v1.TaskSpec{})
 	after := time.Now()
 
-	if len(gotTr.Steps) != 4 {
-		t.Fatalf("Expected 4 steps, got %d", len(gotTr.Steps))
+	if len(gotTr.Steps) != 5 {
+		t.Fatalf("Expected 5 steps, got %d", len(gotTr.Steps))
 	}
 
 	// Helper for common validations
@@ -3343,6 +3349,14 @@ func TestMakeRunStatusJSONError_missingTime(t *testing.T) {
 	checkStep(t, s3, s2.Terminated.FinishedAt, "", "")
 	if !s3.Terminated.FinishedAt.Equal(&metav1.Time{Time: finishTime}) {
 		t.Errorf("Step 3 FinishedAt should be %v, got %v", finishTime, s3.Terminated.FinishedAt)
+	}
+
+	// Step 4: StartedAt falls back to s3's FinishedAt, but replaced with FinishedAt for that step
+	// as it is earlier to avoid start time being after the finish time
+	s4 := gotTr.Steps[4]
+	checkStep(t, s4, s4.Terminated.FinishedAt, "", "")
+	if !s4.Terminated.FinishedAt.Equal(&metav1.Time{Time: earlyFinishTime}) {
+		t.Errorf("Step 4 FinishedAt should be %v, got %v", earlyFinishTime, s4.Terminated.FinishedAt)
 	}
 }
 
@@ -3875,7 +3889,7 @@ func TestGetStepTerminationReasonFromContainerStatus(t *testing.T) {
 				}
 				want := test.expectedTerminationReason[step.Container]
 				got := step.TerminationReason
-				if d := cmp.Diff(want, got, ignoreVolatileTime, ignoreTime); d != "" {
+				if d := cmp.Diff(want, got, ignoreVolatileTime); d != "" {
 					t.Errorf("Diff %s", diff.PrintWantGot(d))
 				}
 			}
@@ -4437,7 +4451,7 @@ func TestMakeTaskRunStatus_SidecarFailed(t *testing.T) {
 		}
 		return y != nil
 	})
-	if d := cmp.Diff(want, got, ignoreVolatileTime, ignoreTime, ensureTimeNotNil); d != "" {
+	if d := cmp.Diff(want, got, ignoreVolatileTime, ignoreContainerStateTerminatedTimes, ensureTimeNotNil); d != "" {
 		t.Errorf("Diff %s", diff.PrintWantGot(d))
 	}
 }

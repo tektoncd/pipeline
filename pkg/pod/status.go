@@ -276,6 +276,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 
 	// Continue with extraction of termination messages
 	orderedStepStates := make([]v1.StepState, len(stepStatuses))
+	lastFinishedAt := defaultStartTime
 	for i, s := range stepStatuses {
 		// Avoid changing the original value by modifying the pointer value.
 		state := s.State.DeepCopy()
@@ -323,10 +324,15 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 
 				results, err := termination.ParseMessage(logger, msg)
 				if err != nil {
-					logger.Errorf("termination message could not be parsed as JSON: %v", err)
-					errs = append(errs, err)
-					// Handle unexpected pod's termination by Kubernetes.
-					terminationReason = state.Terminated.Reason
+					var syntaxErr *json.SyntaxError
+					if errors.As(err, &syntaxErr) {
+						// Handle unexpected pod's termination by Kubernetes, when
+						// termination message is set by kubelet and is just a string
+						terminationReason = state.Terminated.Reason
+					} else {
+						logger.Errorf("termination message could not be parsed as JSON: %v", err)
+						errs = append(errs, err)
+					}
 				} else {
 					err := setStepArtifactsValueFromTerminationMessageRunResult(results, &sas)
 					if err != nil {
@@ -378,16 +384,17 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 					terminationReason = getTerminationReason(state.Terminated.Reason, terminationFromResults, exitCode)
 				}
 			}
-			if state.Terminated.StartedAt.IsZero() {
-				if i != 0 {
-					state.Terminated.StartedAt = orderedStepStates[i-1].Terminated.FinishedAt
-				} else {
-					state.Terminated.StartedAt = defaultStartTime
-				}
-			}
 			if state.Terminated.FinishedAt.IsZero() {
 				state.Terminated.FinishedAt = metav1.Time{Time: time.Now()}
 			}
+			if state.Terminated.StartedAt.IsZero() {
+				state.Terminated.StartedAt = lastFinishedAt
+				// ensure we do not end up with start time after finish time when start time is absent
+				if state.Terminated.StartedAt.Time.After(state.Terminated.FinishedAt.Time) {
+					state.Terminated.StartedAt = state.Terminated.FinishedAt
+				}
+			}
+			lastFinishedAt = state.Terminated.FinishedAt
 		}
 		stepState := v1.StepState{
 			ContainerState:    *state.DeepCopy(),
