@@ -31,7 +31,6 @@ import (
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/yaml"
 )
 
@@ -69,8 +68,8 @@ const (
 	// NamespaceDefaultsConfigMapName is the name of the namespace-level config-defaults ConfigMap.
 	NamespaceDefaultsConfigMapName = "tekton-config-defaults"
 
-	// DefaultResyncPeriod is the default resync period for the namespace config informer.
-	DefaultResyncPeriod = 10 * time.Minute
+	// DefaultResyncPeriod disables periodic relists; watch events keep the cache current.
+	DefaultResyncPeriod = 0 * time.Minute
 
 	configValueTrue              = "true"
 	exampleConfigKey             = "_example"
@@ -230,40 +229,6 @@ func (c *NamespaceConfigCache) getConfigMap(namespace, name string) *corev1.Conf
 	}
 
 	return cm
-}
-
-// LogEventHandlers returns a ResourceEventHandlerFuncs that logs namespace config changes.
-func LogEventHandlers(logger *zap.SugaredLogger) cache.ResourceEventHandlerFuncs {
-	return cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			cm, ok := obj.(*corev1.ConfigMap)
-			if !ok {
-				return
-			}
-			logger.Infof("TEP-0085: Namespace config added: %s/%s", cm.Namespace, cm.Name)
-		},
-		UpdateFunc: func(oldObj, newObj interface{}) {
-			cm, ok := newObj.(*corev1.ConfigMap)
-			if !ok {
-				return
-			}
-			logger.Infof("TEP-0085: Namespace config updated: %s/%s", cm.Namespace, cm.Name)
-		},
-		DeleteFunc: func(obj interface{}) {
-			cm, ok := obj.(*corev1.ConfigMap)
-			if !ok {
-				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-				if !ok {
-					return
-				}
-				cm, ok = tombstone.Obj.(*corev1.ConfigMap)
-				if !ok {
-					return
-				}
-			}
-			logger.Infof("TEP-0085: Namespace config deleted: %s/%s", cm.Namespace, cm.Name)
-		},
-	}
 }
 
 // MergeConfigMaps merges global and namespace ConfigMap data, filtering out non-overridable fields.

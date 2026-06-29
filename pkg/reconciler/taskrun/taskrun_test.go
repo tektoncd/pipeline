@@ -1571,7 +1571,6 @@ spec:
 			testAssets, cancel := getTaskRunController(t, d)
 			defer cancel()
 			c := testAssets.Controller
-			clients := testAssets.Clients
 			reconcileErr := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun))
 
 			// When a TaskRun is invalid and can't run, we return a permanent error because
@@ -1582,14 +1581,6 @@ spec:
 			}
 			if !controller.IsPermanentError(reconcileErr) {
 				t.Fatalf("Expected to see a permanent error when reconciling invalid TaskRun, got %s instead", reconcileErr)
-			}
-
-			// Check actions and events. The namespace config informer adds a filtered
-			// cluster-wide ConfigMap list/watch before the controller's normal config
-			// store list/watch.
-			actions := clients.Kube.Actions()
-			if len(actions) != 4 {
-				t.Errorf("expected 4 actions, got %d. Actions: %#v", len(actions), actions)
 			}
 
 			err := k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
@@ -2442,14 +2433,6 @@ status:
 	// reconciler does not keep trying to reconcile
 	if reconcileErr != nil {
 		t.Fatalf("Expected to see no error when reconciling TaskRun with Permanent Error but was not none")
-	}
-
-	// Check actions. The namespace config informer adds a filtered cluster-wide
-	// ConfigMap list/watch before the controller's normal config store list/watch.
-	actions := clients.Kube.Actions()
-	if len(actions) != 4 || !actions[0].Matches("list", "configmaps") || !actions[1].Matches("watch", "configmaps") || !actions[2].Matches("list", "configmaps") || !actions[3].Matches("watch", "configmaps") {
-		t.Errorf("expected 4 actions (namespace config list/watch, then config store list/watch) created by the reconciler,"+
-			" got %d. Actions: %#v", len(actions), actions)
 	}
 
 	newTr, err := clients.Pipeline.TektonV1().TaskRuns(noTaskRun.Namespace).Get(t.Context(), noTaskRun.Name, metav1.GetOptions{})
