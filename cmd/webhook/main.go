@@ -56,22 +56,27 @@ import (
 	"knative.dev/pkg/webhook/resourcesemantics/validation"
 )
 
+const (
+	taskRunKind     = "TaskRun"
+	pipelineRunKind = "PipelineRun"
+)
+
 var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	// v1alpha1
 	v1alpha1.SchemeGroupVersion.WithKind("VerificationPolicy"): &v1alpha1.VerificationPolicy{},
 	v1alpha1.SchemeGroupVersion.WithKind("StepAction"):         &v1alpha1.StepAction{},
 	// v1beta1
-	v1beta1.SchemeGroupVersion.WithKind("Pipeline"):    &v1beta1.Pipeline{},
-	v1beta1.SchemeGroupVersion.WithKind("Task"):        &v1beta1.Task{},
-	v1beta1.SchemeGroupVersion.WithKind("TaskRun"):     &v1beta1.TaskRun{},
-	v1beta1.SchemeGroupVersion.WithKind("PipelineRun"): &v1beta1.PipelineRun{},
-	v1beta1.SchemeGroupVersion.WithKind("CustomRun"):   &v1beta1.CustomRun{},
-	v1beta1.SchemeGroupVersion.WithKind("StepAction"):  &v1beta1.StepAction{},
+	v1beta1.SchemeGroupVersion.WithKind("Pipeline"):      &v1beta1.Pipeline{},
+	v1beta1.SchemeGroupVersion.WithKind("Task"):          &v1beta1.Task{},
+	v1beta1.SchemeGroupVersion.WithKind(taskRunKind):     &v1beta1.TaskRun{},
+	v1beta1.SchemeGroupVersion.WithKind(pipelineRunKind): &v1beta1.PipelineRun{},
+	v1beta1.SchemeGroupVersion.WithKind("CustomRun"):     &v1beta1.CustomRun{},
+	v1beta1.SchemeGroupVersion.WithKind("StepAction"):    &v1beta1.StepAction{},
 	// v1
-	v1.SchemeGroupVersion.WithKind("Task"):        &v1.Task{},
-	v1.SchemeGroupVersion.WithKind("Pipeline"):    &v1.Pipeline{},
-	v1.SchemeGroupVersion.WithKind("TaskRun"):     &v1.TaskRun{},
-	v1.SchemeGroupVersion.WithKind("PipelineRun"): &v1.PipelineRun{},
+	v1.SchemeGroupVersion.WithKind("Task"):          &v1.Task{},
+	v1.SchemeGroupVersion.WithKind("Pipeline"):      &v1.Pipeline{},
+	v1.SchemeGroupVersion.WithKind(taskRunKind):     &v1.TaskRun{},
+	v1.SchemeGroupVersion.WithKind(pipelineRunKind): &v1.PipelineRun{},
 
 	// resolution
 	// v1alpha1
@@ -131,7 +136,7 @@ func withNamespaceConfigForAdmission(ctx context.Context, nsConfigCache *nsconfi
 }
 
 func supportsNamespaceConfigAdmission(kind string) bool {
-	return kind == "TaskRun" || kind == "PipelineRun"
+	return kind == taskRunKind || kind == pipelineRunKind
 }
 
 func admissionRequestNamespaceAndKindFromContext(ctx context.Context) (string, string) {
