@@ -117,38 +117,42 @@ func newNamespaceConfigCache(ctx context.Context) *nsconfig.NamespaceConfigCache
 	// but we need a cluster-scoped informer to read namespace ConfigMaps.
 	kubeclientset := kubeclient.Get(ctx)
 	nsConfigFactory, nsConfigCMInformer := nsconfig.NewNamespaceConfigInformer(kubeclientset, nsconfig.DefaultResyncPeriod)
-	nsConfigCMInformer.Informer().AddEventHandler(nsconfig.LogEventHandlers(logging.FromContext(ctx).Named("ns-config"))) //nolint:errcheck
 	nsConfigFactory.Start(ctx.Done())
 	nsConfigFactory.WaitForCacheSync(ctx.Done())
 	return nsconfig.NewNamespaceConfigCache(nsConfigCMInformer.Lister())
 }
 
 func withNamespaceConfigForAdmission(ctx context.Context, nsConfigCache *nsconfig.NamespaceConfigCache) context.Context {
-	ctx = nsconfig.ToContext(ctx, nsConfigCache)
-	namespace := admissionRequestNamespaceFromContext(ctx)
-	if namespace == "" {
+	namespace, kind := admissionRequestNamespaceAndKindFromContext(ctx)
+	if namespace == "" || !supportsNamespaceConfigAdmission(kind) {
 		return ctx
 	}
 	return nsconfig.WithNamespaceConfig(ctx, nsConfigCache, namespace, logging.FromContext(ctx).Named("ns-config"))
 }
 
-func admissionRequestNamespaceFromContext(ctx context.Context) string {
+func supportsNamespaceConfigAdmission(kind string) bool {
+	return kind == "TaskRun" || kind == "PipelineRun"
+}
+
+func admissionRequestNamespaceAndKindFromContext(ctx context.Context) (string, string) {
 	req := apis.GetHTTPRequest(ctx)
 	if req == nil || req.Body == nil {
-		return ""
+		return "", ""
 	}
 
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		return ""
-	}
+	originalBody := req.Body
+	body, err := io.ReadAll(originalBody)
+	_ = originalBody.Close()
 	req.Body = io.NopCloser(bytes.NewReader(body))
+	if err != nil {
+		return "", ""
+	}
 
 	review := &admissionv1.AdmissionReview{}
 	if err := json.Unmarshal(body, review); err != nil || review.Request == nil {
-		return ""
+		return "", ""
 	}
-	return review.Request.Namespace
+	return review.Request.Namespace, review.Request.Kind.Kind
 }
 
 func newValidationAdmissionController(name string) func(context.Context, configmap.Watcher) *controller.Impl {
@@ -199,12 +203,10 @@ func newConfigValidationController(name string) func(context.Context, configmap.
 
 func configValidationConstructors() configmap.Constructors {
 	return configmap.Constructors{
-		logging.ConfigMapName():                     logging.NewConfigFromConfigMap,
-		defaultconfig.GetDefaultsConfigName():       defaultconfig.NewDefaultsFromConfigMap,
-		nsconfig.NamespaceDefaultsConfigMapName:     defaultconfig.NewDefaultsFromConfigMap,
-		pkgleaderelection.ConfigMapName():           pkgleaderelection.NewConfigFromConfigMap,
-		defaultconfig.GetFeatureFlagsConfigName():   defaultconfig.NewFeatureFlagsFromConfigMap,
-		nsconfig.NamespaceFeatureFlagsConfigMapName: defaultconfig.NewFeatureFlagsFromConfigMap,
+		logging.ConfigMapName():                   logging.NewConfigFromConfigMap,
+		defaultconfig.GetDefaultsConfigName():     defaultconfig.NewDefaultsFromConfigMap,
+		pkgleaderelection.ConfigMapName():         pkgleaderelection.NewConfigFromConfigMap,
+		defaultconfig.GetFeatureFlagsConfigName(): defaultconfig.NewFeatureFlagsFromConfigMap,
 	}
 }
 
