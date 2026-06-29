@@ -166,6 +166,8 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-${{ runner.arch }}-ko-
     - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
+      with:
+        version: v0.18.1
     - name: ko-resolve
       run: |
           # Use the repository's .ko.yaml for consistent base images
