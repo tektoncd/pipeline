@@ -2713,7 +2713,7 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 		Name:         "place-scripts",
 		Image:        "busybox",
 		Command:      []string{"sh"},
-		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount, debugScriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount, writeDebugScriptsVolumeMount},
 		Args: []string{"-c", `tmpfile="/tekton/debug/scripts/debug-continue"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'debug-continue-heredoc-randomly-generated-9l9zj'

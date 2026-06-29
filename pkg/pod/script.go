@@ -62,6 +62,12 @@ var (
 	debugScriptsVolumeMount = corev1.VolumeMount{
 		Name:      debugScriptsVolumeName,
 		MountPath: debugScriptsDir,
+		ReadOnly:  true,
+	}
+	writeDebugScriptsVolumeMount = corev1.VolumeMount{
+		Name:      debugScriptsVolumeName,
+		MountPath: debugScriptsDir,
+		ReadOnly:  false,
 	}
 	debugInfoVolume = corev1.Volume{
 		Name:         debugInfoVolumeName,
@@ -109,7 +115,7 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Ste
 
 	// Add mounts for debug
 	if debugConfig != nil && debugConfig.NeedsDebug() {
-		placeScriptsInit.VolumeMounts = append(placeScriptsInit.VolumeMounts, debugScriptsVolumeMount)
+		placeScriptsInit.VolumeMounts = append(placeScriptsInit.VolumeMounts, writeDebugScriptsVolumeMount)
 	}
 
 	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, debugConfig, "script")
