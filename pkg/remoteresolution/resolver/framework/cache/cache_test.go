@@ -19,6 +19,8 @@ package cache
 import (
 	"context"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -585,6 +587,96 @@ func TestCacheMetrics_HitAndMiss(t *testing.T) {
 	if !foundMiss {
 		t.Error("cache_miss_total metric not found")
 	}
+}
+
+func TestCacheMetrics_SingleflightDedupCountsOnlyWaiters(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	oldProvider := otel.GetMeterProvider()
+	otel.SetMeterProvider(provider)
+	defer func() {
+		otel.SetMeterProvider(oldProvider)
+		_ = provider.Shutdown(context.Background())
+	}()
+
+	rec, err := resolvermetrics.NewRecorder()
+	if err != nil {
+		t.Fatalf("NewRecorder() error: %v", err)
+	}
+
+	cache := newResolverCache(100, 1*time.Hour)
+	cache.SetMetrics(rec)
+	cache.logger = zaptest.NewLogger(t).Sugar()
+	defer cache.Clear()
+
+	params := []pipelinev1.Param{{
+		Name:  bundleresolution.ParamBundle,
+		Value: pipelinev1.ParamValue{StringVal: "registry.io/repo@sha256:dedup"},
+	}}
+
+	const callers = 5
+	ready := make(chan struct{}, callers)
+	start := make(chan struct{})
+	resolveStarted := make(chan struct{})
+	release := make(chan struct{})
+	errs := make(chan error, callers)
+	var calls atomic.Int32
+	resolveFn := func() (resolutionframework.ResolvedResource, error) {
+		if calls.Add(1) == 1 {
+			close(resolveStarted)
+		}
+		<-release
+		return &mockResolvedResource{data: []byte("data")}, nil
+	}
+
+	var wg sync.WaitGroup
+	for range callers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ready <- struct{}{}
+			<-start
+			_, err := cache.GetCachedOrResolveFromRemote(t.Context(), params, "bundles", resolveFn)
+			errs <- err
+		}()
+	}
+	for range callers {
+		<-ready
+	}
+	close(start)
+	<-resolveStarted
+	time.Sleep(100 * time.Millisecond)
+	close(release)
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("cached resolve error: %v", err)
+		}
+	}
+	if calls.Load() != 1 {
+		t.Fatalf("expected one remote resolution, got %d", calls.Load())
+	}
+
+	var rm metricdata.ResourceMetrics
+	if err := reader.Collect(context.Background(), &rm); err != nil {
+		t.Fatalf("Collect error: %v", err)
+	}
+
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name != "tekton_pipelines_resolver_singleflight_dedup_total" {
+				continue
+			}
+			sum := m.Data.(metricdata.Sum[int64])
+			if len(sum.DataPoints) == 0 || sum.DataPoints[0].Value != callers-1 {
+				t.Fatalf("expected %d deduplicated callers, got %d", callers-1, sum.DataPoints[0].Value)
+			}
+			return
+		}
+	}
+	t.Fatal("singleflight_dedup_total metric not found")
 }
 
 func TestCacheMetrics_NilRecorder(t *testing.T) {

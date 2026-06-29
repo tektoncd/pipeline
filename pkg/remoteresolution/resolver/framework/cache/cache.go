@@ -117,7 +117,9 @@ func (c *resolverCache) GetCachedOrResolveFromRemote(
 	if c.metrics != nil {
 		c.metrics.RecordCacheMiss(ctx, resolverType)
 	}
+	called := false
 	untyped, err, shared := c.flightGroup.Do(key, func() (any, error) {
+		called = true
 		resolved, err := resolveFromRemote()
 		if err != nil {
 			return nil, err
@@ -140,7 +142,7 @@ func (c *resolverCache) GetCachedOrResolveFromRemote(
 		return nil, err
 	}
 
-	if shared {
+	if shared && !called {
 		c.infow("Resolution deduplicated by singleflight", "resolverType", resolverType, "key", key)
 		if c.metrics != nil {
 			c.metrics.RecordSingleflightDedup(ctx, resolverType)

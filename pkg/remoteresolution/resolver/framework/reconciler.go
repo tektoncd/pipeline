@@ -149,6 +149,7 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 	// Centralized cache parameter validation for all resolvers
 	if cacheMode, exists := paramsMap[rrcache.CacheParam]; exists && cacheMode != "" {
 		if err := rrcache.Validate(cacheMode); err != nil {
+			metricsStatus = resolvermetrics.StatusInvalidRequest
 			return &resolutioncommon.InvalidRequestError{
 				ResolutionRequestKey: key,
 				Message:              err.Error(),
@@ -161,6 +162,7 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 		var err error
 		timeoutDuration, err = timed.GetResolutionTimeout(ctx, defaultMaximumResolutionDuration, paramsMap)
 		if err != nil {
+			metricsStatus = resolutionMetricStatus(err)
 			return err
 		}
 	}
@@ -203,17 +205,12 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 	select {
 	case err := <-errChan:
 		if err != nil {
-			switch {
-			case resolutioncommon.IsErrTransient(err):
-				metricsStatus = ""
-			case isInvalidRequestError(err):
-				metricsStatus = resolvermetrics.StatusInvalidRequest
-			}
+			metricsStatus = resolutionMetricStatus(err)
 			return r.OnError(ctx, rr, err)
 		}
 	case <-resolutionCtx.Done():
 		if err := resolutionCtx.Err(); err != nil {
-			metricsStatus = resolvermetrics.StatusTimeout
+			metricsStatus = resolutionMetricStatus(err)
 			return r.OnError(ctx, rr, err)
 		}
 	case resource := <-resourceChan:
@@ -293,6 +290,21 @@ func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.Resoluti
 	return nil
 }
 
+func resolutionMetricStatus(err error) string {
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		return resolvermetrics.StatusTimeout
+	case errors.Is(err, context.Canceled):
+		return ""
+	case isInvalidRequestError(err):
+		return resolvermetrics.StatusInvalidRequest
+	case resolutioncommon.IsErrTransient(err):
+		return ""
+	default:
+		return resolvermetrics.StatusError
+	}
+}
+
 func isInvalidRequestError(err error) bool {
 	var invalidErr *resolutioncommon.InvalidRequestError
 	return errors.As(err, &invalidErr)
@@ -302,8 +314,13 @@ func resolvedResourceKind(resource framework.ResolvedResource) string {
 	var metadata struct {
 		Kind string
 	}
-	if err := yaml.Unmarshal(resource.Data(), &metadata); err != nil || metadata.Kind == "" {
+	if err := yaml.Unmarshal(resource.Data(), &metadata); err != nil {
 		return resolvermetrics.ResourceKindUnknown
 	}
-	return metadata.Kind
+	switch metadata.Kind {
+	case "Task", "Pipeline", "StepAction":
+		return metadata.Kind
+	default:
+		return resolvermetrics.ResourceKindUnknown
+	}
 }
