@@ -423,6 +423,66 @@ func TestWithNamespaceConfigDisabled(t *testing.T) {
 	}
 }
 
+func TestWithNamespaceConfigInvalidNamespaceValuesFallBackToClusterConfig(t *testing.T) {
+	logger := zaptest.NewLogger(t).Sugar()
+
+	cache := newTestCache(t,
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      NamespaceDefaultsConfigMapName,
+				Namespace: "team-alpha",
+				Labels: map[string]string{
+					PartOfLabel:          PartOfValue,
+					NamespaceConfigLabel: "true",
+				},
+			},
+			Data: map[string]string{
+				"default-timeout-minutes": "not-an-int",
+				"default-service-account": "team-alpha-sa",
+			},
+		},
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      NamespaceFeatureFlagsConfigMapName,
+				Namespace: "team-alpha",
+				Labels: map[string]string{
+					PartOfLabel:          PartOfValue,
+					NamespaceConfigLabel: "true",
+				},
+			},
+			Data: map[string]string{
+				enableCELInWhenExpressionKey: "not-a-bool",
+				maxResultSizeKey:             "8192",
+			},
+		},
+	)
+
+	cfg := &config.Config{
+		Defaults:     config.DefaultConfig.DeepCopy(),
+		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
+	}
+	cfg.FeatureFlags.PerNamespaceConfiguration = true
+	cfg.Defaults.DefaultServiceAccount = "cluster-sa"
+	cfg.FeatureFlags.EnableCELInWhenExpression = false
+	cfg.FeatureFlags.MaxResultSize = 4096
+
+	ctx := WithNamespaceConfig(config.ToContext(context.Background(), cfg), cache, "team-alpha", logger)
+	mergedCfg := config.FromContext(ctx)
+
+	if mergedCfg.Defaults.DefaultTimeoutMinutes != cfg.Defaults.DefaultTimeoutMinutes {
+		t.Errorf("DefaultTimeoutMinutes = %d, want cluster value %d", mergedCfg.Defaults.DefaultTimeoutMinutes, cfg.Defaults.DefaultTimeoutMinutes)
+	}
+	if mergedCfg.Defaults.DefaultServiceAccount != "cluster-sa" {
+		t.Errorf("DefaultServiceAccount = %q, want cluster-sa", mergedCfg.Defaults.DefaultServiceAccount)
+	}
+	if mergedCfg.FeatureFlags.EnableCELInWhenExpression {
+		t.Error("EnableCELInWhenExpression = true, want cluster false")
+	}
+	if mergedCfg.FeatureFlags.MaxResultSize != 4096 {
+		t.Errorf("MaxResultSize = %d, want cluster value 4096", mergedCfg.FeatureFlags.MaxResultSize)
+	}
+}
+
 func TestWithNamespaceConfigBlocksSecurityFields(t *testing.T) {
 	logger := zaptest.NewLogger(t).Sugar()
 

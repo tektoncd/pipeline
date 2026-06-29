@@ -35,12 +35,13 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-func TestAdmissionRequestNamespaceFromContext(t *testing.T) {
-	req := admissionReviewHTTPRequest(t, "team-alpha")
+func TestAdmissionRequestNamespaceAndKindFromContext(t *testing.T) {
+	req := admissionReviewHTTPRequest(t, "team-alpha", "TaskRun")
 	ctx := apis.WithHTTPRequest(t.Context(), req)
 
-	if got, want := admissionRequestNamespaceFromContext(ctx), "team-alpha"; got != want {
-		t.Fatalf("admissionRequestNamespaceFromContext() = %q, want %q", got, want)
+	namespace, kind := admissionRequestNamespaceAndKindFromContext(ctx)
+	if namespace != "team-alpha" || kind != "TaskRun" {
+		t.Fatalf("admissionRequestNamespaceAndKindFromContext() = %q, %q; want team-alpha, TaskRun", namespace, kind)
 	}
 
 	// The helper must restore the body so the underlying admission controller can
@@ -54,7 +55,7 @@ func TestAdmissionRequestNamespaceFromContext(t *testing.T) {
 	}
 }
 
-func TestWithNamespaceConfigForAdmissionAppliesValidationFeatureFlagOverrides(t *testing.T) {
+func TestWithNamespaceConfigForAdmissionAppliesTaskRunAndPipelineRunOverrides(t *testing.T) {
 	cache := newTestNamespaceConfigCache(t, &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      nsconfig.NamespaceFeatureFlagsConfigMapName,
@@ -69,57 +70,81 @@ func TestWithNamespaceConfigForAdmissionAppliesValidationFeatureFlagOverrides(t 
 		},
 	})
 
-	cfg := defaultconfig.FromContextOrDefaults(t.Context()).DeepCopy()
-	cfg.FeatureFlags.PerNamespaceConfiguration = true
-	cfg.FeatureFlags.EnableCELInWhenExpression = false
+	for _, kind := range []string{"TaskRun", "PipelineRun"} {
+		t.Run(kind, func(t *testing.T) {
+			cfg := defaultconfig.FromContextOrDefaults(t.Context()).DeepCopy()
+			cfg.FeatureFlags.PerNamespaceConfiguration = true
+			cfg.FeatureFlags.EnableCELInWhenExpression = false
 
-	ctx := logging.WithLogger(t.Context(), zaptest.NewLogger(t).Sugar())
-	ctx = defaultconfig.ToContext(ctx, cfg)
-	ctx = apis.WithHTTPRequest(ctx, admissionReviewHTTPRequest(t, "team-alpha"))
+			ctx := logging.WithLogger(t.Context(), zaptest.NewLogger(t).Sugar())
+			ctx = defaultconfig.ToContext(ctx, cfg)
+			ctx = apis.WithHTTPRequest(ctx, admissionReviewHTTPRequest(t, "team-alpha", kind))
 
-	ctx = withNamespaceConfigForAdmission(ctx, cache)
+			ctx = withNamespaceConfigForAdmission(ctx, cache)
 
-	got := defaultconfig.FromContext(ctx).FeatureFlags
-	if !got.EnableCELInWhenExpression {
-		t.Fatalf("EnableCELInWhenExpression = false, want namespace override to enable it")
+			got := defaultconfig.FromContext(ctx).FeatureFlags
+			if !got.EnableCELInWhenExpression {
+				t.Fatalf("EnableCELInWhenExpression = false, want namespace override to enable it")
+			}
+		})
 	}
 }
 
-func TestConfigValidationConstructorsValidateNamespaceConfigMaps(t *testing.T) {
+func TestWithNamespaceConfigForAdmissionSkipsUnsupportedKinds(t *testing.T) {
+	cache := newTestNamespaceConfigCache(t, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      nsconfig.NamespaceFeatureFlagsConfigMapName,
+			Namespace: "team-alpha",
+			Labels: map[string]string{
+				nsconfig.NamespaceConfigLabel: "true",
+				nsconfig.PartOfLabel:          nsconfig.PartOfValue,
+			},
+		},
+		Data: map[string]string{
+			defaultconfig.EnableCELInWhenExpression: "true",
+		},
+	})
+
+	for _, kind := range []string{"Task", "Pipeline", "CustomRun", "StepAction", "ResolutionRequest"} {
+		t.Run(kind, func(t *testing.T) {
+			cfg := defaultconfig.FromContextOrDefaults(t.Context()).DeepCopy()
+			cfg.FeatureFlags.PerNamespaceConfiguration = true
+			cfg.FeatureFlags.EnableCELInWhenExpression = false
+
+			ctx := logging.WithLogger(t.Context(), zaptest.NewLogger(t).Sugar())
+			ctx = defaultconfig.ToContext(ctx, cfg)
+			ctx = apis.WithHTTPRequest(ctx, admissionReviewHTTPRequest(t, "team-alpha", kind))
+
+			ctx = withNamespaceConfigForAdmission(ctx, cache)
+
+			got := defaultconfig.FromContext(ctx).FeatureFlags
+			if got.EnableCELInWhenExpression {
+				t.Fatalf("EnableCELInWhenExpression = true, want namespace override skipped for %s", kind)
+			}
+		})
+	}
+}
+
+func TestConfigValidationConstructorsSkipNamespaceConfigMaps(t *testing.T) {
 	constructors := configValidationConstructors()
-
-	defaultsConstructor, ok := constructors[nsconfig.NamespaceDefaultsConfigMapName].(func(*corev1.ConfigMap) (*defaultconfig.Defaults, error))
-	if !ok {
-		t.Fatalf("missing namespace defaults constructor")
+	if _, ok := constructors[nsconfig.NamespaceDefaultsConfigMapName]; ok {
+		t.Fatalf("namespace defaults ConfigMap should be handled nonfatally at runtime, not by config validation")
 	}
-	if _, err := defaultsConstructor(&corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: nsconfig.NamespaceDefaultsConfigMapName},
-		Data: map[string]string{
-			"default-timeout-minutes": "not-an-int",
-		},
-	}); err == nil {
-		t.Fatalf("expected invalid namespace defaults ConfigMap to fail validation")
-	}
-
-	featureFlagsConstructor, ok := constructors[nsconfig.NamespaceFeatureFlagsConfigMapName].(func(*corev1.ConfigMap) (*defaultconfig.FeatureFlags, error))
-	if !ok {
-		t.Fatalf("missing namespace feature flags constructor")
-	}
-	if _, err := featureFlagsConstructor(&corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: nsconfig.NamespaceFeatureFlagsConfigMapName},
-		Data: map[string]string{
-			defaultconfig.EnableCELInWhenExpression: "not-a-bool",
-		},
-	}); err == nil {
-		t.Fatalf("expected invalid namespace feature flags ConfigMap to fail validation")
+	if _, ok := constructors[nsconfig.NamespaceFeatureFlagsConfigMapName]; ok {
+		t.Fatalf("namespace feature-flags ConfigMap should be handled nonfatally at runtime, not by config validation")
 	}
 }
 
-func admissionReviewHTTPRequest(t *testing.T, namespace string) *http.Request {
+func admissionReviewHTTPRequest(t *testing.T, namespace, kind string) *http.Request {
 	t.Helper()
 	review := &admissionv1.AdmissionReview{
 		Request: &admissionv1.AdmissionRequest{
 			Namespace: namespace,
+			Kind: metav1.GroupVersionKind{
+				Group:   "tekton.dev",
+				Version: "v1",
+				Kind:    kind,
+			},
 		},
 	}
 	body, err := json.Marshal(review)
