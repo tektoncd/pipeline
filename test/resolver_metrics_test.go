@@ -103,10 +103,9 @@ spec:
 
 	metrics := scrapeResolverMetrics(ctx, t, c)
 
-	assertMetricExists(t, metrics, totalMetricName)
-	assertMetricHasLabel(t, metrics, totalMetricName, "resolver_type", "cluster")
-	assertMetricHasLabel(t, metrics, totalMetricName, "status", resolvermetrics.StatusSuccess)
-	assertMetricHasLabel(t, metrics, totalMetricName, "resource_kind", "Task")
+	assertMetricCounterValue(t, metrics, totalMetricName,
+		map[string]string{"resolver_type": "cluster", "status": resolvermetrics.StatusSuccess, "resource_kind": "Task"},
+	)
 	assertMetricExists(t, metrics, durationMetricName)
 }
 
@@ -156,72 +155,6 @@ spec:
 	assertMetricCounterValue(t, metrics, totalMetricName,
 		map[string]string{"resolver_type": "cluster", "status": resolvermetrics.StatusError, "resource_kind": resolvermetrics.ResourceKindUnknown},
 	)
-}
-
-// TestResolverMetrics_MultipleResolverTypes verifies that metrics are correctly
-// labeled per resolver type when multiple resolver types are used.
-// @test:execution=parallel
-func TestResolverMetrics_MultipleResolverTypes(t *testing.T) {
-	ctx := t.Context()
-	c, namespace := setup(ctx, t, requireAllGates(map[string]string{
-		"enable-cluster-resolver": "true",
-		"enable-http-resolver":    "true",
-		"enable-api-fields":       "beta",
-	}))
-
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
-	// Test 1: Cluster resolver
-	taskName := helpers.ObjectNameForTest(t)
-	task := parse.MustParseV1Task(t, fmt.Sprintf(`
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  steps:
-  - name: echo
-    image: mirror.gcr.io/ubuntu
-    script: echo hello
-`, taskName, namespace))
-	if _, err := c.V1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Task: %s", err)
-	}
-
-	trName := helpers.ObjectNameForTest(t)
-	taskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  taskRef:
-    resolver: cluster
-    params:
-    - name: kind
-      value: task
-    - name: name
-      value: %s
-    - name: namespace
-      value: %s
-`, trName, namespace, taskName, namespace))
-
-	if _, err := c.V1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create TaskRun: %s", err)
-	}
-
-	if err := WaitForTaskRunState(ctx, c, trName, TaskRunSucceed(trName), "TaskRunSuccess", v1Version); err != nil {
-		t.Fatalf("Error waiting for TaskRun to succeed: %s", err)
-	}
-
-	metrics := scrapeResolverMetrics(ctx, t, c)
-
-	// Verify cluster resolver metrics exist
-	assertMetricHasLabel(t, metrics, totalMetricName, "resolver_type", "cluster")
-	assertMetricHasLabel(t, metrics, totalMetricName, "resource_kind", "Task")
 }
 
 // scrapeResolverMetrics fetches Prometheus metrics from the resolver pod.

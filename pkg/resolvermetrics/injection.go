@@ -47,5 +47,10 @@ func Get(ctx context.Context) *Recorder {
 		logging.FromContext(ctx).Warn("Unable to fetch *resolvermetrics.Recorder from context, metrics will be disabled")
 		return nil
 	}
-	return untyped.(*Recorder)
+	rec, ok := untyped.(*Recorder)
+	if !ok {
+		logging.FromContext(ctx).Warnf("Expected *resolvermetrics.Recorder in context, got %T; metrics will be disabled", untyped)
+		return nil
+	}
+	return rec
 }

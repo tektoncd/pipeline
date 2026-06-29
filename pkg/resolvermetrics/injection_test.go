@@ -57,3 +57,11 @@ func TestGetReturnsNilForMissingContext(t *testing.T) {
 		t.Fatal("expected nil for missing context, got non-nil")
 	}
 }
+
+func TestGetReturnsNilForWrongContextType(t *testing.T) {
+	ctx := context.WithValue(context.Background(), RecorderKey{}, "not a recorder")
+	rec := Get(ctx)
+	if rec != nil {
+		t.Fatal("expected nil for wrong context type, got non-nil")
+	}
+}
