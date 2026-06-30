@@ -1188,7 +1188,7 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, c *Reconciler,
 		}
 	}
 	_, workspaceSpan := tracer.Start(ctx, "ApplyWorkspaces")
-	ts = resources.ApplyWorkspaces(ctx,ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
+	ts = resources.ApplyWorkspaces(ctx, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
 	workspaceSpan.End()
 	return ts, nil
 }
