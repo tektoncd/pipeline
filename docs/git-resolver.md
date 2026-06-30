@@ -13,20 +13,20 @@ This Resolver responds to type `git`.
 
 ## Parameters
 
-| Param Name    | Description                                                                                                                                                                | Example Value                                               |
-|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
-| `url`         | URL of the repo to fetch and clone anonymously. Either `url`, or `repo` (with `org`) must be specified, but not both.                                                      | `https://github.com/tektoncd/catalog.git`                   |
-| `repo`        | The repository to find the resource in. Either `url`, or `repo` (with `org`) must be specified, but not both.                                                              | `pipeline`, `test-infra`                                    |
-| `org`         | The organization to find the repository in. Default can be set in [configuration](#configuration).                                                                         | `tektoncd`, `kubernetes`                                    |
-| `token`       | An optional secret name in the `PipelineRun` namespace to fetch the token from. Defaults to empty, meaning it will try to use the configuration from the global configmap. | `secret-name`, (empty)                                      |
-| `tokenKey`    | An optional key in the token secret name in the `PipelineRun` namespace to fetch the token from. Defaults to `token`.                                                      | `token`                                                     |
-| `gitToken`       | An optional secret name in the `PipelineRun` namespace to fetch the token from when doing opration with the `git clone`. When empty it will use anonymous cloning. | `secret-gitauth-token` |
-| `gitTokenKey` | An optional key in the token secret name in the `PipelineRun` namespace to fetch the token from when using the `git clone`. Defaults to `token`.                                                      | `token`                                                     |
-| `revision`    | Git revision to checkout a file from. This can be commit SHA (SHA-1 or SHA-256), branch or tag.                                                                                               | `aeb957601cf41c012be462827053a21a420befca` `main` `v0.38.2` |
-| `pathInRepo`  | Where to find the file in the repo.                                                                                                                                        | `task/golang-build/0.3/golang-build.yaml`                   |
-| `serverURL`   | An optional server URL (that includes the https:// prefix) to connect for API operations                                                                                   | `https:/github.mycompany.com`                               |
-| `scmType`     | An optional SCM type to use for API operations                                                                                                                             | `github`, `gitlab`, `gitea`                                 |
-| `cache`       | Controls caching behavior for the resolved resource                                                                                                                         | `always`, `never`, `auto`                                   |
+| Param Name    | Description                                                                                                                                                                | Example Value                                                             |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `url`         | URL of the repo to fetch and clone anonymously. Either `url`, or `repo` (with `org`) must be specified, but not both.                                                      | `https://github.com/tektoncd/catalog.git`                                 |
+| `repo`        | The repository to find the resource in. Either `url`, or `repo` (with `org`) must be specified, but not both.                                                              | `pipeline`, `test-infra`                                                  |
+| `org`         | The organization to find the repository in. For Azure, use `org/project` format. Default can be set in [configuration](#configuration).                                    | `tektoncd`, `kubernetes`, `myorg/myproject` (Azure)                       |
+| `token`       | An optional secret name in the `PipelineRun` namespace to fetch the token from. Defaults to empty, meaning it will try to use the configuration from the global configmap. | `secret-name`, (empty)                                                    |
+| `tokenKey`    | An optional key in the token secret name in the `PipelineRun` namespace to fetch the token from. Defaults to `token`.                                                      | `token`                                                                   |
+| `gitToken`    | An optional secret name in the `PipelineRun` namespace to fetch the token from when doing operation with the `git clone`. When empty it will use anonymous cloning.        | `secret-gitauth-token`                                                    |
+| `gitTokenKey` | An optional key in the token secret name in the `PipelineRun` namespace to fetch the token from when using the `git clone`. Defaults to `token`.                           | `token`                                                                   |
+| `revision`    | Git revision to checkout a file from. This can be commit SHA (SHA-1 or SHA-256), branch or tag.                                                                            | `aeb957601cf41c012be462827053a21a420befca` `main` `v0.38.2`               |
+| `pathInRepo`  | Where to find the file in the repo.                                                                                                                                        | `task/golang-build/0.3/golang-build.yaml`                                 |
+| `serverURL`   | An optional server URL (that includes the https:// prefix) to connect for API operations                                                                                   | `https://github.mycompany.com`                                            |
+| `scmType`     | An optional SCM type to use for API operations                                                                                                                             | `github`, `gitlab`, `gitea`, `bitbucketcloud`, `bitbucketserver`, `azure` |
+| `cache`       | Controls caching behavior for the resolved resource                                                                                                                        | `always`, `never`, `auto`                                                 |
 
 ## Requirements
 
@@ -44,46 +44,47 @@ for the name, namespace and defaults that the resolver ships with.
 
 ### Options
 
-| Option Name                  | Description                                                                                                                                                   | Example Values                                                   |
-|------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|
-| `default-revision`           | The default git revision to use if none is specified                                                                                                          | `main`                                                           |
-| `fetch-timeout`              | The maximum time any single git clone resolution may take. **Note**: a global maximum timeout of 1 minute is currently enforced on _all_ resolution requests. | `1m`, `2s`, `700ms`                                              |
-| `default-url`                | The default git repository URL to use for anonymous cloning if none is specified.                                                                             | `https://github.com/tektoncd/catalog.git`                        |
-| `scm-type`                   | The SCM provider type. Required if using the authenticated API with `org` and `repo`.                                                                         | `github`, `gitlab`, `gitea`, `bitbucketcloud`, `bitbucketserver` |
-| `server-url`                 | The SCM provider's base URL for use with the authenticated API. Not needed if using github.com, gitlab.com, or BitBucket Cloud                                | `api.internal-github.com`                                        |
-| `api-token-secret-name`      | The Kubernetes secret containing the SCM provider API token. Required if using the authenticated API with `org` and `repo`.                                   | `bot-token-secret`                                               |
-| `api-token-secret-key`       | The key within the token secret containing the actual secret. Required if using the authenticated API with `org` and `repo`.                                  | `oauth`, `token`                                                 |
-| `api-token-secret-namespace` | The namespace containing the token secret, if not `default`.                                                                                                  | `other-namespace`                                                |
-| `default-org`                | The default organization to look for repositories under when using the authenticated API, if not specified in the resolver parameters. Optional.              | `tektoncd`, `kubernetes`                                         |
+| Option Name                  | Description                                                                                                                                                   | Example Values                                                            |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `default-revision`           | The default git revision to use if none is specified                                                                                                          | `main`                                                                    |
+| `fetch-timeout`              | The maximum time any single git clone resolution may take. **Note**: a global maximum timeout of 1 minute is currently enforced on _all_ resolution requests. | `1m`, `2s`, `700ms`                                                       |
+| `default-url`                | The default git repository URL to use for anonymous cloning if none is specified.                                                                             | `https://github.com/tektoncd/catalog.git`                                 |
+| `scm-type`                   | The SCM provider type. Required if using the authenticated API with `org` and `repo`.                                                                         | `github`, `gitlab`, `gitea`, `bitbucketcloud`, `bitbucketserver`, `azure` |
+| `server-url`                 | The SCM provider's base URL for use with the authenticated API. Not needed if using github.com, gitlab.com, bitbucket.org, or dev.azure.com.                  | `https://github.mycompany.com`, `https://gitlab.mycompany.com`            |
+| `api-token-secret-name`      | The Kubernetes secret containing the SCM provider API token. Required if using the authenticated API with `org` and `repo`.                                   | `bot-token-secret`                                                        |
+| `api-token-secret-key`       | The key within the token secret containing the actual secret. Required if using the authenticated API with `org` and `repo`.                                  | `oauth`, `token`                                                          |
+| `api-token-secret-namespace` | The namespace containing the token secret, if not `default`.                                                                                                  | `other-namespace`                                                         |
+| `default-org`                | The default organization to look for repositories under when using the authenticated API, if not specified in the resolver parameters. Optional.              | `tektoncd`, `kubernetes`                                                  |
 
 ### Caching Options
 
 The git resolver supports caching of resolved resources to improve performance. The caching behavior can be configured using the `cache` option:
 
-| Cache Value | Description |
-|-------------|-------------|
-| `always` | Always cache resolved resources. This is the most aggressive caching strategy and will cache all resolved resources regardless of their source. |
-| `never` | Never cache resolved resources. This disables caching completely. |
-| `auto` | Caching will only occur when revision is a commit hash. (default) |
+| Cache Value | Description                                                                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `always`    | Always cache resolved resources. This is the most aggressive caching strategy and will cache all resolved resources regardless of their source. |
+| `never`     | Never cache resolved resources. This disables caching completely.                                                                               |
+| `auto`      | Caching will only occur when revision is a commit hash. (default)                                                                               |
 
 ### Cache Configuration
 
 The resolver cache can be configured globally using the `resolver-cache-config` ConfigMap. This ConfigMap controls the cache size and TTL (time-to-live) for all resolvers.
 
-| Option Name | Description | Default Value | Example Values |
-|-------------|-------------|---------------|----------------|
-| `max-size` | Maximum number of entries in the cache | `1000` | `500`, `2000` |
-| `ttl` | Time-to-live for cache entries | `5m` | `10m`, `1h` |
+| Option Name | Description                            | Default Value | Example Values |
+| ----------- | -------------------------------------- | ------------- | -------------- |
+| `max-size`  | Maximum number of entries in the cache | `1000`        | `500`, `2000`  |
+| `ttl`       | Time-to-live for cache entries         | `5m`          | `10m`, `1h`    |
 
 The ConfigMap name can be customized using the `RESOLVER_CACHE_CONFIG_MAP_NAME` environment variable. If not set, it defaults to `resolver-cache-config`.
 
 Additionally, you can set a default cache mode for the git resolver by adding the `default-cache-mode` option to the `git-resolver-config` ConfigMap. This overrides the system default (`auto`) for this resolver:
 
-| Option Name | Description | Valid Values | Default |
-|-------------|-------------|--------------|---------|
-| `default-cache-mode` | Default caching behavior when `cache` parameter is not specified | `always`, `never`, `auto` | `auto` |
+| Option Name          | Description                                                      | Valid Values              | Default |
+| -------------------- | ---------------------------------------------------------------- | ------------------------- | ------- |
+| `default-cache-mode` | Default caching behavior when `cache` parameter is not specified | `always`, `never`, `auto` | `auto`  |
 
 Example:
+
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -91,7 +92,7 @@ metadata:
   name: git-resolver-config
   namespace: tekton-pipelines-resolvers
 data:
-  default-cache-mode: "always"  # Always cache unless task/pipeline specifies otherwise
+  default-cache-mode: "always" # Always cache unless task/pipeline specifies otherwise
 ```
 
 ## Usage
@@ -136,12 +137,12 @@ spec:
   taskRef:
     resolver: git
     params:
-    - name: url
-      value: https://github.com/tektoncd/catalog.git
-    - name: revision
-      value: main
-    - name: pathInRepo
-      value: task/git-clone/0.6/git-clone.yaml
+      - name: url
+        value: https://github.com/tektoncd/catalog.git
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: task/git-clone/0.6/git-clone.yaml
     # Uncomment the following lines to use a secret with a token
     # - name: gitToken
     #   value: "secret-with-token"
@@ -160,34 +161,60 @@ spec:
   pipelineRef:
     resolver: git
     params:
-    - name: url
-      value: https://github.com/tektoncd/catalog.git
-    - name: revision
-      value: main
-    - name: pathInRepo
-      value: pipeline/simple/0.1/simple.yaml
+      - name: url
+        value: https://github.com/tektoncd/catalog.git
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: pipeline/simple/0.1/simple.yaml
     # Uncomment the following lines to use a secret with a token
     # - name: gitToken
     #   value: "secret-with-token"
     # - name: gitTokenKey (optional, defaults to "token")
     #   value: "token"
   params:
-  - name: name
-    value: Ranni
+    - name: name
+      value: Ranni
 ```
 
 ### Authenticated API
 
 The authenticated API supports private repositories, and fetches only the file at the specified path rather than doing a full clone.
 
-When using the authenticated API, [providers with implementations in `go-scm`](https://github.com/jenkins-x/go-scm/tree/main/scm/driver) can be used.
-Note that not all `go-scm` implementations have been tested with the `git` resolver, but it is known to work with:
+It uses a thin internal HTTP client with provider-specific implementations, supporting the following providers:
 
 - github.com and GitHub Enterprise
 - gitlab.com and self-hosted Gitlab
 - Gitea
 - BitBucket Server
 - BitBucket Cloud
+- Azure
+
+#### Authentication
+
+Each provider uses a token stored in a Kubernetes Secret. The token format varies
+by provider:
+
+| Provider         | Token Format                              | Auth Method          | Notes                                                        |
+| ---------------- | ----------------------------------------- | -------------------- | ------------------------------------------------------------ |
+| GitHub           | Personal Access Token (PAT)               | Bearer               |                                                              |
+| GitLab           | Personal Access Token (PAT)               | PRIVATE-TOKEN header |                                                              |
+| Gitea            | API token                                 | Bearer               |                                                              |
+| Bitbucket Cloud  | Repository/project/workspace access token | Bearer               | Pass bare token without username prefix.                     |
+| Bitbucket Server | Repository/project access token           | Bearer               | Pass bare token without username prefix.                     |
+| Azure            | Personal Access Token (PAT)               | Basic                | Empty username with PAT as password, per Azure requirements. |
+
+#### Azure `org` Parameter Format
+
+For Azure, the `org` parameter must be in `org/project` format since Azure
+requires both an organization and a project to identify a repository:
+
+```yaml
+- name: org
+  value: myorganization/myproject
+- name: repo
+  value: myrepository
+```
 
 #### Task Resolution
 
@@ -200,14 +227,14 @@ spec:
   taskRef:
     resolver: git
     params:
-    - name: org
-      value: tektoncd
-    - name: repo
-      value: catalog
-    - name: revision
-      value: main
-    - name: pathInRepo
-      value: task/git-clone/0.6/git-clone.yaml
+      - name: org
+        value: tektoncd
+      - name: repo
+        value: catalog
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: task/git-clone/0.6/git-clone.yaml
 ```
 
 #### Task Resolution with a custom token to a custom SCM provider
@@ -221,25 +248,77 @@ spec:
   taskRef:
     resolver: git
     params:
-    - name: org
-      value: tektoncd
-    - name: repo
-      value: catalog
-    - name: revision
-      value: main
-    - name: pathInRepo
-      value: task/git-clone/0.6/git-clone.yaml
-    # my-secret-token should be created in the namespace where the
-    # pipelinerun is created and contain a GitHub personal access
-    # token in the token key of the secret.
-    - name: token
-      value: my-secret-token
-    - name: tokenKey
-      value: token
-    - name: scmType
-      value: github
-    - name: serverURL
-      value: https://ghe.mycompany.com
+      - name: org
+        value: tektoncd
+      - name: repo
+        value: catalog
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: task/git-clone/0.6/git-clone.yaml
+      # my-secret-token should be created in the namespace where the
+      # pipelinerun is created and contain a GitHub personal access
+      # token in the token key of the secret.
+      - name: token
+        value: my-secret-token
+      - name: tokenKey
+        value: token
+      - name: scmType
+        value: github
+      - name: serverURL
+        value: https://ghe.mycompany.com
+```
+
+#### Bitbucket Cloud Example
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: git-bitbucket-cloud-demo-tr
+spec:
+  taskRef:
+    resolver: git
+    params:
+      - name: org
+        value: myworkspace
+      - name: repo
+        value: myrepo
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: tasks/my-task.yaml
+```
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bitbucket-token
+type: Opaque
+stringData:
+  token: "secret_token" # Bearer auth (access token)
+```
+
+#### Azure Example
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: git-azure-demo-tr
+spec:
+  taskRef:
+    resolver: git
+    params:
+      - name: org
+        value: myorganization/myproject # org/project format
+      - name: repo
+        value: myrepository
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: tasks/my-task.yaml
 ```
 
 #### Pipeline resolution
@@ -253,17 +332,17 @@ spec:
   pipelineRef:
     resolver: git
     params:
-    - name: org
-      value: tektoncd
-    - name: repo
-      value: catalog
-    - name: revision
-      value: main
-    - name: pathInRepo
-      value: pipeline/simple/0.1/simple.yaml
+      - name: org
+        value: tektoncd
+      - name: repo
+        value: catalog
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: pipeline/simple/0.1/simple.yaml
   params:
-  - name: name
-    value: Ranni
+    - name: name
+      value: Ranni
 ```
 
 ### Specifying Configuration for Multiple Git Providers
@@ -340,16 +419,16 @@ spec:
   taskRef:
     resolver: git
     params:
-    - name: org
-      value: tektoncd
-    - name: repo
-      value: catalog
-    - name: revision
-      value: main
-    - name: pathInRepo
-      value: task/git-clone/0.6/git-clone.yaml
-    - name: configKey
-      value: test1
+      - name: org
+        value: tektoncd
+      - name: repo
+        value: catalog
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: task/git-clone/0.6/git-clone.yaml
+      - name: configKey
+        value: test1
 ```
 
 #### Pipeline resolution
@@ -363,19 +442,19 @@ spec:
   pipelineRef:
     resolver: git
     params:
-    - name: org
-      value: tektoncd
-    - name: repo
-      value: catalog
-    - name: revision
-      value: main
-    - name: pathInRepo
-      value: pipeline/simple/0.1/simple.yaml
-    - name: configKey
-      value: test2
+      - name: org
+        value: tektoncd
+      - name: repo
+        value: catalog
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: pipeline/simple/0.1/simple.yaml
+      - name: configKey
+        value: test2
   params:
-  - name: name
-    value: Ranni
+    - name: name
+      value: Ranni
 ```
 
 ## `ResolutionRequest` Status
@@ -403,12 +482,12 @@ spec:
   pipelineRef:
     resolver: git
     params:
-    - name: url
-      value: https://github.com/<username>/<reponame>.git
-    - name: revision
-      value: main
-    - name: pathInRepo
-      value: pipeline.yaml
+      - name: url
+        value: https://github.com/<username>/<reponame>.git
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: pipeline.yaml
 ```
 
 - `ResolutionRequest`
