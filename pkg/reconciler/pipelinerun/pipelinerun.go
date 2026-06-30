@@ -189,7 +189,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 	defer span.End()
 
 	span.SetAttributes(
-		attribute.String("pipelinerun", pr.Name), attribute.String("namespace", pr.Namespace),
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
 	)
 	if spanCtx := span.SpanContext(); spanCtx.IsValid() {
 		logger = logger.With(zap.String("traceID", spanCtx.TraceID().String()), zap.String("spanID", spanCtx.SpanID().String()))
@@ -344,6 +345,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 func (c *Reconciler) durationAndCountMetrics(ctx context.Context, pr *v1.PipelineRun, beforeCondition *apis.Condition) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "durationAndCountMetrics")
 	defer span.End()
+	span.SetAttributes(attribute.String("pipelinerun", pr.Name), attribute.Bool("done", pr.IsDone()))
 	logger := logging.FromContext(ctx)
 	if pr.IsDone() {
 		err := c.metrics.DurationAndCount(ctx, pr, beforeCondition)
@@ -356,6 +358,7 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, pr *v1.Pipelin
 func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1.PipelineRun, beforeCondition *apis.Condition, previousError error) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "finishReconcileUpdateEmitEvents")
 	defer span.End()
+	span.SetAttributes(attribute.String("pipelinerun", pr.Name))
 	logger := logging.FromContext(ctx)
 
 	afterCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
@@ -395,6 +398,11 @@ func (c *Reconciler) resolvePipelineState(
 ) (resources.PipelineRunState, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "resolvePipelineState")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
+		attribute.Int("task.count", len(pipelineTasks)),
+	)
 
 	// List VerificationPolicies once per reconcile for trusted resources (used by all pipeline tasks).
 	vp, err := c.verificationPolicyLister.VerificationPolicies(pr.Namespace).List(labels.Everything())
@@ -544,6 +552,10 @@ func (c *Reconciler) resolvePipelineState(
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipelineFunc rprp.GetPipeline) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "reconcile")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
+	)
 	logger := logging.FromContext(ctx)
 	pr.SetDefaults(ctx)
 
@@ -988,6 +1000,10 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.PipelineRun, pipelineRunFacts *resources.PipelineRunFacts) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "runNextSchedulableTask")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
+	)
 
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
@@ -1138,6 +1154,11 @@ func (c *Reconciler) createChildPipelineRuns(
 ) ([]*v1.PipelineRun, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createChildPipelineRuns")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
+		attribute.String("pipelinetask", rpt.PipelineTask.Name),
+	)
 
 	var childPipelineRuns []*v1.PipelineRun
 	for _, childPipelineRunName := range rpt.ChildPipelineRunNames {
@@ -1161,6 +1182,12 @@ func (c *Reconciler) createChildPipelineRun(
 ) (*v1.PipelineRun, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createChildPipelineRun")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
+		attribute.String("pipelinetask", rpt.PipelineTask.Name),
+		attribute.String("child.pipelinerun", childPipelineRunName),
+	)
 
 	logger := logging.FromContext(ctx)
 	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask, pr.Status, facts)
@@ -1314,6 +1341,12 @@ func (c *Reconciler) detectPipelineRefCycle(pr *v1.PipelineRun, targetPipelineNa
 func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1.PipelineRun, facts *resources.PipelineRunFacts) ([]*v1.TaskRun, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createTaskRuns")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
+		attribute.String("pipelinetask", rpt.PipelineTask.Name),
+		attribute.Int("taskrun.count", len(rpt.TaskRunNames)),
+	)
 
 	var matrixCombinations []v1.Params
 	if rpt.PipelineTask.IsMatrixed() {
@@ -1363,6 +1396,12 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 			span.RecordError(err)
 		}
 	}()
+	span.SetAttributes(
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
+		attribute.String("pipelinetask", rpt.PipelineTask.Name),
+		attribute.String("taskrun", taskRunName),
+	)
 	logger := logging.FromContext(ctx)
 	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask, pr.Status, facts)
 	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
@@ -1477,6 +1516,11 @@ func (c *Reconciler) createCustomRuns(ctx context.Context, rpt *resources.Resolv
 	var customRuns []*v1beta1.CustomRun
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createCustomRuns")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
+		attribute.String("pipelinetask", rpt.PipelineTask.Name),
+	)
 	var matrixCombinations []v1.Params
 
 	if rpt.PipelineTask.IsMatrixed() {
@@ -1506,6 +1550,12 @@ func (c *Reconciler) createCustomRun(ctx context.Context, runName string, params
 			span.RecordError(err)
 		}
 	}()
+	span.SetAttributes(
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
+		attribute.String("pipelinetask", rpt.PipelineTask.Name),
+		attribute.String("customrun", runName),
+	)
 	logger := logging.FromContext(ctx)
 	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask, pr.Status, facts)
 	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
@@ -1925,6 +1975,7 @@ func addMetadataByPrecedence(metadata map[string]string, addedMetadata map[strin
 func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1.PipelineRun) (*v1.PipelineRun, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updateLabelsAndAnnotations")
 	defer span.End()
+	span.SetAttributes(attribute.String("pipelinerun", pr.Name))
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting PipelineRun %s when updating labels/annotations: %w", pr.Name, err)
@@ -1984,6 +2035,10 @@ func storePipelineSpecAndMergeMeta(ctx context.Context, pr *v1.PipelineRun, ps *
 func (c *Reconciler) updatePipelineRunStatusFromInformer(ctx context.Context, pr *v1.PipelineRun) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updatePipelineRunStatusFromInformer")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("pipelinerun", pr.Name),
+		attribute.String("namespace", pr.Namespace),
+	)
 	logger := logging.FromContext(ctx)
 
 	// Get the parent PipelineRun label that is set on each child (PinP) PipelineRun/TaskRun/CustomRun. Do not include the propagated labels from the
