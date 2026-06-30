@@ -115,7 +115,7 @@ func TestTaskRunPodNameSuffix(t *testing.T) {
 					},
 				},
 			},
-			want: "-pod-retry2",
+			want: initialTaskRunPodNameSuffix + retryTaskRunPodNameSuffix + "2",
 		}, {
 			name: "rescheduled pod",
 			tr: &v1.TaskRun{
@@ -124,7 +124,7 @@ func TestTaskRunPodNameSuffix(t *testing.T) {
 				},
 				Status: podRescheduledStatus,
 			},
-			want: "-pod-reschedule2",
+			want: initialTaskRunPodNameSuffix + rescheduledTaskRunPodNameSuffix + "2",
 		}, {
 			name: "retry and rescheduled pod",
 			tr: &v1.TaskRun{
@@ -138,7 +138,7 @@ func TestTaskRunPodNameSuffix(t *testing.T) {
 					},
 				},
 			},
-			want: "-pod-retry1-reschedule3",
+			want: initialTaskRunPodNameSuffix + retryTaskRunPodNameSuffix + "1" + rescheduledTaskRunPodNameSuffix + "3",
 		}, {
 			name: "reschedule annotation ignored without PodRescheduled condition",
 			tr: &v1.TaskRun{
@@ -148,23 +148,29 @@ func TestTaskRunPodNameSuffix(t *testing.T) {
 			},
 			want: initialTaskRunPodNameSuffix,
 		}, {
-			name: "invalid reschedule annotation ignored",
+			name: "missing reschedule annotation uses reschedule suffix",
+			tr: &v1.TaskRun{
+				Status: podRescheduledStatus,
+			},
+			want: initialTaskRunPodNameSuffix + rescheduledTaskRunPodNameSuffix + "1",
+		}, {
+			name: "invalid reschedule annotation uses reschedule suffix",
 			tr: &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{v1.TaskRunPodRescheduleCountAnnotation: "not-a-number"},
 				},
 				Status: podRescheduledStatus,
 			},
-			want: initialTaskRunPodNameSuffix,
+			want: initialTaskRunPodNameSuffix + rescheduledTaskRunPodNameSuffix + "1",
 		}, {
-			name: "negative reschedule annotation ignored",
+			name: "negative reschedule annotation uses reschedule suffix",
 			tr: &v1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{v1.TaskRunPodRescheduleCountAnnotation: "-1"},
 				},
 				Status: podRescheduledStatus,
 			},
-			want: initialTaskRunPodNameSuffix,
+			want: initialTaskRunPodNameSuffix + rescheduledTaskRunPodNameSuffix + "1",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
