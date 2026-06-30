@@ -182,7 +182,7 @@ var (
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Pipeline Run
 // resource with the current status of the resource.
-func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgreconciler.Event {
+func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) (reconcileErr pkgreconciler.Event) {
 	logger := logging.FromContext(ctx)
 	ctx = initTracing(ctx, c.tracerProvider, pr)
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "PipelineRun:ReconcileKind")
@@ -195,6 +195,18 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 		logger = logger.With(zap.String("traceID", spanCtx.TraceID().String()), zap.String("spanID", spanCtx.SpanID().String()))
 		ctx = logging.WithLogger(ctx, logger)
 	}
+
+	// Sync metadata (labels/annotations) at the end of every reconciliation.
+	// This is deferred to ensure it runs on every exit path.
+	// Knative's generated reconciler only calls UpdateStatus(), never writes .metadata,
+	// so we must persist label/annotation changes ourselves.
+	defer func() {
+		if err := c.syncMetadata(ctx, pr); err != nil {
+			logger.Warn("Failed to sync PipelineRun metadata", zap.Error(err))
+			events.EmitError(controller.GetEventRecorder(ctx), err, pr)
+			reconcileErr = errors.Join(reconcileErr, err)
+		}
+	}()
 
 	// Read the initial condition
 	before := pr.Status.GetCondition(apis.ConditionSucceeded)
@@ -210,7 +222,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 		if err := timeoutPipelineRun(ctx, logger, pr, c.PipelineClientSet); err != nil {
 			return err
 		}
-		if err := c.finishReconcileUpdateEmitEvents(ctx, pr, before, nil); err != nil {
+		if err := c.emitReconcileEvents(ctx, pr, before, nil); err != nil {
 			return err
 		}
 		return controller.NewPermanentError(errors.New("PipelineRun has timed out for a long time"))
@@ -225,7 +237,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 		if err != nil {
 			logger.Errorf("Failed to delete StatefulSet or PVC for PipelineRun %s: %v", pr.Name, err)
 		}
-		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
+		return c.emitReconcileEvents(ctx, pr, before, err)
 	}
 
 	if !pr.HasStarted() && !pr.IsPending() {
@@ -257,13 +269,13 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 
 	if err := propagatePipelineNameLabelToPipelineRun(pr); err != nil {
 		logger.Errorf("Failed to propagate pipeline name label to pipelinerun %s: %v", pr.Name, err)
-		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
+		return c.emitReconcileEvents(ctx, pr, before, err)
 	}
 
 	// If the pipelinerun is cancelled, cancel tasks and update status
 	if pr.IsCancelled() {
 		err := cancelPipelineRun(ctx, logger, pr, c.PipelineClientSet)
-		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
+		return c.emitReconcileEvents(ctx, pr, before, err)
 	}
 
 	// Make sure that the PipelineRun status is in sync with the actual TaskRuns
@@ -271,7 +283,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 	if err != nil {
 		// This should not fail. Return the error so we can re-try later.
 		logger.Errorf("Error while syncing the pipelinerun status: %v", err.Error())
-		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
+		return c.emitReconcileEvents(ctx, pr, before, err)
 	}
 
 	// Reconcile this copy of the pipelinerun and then write back any status or label
@@ -289,7 +301,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 		}
 	}
 
-	if err = c.finishReconcileUpdateEmitEvents(ctx, pr, before, err); err != nil {
+	if err = c.emitReconcileEvents(ctx, pr, before, err); err != nil {
 		return err
 	}
 
@@ -353,35 +365,17 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, pr *v1.Pipelin
 	}
 }
 
-func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1.PipelineRun, beforeCondition *apis.Condition, previousError error) error {
-	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "finishReconcileUpdateEmitEvents")
+func (c *Reconciler) emitReconcileEvents(ctx context.Context, pr *v1.PipelineRun, beforeCondition *apis.Condition, previousError error) error {
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "emitReconcileEvents")
 	defer span.End()
-	logger := logging.FromContext(ctx)
 
 	afterCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
 	events.Emit(ctx, beforeCondition, afterCondition, pr)
 
-	errs := []error{previousError}
-
-	// If the PipelineRun was already completed before and remains completed,
-	// there is no need to update labels and annotations — they can't have
-	// changed. This avoids an unnecessary API read+write on every resync of
-	// a done PipelineRun (ported from the TaskRun reconciler).
-	skipUpdateLabelsAndAnnotations := !afterCondition.IsUnknown() && !beforeCondition.IsUnknown()
-	if !skipUpdateLabelsAndAnnotations {
-		_, err := c.updateLabelsAndAnnotations(ctx, pr)
-		if err != nil {
-			logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
-			events.EmitError(controller.GetEventRecorder(ctx), err, pr)
-			errs = append(errs, err)
-		}
-	}
-
-	joinedErr := errors.Join(errs...)
 	if controller.IsPermanentError(previousError) {
-		return controller.NewPermanentError(joinedErr)
+		return controller.NewPermanentError(previousError)
 	}
-	return joinedErr
+	return previousError
 }
 
 // resolvePipelineState will attempt to resolve each referenced pipeline task in the pipeline's spec and all of the resources
@@ -1922,24 +1916,32 @@ func addMetadataByPrecedence(metadata map[string]string, addedMetadata map[strin
 	}
 }
 
-func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1.PipelineRun) (*v1.PipelineRun, error) {
-	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updateLabelsAndAnnotations")
+// syncMetadata persists label and annotation changes made during reconciliation.
+// Knative's generated reconciler only calls UpdateStatus() after ReconcileKind returns,
+// so metadata changes must be persisted separately. This is called via defer in
+// ReconcileKind to ensure it runs on every exit path.
+func (c *Reconciler) syncMetadata(ctx context.Context, pr *v1.PipelineRun) error {
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "syncMetadata")
 	defer span.End()
-	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
+
+	existing, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
-		return nil, fmt.Errorf("error getting PipelineRun %s when updating labels/annotations: %w", pr.Name, err)
+		return fmt.Errorf("error getting PipelineRun %s when syncing metadata: %w", pr.Name, err)
 	}
-	if !maps.Equal(pr.ObjectMeta.Labels, newPr.ObjectMeta.Labels) || !maps.Equal(pr.ObjectMeta.Annotations, newPr.ObjectMeta.Annotations) {
-		// Note that this uses Update vs. Patch because the former is significantly easier to test.
-		// If we want to switch this to Patch, then we will need to teach the utilities in test/controller.go
-		// to deal with Patch (setting resourceVersion, and optimistic concurrency checks).
-		newPr = newPr.DeepCopy()
-		// Properly merge labels and annotations, as the labels *might* have changed during the reconciliation
-		newPr.Labels = kmap.Union(newPr.Labels, pr.Labels)
-		newPr.Annotations = kmap.Union(newPr.Annotations, pr.Annotations)
-		return c.PipelineClientSet.TektonV1().PipelineRuns(pr.Namespace).Update(ctx, newPr, metav1.UpdateOptions{})
+
+	// Merge labels and annotations: existing values are preserved, reconciled values take precedence
+	mergedLabels := kmap.Union(existing.Labels, pr.Labels)
+	mergedAnnotations := kmap.Union(existing.Annotations, pr.Annotations)
+
+	if maps.Equal(mergedLabels, existing.ObjectMeta.Labels) && maps.Equal(mergedAnnotations, existing.ObjectMeta.Annotations) {
+		return nil
 	}
-	return newPr, nil
+
+	updated := existing.DeepCopy()
+	updated.Labels = mergedLabels
+	updated.Annotations = mergedAnnotations
+	_, err = c.PipelineClientSet.TektonV1().PipelineRuns(pr.Namespace).Update(ctx, updated, metav1.UpdateOptions{})
+	return err
 }
 
 func storePipelineSpecAndMergeMeta(ctx context.Context, pr *v1.PipelineRun, ps *v1.PipelineSpec, meta *resolutionutil.ResolvedObjectMeta) error {
