@@ -26,7 +26,9 @@ import (
 )
 
 func TestInitTracing(t *testing.T) {
+	oldPropagator := otel.GetTextMapPropagator()
 	otel.SetTextMapPropagator(propagation.TraceContext{})
+	t.Cleanup(func() { otel.SetTextMapPropagator(oldPropagator) })
 
 	testcases := []struct {
 		name                    string
@@ -121,7 +123,10 @@ func TestInitTracing(t *testing.T) {
 }
 
 func TestInitTracingRootSpanLifecycle(t *testing.T) {
+	oldPropagator := otel.GetTextMapPropagator()
 	otel.SetTextMapPropagator(propagation.TraceContext{})
+	t.Cleanup(func() { otel.SetTextMapPropagator(oldPropagator) })
+
 	exporter := tracetest.NewInMemoryExporter()
 	tracerProvider := tracesdk.NewTracerProvider(tracesdk.WithSyncer(exporter))
 	defer func() { _ = tracerProvider.Shutdown(t.Context()) }()
