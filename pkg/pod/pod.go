@@ -80,7 +80,9 @@ const (
 	// TerminationReasonCancelled indicates a step was cancelled.
 	TerminationReasonCancelled = "Cancelled"
 
-	initialTaskRunPodNameSuffix = "-pod"
+	initialTaskRunPodNameSuffix     = "-pod"
+	retryTaskRunPodNameSuffix       = "-retry"
+	rescheduledTaskRunPodNameSuffix = "-reschedule"
 
 	StepArtifactPathPattern = "step.artifacts.path"
 
@@ -166,10 +168,10 @@ type Transformer func(*corev1.Pod) (*corev1.Pod, error)
 func taskRunPodNameSuffix(taskRun *v1.TaskRun) string {
 	podNameSuffix := initialTaskRunPodNameSuffix
 	if taskRunRetries := len(taskRun.Status.RetriesStatus); taskRunRetries > 0 {
-		podNameSuffix = fmt.Sprintf("%s-retry%d", podNameSuffix, taskRunRetries)
+		podNameSuffix = fmt.Sprintf("%s%s%d", podNameSuffix, retryTaskRunPodNameSuffix, taskRunRetries)
 	}
 	if taskRunReschedules := taskRunPodRescheduleCount(taskRun); taskRunReschedules > 0 {
-		podNameSuffix = fmt.Sprintf("%s-reschedule%d", podNameSuffix, taskRunReschedules)
+		podNameSuffix = fmt.Sprintf("%s%s%d", podNameSuffix, rescheduledTaskRunPodNameSuffix, taskRunReschedules)
 	}
 	return podNameSuffix
 }
@@ -181,7 +183,7 @@ func taskRunPodRescheduleCount(taskRun *v1.TaskRun) int {
 	}
 	count, err := strconv.Atoi(taskRun.Annotations[v1.TaskRunPodRescheduleCountAnnotation])
 	if err != nil || count <= 0 {
-		return 0
+		return 1
 	}
 	return count
 }
