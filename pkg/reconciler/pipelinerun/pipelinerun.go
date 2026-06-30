@@ -773,10 +773,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	// Build PipelineRunFacts with a list of resolved pipeline tasks,
 	// dag tasks graph and final tasks graph
 	pipelineRunFacts := &resources.PipelineRunFacts{
-		State:           pipelineRunState,
-		SpecStatus:      pr.Spec.Status,
-		TasksGraph:      d,
-		FinalTasksGraph: dfinally,
+		State:                pipelineRunState,
+		SpecStatus:           pr.Spec.Status,
+		TasksGraph:           d,
+		FinalTasksGraph:      dfinally,
+		EnableDefaultResults: config.FromContextOrDefaults(ctx).FeatureFlags.EnableDefaultResults,
 		TimeoutsState: resources.PipelineRunTimeoutsState{
 			Clock: c.Clock,
 		},
@@ -956,7 +957,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	after = pr.Status.GetCondition(apis.ConditionSucceeded)
 	pr.Status.StartTime = pipelineRunFacts.State.AdjustStartTime(pr.Status.StartTime)
 
-	pr.Status.ChildReferences = pipelineRunFacts.GetChildReferences()
+	pr.Status.ChildReferences = pipelineRunFacts.GetChildReferences(ctx)
 
 	pr.Status.SkippedTasks = pipelineRunFacts.GetSkippedTasks()
 	pipelineTaskStatus := pipelineRunFacts.GetPipelineTaskStatus()
@@ -965,10 +966,12 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 
 	if after.Status == corev1.ConditionTrue || after.Status == corev1.ConditionFalse {
 		pr.Status.Results, err = resources.ApplyTaskResultsToPipelineResults(
+			ctx,
 			pipelineSpec.Results,
 			pipelineRunFacts.State.GetTaskRunsResults(),
 			pipelineRunFacts.State.GetRunsResults(),
 			pipelineTaskStatus,
+			pipelineRunFacts.State.GetTaskResultDefaults(),
 		)
 		if err != nil {
 			pr.Status.MarkFailed(v1.PipelineRunReasonCouldntGetPipelineResult.String(),
@@ -1003,7 +1006,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 		// Check for Missing Result References
 		// if error found, present rpt will be
 		// added to the validationFailedTask list
-		err := resources.CheckMissingResultReferences(pipelineRunFacts.State, rpt)
+		err := resources.CheckMissingResultReferences(pipelineRunFacts.EnableDefaultResults, pipelineRunFacts.State, rpt)
 		if err != nil {
 			// Use Errorf when a task succeeded but didn't emit a result (surprising),
 			// Infof when the referenced task failed (expected that results are missing).
@@ -1037,7 +1040,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 		// Before creating TaskRun for scheduled final task, check if it's consuming a task result
 		// Resolve and apply task result wherever applicable, report warning in case resolution fails
 		for _, rpt := range fNextRpts {
-			resolvedResultRefs, _, err := resources.ResolveResultRef(pipelineRunFacts.State, rpt)
+			resolvedResultRefs, _, err := resources.ResolveResultRef(pipelineRunFacts.EnableDefaultResults, pipelineRunFacts.State, rpt)
 			if err != nil {
 				logger.Infof("Final task %q is not executed as it could not resolve task params for %q: %v", rpt.PipelineTask.Name, pr.Name, err)
 				continue
