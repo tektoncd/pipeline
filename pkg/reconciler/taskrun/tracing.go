@@ -41,7 +41,7 @@ const (
 func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, tr *v1.TaskRun) (context.Context, trace.Span) {
 	logger := logging.FromContext(ctx)
 	pro := otel.GetTextMapPropagator()
-	noopSpan := trace.SpanFromContext(ctx)
+	noopSpan := trace.SpanFromContext(context.Background())
 
 	// SpanContext was created already
 	if len(tr.Status.SpanContext) > 0 {
