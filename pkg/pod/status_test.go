@@ -1490,6 +1490,123 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			},
 		},
 	}, {
+		desc: "step SIGKILLed without OOMKilled reason completes the pod in advance",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-one",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Reason:   "Error",
+						ExitCode: 137,
+					},
+				},
+			}, {
+				Name:  "step-two",
+				State: corev1.ContainerState{},
+			}},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusFailure(v1.TaskRunReasonStepFailed.String(), "\"step-one\" exited with code 137: Error"),
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Reason:   "Error",
+							ExitCode: 137,
+						},
+					},
+					Name:      "one",
+					Container: "step-one",
+				}, {
+					ContainerState: corev1.ContainerState{},
+					Name:           "two",
+					Container:      "step-two",
+				}},
+				Sidecars:  []v1.SidecarState{},
+				Artifacts: &v1.Artifacts{},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
+		desc: "ordinary step failure does not complete the pod in advance",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-one",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Reason:   "Error",
+						ExitCode: 1,
+					},
+				},
+			}, {
+				Name:  "step-two",
+				State: corev1.ContainerState{},
+			}},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusRunning(),
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Reason:   "Error",
+							ExitCode: 1,
+						},
+					},
+					Name:      "one",
+					Container: "step-one",
+				}, {
+					ContainerState: corev1.ContainerState{},
+					Name:           "two",
+					Container:      "step-two",
+				}},
+				Sidecars: []v1.SidecarState{},
+			},
+		},
+	}, {
+		desc: "step exits 137 but entrypoint wrote its termination message does not complete the pod in advance",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-one",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Reason:   "Error",
+						ExitCode: 137,
+						Message:  `[{"key":"StartedAt","value":"2024-01-01T00:00:00.000Z","type":3}]`,
+					},
+				},
+			}, {
+				Name:  "step-two",
+				State: corev1.ContainerState{},
+			}},
+		},
+		want: v1.TaskRunStatus{
+			Status: statusRunning(),
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				Steps: []v1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Reason:    "Error",
+							ExitCode:  137,
+							StartedAt: metav1.Time{Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+						},
+					},
+					Name:              "one",
+					Container:         "step-one",
+					TerminationReason: "Error",
+				}, {
+					ContainerState: corev1.ContainerState{},
+					Name:           "two",
+					Container:      "step-two",
+				}},
+				Sidecars: []v1.SidecarState{},
+			},
+		},
+	}, {
 		desc: "the failed task show task results",
 		podStatus: corev1.PodStatus{
 			Phase: corev1.PodFailed,

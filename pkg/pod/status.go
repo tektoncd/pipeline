@@ -87,7 +87,9 @@ const (
 
 const (
 	oomKilled = "OOMKilled"
-	evicted   = "Evicted"
+	// externalSigKillCode is the exit code for an external SIGKILL (128 + 9).
+	externalSigKillCode = 137
+	evicted             = "Evicted"
 )
 
 // SidecarsReady returns true if all of the Pod's sidecars are Ready or
@@ -660,7 +662,15 @@ func isPodCompleted(pod *corev1.Pod) bool {
 	for _, s := range pod.Status.ContainerStatuses {
 		if IsContainerStep(s.Name) {
 			if s.State.Terminated != nil {
-				if isOOMKilled(s) {
+				// Depending on how the container is killed during an OOM, kubernetes may not report the container as
+				// explicitly OOM-killed. External SIGKILL and OOM both stop the container before the post file can be
+				// written, preventing the next steps from starting.
+				// Exit code 137 only means the entrypoint was killed if the termination message is empty; a non-empty
+				// message means the entrypoint survived and wrote its results, so we must not short-circuit
+				// areContainersCompleted (the sidecar-log results wait). This relies on the default
+				// terminationMessagePolicy (File), so logs never backfill the message.
+				// Normal failure modes like Step failure are managed elsewhere and update pod.Status.Phase
+				if isOOMKilled(s) || (s.State.Terminated.ExitCode == externalSigKillCode && s.State.Terminated.Message == "") {
 					return true
 				}
 			}
