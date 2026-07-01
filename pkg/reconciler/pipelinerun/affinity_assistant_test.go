@@ -41,6 +41,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -967,6 +968,186 @@ func TestThatTheAffinityAssistantIsWithoutNodeSelectorAndTolerations(t *testing.
 
 	if stsWithoutTolerationsAndNodeSelector.Spec.Template.Spec.SecurityContext != nil {
 		t.Errorf("unexpected SecurityContext in the StatefulSet")
+	}
+}
+
+func TestCustomResourcesArePropagatedToAffinityAssistant(t *testing.T) {
+	customResources := &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+			corev1.ResourceMemory: resource.MustParse("256Mi"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("200m"),
+			corev1.ResourceMemory: resource.MustParse("512Mi"),
+		},
+	}
+
+	defaultTpl := &pod.AffinityAssistantTemplate{
+		Resources: customResources,
+	}
+
+	pr := &v1.PipelineRun{
+		TypeMeta:   metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-with-custom-resources"},
+		Spec:       v1.PipelineRunSpec{},
+	}
+
+	sts := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", pr, []corev1.PersistentVolumeClaim{}, []string{}, containerConfigWithoutSecurityContext, defaultTpl)
+
+	got := sts.Spec.Template.Spec.Containers[0].Resources
+	if diff := cmp.Diff(*customResources, got); diff != "" {
+		t.Errorf("affinity assistant container resources mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestDefaultResourcesAreUsedWhenNoneSpecified(t *testing.T) {
+	pr := &v1.PipelineRun{
+		TypeMeta:   metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-without-custom-resources"},
+		Spec:       v1.PipelineRunSpec{},
+	}
+
+	sts := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", pr, []corev1.PersistentVolumeClaim{}, []string{}, containerConfigWithoutSecurityContext, nil)
+
+	expectedResources := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			"cpu":    resource.MustParse("50m"),
+			"memory": resource.MustParse("100Mi"),
+		},
+		Requests: corev1.ResourceList{
+			"cpu":    resource.MustParse("50m"),
+			"memory": resource.MustParse("100Mi"),
+		},
+	}
+
+	got := sts.Spec.Template.Spec.Containers[0].Resources
+	if diff := cmp.Diff(expectedResources, got); diff != "" {
+		t.Errorf("affinity assistant container default resources mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestMergedResourcesArePropagatedToAffinityAssistant(t *testing.T) {
+	defaultResources := &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("50m"),
+			corev1.ResourceMemory: resource.MustParse("100Mi"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("50m"),
+			corev1.ResourceMemory: resource.MustParse("100Mi"),
+		},
+	}
+
+	defaultTpl := &pod.AffinityAssistantTemplate{
+		Resources: defaultResources,
+		NodeSelector: map[string]string{
+			"disktype": "ssd",
+		},
+	}
+
+	pr := &v1.PipelineRun{
+		TypeMeta:   metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-merged-resources"},
+		Spec: v1.PipelineRunSpec{
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				PodTemplate: &pod.Template{
+					NodeSelector: map[string]string{
+						"zone": "us-east-1a",
+					},
+				},
+			},
+		},
+	}
+
+	sts := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", pr, []corev1.PersistentVolumeClaim{}, []string{}, containerConfigWithoutSecurityContext, defaultTpl)
+
+	got := sts.Spec.Template.Spec.Containers[0].Resources
+	if diff := cmp.Diff(*defaultResources, got); diff != "" {
+		t.Errorf("expected resources from default template (-want +got):\n%s", diff)
+	}
+
+	if len(sts.Spec.Template.Spec.NodeSelector) != 1 || sts.Spec.Template.Spec.NodeSelector["zone"] != "us-east-1a" {
+		t.Errorf("expected NodeSelector from PipelineRun spec to override default, got %v", sts.Spec.Template.Spec.NodeSelector)
+	}
+}
+
+func TestPipelineRunPodTemplateResourcesArePropagatedToAffinityAssistant(t *testing.T) {
+	customResources := &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("150m"),
+			corev1.ResourceMemory: resource.MustParse("300Mi"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("300m"),
+			corev1.ResourceMemory: resource.MustParse("600Mi"),
+		},
+	}
+
+	pr := &v1.PipelineRun{
+		TypeMeta:   metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-with-resources-on-podtemplate"},
+		Spec: v1.PipelineRunSpec{
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				PodTemplate: &pod.Template{
+					Resources: customResources,
+				},
+			},
+		},
+	}
+
+	sts := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", pr, []corev1.PersistentVolumeClaim{}, []string{}, containerConfigWithoutSecurityContext, nil)
+
+	got := sts.Spec.Template.Spec.Containers[0].Resources
+	if diff := cmp.Diff(*customResources, got); diff != "" {
+		t.Errorf("per-PipelineRun resources mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestPipelineRunResourcesOverrideDefaultResources(t *testing.T) {
+	prResources := &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("200m"),
+			corev1.ResourceMemory: resource.MustParse("400Mi"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("400m"),
+			corev1.ResourceMemory: resource.MustParse("800Mi"),
+		},
+	}
+
+	defaultResources := &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("50m"),
+			corev1.ResourceMemory: resource.MustParse("100Mi"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("50m"),
+			corev1.ResourceMemory: resource.MustParse("100Mi"),
+		},
+	}
+
+	defaultTpl := &pod.AffinityAssistantTemplate{
+		Resources: defaultResources,
+	}
+
+	pr := &v1.PipelineRun{
+		TypeMeta:   metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-resources-override"},
+		Spec: v1.PipelineRunSpec{
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				PodTemplate: &pod.Template{
+					Resources: prResources,
+				},
+			},
+		},
+	}
+
+	sts := affinityAssistantStatefulSet(aa.AffinityAssistantPerWorkspace, "test-assistant", pr, []corev1.PersistentVolumeClaim{}, []string{}, containerConfigWithoutSecurityContext, defaultTpl)
+
+	got := sts.Spec.Template.Spec.Containers[0].Resources
+	if diff := cmp.Diff(*prResources, got); diff != "" {
+		t.Errorf("per-PipelineRun resources should override default (-want +got):\n%s", diff)
 	}
 }
 
