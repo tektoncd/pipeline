@@ -1900,6 +1900,8 @@ spec:
                           type: boolean
                         enforceNonfalsifiability:
                           type: string
+                        keepStatusSpecDescriptions:
+                          type: boolean
                         maxResultSize:
                           type: integer
                         requireGitSSHSecretKnownHosts:
@@ -2173,6 +2175,8 @@ spec:
                                 type: boolean
                               enforceNonfalsifiability:
                                 type: string
+                              keepStatusSpecDescriptions:
+                                type: boolean
                               maxResultSize:
                                 type: integer
                               requireGitSSHSecretKnownHosts:
@@ -4054,6 +4058,8 @@ spec:
                           type: boolean
                         enforceNonfalsifiability:
                           type: string
+                        keepStatusSpecDescriptions:
+                          type: boolean
                         maxResultSize:
                           type: integer
                         requireGitSSHSecretKnownHosts:
@@ -4319,6 +4325,8 @@ spec:
                                 type: boolean
                               enforceNonfalsifiability:
                                 type: string
+                              keepStatusSpecDescriptions:
+                                type: boolean
                               maxResultSize:
                                 type: integer
                               requireGitSSHSecretKnownHosts:
