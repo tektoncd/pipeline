@@ -514,6 +514,16 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 	}
 }
 
+// ApplyMatrixIncludeWhenExpressions replaces param variables in the When expressions of Matrix Include params.
+func ApplyMatrixIncludeWhenExpressions(pt *v1.PipelineTask, pr *v1.PipelineRun) {
+	stringReplacements, arrayReplacements, _ := paramsFromPipelineRun(pr)
+	for i := range pt.Matrix.Include {
+		if pt.Matrix.Include[i].When != nil {
+			pt.Matrix.Include[i].When = pt.Matrix.Include[i].When.ReplaceVariables(stringReplacements, arrayReplacements)
+		}
+	}
+}
+
 // ApplyPipelineTaskStateContext replaces context variables referring to execution status with the specified status
 func ApplyPipelineTaskStateContext(state PipelineRunState, replacements map[string]string) {
 	for _, resolvedPipelineRunTask := range state {
@@ -558,6 +568,9 @@ func replaceVariablesInPipelineTasks(tasks []v1.PipelineTask, replacements map[s
 			tasks[i].Matrix.Params = tasks[i].Matrix.Params.ReplaceVariables(replacements, arrayReplacements, nil)
 			for j := range tasks[i].Matrix.Include {
 				tasks[i].Matrix.Include[j].Params = tasks[i].Matrix.Include[j].Params.ReplaceVariables(replacements, nil, nil)
+				if tasks[i].Matrix.Include[j].When != nil {
+					tasks[i].Matrix.Include[j].When = tasks[i].Matrix.Include[j].When.ReplaceVariables(replacements, arrayReplacements)
+				}
 			}
 		} else {
 			tasks[i].DisplayName = substitution.ApplyReplacements(tasks[i].DisplayName, replacements)

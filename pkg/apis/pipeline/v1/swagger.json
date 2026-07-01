@@ -359,6 +359,14 @@
             "default": {},
             "$ref": "#/definitions/v1.Param"
           }
+        },
+        "when": {
+          "description": "When is a list of when expressions that need to be true for the matrix task to run",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WhenExpression"
+          }
         }
       }
     },
