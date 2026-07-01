@@ -22,7 +22,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	resolutionrequestinformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
 	resolutionrequestreconciler "github.com/tektoncd/pipeline/pkg/client/resolution/injection/reconciler/resolution/v1beta1/resolutionrequest"
+	"github.com/tektoncd/pipeline/pkg/tracing"
 	"k8s.io/utils/clock"
+	secretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -33,18 +35,28 @@ import (
 func NewController(clock clock.PassiveClock) func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
+		secretInformer := secretinformer.Get(ctx)
+		tracerProvider := tracing.New(TracerName, logger.Named("tracing"))
 
-		configStore := config.NewStore(logger.Named("config-store"))
+		//nolint:contextcheck
+		configStore := config.NewStore(logger.Named("config-store"),
+			tracerProvider.OnStore(secretInformer.Lister()),
+		)
 		configStore.WatchConfigs(cmw)
 
 		r := &Reconciler{
-			clock: clock,
+			clock:          clock,
+			tracerProvider: tracerProvider,
 		}
 		impl := resolutionrequestreconciler.NewImpl(ctx, r, func(impl *controller.Impl) controller.Options {
 			return controller.Options{
 				ConfigStore: configStore,
 			}
 		})
+
+		if _, err := secretInformer.Informer().AddEventHandler(controller.HandleAll(tracerProvider.Handler)); err != nil {
+			logging.FromContext(ctx).Panicf("Couldn't register Secret informer event handler: %w", err)
+		}
 
 		reqinformer := resolutionrequestinformer.Get(ctx)
 		if _, err := reqinformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
