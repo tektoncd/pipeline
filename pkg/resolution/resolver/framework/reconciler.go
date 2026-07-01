@@ -121,9 +121,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 	return r.resolve(ctx, key, rr)
 }
 
+// resolveResult carries the single terminal outcome of a resolver worker
+// goroutine: either err is set or resource is set, never both.
+type resolveResult struct {
+	resource ResolvedResource
+	err      error
+}
+
 func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.ResolutionRequest) error {
-	errChan := make(chan error, 1)
-	resourceChan := make(chan ResolvedResource, 1)
+	resultChan := make(chan resolveResult, 1)
 
 	paramsMap := make(map[string]string)
 	for _, p := range rr.Spec.Params {
@@ -148,43 +154,42 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 	go func() {
 		validationError := r.resolver.ValidateParams(resolutionCtx, rr.Spec.Params)
 		if validationError != nil {
-			errChan <- &resolutioncommon.InvalidRequestError{
+			resultChan <- resolveResult{err: &resolutioncommon.InvalidRequestError{
 				ResolutionRequestKey: key,
 				Message:              validationError.Error(),
-			}
+			}}
 			return
 		}
 		resource, resolveErr := r.resolver.Resolve(resolutionCtx, rr.Spec.Params)
 		if resolveErr != nil {
-			errChan <- &resolutioncommon.GetResourceError{
+			resultChan <- resolveResult{err: &resolutioncommon.GetResourceError{
 				ResolverName: r.resolver.GetName(resolutionCtx),
 				Key:          key,
 				Original:     resolveErr,
-			}
+			}}
 			return
 		}
 		if err := ValidateResolvedResource(resource); err != nil {
-			errChan <- &resolutioncommon.GetResourceError{
+			resultChan <- resolveResult{err: &resolutioncommon.GetResourceError{
 				ResolverName: r.resolver.GetName(resolutionCtx),
 				Key:          key,
 				Original:     fmt.Errorf("resolved resource validation error: %w", err),
-			}
+			}}
 			return
 		}
-		resourceChan <- resource
+		resultChan <- resolveResult{resource: resource}
 	}()
 
 	select {
-	case err := <-errChan:
-		if err != nil {
-			return r.OnError(ctx, rr, err)
+	case res := <-resultChan:
+		if res.err != nil {
+			return r.OnError(ctx, rr, res.err)
 		}
+		return r.writeResolvedData(ctx, rr, res.resource)
 	case <-resolutionCtx.Done():
 		if err := resolutionCtx.Err(); err != nil {
 			return r.OnError(ctx, rr, err)
 		}
-	case resource := <-resourceChan:
-		return r.writeResolvedData(ctx, rr, resource)
 	}
 
 	return errors.New("unknown error")
