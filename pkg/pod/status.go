@@ -317,7 +317,10 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 
 		// Parse termination messages
 		terminationReason := ""
-		if state.Terminated != nil && len(state.Terminated.Message) != 0 {
+		if state.Terminated != nil && state.Terminated.Reason == v1.TaskRunReasonCancelled.String() {
+			state.Terminated.StartedAt = state.Terminated.FinishedAt
+			terminationReason = v1.TaskRunReasonCancelled.String()
+		} else if state.Terminated != nil && len(state.Terminated.Message) != 0 {
 			msg := state.Terminated.Message
 
 			results, err := termination.ParseMessage(logger, msg)
