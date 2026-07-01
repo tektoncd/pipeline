@@ -390,28 +390,63 @@ spec:
                   echo "Chains signing status: ${SIGNED}"
                   printf '%s' "${SIGNED}" > "$(results.signed.path)"
 
-                  # Extract Rekor UUID from transparency URL
-                  TRANSPARENCY=$(kubectl get taskrun "${TASKRUN_NAME}" -n "${NAMESPACE}" \
-                    -o jsonpath='{.metadata.annotations.chains\.tekton\.dev/transparency}' 2>/dev/null || echo "")
+                  # The release notes verification commands need the in-toto
+                  # *attestation* entry (kind "intoto"), which lists every
+                  # published image as a subject. The chains transparency
+                  # annotation only points at the per-image signature entry
+                  # (kind "hashedrekord"), which has no subjects, so we must
+                  # look the attestation up explicitly.
+                  #
+                  # Strategy: take one published image digest from the
+                  # publish-images IMAGES result, ask the Rekor search index
+                  # for every log entry referencing that digest, then keep the
+                  # entry whose body kind is "intoto".
+                  REKOR_HOST="https://rekor.sigstore.dev"
+                  REKOR_UUID=""
 
-                  if [ -n "${TRANSPARENCY}" ]; then
-                    # URL format: https://rekor.sigstore.dev/api/v1/log/entries?logIndex=NNNN
-                    # Fetch the full entry UUID from the Rekor API (logIndex alone is not the UUID)
-                    REKOR_UUID=$(wget -qO- "${TRANSPARENCY}" | jq -r 'keys[0]')
-                    if [ -z "${REKOR_UUID}" ]; then
-                      echo "WARNING: Could not fetch Rekor UUID from: ${TRANSPARENCY}"
-                      # Fall back to logIndex
-                      REKOR_UUID=$(echo "${TRANSPARENCY}" | grep -oE 'logIndex=[0-9]+' | cut -d= -f2)
+                  IMAGES=$(kubectl get taskrun -n "${NAMESPACE}" \
+                    -l tekton.dev/pipelineRun="${PIPELINERUN}",tekton.dev/pipelineTask=publish-images \
+                    -o jsonpath='{.items[0].status.results[?(@.name=="IMAGES")].value}' 2>/dev/null || echo "")
+                  IMAGE_DIGEST=$(echo "${IMAGES}" | grep -oE 'sha256:[0-9a-f]{64}' | head -1)
+
+                  if [ -n "${IMAGE_DIGEST}" ]; then
+                    echo "Searching Rekor for the in-toto attestation of ${IMAGE_DIGEST}..."
+                    CANDIDATES=$(wget -qO- --header='Content-Type: application/json' \
+                      --post-data="{\"hash\":\"${IMAGE_DIGEST}\"}" \
+                      "${REKOR_HOST}/api/v1/index/retrieve" 2>/dev/null | jq -r '.[]?' || echo "")
+                    for uuid in ${CANDIDATES}; do
+                      KIND=$(wget -qO- "${REKOR_HOST}/api/v1/log/entries/${uuid}" 2>/dev/null \
+                        | jq -r '.[].body' | base64 -d 2>/dev/null | jq -r '.kind' 2>/dev/null || echo "")
+                      if [ "${KIND}" = "intoto" ]; then
+                        REKOR_UUID="${uuid}"
+                        break
+                      fi
+                    done
+                  fi
+
+                  if [ -z "${REKOR_UUID}" ]; then
+                    # Fall back to the transparency annotation. This points at
+                    # the per-image signature entry rather than the attestation,
+                    # but it is better than nothing for manual investigation.
+                    echo "WARNING: Could not find an in-toto attestation entry; falling back to the transparency annotation"
+                    TRANSPARENCY=$(kubectl get taskrun "${TASKRUN_NAME}" -n "${NAMESPACE}" \
+                      -o jsonpath='{.metadata.annotations.chains\.tekton\.dev/transparency}' 2>/dev/null || echo "")
+                    if [ -n "${TRANSPARENCY}" ]; then
+                      # URL format: https://rekor.sigstore.dev/api/v1/log/entries?logIndex=NNNN
+                      # Fetch the full entry UUID from the Rekor API (logIndex alone is not the UUID)
+                      REKOR_UUID=$(wget -qO- "${TRANSPARENCY}" | jq -r 'keys[0]')
                       if [ -z "${REKOR_UUID}" ]; then
-                        REKOR_UUID="unknown"
+                        # Fall back to logIndex
+                        REKOR_UUID=$(echo "${TRANSPARENCY}" | grep -oE 'logIndex=[0-9]+' | cut -d= -f2)
                       fi
                     fi
-                    echo "Rekor UUID: ${REKOR_UUID}"
-                    printf '%s' "${REKOR_UUID}" > "$(results.rekor-uuid.path)"
-                  else
-                    echo "WARNING: No transparency URL found"
-                    printf 'unknown' > "$(results.rekor-uuid.path)"
                   fi
+
+                  if [ -z "${REKOR_UUID}" ]; then
+                    REKOR_UUID="unknown"
+                  fi
+                  echo "Rekor UUID: ${REKOR_UUID}"
+                  printf '%s' "${REKOR_UUID}" > "$(results.rekor-uuid.path)"
                   exit 0
                 fi
 
