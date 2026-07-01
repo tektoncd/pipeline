@@ -373,6 +373,8 @@ that are running while the change occurs.
 
 The flags in this ConfigMap are as follows:
 
+- `per-namespace-configuration`: set this flag to `"true"` to allow namespace-scoped overrides for a limited set of TaskRun/PipelineRun defaulting and validation settings. Namespace owners can create `tekton-config-defaults` or `tekton-feature-flags` ConfigMaps in their namespace with both labels `tekton.dev/pipeline-config: "true"` and `app.kubernetes.io/part-of: tekton-pipelines`. This first phase only applies to TaskRun/PipelineRun admission and reconciliation; resolver, notification, and CloudEvents settings remain cluster-scoped. Operators can prevent additional supported fields from being overridden with the comma-separated `non-overridable-fields` flag.
+
 - `coschedule`: set this flag determines how PipelineRun Pods are scheduled with [Affinity Assistant](./affinityassistants).
 Acceptable values are "workspaces" (default), "pipelineruns", "isolate-pipelinerun", or "disabled".
 Setting it to "workspaces" will schedule all the taskruns sharing the same PVC-based workspace in a pipelinerun to the same node.
