@@ -345,6 +345,11 @@ type TaskRunStatusFields struct {
 	// +optional
 	Artifacts *Artifacts `json:"artifacts,omitempty"`
 
+	// Notices are structured messages emitted by controllers that do not affect the task's success/failure status.
+	// +optional
+	// +listType=atomic
+	Notices []Notice `json:"notices,omitempty"`
+
 	// The list has one entry per sidecar in the manifest. Each entry is
 	// represents the imageid of the corresponding sidecar.
 	// +listType=atomic
