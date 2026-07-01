@@ -96,12 +96,7 @@ func MergeStepsWithSpecs(steps []Step, overrides []TaskRunStepSpec) ([]Step, err
 		if !found {
 			continue
 		}
-		merged := corev1.ResourceRequirements{}
-		err := mergeObjWithTemplate(&s.ComputeResources, &o.ComputeResources, &merged)
-		if err != nil {
-			return nil, err
-		}
-		steps[i].ComputeResources = merged
+		steps[i].ComputeResources = s.ComputeResources.Merge(o.ComputeResources)
 	}
 	return steps, nil
 }
@@ -122,12 +117,7 @@ func MergeSidecarsWithSpecs(sidecars []Sidecar, overrides []TaskRunSidecarSpec) 
 		if !found {
 			continue
 		}
-		merged := corev1.ResourceRequirements{}
-		err := mergeObjWithTemplate(&s.ComputeResources, &o.ComputeResources, &merged)
-		if err != nil {
-			return nil, err
-		}
-		sidecars[i].ComputeResources = merged
+		sidecars[i].ComputeResources = s.ComputeResources.Merge(o.ComputeResources)
 	}
 	return sidecars, nil
 }
