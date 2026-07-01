@@ -182,11 +182,12 @@ var (
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Pipeline Run
 // resource with the current status of the resource.
-func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgreconciler.Event {
+func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) (reconcileEvent pkgreconciler.Event) {
 	logger := logging.FromContext(ctx)
 	ctx = initTracing(ctx, c.tracerProvider, pr)
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "PipelineRun:ReconcileKind")
 	defer span.End()
+	defer func() { recordSpanError(span, reconcileEvent) }()
 
 	span.SetAttributes(
 		attribute.String("pipelinerun", pr.Name), attribute.String("namespace", pr.Namespace),
@@ -353,9 +354,10 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, pr *v1.Pipelin
 	}
 }
 
-func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1.PipelineRun, beforeCondition *apis.Condition, previousError error) error {
+func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1.PipelineRun, beforeCondition *apis.Condition, previousError error) (err error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "finishReconcileUpdateEmitEvents")
 	defer span.End()
+	defer func() { recordSpanError(span, err) }()
 	logger := logging.FromContext(ctx)
 
 	afterCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
@@ -392,9 +394,10 @@ func (c *Reconciler) resolvePipelineState(
 	pipelineMeta *metav1.ObjectMeta,
 	pr *v1.PipelineRun,
 	pst resources.PipelineRunState,
-) (resources.PipelineRunState, error) {
+) (state resources.PipelineRunState, err error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "resolvePipelineState")
 	defer span.End()
+	defer func() { recordSpanError(span, err) }()
 
 	// List VerificationPolicies once per reconcile for trusted resources (used by all pipeline tasks).
 	vp, err := c.verificationPolicyLister.VerificationPolicies(pr.Namespace).List(labels.Everything())
@@ -541,9 +544,10 @@ func (c *Reconciler) resolvePipelineState(
 	return pst, nil
 }
 
-func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipelineFunc rprp.GetPipeline) error {
+func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipelineFunc rprp.GetPipeline) (err error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "reconcile")
 	defer span.End()
+	defer func() { recordSpanError(span, err) }()
 	logger := logging.FromContext(ctx)
 	pr.SetDefaults(ctx)
 
@@ -985,9 +989,10 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 // runNextSchedulableTask gets the next schedulable Tasks from the dag based on the current
 // pipeline run state, and starts them
 // after all DAG tasks are done, it's responsible for scheduling final tasks and start executing them
-func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.PipelineRun, pipelineRunFacts *resources.PipelineRunFacts) error {
+func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.PipelineRun, pipelineRunFacts *resources.PipelineRunFacts) (err error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "runNextSchedulableTask")
 	defer span.End()
+	defer func() { recordSpanError(span, err) }()
 
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
@@ -1922,9 +1927,10 @@ func addMetadataByPrecedence(metadata map[string]string, addedMetadata map[strin
 	}
 }
 
-func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1.PipelineRun) (*v1.PipelineRun, error) {
+func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1.PipelineRun) (updated *v1.PipelineRun, err error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updateLabelsAndAnnotations")
 	defer span.End()
+	defer func() { recordSpanError(span, err) }()
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting PipelineRun %s when updating labels/annotations: %w", pr.Name, err)
@@ -1981,9 +1987,10 @@ func storePipelineSpecAndMergeMeta(ctx context.Context, pr *v1.PipelineRun, ps *
 	return nil
 }
 
-func (c *Reconciler) updatePipelineRunStatusFromInformer(ctx context.Context, pr *v1.PipelineRun) error {
+func (c *Reconciler) updatePipelineRunStatusFromInformer(ctx context.Context, pr *v1.PipelineRun) (err error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updatePipelineRunStatusFromInformer")
 	defer span.End()
+	defer func() { recordSpanError(span, err) }()
 	logger := logging.FromContext(ctx)
 
 	// Get the parent PipelineRun label that is set on each child (PinP) PipelineRun/TaskRun/CustomRun. Do not include the propagated labels from the
