@@ -319,8 +319,7 @@ func WithAnnotationAndLabel(pr *v1.PipelineRun, withUnused bool) *v1.PipelineRun
 }
 
 // WithServiceAccount sets serviceAccountName on the PipelineRun's taskRunTemplate. It decorates a
-// fixture's parent and expected-child PipelineRuns so tests can assert ServiceAccount propagation
-// without a dedicated fixture (TEP-0056, issue #10180).
+// fixture's PipelineRuns serviceAccountName in the TaskRunTemplate
 func WithServiceAccount(pr *v1.PipelineRun, serviceAccountName string) *v1.PipelineRun {
 	pr.Spec.TaskRunTemplate.ServiceAccountName = serviceAccountName
 	return pr

@@ -291,9 +291,8 @@ func TestPipelineRun_PinP_OneChildPipelineRunFromPipelineRef(t *testing.T) {
 }
 
 // TestPipelineRun_PinP_ChildPipelineRunInheritsServiceAccount verifies that the parent
-// PipelineRun's taskRunTemplate.serviceAccountName propagates to the child PipelineRun
-// (TEP-0056, issue #10180). It uses a non-default ServiceAccount so the assertion has teeth:
-// a child PipelineRun would otherwise default its own SA to "default" even if propagation broke.
+// PipelineRun's taskRunTemplate.serviceAccountName propagates to the child PipelineRun.
+// It uses non-default ServiceAccount name as basis for assertion.
 // @test:execution=parallel
 func TestPipelineRun_PinP_ChildPipelineRunInheritsServiceAccount(t *testing.T) {
 	t.Parallel()
