@@ -1945,7 +1945,12 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1.Pipe
 func storePipelineSpecAndMergeMeta(ctx context.Context, pr *v1.PipelineRun, ps *v1.PipelineSpec, meta *resolutionutil.ResolvedObjectMeta) error {
 	// Only store the PipelineSpec once, if it has never been set before.
 	if pr.Status.PipelineSpec == nil {
-		pr.Status.PipelineSpec = ps
+		// Snapshot the spec, stripping documentation-only descriptions to reduce etcd usage unless opted out. See #10321.
+		snapshot := ps.DeepCopy()
+		if !config.FromContextOrDefaults(ctx).FeatureFlags.KeepStatusSpecDescriptions {
+			snapshot.StripDescriptions()
+		}
+		pr.Status.PipelineSpec = snapshot
 		if meta == nil {
 			return nil
 		}
