@@ -87,7 +87,9 @@ const (
 
 const (
 	oomKilled = "OOMKilled"
-	evicted   = "Evicted"
+	// externalSigKillCode is the exit code for an external SIGKILL (128 + 9).
+	externalSigKillCode = 137
+	evicted             = "Evicted"
 )
 
 // SidecarsReady returns true if all of the Pod's sidecars are Ready or
@@ -660,7 +662,11 @@ func isPodCompleted(pod *corev1.Pod) bool {
 	for _, s := range pod.Status.ContainerStatuses {
 		if IsContainerStep(s.Name) {
 			if s.State.Terminated != nil {
-				if isOOMKilled(s) {
+				// Depending on how the container is killed during an OOM, kubernetes may not report the container as
+				// explicitly OOM-killed. External SIGKILL and OOM both stop the container before the post file can be
+				// written, preventing the next steps from starting.
+				// Normal failure modes like Step failure are managed elsewhere and update pod.Status.Phase
+				if s.State.Terminated.ExitCode == externalSigKillCode || isOOMKilled(s) {
 					return true
 				}
 			}
