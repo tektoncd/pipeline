@@ -17,6 +17,7 @@ limitations under the License.
 package pod
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -4519,4 +4520,53 @@ func Test_getFailureMessage_consistent_with_reason(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExtractStartedAtTimeFromResults(t *testing.T) {
+	t.Run("present", func(t *testing.T) {
+		results := []result.RunResult{{Key: "StartedAt", Value: "2026-01-02T15:04:05.000Z"}}
+		got, err := extractStartedAtTimeFromResults(results)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got == nil {
+			t.Fatal("expected a time, got nil")
+		}
+	})
+	t.Run("missing returns ErrResultNotFound", func(t *testing.T) {
+		_, err := extractStartedAtTimeFromResults([]result.RunResult{{Key: "Other", Value: "x"}})
+		if !errors.Is(err, ErrResultNotFound) {
+			t.Fatalf("expected ErrResultNotFound, got %v", err)
+		}
+	})
+	t.Run("unparseable value returns a non-sentinel error", func(t *testing.T) {
+		_, err := extractStartedAtTimeFromResults([]result.RunResult{{Key: "StartedAt", Value: "not-a-time"}})
+		if err == nil || errors.Is(err, ErrResultNotFound) {
+			t.Fatalf("expected a parse error distinct from ErrResultNotFound, got %v", err)
+		}
+	})
+}
+
+func TestExtractExitCodeFromResults(t *testing.T) {
+	t.Run("present", func(t *testing.T) {
+		got, err := extractExitCodeFromResults([]result.RunResult{{Key: "ExitCode", Value: "0"}})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got == nil || *got != 0 {
+			t.Fatalf("expected exit code 0, got %v", got)
+		}
+	})
+	t.Run("missing returns ErrResultNotFound", func(t *testing.T) {
+		_, err := extractExitCodeFromResults([]result.RunResult{{Key: "Other", Value: "x"}})
+		if !errors.Is(err, ErrResultNotFound) {
+			t.Fatalf("expected ErrResultNotFound, got %v", err)
+		}
+	})
+	t.Run("unparseable value returns a non-sentinel error", func(t *testing.T) {
+		_, err := extractExitCodeFromResults([]result.RunResult{{Key: "ExitCode", Value: "NaN"}})
+		if err == nil || errors.Is(err, ErrResultNotFound) {
+			t.Fatalf("expected a parse error distinct from ErrResultNotFound, got %v", err)
+		}
+	})
 }
