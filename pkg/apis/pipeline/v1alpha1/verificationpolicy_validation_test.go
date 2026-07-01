@@ -228,7 +228,9 @@ func TestVerificationPolicy_Invalid(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.verificationPolicy.Validate(t.Context())
-			if d := cmp.Diff(tt.want.Error(), err.Error()); d != "" {
+			// Compare only error-level diagnostics; unanchored test patterns
+			// additionally produce warning-level diagnostics.
+			if d := cmp.Diff(tt.want.Error(), err.Filter(apis.ErrorLevel).Error()); d != "" {
 				t.Error("VerificationPolicy validate error mismatch", diff.PrintWantGot(d))
 			}
 		})
@@ -340,9 +342,50 @@ func TestVerificationPolicy_Valid(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.verificationPolicy.Validate(t.Context())
-			if err != nil {
+			// Unanchored patterns produce warning-level diagnostics; only
+			// error-level diagnostics make a VerificationPolicy invalid.
+			if err.Filter(apis.ErrorLevel) != nil {
 				t.Errorf("validating valid VerificationPolicy: %v", err)
 			}
 		})
 	}
+}
+
+func TestVerificationPolicy_UnanchoredPatternWarnsNotRejects(t *testing.T) {
+	vpWithPattern := func(pattern string) *v1alpha1.VerificationPolicy {
+		return &v1alpha1.VerificationPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "vp",
+			},
+			Spec: v1alpha1.VerificationPolicySpec{
+				Resources: []v1alpha1.ResourcePattern{{Pattern: pattern}},
+				Authorities: []v1alpha1.Authority{
+					{
+						Name: "foo",
+						Key: &v1alpha1.KeyRef{
+							Data:          "inlinekey",
+							HashAlgorithm: "sha256",
+						},
+					},
+				},
+			},
+		}
+	}
+
+	t.Run("unanchored pattern warns without rejecting", func(t *testing.T) {
+		err := vpWithPattern("https://github.com/tektoncd/catalog.git").Validate(t.Context())
+		if err.Filter(apis.ErrorLevel) != nil {
+			t.Errorf("unanchored pattern must not be rejected, got error: %v", err)
+		}
+		if err.Filter(apis.WarningLevel) == nil {
+			t.Error("expected a warning for unanchored pattern, got none")
+		}
+	})
+
+	t.Run("anchored pattern has no diagnostics", func(t *testing.T) {
+		err := vpWithPattern(`^(git\+)?https://github\.com/tektoncd/catalog\.git$`).Validate(t.Context())
+		if err != nil {
+			t.Errorf("anchored pattern must validate cleanly, got: %v", err)
+		}
+	})
 }
