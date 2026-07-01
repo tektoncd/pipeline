@@ -163,7 +163,7 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 		}
 	}
 
-	err := setTaskRunStatusBasedOnStepStatus(ctx, logger, stepStatuses, &tr, pod.Status.Phase, kubeclient, ts)
+	err := setTaskRunStatusBasedOnStepStatus(ctx, logger, stepStatuses, &tr, pod.Status.Phase, kubeclient, ts, getPotentialStepsStartTime(pod))
 
 	setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses, trs)
 
@@ -224,7 +224,7 @@ func getStepResultsFromSidecarLogs(sidecarLogResults []result.RunResult, contain
 	return stepResultsFromSidecarLogs, nil
 }
 
-func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface, ts *v1.TaskSpec) error {
+func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface, ts *v1.TaskSpec, defaultStartTime metav1.Time) error {
 	trs := &tr.Status
 	var errs []error
 
@@ -276,6 +276,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 
 	// Continue with extraction of termination messages
 	orderedStepStates := make([]v1.StepState, len(stepStatuses))
+	lastFinishedAt := defaultStartTime
 	for i, s := range stepStatuses {
 		// Avoid changing the original value by modifying the pointer value.
 		state := s.State.DeepCopy()
@@ -317,63 +318,72 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 
 		// Parse termination messages
 		terminationReason := ""
-		if state.Terminated != nil && len(state.Terminated.Message) != 0 {
-			msg := state.Terminated.Message
+		if state.Terminated != nil {
+			if len(state.Terminated.Message) != 0 {
+				msg := state.Terminated.Message
 
-			results, err := termination.ParseMessage(logger, msg)
-			if err != nil {
-				logger.Errorf("termination message could not be parsed sas JSON: %v", err)
-				errs = append(errs, err)
-			} else {
-				err := setStepArtifactsValueFromTerminationMessageRunResult(results, &sas)
+				results, err := termination.ParseMessage(logger, msg)
 				if err != nil {
-					logger.Errorf("error setting step artifacts of step %q in taskrun %q: %v", s.Name, tr.Name, err)
-					errs = append(errs, err)
-				}
-				time, err := extractStartedAtTimeFromResults(results)
-				if err != nil {
-					logger.Errorf("error setting the start time of step %q in taskrun %q: %v", s.Name, tr.Name, err)
-					errs = append(errs, err)
-				}
-				exitCode, err := extractExitCodeFromResults(results)
-				if err != nil {
-					logger.Errorf("error extracting the exit code of step %q in taskrun %q: %v", s.Name, tr.Name, err)
-					errs = append(errs, err)
-				}
-
-				taskResults, stepRunRes, filteredResults := filterResults(results, specResults, stepResults)
-				if tr.IsDone() {
-					taskRunStepResults = append(taskRunStepResults, stepRunRes...)
-					// Set TaskResults from StepResults
-					taskResults = append(taskResults, createTaskResultsFromStepResults(stepRunRes, neededStepResults)...)
-					trs.Results = append(trs.Results, taskResults...)
-
-					var tras v1.Artifacts
-					err := setTaskRunArtifactsFromRunResult(filteredResults, &tras)
+					// Handle unexpected pod's termination by Kubernetes.
+					terminationReason = state.Terminated.Reason
+				} else {
+					err := setStepArtifactsValueFromTerminationMessageRunResult(results, &sas)
 					if err != nil {
-						logger.Errorf("error setting step artifacts in taskrun %q: %v", tr.Name, err)
+						logger.Errorf("error setting step artifacts of step %q in taskrun %q: %v", s.Name, tr.Name, err)
 						errs = append(errs, err)
 					}
-					trs.Artifacts.Merge(&tras)
-					trs.Artifacts.Merge(&sas)
-				}
-				msg, err = createMessageFromResults(filteredResults)
-				if err != nil {
-					logger.Errorf("%v", err)
-					errs = append(errs, err)
-				} else {
-					state.Terminated.Message = msg
-				}
-				if time != nil {
-					state.Terminated.StartedAt = *time
-				}
-				if exitCode != nil {
-					state.Terminated.ExitCode = *exitCode
-				}
+					time, err := extractStartedAtTimeFromResults(results)
+					if err != nil {
+						logger.Errorf("error setting the start time of step %q in taskrun %q: %v", s.Name, tr.Name, err)
+						errs = append(errs, err)
+					}
+					exitCode, err := extractExitCodeFromResults(results)
+					if err != nil {
+						logger.Errorf("error extracting the exit code of step %q in taskrun %q: %v", s.Name, tr.Name, err)
+						errs = append(errs, err)
+					}
 
-				terminationFromResults := extractTerminationReasonFromResults(results)
-				terminationReason = getTerminationReason(state.Terminated.Reason, terminationFromResults, exitCode)
+					taskResults, stepRunRes, filteredResults := filterResults(results, specResults, stepResults)
+					if tr.IsDone() {
+						taskRunStepResults = append(taskRunStepResults, stepRunRes...)
+						// Set TaskResults from StepResults
+						taskResults = append(taskResults, createTaskResultsFromStepResults(stepRunRes, neededStepResults)...)
+						trs.Results = append(trs.Results, taskResults...)
+
+						var tras v1.Artifacts
+						err := setTaskRunArtifactsFromRunResult(filteredResults, &tras)
+						if err != nil {
+							logger.Errorf("error setting step artifacts in taskrun %q: %v", tr.Name, err)
+							errs = append(errs, err)
+						}
+						trs.Artifacts.Merge(&tras)
+						trs.Artifacts.Merge(&sas)
+					}
+					msg, err = createMessageFromResults(filteredResults)
+					if err != nil {
+						logger.Errorf("%v", err)
+						errs = append(errs, err)
+					} else {
+						state.Terminated.Message = msg
+					}
+					if time != nil {
+						state.Terminated.StartedAt = *time
+					}
+					if exitCode != nil {
+						state.Terminated.ExitCode = *exitCode
+					}
+
+					terminationFromResults := extractTerminationReasonFromResults(results)
+					terminationReason = getTerminationReason(state.Terminated.Reason, terminationFromResults, exitCode)
+				}
 			}
+			if state.Terminated.StartedAt.IsZero() {
+				state.Terminated.StartedAt = lastFinishedAt
+			}
+			if state.Terminated.FinishedAt.IsZero() {
+				state.Terminated.FinishedAt = metav1.Time{Time: time.Now()}
+			}
+			lastFinishedAt = state.Terminated.FinishedAt
 		}
 		stepState := v1.StepState{
 			ContainerState:    *state.DeepCopy(),
@@ -1101,4 +1111,20 @@ func isSubPathDirectoryError(pod *corev1.Pod) bool {
 		}
 	}
 	return false
+}
+
+func getPotentialStepsStartTime(pod *corev1.Pod) metav1.Time {
+	if pod.Status.StartTime == nil {
+		return metav1.NewTime(time.Now())
+	}
+	startTime := *pod.Status.StartTime
+	for i := range pod.Status.InitContainerStatuses {
+		s := &pod.Status.InitContainerStatuses[i]
+		if s.State.Terminated != nil {
+			if s.State.Terminated.FinishedAt.After(startTime.Time) {
+				startTime = s.State.Terminated.FinishedAt
+			}
+		}
+	}
+	return startTime
 }
