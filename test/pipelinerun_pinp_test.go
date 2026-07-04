@@ -169,7 +169,6 @@ func assertPinP(
 	// expected PipelineRuns (just an ObjectMeta), the label/annotation check above
 	// is the contract — the controller adds spec details we don't model in tests.
 	// Ignored fields:
-	//   - ignoreSAPipelineRunSpec: test cluster default vs explicit SA.
 	//   - PipelineRunSpec.Timeouts: only set on the parent.
 	//   - PipelineRunSpec.Workspaces: the reconciler synthesises PVC claim names
 	//     for volumeClaimTemplate-backed parent workspaces; hashes aren't worth
@@ -180,10 +179,15 @@ func assertPinP(
 		return
 	}
 	opts := []cmp.Option{
-		ignoreSAPipelineRunSpec,
 		cmpopts.IgnoreFields(v1.PipelineRunSpec{}, "Timeouts", "Workspaces"),
 		cmpopts.IgnoreFields(v1.TaskRef{}, "Kind"),
 		cmpopts.EquateEmpty(),
+	}
+	// Assert ServiceAccountName only when a test set a non-default one on the expected child
+	// (the ServiceAccount-propagation test). Otherwise ignore it: the parent's SA defaults to
+	// the cluster's platform default, which may differ across clusters.
+	if sa := expected.Spec.TaskRunTemplate.ServiceAccountName; sa == "" || sa == "default" {
+		opts = append(opts, ignoreSAPipelineRunSpec)
 	}
 	if diff := cmp.Diff(expected.Spec, actual.Spec, opts...); diff != "" {
 		t.Fatalf("Unexpected child PipelineRun spec (-want, +got): %s", diff)
@@ -258,8 +262,11 @@ func TestPipelineRun_PinP_TwoLevelDeepNestedChildPipelineRuns(t *testing.T) {
 	assertEvents(ctx, t, expectedEventsAmount, expectedKinds, c, namespace)
 }
 
+// TestPipelineRun_PinP_ChildPipelineRunInheritsServiceAccount verifies that the parent
+// PipelineRun's taskRunTemplate.serviceAccountName propagates to the child PipelineRun.
+// It uses non-default ServiceAccount name as basis for assertion.
 // @test:execution=parallel
-func TestPipelineRun_PinP_OneChildPipelineRunFromPipelineRef(t *testing.T) {
+func TestPipelineRun_PinP_ChildPipelineRunInheritsServiceAccount(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
@@ -271,17 +278,25 @@ func TestPipelineRun_PinP_OneChildPipelineRunFromPipelineRef(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	// GIVEN
-	t.Logf("Setting up test resources for one child PipelineRun from PipelineRef in namespace %q", namespace)
+	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "pinp-sa"}}
 	parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun :=
-		th.OnePipelineRefInPipeline(t, namespace, "parent-pipeline-run")
+		th.OnePipelineRefInPipelineWithParamsAndWorkspaces(t, namespace, "parent-pipeline-run-sa")
+	th.WithServiceAccount(parentPipelineRun, sa.ObjectMeta.Name)
+	th.WithServiceAccount(expectedChildPipelineRun, sa.ObjectMeta.Name)
 	parentPipelineRun = th.WithAnnotationAndLabel(parentPipelineRun, false)
 	expectedKinds := createKindsMap(parentPipelineRun, []*v1.PipelineRun{expectedChildPipelineRun}, []*v1.Pipeline{parentPipeline, childPipeline})
 	expectedEventsAmount := 3
 
 	// WHEN
+	if _, err := c.KubeClient.CoreV1().ServiceAccounts(namespace).Create(ctx, sa, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create ServiceAccount %q: %s", sa.ObjectMeta.Name, err)
+	}
 	createResourcesAndWaitForPipelineRunSuccess(ctx, t, c, namespace, []*v1.Pipeline{parentPipeline, childPipeline}, parentPipelineRun, nil)
 
 	// THEN
+	// assertPinP asserts the ServiceAccountName on the child PipelineRun because the expected
+	// child carries a non-default one. TaskRun/pod-level SA propagation is already covered by
+	// serviceaccount_test.go, so it is not repeated here.
 	assertPinP(ctx, t, c, expectedChildPipelineRun)
 	assertEvents(ctx, t, expectedEventsAmount, expectedKinds, c, namespace)
 }
