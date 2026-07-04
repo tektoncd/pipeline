@@ -571,73 +571,7 @@ func TestReconcile_ChildPipelineRunPipelineRef(t *testing.T) {
 	parentPipelineRunName := "parent-pipeline-run"
 
 	parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun :=
-		th.OnePipelineRefInPipeline(t, namespace, parentPipelineRunName)
-
-	testData := test.Data{
-		PipelineRuns: []*v1.PipelineRun{parentPipelineRun},
-		Pipelines:    []*v1.Pipeline{parentPipeline, childPipeline},
-		ConfigMaps:   th.NewAlphaFeatureFlagsConfigMapInSlice(),
-	}
-
-	reconciledRun, childPipelineRuns := reconcileOncePinP(
-		t,
-		testData,
-		namespace,
-		parentPipelineRunName,
-		[]string{"Normal Started", "Normal Running Tasks Completed: 0"},
-	)
-
-	validatePinP(
-		t,
-		reconciledRun.Status,
-		reconciledRun.Name,
-		childPipelineRuns,
-		[]*v1.PipelineRun{expectedChildPipelineRun},
-	)
-}
-
-// TestReconcile_ChildPipelineRunPipelineRefWithParams verifies that params from the
-// PipelineTask are propagated to the child PipelineRun spec.
-func TestReconcile_ChildPipelineRunPipelineRefWithParams(t *testing.T) {
-	names.TestingSeed()
-	namespace := "foo"
-	parentPipelineRunName := "parent-pipeline-run"
-
-	parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun :=
-		th.OnePipelineRefInPipelineWithParams(t, namespace, parentPipelineRunName)
-
-	testData := test.Data{
-		PipelineRuns: []*v1.PipelineRun{parentPipelineRun},
-		Pipelines:    []*v1.Pipeline{parentPipeline, childPipeline},
-		ConfigMaps:   th.NewAlphaFeatureFlagsConfigMapInSlice(),
-	}
-
-	reconciledRun, childPipelineRuns := reconcileOncePinP(
-		t,
-		testData,
-		namespace,
-		parentPipelineRunName,
-		[]string{"Normal Started", "Normal Running Tasks Completed: 0"},
-	)
-
-	validatePinP(
-		t,
-		reconciledRun.Status,
-		reconciledRun.Name,
-		childPipelineRuns,
-		[]*v1.PipelineRun{expectedChildPipelineRun},
-	)
-}
-
-// TestReconcile_ChildPipelineRunPipelineRefWithWorkspaces verifies that workspace bindings
-// from the parent PipelineRun are mapped and propagated to the child PipelineRun spec.
-func TestReconcile_ChildPipelineRunPipelineRefWithWorkspaces(t *testing.T) {
-	names.TestingSeed()
-	namespace := "foo"
-	parentPipelineRunName := "parent-pipeline-run"
-
-	parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun :=
-		th.OnePipelineRefInPipelineWithWorkspaces(t, namespace, parentPipelineRunName)
+		th.OnePipelineRefInPipelineWithParamsAndWorkspaces(t, namespace, parentPipelineRunName)
 
 	testData := test.Data{
 		PipelineRuns: []*v1.PipelineRun{parentPipelineRun},
@@ -671,6 +605,42 @@ func TestReconcile_ChildPipelineRunPipelineRefWithParamsAndWorkspaces(t *testing
 
 	parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun :=
 		th.OnePipelineRefInPipelineWithParamsAndWorkspaces(t, namespace, parentPipelineRunName)
+
+	testData := test.Data{
+		PipelineRuns: []*v1.PipelineRun{parentPipelineRun},
+		Pipelines:    []*v1.Pipeline{parentPipeline, childPipeline},
+		ConfigMaps:   th.NewAlphaFeatureFlagsConfigMapInSlice(),
+	}
+
+	reconciledRun, childPipelineRuns := reconcileOncePinP(
+		t,
+		testData,
+		namespace,
+		parentPipelineRunName,
+		[]string{"Normal Started", "Normal Running Tasks Completed: 0"},
+	)
+
+	validatePinP(
+		t,
+		reconciledRun.Status,
+		reconciledRun.Name,
+		childPipelineRuns,
+		[]*v1.PipelineRun{expectedChildPipelineRun},
+	)
+}
+
+// TestReconcile_ChildPipelineRunPipelineRefWithServiceAccount verifies that the parent
+// PipelineRun's taskRunTemplate.serviceAccountName propagates to the child PipelineRun spec.
+func TestReconcile_ChildPipelineRunPipelineRefWithServiceAccount(t *testing.T) {
+	names.TestingSeed()
+	namespace := "foo"
+	parentPipelineRunName := "parent-pipeline-run"
+
+	parentPipeline, childPipeline, parentPipelineRun, expectedChildPipelineRun :=
+		th.OnePipelineRefInPipelineWithParamsAndWorkspaces(t, namespace, parentPipelineRunName)
+	// Set a non-default ServiceAccount on the parent and expect it copied to the child.
+	th.WithServiceAccount(parentPipelineRun, "pinp-sa")
+	th.WithServiceAccount(expectedChildPipelineRun, "pinp-sa")
 
 	testData := test.Data{
 		PipelineRuns: []*v1.PipelineRun{parentPipelineRun},
@@ -1109,7 +1079,7 @@ func TestReconcile_ChildPipelineRunPipelineRefParentNotFound(t *testing.T) {
 	// Reuse the standard one-level pipelineRef fixture: the "child-pr" PipelineRun
 	// references parent-pipeline, whose pipelineRef task makes reconciling it run
 	// cycle detection. The expected-child return value is unused here.
-	parentPipeline, childPipeline, pr, _ := th.OnePipelineRefInPipeline(t, namespace, "child-pr")
+	parentPipeline, childPipeline, pr, _ := th.OnePipelineRefInPipelineWithParamsAndWorkspaces(t, namespace, "child-pr")
 
 	// Stamp the tekton.dev/pipeline label the reconciler would set on this run, so
 	// the ancestor walk evaluates a real, non-target label (target is the child
@@ -1162,7 +1132,7 @@ func TestDetectPipelineRefCycle_OwnerNotPipelineRun(t *testing.T) {
 	// tekton.dev/pipeline label and a PipelineRun owner-ref, which is what the cycle
 	// walker reads. Overriding the owner-ref to a non-PipelineRun (Job) kind makes
 	// the walker break before it ever consults the lister.
-	_, _, _, pr := th.OnePipelineRefInPipeline(t, namespace, "parent-pr")
+	_, _, _, pr := th.OnePipelineRefInPipelineWithParamsAndWorkspaces(t, namespace, "parent-pr")
 	controller := true
 	pr.OwnerReferences = []metav1.OwnerReference{{
 		APIVersion: "batch/v1",
@@ -1189,7 +1159,7 @@ func TestDetectPipelineRefCycle_ParentLookupError(t *testing.T) {
 	// The 4th return value is the expected child PipelineRun, whose PipelineRun
 	// owner-ref points at "parent-pr"; the stub lister errors on that lookup, so
 	// the walker must wrap and return the error.
-	_, _, _, pr := th.OnePipelineRefInPipeline(t, namespace, "parent-pr")
+	_, _, _, pr := th.OnePipelineRefInPipelineWithParamsAndWorkspaces(t, namespace, "parent-pr")
 
 	listerErr := errors.New("indexer not synced")
 	r := &Reconciler{pipelineRunLister: &errPipelineRunLister{err: listerErr}}
