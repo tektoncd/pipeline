@@ -183,6 +183,7 @@ func (s Sidecar) convertTo(ctx context.Context, sink *v1.Sidecar) {
 		w.convertTo(ctx, &new)
 		sink.Workspaces = append(sink.Workspaces, new)
 	}
+	sink.RestartPolicy = s.RestartPolicy
 }
 
 func (s *Sidecar) convertFrom(ctx context.Context, source v1.Sidecar) {
@@ -215,4 +216,5 @@ func (s *Sidecar) convertFrom(ctx context.Context, source v1.Sidecar) {
 		new.convertFrom(ctx, w)
 		s.Workspaces = append(s.Workspaces, new)
 	}
+	s.RestartPolicy = source.RestartPolicy
 }
