@@ -71,7 +71,7 @@ func (simpleNameGenerator) RestrictLength(base string) string {
 		base = base[:maxNameLength]
 	}
 
-	for !alphaNumericRE.MatchString(base[len(base)-1:]) {
+	for len(base) > 0 && !alphaNumericRE.MatchString(base[len(base)-1:]) {
 		base = base[:len(base)-1]
 	}
 	return base
