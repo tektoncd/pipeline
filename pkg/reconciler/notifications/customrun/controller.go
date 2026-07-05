@@ -42,7 +42,7 @@ func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 
 		customRunInformer := customruninformer.Get(ctx)
 		if _, err := customRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register CustomRun informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register CustomRun informer event handler: %v", err)
 		}
 
 		return impl

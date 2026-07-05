@@ -90,7 +90,7 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 			},
 		})
 		if err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register ResolutionRequest informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register ResolutionRequest informer event handler: %v", err)
 		}
 
 		return impl
