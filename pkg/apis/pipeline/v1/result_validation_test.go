@@ -284,6 +284,14 @@ func TestExtractStepResultNameError(t *testing.T) {
 		name:    "invalid string format",
 		value:   "not valid",
 		wantErr: errors.New(`Could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got "not valid"`),
+	}, {
+		name:    "singular step and result",
+		value:   "$(step.Foo.result.Bar)",
+		wantErr: errors.New(`Could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got "$(step.Foo.result.Bar)"`),
+	}, {
+		name:    "missing steps prefix",
+		value:   "$(Foo.results.Bar)",
+		wantErr: errors.New(`Could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got "$(Foo.results.Bar)"`),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -298,6 +306,12 @@ func TestExtractStepResultNameError(t *testing.T) {
 				t.Errorf("Expected an empty string but got: %v", gotResult)
 			}
 		})
+	}
+}
+
+func BenchmarkExtractStepResultName(b *testing.B) {
+	for range b.N {
+		_, _, _ = v1.ExtractStepResultName("$(steps.Foo.results.Bar)")
 	}
 }
 
