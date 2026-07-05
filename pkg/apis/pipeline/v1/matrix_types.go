@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"math"
 	"sort"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -234,8 +235,13 @@ func (m *Matrix) countGeneratedCombinationsFromParams() int {
 	}
 	count := 1
 	for _, param := range m.Params {
-		if len(param.Value.ArrayVal) > 0 {
-			count *= len(param.Value.ArrayVal)
+		if l := len(param.Value.ArrayVal); l > 0 {
+			// Cap at math.MaxInt on overflow so validateCombinationsCount
+			// still rejects the matrix instead of accepting a wrapped count.
+			if count > math.MaxInt/l {
+				return math.MaxInt
+			}
+			count *= l
 		}
 	}
 	return count
