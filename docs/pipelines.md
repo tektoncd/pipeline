@@ -1404,7 +1404,7 @@ In the example below, the `Pipeline` collects array and object results from `Tas
         value: $(tasks.task2.results.object-results.foo)
 ```
 
-For an end-to-end example see [`Array and Object Results` in a `PipelineRun`](../examples/v1/pipelineruns/pipeline-emitting-results.yaml).
+For an end-to-end example see [`Array and Object Results` in a `PipelineRun`](../examples/v1/pipelineruns/beta/pipeline-emitting-results.yaml).
 
 A `Pipeline Result` is not emitted if any of the following are true:
 - A `PipelineTask` referenced by the `Pipeline Result` failed. The `PipelineRun` will also
