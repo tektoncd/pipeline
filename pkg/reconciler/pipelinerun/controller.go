@@ -104,42 +104,42 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		})
 
 		if _, err := secretinformer.Informer().AddEventHandler(controller.HandleAll(tracerProvider.Handler)); err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register Secret informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register Secret informer event handler: %v", err)
 		}
 
 		if _, err := pipelineRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: pipelineRunFilterManagedBy,
 			Handler:    controller.HandleAll(impl.Enqueue),
 		}); err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register PipelineRun informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register PipelineRun informer event handler: %v", err)
 		}
 
 		if _, err := pipelineRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1.PipelineRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		}); err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register PipelineRun informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register PipelineRun informer event handler: %v", err)
 		}
 
 		if _, err := taskRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1.PipelineRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		}); err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register TaskRun informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register TaskRun informer event handler: %v", err)
 		}
 
 		if _, err := customRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1.PipelineRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		}); err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register CustomRun informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register CustomRun informer event handler: %v", err)
 		}
 
 		if _, err := resolutionInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1.PipelineRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		}); err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register ResolutionRequest informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register ResolutionRequest informer event handler: %v", err)
 		}
 
 		return impl

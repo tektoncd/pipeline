@@ -115,21 +115,21 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		})
 
 		if _, err := secretinformer.Informer().AddEventHandler(controller.HandleAll(tracerProvider.Handler)); err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register Secret informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register Secret informer event handler: %v", err)
 		}
 
 		if _, err := taskRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: taskRunFilterManagedBy,
 			Handler:    controller.HandleAll(impl.Enqueue),
 		}); err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register TaskRun informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register TaskRun informer event handler: %v", err)
 		}
 
 		if _, err := podInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1.TaskRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		}); err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register Pod informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register Pod informer event handler: %v", err)
 		}
 
 		return impl

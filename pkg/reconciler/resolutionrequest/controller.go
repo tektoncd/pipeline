@@ -48,7 +48,7 @@ func NewController(clock clock.PassiveClock) func(ctx context.Context, cmw confi
 
 		reqinformer := resolutionrequestinformer.Get(ctx)
 		if _, err := reqinformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register ResolutionRequest informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register ResolutionRequest informer event handler: %v", err)
 		}
 
 		return impl
