@@ -111,7 +111,7 @@ case ${K8S_VERSION} in
     ;;
   v1.33.x)
     K8S_VERSION="1.33.4"
-    KIND_IMAGE_SHA="sha256:0f5cc49c5e73c0c2bb6e2df56e7df189240d83cf94edfa30946482eb08ec57d2"
+    KIND_IMAGE_SHA="sha256:25a6018e48dfcaee478f4a59af81157a437f15e6e140bf103f85a2e7cd0cbbf2"
     KIND_IMAGE="kindest/node:${K8S_VERSION}@${KIND_IMAGE_SHA}"
     ;;
   v1.34.x)
