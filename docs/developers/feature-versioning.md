@@ -16,8 +16,8 @@ All new features added after [v0.53.0](https://github.com/tektoncd/pipeline/rele
 - Add default values to the new per-feature flag for the new API-driven feature following the `PerFeatureFlag` struct in [feature_flags.go](./../../pkg/apis/config/feature_flags.go).
 - Write unit tests to verify the new feature flag and update all test cases that require the configMap setting, such as those related to provenance propagation.
 - To add integration tests:
-    - First, add the tests to `pull-tekton-pipeline-alpha-integration-test` by enabling the newly-introduced per-feature flag at [alpha test Prow environment](./../../test/e2e-tests-kind-prow-alpha.env).
-    - When the flag is promoted to `beta` stability level, change the test to use [beta Prow environment setup](./../../test/e2e-tests-kind-prow-beta.env).
+    - First, add the tests to `pull-tekton-pipeline-alpha-integration-test` by enabling the newly-introduced per-feature flag at [alpha test Prow environment](./../../test/e2e-tests-kind-alpha.env).
+    - When the flag is promoted to `beta` stability level, change the test to use [beta Prow environment setup](./../../test/e2e-tests-kind-beta.env).
     - To add additional CI tests for combinations of feature flags, add tests for all alpha feature flags being turned on, with one alpha feature turned off at a time.
 - Add the tested new per-feature flag key value to the [the pipeline configMap](./../../config/config-feature-flags.yaml).
 - Update documentations for the new alpha feature at [alpha-stability-level](./../additional-configs.md#alpha-features).
@@ -35,7 +35,7 @@ var DefaultExampleNewFeatre = PerFeatureFlag {
 ```
 2. Add unit tests with the newly-introduced yamls `feature-flags-example-new-feature` and `feature-flags-invalid-example-new-feature` according to the existing testing framework.
 
-3. For integration tests, add `example-new-feature: true` to [alpha test Prow environment](./../../test/e2e-tests-kind-prow-alpha.env).
+3. For integration tests, add `example-new-feature: true` to [alpha test Prow environment](./../../test/e2e-tests-kind-alpha.env).
 
 4. Add `example-new-feature: false` to [the pipeline configMap](./../../config/config-feature-flags.yaml) with a release note.
 
@@ -85,7 +85,7 @@ flag doesn't mean you're done yet! When a user submits a Tekton resource it's
 validated by Pipelines' webhook. Here too you'll need to ensure your new
 features aren't accidentally accepted when the feature gate suggests they
 shouldn't be. We've got a helper function,
-[`ValidateEnabledAPIFields`](../../pkg/apis/version/version_validation.go),
+[`ValidateEnabledAPIFields`](../../pkg/apis/config/featureflags_validation.go),
 to make validating the current feature gate easier. Use it like this:
 
 ```go
@@ -155,7 +155,7 @@ examples under alpha conditions.
 ### Integration Tests
 
 For integration tests we provide the
-[`requireAnyGate` function](../../test/gate.go) which should be passed to the
+[`requireAnyGate` function](../../test/featureflags.go) which should be passed to the
 `setup` function used by tests:
 
 ```go
