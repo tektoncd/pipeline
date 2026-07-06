@@ -18,8 +18,10 @@ import (
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -115,5 +117,48 @@ func TestInitTracing(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestChildSpanAttributes(t *testing.T) {
+	sr := tracetest.NewSpanRecorder()
+	tp := tracesdk.NewTracerProvider(tracesdk.WithSpanProcessor(sr))
+	defer tp.Shutdown(t.Context())
+
+	r := &Reconciler{tracerProvider: tp}
+
+	pr := &v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-pipelinerun",
+			Namespace: "my-ns",
+		},
+	}
+
+	r.durationAndCountMetrics(t.Context(), pr, nil)
+
+	spans := sr.Ended()
+	if len(spans) != 1 {
+		t.Fatalf("expected 1 ended span, got %d", len(spans))
+	}
+
+	span := spans[0]
+	if span.Name() != "durationAndCountMetrics" {
+		t.Errorf("span name = %q, want %q", span.Name(), "durationAndCountMetrics")
+	}
+
+	wantAttrs := map[attribute.Key]attribute.Value{
+		"pipelinerun": attribute.StringValue("my-pipelinerun"),
+		"done":        attribute.BoolValue(false),
+	}
+	for _, kv := range span.Attributes() {
+		if want, ok := wantAttrs[kv.Key]; ok {
+			if kv.Value != want {
+				t.Errorf("attribute %q = %v, want %v", kv.Key, kv.Value, want)
+			}
+			delete(wantAttrs, kv.Key)
+		}
+	}
+	for key := range wantAttrs {
+		t.Errorf("missing expected attribute %q on durationAndCountMetrics span", key)
 	}
 }
