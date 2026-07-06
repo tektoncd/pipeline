@@ -44,13 +44,13 @@ func validateRef(ctx context.Context, refName string, refResolver ResolverName, 
 		if refResolver != "" {
 			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "resolver", config.BetaAPIFields).ViaField("resolver"))
 			if refName != "" {
-				// make sure that the name is url-like.
-				err := RefNameLikeUrl(refName)
-				if err == nil && !config.FromContextOrDefaults(ctx).FeatureFlags.EnableConciseResolverSyntax {
-					// If name is url-like then concise resolver syntax must be enabled
-					errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use concise resolver syntax", config.EnableConciseResolverSyntax), ""))
-				}
-				if err != nil {
+				if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableConciseResolverSyntax {
+					if err := RefNameLikeUrl(refName); err != nil {
+						errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
+					} else {
+						errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use concise resolver syntax", config.EnableConciseResolverSyntax), ""))
+					}
+				} else if err := RefNameLikeUrl(refName); err != nil {
 					errs = errs.Also(apis.ErrInvalidValue(err, "name"))
 				}
 			}
