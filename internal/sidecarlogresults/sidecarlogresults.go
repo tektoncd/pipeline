@@ -261,7 +261,7 @@ func GetResultsFromSidecarLogs(ctx context.Context, clientset kubernetes.Interfa
 }
 
 func extractResultsFromLogs(logs io.Reader, sidecarLogResults []result.RunResult, maxResultLimit int) ([]result.RunResult, error) {
-	reader := bufio.NewReader(logs)
+	reader := bufio.NewReaderSize(logs, maxResultLimit)
 	for {
 		line, isPrefix, err := reader.ReadLine()
 		if err != nil {
@@ -271,6 +271,11 @@ func extractResultsFromLogs(logs io.Reader, sidecarLogResults []result.RunResult
 			return nil, err
 		}
 
+		if isPrefix {
+			// Take ownership of the buffer before further ReadLine calls,
+			// since ReadLine's returned slice is only valid until the next call.
+			line = append([]byte(nil), line...)
+		}
 		lineLength := len(line)
 		for isPrefix {
 			more, nextPrefix, err := reader.ReadLine()
