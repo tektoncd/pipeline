@@ -137,6 +137,8 @@ updates:
       target-branch: release-v1.12.x
       schedule:
         interval: daily
+      commit-message:
+        prefix: '[release-v1.12.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -170,6 +172,8 @@ updates:
       target-branch: release-v1.12.x
       schedule:
         interval: daily
+      commit-message:
+        prefix: '[release-v1.12.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -203,6 +207,8 @@ updates:
       target-branch: release-v1.12.x
       schedule:
         interval: daily
+      commit-message:
+        prefix: '[release-v1.12.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -236,6 +242,8 @@ updates:
       target-branch: release-v1.12.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v1.12.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -253,6 +261,8 @@ updates:
       target-branch: release-v1.12.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v1.12.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -274,6 +284,8 @@ updates:
       target-branch: release-v1.12.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v1.12.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -295,6 +307,8 @@ updates:
       target-branch: release-v1.9.x
       schedule:
         interval: daily
+      commit-message:
+        prefix: '[release-v1.9.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -328,6 +342,8 @@ updates:
       target-branch: release-v1.9.x
       schedule:
         interval: daily
+      commit-message:
+        prefix: '[release-v1.9.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -361,6 +377,8 @@ updates:
       target-branch: release-v1.9.x
       schedule:
         interval: daily
+      commit-message:
+        prefix: '[release-v1.9.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -394,6 +412,8 @@ updates:
       target-branch: release-v1.9.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v1.9.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -411,6 +431,8 @@ updates:
       target-branch: release-v1.9.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v1.9.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -432,6 +454,8 @@ updates:
       target-branch: release-v1.9.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v1.9.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -453,6 +477,8 @@ updates:
       target-branch: release-v1.6.x
       schedule:
         interval: daily
+      commit-message:
+        prefix: '[release-v1.6.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -486,6 +512,8 @@ updates:
       target-branch: release-v1.6.x
       schedule:
         interval: daily
+      commit-message:
+        prefix: '[release-v1.6.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -519,6 +547,8 @@ updates:
       target-branch: release-v1.6.x
       schedule:
         interval: daily
+      commit-message:
+        prefix: '[release-v1.6.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -552,6 +582,8 @@ updates:
       target-branch: release-v1.6.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v1.6.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -569,6 +601,8 @@ updates:
       target-branch: release-v1.6.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v1.6.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -590,6 +624,8 @@ updates:
       target-branch: release-v1.6.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v1.6.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -611,6 +647,8 @@ updates:
       target-branch: release-v1.3.x
       schedule:
         interval: daily
+      commit-message:
+        prefix: '[release-v1.3.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -644,6 +682,8 @@ updates:
       target-branch: release-v1.3.x
       schedule:
         interval: daily
+      commit-message:
+        prefix: '[release-v1.3.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -677,6 +717,8 @@ updates:
       target-branch: release-v1.3.x
       schedule:
         interval: daily
+      commit-message:
+        prefix: '[release-v1.3.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -710,6 +752,8 @@ updates:
       target-branch: release-v1.3.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v1.3.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -727,6 +771,8 @@ updates:
       target-branch: release-v1.3.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v1.3.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -748,6 +794,8 @@ updates:
       target-branch: release-v1.3.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v1.3.x] '
       labels:
         - ok-to-test
         - dependencies
