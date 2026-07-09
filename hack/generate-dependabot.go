@@ -41,6 +41,11 @@ type Ecosystem struct {
 	Cooldown         map[string]interface{}   `yaml:"cooldown,omitempty"`
 }
 
+// CommitMessage configures the prefix for Dependabot commit messages and PR titles
+type CommitMessage struct {
+	Prefix string `yaml:"prefix"`
+}
+
 // DependabotConfig represents the generated dependabot.yml structure
 type DependabotConfig struct {
 	Version int      `yaml:"version"`
@@ -53,6 +58,7 @@ type Update struct {
 	Directory        string                   `yaml:"directory"`
 	TargetBranch     string                   `yaml:"target-branch,omitempty"`
 	Schedule         map[string]interface{}   `yaml:"schedule"`
+	CommitMessage    *CommitMessage           `yaml:"commit-message,omitempty"`
 	Labels           []string                 `yaml:"labels"`
 	Ignore           []map[string]interface{} `yaml:"ignore,omitempty"`
 	Groups           map[string]interface{}   `yaml:"groups,omitempty"`
@@ -160,6 +166,7 @@ func generateDependabotConfig(config Config) DependabotConfig {
 				Directory:        ecosystem.Directory,
 				TargetBranch:     branch,
 				Schedule:         ecosystem.Schedule,
+				CommitMessage:    &CommitMessage{Prefix: "[" + branch + "] "},
 				Labels:           ecosystem.Labels,
 				Ignore:           ignore,
 				Groups:           ecosystem.Groups,
