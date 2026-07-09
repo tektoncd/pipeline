@@ -19,6 +19,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 func TestMatrix_FanOut(t *testing.T) {
@@ -922,5 +923,40 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 				t.Errorf("Matrix.CountCombinations() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+func TestPipelineTask_CountMaxCombinations(t *testing.T) {
+	// An include whose When expression evaluates to false (with nil params, as is the
+	// case at validation time when params are unresolved) is filtered out of
+	// CountCombinations but must still be counted by CountMaxCombinations so that the
+	// max-combinations guard is enforced against the worst case.
+	matrix := &v1beta1.Matrix{
+		Params: v1beta1.Params{{
+			Name: "GOARCH", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux/amd64", "linux/ppc64le"}},
+		}},
+		Include: v1beta1.IncludeParamsList{{
+			Name: "included-when-true",
+			Params: v1beta1.Params{{
+				Name: "GOARCH", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/s390x"}}},
+			When: v1beta1.WhenExpressions{{
+				Input: "foo", Operator: selection.In, Values: []string{"foo"},
+			}},
+		}, {
+			Name: "excluded-when-false",
+			Params: v1beta1.Params{{
+				Name: "GOARCH", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux/arm64"}}},
+			When: v1beta1.WhenExpressions{{
+				Input: "foo", Operator: selection.In, Values: []string{"bar"},
+			}},
+		}},
+	}
+	// 2 matrix params + 1 include passing its when = 3
+	if got := matrix.CountCombinations(); got != 3 {
+		t.Errorf("Matrix.CountCombinations() = %d, want 3", got)
+	}
+	// 2 matrix params + both includes (when ignored) = 4
+	if got := matrix.CountMaxCombinations(); got != 4 {
+		t.Errorf("Matrix.CountMaxCombinations() = %d, want 4", got)
 	}
 }
