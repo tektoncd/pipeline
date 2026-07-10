@@ -162,11 +162,15 @@ spec:
       # probably get it wrong), we'll just targz up the whole vendor tree and
       # include it. As of 9/20/2019, this amounts to about 11MB of additional
       # data in each image.
+      # ko >= v0.19.0 rejects kodata symlinks that resolve outside the
+      # kodata root (ko-build/ko#1619), so the tarball is copied into
+      # each kodata/ directory instead of being symlinked from a
+      # shared tmpdir.
       TMPDIR=$(mktemp -d)
       tar cfz ${TMPDIR}/source.tar.gz vendor/
       for d in cmd/*; do
         if [ -d ${d}/kodata/ ]; then
-          ln -s ${TMPDIR}/source.tar.gz ${d}/kodata/
+          cp ${TMPDIR}/source.tar.gz ${d}/kodata/
         fi
       done
 
