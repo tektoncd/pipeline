@@ -496,6 +496,8 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 // the key to be re-queued directly.
 // `prepare` returns spec and resources. The resolved TaskSpec is stored in the
 // TaskRun.Status so we don't need to re-fetch and re-validate it at every reconcile.
+//
+//nolint:maintidx // prepare is existing reconciler flow; this change only threads tracing errors through it.
 func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (taskSpec *v1.TaskSpec, resolvedTask *resources.ResolvedTask, err error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "prepare")
 	defer span.End()
