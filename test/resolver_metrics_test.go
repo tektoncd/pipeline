@@ -204,26 +204,6 @@ func assertMetricExists(t *testing.T, families map[string]*dto.MetricFamily, nam
 	}
 }
 
-// assertMetricHasLabel checks that at least one data point has the given label value.
-func assertMetricHasLabel(t *testing.T, families map[string]*dto.MetricFamily, name, labelName, labelValue string) {
-	t.Helper()
-	family, ok := families[name]
-	if !ok {
-		t.Errorf("Metric %q not found", name)
-		return
-	}
-
-	for _, m := range family.GetMetric() {
-		for _, label := range m.GetLabel() {
-			if label.GetName() == labelName && label.GetValue() == labelValue {
-				return
-			}
-		}
-	}
-
-	t.Errorf("Metric %q has no data point with label %s=%s", name, labelName, labelValue)
-}
-
 // assertMetricCounterValue checks that a counter metric has at least one data point
 // matching the given labels and with a value > 0.
 func assertMetricCounterValue(t *testing.T, families map[string]*dto.MetricFamily, name string, labels map[string]string) {
