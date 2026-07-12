@@ -55,6 +55,11 @@ for the name, namespace and defaults that the resolver ships with.
 | `api-token-secret-key`       | The key within the token secret containing the actual secret. Required if using the authenticated API with `org` and `repo`.                                  | `oauth`, `token`                                                 |
 | `api-token-secret-namespace` | The namespace containing the token secret, if not `default`.                                                                                                  | `other-namespace`                                                |
 | `default-org`                | The default organization to look for repositories under when using the authenticated API, if not specified in the resolver parameters. Optional.              | `tektoncd`, `kubernetes`                                         |
+| `backoff-duration`           | The initial duration for a backoff when a resolution request fails. Default: `2s`.                                                                            | `500ms`, `2s`                                                    |
+| `backoff-factor`             | The factor by which the sleep duration increases every step. Default: `2.0`.                                                                                  | `2.5`, `4.0`                                                     |
+| `backoff-jitter`             | A random amount of additional sleep between 0 and duration * jitter. Default: `0.1`.                                                                          | `0.1`, `0.5`                                                     |
+| `backoff-steps`              | The total number of resolution attempts. Set to `1` to disable retries. Default: `2`.                                                                         | `3`, `7`                                                         |
+| `backoff-cap`                | The maximum backoff duration. If reached, remaining steps are zeroed. Default: `10s`.                                                                         | `10s`, `20s`                                                     |
 
 ### Caching Options
 

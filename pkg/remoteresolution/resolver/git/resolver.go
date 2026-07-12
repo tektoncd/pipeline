@@ -190,9 +190,10 @@ func (r *Resolver) resolveViaGit(ctx context.Context, params map[string]string) 
 		Params:     params,
 	}
 
-	if params[git.UrlParam] != "" {
-		return g.ResolveGitClone(ctx)
-	}
-
-	return g.ResolveAPIGit(ctx, r.clientFunc)
+	return git.ResolveWithRetry(ctx, func() (resolutionframework.ResolvedResource, error) {
+		if params[git.UrlParam] != "" {
+			return g.ResolveGitClone(ctx)
+		}
+		return g.ResolveAPIGit(ctx, r.clientFunc)
+	})
 }

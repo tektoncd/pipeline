@@ -1228,3 +1228,134 @@ func TestGetScmConfigForParamConfigKey(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveWithRetrySucceedsAfterTransientFailure(t *testing.T) {
+	config := map[string]string{
+		ConfigBackoffDuration: "1ms",
+		ConfigBackoffFactor:   "1.0",
+		ConfigBackoffJitter:   "0",
+		ConfigBackoffSteps:    "3",
+		ConfigBackoffCap:      "10ms",
+	}
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
+
+	callCount := 0
+	expected := &resolvedGitResource{
+		Content:  []byte("hello"),
+		Revision: "abc123",
+	}
+
+	result, err := ResolveWithRetry(ctx, func() (framework.ResolvedResource, error) {
+		callCount++
+		if callCount < 3 {
+			return nil, errors.New("transient error")
+		}
+		return expected, nil
+	})
+	if err != nil {
+		t.Fatalf("expected success after retries, got error: %v", err)
+	}
+	if callCount != 3 {
+		t.Fatalf("expected 3 attempts, got %d", callCount)
+	}
+	if string(result.Data()) != string(expected.Data()) {
+		t.Fatalf("expected data %q, got %q", expected.Data(), result.Data())
+	}
+}
+
+func TestResolveWithRetryExhaustsRetries(t *testing.T) {
+	config := map[string]string{
+		ConfigBackoffDuration: "1ms",
+		ConfigBackoffFactor:   "1.0",
+		ConfigBackoffJitter:   "0",
+		ConfigBackoffSteps:    "2",
+		ConfigBackoffCap:      "10ms",
+	}
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
+
+	callCount := 0
+	_, err := ResolveWithRetry(ctx, func() (framework.ResolvedResource, error) {
+		callCount++
+		return nil, errors.New("persistent error")
+	})
+	if err == nil {
+		t.Fatal("expected error after exhausting retries, got nil")
+	}
+	if callCount != 2 {
+		t.Fatalf("expected 2 attempts (matching steps), got %d", callCount)
+	}
+}
+
+func TestResolveWithRetryContextCancelled(t *testing.T) {
+	config := map[string]string{
+		ConfigBackoffSteps: "3",
+	}
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
+	ctx, cancel := context.WithCancel(ctx)
+	cancel()
+
+	_, err := ResolveWithRetry(ctx, func() (framework.ResolvedResource, error) {
+		t.Fatal("fn should not be called with cancelled context")
+		return nil, errors.New("unreachable")
+	})
+	if err == nil {
+		t.Fatal("expected error with cancelled context, got nil")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled error, got: %v", err)
+	}
+}
+
+func TestResolveWithRetryContextCancelledMidBackoff(t *testing.T) {
+	config := map[string]string{
+		ConfigBackoffDuration: "50ms",
+		ConfigBackoffFactor:   "1.0",
+		ConfigBackoffJitter:   "0",
+		ConfigBackoffSteps:    "5",
+		ConfigBackoffCap:      "1s",
+	}
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
+	ctx, cancel := context.WithCancel(ctx)
+
+	callCount := 0
+	_, err := ResolveWithRetry(ctx, func() (framework.ResolvedResource, error) {
+		callCount++
+		if callCount == 1 {
+			cancel()
+		}
+		return nil, errors.New("transient error")
+	})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled error, got: %v", err)
+	}
+}
+
+func TestResolveWithRetrySucceedsFirstAttempt(t *testing.T) {
+	config := map[string]string{
+		ConfigBackoffSteps: "3",
+	}
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
+
+	callCount := 0
+	expected := &resolvedGitResource{
+		Content:  []byte("hello"),
+		Revision: "abc123",
+	}
+
+	result, err := ResolveWithRetry(ctx, func() (framework.ResolvedResource, error) {
+		callCount++
+		return expected, nil
+	})
+	if err != nil {
+		t.Fatalf("expected success, got error: %v", err)
+	}
+	if callCount != 1 {
+		t.Fatalf("expected 1 attempt, got %d", callCount)
+	}
+	if string(result.Data()) != string(expected.Data()) {
+		t.Fatalf("expected data %q, got %q", expected.Data(), result.Data())
+	}
+}
