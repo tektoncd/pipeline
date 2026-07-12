@@ -20,9 +20,13 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"knative.dev/pkg/logging"
 )
 
 const (
@@ -51,6 +55,28 @@ const (
 	APISecretKeyKey = "api-token-secret-key"
 	// APISecretNamespaceKey is the config map key for the token secret's namespace
 	APISecretNamespaceKey = "api-token-secret-namespace"
+
+	// ConfigBackoffDuration is the configuration field name for controlling
+	// the initial duration of a backoff when a git resolution fails
+	ConfigBackoffDuration  = "backoff-duration"
+	DefaultBackoffDuration = 2 * time.Second
+	// ConfigBackoffFactor is the configuration field name for controlling
+	// the factor by which successive backoffs will increase when a git
+	// resolution fails
+	ConfigBackoffFactor  = "backoff-factor"
+	DefaultBackoffFactor = 2.0
+	// ConfigBackoffJitter is the configuration field name for controlling
+	// the randomness applied to backoff durations when a git resolution fails
+	ConfigBackoffJitter  = "backoff-jitter"
+	DefaultBackoffJitter = 0.1
+	// ConfigBackoffSteps is the configuration field name for controlling
+	// the total number of resolution attempts when a git resolution fails
+	ConfigBackoffSteps  = "backoff-steps"
+	DefaultBackoffSteps = 2
+	// ConfigBackoffCap is the configuration field name for controlling
+	// the maximum duration to try when backing off
+	ConfigBackoffCap  = "backoff-cap"
+	DefaultBackoffCap = 10 * time.Second
 )
 
 type GitResolverConfig map[string]ScmConfig
@@ -66,6 +92,81 @@ type ScmConfig struct {
 	APISecretName      string `json:"api-token-secret-name"`
 	APISecretKey       string `json:"api-token-secret-key"`
 	APISecretNamespace string `json:"api-token-secret-namespace"`
+}
+
+// GetGitResolverBackoff returns a wait.Backoff to be used when retrying
+// git resolution requests. This can be configured with the backoff-duration,
+// backoff-factor, backoff-jitter, backoff-steps, and backoff-cap fields in
+// the git-resolver-config ConfigMap. Invalid values are logged as warnings
+// and replaced with their defaults so that retry behavior is preserved.
+func GetGitResolverBackoff(ctx context.Context) wait.Backoff {
+	logger := logging.FromContext(ctx)
+	conf := framework.GetResolverConfigFromContext(ctx)
+
+	backoff := wait.Backoff{
+		Duration: DefaultBackoffDuration,
+		Factor:   DefaultBackoffFactor,
+		Jitter:   DefaultBackoffJitter,
+		Steps:    DefaultBackoffSteps,
+		Cap:      DefaultBackoffCap,
+	}
+	if v, ok := conf[ConfigBackoffDuration]; ok {
+		duration, err := time.ParseDuration(v)
+		switch {
+		case err != nil:
+			logger.Warnf("invalid %s value %q, using default %v: %v", ConfigBackoffDuration, v, DefaultBackoffDuration, err)
+		case duration < 0:
+			logger.Warnf("invalid %s value %q: must not be negative, using default %v", ConfigBackoffDuration, v, DefaultBackoffDuration)
+		default:
+			backoff.Duration = duration
+		}
+	}
+	if v, ok := conf[ConfigBackoffFactor]; ok {
+		factor, err := strconv.ParseFloat(v, 64)
+		switch {
+		case err != nil:
+			logger.Warnf("invalid %s value %q, using default %v: %v", ConfigBackoffFactor, v, DefaultBackoffFactor, err)
+		case factor < 0:
+			logger.Warnf("invalid %s value %q: must not be negative, using default %v", ConfigBackoffFactor, v, DefaultBackoffFactor)
+		default:
+			backoff.Factor = factor
+		}
+	}
+	if v, ok := conf[ConfigBackoffJitter]; ok {
+		jitter, err := strconv.ParseFloat(v, 64)
+		switch {
+		case err != nil:
+			logger.Warnf("invalid %s value %q, using default %v: %v", ConfigBackoffJitter, v, DefaultBackoffJitter, err)
+		case jitter < 0:
+			logger.Warnf("invalid %s value %q: must not be negative, using default %v", ConfigBackoffJitter, v, DefaultBackoffJitter)
+		default:
+			backoff.Jitter = jitter
+		}
+	}
+	if v, ok := conf[ConfigBackoffSteps]; ok {
+		steps, err := strconv.Atoi(v)
+		switch {
+		case err != nil:
+			logger.Warnf("invalid %s value %q, using default %v: %v", ConfigBackoffSteps, v, DefaultBackoffSteps, err)
+		case steps < 1:
+			logger.Warnf("invalid %s value %q: must be at least 1, using default %v", ConfigBackoffSteps, v, DefaultBackoffSteps)
+		default:
+			backoff.Steps = steps
+		}
+	}
+	if v, ok := conf[ConfigBackoffCap]; ok {
+		cap, err := time.ParseDuration(v)
+		switch {
+		case err != nil:
+			logger.Warnf("invalid %s value %q, using default %v: %v", ConfigBackoffCap, v, DefaultBackoffCap, err)
+		case cap < 0:
+			logger.Warnf("invalid %s value %q: must not be negative, using default %v", ConfigBackoffCap, v, DefaultBackoffCap)
+		default:
+			backoff.Cap = cap
+		}
+	}
+
+	return backoff
 }
 
 func GetGitResolverConfig(ctx context.Context) (GitResolverConfig, error) {
