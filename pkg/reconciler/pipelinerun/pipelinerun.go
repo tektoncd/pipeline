@@ -364,7 +364,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) (rec
 func (c *Reconciler) durationAndCountMetrics(ctx context.Context, pr *v1.PipelineRun, beforeCondition *apis.Condition) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "durationAndCountMetrics")
 	defer span.End()
-	span.SetAttributes(attribute.String("pipelinerun", pr.Name), attribute.Bool("done", pr.IsDone()))
+	span.SetAttributes(attribute.String("pipelinerun", pr.Name), attribute.String("namespace", pr.Namespace), attribute.Bool("done", pr.IsDone()))
 	logger := logging.FromContext(ctx)
 	if pr.IsDone() {
 		err := c.metrics.DurationAndCount(ctx, pr, beforeCondition)
@@ -377,7 +377,7 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, pr *v1.Pipelin
 func (c *Reconciler) emitReconcileEvents(ctx context.Context, pr *v1.PipelineRun, beforeCondition *apis.Condition, previousError error) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "emitReconcileEvents")
 	defer span.End()
-	span.SetAttributes(attribute.String("pipelinerun", pr.Name))
+	span.SetAttributes(attribute.String("pipelinerun", pr.Name), attribute.String("namespace", pr.Namespace))
 
 	afterCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
 	events.Emit(ctx, beforeCondition, afterCondition, pr)
@@ -1990,7 +1990,7 @@ func addMetadataByPrecedence(metadata map[string]string, addedMetadata map[strin
 func (c *Reconciler) syncMetadata(ctx context.Context, pr *v1.PipelineRun) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "syncMetadata")
 	defer span.End()
-	span.SetAttributes(attribute.String("pipelinerun", pr.Name))
+	span.SetAttributes(attribute.String("pipelinerun", pr.Name), attribute.String("namespace", pr.Namespace))
 
 	existing, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
