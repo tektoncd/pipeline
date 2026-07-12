@@ -148,6 +148,7 @@ func TestChildSpanAttributes(t *testing.T) {
 
 	wantAttrs := map[attribute.Key]attribute.Value{
 		"pipelinerun": attribute.StringValue("my-pipelinerun"),
+		"namespace":   attribute.StringValue("my-ns"),
 		"done":        attribute.BoolValue(false),
 	}
 	for _, kv := range span.Attributes() {
