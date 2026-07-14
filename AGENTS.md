@@ -25,6 +25,7 @@ If you're an agent working in this repo, start here. This file is meant to orien
 ## Before changing code
 
 - Read `CONTRIBUTING.md`, `DEVELOPMENT.md`, `test/README.md`, and the docs for the area you are touching.
+- When opening PRs, follow the repo's PR template in `.github/pull_request_template.md`.
 - For API changes, read `api_compatibility_policy.md` first and expect codegen/OpenAPI updates.
 - For reconciler changes, add or update package tests with fake clients before reaching for e2e tests.
 - For e2e changes, follow the annotations and categories in `test/README.md`.
