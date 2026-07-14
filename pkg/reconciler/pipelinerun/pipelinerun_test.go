@@ -9663,8 +9663,16 @@ spec:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
-	wantEvents := []string(nil)
-	pipelinerun, _ := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents, false)
+	reconcileError := prt.TestAssets.Controller.Reconciler.Reconcile(prt.TestAssets.Ctx, pr.Namespace+"/"+pr.Name)
+	if ok, duration := controller.IsRequeueKey(reconcileError); !ok {
+		t.Fatalf("expected requeue while awaiting remote PipelineRef resolution, got: %v", reconcileError)
+	} else if duration != remoteResolutionRequeueAfter {
+		t.Fatalf("expected requeue after %v, got %v", remoteResolutionRequeueAfter, duration)
+	}
+	pipelinerun, err := prt.TestAssets.Clients.Pipeline.TektonV1().PipelineRuns(pr.Namespace).Get(prt.TestAssets.Ctx, pr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting reconciled PipelineRun: %v", err)
+	}
 	th.CheckPipelineRunConditionStatusAndReason(t, pipelinerun.Status, corev1.ConditionUnknown, v1.PipelineRunReasonResolvingPipelineRef.String())
 
 	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests("default")
@@ -9950,8 +9958,16 @@ spec:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
-	wantEvents := []string(nil)
-	pipelinerun, _ := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents, false)
+	reconcileError := prt.TestAssets.Controller.Reconciler.Reconcile(prt.TestAssets.Ctx, pr.Namespace+"/"+pr.Name)
+	if ok, duration := controller.IsRequeueKey(reconcileError); !ok {
+		t.Fatalf("expected requeue while awaiting remote TaskRef resolution, got: %v", reconcileError)
+	} else if duration != remoteResolutionRequeueAfter {
+		t.Fatalf("expected requeue after %v, got %v", remoteResolutionRequeueAfter, duration)
+	}
+	pipelinerun, err := prt.TestAssets.Clients.Pipeline.TektonV1().PipelineRuns(pr.Namespace).Get(prt.TestAssets.Ctx, pr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting reconciled PipelineRun: %v", err)
+	}
 	th.CheckPipelineRunConditionStatusAndReason(t, pipelinerun.Status, corev1.ConditionUnknown, v1.TaskRunReasonResolvingTaskRef)
 
 	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests("default")
