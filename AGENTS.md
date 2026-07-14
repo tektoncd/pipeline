@@ -44,4 +44,4 @@ If you're an agent working in this repo, start here. This file is meant to orien
 
 - Repo map for agents: `docs/agents/agent-context.md`.
 - Discovery skill: `skills/tekton-pipeline-discovery/SKILL.md`.
-- Skill discovery symlinks live under `.agents/`, `.claude/`, and `.codex/`.
+- Skill discovery symlinks live under `.agents/`, `.claude/`, `.codex/`, and `.cursor/`.
