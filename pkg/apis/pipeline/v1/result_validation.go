@@ -156,7 +156,7 @@ func validateObjectStepResult(sr StepResult) (errs *apis.FieldError) {
 }
 
 // ExtractStepResultName extracts the step name and result name from a string matching
-// formtat $(steps.<stepName>.results.<resultName>).
+// format $(steps.<stepName>.results.<resultName>).
 // If a match is not found, an error is retured.
 func ExtractStepResultName(value string) (string, string, error) {
 	rs := stepResultNameRegex.FindStringSubmatch(value)
