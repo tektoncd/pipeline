@@ -222,7 +222,11 @@ func (m *Matrix) CountCombinations() int {
 	count := m.countGeneratedCombinationsFromParams()
 
 	// Add any additional Combinations generated from Matrix Include Parameters
-	count += m.countNewCombinationsFromInclude()
+	includeCount := m.countNewCombinationsFromInclude()
+	if count > math.MaxInt-includeCount {
+		return math.MaxInt
+	}
+	count += includeCount
 
 	return count
 }
@@ -263,6 +267,9 @@ func (m *Matrix) countNewCombinationsFromInclude() int {
 			if val, exist := matrixParamMap[param.Name]; exist {
 				// If the Matrix Include param values does not exist, a new Combination will be generated
 				if !slices.Contains(val, param.Value.StringVal) {
+					if count == math.MaxInt {
+						return math.MaxInt
+					}
 					count++
 				} else {
 					break
