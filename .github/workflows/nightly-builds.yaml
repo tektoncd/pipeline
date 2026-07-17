@@ -151,6 +151,23 @@ jobs:
         run: |
           set -euo pipefail  # Exit on any error, undefined variables, or pipe failures
 
+          echo "Waiting for pipeline-release Pipeline resource..."
+          for i in $(seq 1 20); do
+            if kubectl get pipeline pipeline-release >/dev/null 2>&1; then
+              echo "Pipeline resource is ready."
+              break
+            fi
+
+            if [ "$i" -eq 20 ]; then
+              echo "Timed out waiting for pipeline-release Pipeline resource!"
+              kubectl get pipelines || true
+              exit 1
+            fi
+
+            echo "Attempt $i: pipeline-release not found yet, retrying in 5s..."
+            sleep 5
+          done
+
           echo "Starting Tekton pipeline..."
 
           PIPELINE_RUN=$(tkn pipeline start pipeline-release \
