@@ -17,31 +17,78 @@ limitations under the License.
 package v1_test
 
 import (
-	"strings"
+	"slices"
 	"testing"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 )
 
-func TestTaskSpecStripDescriptions(t *testing.T) {
-	ts := &v1.TaskSpec{
-		Description: "task desc",
-		Params:      v1.ParamSpecs{{Name: "p", Description: "param desc"}},
-		Results:     []v1.TaskResult{{Name: "r", Description: "result desc"}},
-		Workspaces:  []v1.WorkspaceDeclaration{{Name: "w", Description: "ws desc"}},
+// fullEmbeddedTask exercises every recursive branch of TaskSpec.StripDescriptions.
+func fullEmbeddedTask() *v1.EmbeddedTask {
+	return &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
+		Description: "embedded task desc",
+		Params:      v1.ParamSpecs{{Name: "ep", Description: "embedded param desc"}},
+		Results:     []v1.TaskResult{{Name: "er", Description: "embedded result desc"}},
+		Workspaces:  []v1.WorkspaceDeclaration{{Name: "ew", Description: "embedded ws desc"}},
 		Steps: []v1.Step{{
-			Name:    "s",
-			Results: []v1.StepResult{{Name: "sr", Description: "step result desc"}},
+			Name:    "es",
+			Results: []v1.StepResult{{Name: "esr", Description: "embedded step result desc"}},
 		}},
-	}
+	}}
+}
 
-	ts.StripDescriptions()
+func TestTaskSpecStripDescriptions(t *testing.T) {
+	tests := []struct {
+		name string
+		spec *v1.TaskSpec
+	}{{
+		name: "all fields populated",
+		spec: &v1.TaskSpec{
+			Description: "task desc",
+			Params:      v1.ParamSpecs{{Name: "p", Description: "param desc"}},
+			Results:     []v1.TaskResult{{Name: "r", Description: "result desc"}},
+			Workspaces:  []v1.WorkspaceDeclaration{{Name: "w", Description: "ws desc"}},
+			Steps: []v1.Step{{
+				Name:    "s",
+				Results: []v1.StepResult{{Name: "sr", Description: "step result desc"}},
+			}},
+		},
+	}, {
+		name: "multiple items per slice",
+		spec: &v1.TaskSpec{
+			Description: "task desc",
+			Params:      v1.ParamSpecs{{Name: "p1", Description: "d1"}, {Name: "p2", Description: "d2"}},
+			Results:     []v1.TaskResult{{Name: "r1", Description: "d1"}, {Name: "r2", Description: "d2"}},
+			Steps: []v1.Step{
+				{Name: "s1", Results: []v1.StepResult{{Name: "sr1", Description: "d1"}}},
+				{Name: "s2", Results: []v1.StepResult{{Name: "sr2", Description: "d2"}}},
+			},
+		},
+	}, {
+		name: "empty slices",
+		spec: &v1.TaskSpec{Description: "task desc"},
+	}, {
+		name: "descriptions already empty",
+		spec: &v1.TaskSpec{
+			Params:  v1.ParamSpecs{{Name: "p"}},
+			Results: []v1.TaskResult{{Name: "r"}},
+			Steps:   []v1.Step{{Name: "s", Results: []v1.StepResult{{Name: "sr"}}}},
+		},
+	}}
 
-	if d := nonEmptyDescriptions(ts); len(d) > 0 {
-		t.Errorf("expected all TaskSpec descriptions cleared, found: %v", d)
-	}
-	if ts.Params[0].Name != "p" || ts.Results[0].Name != "r" || ts.Steps[0].Results[0].Name != "sr" {
-		t.Error("StripDescriptions must not alter non-description fields")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			names := taskSpecNames(tc.spec)
+
+			tc.spec.StripDescriptions()
+
+			if d := nonEmptyDescriptions(tc.spec); len(d) > 0 {
+				t.Errorf("expected all TaskSpec descriptions cleared, found: %v", d)
+			}
+			if got := taskSpecNames(tc.spec); !slices.Equal(got, names) {
+				t.Errorf("StripDescriptions altered non-description fields: got %v, want %v", got, names)
+			}
+		})
 	}
 }
 
@@ -51,55 +98,130 @@ func TestTaskSpecStripDescriptionsNil(t *testing.T) {
 }
 
 func TestPipelineSpecStripDescriptions(t *testing.T) {
-	embedded := &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{
-		Description: "embedded task desc",
-		Params:      v1.ParamSpecs{{Name: "ep", Description: "embedded param desc"}},
-		Results:     []v1.TaskResult{{Name: "er", Description: "embedded result desc"}},
+	tests := []struct {
+		name string
+		spec *v1.PipelineSpec
+	}{{
+		name: "all fields populated",
+		spec: &v1.PipelineSpec{
+			Description: "pipeline desc",
+			Params:      v1.ParamSpecs{{Name: "p", Description: "param desc"}},
+			Results:     []v1.PipelineResult{{Name: "r", Description: "result desc"}},
+			Workspaces:  []v1.PipelineWorkspaceDeclaration{{Name: "w", Description: "ws desc"}},
+			Tasks:       []v1.PipelineTask{{Name: "t", Description: "task desc", TaskSpec: fullEmbeddedTask()}},
+			Finally:     []v1.PipelineTask{{Name: "f", Description: "finally desc"}},
+		},
+	}, {
+		name: "finally with embedded TaskSpec",
+		spec: &v1.PipelineSpec{
+			Finally: []v1.PipelineTask{{Name: "f", Description: "finally desc", TaskSpec: fullEmbeddedTask()}},
+		},
+	}, {
+		name: "task with TaskRef only",
+		spec: &v1.PipelineSpec{
+			Tasks: []v1.PipelineTask{{Name: "t", Description: "task desc", TaskRef: &v1.TaskRef{Name: "my-task"}}},
+		},
+	}, {
+		name: "empty pipeline spec",
+		spec: &v1.PipelineSpec{Description: "pipeline desc"},
 	}}
-	ps := &v1.PipelineSpec{
-		Description: "pipeline desc",
-		Params:      v1.ParamSpecs{{Name: "p", Description: "param desc"}},
-		Results:     []v1.PipelineResult{{Name: "r", Description: "result desc"}},
-		Workspaces:  []v1.PipelineWorkspaceDeclaration{{Name: "w", Description: "ws desc"}},
-		Tasks:       []v1.PipelineTask{{Name: "t", Description: "task desc", TaskSpec: embedded}},
-		Finally:     []v1.PipelineTask{{Name: "f", Description: "finally desc"}},
-	}
 
-	ps.StripDescriptions()
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			names := pipelineSpecNames(tc.spec)
 
-	var leftover []string
-	if ps.Description != "" {
-		leftover = append(leftover, "spec")
-	}
-	if ps.Params[0].Description != "" {
-		leftover = append(leftover, "param")
-	}
-	if ps.Results[0].Description != "" {
-		leftover = append(leftover, "result")
-	}
-	if ps.Workspaces[0].Description != "" {
-		leftover = append(leftover, "workspace")
-	}
-	if ps.Tasks[0].Description != "" {
-		leftover = append(leftover, "task")
-	}
-	if ps.Finally[0].Description != "" {
-		leftover = append(leftover, "finally")
-	}
-	if d := nonEmptyDescriptions(&ps.Tasks[0].TaskSpec.TaskSpec); len(d) > 0 {
-		leftover = append(leftover, "embedded:"+strings.Join(d, ","))
-	}
-	if len(leftover) > 0 {
-		t.Errorf("expected all PipelineSpec descriptions cleared, found: %v", leftover)
-	}
-	if ps.Tasks[0].Name != "t" || ps.Finally[0].Name != "f" {
-		t.Error("StripDescriptions must not alter non-description fields")
+			tc.spec.StripDescriptions()
+
+			if d := nonEmptyPipelineDescriptions(tc.spec); len(d) > 0 {
+				t.Errorf("expected all PipelineSpec descriptions cleared, found: %v", d)
+			}
+			if got := pipelineSpecNames(tc.spec); !slices.Equal(got, names) {
+				t.Errorf("StripDescriptions altered non-description fields: got %v, want %v", got, names)
+			}
+		})
 	}
 }
 
 func TestPipelineSpecStripDescriptionsNil(t *testing.T) {
 	var ps *v1.PipelineSpec
 	ps.StripDescriptions()
+}
+
+// taskSpecNames collects identity fields to prove stripping touches only descriptions.
+func taskSpecNames(ts *v1.TaskSpec) []string {
+	var names []string
+	for _, p := range ts.Params {
+		names = append(names, "param:"+p.Name)
+	}
+	for _, r := range ts.Results {
+		names = append(names, "result:"+r.Name)
+	}
+	for _, w := range ts.Workspaces {
+		names = append(names, "workspace:"+w.Name)
+	}
+	for _, s := range ts.Steps {
+		names = append(names, "step:"+s.Name)
+		for _, r := range s.Results {
+			names = append(names, "stepresult:"+r.Name)
+		}
+	}
+	return names
+}
+
+func pipelineSpecNames(ps *v1.PipelineSpec) []string {
+	var names []string
+	for _, p := range ps.Params {
+		names = append(names, "param:"+p.Name)
+	}
+	for _, r := range ps.Results {
+		names = append(names, "result:"+r.Name)
+	}
+	for _, w := range ps.Workspaces {
+		names = append(names, "workspace:"+w.Name)
+	}
+	for _, pt := range append(slices.Clone(ps.Tasks), ps.Finally...) {
+		names = append(names, "task:"+pt.Name)
+		if pt.TaskRef != nil {
+			names = append(names, "taskref:"+pt.TaskRef.Name)
+		}
+		if pt.TaskSpec != nil {
+			names = append(names, taskSpecNames(&pt.TaskSpec.TaskSpec)...)
+		}
+	}
+	return names
+}
+
+func nonEmptyPipelineDescriptions(ps *v1.PipelineSpec) []string {
+	var found []string
+	if ps.Description != "" {
+		found = append(found, "spec")
+	}
+	for _, p := range ps.Params {
+		if p.Description != "" {
+			found = append(found, "param")
+		}
+	}
+	for _, r := range ps.Results {
+		if r.Description != "" {
+			found = append(found, "result")
+		}
+	}
+	for _, w := range ps.Workspaces {
+		if w.Description != "" {
+			found = append(found, "workspace")
+		}
+	}
+	for _, pt := range append(slices.Clone(ps.Tasks), ps.Finally...) {
+		if pt.Description != "" {
+			found = append(found, "pipelineTask")
+		}
+		if pt.TaskSpec != nil {
+			for _, d := range nonEmptyDescriptions(&pt.TaskSpec.TaskSpec) {
+				found = append(found, "embedded:"+d)
+			}
+		}
+	}
+	return found
 }
 
 func nonEmptyDescriptions(ts *v1.TaskSpec) []string {
