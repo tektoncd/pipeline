@@ -5973,6 +5973,106 @@ func Test_storeTaskSpec_stripsDescriptions(t *testing.T) {
 	}
 }
 
+// Regression test: the stored snapshot is overwritten later in reconcile, so stripping must survive a full cycle.
+func TestReconcile_StripsStatusTaskSpecDescriptions(t *testing.T) {
+	stepAction := parse.MustParseV1beta1StepAction(t, `
+metadata:
+  name: stepAction
+  namespace: foo
+spec:
+  image: myImage
+  command: ["ls"]
+`)
+	stepActionBytes, err := yaml.Marshal(stepAction)
+	if err != nil {
+		t.Fatal("failed to marshal StepAction", err)
+	}
+
+	tests := []struct {
+		name string
+		keep string
+	}{
+		{name: "default strips descriptions", keep: "false"},
+		{name: "opt-out keeps descriptions", keep: "true"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-task-run-strip-descriptions
+  namespace: foo
+spec:
+  taskSpec:
+    description: task desc
+    params:
+    - name: p
+      type: string
+      default: v
+      description: param desc
+    results:
+    - name: r
+      description: result desc
+    workspaces:
+    - name: w
+      optional: true
+      description: ws desc
+    steps:
+    - name: remote
+      ref:
+        resolver: bar
+`)
+			stepActionReq := getResolvedResolutionRequest(t, "bar", stepActionBytes, tr.Namespace, tr.Name)
+			d := test.Data{
+				TaskRuns: []*v1.TaskRun{tr},
+				ConfigMaps: []*corev1.ConfigMap{{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data:       map[string]string{"keep-status-spec-descriptions": tc.keep},
+				}},
+				ResolutionRequests: []*resolutionv1beta1.ResolutionRequest{&stepActionReq},
+			}
+
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, "default", tr.Namespace)
+			if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", tr.Namespace, tr.Name)); controller.IsPermanentError(err) {
+				t.Fatalf("Not expected permanent error but got %v", err)
+			}
+			reconciledRun, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting reconciled run: %v", err)
+			}
+
+			ts := reconciledRun.Status.TaskSpec
+			if ts == nil {
+				t.Fatal("expected status.taskSpec to be set after reconcile")
+			}
+			// want returns the original description only when the opt-out flag is set.
+			want := func(original string) string {
+				if tc.keep == "true" {
+					return original
+				}
+				return ""
+			}
+			for _, f := range []struct {
+				field, got, original string
+			}{
+				{"description", ts.Description, "task desc"},
+				{"params[0].description", ts.Params[0].Description, "param desc"},
+				{"results[0].description", ts.Results[0].Description, "result desc"},
+				{"workspaces[0].description", ts.Workspaces[0].Description, "ws desc"},
+			} {
+				if f.got != want(f.original) {
+					t.Errorf("status.taskSpec.%s = %q, want %q", f.field, f.got, want(f.original))
+				}
+			}
+			// The overwrite at the end of reconcile must still carry the resolved StepAction.
+			if len(ts.Steps) != 1 || ts.Steps[0].Image != "myImage" {
+				t.Errorf("expected resolved StepAction image in status.taskSpec.steps, got %+v", ts.Steps)
+			}
+		})
+	}
+}
+
 func Test_storeTaskSpec_metadata(t *testing.T) {
 	taskrunlabels := map[string]string{"lbl1": "value1", "lbl2": "value2"}
 	taskrunannotations := map[string]string{"io.annotation.1": "value1", "io.annotation.2": "value2"}

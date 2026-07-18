@@ -702,6 +702,10 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	pipelineSpec = resources.ApplyWorkspaces(pipelineSpec, pr)
 	// Update pipelinespec of pipelinerun's status field
 	pr.Status.PipelineSpec = pipelineSpec
+	// pipelineSpec is already a deep copy, so strip in place; this assignment overwrites the snapshot stored earlier.
+	if !config.FromContextOrDefaults(ctx).FeatureFlags.KeepStatusSpecDescriptions {
+		pr.Status.PipelineSpec.StripDescriptions()
+	}
 
 	// validate pipelineSpec after apply parameters
 	if err := validatePipelineSpecAfterApplyParameters(ctx, pipelineSpec); err != nil {
