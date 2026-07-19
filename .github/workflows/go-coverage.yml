@@ -26,6 +26,8 @@ jobs:
     name: Go coverage
     runs-on: ubuntu-24.04
     permissions:
+      contents: read
+      actions: read
       pull-requests: write
 
     steps:
@@ -48,21 +50,54 @@ jobs:
       - name: Generate coverage
         working-directory: ${{ github.workspace }}/src/github.com/tektoncd/pipeline
         run: |
-          go test -cover -coverprofile=coverage.txt ./... || true
+          go test -coverprofile=coverage.out -covermode=atomic ./... || true
           echo "Generated coverage profile"
 
       - name: Archive coverage results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: code-coverage
-          path: ${{ github.workspace }}/src/github.com/tektoncd/pipeline/coverage.txt
+          path: ${{ github.workspace }}/src/github.com/tektoncd/pipeline/coverage.out
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
         uses: fgrosse/go-coverage-report@cbeb2ab2e32591d690337146ba02a911cc566f3f # v1.3.0
         continue-on-error: true # This may fail if artifact on main branch does not exist (first run or expired)
-        env:
-          GITHUB_TOKEN: ${{ secrets.CHATOPS_TOKEN }}
         with:
           coverage-artifact-name: "code-coverage"
-          coverage-file-name: "coverage.txt"
+          coverage-file-name: "coverage.out"
+
+  codecov-upload:
+    name: Upload coverage to Codecov
+    if: github.event_name != 'pull_request'
+    needs: go-coverage
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Download coverage artifact
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: code-coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v6.0.2
+        continue-on-error: true
+        with:
+          files: coverage.out
+          flags: unit-tests
+          use_oidc: true
+          fail_ci_if_error: false
