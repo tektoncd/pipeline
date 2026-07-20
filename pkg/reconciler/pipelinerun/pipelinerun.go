@@ -189,7 +189,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 	defer span.End()
 
 	span.SetAttributes(
-		attribute.String("pipelinerun", pr.Name), attribute.String("namespace", pr.Namespace),
+		attribute.String("tekton.pipeline_run.name", pr.Name),
+		attribute.String("k8s.namespace.name", pr.Namespace),
 	)
 	if spanCtx := span.SpanContext(); spanCtx.IsValid() {
 		logger = logger.With(zap.String("traceID", spanCtx.TraceID().String()), zap.String("spanID", spanCtx.SpanID().String()))
@@ -395,6 +396,10 @@ func (c *Reconciler) resolvePipelineState(
 ) (resources.PipelineRunState, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "resolvePipelineState")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("tekton.pipeline_run.name", pr.Name),
+		attribute.Int("tekton.pipeline.task_count", len(pipelineTasks)),
+	)
 
 	// List VerificationPolicies once per reconcile for trusted resources (used by all pipeline tasks).
 	vp, err := c.verificationPolicyLister.VerificationPolicies(pr.Namespace).List(labels.Everything())
@@ -544,6 +549,10 @@ func (c *Reconciler) resolvePipelineState(
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipelineFunc rprp.GetPipeline) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "reconcile")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("tekton.pipeline_run.name", pr.Name),
+		attribute.String("k8s.namespace.name", pr.Namespace),
+	)
 	logger := logging.FromContext(ctx)
 	pr.SetDefaults(ctx)
 
@@ -988,6 +997,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.PipelineRun, pipelineRunFacts *resources.PipelineRunFacts) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "runNextSchedulableTask")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("tekton.pipeline_run.name", pr.Name),
+	)
 
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
@@ -1314,6 +1326,10 @@ func (c *Reconciler) detectPipelineRefCycle(pr *v1.PipelineRun, targetPipelineNa
 func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1.PipelineRun, facts *resources.PipelineRunFacts) ([]*v1.TaskRun, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createTaskRuns")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("tekton.pipeline_run.name", pr.Name),
+		attribute.String("tekton.pipeline_task.name", rpt.PipelineTask.Name),
+	)
 
 	var matrixCombinations []v1.Params
 	if rpt.PipelineTask.IsMatrixed() {
