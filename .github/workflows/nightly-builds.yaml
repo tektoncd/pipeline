@@ -170,6 +170,7 @@ jobs:
             --param serviceAccountImagesPath=docker-config.json \
             --param releaseAsLatest="true" \
             --param runTests="false" \
+            --param releaseMode="nightly" \
             --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
             --workspace name=release-secret,secret=release-secret \
             --workspace name=release-images-secret,secret=release-images-secret \
@@ -181,10 +182,13 @@ jobs:
           }
 
           echo "Pipeline started: ${PIPELINE_RUN}"
+          # Note: tkn pipelinerun logs -f exits 0 even when the PipelineRun fails,
+          # so the jq check below is the authoritative success gate.
           tkn pipelinerun logs "${PIPELINE_RUN}" -f
 
           # Check if pipeline succeeded
-          tkn pipelinerun describe "${PIPELINE_RUN}" --output jsonpath='{.status.conditions[?(@.type=="Succeeded")].status}' | grep -q "True" || {
+          tkn pipelinerun describe "${PIPELINE_RUN}" -o json \
+            | jq -e '.status.conditions[] | select(.type=="Succeeded") | .status == "True"' > /dev/null || {
             echo "Pipeline failed!"
             tkn pipelinerun describe "${PIPELINE_RUN}"
             exit 1
