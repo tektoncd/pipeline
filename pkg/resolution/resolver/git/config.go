@@ -19,7 +19,6 @@ package git
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
@@ -69,8 +68,6 @@ type ScmConfig struct {
 }
 
 func GetGitResolverConfig(ctx context.Context) (GitResolverConfig, error) {
-	var scmConfig interface{} = &ScmConfig{}
-	structType := reflect.TypeOf(scmConfig).Elem()
 	gitResolverConfig := map[string]ScmConfig{}
 	conf := framework.GetResolverConfigFromContext(ctx)
 	for key, value := range conf {
@@ -86,22 +83,30 @@ func GetGitResolverConfig(ctx context.Context) (GitResolverConfig, error) {
 		default:
 			return nil, fmt.Errorf("key %s passed in git resolver configmap is invalid", key)
 		}
-		_, ok := gitResolverConfig[configIdentifier]
-		if !ok {
-			gitResolverConfig[configIdentifier] = ScmConfig{}
+		cfg := gitResolverConfig[configIdentifier]
+		switch configKey {
+		case "fetch-timeout":
+			cfg.Timeout = value
+		case "default-url":
+			cfg.URL = value
+		case "default-revision":
+			cfg.Revision = value
+		case "default-org":
+			cfg.Org = value
+		case "server-url":
+			cfg.ServerURL = value
+		case "scm-type":
+			cfg.SCMType = value
+		case "git-token":
+			cfg.GitToken = value
+		case "api-token-secret-name":
+			cfg.APISecretName = value
+		case "api-token-secret-key":
+			cfg.APISecretKey = value
+		case "api-token-secret-namespace":
+			cfg.APISecretNamespace = value
 		}
-		for i := range structType.NumField() {
-			field := structType.Field(i)
-			fieldName := field.Name
-			jsonTag := field.Tag.Get("json")
-			if configKey == jsonTag {
-				tokenDetails := gitResolverConfig[configIdentifier]
-				var scm interface{} = &tokenDetails
-				structValue := reflect.ValueOf(scm).Elem()
-				structValue.FieldByName(fieldName).SetString(value)
-				gitResolverConfig[configIdentifier] = structValue.Interface().(ScmConfig)
-			}
-		}
+		gitResolverConfig[configIdentifier] = cfg
 	}
 	return gitResolverConfig, nil
 }
