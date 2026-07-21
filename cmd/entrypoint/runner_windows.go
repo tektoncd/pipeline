@@ -21,8 +21,10 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
 )
@@ -52,6 +54,12 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	resolvedName, err := exec.LookPath(name)
 	if err != nil {
 		return err
+	}
+
+	// Enforce that LookPath returned an absolute path before using it as the
+	// command to exec.CommandContext, preventing any path-relative injection.
+	if !filepath.IsAbs(resolvedName) {
+		return fmt.Errorf("resolved command path %q is not absolute, refusing to execute", resolvedName)
 	}
 
 	cmd := exec.CommandContext(ctx, resolvedName, args...)
