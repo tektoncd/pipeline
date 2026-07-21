@@ -36,4 +36,4 @@ metadata:
 spec:
   taskRef:
     name: write-array
-    kind: task
+    kind: Task
