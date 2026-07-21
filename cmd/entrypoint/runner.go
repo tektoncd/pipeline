@@ -26,6 +26,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -33,8 +34,26 @@ import (
 )
 
 const (
-	TektonHermeticEnvVar = "TEKTON_HERMETIC"
+	TektonHermeticEnvVar     = "TEKTON_HERMETIC"
+	TektonCommandAllowlistEnvVar = "TEKTON_COMMAND_ALLOWLIST"
 )
+
+// isAllowedCommand returns true if resolvedPath is present in the
+// colon-separated allowlist stored in the TEKTON_COMMAND_ALLOWLIST
+// environment variable. When the variable is unset or empty, all
+// resolved paths are permitted (open mode).
+func isAllowedCommand(resolvedPath string) bool {
+	allowlist := os.Getenv(TektonCommandAllowlistEnvVar)
+	if allowlist == "" {
+		return true
+	}
+	for _, allowed := range strings.Split(allowlist, ":") {
+		if allowed != "" && allowed == resolvedPath {
+			return true
+		}
+	}
+	return false
+}
 
 // TODO(jasonhall): Test that original exit code is propagated and that
 // stdout/stderr are collected -- needs e2e tests.
@@ -81,6 +100,15 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	resolvedName, err := exec.LookPath(name)
 	if err != nil {
 		return fmt.Errorf("command not found or not executable %q: %w", name, err)
+	}
+
+	// Validate the resolved command against the allowlist defined in
+	// TEKTON_COMMAND_ALLOWLIST (colon-separated absolute paths).
+	// When the variable is unset the check is skipped; when it is set,
+	// any command not explicitly listed is rejected to prevent execution
+	// of unintended binaries supplied via user-controlled input.
+	if !isAllowedCommand(resolvedName) {
+		return fmt.Errorf("command %q (resolved to %q) is not in the allowed command list", name, resolvedName)
 	}
 
 	// Receive system signals on "rr.signals"
