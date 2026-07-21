@@ -62,7 +62,10 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, tr *v
 	// Create a new root span since there was no parent spanContext provided through annotations
 	ctxWithTrace, span := tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:Reconciler")
 	defer span.End()
-	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
+	span.SetAttributes(
+		attribute.String("tekton.task_run.name", tr.Name),
+		attribute.String("k8s.namespace.name", tr.Namespace),
+	)
 
 	pro.Inject(ctxWithTrace, propagation.MapCarrier(spanContext))
 

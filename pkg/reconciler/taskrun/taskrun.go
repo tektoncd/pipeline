@@ -135,7 +135,10 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:ReconcileKind")
 	defer span.End()
 
-	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
+	span.SetAttributes(
+		attribute.String("tekton.task_run.name", tr.Name),
+		attribute.String("k8s.namespace.name", tr.Namespace),
+	)
 	if spanCtx := span.SpanContext(); spanCtx.IsValid() {
 		logger = logger.With(zap.String("traceID", spanCtx.TraceID().String()), zap.String("spanID", spanCtx.SpanID().String()))
 		ctx = logging.WithLogger(ctx, logger)
@@ -414,6 +417,9 @@ func newNativeSidecarFromCluster(client kubernetes.Interface, log *zap.SugaredLo
 func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "stopSidecars")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("tekton.task_run.name", tr.Name),
+	)
 	logger := logging.FromContext(ctx)
 	// do not continue without knowing the associated pod
 	if tr.Status.PodName == "" {
@@ -694,6 +700,10 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resources.ResolvedTask) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "reconcile")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("tekton.task_run.name", tr.Name),
+		attribute.String("k8s.namespace.name", tr.Namespace),
+	)
 
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
@@ -914,6 +924,10 @@ func (c *Reconciler) handlePodCreationError(tr *v1.TaskRun, err error) error {
 func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.TaskRunReason, message string) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "failTaskRun")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("tekton.task_run.name", tr.Name),
+		attribute.String("tekton.task_run.reason", string(reason)),
+	)
 	logger := logging.FromContext(ctx)
 
 	logger.Warnf("stopping task run %q because of %q", tr.Name, reason)
@@ -1041,6 +1055,9 @@ func terminateStepsInPod(tr *v1.TaskRun, taskRunReason v1.TaskRunReason) {
 func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (_ *corev1.Pod, err error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createPod")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("tekton.task_run.name", tr.Name),
+	)
 	defer func() {
 		if err != nil {
 			span.SetStatus(codes.Error, err.Error())

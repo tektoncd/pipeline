@@ -76,7 +76,7 @@ func init() {
 func cancelCustomRun(ctx context.Context, runName string, namespace string, clientSet clientset.Interface) error {
 	ctx, span := tracerFromContext(ctx).Start(ctx, "cancelCustomRun")
 	defer span.End()
-	span.SetAttributes(attribute.String("customrun", runName), attribute.String("namespace", namespace))
+	span.SetAttributes(attribute.String("tekton.custom_run.name", runName), attribute.String("k8s.namespace.name", namespace))
 
 	_, err := clientSet.TektonV1beta1().CustomRuns(namespace).Patch(ctx, runName, types.JSONPatchType, cancelCustomRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
@@ -91,7 +91,7 @@ func cancelCustomRun(ctx context.Context, runName string, namespace string, clie
 func cancelTaskRun(ctx context.Context, taskRunName string, namespace string, clientSet clientset.Interface) error {
 	ctx, span := tracerFromContext(ctx).Start(ctx, "cancelTaskRun")
 	defer span.End()
-	span.SetAttributes(attribute.String("taskrun", taskRunName), attribute.String("namespace", namespace))
+	span.SetAttributes(attribute.String("tekton.task_run.name", taskRunName), attribute.String("k8s.namespace.name", namespace))
 
 	_, err := clientSet.TektonV1().TaskRuns(namespace).Patch(ctx, taskRunName, types.JSONPatchType, cancelTaskRunPatchBytes, metav1.PatchOptions{}, "")
 	if errors.IsNotFound(err) {
@@ -112,8 +112,8 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1.Pi
 	ctx, span := tracerFromContext(ctx).Start(ctx, "cancelPipelineRun")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("pipelinerun", pr.Name),
-		attribute.String("namespace", pr.Namespace),
+		attribute.String("tekton.pipeline_run.name", pr.Name),
+		attribute.String("k8s.namespace.name", pr.Namespace),
 	)
 
 	errs := cancelPipelineTaskRuns(ctx, logger, pr, clientSet)
@@ -213,8 +213,8 @@ func gracefullyCancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger,
 	ctx, span := tracerFromContext(ctx).Start(ctx, "gracefullyCancelPipelineRun")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("pipelinerun", pr.Name),
-		attribute.String("namespace", pr.Namespace),
+		attribute.String("tekton.pipeline_run.name", pr.Name),
+		attribute.String("k8s.namespace.name", pr.Namespace),
 	)
 
 	errs := cancelPipelineTaskRuns(ctx, logger, pr, clientSet)
