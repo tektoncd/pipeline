@@ -76,6 +76,13 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	}
 	name, args := args[0], args[1:]
 
+	// Resolve the command to an absolute path via PATH lookup to prevent
+	// execution of arbitrary or attacker-controlled binary paths.
+	resolvedName, err := exec.LookPath(name)
+	if err != nil {
+		return fmt.Errorf("command not found or not executable %q: %w", name, err)
+	}
+
 	// Receive system signals on "rr.signals"
 	if rr.signals == nil {
 		rr.signals = make(chan os.Signal, 1)
@@ -84,7 +91,7 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	signal.Notify(rr.signals)
 	defer signal.Reset()
 
-	cmd := exec.CommandContext(ctx, name, args...)
+	cmd := exec.CommandContext(ctx, resolvedName, args...)
 
 	// if a standard output file is specified
 	// create the log file and add to the std multi writer
