@@ -1,21 +1,28 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package observ // import "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc/internal/observ"
+// Package observ provides experimental observability instrumentation for the
+// otlpmetrichttp exporter.
+package observ // import "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp/internal/observ"
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"net/netip"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
-	"google.golang.org/grpc/codes"
+	metricpb "go.opentelemetry.io/proto/otlp/metrics/v1"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc/internal"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc/internal/x"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp/internal"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp/internal/x"
 	"go.opentelemetry.io/otel/internal/global"
 	"go.opentelemetry.io/otel/metric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
@@ -24,7 +31,7 @@ import (
 
 const (
 	// ScopeName is the unique name of the meter used for instrumentation.
-	ScopeName = "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc/internal/observ"
+	ScopeName = "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp/internal/observ"
 
 	// SchemaURL is the schema URL of the metrics produced by this
 	// instrumentation.
@@ -44,7 +51,7 @@ var (
 				1 + // server.addr
 				1 + // server.port
 				1 + // error.type
-				1 // rpc.grpc.status_code
+				1 // http.response.status_code
 			s := make([]attribute.KeyValue, 0, n)
 			// Return a pointer to a slice instead of a slice itself
 			// to avoid allocations on every call.
@@ -72,7 +79,6 @@ var (
 func get[T any](p *sync.Pool) *[]T { return p.Get().(*[]T) }
 
 func put[T any](p *sync.Pool, s *[]T) {
-	clear(*s)     // erase elements to allow GC to collect what they refer to.
 	*s = (*s)[:0] // Reset.
 	p.Put(s)
 }
@@ -80,46 +86,45 @@ func put[T any](p *sync.Pool, s *[]T) {
 // ComponentName returns the component name for the exporter with the
 // provided ID.
 func ComponentName(id int64) string {
-	t := semconv.OTelComponentTypeOtlpGRPCSpanExporter.Value.AsString()
+	t := semconv.OTelComponentTypeOtlpHTTPMetricExporter.Value.AsString()
 	return fmt.Sprintf("%s/%d", t, id)
 }
 
 // Instrumentation is experimental instrumentation for the exporter.
 type Instrumentation struct {
-	inflightSpans metric.Int64UpDownCounter
-	exportedSpans metric.Int64Counter
-	opDuration    metric.Float64Histogram
+	inflightMetric metric.Int64UpDownCounter
+	exportedMetric metric.Int64Counter
+	opDuration     metric.Float64Histogram
 
 	attrs  []attribute.KeyValue
 	addOpt metric.AddOption
 	recOpt metric.RecordOption
 }
 
-// NewInstrumentation returns instrumentation for an OTLP over gPRC trace
-// exporter with the provided ID using the global MeterProvider.
+// NewInstrumentation returns instrumentation for an OTLP over HTTP metric
+// exporter with the provided ID and endpoint. It uses the global
+// MeterProvider to create the instrumentation.
 //
 // The id should be the unique exporter instance ID. It is used
 // to set the "component.name" attribute.
 //
-// The target is the endpoint the exporter is exporting to.
+// The endpoint is the HTTP endpoint the exporter is exporting to.
 //
 // If the experimental observability is disabled, nil is returned.
-func NewInstrumentation(id int64, target string) (*Instrumentation, error) {
+func NewInstrumentation(id int64, endpoint string) (*Instrumentation, error) {
 	if !x.Observability.Enabled() {
 		return nil, nil
 	}
 
-	attrs := BaseAttrs(id, target)
+	attrs := BaseAttrs(id, endpoint)
 	i := &Instrumentation{
 		attrs:  attrs,
 		addOpt: metric.WithAttributeSet(attribute.NewSet(attrs...)),
 
 		// Do not modify attrs (NewSet sorts in-place), make a new slice.
 		recOpt: metric.WithAttributeSet(attribute.NewSet(append(
-			// Default to OK status code.
-			[]attribute.KeyValue{
-				semconv.RPCResponseStatusCode(codes.OK.String()),
-			},
+			// Default to OK status code (200).
+			[]attribute.KeyValue{semconv.HTTPResponseStatusCode(http.StatusOK)},
 			attrs...,
 		)...)),
 	}
@@ -133,19 +138,19 @@ func NewInstrumentation(id int64, target string) (*Instrumentation, error) {
 
 	var err error
 
-	inflightSpans, e := otelconv.NewSDKExporterSpanInflight(m)
+	inflightMetric, e := otelconv.NewSDKExporterMetricDataPointInflight(m)
 	if e != nil {
-		e = fmt.Errorf("failed to create span inflight metric: %w", e)
+		e = fmt.Errorf("failed to create inflight metric: %w", e)
 		err = errors.Join(err, e)
 	}
-	i.inflightSpans = inflightSpans.Inst()
+	i.inflightMetric = inflightMetric.Inst()
 
-	exportedSpans, e := otelconv.NewSDKExporterSpanExported(m)
+	exportedMetric, e := otelconv.NewSDKExporterMetricDataPointExported(m)
 	if e != nil {
-		e = fmt.Errorf("failed to create span exported metric: %w", e)
+		e = fmt.Errorf("failed to create exported metric: %w", e)
 		err = errors.Join(err, e)
 	}
-	i.exportedSpans = exportedSpans.Inst()
+	i.exportedMetric = exportedMetric.Inst()
 
 	opDuration, e := otelconv.NewSDKExporterOperationDuration(m)
 	if e != nil {
@@ -158,22 +163,22 @@ func NewInstrumentation(id int64, target string) (*Instrumentation, error) {
 }
 
 // BaseAttrs returns the base attributes for the exporter with the provided ID
-// and target.
+// and endpoint.
 //
 // The id should be the unique exporter instance ID. It is used
 // to set the "component.name" attribute.
 //
-// The target is the gRPC target the exporter is exporting to. It is expected
-// to be the output of the Client's CanonicalTarget method.
-func BaseAttrs(id int64, target string) []attribute.KeyValue {
-	host, port, err := ParseCanonicalTarget(target)
+// The endpoint is the HTTP endpoint the exporter is exporting to. It should be
+// in the format "host[:port]".
+func BaseAttrs(id int64, endpoint string) []attribute.KeyValue {
+	host, port, err := parseEndpoint(endpoint)
 	if err != nil || (host == "" && port < 0) {
 		if err != nil {
-			global.Debug("failed to parse target", "target", target, "error", err)
+			global.Debug("failed to parse endpoint", "endpoint", endpoint, "error", err)
 		}
 		return []attribute.KeyValue{
 			semconv.OTelComponentName(ComponentName(id)),
-			semconv.OTelComponentTypeOtlpGRPCSpanExporter,
+			semconv.OTelComponentTypeOtlpHTTPMetricExporter,
 		}
 	}
 
@@ -182,7 +187,7 @@ func BaseAttrs(id int64, target string) []attribute.KeyValue {
 	if port < 0 {
 		return []attribute.KeyValue{
 			semconv.OTelComponentName(ComponentName(id)),
-			semconv.OTelComponentTypeOtlpGRPCSpanExporter,
+			semconv.OTelComponentTypeOtlpHTTPMetricExporter,
 			semconv.ServerAddress(host),
 		}
 	}
@@ -190,75 +195,128 @@ func BaseAttrs(id int64, target string) []attribute.KeyValue {
 	if host == "" {
 		return []attribute.KeyValue{
 			semconv.OTelComponentName(ComponentName(id)),
-			semconv.OTelComponentTypeOtlpGRPCSpanExporter,
+			semconv.OTelComponentTypeOtlpHTTPMetricExporter,
 			semconv.ServerPort(port),
 		}
 	}
 
 	return []attribute.KeyValue{
 		semconv.OTelComponentName(ComponentName(id)),
-		semconv.OTelComponentTypeOtlpGRPCSpanExporter,
+		semconv.OTelComponentTypeOtlpHTTPMetricExporter,
 		semconv.ServerAddress(host),
 		semconv.ServerPort(port),
 	}
 }
 
-// ExportSpans instruments the ExportSpans method of the exporter. It returns
-// an [ExportOp] that must have its [ExportOp.End] method called when the
-// ExportSpans method returns.
-func (i *Instrumentation) ExportSpans(ctx context.Context, nSpans int) ExportOp {
+// parseEndpoint parses the host and port from endpoint that has the form
+// "host[:port]", or it returns an error if the endpoint is not parsable.
+//
+// If no port is specified, -1 is returned.
+//
+// If no host is specified, an empty string is returned.
+func parseEndpoint(endpoint string) (string, int, error) {
+	// First check if the endpoint is just an IP address.
+	if ip := parseIP(endpoint); ip != "" {
+		return ip, -1, nil
+	}
+
+	// If there's no colon, there is no port (IPv6 with no port checked above).
+	if !strings.Contains(endpoint, ":") {
+		return endpoint, -1, nil
+	}
+
+	// Otherwise, parse as host:port.
+	host, portStr, err := net.SplitHostPort(endpoint)
+	if err != nil {
+		return "", -1, fmt.Errorf("invalid host:port %q: %w", endpoint, err)
+	}
+
+	const base, bitSize = 10, 16
+	port16, err := strconv.ParseUint(portStr, base, bitSize)
+	if err != nil {
+		return "", -1, fmt.Errorf("invalid port %q: %w", portStr, err)
+	}
+	port := int(port16) // port is guaranteed to be in the range [0, 65535].
+
+	return host, port, nil
+}
+
+// parseIP attempts to parse the entire endpoint as an IP address.
+// It returns the normalized string form of the IP if successful,
+// or an empty string if parsing fails.
+func parseIP(ip string) string {
+	// Strip leading and trailing brackets for IPv6 addresses.
+	if len(ip) >= 2 && ip[0] == '[' && ip[len(ip)-1] == ']' {
+		ip = ip[1 : len(ip)-1]
+	}
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return ""
+	}
+	// Return the normalized string form of the IP.
+	return addr.String()
+}
+
+// ExportMetrics instruments the UploadMetrics method of the client. It returns an
+// [ExportOp] that must have its [ExportOp.End] method called when the
+// operation ends.
+func (i *Instrumentation) ExportMetrics(ctx context.Context, rm *metricpb.ResourceMetrics) ExportOp {
 	start := time.Now()
 
-	if i.inflightSpans.Enabled(ctx) {
+	nMetrics := countDataPoints(rm)
+
+	if i.inflightMetric.Enabled(ctx) {
 		addOpt := get[metric.AddOption](addOptPool)
 		defer put(addOptPool, addOpt)
 		*addOpt = append(*addOpt, i.addOpt)
-		i.inflightSpans.Add(ctx, int64(nSpans), *addOpt...)
+		i.inflightMetric.Add(ctx, nMetrics, *addOpt...)
 	}
 
 	return ExportOp{
-		ctx:    ctx,
-		start:  start,
-		nSpans: int64(nSpans),
-		inst:   i,
+		ctx:      ctx,
+		start:    start,
+		nMetrics: nMetrics,
+		inst:     i,
 	}
 }
 
-// ExportOp tracks the operation being observed by [Instrumentation.ExportSpans].
+// ExportOp tracks the export operation being observed by
+// [Instrumentation.ExportMetrics].
 type ExportOp struct {
-	ctx    context.Context
-	start  time.Time
-	nSpans int64
+	ctx      context.Context
+	start    time.Time
+	nMetrics int64
 
 	inst *Instrumentation
 }
 
 // End completes the observation of the operation being observed by a call to
-// [Instrumentation.ExportSpans].
+// [Instrumentation.ExportMetrics].
 //
 // Any error that is encountered is provided as err.
+// The HTTP status code from the response is provided as status.
 //
-// If err is not nil, all spans will be recorded as failures unless error is of
+// If err is not nil, all metrics will be recorded as failures unless error is of
 // type [internal.PartialSuccess]. In the case of a PartialSuccess, the number
-// of successfully exported spans will be determined by inspecting the
+// of successfully exported metrics will be determined by inspecting the
 // RejectedItems field of the PartialSuccess.
-func (e ExportOp) End(err error, code codes.Code) {
+func (e ExportOp) End(err error, status int) {
 	addOpt := get[metric.AddOption](addOptPool)
 	defer put(addOptPool, addOpt)
 	*addOpt = append(*addOpt, e.inst.addOpt)
 
-	if e.inst.inflightSpans.Enabled(e.ctx) {
-		e.inst.inflightSpans.Add(e.ctx, -e.nSpans, *addOpt...)
+	if e.inst.inflightMetric.Enabled(e.ctx) {
+		e.inst.inflightMetric.Add(e.ctx, -e.nMetrics, *addOpt...)
 	}
 
-	success := successful(e.nSpans, err)
-	// Record successfully exported spans, even if the value is 0 which are
+	success := successful(e.nMetrics, err)
+	// Record successfully exported metrics, even if the value is 0 which are
 	// meaningful to distribution aggregations.
-	if e.inst.exportedSpans.Enabled(e.ctx) {
-		e.inst.exportedSpans.Add(e.ctx, success, *addOpt...)
+	if e.inst.exportedMetric.Enabled(e.ctx) {
+		e.inst.exportedMetric.Add(e.ctx, success, *addOpt...)
 	}
 
-	if err != nil && e.inst.exportedSpans.Enabled(e.ctx) {
+	if err != nil && e.inst.exportedMetric.Enabled(e.ctx) {
 		attrs := get[attribute.KeyValue](measureAttrsPool)
 		defer put(measureAttrsPool, attrs)
 		*attrs = append(*attrs, e.inst.attrs...)
@@ -270,13 +328,13 @@ func (e ExportOp) End(err error, code codes.Code) {
 		// Reset addOpt with new attribute set.
 		*addOpt = append((*addOpt)[:0], o)
 
-		e.inst.exportedSpans.Add(e.ctx, e.nSpans-success, *addOpt...)
+		e.inst.exportedMetric.Add(e.ctx, e.nMetrics-success, *addOpt...)
 	}
 
 	if e.inst.opDuration.Enabled(e.ctx) {
 		recOpt := get[metric.RecordOption](recordOptPool)
 		defer put(recordOptPool, recOpt)
-		*recOpt = append(*recOpt, e.inst.recordOption(err, code))
+		*recOpt = append(*recOpt, e.inst.recordOption(err, status))
 
 		d := time.Since(e.start).Seconds()
 		e.inst.opDuration.Record(e.ctx, d, *recOpt...)
@@ -286,15 +344,15 @@ func (e ExportOp) End(err error, code codes.Code) {
 // recordOption returns a RecordOption with attributes representing the
 // outcome of the operation being recorded.
 //
-// If err is nil and code is codes.OK, the default recOpt of the
+// If err is nil and status is 200, the default recOpt of the
 // Instrumentation is returned.
 //
-// If err is not nil or code is not codes.OK, a new RecordOption is returned
-// with the base attributes of the Instrumentation plus the rpc.grpc.status_code
-// attribute set to the provided code, and if err is not nil, the error.type
-// attribute set to the type of the error.
-func (i *Instrumentation) recordOption(err error, code codes.Code) metric.RecordOption {
-	if err == nil && code == codes.OK {
+// Otherwise, a new RecordOption is returned with the base attributes of the
+// Instrumentation plus the http.response.status_code attribute set to the
+// provided status (if non-zero), and if err is not nil, the error.type attribute set
+// to the type of the error.
+func (i *Instrumentation) recordOption(err error, status int) metric.RecordOption {
+	if err == nil && status == http.StatusOK {
 		return i.recOpt
 	}
 
@@ -302,7 +360,9 @@ func (i *Instrumentation) recordOption(err error, code codes.Code) metric.Record
 	defer put(measureAttrsPool, attrs)
 	*attrs = append(*attrs, i.attrs...)
 
-	*attrs = append(*attrs, semconv.RPCResponseStatusCode(code.String()))
+	if status != 0 {
+		*attrs = append(*attrs, semconv.HTTPResponseStatusCode(status))
+	}
 	if err != nil {
 		*attrs = append(*attrs, semconv.ErrorType(err))
 	}
@@ -312,21 +372,21 @@ func (i *Instrumentation) recordOption(err error, code codes.Code) metric.Record
 	return metric.WithAttributeSet(attribute.NewSet(*attrs...))
 }
 
-// successful returns the number of successfully exported spans out of the n
+// successful returns the number of successfully exported metrics out of the n
 // that were exported based on the provided error.
 //
-// If err is nil, n is returned. All spans were successfully exported.
+// If err is nil, n is returned. All metrics were successfully exported.
 //
 // If err is not nil and not an [internal.PartialSuccess] error, 0 is returned.
-// It is assumed all spans failed to be exported.
+// It is assumed all metrics failed to be exported.
 //
 // If err is an [internal.PartialSuccess] error, the number of successfully
-// exported spans is computed by subtracting the RejectedItems field from n. If
+// exported metrics is computed by subtracting the RejectedItems field from n. If
 // RejectedItems is negative, n is returned. If RejectedItems is greater than
 // n, 0 is returned.
 func successful(n int64, err error) int64 {
 	if err == nil {
-		return n // All spans successfully exported.
+		return n // All metrics successfully exported.
 	}
 	// Split rejection calculation so successful is inlinable.
 	return n - rejected(n, err)
@@ -336,19 +396,16 @@ var errPartialPool = &sync.Pool{
 	New: func() any { return new(internal.PartialSuccess) },
 }
 
-// rejected returns how many out of the n spans exporter were rejected based on
-// the provided non-nil err.
+// rejected returns how many out of the n metrics were rejected based on the
+// provided non-nil err.
 func rejected(n int64, err error) int64 {
 	ps := errPartialPool.Get().(*internal.PartialSuccess)
-	defer func() {
-		*ps = internal.PartialSuccess{} // erase fields to allow GC to collect them.
-		errPartialPool.Put(ps)
-	}()
+	defer errPartialPool.Put(ps)
 	// Check for partial success.
 	if errors.As(err, ps) {
 		// Bound RejectedItems to [0, n]. This should not be needed,
 		// but be defensive as this is from an external source.
 		return min(max(ps.RejectedItems, 0), n)
 	}
-	return n // All spans rejected.
+	return n // All metrics rejected.
 }
