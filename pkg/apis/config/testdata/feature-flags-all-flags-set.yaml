@@ -39,3 +39,5 @@ data:
   enable-concise-resolver-syntax: "true"
   enable-kubernetes-sidecar: "true"
   enable-termination-message-compression: "true"
+  enable-trusted-ca-certs: "true"
+  trusted-ca-cert-configmap-name: "my-custom-ca-certs"

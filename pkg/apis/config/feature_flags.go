@@ -121,6 +121,14 @@ const (
 	EnableTerminationMessageCompression = "enable-termination-message-compression"
 	// DefaultEnableTerminationMessageCompression is the default value for EnableTerminationMessageCompression
 	DefaultEnableTerminationMessageCompression = false
+	// EnableTrustedCACerts is the flag to enable trusted CA cert injection.
+	EnableTrustedCACerts = "enable-trusted-ca-certs"
+	// DefaultEnableTrustedCACerts is the default value for EnableTrustedCACerts.
+	DefaultEnableTrustedCACerts = false
+	// TrustedCACertConfigMapName is the key for the trusted CA cert ConfigMap name.
+	TrustedCACertConfigMapName = "trusted-ca-cert-configmap-name"
+	// DefaultTrustedCACertConfigMapName is the default value for TrustedCACertConfigMapName.
+	DefaultTrustedCACertConfigMapName = "config-ca-cert"
 
 	// EnableStepActions is the flag to enable step actions (no-op since it's stable)
 	EnableStepActions = "enable-step-actions"
@@ -240,7 +248,9 @@ type FeatureFlags struct {
 	// This field is not used and can be removed in a future release
 	// once we're confident old PipelineRuns have been cleaned up.
 	// See issue #8359 for context.
-	DeprecatedEnableTektonOCIBundles *bool `json:"enableTektonOCIBundles,omitempty" yaml:"enableTektonOCIBundles,omitempty"`
+	DeprecatedEnableTektonOCIBundles *bool  `json:"enableTektonOCIBundles,omitempty" yaml:"enableTektonOCIBundles,omitempty"`
+	EnableTrustedCACerts             bool   `json:"enableTrustedCACerts,omitempty"`
+	TrustedCACertConfigMapName       string `json:"trustedCACertConfigMapName,omitempty"`
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -350,6 +360,14 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	}
 	if err := setPerFeatureFlag(EnableTerminationMessageCompression, DefaultEnableTerminationMessageCompressionFlag, &tc.EnableTerminationMessageCompression); err != nil {
 		return nil, err
+	}
+	if err := setFeature(EnableTrustedCACerts, DefaultEnableTrustedCACerts, &tc.EnableTrustedCACerts); err != nil {
+		return nil, err
+	}
+	if cfg, ok := cfgMap[TrustedCACertConfigMapName]; ok && cfg != "" {
+		tc.TrustedCACertConfigMapName = cfg
+	} else {
+		tc.TrustedCACertConfigMapName = DefaultTrustedCACertConfigMapName
 	}
 
 	return &tc, nil
