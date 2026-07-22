@@ -39,6 +39,7 @@ import (
 )
 
 var ignoreVolatileTime = cmp.Comparer(func(_, _ apis.VolatileTime) bool { return true })
+var ignoreTime = cmp.Comparer(func(_, _ metav1.Time) bool { return true })
 
 func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 	for _, c := range []struct {
@@ -104,7 +105,7 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 			for _, cs := range c.ContainerStatuses {
 				originalStatuses = append(originalStatuses, *cs.DeepCopy())
 			}
-			gotErr := setTaskRunStatusBasedOnStepStatus(t.Context(), logger, c.ContainerStatuses, &tr, corev1.PodRunning, kubeclient, &v1.TaskSpec{})
+			gotErr := setTaskRunStatusBasedOnStepStatus(t.Context(), logger, c.ContainerStatuses, &tr, corev1.PodRunning, kubeclient, &v1.TaskSpec{}, metav1.Time{Time: time.Now()})
 			if gotErr != nil {
 				t.Errorf("setTaskRunStatusBasedOnStepStatus: %s", gotErr)
 			}
@@ -237,7 +238,7 @@ func TestSetTaskRunStatusBasedOnStepStatus_sidecar_logs(t *testing.T) {
 			ctx := config.ToContext(t.Context(), &config.Config{
 				FeatureFlags: featureFlags,
 			})
-			gotErr := setTaskRunStatusBasedOnStepStatus(ctx, logger, []corev1.ContainerStatus{{}}, &c.tr, pod.Status.Phase, kubeclient, ts)
+			gotErr := setTaskRunStatusBasedOnStepStatus(ctx, logger, []corev1.ContainerStatus{{}}, &c.tr, pod.Status.Phase, kubeclient, ts, metav1.Time{Time: time.Now()})
 			if gotErr == nil {
 				t.Fatalf("Expected error but got nil")
 			}
@@ -490,7 +491,7 @@ func TestMakeTaskRunStatus_StepResults(t *testing.T) {
 				}
 				return y != nil
 			})
-			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ensureTimeNotNil); d != "" {
+			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ignoreTime, ensureTimeNotNil); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -663,7 +664,7 @@ func TestMakeTaskRunStatus_StepProvenance(t *testing.T) {
 				}
 				return y != nil
 			})
-			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ensureTimeNotNil); d != "" {
+			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ignoreTime, ensureTimeNotNil); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -805,7 +806,7 @@ func TestMakeTaskRunStatus_StepArtifacts(t *testing.T) {
 				}
 				return y != nil
 			})
-			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ensureTimeNotNil); d != "" {
+			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ignoreTime, ensureTimeNotNil); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -2334,7 +2335,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				}
 				return y != nil
 			})
-			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ensureTimeNotNil); d != "" {
+			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ignoreTime, ensureTimeNotNil); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 			if tr.Status.StartTime.Time != c.want.StartTime.Time {
@@ -2406,7 +2407,7 @@ func TestMakeRunStatus_OnError(t *testing.T) {
 				t.Errorf("Unexpected err in MakeTaskRunResult: %s", err)
 			}
 
-			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime); d != "" {
+			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime, ignoreTime); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -2532,7 +2533,7 @@ func TestMakeTaskRunStatus_SidecarNotCompleted(t *testing.T) {
 				},
 			})
 			got, _ := MakeTaskRunStatus(ctx, logger, tr, &c.pod, kubeclient, &c.taskSpec)
-			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime); d != "" {
+			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime, ignoreTime); d != "" {
 				t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
 			}
 		})
@@ -2797,7 +2798,7 @@ func TestMakeTaskRunStatus_KubernetesNativeSidecar(t *testing.T) {
 				},
 			})
 			got, _ := MakeTaskRunStatus(ctx, logger, tr, &c.pod, kubeclient, &c.taskSpec)
-			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime); d != "" {
+			if d := cmp.Diff(c.want.Status, got.Status, ignoreVolatileTime, ignoreTime); d != "" {
 				t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
 			}
 		})
@@ -3087,7 +3088,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				}
 				return y != nil
 			})
-			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ensureTimeNotNil); d != "" {
+			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ignoreTime, ensureTimeNotNil); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 			if tr.Status.StartTime.Time != c.want.StartTime.Time {
@@ -3135,6 +3136,7 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 1,
 						Message:  "this is a non-json termination message. dont panic!",
+						Reason:   "ContainerStatusUnknown",
 					},
 				},
 			}, {
@@ -3147,20 +3149,24 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 		},
 	}
 	wantTr := v1.TaskRunStatus{
-		Status: statusFailure(v1.TaskRunReasonStepFailed.String(), "\"step-non-json\" exited with code 1"),
+		Status: statusFailure(v1.TaskRunReasonStepFailed.String(), "\"step-non-json\" exited with code 1: ContainerStatusUnknown"),
 		TaskRunStatusFields: v1.TaskRunStatusFields{
 			PodName: "pod",
 			Steps: []v1.StepState{{
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						ExitCode: 1,
-						Message:  "this is a non-json termination message. dont panic!",
+						ExitCode:   1,
+						Message:    "this is a non-json termination message. dont panic!",
+						Reason:     "ContainerStatusUnknown",
+						StartedAt:  metav1.Time{Time: time.Now()},
+						FinishedAt: metav1.Time{Time: time.Now()},
 					},
 				},
-				Name:      "non-json",
-				Container: "step-non-json",
-				Results:   []v1.TaskRunResult{},
-				ImageID:   "image",
+				Name:              "non-json",
+				Container:         "step-non-json",
+				Results:           []v1.TaskRunResult{},
+				ImageID:           "image",
+				TerminationReason: "ContainerStatusUnknown",
 			}, {
 				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{},
@@ -3202,8 +3208,8 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 	logger, _ := logging.NewLogger("", "status")
 	kubeclient := fakek8s.NewSimpleClientset()
 	gotTr, err := MakeTaskRunStatus(t.Context(), logger, tr, pod, kubeclient, &v1.TaskSpec{})
-	if err == nil {
-		t.Error("Expected error, got nil")
+	if err != nil {
+		t.Errorf("Unexpected error, got %v", err)
 	}
 
 	ensureTimeNotNil := cmp.Comparer(func(x, y *metav1.Time) bool {
@@ -3212,8 +3218,131 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 		}
 		return y != nil
 	})
-	if d := cmp.Diff(wantTr, gotTr, ignoreVolatileTime, ensureTimeNotNil); d != "" {
+	if d := cmp.Diff(wantTr, gotTr, ignoreVolatileTime, ensureTimeNotNil, cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt")); d != "" {
 		t.Errorf("Diff %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestMakeRunStatusJSONError_missingTime(t *testing.T) {
+	startTime := time.Date(2022, 1, 1, 1, 1, 1, 1, time.UTC)
+	finishTime := time.Date(2022, 1, 1, 1, 2, 1, 1, time.UTC)
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pod",
+			Namespace: "foo",
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name: "step-zero",
+			}, {
+				Name: "step-one",
+			}, {
+				Name: "step-two",
+			}, {
+				Name: "step-three",
+			}},
+		},
+		Status: corev1.PodStatus{
+			StartTime: &metav1.Time{Time: startTime},
+			Phase:     corev1.PodFailed,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name:    "step-zero",
+				ImageID: "image",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{},
+				},
+			}, {
+				Name:    "step-one",
+				ImageID: "image",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Message: "kubelet said no",
+						Reason:  "ContainerStatusUnknown",
+					},
+				},
+			}, {
+				Name:    "step-two",
+				ImageID: "image",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						StartedAt:  metav1.Time{Time: startTime},
+						FinishedAt: metav1.Time{Time: startTime},
+						Message:    "kubelet said no",
+						Reason:     "ContainerStatusUnknown",
+					},
+				},
+			}, {
+				Name:    "step-three",
+				ImageID: "image",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						FinishedAt: metav1.Time{Time: finishTime},
+					},
+				},
+			}},
+		},
+	}
+
+	tr := v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "task-run",
+			Namespace: "foo",
+		},
+	}
+
+	logger, _ := logging.NewLogger("", "status")
+	kubeclient := fakek8s.NewSimpleClientset()
+	before := time.Now()
+	gotTr, _ := MakeTaskRunStatus(t.Context(), logger, tr, pod, kubeclient, &v1.TaskSpec{})
+	after := time.Now()
+
+	if len(gotTr.Steps) != 4 {
+		t.Fatalf("Expected 4 steps, got %d", len(gotTr.Steps))
+	}
+
+	// Helper for common validations
+	checkStep := func(t *testing.T, s v1.StepState, expectedStartedAt metav1.Time, msg, reason string) {
+		t.Helper()
+		if s.Terminated == nil || s.Terminated.StartedAt.IsZero() || s.Terminated.FinishedAt.IsZero() {
+			t.Fatalf("Step %q should be terminated with non-zero timestamps", s.Name)
+		}
+		if !s.Terminated.StartedAt.Equal(&expectedStartedAt) {
+			t.Errorf("Step %q StartedAt should be %v, got %v", s.Name, expectedStartedAt, s.Terminated.StartedAt)
+		}
+		if s.Terminated.Message != msg {
+			t.Errorf("Step %q message should be %q, got %q", s.Name, msg, s.Terminated.Message)
+		}
+		if s.TerminationReason != reason {
+			t.Errorf("Step %q TerminationReason should be %q, got %q", s.Name, reason, s.TerminationReason)
+		}
+	}
+
+	// Step 0: StartedAt falls back to defaultStartTime (startTime)
+	s0 := gotTr.Steps[0]
+	checkStep(t, s0, metav1.Time{Time: startTime}, "", "")
+	if s0.Terminated.FinishedAt.Time.Before(before) || s0.Terminated.FinishedAt.Time.After(after) {
+		t.Errorf("Step 0 FinishedAt should be in execution window, got %v", s0.Terminated.FinishedAt)
+	}
+
+	// Step 1: StartedAt falls back to s0's FinishedAt
+	s1 := gotTr.Steps[1]
+	checkStep(t, s1, s0.Terminated.FinishedAt, "kubelet said no", "ContainerStatusUnknown")
+	if s1.Terminated.FinishedAt.Time.Before(before) || s1.Terminated.FinishedAt.Time.After(after) {
+		t.Errorf("Step 1 FinishedAt should be in execution window, got %v", s1.Terminated.FinishedAt)
+	}
+
+	// Step 2: StartedAt and FinishedAt are explicitly set in pod status to startTime
+	s2 := gotTr.Steps[2]
+	checkStep(t, s2, metav1.Time{Time: startTime}, "kubelet said no", "ContainerStatusUnknown")
+	if !s2.Terminated.FinishedAt.Equal(&metav1.Time{Time: startTime}) {
+		t.Errorf("Step 2 FinishedAt should be %v, got %v", startTime, s2.Terminated.FinishedAt)
+	}
+
+	// Step 3: StartedAt falls back to s2's FinishedAt, FinishedAt is explicitly set to finishTime
+	s3 := gotTr.Steps[3]
+	checkStep(t, s3, s2.Terminated.FinishedAt, "", "")
+	if !s3.Terminated.FinishedAt.Equal(&metav1.Time{Time: finishTime}) {
+		t.Errorf("Step 3 FinishedAt should be %v, got %v", finishTime, s3.Terminated.FinishedAt)
 	}
 }
 
@@ -3746,7 +3875,7 @@ func TestGetStepTerminationReasonFromContainerStatus(t *testing.T) {
 				}
 				want := test.expectedTerminationReason[step.Container]
 				got := step.TerminationReason
-				if d := cmp.Diff(want, got, ignoreVolatileTime); d != "" {
+				if d := cmp.Diff(want, got, ignoreVolatileTime, ignoreTime); d != "" {
 					t.Errorf("Diff %s", diff.PrintWantGot(d))
 				}
 			}
@@ -4308,7 +4437,7 @@ func TestMakeTaskRunStatus_SidecarFailed(t *testing.T) {
 		}
 		return y != nil
 	})
-	if d := cmp.Diff(want, got, ignoreVolatileTime, ensureTimeNotNil); d != "" {
+	if d := cmp.Diff(want, got, ignoreVolatileTime, ignoreTime, ensureTimeNotNil); d != "" {
 		t.Errorf("Diff %s", diff.PrintWantGot(d))
 	}
 }
@@ -4516,6 +4645,118 @@ func Test_getFailureMessage_consistent_with_reason(t *testing.T) {
 			msg := getFailureMessage(logger, tt.pod)
 			if !strings.Contains(msg, tt.wantMsgPart) {
 				t.Errorf("getFailureMessage() = %q, want it to contain %q", msg, tt.wantMsgPart)
+			}
+		})
+	}
+}
+
+func TestGetPotentialStepsStartTime(t *testing.T) {
+	startTime := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
+	later := startTime.Add(1 * time.Hour)
+	latest := startTime.Add(2 * time.Hour)
+
+	t.Run("StartTime is nil", func(t *testing.T) {
+		pod := &corev1.Pod{
+			Status: corev1.PodStatus{
+				StartTime: nil,
+			},
+		}
+		before := time.Now()
+		got := getPotentialStepsStartTime(pod)
+		after := time.Now()
+		if got.Time.Before(before) || got.Time.After(after) {
+			t.Errorf("getPotentialStepsStartTime() = %v, want time between %v and %v", got, before, after)
+		}
+	})
+
+	tests := []struct {
+		desc string
+		pod  *corev1.Pod
+		want time.Time
+	}{
+		{
+			desc: "StartTime is set, no init containers",
+			pod: &corev1.Pod{
+				Status: corev1.PodStatus{
+					StartTime: &metav1.Time{Time: startTime},
+				},
+			},
+			want: startTime,
+		},
+		{
+			desc: "StartTime is set, init containers terminated later",
+			pod: &corev1.Pod{
+				Status: corev1.PodStatus{
+					StartTime: &metav1.Time{Time: startTime},
+					InitContainerStatuses: []corev1.ContainerStatus{{
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								FinishedAt: metav1.Time{Time: later},
+							},
+						},
+					}},
+				},
+			},
+			want: later,
+		},
+		{
+			desc: "StartTime is set, multiple init containers, latest finishedAt",
+			pod: &corev1.Pod{
+				Status: corev1.PodStatus{
+					StartTime: &metav1.Time{Time: startTime},
+					InitContainerStatuses: []corev1.ContainerStatus{{
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								FinishedAt: metav1.Time{Time: later},
+							},
+						},
+					}, {
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								FinishedAt: metav1.Time{Time: latest},
+							},
+						},
+					}},
+				},
+			},
+			want: latest,
+		},
+		{
+			desc: "StartTime is set, multiple init containers, and one main container",
+			pod: &corev1.Pod{
+				Status: corev1.PodStatus{
+					StartTime: &metav1.Time{Time: startTime},
+					InitContainerStatuses: []corev1.ContainerStatus{{
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								FinishedAt: metav1.Time{Time: latest},
+							},
+						},
+					}, {
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								FinishedAt: metav1.Time{Time: later},
+							},
+						},
+					}},
+					ContainerStatuses: []corev1.ContainerStatus{{
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								FinishedAt: metav1.Time{Time: startTime.Add(3 * time.Hour)},
+							},
+						},
+					}},
+				},
+			},
+			want: latest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			got := getPotentialStepsStartTime(tt.pod)
+			if !got.Equal(&metav1.Time{Time: tt.want}) {
+				t.Errorf("getPotentialStepsStartTime() = %v, want %v", got, tt.want)
 			}
 		})
 	}
