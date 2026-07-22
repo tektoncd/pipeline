@@ -37,6 +37,7 @@ type Config struct {
 	Events                 *Events
 	Tracing                *Tracing
 	WaitExponentialBackoff *WaitExponentialBackoff
+	RedactPatterns         *RedactPatterns
 }
 
 // FromContext extracts a Config from the provided context.
@@ -63,6 +64,7 @@ func FromContextOrDefaults(ctx context.Context) *Config {
 		Events:                 DefaultEvents.DeepCopy(),
 		Tracing:                DefaultTracing.DeepCopy(),
 		WaitExponentialBackoff: DefaultWaitExponentialBackoff.DeepCopy(),
+		RedactPatterns:         DefaultRedactPatterns.DeepCopy(),
 	}
 }
 
@@ -92,6 +94,7 @@ func NewStore(logger configmap.Logger, onAfterStore ...func(name string, value i
 				GetEventsConfigName():                 NewEventsFromConfigMap,
 				GetTracingConfigName():                NewTracingFromConfigMap,
 				GetWaitExponentialBackoffConfigName(): NewWaitExponentialBackoffFromConfigMap,
+				GetRedactPatternsConfigName():         NewRedactPatternsFromConfigMap,
 			},
 			onAfterStore...,
 		),
@@ -136,6 +139,10 @@ func (s *Store) Load() *Config {
 	if waitExponentialBackoff == nil {
 		waitExponentialBackoff = DefaultWaitExponentialBackoff.DeepCopy()
 	}
+	redactPatterns := s.UntypedLoad(GetRedactPatternsConfigName())
+	if redactPatterns == nil {
+		redactPatterns = DefaultRedactPatterns.DeepCopy()
+	}
 
 	return &Config{
 		Defaults:               defaults.(*Defaults).DeepCopy(),
@@ -145,5 +152,6 @@ func (s *Store) Load() *Config {
 		SpireConfig:            spireconfig.(*sc.SpireConfig).DeepCopy(),
 		Events:                 events.(*Events).DeepCopy(),
 		WaitExponentialBackoff: waitExponentialBackoff.(*WaitExponentialBackoff).DeepCopy(),
+		RedactPatterns:         redactPatterns.(*RedactPatterns).DeepCopy(),
 	}
 }

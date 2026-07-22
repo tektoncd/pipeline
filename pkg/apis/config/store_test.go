@@ -51,6 +51,7 @@ func TestStoreLoadWithContext(t *testing.T) {
 		Events:                 expectedEventsConfig,
 		Tracing:                expectedTracingConfig,
 		WaitExponentialBackoff: expectedWaitExponentialBackoffConfig,
+		RedactPatterns:         config.DefaultRedactPatterns.DeepCopy(),
 	}
 
 	store := config.NewStore(logtesting.TestLogger(t))
@@ -78,6 +79,7 @@ func TestStoreLoadWithContext_Empty(t *testing.T) {
 		Events:                 config.DefaultEvents.DeepCopy(),
 		Tracing:                config.DefaultTracing.DeepCopy(),
 		WaitExponentialBackoff: config.DefaultWaitExponentialBackoff.DeepCopy(),
+		RedactPatterns:         config.DefaultRedactPatterns.DeepCopy(),
 	}
 
 	store := config.NewStore(logtesting.TestLogger(t))
