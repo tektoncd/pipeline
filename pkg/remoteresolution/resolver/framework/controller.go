@@ -24,6 +24,7 @@ import (
 	rrinformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
 	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	framework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"github.com/tektoncd/pipeline/pkg/resolvermetrics"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/clock"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -60,6 +61,7 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 			resolutionRequestLister:    rrInformer.Lister(),
 			resolutionRequestClientSet: rrclientset,
 			resolver:                   resolver,
+			metrics:                    resolvermetrics.Get(ctx),
 		}
 
 		watchConfigChanges(ctx, r, cmw)
