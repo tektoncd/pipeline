@@ -418,6 +418,8 @@ Set this field to "alpha" to allow [alpha features](#alpha-features) to be used.
 
 - `enable-kubernetes-sidecar`: Set this flag to `"true"` to enable native kubernetes sidecar support. This will allow Tekton sidecars to run as Kubernetes sidecars. Must be using Kubernetes v1.29 or greater.
 
+- `keep-status-spec-descriptions`: documentation-only `description` fields are stripped from the `status.taskSpec` and `status.pipelineSpec` snapshots by default to reduce etcd usage. These fields are never used by the controller during execution; the original Task/Pipeline objects keep their descriptions. Set this flag to `"true"` to retain them in the status snapshot during a migration window. The default is `"false"`. See [#10321](https://github.com/tektoncd/pipeline/issues/10321).
+
 For example:
 
 ```yaml

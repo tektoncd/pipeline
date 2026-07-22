@@ -702,6 +702,10 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	pipelineSpec = resources.ApplyWorkspaces(pipelineSpec, pr)
 	// Update pipelinespec of pipelinerun's status field
 	pr.Status.PipelineSpec = pipelineSpec
+	// pipelineSpec is already a deep copy, so strip in place; this assignment overwrites the snapshot stored earlier.
+	if !config.FromContextOrDefaults(ctx).FeatureFlags.KeepStatusSpecDescriptions {
+		pr.Status.PipelineSpec.StripDescriptions()
+	}
 
 	// validate pipelineSpec after apply parameters
 	if err := validatePipelineSpecAfterApplyParameters(ctx, pipelineSpec); err != nil {
@@ -1945,7 +1949,12 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1.Pipe
 func storePipelineSpecAndMergeMeta(ctx context.Context, pr *v1.PipelineRun, ps *v1.PipelineSpec, meta *resolutionutil.ResolvedObjectMeta) error {
 	// Only store the PipelineSpec once, if it has never been set before.
 	if pr.Status.PipelineSpec == nil {
-		pr.Status.PipelineSpec = ps
+		// Snapshot the spec, stripping documentation-only descriptions to reduce etcd usage unless opted out. See #10321.
+		snapshot := ps.DeepCopy()
+		if !config.FromContextOrDefaults(ctx).FeatureFlags.KeepStatusSpecDescriptions {
+			snapshot.StripDescriptions()
+		}
+		pr.Status.PipelineSpec = snapshot
 		if meta == nil {
 			return nil
 		}

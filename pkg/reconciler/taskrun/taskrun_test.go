@@ -5857,10 +5857,13 @@ spec:
 		Description: "bar-task",
 	}
 
+	// descriptions are stripped from the status snapshot by default (#10321)
+	strippedTS := ts.DeepCopy()
+	strippedTS.StripDescriptions()
 	want := tr.DeepCopy()
 	want.Status = v1.TaskRunStatus{
 		TaskRunStatusFields: v1.TaskRunStatusFields{
-			TaskSpec: ts.DeepCopy(),
+			TaskSpec: strippedTS,
 			Provenance: &v1.Provenance{
 				RefSource:    refSource.DeepCopy(),
 				FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
@@ -5929,6 +5932,142 @@ spec:
 			}
 			if d := cmp.Diff(tc.wantTaskRun, tr); d != "" {
 				t.Fatal(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func Test_storeTaskSpec_stripsDescriptions(t *testing.T) {
+	ts := &v1.TaskSpec{
+		Description: "task desc",
+		Params:      v1.ParamSpecs{{Name: "p", Description: "param desc"}},
+		Results:     []v1.TaskResult{{Name: "r", Description: "result desc"}},
+		Workspaces:  []v1.WorkspaceDeclaration{{Name: "w", Description: "ws desc"}},
+	}
+
+	tests := []struct {
+		name         string
+		keep         bool
+		wantStripped bool
+	}{
+		{name: "default strips descriptions", keep: false, wantStripped: true},
+		{name: "opt-out keeps descriptions", keep: true, wantStripped: false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := config.ToContext(t.Context(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{KeepStatusSpecDescriptions: tc.keep},
+			})
+			tr := &v1.TaskRun{ObjectMeta: metav1.ObjectMeta{Name: "foo"}}
+			if err := storeTaskSpecAndMergeMeta(ctx, tr, ts.DeepCopy(), nil); err != nil {
+				t.Fatalf("storeTaskSpecAndMergeMeta error = %v", err)
+			}
+			got := tr.Status.TaskSpec.Description
+			if tc.wantStripped && got != "" {
+				t.Errorf("expected description stripped, got %q", got)
+			}
+			if !tc.wantStripped && got != "task desc" {
+				t.Errorf("expected description retained, got %q", got)
+			}
+		})
+	}
+}
+
+// Regression test: the stored snapshot is overwritten later in reconcile, so stripping must survive a full cycle.
+func TestReconcile_StripsStatusTaskSpecDescriptions(t *testing.T) {
+	stepAction := parse.MustParseV1beta1StepAction(t, `
+metadata:
+  name: stepAction
+  namespace: foo
+spec:
+  image: myImage
+  command: ["ls"]
+`)
+	stepActionBytes, err := yaml.Marshal(stepAction)
+	if err != nil {
+		t.Fatal("failed to marshal StepAction", err)
+	}
+
+	tests := []struct {
+		name string
+		keep string
+	}{
+		{name: "default strips descriptions", keep: "false"},
+		{name: "opt-out keeps descriptions", keep: "true"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-task-run-strip-descriptions
+  namespace: foo
+spec:
+  taskSpec:
+    description: task desc
+    params:
+    - name: p
+      type: string
+      default: v
+      description: param desc
+    results:
+    - name: r
+      description: result desc
+    workspaces:
+    - name: w
+      optional: true
+      description: ws desc
+    steps:
+    - name: remote
+      ref:
+        resolver: bar
+`)
+			stepActionReq := getResolvedResolutionRequest(t, "bar", stepActionBytes, tr.Namespace, tr.Name)
+			d := test.Data{
+				TaskRuns: []*v1.TaskRun{tr},
+				ConfigMaps: []*corev1.ConfigMap{{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data:       map[string]string{"keep-status-spec-descriptions": tc.keep},
+				}},
+				ResolutionRequests: []*resolutionv1beta1.ResolutionRequest{&stepActionReq},
+			}
+
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, "default", tr.Namespace)
+			if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", tr.Namespace, tr.Name)); controller.IsPermanentError(err) {
+				t.Fatalf("Not expected permanent error but got %v", err)
+			}
+			reconciledRun, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting reconciled run: %v", err)
+			}
+
+			ts := reconciledRun.Status.TaskSpec
+			if ts == nil {
+				t.Fatal("expected status.taskSpec to be set after reconcile")
+			}
+			// want returns the original description only when the opt-out flag is set.
+			want := func(original string) string {
+				if tc.keep == "true" {
+					return original
+				}
+				return ""
+			}
+			for _, f := range []struct {
+				field, got, original string
+			}{
+				{"description", ts.Description, "task desc"},
+				{"params[0].description", ts.Params[0].Description, "param desc"},
+				{"results[0].description", ts.Results[0].Description, "result desc"},
+				{"workspaces[0].description", ts.Workspaces[0].Description, "ws desc"},
+			} {
+				if f.got != want(f.original) {
+					t.Errorf("status.taskSpec.%s = %q, want %q", f.field, f.got, want(f.original))
+				}
+			}
+			// The overwrite at the end of reconcile must still carry the resolved StepAction.
+			if len(ts.Steps) != 1 || ts.Steps[0].Image != "myImage" {
+				t.Errorf("expected resolved StepAction image in status.taskSpec.steps, got %+v", ts.Steps)
 			}
 		})
 	}
