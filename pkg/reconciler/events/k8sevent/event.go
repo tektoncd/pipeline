@@ -25,6 +25,10 @@ import (
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -37,6 +41,35 @@ const (
 	// EventReasonError is the reason set for events related to TaskRuns / PipelineRuns reconcile errors
 	EventReasonError = "Error"
 )
+
+// traceAnnotations extracts the trace context from ctx using the globally
+// configured OpenTelemetry propagator and returns it as event annotations.
+// Using the configured propagator (rather than formatting traceparent by hand)
+// keeps this consistent with the rest of Tekton's tracing setup and preserves
+// additional fields such as tracestate when the propagator emits them.
+// It returns nil when no trace context is present, so callers fall back to
+// un-annotated events.
+func traceAnnotations(ctx context.Context) map[string]string {
+	if !trace.SpanContextFromContext(ctx).IsValid() {
+		return nil
+	}
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	if len(carrier) == 0 {
+		return nil
+	}
+	return carrier
+}
+
+// emitEvent emits a Kubernetes event, attaching trace context annotations when
+// they are available so the event can be correlated with a distributed trace.
+func emitEvent(ctx context.Context, recorder record.EventRecorder, object runtime.Object, eventType, reason, message string) {
+	if annotations := traceAnnotations(ctx); annotations != nil {
+		recorder.AnnotatedEventf(object, annotations, eventType, reason, "%s", message)
+		return
+	}
+	recorder.Event(object, eventType, reason, message)
+}
 
 // EmitK8sEvents emits kubernetes events for object
 // k8s events are always sent if afterCondition is different from beforeCondition
@@ -54,27 +87,34 @@ func EmitK8sEvents(ctx context.Context, beforeCondition *apis.Condition, afterCo
 		// If the condition changed, and the target condition is not empty, we send an event
 		switch afterCondition.Status {
 		case corev1.ConditionTrue:
-			recorder.Event(object, corev1.EventTypeNormal, EventReasonSucceded, afterCondition.Message)
+			emitEvent(ctx, recorder, object, corev1.EventTypeNormal, EventReasonSucceded, afterCondition.Message)
 		case corev1.ConditionFalse:
-			recorder.Event(object, corev1.EventTypeWarning, EventReasonFailed, afterCondition.Message)
+			emitEvent(ctx, recorder, object, corev1.EventTypeWarning, EventReasonFailed, afterCondition.Message)
 		case corev1.ConditionUnknown:
 			if beforeCondition == nil {
 				// If the condition changed, the status is "unknown", and there was no condition before,
 				// we emit the "Started event". We ignore further updates of the "unknown" status.
-				recorder.Event(object, corev1.EventTypeNormal, EventReasonStarted, "")
+				emitEvent(ctx, recorder, object, corev1.EventTypeNormal, EventReasonStarted, "")
 			} else {
 				// If the condition changed, the status is "unknown", and there was a condition before,
 				// we emit an event that matches the reason and message of the condition.
 				// This is used for instance to signal the transition from "started" to "running"
-				recorder.Event(object, corev1.EventTypeNormal, afterCondition.Reason, afterCondition.Message)
+				emitEvent(ctx, recorder, object, corev1.EventTypeNormal, afterCondition.Reason, afterCondition.Message)
 			}
 		}
 	}
 }
 
-// EmitError emits a failure associated to an error
+// EmitError emits a failure associated to an error.
 func EmitError(c record.EventRecorder, err error, object runtime.Object) {
+	EmitErrorWithContext(context.Background(), c, err, object)
+}
+
+// EmitErrorWithContext emits a failure associated to an error, attaching trace
+// context annotations from ctx when available so the error event can be
+// correlated with a distributed trace.
+func EmitErrorWithContext(ctx context.Context, c record.EventRecorder, err error, object runtime.Object) {
 	if err != nil {
-		c.Event(object, corev1.EventTypeWarning, EventReasonError, err.Error())
+		emitEvent(ctx, c, object, corev1.EventTypeWarning, EventReasonError, err.Error())
 	}
 }
