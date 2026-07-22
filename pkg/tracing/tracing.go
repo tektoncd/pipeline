@@ -114,7 +114,7 @@ func (t *tracerProvider) Handler(obj interface{}) {
 }
 
 func (t *tracerProvider) OnSecret(secret *corev1.Secret) {
-	if secret.Name != t.cfg.CredentialsSecret {
+	if t.cfg == nil || secret.Name != t.cfg.CredentialsSecret {
 		return
 	}
 

@@ -32,6 +32,9 @@ import (
 	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -76,7 +79,8 @@ type Reconciler struct {
 	resolutionRequestLister    rrv1beta1.ResolutionRequestLister
 	resolutionRequestClientSet rrclient.Interface
 
-	configStore *framework.ConfigStore
+	configStore    *framework.ConfigStore
+	tracerProvider trace.TracerProvider
 }
 
 var _ reconciler.LeaderAware = &Reconciler{}
@@ -106,6 +110,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return nil
 	}
 
+	resolverName := r.resolver.GetName(ctx)
+	ctx = withTracerProvider(ctx, r.tracerProvider)
+	ctx, span := tracerProviderFromContext(ctx).Tracer(TracerName).Start(ctx, spanNameResolutionRequestReconcile)
+	defer span.End()
+	span.SetAttributes(
+		attribute.String(attributeResolverType, resolverName),
+		attribute.String(attributeResolutionRequestName, name),
+		attribute.String(attributeResolutionRequestNamespace, namespace),
+	)
+
 	// Inject request-scoped information into the context, such as
 	// the namespace that the request originates from and the
 	// configuration from the configmap this resolver is watching.
@@ -115,7 +129,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 		ctx = r.configStore.ToContext(ctx)
 	}
 
-	return r.resolve(ctx, key, rr)
+	err = r.resolve(ctx, key, rr)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+	return err
 }
 
 func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.ResolutionRequest) error {
@@ -153,31 +172,49 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 	defer cancelFn()
 
 	go func() {
-		validationError := r.resolver.Validate(resolutionCtx, &rr.Spec)
+		resolverName := r.resolver.GetName(resolutionCtx)
+
+		validateCtx, validateSpan := tracerProviderFromContext(resolutionCtx).Tracer(TracerName).Start(resolutionCtx, spanNameResolutionRequestValidate)
+		validateSpan.SetAttributes(attribute.String(attributeResolverType, resolverName))
+		validationError := r.resolver.Validate(validateCtx, &rr.Spec)
 		if validationError != nil {
+			validateSpan.RecordError(validationError)
+			validateSpan.SetStatus(codes.Error, validationError.Error())
+			validateSpan.End()
 			errChan <- &resolutioncommon.InvalidRequestError{
 				ResolutionRequestKey: key,
 				Message:              validationError.Error(),
 			}
 			return
 		}
-		resource, resolveErr := r.resolver.Resolve(resolutionCtx, &rr.Spec)
+		validateSpan.End()
+
+		resolveCtx, resolveSpan := tracerProviderFromContext(resolutionCtx).Tracer(TracerName).Start(resolutionCtx, spanNameResolutionRequestResolve)
+		resolveSpan.SetAttributes(attribute.String(attributeResolverType, resolverName))
+		resource, resolveErr := r.resolver.Resolve(resolveCtx, &rr.Spec)
 		if resolveErr != nil {
+			resolveSpan.RecordError(resolveErr)
+			resolveSpan.SetStatus(codes.Error, resolveErr.Error())
+			resolveSpan.End()
 			errChan <- &resolutioncommon.GetResourceError{
-				ResolverName: r.resolver.GetName(resolutionCtx),
+				ResolverName: resolverName,
 				Key:          key,
 				Original:     resolveErr,
 			}
 			return
 		}
 		if err := framework.ValidateResolvedResource(resource); err != nil {
+			resolveSpan.RecordError(err)
+			resolveSpan.SetStatus(codes.Error, err.Error())
+			resolveSpan.End()
 			errChan <- &resolutioncommon.GetResourceError{
-				ResolverName: r.resolver.GetName(resolutionCtx),
+				ResolverName: resolverName,
 				Key:          key,
 				Original:     fmt.Errorf("resolved resource validation error: %w", err),
 			}
 			return
 		}
+		resolveSpan.End()
 		resourceChan <- resource
 	}()
 
