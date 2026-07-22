@@ -100,10 +100,16 @@ func main() {
 		port = "8080"
 	}
 
+	tlsCertFile := os.Getenv("TLS_CERT")
+	tlsKeyFile := os.Getenv("TLS_KEY")
+	if tlsCertFile == "" || tlsKeyFile == "" {
+		log.Fatal("TLS_CERT and TLS_KEY environment variables must be set to enable TLS for the health/readiness probe server")
+	}
+
 	go func() {
 		// start the web server on port and accept requests
 		log.Printf("Readiness and health check server listening on port %s", port)
-		log.Fatal(http.ListenAndServe(":"+port, mux)) // #nosec G114 -- see https://github.com/securego/gosec#available-rules
+		log.Fatal(http.ListenAndServeTLS(":"+port, tlsCertFile, tlsKeyFile, mux))
 	}()
 
 	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)

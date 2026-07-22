@@ -6,11 +6,13 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: test-ssh-credentials
-stringData:
-  id_rsa: |
-    -----BEGIN OPENSSH PRIVATE KEY-----
-    abcdefghijklmnopqrstuvwxy1234567890
-    -----END OPENSSH PRIVATE KEY-----
+# Do NOT hardcode private keys here.
+# Create the Secret externally using a private key file, for example:
+#   kubectl create secret generic test-ssh-credentials --from-file=id_rsa=/path/to/your/private/id_rsa
+# Alternatively, populate the 'id_rsa' field via a secrets manager or CI/CD secret injection.
+#
+# stringData:
+#   id_rsa: <contents of your private key file — never commit this value>
 ---
 kind: PipelineRun
 apiVersion: tekton.dev/v1
