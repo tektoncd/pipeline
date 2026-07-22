@@ -21,6 +21,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/utils/strings/slices"
 	"knative.dev/pkg/apis"
 )
@@ -289,6 +290,45 @@ func (m *Matrix) GetAllParams() Params {
 		}
 	}
 	return params
+}
+
+// IncludeNames returns the ordered list of Matrix Include names to be used as
+// suffixes when naming the fanned out TaskRuns/PipelineRuns/CustomRuns, instead
+// of the default numeric index (e.g. "-default-config-macro" instead of "-0").
+//
+// To keep the index-to-name mapping unambiguous and the result fully backward
+// compatible, names are only returned when ALL of the following hold:
+//  1. the Matrix is include-only (it has Include but no Params), so there is a
+//     1:1 mapping between Include entries and the generated combinations;
+//  2. every Include entry specifies a non-empty Name;
+//  3. every Name is a valid Kubernetes DNS label (lowercase alphanumeric
+//     characters and '-'), so it can be used in a resource name; and
+//  4. the Names are unique, so the generated resource names do not collide.
+//
+// When any condition is not met, IncludeNames returns nil and callers fall back
+// to numeric indexing.
+func (m *Matrix) IncludeNames() []string {
+	if m == nil {
+		return nil
+	}
+	// Names can only be mapped unambiguously to combinations for include-only
+	// matrices. When matrix.params are also present, includes may overwrite or
+	// add combinations, so we cannot reliably associate a name with each one.
+	if !m.HasInclude() || m.HasParams() {
+		return nil
+	}
+	names := make([]string, 0, len(m.Include))
+	seen := sets.NewString()
+	for _, include := range m.Include {
+		// Every include must be named, the name must be usable in a Kubernetes
+		// resource name, and it must be unique across the matrix.
+		if include.Name == "" || len(validation.IsDNS1123Label(include.Name)) > 0 || seen.Has(include.Name) {
+			return nil
+		}
+		seen.Insert(include.Name)
+		names = append(names, include.Name)
+	}
+	return names
 }
 
 func (m *Matrix) validateCombinationsCount(ctx context.Context) (errs *apis.FieldError) {

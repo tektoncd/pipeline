@@ -774,6 +774,92 @@ func TestMatrix_GetAllParams(t *testing.T) {
 	}
 }
 
+func TestMatrix_IncludeNames(t *testing.T) {
+	testCases := []struct {
+		name   string
+		matrix *v1.Matrix
+		want   []string
+	}{{
+		name:   "nil matrix",
+		matrix: nil,
+		want:   nil,
+	}, {
+		name:   "empty matrix",
+		matrix: &v1.Matrix{},
+		want:   nil,
+	}, {
+		name: "include-only with valid unique names",
+		matrix: &v1.Matrix{
+			Include: v1.IncludeParamsList{{
+				Name:   "default-config-macro",
+				Params: v1.Params{{Name: "test-case", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "default-config-macro"}}},
+			}, {
+				Name:   "robots-txt",
+				Params: v1.Params{{Name: "test-case", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "robots_txt"}}},
+			}},
+		},
+		want: []string{"default-config-macro", "robots-txt"},
+	}, {
+		name: "include-only but a name is missing",
+		matrix: &v1.Matrix{
+			Include: v1.IncludeParamsList{{
+				Name:   "default-config-macro",
+				Params: v1.Params{{Name: "test-case", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "default-config-macro"}}},
+			}, {
+				Params: v1.Params{{Name: "test-case", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "robots_txt"}}},
+			}},
+		},
+		want: nil,
+	}, {
+		name: "include-only but a name is not a valid DNS label",
+		matrix: &v1.Matrix{
+			Include: v1.IncludeParamsList{{
+				Name:   "Default Config Macro",
+				Params: v1.Params{{Name: "test-case", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "default-config-macro"}}},
+			}, {
+				Name:   "robots-txt",
+				Params: v1.Params{{Name: "test-case", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "robots_txt"}}},
+			}},
+		},
+		want: nil,
+	}, {
+		name: "include-only but names are duplicated",
+		matrix: &v1.Matrix{
+			Include: v1.IncludeParamsList{{
+				Name:   "build",
+				Params: v1.Params{{Name: "test-case", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "default-config-macro"}}},
+			}, {
+				Name:   "build",
+				Params: v1.Params{{Name: "test-case", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "robots_txt"}}},
+			}},
+		},
+		want: nil,
+	}, {
+		name: "matrix with both params and include is not eligible",
+		matrix: &v1.Matrix{
+			Params: v1.Params{{Name: "GOARCH", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"linux/amd64", "linux/s390x"}}}},
+			Include: v1.IncludeParamsList{{
+				Name:   "common-package",
+				Params: v1.Params{{Name: "package", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "path/to/common/package/"}}},
+			}},
+		},
+		want: nil,
+	}, {
+		name: "matrix with only params is not eligible",
+		matrix: &v1.Matrix{
+			Params: v1.Params{{Name: "GOARCH", Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"linux/amd64", "linux/s390x"}}}},
+		},
+		want: nil,
+	}}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if d := cmp.Diff(tc.want, tc.matrix.IncludeNames()); d != "" {
+				t.Errorf("matrix.IncludeNames() diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestPipelineTask_CountCombinations(t *testing.T) {
 	tests := []struct {
 		name   string
