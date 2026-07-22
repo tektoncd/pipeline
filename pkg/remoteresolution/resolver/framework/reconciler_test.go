@@ -20,8 +20,6 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
-	"fmt"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -37,6 +35,7 @@ import (
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
+	"go.uber.org/goleak"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -531,39 +530,81 @@ func TestReconcile(t *testing.T) {
 	}
 }
 
-func TestResolveGoroutineLeak(t *testing.T) {
-	const numRequests = 5
+// controlledResolver is a fake resolver whose Resolve blocks on an explicit
+// signal so a test can deterministically exercise the timeout-vs-publish race
+// without depending on the noisy, process-global runtime.NumGoroutine() count.
+// Resolve closes started when it begins and waits on release before returning,
+// letting the reconciler time out first; the test then confirms the worker
+// goroutine exits instead of blocking forever on its result channel.
+type controlledResolver struct {
+	timeout time.Duration
+	started chan struct{}
+	release chan struct{}
+}
 
-	paramMap := map[string]*resolutionframework.FakeResolvedResource{
-		"bar": {WaitFor: 200 * time.Millisecond},
+var (
+	_ framework.Resolver                  = &controlledResolver{}
+	_ resolutionframework.TimedResolution = &controlledResolver{}
+)
+
+func (r *controlledResolver) Initialize(context.Context) error { return nil }
+func (r *controlledResolver) GetName(context.Context) string   { return "controlled" }
+func (r *controlledResolver) Validate(context.Context, *v1beta1.ResolutionRequestSpec) error {
+	return nil
+}
+
+func (r *controlledResolver) GetSelector(context.Context) map[string]string {
+	return map[string]string{resolutioncommon.LabelKeyResolverType: resolutionframework.LabelValueFakeResolverType}
+}
+
+func (r *controlledResolver) GetResolutionTimeout(_ context.Context, def time.Duration, _ map[string]string) (time.Duration, error) {
+	if r.timeout > 0 {
+		return r.timeout, nil
+	}
+	return def, nil
+}
+
+func (r *controlledResolver) Resolve(context.Context, *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
+	close(r.started)
+	<-r.release
+	return &resolutionframework.FakeResolvedResource{Content: `{"apiVersion": "tekton.dev/v1", "kind": "Pipeline"}`}, nil
+}
+
+// TestResolveGoroutineLeak asserts the contract directly: when resolution times
+// out the reconciler returns, and when the resolver later finishes the worker
+// goroutine must not block forever publishing its result. The buffered (cap-1)
+// errChan/resourceChan in resolve() let the worker deposit its value and exit;
+// reverting them to unbuffered makes the worker block, which goleak catches.
+func TestResolveGoroutineLeak(t *testing.T) {
+	resolver := &controlledResolver{
+		timeout: 10 * time.Millisecond,
+		started: make(chan struct{}),
+		release: make(chan struct{}),
 	}
 
-	requests := make([]*v1beta1.ResolutionRequest, numRequests)
-	for i := range numRequests {
-		requests[i] = &v1beta1.ResolutionRequest{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "resolution.tekton.dev/v1beta1",
-				Kind:       "ResolutionRequest",
+	request := &v1beta1.ResolutionRequest{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "resolution.tekton.dev/v1beta1",
+			Kind:       "ResolutionRequest",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "rr",
+			Namespace:         "foo",
+			CreationTimestamp: metav1.Time{Time: time.Now()},
+			Labels: map[string]string{
+				resolutioncommon.LabelKeyResolverType: resolutionframework.LabelValueFakeResolverType,
 			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:              fmt.Sprintf("rr-%d", i),
-				Namespace:         "foo",
-				CreationTimestamp: metav1.Time{Time: time.Now()},
-				Labels: map[string]string{
-					resolutioncommon.LabelKeyResolverType: resolutionframework.LabelValueFakeResolverType,
-				},
-			},
-			Spec: v1beta1.ResolutionRequestSpec{
-				Params: []pipelinev1.Param{{
-					Name:  resolutionframework.FakeParamName,
-					Value: *pipelinev1.NewStructuredValues("bar"),
-				}},
-			},
-		}
+		},
+		Spec: v1beta1.ResolutionRequestSpec{
+			Params: []pipelinev1.Param{{
+				Name:  resolutionframework.FakeParamName,
+				Value: *pipelinev1.NewStructuredValues("bar"),
+			}},
+		},
 	}
 
 	d := test.Data{
-		ResolutionRequests: requests,
+		ResolutionRequests: []*v1beta1.ResolutionRequest{request},
 		ConfigMaps: []*corev1.ConfigMap{{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "resolver-cache-config",
@@ -573,32 +614,25 @@ func TestResolveGoroutineLeak(t *testing.T) {
 		}},
 	}
 
-	fakeResolver := &framework.FakeResolver{
-		ForParam: paramMap,
-		Timeout:  50 * time.Millisecond,
-	}
-
 	ctx, _ := ttesting.SetupFakeContext(t)
-	testAssets, cancel := getResolverFrameworkController(ctx, t, d, fakeResolver, setClockOnReconciler)
+	testAssets, cancel := getResolverFrameworkController(ctx, t, d, resolver, setClockOnReconciler)
 	defer cancel()
+	ignoreCurrent := goleak.IgnoreCurrent()
 
-	runtime.GC()
-	time.Sleep(50 * time.Millisecond)
-	before := runtime.NumGoroutine()
-
-	for _, rr := range requests {
-		_ = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(rr))
+	// Reconcile must return once the worker outlasts the short timeout, while
+	// the worker is still blocked inside Resolve waiting for release.
+	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(request))
+	if err == nil || !strings.Contains(err.Error(), "context deadline exceeded") {
+		t.Fatalf("expected timeout error, got %v", err)
 	}
+	<-resolver.started
 
-	time.Sleep(500 * time.Millisecond)
-	runtime.GC()
-	time.Sleep(50 * time.Millisecond)
-	after := runtime.NumGoroutine()
-
-	leaked := after - before
-	if leaked >= numRequests {
-		t.Errorf("goroutine leak detected: %d goroutines leaked after %d timed-out resolutions (before=%d, after=%d)",
-			leaked, numRequests, before, after)
+	// Let the worker finish after the reconciler has already returned. With the
+	// buffered channel it deposits its result and exits; unbuffered, it blocks
+	// forever on the send and the resolve goroutine never disappears.
+	close(resolver.release)
+	if err := goleak.Find(ignoreCurrent); err != nil {
+		t.Fatalf("resolver worker goroutine did not exit after timeout: %v", err)
 	}
 }
 
