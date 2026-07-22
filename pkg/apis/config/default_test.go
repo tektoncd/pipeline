@@ -115,6 +115,39 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 			},
 		},
 		{
+			expectedError: false,
+			fileName:      "config-defaults-aa-pod-template-with-resources",
+			expectedConfig: &config.Defaults{
+				DefaultTimeoutMinutes:      50,
+				DefaultServiceAccount:      "tekton",
+				DefaultManagedByLabelValue: config.DefaultManagedByLabelValue,
+				DefaultAAPodTemplate: &pod.AffinityAssistantTemplate{
+					NodeSelector: map[string]string{
+						"label": "value2",
+					},
+					Resources: &corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("100m"),
+							corev1.ResourceMemory: resource.MustParse("256Mi"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("200m"),
+							corev1.ResourceMemory: resource.MustParse("512Mi"),
+						},
+					},
+				},
+				DefaultMaxMatrixCombinationsCount: 256,
+				DefaultImagePullBackOffTimeout:    0,
+				DefaultMaximumResolutionTimeout:   1 * time.Minute,
+				DefaultSidecarLogPollingInterval:  100 * time.Millisecond,
+				DefaultStepRefConcurrencyLimit:    5,
+			},
+		},
+		{
+			expectedError: true,
+			fileName:      "config-defaults-aa-pod-template-invalid-resources",
+		},
+		{
 			expectedError: true,
 			fileName:      "config-defaults-matrix-err",
 		},

@@ -60,7 +60,17 @@ data:
     # to use for affinity assistant pods. If a pod template is specified on the
     # PipelineRun, the default-affinity-assistant-pod-template is merged with
     # that one.
-    # default-affinity-assistant-pod-template:
+    # The "resources" field allows customization of the affinity assistant
+    # container's compute resources. If not specified, defaults of 50m CPU
+    # and 100Mi memory (requests and limits) are used.
+    # default-affinity-assistant-pod-template: |
+    #   resources:
+    #     requests:
+    #       cpu: "50m"
+    #       memory: "100Mi"
+    #     limits:
+    #       cpu: "100m"
+    #       memory: "200Mi"
 
     # default-cloud-events-sink contains the default CloudEvents sink to be
     # used for TaskRun and PipelineRun, when no sink is specified.

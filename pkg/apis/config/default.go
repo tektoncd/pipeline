@@ -181,6 +181,9 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		if err := yamlUnmarshal(defaultAAPodTemplate, defaultAAPodTemplateKey, &podTemplate); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal %v", defaultAAPodTemplate)
 		}
+		if errs := podTemplate.ValidateResources(); len(errs) > 0 {
+			return nil, fmt.Errorf("invalid %s: %v", defaultAAPodTemplateKey, errs)
+		}
 		tc.DefaultAAPodTemplate = &podTemplate
 	}
 
