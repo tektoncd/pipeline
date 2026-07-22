@@ -73,7 +73,12 @@ func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 	errs = errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 	// When a Task is created directly, instead of declared inline in a TaskRun or PipelineRun,
 	// we do not support propagated parameters. Validate that all params it uses are declared.
-	return errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.Spec.Steps, t.Spec.Params).ViaField("spec"))
+	errs = errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.Spec.Steps, t.Spec.Params).ViaField("spec"))
+	// When a Task is created directly, instead of declared inline in a TaskRun or PipelineRun,
+	// we do not support propagated workspaces. Validate that all workspace variable references
+	// (e.g. $(workspaces.foo.path)) refer to declared workspaces with valid properties.
+	errs = errs.Also(ValidateUsageOfDeclaredWorkspaces(ctx, t.Spec.Steps, t.Spec.Sidecars, t.Spec.Workspaces).ViaField("spec"))
+	return errs
 }
 
 // Validate implements apis.Validatable
@@ -187,6 +192,25 @@ func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step,
 // This is a beta feature and will fail validation if it's used by a step
 // or sidecar when the enable-api-fields feature gate is anything but "beta".
 //
+// ValidateUsageOfDeclaredWorkspaces validates that all workspace variable references
+// (e.g. $(workspaces.foo.path)) in Steps and Sidecars refer to workspaces declared in the Task
+// and use valid workspace properties (path, bound, claim, volume).
+func ValidateUsageOfDeclaredWorkspaces(ctx context.Context, steps []Step, sidecars []Sidecar, workspaces []WorkspaceDeclaration) *apis.FieldError {
+	var errs *apis.FieldError
+	wsNames := sets.NewString()
+	for _, w := range workspaces {
+		wsNames.Insert(w.Name)
+	}
+	// Validate that workspace variable references refer to declared workspaces
+	errs = errs.Also(validateVariables(ctx, steps, "workspaces", wsNames))
+	// Validate that workspace properties are valid (path, bound, claim, volume)
+	wsProperties := sets.NewString("path", "bound", "claim", "volume")
+	for _, w := range workspaces {
+		errs = errs.Also(validateVariables(ctx, steps, "workspaces\\."+w.Name, wsProperties))
+	}
+	return errs
+}
+
 // Note that this feature reached beta after the v1 API version has been released and
 // consequently it is *not* implicitly enabled on the v1beta1 API to avoid suffering
 // from the issues described in TEP-0138 https://github.com/tektoncd/community/pull/1034
