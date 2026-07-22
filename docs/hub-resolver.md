@@ -13,11 +13,11 @@ Use resolver type `hub`.
 
 | Param Name       | Description                                                                   | Example Value                                              |
 |------------------|-------------------------------------------------------------------------------|------------------------------------------------------------|
-| `catalog`        | The catalog from where to pull the resource (Optional)                        | Default:  `tekton-catalog-tasks` (for `task` kind);  `tekton-catalog-pipelines` (for `pipeline` kind); no default for `stepaction` kind, so `catalog` must be set explicitly |
+| `catalog`        | The catalog from where to pull the resource (Optional)                        | Default:  `tekton-catalog-tasks` (for `task` kind);  `tekton-catalog-pipelines` (for `pipeline` kind); `git-clone-stepaction` (for `stepaction` kind) |
 | `type`           | The type of Hub from where to pull the resource (Optional). Either `artifact` or `tekton` | Default:  `artifact` (recommended). Note: `tekton` type is deprecated.                                         |
 | `kind`           | `task`, `pipeline` or `stepaction` (Optional)                                        | Default: `task`                                                     |
-| `name`           | The name of the task or pipeline to fetch from the hub                        | `golang-build`                                             |
-| `version`        | Version or a Constraint (see [below](#version-constraint) of a task or a pipeline to pull in from. Wrap the number in quotes!   | `"0.5.0"`, `">= 0.5.0"`                                                    |
+| `name`           | The name of the task, pipeline, or StepAction to fetch from the hub            | `golang-build`                                             |
+| `version`        | Version or a Constraint (see [below](#version-constraint)) of a task, pipeline, or StepAction to pull in. Wrap the number in quotes! | `"0.5.0"`, `">= 0.5.0"`                                                    |
 | `url`            | Custom hub API endpoint to query instead of the cluster-configured default (Optional). Must be an absolute HTTP or HTTPS URL. Overrides all other URL configuration (ConfigMap URL lists, environment variables, and defaults). | `https://internal-hub.example.com`                        |
 
 The Catalogs in the Artifact Hub follows the semVer (i.e.` <major-version>.<minor-version>.0`) and the Catalogs in the Tekton Hub follows the simplified semVer (i.e. `<major-version>.<minor-version>`). Both full and simplified semantic versioning will be accepted by the `version` parameter. The Hub Resolver will map the version to the format expected by the target Hub `type`.
@@ -43,7 +43,8 @@ for the name, namespace and defaults that the resolver ships with.
 | `default-tekton-hub-catalog`| The default tekton hub catalog from where to pull the resource.| `Tekton`               |
 | `default-artifact-hub-task-catalog`| The default artifact hub catalog from where to pull the resource for task kind.| `tekton-catalog-tasks`               |
 | `default-artifact-hub-pipeline-catalog`| The default artifact hub catalog from where to pull the resource for pipeline kind.  | `tekton-catalog-pipelines`               |
-| `default-kind`              | The default object kind for references.              | `task`, `pipeline`     |
+| `default-artifact-hub-stepaction-catalog`| The default artifact hub catalog from where to pull the resource for StepAction kind.  | `git-clone-stepaction`               |
+| `default-kind`              | The default object kind for references.              | `task`, `pipeline`, `stepaction`     |
 | `default-type`              | The default hub from where to pull the resource.     | `artifact`, `tekton`   |
 | `artifact-hub-urls`         | Ordered YAML list of Artifact Hub API URLs to try. First successful response wins. If not set, the `ARTIFACT_HUB_API` env var or default is used. URLs must use `http` or `https` scheme. | See [below](#configuring-multiple-hub-urls) |
 | `tekton-hub-urls`           | Ordered YAML list of Tekton Hub API URLs to try. First successful response wins. If not set, the `TEKTON_HUB_API` env var is used. URLs must use `http` or `https` scheme. | See [below](#configuring-multiple-hub-urls) |
@@ -145,8 +146,6 @@ spec:
       ref:
         resolver: hub
         params:
-        - name: catalog
-          value: git-clone-stepaction
         - name: type # optional
           value: artifact
         - name: kind
