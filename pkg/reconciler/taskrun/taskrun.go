@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -460,13 +461,25 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 	logger := logging.FromContext(ctx)
 
 	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
-	if afterCondition.IsFalse() && !tr.IsCancelled() && tr.IsRetriable() {
+	var rescheduleErr error
+	if afterCondition.IsFalse() && !tr.IsCancelled() && isReschedulableFailure(afterCondition.Reason) {
+		cfg := config.FromContextOrDefaults(ctx)
+		if cfg.FeatureFlags.EnablePodRescheduling {
+			if rescheduled, err := c.rescheduleTaskRunPod(ctx, tr); err != nil {
+				logger.Errorf("Failed to reschedule pod for TaskRun %q: %v", tr.Name, err)
+				rescheduleErr = err
+			} else if rescheduled {
+				afterCondition = tr.Status.GetCondition(apis.ConditionSucceeded)
+			}
+		}
+	}
+	if rescheduleErr == nil && afterCondition.IsFalse() && !tr.IsCancelled() && tr.IsRetriable() {
 		retryTaskRun(tr, afterCondition.Message)
 		afterCondition = tr.Status.GetCondition(apis.ConditionSucceeded)
 	}
 	events.Emit(ctx, beforeCondition, afterCondition, tr)
 
-	errs := []error{previousError}
+	errs := []error{previousError, rescheduleErr}
 
 	// If the Run has been completed before and remains so at present,
 	// no need to update the labels and annotations
@@ -1362,4 +1375,81 @@ func retryTaskRun(tr *v1.TaskRun, message string) {
 	tr.Status.Results = nil
 	taskRunCondSet := apis.NewBatchConditionSet()
 	taskRunCondSet.Manage(&tr.Status).MarkUnknown(apis.ConditionSucceeded, v1.TaskRunReasonToBeRetried.String(), message)
+}
+
+var reschedulableReasons = map[string]struct{}{
+	v1.TaskRunReasonInitContainerFailed.String(): {},
+	v1.TaskRunReasonInitContainerOOM.String():    {},
+}
+
+func isReschedulableFailure(reason string) bool {
+	_, ok := reschedulableReasons[reason]
+	return ok
+}
+
+func (c *Reconciler) rescheduleTaskRunPod(ctx context.Context, tr *v1.TaskRun) (bool, error) {
+	logger := logging.FromContext(ctx)
+
+	count := 0
+	if tr.Annotations != nil {
+		if v, ok := tr.Annotations[v1.TaskRunPodRescheduleCountAnnotation]; ok {
+			var err error
+			count, err = strconv.Atoi(v)
+			if err != nil {
+				logger.Warnf("Invalid pod reschedule count annotation %q: %v", v, err)
+				count = 0
+			} else if count < 0 {
+				logger.Warnf("Invalid negative pod reschedule count annotation %q", v)
+				count = 0
+			}
+		}
+	}
+
+	if count >= v1.MaxPodRescheduleCount {
+		logger.Infof("TaskRun %q reached max pod reschedule count (%d), not rescheduling", tr.Name, v1.MaxPodRescheduleCount)
+		return false, nil
+	}
+
+	if tr.Status.PodName != "" {
+		// Check the pod before incrementing the reschedule count so transient API
+		// errors do not consume either the pod-reschedule budget or spec.retries.
+		// If the pod is already gone, continue and clear the stale status below.
+		_, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
+		if k8serrors.IsNotFound(err) {
+			logger.Infof("Pod %q already deleted for TaskRun %q, continuing reschedule", tr.Status.PodName, tr.Name)
+			err = nil
+		}
+		if err != nil {
+			return false, fmt.Errorf("checking pod %s existence for reschedule: %w", tr.Status.PodName, err)
+		}
+		if err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete(ctx, tr.Status.PodName, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
+			return false, fmt.Errorf("deleting pod %s for reschedule: %w", tr.Status.PodName, err)
+		}
+	}
+
+	count++
+	if tr.Annotations == nil {
+		tr.Annotations = make(map[string]string)
+	}
+	tr.Annotations[v1.TaskRunPodRescheduleCountAnnotation] = strconv.Itoa(count)
+
+	condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	msg := fmt.Sprintf("pod failed before step execution (%s), rescheduling (attempt %d/%d)", condition.Reason, count, v1.MaxPodRescheduleCount)
+	logger.Infof("Rescheduling pod for TaskRun %q: %s", tr.Name, msg)
+
+	// Clear stale status fields from the previous pod attempt so they don't
+	// leak into the new pod's lifecycle.
+	tr.Status.Steps = nil
+	tr.Status.Sidecars = nil
+	tr.Status.Results = nil
+	tr.Status.Artifacts = nil
+	tr.Status.CompletionTime = nil
+	tr.Status.PodName = ""
+	taskRunCondSet := apis.NewBatchConditionSet()
+	taskRunCondSet.Manage(&tr.Status).MarkUnknown(apis.ConditionSucceeded, v1.TaskRunReasonPodRescheduled.String(), msg)
+
+	recorder := controller.GetEventRecorder(ctx)
+	recorder.Eventf(tr, corev1.EventTypeWarning, v1.TaskRunReasonPodRescheduled.String(), msg)
+
+	return true, nil
 }
