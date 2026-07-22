@@ -343,7 +343,7 @@ var (
 const fakeVersion string = "unknown"
 
 func placeToolsInitContainer(steps []string) corev1.Container {
-	return corev1.Container{
+	c := corev1.Container{
 		Command: append([]string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointLocation}, steps...),
 		VolumeMounts: []corev1.VolumeMount{{
 			MountPath: "/tekton/bin",
@@ -353,6 +353,8 @@ func placeToolsInitContainer(steps []string) corev1.Container {
 		Name:       "prepare",
 		Image:      "override-with-entrypoint:latest",
 	}
+	c.SecurityContext = podconvert.SecurityContextConfig{SetSecurityContext: true, SetReadOnlyRootFilesystem: false}.GetSecurityContext(false)
+	return c
 }
 
 var testClock = clock.NewFakePassiveClock(now)
@@ -1842,6 +1844,7 @@ status:
         enableProvenanceInStatus: true
         resultExtractionMethod: "termination-message"
         maxResultSize: 4096
+        setSecurityContext: true
         coschedule: "workspaces"
         disableInlineSpec: ""
   provenance:
@@ -1855,6 +1858,7 @@ status:
       enableProvenanceInStatus: true
       resultExtractionMethod: "termination-message"
       maxResultSize: 4096
+      setSecurityContext: true
       coschedule: "workspaces"
       disableInlineSpec: ""
 `, pipelineErrors.UserErrorLabel, pipelineErrors.UserErrorLabel))
@@ -1910,6 +1914,7 @@ status:
       enableProvenanceInStatus: true
       resultExtractionMethod: "termination-message"
       maxResultSize: 4096
+      setSecurityContext: true
       coschedule: "workspaces"
       disableInlineSpec: ""
 `)

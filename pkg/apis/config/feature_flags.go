@@ -90,7 +90,7 @@ const (
 	// DefaultMaxResultSize is the default value in bytes for the size of a result
 	DefaultMaxResultSize = 4096
 	// DefaultSetSecurityContext is the default value for "set-security-context"
-	DefaultSetSecurityContext = false
+	DefaultSetSecurityContext = true
 	// DefaultSetSecurityContextReadOnlyRootFilesystem is the default value for "set-security-context-read-only-root-filesystem"
 	DefaultSetSecurityContextReadOnlyRootFilesystem = false
 	// DefaultCoschedule is the default value for coschedule
