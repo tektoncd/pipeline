@@ -27,6 +27,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       pull-requests: write
+      id-token: write
 
     steps:
       - name: Harden runner
@@ -48,14 +49,14 @@ jobs:
       - name: Generate coverage
         working-directory: ${{ github.workspace }}/src/github.com/tektoncd/pipeline
         run: |
-          go test -cover -coverprofile=coverage.txt ./... || true
+          go test -coverprofile=coverage.out -covermode=atomic ./... || true
           echo "Generated coverage profile"
 
       - name: Archive coverage results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: code-coverage
-          path: ${{ github.workspace }}/src/github.com/tektoncd/pipeline/coverage.txt
+          path: ${{ github.workspace }}/src/github.com/tektoncd/pipeline/coverage.out
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
@@ -65,4 +66,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.CHATOPS_TOKEN }}
         with:
           coverage-artifact-name: "code-coverage"
-          coverage-file-name: "coverage.txt"
+          coverage-file-name: "coverage.out"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v6.0.2
+        continue-on-error: true  # job still "succeeds" even if this step fails
+        with:
+          files: ${{ github.workspace }}/src/github.com/tektoncd/pipeline/coverage.out
+          flags: unit-tests
+          use_oidc: true
+          fail_ci_if_error: false
