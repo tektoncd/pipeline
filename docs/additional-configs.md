@@ -32,6 +32,7 @@ installation.
   - [Verify Tekton Resources](#verify-tekton-resources)
   - [Pipelinerun with Affinity Assistant](#pipelineruns-with-affinity-assistant)
   - [TaskRuns with `imagePullBackOff` Timeout](#taskruns-with-imagepullbackoff-timeout)
+  - [TaskRuns with `CreateContainerError` Timeout](#taskruns-with-createcontainererror-timeout)
   - [Disabling Inline Spec in TaskRun and PipelineRun](#disabling-inline-spec-in-taskrun-and-pipelinerun)
   - [Exponential Backoff for TaskRun and CustomRun Creation](#exponential-backoff-for-taskrun-and-customrun-creation)
   - [Limiting Step reference concurrency resolution](#limiting-step-reference-concurrency-resolution)
@@ -789,6 +790,27 @@ metadata:
   namespace: tekton-pipelines
 data:
   default-imagepullbackoff-timeout: "5m"
+```
+
+## TaskRuns with `CreateContainerError` Timeout
+
+When the container runtime (e.g. CRI-O) is under heavy load, it may fail to create a container within the kubelet's
+`RuntimeRequestTimeout` (default 2 minutes), resulting in `CreateContainerError` or `CreateContainerConfigError` with the
+message `"context deadline exceeded"`. This is a transient error — the container runtime will typically succeed once its
+queue clears.
+
+The default value of `default-create-container-error-timeout` is `0`, which means the TaskRun fails immediately
+(fail fast) — preserving the existing behavior. To allow the controller to wait for the container runtime to recover,
+set a non-zero duration such as "1m", "5m", "10s", "1h", etc.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-create-container-error-timeout: "5m"
 ```
 
 ## Disabling Inline Spec in Pipeline, TaskRun and PipelineRun
