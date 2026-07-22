@@ -607,6 +607,7 @@ func getResolverFrameworkController(ctx context.Context, t *testing.T, d test.Da
 	names.TestingSeed()
 
 	ctx, cancel := context.WithCancel(ctx)
+	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
 	ctl := framework.NewController(ctx, resolver, modifiers...)(ctx, configMapWatcher)

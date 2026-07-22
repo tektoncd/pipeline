@@ -23,6 +23,9 @@ import (
 	resolution "github.com/tektoncd/pipeline/pkg/remote/resolution"
 	remoteresource "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
 	resource "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/kmeta"
 )
@@ -51,15 +54,30 @@ func NewResolver(requester remoteresource.Requester, owner kmeta.OwnerRefable, r
 	}
 }
 
+// TracerName is the name of the tracer used by the remote resolution Resolver.
+const TracerName = "RemoteResolutionResolver"
+
 // Get implements remote.Resolver.
 func (resolver *Resolver) Get(ctx context.Context, _, _ string) (runtime.Object, *v1.RefSource, error) {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(TracerName).Start(ctx, "Get")
+	defer span.End()
+	span.SetAttributes(attribute.String("resolver.name", resolver.resolverName))
+
 	resolverName := remoteresource.ResolverName(resolver.resolverName)
 	req, err := buildRequest(resolver.resolverName, resolver.owner, &resolver.resolverPayload)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error building request for remote resource: %w", err)
+		wrappedErr := fmt.Errorf("error building request for remote resource: %w", err)
+		span.RecordError(wrappedErr)
+		span.SetStatus(codes.Error, wrappedErr.Error())
+		return nil, nil, wrappedErr
 	}
 	resolved, err := resolver.requester.Submit(ctx, resolverName, req)
-	return resolution.ResolvedRequest(resolved, err)
+	obj, refSource, resolveErr := resolution.ResolvedRequest(resolved, err)
+	if resolveErr != nil && resolveErr != remote.ErrRequestInProgress {
+		span.RecordError(resolveErr)
+		span.SetStatus(codes.Error, resolveErr.Error())
+	}
+	return obj, refSource, resolveErr
 }
 
 // List implements remote.Resolver but is unused for remote resolution.
