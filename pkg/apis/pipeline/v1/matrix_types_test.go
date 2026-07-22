@@ -14,6 +14,8 @@ limitations under the License.
 package v1_test
 
 import (
+	"fmt"
+	"math"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -925,6 +927,20 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 				Name: "version", Value: v1.ParamValue{StringVal: "$(tasks.platforms.results.str[*])"}},
 			}},
 		want: 3,
+	}, {
+		name:   "combinations count overflows int and is capped at MaxInt",
+		matrix: matrixWithArrayParams(64, 2),
+		want:   math.MaxInt,
+	}, {
+		name: "combinations count with include overflows int and is capped at MaxInt",
+		matrix: func() *v1.Matrix {
+			matrix := matrixWithArrayParams(64, 2)
+			matrix.Include = v1.IncludeParamsList{{Params: v1.Params{{
+				Name: "p0", Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "new-value"},
+			}}}}
+			return matrix
+		}(),
+		want: math.MaxInt,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -933,4 +949,22 @@ func TestPipelineTask_CountCombinations(t *testing.T) {
 			}
 		})
 	}
+}
+
+// matrixWithArrayParams returns a Matrix with numParams array params, each
+// holding arrayLen distinct values. It is used to build matrices whose true
+// combination count (arrayLen^numParams) overflows a 64-bit int.
+func matrixWithArrayParams(numParams, arrayLen int) *v1.Matrix {
+	params := make(v1.Params, numParams)
+	for i := range params {
+		vals := make([]string, arrayLen)
+		for j := range vals {
+			vals[j] = fmt.Sprintf("v%d-%d", i, j)
+		}
+		params[i] = v1.Param{
+			Name:  fmt.Sprintf("p%d", i),
+			Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: vals},
+		}
+	}
+	return &v1.Matrix{Params: params}
 }
