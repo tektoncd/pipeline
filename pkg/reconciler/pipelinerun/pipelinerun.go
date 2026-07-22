@@ -184,9 +184,26 @@ var (
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
+
+	// initTracing can persist span context into the status, a real write. Note
+	// its prior value so that write is not lost when the baseline is taken after.
+	oldSpanContext := maps.Clone(pr.Status.SpanContext)
+
 	ctx = initTracing(ctx, c.tracerProvider, pr)
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "PipelineRun:ReconcileKind")
 	defer span.End()
+
+	// Copy the status to compare write intent only when the span records, so an
+	// untraced cluster does not copy it on every reconcile.
+	if span.IsRecording() {
+		oldStatus := pr.Status.DeepCopy()
+		oldStatus.SpanContext = oldSpanContext // restore the pre-initTracing value
+		oldLabels := maps.Clone(pr.Labels)
+		oldAnnotations := maps.Clone(pr.Annotations)
+		defer func() {
+			tknreconciler.RecordWriteIntent(span, *oldStatus, pr.Status, oldLabels, pr.Labels, oldAnnotations, pr.Annotations)
+		}()
+	}
 
 	span.SetAttributes(
 		attribute.String("pipelinerun", pr.Name), attribute.String("namespace", pr.Namespace),
