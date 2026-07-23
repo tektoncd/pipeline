@@ -110,8 +110,8 @@ github.com/stretchr/objx v0.5.2/go.mod h1:FRsXN1f5AsAjCGJKqEizvkpNtU+EGNCLh3NxZ/
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-github.com/tektoncd/pipeline v1.14.0 h1:1jxq2oJnQ3t1MNZ3QntJ9vVTMP3XyHOAmfg3SCVilVc=
-github.com/tektoncd/pipeline v1.14.0/go.mod h1:02XVcI1djpd6APKLX7JdnUddiVuwulCTWamQxlNF5CI=
+github.com/tektoncd/pipeline v1.14.1 h1:yVv/yNkJ5bghhy2IZ9ScJPvqr8H48vyvXiuhBEzLqzQ=
+github.com/tektoncd/pipeline v1.14.1/go.mod h1:02XVcI1djpd6APKLX7JdnUddiVuwulCTWamQxlNF5CI=
 github.com/x448/float16 v0.8.4 h1:qLwI1I70+NjRFUR3zs1JPUCgaCXSh3SW62uAKT1mSBM=
 github.com/x448/float16 v0.8.4/go.mod h1:14CWIYCyZA/cWjXOioeEpHeN/83MdbZDRQHoFcYsOfg=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
