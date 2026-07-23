@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/google/go-cmp v0.7.0
-	github.com/tektoncd/pipeline v1.14.0
+	github.com/tektoncd/pipeline v1.14.1
 	k8s.io/api v0.35.6
 	k8s.io/apimachinery v0.36.2
 	k8s.io/client-go v0.35.6
