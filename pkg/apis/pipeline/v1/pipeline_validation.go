@@ -876,12 +876,8 @@ func validateVarSubstitutionExpressions(tasks []PipelineTask, fieldPath string) 
 		for _, param := range task.Params {
 			if expressions, ok := param.GetVarSubstitutionExpressions(); ok {
 				for _, expression := range expressions {
-					prefix := strings.SplitN(expression, ".", 2)[0]
-					if !validPrefixes.Has(prefix) {
-						errs = errs.Also(apis.ErrInvalidValue(
-							fmt.Sprintf("invalid variable reference %q, must start with a valid prefix: params, tasks, finally, context, workspaces, or results; if you meant a shell variable, use ${VAR} instead", "$("+expression+")"),
-							"value",
-						).ViaFieldKey("params", param.Name).ViaFieldIndex(fieldPath, idx))
+					if err := validateVarSubstitutionPrefix(expression, validPrefixes); err != nil {
+						errs = errs.Also(err.ViaField("value").ViaFieldKey("params", param.Name).ViaFieldIndex(fieldPath, idx))
 					}
 				}
 			}
@@ -889,12 +885,8 @@ func validateVarSubstitutionExpressions(tasks []PipelineTask, fieldPath string) 
 		for i, we := range task.When {
 			if expressions, ok := we.GetVarSubstitutionExpressions(); ok {
 				for _, expression := range expressions {
-					prefix := strings.SplitN(expression, ".", 2)[0]
-					if !validPrefixes.Has(prefix) {
-						errs = errs.Also(apis.ErrInvalidValue(
-							fmt.Sprintf("invalid variable reference %q, must start with a valid prefix: params, tasks, finally, context, workspaces, or results; if you meant a shell variable, use ${VAR} instead", "$("+expression+")"),
-							"",
-						).ViaFieldIndex("when", i).ViaFieldIndex(fieldPath, idx))
+					if err := validateVarSubstitutionPrefix(expression, validPrefixes); err != nil {
+						errs = errs.Also(err.ViaFieldIndex("when", i).ViaFieldIndex(fieldPath, idx))
 					}
 				}
 			}
@@ -903,12 +895,8 @@ func validateVarSubstitutionExpressions(tasks []PipelineTask, fieldPath string) 
 			for _, param := range task.Matrix.Params {
 				if expressions, ok := param.GetVarSubstitutionExpressions(); ok {
 					for _, expression := range expressions {
-						prefix := strings.SplitN(expression, ".", 2)[0]
-						if !validPrefixes.Has(prefix) {
-							errs = errs.Also(apis.ErrInvalidValue(
-								fmt.Sprintf("invalid variable reference %q, must start with a valid prefix: params, tasks, finally, context, workspaces, or results; if you meant a shell variable, use ${VAR} instead", "$("+expression+")"),
-								"value",
-							).ViaFieldKey("matrix.params", param.Name).ViaFieldIndex(fieldPath, idx))
+						if err := validateVarSubstitutionPrefix(expression, validPrefixes); err != nil {
+							errs = errs.Also(err.ViaField("value").ViaFieldKey("matrix.params", param.Name).ViaFieldIndex(fieldPath, idx))
 						}
 					}
 				}
@@ -917,12 +905,8 @@ func validateVarSubstitutionExpressions(tasks []PipelineTask, fieldPath string) 
 				for _, param := range include.Params {
 					if expressions, ok := param.GetVarSubstitutionExpressions(); ok {
 						for _, expression := range expressions {
-							prefix := strings.SplitN(expression, ".", 2)[0]
-							if !validPrefixes.Has(prefix) {
-								errs = errs.Also(apis.ErrInvalidValue(
-									fmt.Sprintf("invalid variable reference %q, must start with a valid prefix: params, tasks, finally, context, workspaces, or results; if you meant a shell variable, use ${VAR} instead", "$("+expression+")"),
-									"value",
-								).ViaFieldKey("params", param.Name).ViaFieldIndex("matrix.include", i).ViaFieldIndex(fieldPath, idx))
+							if err := validateVarSubstitutionPrefix(expression, validPrefixes); err != nil {
+								errs = errs.Also(err.ViaField("value").ViaFieldKey("params", param.Name).ViaFieldIndex("matrix.include", i).ViaFieldIndex(fieldPath, idx))
 							}
 						}
 					}
@@ -931,6 +915,24 @@ func validateVarSubstitutionExpressions(tasks []PipelineTask, fieldPath string) 
 		}
 	}
 	return errs
+}
+
+// validateVarSubstitutionPrefix returns an error if expression looks like a Tekton
+// variable reference (contains ".") but does not start with a known prefix.
+// Expressions without a "." such as "$(ls)" are treated as shell command
+// substitution and are allowed.
+func validateVarSubstitutionPrefix(expression string, validPrefixes sets.String) *apis.FieldError {
+	if !strings.Contains(expression, ".") {
+		return nil
+	}
+	prefix := strings.SplitN(expression, ".", 2)[0]
+	if validPrefixes.Has(prefix) {
+		return nil
+	}
+	return apis.ErrInvalidValue(
+		fmt.Sprintf("invalid variable reference %q, must start with a valid prefix: params, tasks, finally, context, workspaces, or results; if you meant a shell variable, use ${VAR} instead", "$("+expression+")"),
+		"",
+	)
 }
 
 // findAndValidateResultRefsForMatrix checks that any result references to Matrixed PipelineTasks if consumed
