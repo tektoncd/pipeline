@@ -96,11 +96,12 @@ type Reconciler struct {
 	tracerProvider           trace.TracerProvider
 
 	// Native-sidecar detection (ServerVersion + IsNativeSidecarSupport) when EnableKubernetesSidecar
-	// is set is memoized via sync.OnceValues after lazy init guarded by nativeSidecarOnce (#9755).
+	// is set is cached so we do not call Discovery on every resync (#9755). The cache is only
+	// populated on a successful ServerVersion() call so a transient discovery error is retried
+	// on a later reconcile instead of being memoized forever (#10101).
 	// Status.Sidecars cannot be used to skip stopSidecars: injected containers (e.g. Istio)
 	// are not listed there but buildSidecarStopPatch stops them using the live Pod.
-	nativeSidecarOnce        sync.Once
-	nativeSidecarFromCluster func() (useTektonNop bool, err error)
+	nativeSidecarCache nativeSidecarCache
 }
 
 const (
@@ -384,31 +385,40 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1.TaskRun
 
 // useTektonSidecarMode returns whether the done path should run stopSidecars (Tekton nop
 // image) vs skipping it for native Kubernetes sidecars. When EnableKubernetesSidecar is enabled,
-// ServerVersion is queried at most once per reconciler; later reconciles reuse the memoized result.
+// ServerVersion is queried at most once per reconciler; later reconciles reuse the cached result,
+// unless the discovery call failed, in which case it is retried on the next reconcile.
 func (c *Reconciler) useTektonSidecarMode(ctx context.Context, logger *zap.SugaredLogger) (bool, error) {
 	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
 		return true, nil
 	}
-	c.nativeSidecarOnce.Do(func() {
-		c.nativeSidecarFromCluster = newNativeSidecarFromCluster(c.KubeClientSet, logger)
-	})
-	return c.nativeSidecarFromCluster()
+	return c.nativeSidecarCache.get(c.KubeClientSet, logger)
 }
 
-// newNativeSidecarFromCluster returns a function that queries ServerVersion at most once and
-// returns whether to use Tekton nop sidecar teardown (true) vs native Kubernetes sidecars (false).
-func newNativeSidecarFromCluster(client kubernetes.Interface, log *zap.SugaredLogger) func() (bool, error) {
-	return sync.OnceValues(func() (bool, error) {
-		sv, err := client.Discovery().ServerVersion()
-		if err != nil {
-			return false, err
-		}
-		if podconvert.IsNativeSidecarSupport(sv) {
-			log.Info("Using Kubernetes Native Sidecars")
-			return false, nil
-		}
-		return true, nil
-	})
+// nativeSidecarCache caches whether to use Tekton nop sidecar teardown (true) vs native
+// Kubernetes sidecars (false), populating the cache only once ServerVersion() succeeds so a
+// transient discovery error does not get memoized forever (#10101).
+type nativeSidecarCache struct {
+	mu        sync.Mutex
+	cached    bool
+	useTekton bool
+}
+
+func (n *nativeSidecarCache) get(client kubernetes.Interface, log *zap.SugaredLogger) (bool, error) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	if n.cached {
+		return n.useTekton, nil
+	}
+	sv, err := client.Discovery().ServerVersion()
+	if err != nil {
+		return false, err
+	}
+	n.useTekton = !podconvert.IsNativeSidecarSupport(sv)
+	if !n.useTekton {
+		log.Info("Using Kubernetes Native Sidecars")
+	}
+	n.cached = true
+	return n.useTekton, nil
 }
 
 func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
