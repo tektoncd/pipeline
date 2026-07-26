@@ -74,6 +74,8 @@ import (
 	k8sruntimeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	apiversion "k8s.io/apimachinery/pkg/version"
+	fakediscovery "k8s.io/client-go/discovery/fake"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
@@ -8530,12 +8532,17 @@ func TestUseTektonSidecarModeDoesNotCacheDiscoveryErrors(t *testing.T) {
 	kubeClient := fakekubeclientset.NewSimpleClientset()
 
 	discoveryFailed := true
+	discoveryCalls := 0
 	kubeClient.PrependReactor("get", "version", func(action ktesting.Action) (bool, runtime.Object, error) {
+		discoveryCalls++
 		if discoveryFailed {
 			return true, nil, errors.New("transient discovery error")
 		}
-		return false, nil, nil
+		// Explicitly return a version predating native sidecar support (1.29) so the
+		// assertions below don't depend on the fake client's default build version.
+		return true, nil, nil
 	})
+	kubeClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &apiversion.Info{Major: "1", Minor: "28"}
 
 	ctx := config.ToContext(context.Background(), &config.Config{
 		FeatureFlags: &config.FeatureFlags{
@@ -8548,6 +8555,9 @@ func TestUseTektonSidecarModeDoesNotCacheDiscoveryErrors(t *testing.T) {
 	if _, err := r.useTektonSidecarMode(ctx, logger); err == nil {
 		t.Fatal("expected the first useTektonSidecarMode call to return the discovery error")
 	}
+	if discoveryCalls != 1 {
+		t.Fatalf("expected discovery to be called once after the first reconcile, got %d calls", discoveryCalls)
+	}
 
 	discoveryFailed = false
 
@@ -8555,7 +8565,17 @@ func TestUseTektonSidecarModeDoesNotCacheDiscoveryErrors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected useTektonSidecarMode to retry discovery after a transient error and succeed, got err: %v", err)
 	}
+	if discoveryCalls != 2 {
+		t.Fatalf("expected the transient error not to be cached, so discovery is retried on the next reconcile: got %d calls", discoveryCalls)
+	}
 	if !useTektonSidecar {
-		t.Errorf("expected useTektonSidecarMode to return true (fake server version has no native sidecar support), got false")
+		t.Errorf("expected useTektonSidecarMode to return true (server version 1.28 has no native sidecar support), got false")
+	}
+
+	if _, err := r.useTektonSidecarMode(ctx, logger); err != nil {
+		t.Fatalf("unexpected error on third call: %v", err)
+	}
+	if discoveryCalls != 2 {
+		t.Fatalf("expected the successful discovery result to be cached, so a later reconcile does not call discovery again: got %d calls", discoveryCalls)
 	}
 }
