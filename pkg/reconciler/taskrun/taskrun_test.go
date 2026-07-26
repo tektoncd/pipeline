@@ -85,6 +85,7 @@ import (
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
+	logtesting "knative.dev/pkg/logging/testing"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
@@ -8519,5 +8520,42 @@ func TestAppendPreviousConditionContext(t *testing.T) {
 				t.Errorf("Expected message to be unchanged %q, got: %s", tc.newMessage, result)
 			}
 		})
+	}
+}
+
+// TestUseTektonSidecarModeDoesNotCacheDiscoveryErrors verifies that a transient
+// Discovery().ServerVersion() error is not cached: it must be returned for the current
+// reconcile but retried (not memoized) on a later reconcile (#10101).
+func TestUseTektonSidecarModeDoesNotCacheDiscoveryErrors(t *testing.T) {
+	kubeClient := fakekubeclientset.NewSimpleClientset()
+
+	discoveryFailed := true
+	kubeClient.PrependReactor("get", "version", func(action ktesting.Action) (bool, runtime.Object, error) {
+		if discoveryFailed {
+			return true, nil, errors.New("transient discovery error")
+		}
+		return false, nil, nil
+	})
+
+	ctx := config.ToContext(context.Background(), &config.Config{
+		FeatureFlags: &config.FeatureFlags{
+			EnableKubernetesSidecar: true,
+		},
+	})
+	logger := logtesting.TestLogger(t)
+	r := &Reconciler{KubeClientSet: kubeClient}
+
+	if _, err := r.useTektonSidecarMode(ctx, logger); err == nil {
+		t.Fatal("expected the first useTektonSidecarMode call to return the discovery error")
+	}
+
+	discoveryFailed = false
+
+	useTektonSidecar, err := r.useTektonSidecarMode(ctx, logger)
+	if err != nil {
+		t.Fatalf("expected useTektonSidecarMode to retry discovery after a transient error and succeed, got err: %v", err)
+	}
+	if !useTektonSidecar {
+		t.Errorf("expected useTektonSidecarMode to return true (fake server version has no native sidecar support), got false")
 	}
 }
