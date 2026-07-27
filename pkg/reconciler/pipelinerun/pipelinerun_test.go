@@ -19143,7 +19143,7 @@ func TestPropagatePipelineNameLabelToPipelineRun_AnonymousPipeline(t *testing.T)
 			wantLabel: "my-pipeline",
 		},
 		{
-			name: "pipelineSpec with all-non-alphanumeric generateName does not panic",
+			name: "pipelineSpec with all-non-alphanumeric generateName uses pipelinerun name",
 			pr: &v1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:         "my-valid-plr",
@@ -19153,7 +19153,7 @@ func TestPropagatePipelineNameLabelToPipelineRun_AnonymousPipeline(t *testing.T)
 					PipelineSpec: &v1.PipelineSpec{},
 				},
 			},
-			wantLabel: "",
+			wantLabel: "my-valid-plr",
 		},
 		{
 			name: "existing pipeline label is preserved and not overwritten",
