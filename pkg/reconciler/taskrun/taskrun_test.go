@@ -8539,7 +8539,7 @@ func TestUseTektonSidecarModeDoesNotCacheDiscoveryErrors(t *testing.T) {
 			return true, nil, errors.New("transient discovery error")
 		}
 		// Signal a successful discovery call (handled=true, no error). The version
-		// FakeDiscovery.ServerVersion() actually returns comes from FakedServerVersion,
+		// that FakeDiscovery.ServerVersion() actually returns comes from FakedServerVersion,
 		// set below, not from this reactor's return value.
 		return true, nil, nil
 	})
