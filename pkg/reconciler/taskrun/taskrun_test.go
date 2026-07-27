@@ -8538,8 +8538,9 @@ func TestUseTektonSidecarModeDoesNotCacheDiscoveryErrors(t *testing.T) {
 		if discoveryFailed {
 			return true, nil, errors.New("transient discovery error")
 		}
-		// Explicitly return a version predating native sidecar support (1.29) so the
-		// assertions below don't depend on the fake client's default build version.
+		// Signal a successful discovery call (handled=true, no error). The version
+		// FakeDiscovery.ServerVersion() actually returns comes from FakedServerVersion,
+		// set below, not from this reactor's return value.
 		return true, nil, nil
 	})
 	kubeClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &apiversion.Info{Major: "1", Minor: "28"}
