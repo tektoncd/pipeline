@@ -1822,7 +1822,11 @@ func propagatePipelineNameLabelToPipelineRun(pr *v1.PipelineRun) error {
 		// Use sanitized GenerateName for anonymous pipelines to reduce cardinality while
 		// still allowing categorization
 		if pr.GenerateName != "" {
-			pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = names.SimpleNameGenerator.RestrictLength(pr.GenerateName)
+			pipelineName := names.SimpleNameGenerator.RestrictLength(pr.GenerateName)
+			if pipelineName == "" {
+				pipelineName = pr.Name
+			}
+			pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pipelineName
 		} else {
 			pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
 		}
