@@ -52,12 +52,10 @@ func panicMessage(t *testing.T, template string, args ...interface{}) (msg strin
 	return ""
 }
 
-// TestPanicfDoesNotUseErrorWrapVerb guards the informer event handler
-// registration panics in this package (and the sibling reconciler controllers),
-// which log through logging.FromContext(ctx), a *zap.SugaredLogger. That logger
-// formats with fmt.Sprintf, which does not implement the %w error-wrapping verb.
-// Using %w there renders the literal "%!w(...)" instead of the error, so these
-// call sites must use %v. This test fails if the verb regresses back to %w.
+// TestPanicfDoesNotUseErrorWrapVerb demonstrates how a zap SugaredLogger formats
+// the error verbs used by the informer event handler registration panic sites.
+// SugaredLogger formats with fmt.Sprintf, which renders %w as the literal
+// "%!w(...)" instead of the error, so those call sites must use %v.
 func TestPanicfDoesNotUseErrorWrapVerb(t *testing.T) {
 	sentinel := errors.New("boom")
 	const template = "Couldn't register ResolutionRequest informer event handler: %v"
