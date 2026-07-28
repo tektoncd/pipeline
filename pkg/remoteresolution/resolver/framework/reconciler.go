@@ -93,6 +93,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return controller.NewPermanentError(err)
 	}
 
+	if !r.IsLeaderFor(types.NamespacedName{Namespace: namespace, Name: name}) {
+		return nil
+	}
+
 	rr, err := r.resolutionRequestLister.ResolutionRequests(namespace).Get(name)
 	if err != nil {
 		err := &resolutioncommon.GetResourceError{ResolverName: "resolutionrequest", Key: key, Original: err}
