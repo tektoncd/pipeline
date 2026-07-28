@@ -302,6 +302,9 @@ func TestReconcile(t *testing.T) {
 			}
 
 			err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(tc.inputRequest))
+			if tc.notLeader && !controller.IsSkipKey(err) {
+				t.Fatalf("expected non-leader reconciliation to be skipped, got %v", err)
+			}
 			if tc.expectedErr != nil {
 				if err == nil {
 					t.Fatalf("expected to get error %v, but got nothing", tc.expectedErr)
@@ -311,7 +314,7 @@ func TestReconcile(t *testing.T) {
 				}
 			} else {
 				if err != nil {
-					if ok, _ := controller.IsRequeueKey(err); !ok {
+					if ok, _ := controller.IsRequeueKey(err); !ok && !(tc.notLeader && controller.IsSkipKey(err)) {
 						t.Fatalf("did not expect an error, but got %v", err)
 					}
 				}
