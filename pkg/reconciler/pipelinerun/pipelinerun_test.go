@@ -19262,6 +19262,8 @@ func TestReconcile_DeferFailureWhenTaskRunRecoveredInAPIServer(t *testing.T) {
 			Reason:  v1.TaskRunReasonPodEvicted.String(),
 			Message: "pod eviction",
 		})}
+	// TaskRun still has a retry available so the live GET verification path is exercised.
+	trs[0].Spec.Retries = 1
 
 	// PipelineRun is Running
 	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
@@ -19343,6 +19345,8 @@ func TestReconcile_ConfirmFailureWhenTaskRunFailedInAPIServer(t *testing.T) {
 			Reason:  v1.TaskRunReasonPodEvicted.String(),
 			Message: "pod eviction",
 		})}
+	// TaskRun still has a retry available so the live GET verification path is exercised.
+	trs[0].Spec.Retries = 1
 
 	// PipelineRun is Running
 	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
@@ -19411,6 +19415,8 @@ func TestReconcile_APIServerErrorReturnsError(t *testing.T) {
 			Reason:  v1.TaskRunReasonPodEvicted.String(),
 			Message: "pod eviction",
 		})}
+	// TaskRun still has a retry available so the live GET verification path is exercised.
+	trs[0].Spec.Retries = 1
 
 	// PipelineRun is Running
 	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
@@ -19486,6 +19492,8 @@ func TestReconcile_TaskRunNotFoundFallsBackToCache(t *testing.T) {
 			Reason:  v1.TaskRunReasonPodEvicted.String(),
 			Message: "pod eviction",
 		})}
+	// TaskRun still has a retry available so the live GET verification path is exercised.
+	trs[0].Spec.Retries = 1
 
 	// PipelineRun is Running
 	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
@@ -19753,5 +19761,173 @@ status:
 	}
 	if !condition.IsFalse() {
 		t.Errorf("Expected PipelineRun to be marked Failed for generic failed TaskRun, got status %s reason %s", condition.Status, condition.Reason)
+	}
+}
+
+// TestReconcile_PodEvictedWithoutRetriesSkipsAPIVerification tests that when a TaskRun
+// fails with PodEvicted but has no retries configured, no API server verification is
+// performed — the live GET cannot change the recovery decision since the TaskRun can
+// never move back to a non-terminal state without a retry available.
+func TestReconcile_PodEvictedWithoutRetriesSkipsAPIVerification(t *testing.T) {
+	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-run-podevicted-no-retries"
+	trName := "test-pipeline-run-podevicted-no-retries-hello-world-1"
+
+	// TaskRun is Failed due to pod eviction in informer cache, with no retries configured.
+	trs := []*v1.TaskRun{createHelloWorldTaskRunWithStatusTaskLabel(t, trName, namespace,
+		prName, "test-pipeline", "", "hello-world-1",
+		apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1.TaskRunReasonPodEvicted.String(),
+			Message: "pod eviction",
+		})}
+
+	// PipelineRun is Running
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+status:
+  conditions:
+  - type: Succeeded
+    status: Unknown
+    reason: Running
+  startTime: "2022-01-01T00:00:00Z"
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: %s
+    pipelineTaskName: hello-world-1
+`, prName, namespace, trName))}
+
+	ps := []*v1.Pipeline{simpleHelloWorldPipeline}
+	ts := []*v1.Task{simpleHelloWorldTask}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	// No reactor needed — a PodEvicted TaskRun without retries should NOT trigger
+	// API server verification. The PipelineRun should be marked Failed using the
+	// cached status directly.
+	reconciledRun, clients := prt.reconcileRun(namespace, prName, nil, false)
+
+	// Verify no GET was issued for the TaskRun via the Pipeline clientset
+	for _, action := range clients.Pipeline.Actions() {
+		if action.GetVerb() == "get" && action.GetResource().Resource == "taskruns" {
+			t.Errorf("Expected no API server GET for PodEvicted TaskRun without retries, but got one")
+		}
+	}
+
+	// PipelineRun should be marked Failed — recovery is not possible without a retry
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil {
+		t.Fatal("Expected condition on PipelineRun, got nil")
+	}
+	if !condition.IsFalse() {
+		t.Errorf("Expected PipelineRun to be marked Failed for PodEvicted TaskRun without retries, got status %s reason %s", condition.Status, condition.Reason)
+	}
+}
+
+// TestReconcile_PodEvictedRetriesExhaustedSkipsAPIVerification tests that when a TaskRun
+// fails with PodEvicted and its configured retries are already exhausted, no API server
+// verification is performed — the TaskRun cannot retry again, so the live GET cannot
+// change the recovery decision.
+func TestReconcile_PodEvictedRetriesExhaustedSkipsAPIVerification(t *testing.T) {
+	names.TestingSeed()
+
+	namespace := "foo"
+	prName := "test-pipeline-run-podevicted-retries-exhausted"
+	trName := "test-pipeline-run-podevicted-retries-exhausted-hello-world-1"
+
+	// TaskRun is Failed due to pod eviction in informer cache, with its one configured
+	// retry already recorded in RetriesStatus.
+	trs := []*v1.TaskRun{createHelloWorldTaskRunWithStatusTaskLabel(t, trName, namespace,
+		prName, "test-pipeline", "", "hello-world-1",
+		apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1.TaskRunReasonPodEvicted.String(),
+			Message: "pod eviction",
+		})}
+	trs[0].Spec.Retries = 1
+	trs[0].Status.RetriesStatus = []v1.TaskRunStatus{{
+		Status: duckv1.Status{
+			Conditions: []apis.Condition{{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  v1.TaskRunReasonPodEvicted.String(),
+				Message: "pod eviction",
+			}},
+		},
+	}}
+
+	// PipelineRun is Running
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+status:
+  conditions:
+  - type: Succeeded
+    status: Unknown
+    reason: Running
+  startTime: "2022-01-01T00:00:00Z"
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: %s
+    pipelineTaskName: hello-world-1
+`, prName, namespace, trName))}
+
+	ps := []*v1.Pipeline{simpleHelloWorldPipeline}
+	ts := []*v1.Task{simpleHelloWorldTask}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	// No reactor needed — a PodEvicted TaskRun with retries exhausted should NOT
+	// trigger API server verification. The PipelineRun should be marked Failed using
+	// the cached status directly.
+	reconciledRun, clients := prt.reconcileRun(namespace, prName, nil, false)
+
+	// Verify no GET was issued for the TaskRun via the Pipeline clientset
+	for _, action := range clients.Pipeline.Actions() {
+		if action.GetVerb() == "get" && action.GetResource().Resource == "taskruns" {
+			t.Errorf("Expected no API server GET for PodEvicted TaskRun with retries exhausted, but got one")
+		}
+	}
+
+	// PipelineRun should be marked Failed — recovery is not possible with retries exhausted
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil {
+		t.Fatal("Expected condition on PipelineRun, got nil")
+	}
+	if !condition.IsFalse() {
+		t.Errorf("Expected PipelineRun to be marked Failed for PodEvicted TaskRun with retries exhausted, got status %s reason %s", condition.Status, condition.Reason)
 	}
 }
