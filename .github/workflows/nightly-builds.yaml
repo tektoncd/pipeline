@@ -95,7 +95,12 @@ jobs:
           kubectl patch configmap feature-flags -n tekton-pipelines --patch='
           data:
             enable-cel-in-whenexpression: "true"
-          ' || true
+          '
+
+          # Restart the webhook so it picks up the feature-flag change before
+          # we apply the pipeline (which uses CEL in when expressions).
+          kubectl rollout restart deployment/tekton-pipelines-webhook -n tekton-pipelines
+          kubectl rollout status deployment/tekton-pipelines-webhook -n tekton-pipelines --timeout=60s
 
       - name: Apply Build Pipeline Definition
         run: |
