@@ -93,8 +93,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return controller.NewPermanentError(err)
 	}
 
+	// Resolver controllers use controller.NewContext directly rather than a
+	// generated reconciler, so they must enforce bucket ownership here.
 	if !r.IsLeaderFor(types.NamespacedName{Namespace: namespace, Name: name}) {
-		return nil
+		return controller.NewSkipKey(key)
 	}
 
 	rr, err := r.resolutionRequestLister.ResolutionRequests(namespace).Get(name)
