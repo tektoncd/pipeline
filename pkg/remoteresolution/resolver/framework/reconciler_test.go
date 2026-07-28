@@ -67,6 +67,7 @@ func TestReconcile(t *testing.T) {
 		expectedStatus    *v1beta1.ResolutionRequestStatus
 		expectedErr       error
 		transient         bool
+		notLeader         bool
 	}{
 		{
 			name: "known value",
@@ -423,6 +424,22 @@ func TestReconcile(t *testing.T) {
 			expectedErr:       errors.New("context deadline exceeded"),
 			transient:         true,
 		}, {
+			name: "non-leader skips resolution",
+			inputRequest: &v1beta1.ResolutionRequest{
+				ObjectMeta: metav1.ObjectMeta{Name: "rr", Namespace: "foo"},
+				Spec: v1beta1.ResolutionRequestSpec{
+					Params: []pipelinev1.Param{{
+						Name:  resolutionframework.FakeParamName,
+						Value: *pipelinev1.NewStructuredValues("bar"),
+					}},
+				},
+			},
+			paramMap: map[string]*resolutionframework.FakeResolvedResource{
+				"bar": {ErrorWith: "resolver should not have been called"},
+			},
+			expectedStatus: &v1beta1.ResolutionRequestStatus{},
+			notLeader:      true,
+		}, {
 			name: "resolved but not yet done should skip re-resolution",
 			inputRequest: &v1beta1.ResolutionRequest{
 				TypeMeta: metav1.TypeMeta{
@@ -499,6 +516,10 @@ func TestReconcile(t *testing.T) {
 			ctx, _ := ttesting.SetupFakeContext(t)
 			testAssets, cancel := getResolverFrameworkController(ctx, t, d, fakeResolver, setClockOnReconciler)
 			defer cancel()
+
+			if tc.notLeader {
+				testAssets.Controller.Reconciler.(pkgreconciler.LeaderAware).Demote(pkgreconciler.UniversalBucket())
+			}
 
 			err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(tc.inputRequest))
 			if tc.expectedErr != nil {
