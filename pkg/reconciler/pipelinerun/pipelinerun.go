@@ -26,6 +26,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -151,6 +152,12 @@ var (
 const (
 	taskRun   = pipeline.TaskRunControllerName
 	customRun = pipeline.CustomRunControllerName
+
+	// remoteResolutionRequeueAfter is how long to wait before re-reconciling a
+	// PipelineRun that is awaiting an in-progress ResolutionRequest. Periodic
+	// requeue ensures progress even if the ResolutionRequest completion event
+	// is missed or cannot be mapped back via owner references (see #10414).
+	remoteResolutionRequeueAfter = time.Second
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -467,7 +474,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
 		pr.Status.MarkRunning(v1.PipelineRunReasonResolvingPipelineRef.String(), message)
-		return nil
+		return controller.NewRequeueAfter(remoteResolutionRequeueAfter)
 	case errors.Is(err, apiserver.ErrReferencedObjectValidationFailed), errors.Is(err, apiserver.ErrCouldntValidateObjectPermanent):
 		logger.Errorf("Failed dryRunValidation for PipelineRun %s: %w", pr.Name, err)
 		pr.Status.MarkFailed(v1.PipelineRunReasonFailedValidation.String(),
@@ -654,7 +661,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
 		pr.Status.MarkRunning(v1.TaskRunReasonResolvingTaskRef, message)
-		return nil
+		return controller.NewRequeueAfter(remoteResolutionRequeueAfter)
 	case err != nil:
 		return err
 	default:
@@ -666,7 +673,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
 		pr.Status.MarkRunning(v1.TaskRunReasonResolvingTaskRef, message)
-		return nil
+		return controller.NewRequeueAfter(remoteResolutionRequeueAfter)
 	case err != nil:
 		return err
 	default:

@@ -99,6 +99,14 @@ type Reconciler struct {
 
 const ImagePullBackOff = "ImagePullBackOff"
 
+const (
+	// remoteResolutionRequeueAfter is how long to wait before re-reconciling a
+	// TaskRun that is awaiting an in-progress ResolutionRequest. Periodic
+	// requeue ensures progress even if the ResolutionRequest completion event
+	// is missed or cannot be mapped back via owner references (see #10414).
+	remoteResolutionRequeueAfter = time.Second
+)
+
 var (
 	// Check that our Reconciler implements taskrunreconciler.Interface
 	_ taskrunreconciler.Interface = (*Reconciler)(nil)
@@ -423,7 +431,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("TaskRun %s/%s awaiting remote resource", tr.Namespace, tr.Name)
 		tr.Status.MarkResourceOngoing(v1.TaskRunReasonResolvingTaskRef, message)
-		return nil, nil, err
+		return nil, nil, controller.NewRequeueAfter(remoteResolutionRequeueAfter)
 	case errors.Is(err, apiserver.ErrReferencedObjectValidationFailed), errors.Is(err, apiserver.ErrCouldntValidateObjectPermanent):
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonTaskFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -448,7 +456,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("TaskRun %s/%s awaiting remote StepAction", tr.Namespace, tr.Name)
 		tr.Status.MarkResourceOngoing(v1.TaskRunReasonResolvingStepActionRef, message)
-		return nil, nil, err
+		return nil, nil, controller.NewRequeueAfter(remoteResolutionRequeueAfter)
 	case errors.Is(err, apiserver.ErrReferencedObjectValidationFailed), errors.Is(err, apiserver.ErrCouldntValidateObjectPermanent):
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonTaskFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
