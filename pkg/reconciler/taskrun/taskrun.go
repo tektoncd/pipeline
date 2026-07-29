@@ -780,7 +780,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	// Get the randomized volume names assigned to workspace bindings
 	workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
 
-	ts, err := applyParamsContextsResultsAndWorkspaces(ctx, c, tr, rtr, workspaceVolumes)
+	ts, err := applyParamsContextsResultsAndWorkspaces(ctx, c.tracerProvider.Tracer(TracerName), tr, rtr, workspaceVolumes)
 	if err != nil {
 		logger.Errorf("Error updating task spec parameters, contexts, results and workspaces: %s", err)
 		return err
@@ -1181,8 +1181,7 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 }
 
 // applyParamsContextsResultsAndWorkspaces applies parameter, context, results and workspace substitutions to the TaskSpec.
-func applyParamsContextsResultsAndWorkspaces(ctx context.Context, c *Reconciler, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*v1.TaskSpec, error) {
-	tracer := c.tracerProvider.Tracer(TracerName)
+func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tracer trace.Tracer, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*v1.TaskSpec, error) {
 	ctx, span := tracer.Start(ctx, "applyParamsContextsResultsAndWorkspaces")
 	defer span.End()
 
