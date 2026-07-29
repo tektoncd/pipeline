@@ -232,8 +232,8 @@ func TestReconcilePreservesResolverStatusOnConflict(t *testing.T) {
 	})
 
 	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(input))
-	if !apierrors.IsConflict(err) {
-		t.Fatalf("first reconcile error = %v, want conflict", err)
+	if ok, delay := controller.IsRequeueKey(err); !ok || delay != 0 {
+		t.Fatalf("first reconcile result = %v, want immediate requeue", err)
 	}
 
 	latest, err := testAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests(input.Namespace).Get(testAssets.Ctx, input.Name, metav1.GetOptions{})
@@ -282,8 +282,8 @@ func TestReconcilePreservesResolverFailureOnConflict(t *testing.T) {
 	})
 
 	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(input))
-	if !apierrors.IsConflict(err) {
-		t.Fatalf("first reconcile error = %v, want conflict", err)
+	if ok, delay := controller.IsRequeueKey(err); !ok || delay != 0 {
+		t.Fatalf("first reconcile result = %v, want immediate requeue", err)
 	}
 	latest, err := testAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests(input.Namespace).Get(testAssets.Ctx, input.Name, metav1.GetOptions{})
 	if err != nil {
