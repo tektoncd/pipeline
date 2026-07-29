@@ -18,15 +18,21 @@ package resolutionrequest
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	resolutionclientset "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	rrreconciler "github.com/tektoncd/pipeline/pkg/client/resolution/injection/reconciler/resolution/v1beta1/resolutionrequest"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	"k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/clock"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/reconciler"
 )
@@ -34,7 +40,8 @@ import (
 // Reconciler is a knative reconciler for processing ResolutionRequest
 // objects
 type Reconciler struct {
-	clock clock.PassiveClock
+	client resolutionclientset.Interface
+	clock  clock.PassiveClock
 }
 
 var _ rrreconciler.Interface = (*Reconciler)(nil)
@@ -46,6 +53,21 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, rr *v1beta1.ResolutionRe
 		return nil
 	}
 
+	original := rr.DeepCopy()
+	reconciler.PreProcessReconcile(ctx, rr)
+	event := r.reconcile(ctx, rr)
+	reconciler.PostProcessReconcile(ctx, rr, original)
+
+	if equality.Semantic.DeepEqual(lifecycleStatus(original), lifecycleStatus(rr)) {
+		return event
+	}
+	if err := r.patchLifecycleStatus(ctx, rr); err != nil {
+		return err
+	}
+	return event
+}
+
+func (r *Reconciler) reconcile(ctx context.Context, rr *v1beta1.ResolutionRequest) reconciler.Event {
 	if rr.IsDone() {
 		return nil
 	}
@@ -66,6 +88,32 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, rr *v1beta1.ResolutionRe
 	}
 
 	return nil
+}
+
+// lifecycleStatusPatch intentionally excludes resolver-owned payload fields and annotations.
+type lifecycleStatusPatch struct {
+	Metadata map[string]string `json:"metadata"`
+	Status   duckv1.Status     `json:"status"`
+}
+
+func lifecycleStatus(rr *v1beta1.ResolutionRequest) duckv1.Status {
+	return duckv1.Status{
+		ObservedGeneration: rr.Status.ObservedGeneration,
+		Conditions:         rr.Status.Conditions,
+	}
+}
+
+func (r *Reconciler) patchLifecycleStatus(ctx context.Context, rr *v1beta1.ResolutionRequest) error {
+	patchBytes, err := json.Marshal(lifecycleStatusPatch{
+		Metadata: map[string]string{"resourceVersion": rr.ResourceVersion},
+		Status:   lifecycleStatus(rr),
+	})
+	if err != nil {
+		return err
+	}
+	_, err = r.client.ResolutionV1beta1().ResolutionRequests(rr.Namespace).Patch(
+		ctx, rr.Name, types.MergePatchType, patchBytes, metav1.PatchOptions{}, "status")
+	return err
 }
 
 // requestDuration returns the amount of time that has passed since a
