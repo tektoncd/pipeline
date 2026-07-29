@@ -28,6 +28,7 @@ import (
 	rrreconciler "github.com/tektoncd/pipeline/pkg/client/resolution/injection/reconciler/resolution/v1beta1/resolutionrequest"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/clock"
@@ -62,6 +63,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, rr *v1beta1.ResolutionRe
 		return event
 	}
 	if err := r.patchLifecycleStatus(ctx, rr); err != nil {
+		if apierrors.IsConflict(err) {
+			return controller.NewRequeueAfter(0)
+		}
 		return err
 	}
 	return event
