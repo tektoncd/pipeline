@@ -36,6 +36,8 @@ data:
   api-token-secret-name: ""
   # The key in the API token secret containing the actual token. Required when using the authenticated API.
   api-token-secret-key: ""
+  # The key in the API token secret containing the username.
+  api-username-secret-key: ""
   # The namespace containing the API token secret. Defaults to "default".
   api-token-secret-namespace: "default"
   # The default organization to look for repositories under when using the authenticated API,
