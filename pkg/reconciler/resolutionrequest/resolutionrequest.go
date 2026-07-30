@@ -38,9 +38,11 @@ import (
 	"knative.dev/pkg/reconciler"
 )
 
-// Reconciler is a knative reconciler for processing ResolutionRequest
-// objects
+// Reconciler is a knative reconciler for processing ResolutionRequest objects.
+// It patches lifecycle-owned status fields itself and must be configured with
+// SkipStatusUpdates so generated updates do not overwrite resolver-owned fields.
 type Reconciler struct {
+	// client applies lifecycle-only status patches.
 	client resolutionclientset.Interface
 	clock  clock.PassiveClock
 }
@@ -64,9 +66,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, rr *v1beta1.ResolutionRe
 	}
 	if err := r.patchLifecycleStatus(ctx, rr); err != nil {
 		if apierrors.IsConflict(err) {
+			// RetryUpdateConflicts would replay lifecycle status derived from this
+			// stale object. Requeue so lifecycle status is recomputed from fresh state.
 			return controller.NewRequeueAfter(0)
 		}
-		return err
+		return fmt.Errorf("failed to update resource lifecycle status: %w", err)
 	}
 	return event
 }
