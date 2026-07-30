@@ -239,6 +239,16 @@ func main() {
 		secretName = "webhook-certs" // #nosec
 	}
 
+	tlsCertFile := os.Getenv("TLS_CERT_FILE")
+	if tlsCertFile == "" {
+		tlsCertFile = "/etc/webhook/certs/tls.crt"
+	}
+
+	tlsKeyFile := os.Getenv("TLS_KEY_FILE")
+	if tlsKeyFile == "" {
+		tlsKeyFile = "/etc/webhook/certs/tls.key"
+	}
+
 	webhookName := os.Getenv("WEBHOOK_ADMISSION_CONTROLLER_NAME")
 	if webhookName == "" {
 		webhookName = "webhook.pipeline.tekton.dev"
@@ -268,7 +278,7 @@ func main() {
 	go func() {
 		// start the web server on port and accept requests
 		log.Printf("Readiness and health check server listening on port %s", port)
-		log.Fatal(http.ListenAndServe(":"+port, mux)) // #nosec G114 -- see https://github.com/securego/gosec#available-rules
+		log.Fatal(http.ListenAndServeTLS(":"+port, tlsCertFile, tlsKeyFile, mux))
 	}()
 
 	sharedmain.MainWithContext(ctx, serviceName,

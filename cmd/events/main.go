@@ -42,10 +42,13 @@ func main() {
 		port = "8080"
 	}
 
+	certFile := os.Getenv("TLS_CERT_FILE")
+	keyFile := os.Getenv("TLS_KEY_FILE")
+
 	go func() {
 		// start the web server on port and accept requests
 		log.Printf("Readiness and health check server listening on port %s", port)
-		log.Fatal(http.ListenAndServe(":"+port, mux)) // #nosec G114 -- see https://github.com/securego/gosec#available-rules
+		log.Fatal(http.ListenAndServeTLS(":"+port, certFile, keyFile, mux))
 	}()
 
 	// start the events controllers

@@ -336,11 +336,15 @@ specified in the `Secret`.
        tekton.dev/git-0: github.com # Described below
    type: kubernetes.io/ssh-auth
    stringData:
-     ssh-privatekey: |
-       -----BEGIN OPENSSH PRIVATE KEY-----
-       b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAA...
-       ...
-       -----END OPENSSH PRIVATE KEY-----
+     # ssh-privatekey: Do NOT hardcode private key material here.
+     # Instead, store your SSH private key in a separate, private file and
+     # create the Secret from that file using kubectl:
+     #
+     #   kubectl create secret generic ssh-key \
+     #     --type=kubernetes.io/ssh-auth \
+     #     --from-file=ssh-privatekey=$HOME/.ssh/<key-name>
+     #
+     # Replace <key-name> with the filename of your SSH private key.
      # known_hosts is not mandatory, but its use is strongly encouraged for security reasons.
      # If it is not provided then the git server's public key will be requested
      # when the repo is first fetched.

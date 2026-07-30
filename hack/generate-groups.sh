@@ -53,7 +53,7 @@ shift 4
 
 PREFIX=${GOBIN:-${GOPATH}/bin}
 
-function codegen::join() { local IFS="$1"; shift; echo "$*"; }
+function codegen::join() { local sep="$1" out=""; shift; printf -v out "%s${sep}" "$@"; printf '%s' "${out%${sep}}"; }
 
 # enumerate group versions
 FQ_APIS=() # e.g. k8s.io/api/apps/v1
