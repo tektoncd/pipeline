@@ -78,6 +78,109 @@ func init() {
 	os.Setenv("KO_DATA_PATH", "./testdata/")
 }
 
+func TestTaskRunPodNameSuffix(t *testing.T) {
+	failedRetryStatus := v1.TaskRunStatus{
+		Status: duckv1.Status{
+			Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+			}},
+		},
+	}
+	podRescheduledStatus := v1.TaskRunStatus{
+		Status: duckv1.Status{
+			Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionUnknown,
+				Reason: v1.TaskRunReasonPodRescheduled.String(),
+			}},
+		},
+	}
+
+	for _, tc := range []struct {
+		name string
+		tr   *v1.TaskRun
+		want string
+	}{
+		{
+			name: "initial pod",
+			tr:   &v1.TaskRun{},
+			want: initialTaskRunPodNameSuffix,
+		}, {
+			name: "retry pod",
+			tr: &v1.TaskRun{
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						RetriesStatus: []v1.TaskRunStatus{failedRetryStatus, failedRetryStatus},
+					},
+				},
+			},
+			want: initialTaskRunPodNameSuffix + retryTaskRunPodNameSuffix + "2",
+		}, {
+			name: "rescheduled pod",
+			tr: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{v1.TaskRunPodRescheduleCountAnnotation: "2"},
+				},
+				Status: podRescheduledStatus,
+			},
+			want: initialTaskRunPodNameSuffix + rescheduledTaskRunPodNameSuffix + "2",
+		}, {
+			name: "retry and rescheduled pod",
+			tr: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{v1.TaskRunPodRescheduleCountAnnotation: "3"},
+				},
+				Status: v1.TaskRunStatus{
+					Status: podRescheduledStatus.Status,
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						RetriesStatus: []v1.TaskRunStatus{failedRetryStatus},
+					},
+				},
+			},
+			want: initialTaskRunPodNameSuffix + retryTaskRunPodNameSuffix + "1" + rescheduledTaskRunPodNameSuffix + "3",
+		}, {
+			name: "reschedule annotation ignored without PodRescheduled condition",
+			tr: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{v1.TaskRunPodRescheduleCountAnnotation: "2"},
+				},
+			},
+			want: initialTaskRunPodNameSuffix,
+		}, {
+			name: "missing reschedule annotation uses reschedule suffix",
+			tr: &v1.TaskRun{
+				Status: podRescheduledStatus,
+			},
+			want: initialTaskRunPodNameSuffix + rescheduledTaskRunPodNameSuffix + "1",
+		}, {
+			name: "invalid reschedule annotation uses reschedule suffix",
+			tr: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{v1.TaskRunPodRescheduleCountAnnotation: "not-a-number"},
+				},
+				Status: podRescheduledStatus,
+			},
+			want: initialTaskRunPodNameSuffix + rescheduledTaskRunPodNameSuffix + "1",
+		}, {
+			name: "negative reschedule annotation uses reschedule suffix",
+			tr: &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{v1.TaskRunPodRescheduleCountAnnotation: "-1"},
+				},
+				Status: podRescheduledStatus,
+			},
+			want: initialTaskRunPodNameSuffix + rescheduledTaskRunPodNameSuffix + "1",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := taskRunPodNameSuffix(tc.tr); got != tc.want {
+				t.Errorf("taskRunPodNameSuffix() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestPodBuild(t *testing.T) {
 	secretsVolume := corev1.Volume{
 		Name:         "tekton-creds-8e736f4e",
@@ -2687,7 +2790,7 @@ _EOF_
 			if err != nil {
 				t.Fatalf("builder.Build: %v", err)
 			}
-			expectedName := testTaskRunName + "-pod"
+			expectedName := testTaskRunName + initialTaskRunPodNameSuffix
 			if c.wantPodName != "" {
 				expectedName = c.wantPodName
 			}
@@ -2895,7 +2998,7 @@ debug-fail-continue-heredoc-randomly-generated-mz4c7
 				t.Fatalf("builder.Build: %v", err)
 			}
 
-			expectedName := kmeta.ChildName(tr.Name, "-pod")
+			expectedName := kmeta.ChildName(tr.Name, initialTaskRunPodNameSuffix)
 			if d := cmp.Diff(expectedName, got.Name); d != "" {
 				t.Errorf("Pod name does not match: %q", d)
 			}
@@ -3253,7 +3356,7 @@ func TestPodBuildwithSpireEnabled(t *testing.T) {
 				t.Fatalf("builder.Build: %v", err)
 			}
 
-			want := kmeta.ChildName(tr.Name, "-pod")
+			want := kmeta.ChildName(tr.Name, initialTaskRunPodNameSuffix)
 			if d := cmp.Diff(want, got.Name); d != "" {
 				t.Errorf("Unexpected pod name, diff=%s", diff.PrintWantGot(d))
 			}
