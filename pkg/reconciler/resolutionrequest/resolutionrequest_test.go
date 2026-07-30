@@ -199,14 +199,12 @@ func TestReconcile(t *testing.T) {
 	}
 }
 
-func TestReconcilePreservesResolverStatusOnConflict(t *testing.T) {
+func TestReconcileWrapsLifecycleStatusError(t *testing.T) {
 	input := &v1beta1.ResolutionRequest{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "rr",
 			Namespace:         "foo",
 			CreationTimestamp: metav1.Now(),
-			Generation:        1,
-			ResourceVersion:   "1",
 		},
 	}
 	d := test.Data{
@@ -216,6 +214,15 @@ func TestReconcilePreservesResolverStatusOnConflict(t *testing.T) {
 	testAssets, cancel := getResolutionRequestController(t, d)
 	defer cancel()
 
+	testAssets.Clients.ResolutionRequests.PrependReactor("patch", "resolutionrequests", func(ktesting.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.New("write failed")
+	})
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(input)); err == nil || err.Error() != "failed to update resource lifecycle status: write failed" {
+		t.Fatalf("Reconcile() error = %v, want wrapped lifecycle status error", err)
+	}
+}
+
+func TestReconcilePreservesResolverStatusOnConflict(t *testing.T) {
 	wantFields := v1beta1.ResolutionRequestStatusFields{
 		Data: "resolved data",
 		Source: &pipelinev1.RefSource{
@@ -226,82 +233,82 @@ func TestReconcilePreservesResolverStatusOnConflict(t *testing.T) {
 		},
 	}
 	wantAnnotations := map[string]string{"resolver.example/cache": "hit"}
-	prependConcurrentStatusUpdate(t, testAssets, input, func(latest *v1beta1.ResolutionRequest) {
-		latest.Status.ResolutionRequestStatusFields = wantFields
-		latest.Status.Annotations = wantAnnotations
-	})
-
-	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(input))
-	if ok, delay := controller.IsRequeueKey(err); !ok || delay != 0 {
-		t.Fatalf("first reconcile result = %v, want immediate requeue", err)
-	}
-
-	latest, err := testAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests(input.Namespace).Get(testAssets.Ctx, input.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("get ResolutionRequest after conflict: %v", err)
-	}
-	assertResolverStatus(t, latest, wantFields, wantAnnotations)
-	if err := testAssets.Informers.ResolutionRequest.Informer().GetIndexer().Update(latest.DeepCopy()); err != nil {
-		t.Fatalf("update ResolutionRequest informer: %v", err)
-	}
-
-	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(input)); err != nil {
-		t.Fatalf("second reconcile: %v", err)
-	}
-	latest, err = testAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests(input.Namespace).Get(testAssets.Ctx, input.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("get reconciled ResolutionRequest: %v", err)
-	}
-	assertResolverStatus(t, latest, wantFields, wantAnnotations)
-	if condition := latest.Status.GetCondition(apis.ConditionSucceeded); condition == nil || condition.Status != corev1.ConditionTrue {
-		t.Fatalf("Succeeded condition = %#v, want True", condition)
-	}
-}
-
-func TestReconcilePreservesResolverFailureOnConflict(t *testing.T) {
-	input := &v1beta1.ResolutionRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:              "rr",
-			Namespace:         "foo",
-			CreationTimestamp: metav1.Now(),
-			Generation:        1,
-			ResourceVersion:   "1",
+	testCases := []struct {
+		name                string
+		concurrentUpdate    func(*v1beta1.ResolutionRequest)
+		assertPreserved     func(*testing.T, *v1beta1.ResolutionRequest)
+		wantConditionStatus corev1.ConditionStatus
+	}{
+		{
+			name: "resolver payload",
+			concurrentUpdate: func(latest *v1beta1.ResolutionRequest) {
+				latest.Status.ResolutionRequestStatusFields = wantFields
+				latest.Status.Annotations = wantAnnotations
+			},
+			assertPreserved: func(t *testing.T, latest *v1beta1.ResolutionRequest) {
+				t.Helper()
+				assertResolverStatus(t, latest, wantFields, wantAnnotations)
+			},
+			wantConditionStatus: corev1.ConditionTrue,
+		},
+		{
+			name: "resolver failure",
+			concurrentUpdate: func(latest *v1beta1.ResolutionRequest) {
+				latest.Status.ObservedGeneration = latest.Generation
+				latest.Status.InitializeConditions()
+				latest.Status.MarkFailed("ResolverFailed", "resolver failed")
+			},
+			assertPreserved:     assertResolverFailure,
+			wantConditionStatus: corev1.ConditionFalse,
 		},
 	}
-	d := test.Data{
-		ResolutionRequests: []*v1beta1.ResolutionRequest{input},
-		ConfigMaps:         th.NewDefaultsCofigMapInSlice(),
-	}
-	testAssets, cancel := getResolutionRequestController(t, d)
-	defer cancel()
 
-	prependConcurrentStatusUpdate(t, testAssets, input, func(latest *v1beta1.ResolutionRequest) {
-		latest.Status.ObservedGeneration = latest.Generation
-		latest.Status.InitializeConditions()
-		latest.Status.MarkFailed("ResolverFailed", "resolver failed")
-	})
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			input := &v1beta1.ResolutionRequest{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "rr",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.Now(),
+					Generation:        1,
+					ResourceVersion:   "1",
+				},
+			}
+			d := test.Data{
+				ResolutionRequests: []*v1beta1.ResolutionRequest{input},
+				ConfigMaps:         th.NewDefaultsCofigMapInSlice(),
+			}
+			testAssets, cancel := getResolutionRequestController(t, d)
+			defer cancel()
 
-	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(input))
-	if ok, delay := controller.IsRequeueKey(err); !ok || delay != 0 {
-		t.Fatalf("first reconcile result = %v, want immediate requeue", err)
-	}
-	latest, err := testAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests(input.Namespace).Get(testAssets.Ctx, input.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("get ResolutionRequest after conflict: %v", err)
-	}
-	assertResolverFailure(t, latest)
-	if err := testAssets.Informers.ResolutionRequest.Informer().GetIndexer().Update(latest.DeepCopy()); err != nil {
-		t.Fatalf("update ResolutionRequest informer: %v", err)
-	}
+			prependConcurrentStatusUpdate(t, testAssets, input, tc.concurrentUpdate)
+			err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(input))
+			if ok, delay := controller.IsRequeueKey(err); !ok || delay != 0 {
+				t.Fatalf("first reconcile result = %v, want immediate requeue", err)
+			}
 
-	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(input)); err != nil {
-		t.Fatalf("second reconcile: %v", err)
+			latest, err := testAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests(input.Namespace).Get(testAssets.Ctx, input.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("get ResolutionRequest after conflict: %v", err)
+			}
+			tc.assertPreserved(t, latest)
+			if err := testAssets.Informers.ResolutionRequest.Informer().GetIndexer().Update(latest.DeepCopy()); err != nil {
+				t.Fatalf("update ResolutionRequest informer: %v", err)
+			}
+
+			if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(input)); err != nil {
+				t.Fatalf("second reconcile: %v", err)
+			}
+			latest, err = testAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests(input.Namespace).Get(testAssets.Ctx, input.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("get reconciled ResolutionRequest: %v", err)
+			}
+			tc.assertPreserved(t, latest)
+			if condition := latest.Status.GetCondition(apis.ConditionSucceeded); condition == nil || condition.Status != tc.wantConditionStatus {
+				t.Fatalf("Succeeded condition = %#v, want %s", condition, tc.wantConditionStatus)
+			}
+		})
 	}
-	latest, err = testAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests(input.Namespace).Get(testAssets.Ctx, input.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("get reconciled ResolutionRequest: %v", err)
-	}
-	assertResolverFailure(t, latest)
 }
 
 func prependConcurrentStatusUpdate(t *testing.T, testAssets test.Assets, input *v1beta1.ResolutionRequest, update func(*v1beta1.ResolutionRequest)) {
