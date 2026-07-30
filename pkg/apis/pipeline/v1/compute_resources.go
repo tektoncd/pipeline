@@ -249,11 +249,17 @@ func mergeResourceMaps(parsed corev1.ResourceList, raw map[corev1.ResourceName]s
 	out := make(map[corev1.ResourceName]json.RawMessage, len(parsed)+len(raw))
 	for k, v := range parsed {
 		// Marshal quantity as a quoted string
-		b, _ := json.Marshal(v.String())
+		b, err := json.Marshal(v.String())
+		if err != nil {
+			return nil
+		}
 		out[k] = b
 	}
 	for k, v := range raw {
-		b, _ := json.Marshal(v)
+		b, err := json.Marshal(v)
+		if err != nil {
+			return nil
+		}
 		out[k] = b
 	}
 	return out

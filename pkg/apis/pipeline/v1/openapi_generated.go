@@ -4887,7 +4887,7 @@ func schema_pkg_apis_pipeline_v1_resourceRequirementsJSON(ref common.ReferenceCa
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "resourceRequirementsJSON is used for JSON serialization.",
+				Description: "resourceRequirementsJSON is used for JSON serialization. Values use json.RawMessage to accept both strings (\"128Mi\", \"$(params.MEM)\") and numbers (500) which are valid in Kubernetes resource quantities.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"requests": {
@@ -4897,9 +4897,8 @@ func schema_pkg_apis_pipeline_v1_resourceRequirementsJSON(ref common.ReferenceCa
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "byte",
 									},
 								},
 							},
@@ -4912,9 +4911,8 @@ func schema_pkg_apis_pipeline_v1_resourceRequirementsJSON(ref common.ReferenceCa
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "byte",
 									},
 								},
 							},
