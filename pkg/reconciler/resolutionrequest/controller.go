@@ -42,11 +42,11 @@ func NewController(clock clock.PassiveClock) func(ctx context.Context, cmw confi
 			client: resolutionclient.Get(ctx),
 			clock:  clock,
 		}
-		// ResolutionRequest status is shared with resolver controllers, so avoid
-		// generated whole-status updates.
 		impl := resolutionrequestreconciler.NewImpl(ctx, r, func(impl *controller.Impl) controller.Options {
 			return controller.Options{
-				ConfigStore:       configStore,
+				ConfigStore: configStore,
+				// ResolutionRequest status is shared with resolver controllers, so avoid
+				// generated whole-status updates.
 				SkipStatusUpdates: true,
 			}
 		})
