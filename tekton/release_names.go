@@ -115,9 +115,16 @@ func getRobotNames() (map[string][]string, error) {
 
 	robotDict := make(map[string][]string)
 
-	// Regex to extract robot names from <li><b>Robot Name</b>
-	re := regexp.MustCompile(`<li>\s*<b>\s*<a[^>]*>([^<]+)</a>\s*</b>`)
-	matches := re.FindAllStringSubmatch(string(bodyBytes), -1)
+	// Trim content after "See also" to avoid picking up non-robot links
+	body := string(bodyBytes)
+	if idx := strings.Index(body, `id="See_also"`); idx > 0 {
+		body = body[:idx]
+	}
+
+	// Regex to extract robot names that are bold-linked: <b><a>Name</a></b>
+	// This is the pattern Wikipedia uses for named fictional robots in list items
+	re := regexp.MustCompile(`<b[^>]*>\s*<a[^>]*>([^<]+)</a>\s*</b>`)
+	matches := re.FindAllStringSubmatch(body, -1)
 
 	for _, match := range matches {
 		if len(match) > 1 {
@@ -155,7 +162,6 @@ func getPastReleases() (map[string]bool, error) {
 			break
 		}
 
-		pastReleases := make(map[string]bool)
 		for _, release := range pageReleases {
 			pastReleases[release.Name] = true
 		}
