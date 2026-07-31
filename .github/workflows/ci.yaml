@@ -65,7 +65,7 @@ jobs:
 
   build:
     name: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     needs: [changes]
     if: ${{ needs.changes.outputs.non-docs == 'true' }}
     steps:
@@ -80,7 +80,7 @@ jobs:
         go build -v ./...
   buildFips:
     name: buildFips
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     needs: [changes]
     if: ${{ needs.changes.outputs.non-docs == 'true' }}
     steps:
@@ -96,7 +96,7 @@ jobs:
         echo "Build finished with exit code: $?"
   linting:
     name: lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     permissions:
       contents: read
       checks: write # Used by golangci-lint to annotate code in the PR
@@ -137,7 +137,7 @@ jobs:
   tests:
     needs: [build]
     name: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
@@ -151,7 +151,7 @@ jobs:
   generated:
     needs: [build]
     name: Check generated code
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
@@ -165,7 +165,7 @@ jobs:
   multi-arch-build:
     needs: [build]
     name: Multi-arch build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     env:
       KOCACHE: /tmp/ko-cache
     steps:
