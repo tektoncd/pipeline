@@ -30,7 +30,7 @@ env:
 jobs:
   build:
     name: Nightly Build (K8s ${{ inputs.kubernetes_version || 'v1.33.x' }})
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest-8-cores
     if: github.repository_owner == 'tektoncd'  # do not run this elsewhere
 
     permissions:
