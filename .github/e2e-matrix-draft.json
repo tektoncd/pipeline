@@ -1,5 +1,5 @@
 {
-  "os": ["ubuntu-latest-16-cores"],
+  "os": ["ubuntu-latest-8-cores"],
   "k8s-name": ["k8s-latest"],
   "feature-flags": ["stable"],
   "include": [

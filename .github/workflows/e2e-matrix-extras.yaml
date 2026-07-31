@@ -79,7 +79,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-        - ubuntu-latest-16-cores
+        - ubuntu-latest-8-cores
         k8s-name:
         - k8s-latest-minus-five  # 1.29
         - k8s-latest-minus-four  # 1.30
