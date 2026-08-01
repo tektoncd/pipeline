@@ -17804,6 +17804,236 @@ spec:
 	}
 }
 
+func TestHandleTaskRunCreationErrorRunsFinallyForDeniedWebhook(t *testing.T) {
+	// A webhook that denies the request without picking a status code gets StatusReasonForbidden
+	// from the API server. That is a rejection of this one creation just like a 400 is, so it must
+	// let the finally tasks run too.
+	prName := "taskrun-creation-denied-by-webhook"
+	namespace := "default"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: gate
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo gate
+    finally:
+    - name: notify
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo notify
+`, prName, namespace))
+
+	d := test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	taskRunGR := schema.GroupResource{Group: "tekton.dev", Resource: "taskruns"}
+	clients.Pipeline.PrependReactor("create", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		tr, ok := action.(ktesting.CreateAction).GetObject().(*v1.TaskRun)
+		if ok && tr.Labels[pipeline.PipelineTaskLabelKey] == "gate" {
+			return true, nil, apierrors.NewForbidden(taskRunGR, tr.Name,
+				errors.New(`admission webhook "validate.kyverno.svc-fail" denied the request: gate params are not compliant`))
+		}
+		return false, nil, nil
+	})
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName)); err != nil {
+		if ok, _ := controller.IsRequeueKey(err); !ok {
+			t.Fatalf("Expected the denied TaskRun creation to be handled, but got error: %v", err)
+		}
+	}
+
+	taskRuns := getTaskRunsForPipelineRun(testAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 1)
+	for _, tr := range taskRuns {
+		if got := tr.Labels[pipeline.PipelineTaskLabelKey]; got != "notify" {
+			t.Errorf("Expected the finally task \"notify\" to be created, but got %q", got)
+		}
+	}
+
+	reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(testAssets.Ctx, prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition.Reason != v1.PipelineRunReasonCreateRunFailedRunningFinally.String() {
+		t.Errorf("Expected the PipelineRun to record the denial while finally runs, but condition is %v", condition)
+	}
+}
+
+func TestRetryableRunCreationErrorReachesFinallyOnlyWithTasksTimeout(t *testing.T) {
+	// A creation error that is retried does reach the finally tasks, but only once the tasks
+	// timeout is up. With no timeouts set at all, TasksTimeout() is nil and only the default
+	// pipeline timeout applies, and reaching that one skips the finally tasks along with
+	// everything else. That is what recognizing a denial as permanent buys: without it, a
+	// deterministic rejection retried forever loses the finally tasks in the default setup.
+	// the test clock is at 2022-01-01T00:00:00Z. Each case starts the PipelineRun far enough back
+	// for its own timeout to be up, but not twice as far, which would end the reconcile early
+	tcs := []struct {
+		name        string
+		timeouts    string
+		startTime   string
+		wantFinally bool
+		wantReason  string
+	}{{
+		name:        "tasks timeout leaves room for finally",
+		timeouts:    "\n  timeouts:\n    pipeline: 10m\n    tasks: 1m",
+		startTime:   "2021-12-31T23:58:00Z",
+		wantFinally: true,
+		wantReason:  v1.PipelineRunReasonTimedOutRunningFinally.String(),
+	}, {
+		name:        "default timeout skips finally too",
+		timeouts:    "",
+		startTime:   "2021-12-31T22:59:00Z",
+		wantFinally: false,
+		wantReason:  v1.PipelineRunReasonTimedOut.String(),
+	}}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			prName := "retryable-creation-error"
+			namespace := "default"
+			pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:%s
+  pipelineSpec:
+    tasks:
+    - name: gate
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo gate
+    finally:
+    - name: notify
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo notify
+status:
+  startTime: %q
+  conditions:
+  - status: Unknown
+    reason: Running
+    type: Succeeded
+`, prName, namespace, tc.timeouts, tc.startTime))
+
+			d := test.Data{
+				PipelineRuns: []*v1.PipelineRun{pr},
+			}
+			testAssets, cancel := getPipelineRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
+
+			clients.Pipeline.PrependReactor("create", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+				tr, ok := action.(ktesting.CreateAction).GetObject().(*v1.TaskRun)
+				if ok && tr.Labels[pipeline.PipelineTaskLabelKey] == "gate" {
+					return true, nil, apierrors.NewTooManyRequests("slow down", 1)
+				}
+				return false, nil, nil
+			})
+
+			_ = c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName))
+
+			taskRuns := getTaskRunsForPipelineRun(testAssets.Ctx, t, clients, namespace, prName)
+			if _, created := taskRuns[prName+"-notify"]; created != tc.wantFinally {
+				t.Errorf("Expected the finally task to be created: %t, but the TaskRuns are %v", tc.wantFinally, taskRuns)
+			}
+
+			reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(testAssets.Ctx, prName, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+			}
+			if reason := reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason; reason != tc.wantReason {
+				t.Errorf("Expected the PipelineRun to report %q, but got %q", tc.wantReason, reason)
+			}
+		})
+	}
+}
+
+func TestHandleTaskRunCreationErrorRetriesForbiddenWithoutWebhook(t *testing.T) {
+	// RBAC denials are reported as Forbidden as well, but they are not about this creation being
+	// invalid: they heal once the permissions are fixed. They have to stay retryable, so the
+	// PipelineRun neither fails nor starts its finally tasks.
+	prName := "taskrun-creation-forbidden-by-rbac"
+	namespace := "default"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: gate
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo gate
+    finally:
+    - name: notify
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo notify
+`, prName, namespace))
+
+	d := test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	taskRunGR := schema.GroupResource{Group: "tekton.dev", Resource: "taskruns"}
+	clients.Pipeline.PrependReactor("create", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		tr, ok := action.(ktesting.CreateAction).GetObject().(*v1.TaskRun)
+		if ok && tr.Labels[pipeline.PipelineTaskLabelKey] == "gate" {
+			return true, nil, apierrors.NewForbidden(taskRunGR, tr.Name,
+				errors.New(`User "system:serviceaccount:default:tekton-pipelines-controller" cannot create resource "taskruns"`))
+		}
+		return false, nil, nil
+	})
+
+	err := c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName))
+	if err == nil {
+		t.Fatalf("Expected the forbidden TaskRun creation to be returned for a retry, but got no error")
+	}
+	if controller.IsPermanentError(err) {
+		t.Errorf("Expected a retryable error for an RBAC denial, but got a permanent one: %v", err)
+	}
+
+	// Nothing was created: the finally tasks must wait for the DAG, which is still pending
+	taskRuns := getTaskRunsForPipelineRun(testAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 0)
+
+	reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(testAssets.Ctx, prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+	if reconciledRun.Status.CompletionTime != nil {
+		t.Errorf("Expected the PipelineRun to keep running, but it completed at %v", reconciledRun.Status.CompletionTime)
+	}
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition.Reason == v1.PipelineRunReasonCreateRunFailed.String() ||
+		condition.Reason == v1.PipelineRunReasonCreateRunFailedRunningFinally.String() {
+		t.Errorf("Expected an RBAC denial not to be charged to the pipeline task, but condition is %v", condition)
+	}
+}
+
 func TestHandleTaskRunCreationErrorStopsSchedulingQueuedTasks(t *testing.T) {
 	// The DAG tasks queued alongside a rejected one must not be started: the PipelineRun is
 	// stopping, and before a rejection was charged to its pipeline task it died on the spot and

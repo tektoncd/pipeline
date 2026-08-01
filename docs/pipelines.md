@@ -1717,8 +1717,12 @@ a `finally` task reads, both as `$(tasks.<taskName>.status)` and in the aggregat
 `$(tasks.status)`, with `$(tasks.<taskName>.reason)` set to `CreateRunFailed`. A `finally` task
 guarded on a failure of the `Pipeline` therefore still runs.
 
-Which creation errors are permanent is unchanged: an invalid request and a bad request are, and
-every other error is still retried until the `PipelineRun` times out.
+Only a rejection of the creation request itself counts here: an invalid request, a bad request, or
+an admission webhook denying it. Errors that are expected to clear on their own, an RBAC denial or
+an exceeded quota among them, are still retried until the `PipelineRun` times out. Note that a
+retried creation only reaches its `finally` tasks when `timeouts.tasks` is set, on its own or
+through `timeouts.pipeline` together with `timeouts.finally`: reaching `timeouts.pipeline` skips
+the `finally` tasks along with everything else.
 
 Overall, `PipelineRun` state transitioning is explained below for respective scenarios:
 

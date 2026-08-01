@@ -1601,13 +1601,25 @@ func (e *runCreationRejectedError) Unwrap() error { return e.err }
 func handleRunCreationError(err error) error {
 	// This is not a complete list of permanent errors. Any permanent error with child (PinP)
 	// PipelinRun/TaskRun/CustomRun creation can be added here.
-	if apierrors.IsInvalid(err) || apierrors.IsBadRequest(err) {
+	if apierrors.IsInvalid(err) || apierrors.IsBadRequest(err) || isAdmissionWebhookDenied(err) {
 		return controller.NewPermanentError(&runCreationRejectedError{err: err, apiRejection: true})
 	}
 	if controller.IsPermanentError(err) {
 		return controller.NewPermanentError(&runCreationRejectedError{err: err})
 	}
 	return err
+}
+
+// isAdmissionWebhookDenied reports whether the API server refused the creation because an
+// admission webhook denied it. A denying webhook answers with StatusReasonForbidden unless it
+// picks another code, so matching on the reason alone would also catch RBAC denials and an
+// exceeded quota, which are retryable and heal on their own. The message prefix the API server
+// puts in front of every webhook denial is what tells them apart, the same way
+// isPodAdmissionFailed and isExceededResourceQuotaError recognize their errors in the TaskRun
+// reconciler. Denials that pick another status code are not recognized here: those keep being
+// retried, and the PipelineRun reaches its terminal state through its timeout instead.
+func isAdmissionWebhookDenied(err error) bool {
+	return apierrors.IsForbidden(err) && strings.Contains(err.Error(), "admission webhook")
 }
 
 func (c *Reconciler) createCustomRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1.PipelineRun, facts *resources.PipelineRunFacts) ([]*v1beta1.CustomRun, error) {
