@@ -1572,6 +1572,10 @@ Unknown  | Started            |           No            |                       
 Unknown  | Running            |           No            |                  The `PipelineRun` has been validate and started to perform its work.
 Unknown  | Cancelled          |           No            | The user requested the PipelineRun to be cancelled. Cancellation has not be done yet.
 Unknown  | CreateRunFailedRunningFinally |           No            |  A child run of a `PipelineTask` was permanently rejected when it was created, and the `finally` tasks are running.
+Unknown  | PipelineRunStopping |           No            |                    A `PipelineTask` failed. No new `PipelineTask` is scheduled, and the running ones are being waited for.
+Unknown  | PipelineRunTimeoutRunningFinally |           No            |          The tasks timeout was exceeded. No new `PipelineTask` is scheduled, and the `finally` tasks are running.
+Unknown  | CancelledRunningFinally |           No            |             The user gracefully cancelled the `PipelineRun`. No new `PipelineTask` is scheduled, and the `finally` tasks are running.
+Unknown  | StoppedRunningFinally |           No            |               The user gracefully stopped the `PipelineRun`. No new `PipelineTask` is scheduled, and the `finally` tasks are running.
 True     | Succeeded          |           Yes           |                                             The `PipelineRun` completed successfully.
 True     | Completed          |           Yes           |             The `PipelineRun` completed successfully, one or more Tasks were skipped.
 False    | Failed             |           Yes           |                        The `PipelineRun` failed because one of the `TaskRuns` failed.
