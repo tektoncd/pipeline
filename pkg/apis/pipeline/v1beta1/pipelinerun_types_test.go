@@ -479,6 +479,81 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 	}
 }
 
+func TestPipelineRunHaveTasksTimedOutWithFinallyStarted(t *testing.T) {
+	// Once the finally phase starts the DAG is done, so the tasks timeout must be measured
+	// against status.FinallyStartTime rather than against the current time.
+	tcs := []struct {
+		name             string
+		tasksTimeout     time.Duration
+		startTime        time.Time
+		finallyStartTime time.Time
+		expected         bool
+	}{{
+		name:             "dag finished within the tasks timeout, finally running past it",
+		tasksTimeout:     time.Minute,
+		startTime:        now.Add(-90 * time.Second),
+		finallyStartTime: now.Add(-50 * time.Second),
+		expected:         false,
+	}, {
+		name:             "dag overran the tasks timeout before finally started",
+		tasksTimeout:     time.Minute,
+		startTime:        now.Add(-90 * time.Second),
+		finallyStartTime: now.Add(-20 * time.Second),
+		expected:         true,
+	}, {
+		// Both markers are metav1.Time, which serialises with second granularity, so the span
+		// between them is a whole number of seconds that under-reports the real DAG runtime by
+		// up to a second. A DAG that the tasks timeout itself cut off therefore reads back as
+		// having finished exactly on the deadline, and must still count as timed out.
+		name:             "dag cut off by the tasks timeout reads back as finishing exactly on it",
+		tasksTimeout:     20 * time.Second,
+		startTime:        now.Add(-25 * time.Second),
+		finallyStartTime: now.Add(-5 * time.Second),
+		expected:         true,
+	}, {
+		// One second below the deadline is the largest span the truncation can produce for a DAG
+		// that stayed inside its budget, so this pins the other side of that boundary.
+		name:             "dag finished a second inside the tasks timeout",
+		tasksTimeout:     20 * time.Second,
+		startTime:        now.Add(-25 * time.Second),
+		finallyStartTime: now.Add(-6 * time.Second),
+		expected:         false,
+	}, {
+		name:             "no tasks timeout specified",
+		tasksTimeout:     0,
+		startTime:        now.Add(-24 * time.Hour),
+		finallyStartTime: now.Add(-1 * time.Hour),
+		expected:         false,
+	}, {
+		// A marker written by a clock running ahead of ours must not time out a DAG that plain
+		// wall clock says is still inside its budget.
+		name:             "marker is in the future, wall clock still within the tasks timeout",
+		tasksTimeout:     2 * time.Minute,
+		startTime:        now.Add(-90 * time.Second),
+		finallyStartTime: now.Add(60 * time.Second),
+		expected:         false,
+	}}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: v1beta1.PipelineRunSpec{
+					Timeouts: &v1beta1.TimeoutFields{Tasks: &metav1.Duration{Duration: tc.tasksTimeout}},
+				},
+				Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime:        &metav1.Time{Time: tc.startTime},
+					FinallyStartTime: &metav1.Time{Time: tc.finallyStartTime},
+				}},
+			}
+
+			if pr.HaveTasksTimedOut(t.Context(), testClock) != tc.expected {
+				t.Errorf("Expected HaveTasksTimedOut to be %t", tc.expected)
+			}
+		})
+	}
+}
+
 func TestPipelineRunTimeouts(t *testing.T) {
 	tcs := []struct {
 		name                   string
