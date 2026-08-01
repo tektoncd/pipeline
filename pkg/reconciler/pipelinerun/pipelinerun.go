@@ -787,6 +787,12 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 			Clock: c.Clock,
 		},
 	}
+	// Read back a child run creation an earlier reconcile saw permanently rejected. That task has
+	// no child resource to carry the rejection, so the condition left behind is its only record.
+	if cond := pr.Status.GetCondition(apis.ConditionSucceeded); cond != nil &&
+		cond.Reason == v1.PipelineRunReasonCreateRunFailedRunningFinally.String() {
+		pipelineRunFacts.SetRunCreationFailureRecord(cond.Message)
+	}
 	if pr.Status.StartTime != nil {
 		pipelineRunFacts.TimeoutsState.StartTime = &pr.Status.StartTime.Time
 	}
@@ -950,13 +956,16 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	}
 
 	after := pipelineRunFacts.GetPipelineConditionStatus(ctx, pr, logger, c.Clock)
+	// The message is already rendered, so it is passed as an argument rather than as the format:
+	// it can quote an admission webhook or a step, and a stray verb in there would be mangled -
+	// the worse as a CreateRunFailedRunningFinally message is read back and rendered again.
 	switch after.Status {
 	case corev1.ConditionTrue:
-		pr.Status.MarkSucceeded(after.Reason, after.Message)
+		pr.Status.MarkSucceeded(after.Reason, "%s", after.Message)
 	case corev1.ConditionFalse:
-		pr.Status.MarkFailed(after.Reason, after.Message)
+		pr.Status.MarkFailed(after.Reason, "%s", after.Message)
 	case corev1.ConditionUnknown:
-		pr.Status.MarkRunning(after.Reason, after.Message)
+		pr.Status.MarkRunning(after.Reason, "%s", after.Message)
 	}
 	// Read the condition the way it was set by the Mark* helpers
 	after = pr.Status.GetCondition(apis.ConditionSucceeded)
@@ -1034,32 +1043,11 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 				"Task %q failed result validation: %v", rpt.PipelineTask.Name, err)
 		}
 	}
-	// GetFinalTasks only returns final tasks when a DAG is complete
-	fNextRpts := pipelineRunFacts.GetFinalTasks()
-	if len(fNextRpts) != 0 {
-		// apply the runtime context just before creating taskRuns for final tasks in queue
-		resources.ApplyPipelineTaskStateContext(fNextRpts, pipelineRunFacts.GetPipelineTaskStatus())
-
-		// Before creating TaskRun for scheduled final task, check if it's consuming a task result
-		// Resolve and apply task result wherever applicable, report warning in case resolution fails
-		for _, rpt := range fNextRpts {
-			resolvedResultRefs, _, err := resources.ResolveResultRef(pipelineRunFacts.State, rpt)
-			if err != nil {
-				logger.Infof("Final task %q is not executed as it could not resolve task params for %q: %v", rpt.PipelineTask.Name, pr.Name, err)
-				continue
-			}
-			resources.ApplyTaskResults(resources.PipelineRunState{rpt}, resolvedResultRefs)
-
-			if err := rpt.EvaluateCEL(); err != nil {
-				logger.Errorf("Final task %q is not executed, due to error evaluating CEL %s: %v", rpt.PipelineTask.Name, pr.Name, err)
-				pr.Status.MarkFailed(string(v1.PipelineRunReasonCELEvaluationFailed),
-					"Error evaluating CEL %s: %v", pr.Name, pipelineErrors.WrapUserError(err))
-				return controller.NewPermanentError(err)
-			}
-
-			nextRpts = append(nextRpts, rpt)
-		}
+	finalRpts, err := c.resolveFinalTasksToSchedule(ctx, pr, pipelineRunFacts)
+	if err != nil {
+		return err
 	}
+	nextRpts = append(nextRpts, finalRpts...)
 
 	// If FinallyStartTime is not set, and one or more final tasks has been created
 	// Try to set the FinallyStartTime of this PipelineRun
@@ -1069,7 +1057,75 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 
 	resources.ApplyResultsToWorkspaceBindings(pipelineRunFacts.State.GetTaskRunsResults(), pr)
 
-	for _, rpt := range nextRpts {
+	if err := c.createRunsForPipelineTasks(ctx, pr, pipelineRunFacts, nextRpts); err != nil {
+		return err
+	}
+
+	// A DAG task whose child run was permanently rejected only counts as done once that rejection
+	// has been recorded, which happens above - after final tasks were selected for this reconcile.
+	// Select them once more so that finally still starts in this same pass; otherwise every
+	// following reconcile would repeat the same rejection and finally would never run at all.
+	if len(pipelineRunFacts.RunCreationFailedTask) > 0 {
+		pipelineRunFacts.ResetSkippedCache()
+		lateFinalRpts, err := c.resolveFinalTasksToSchedule(ctx, pr, pipelineRunFacts)
+		if err != nil {
+			return err
+		}
+		if err := c.createRunsForPipelineTasks(ctx, pr, pipelineRunFacts, lateFinalRpts); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// resolveFinalTasksToSchedule returns the final tasks which are ready to be started, with their
+// task results and CEL expressions resolved. The list is empty while the DAG is still running,
+// because GetFinalTasks only returns final tasks once every DAG task is done.
+func (c *Reconciler) resolveFinalTasksToSchedule(ctx context.Context, pr *v1.PipelineRun, pipelineRunFacts *resources.PipelineRunFacts) ([]*resources.ResolvedPipelineTask, error) {
+	logger := logging.FromContext(ctx)
+
+	// GetFinalTasks only returns final tasks when a DAG is complete
+	fNextRpts := pipelineRunFacts.GetFinalTasks()
+	if len(fNextRpts) == 0 {
+		return nil, nil
+	}
+
+	// apply the runtime context just before creating taskRuns for final tasks in queue
+	resources.ApplyPipelineTaskStateContext(fNextRpts, pipelineRunFacts.GetPipelineTaskStatus())
+
+	// Before creating TaskRun for scheduled final task, check if it's consuming a task result
+	// Resolve and apply task result wherever applicable, report warning in case resolution fails
+	var rpts []*resources.ResolvedPipelineTask
+	for _, rpt := range fNextRpts {
+		resolvedResultRefs, _, err := resources.ResolveResultRef(pipelineRunFacts.State, rpt)
+		if err != nil {
+			logger.Infof("Final task %q is not executed as it could not resolve task params for %q: %v", rpt.PipelineTask.Name, pr.Name, err)
+			continue
+		}
+		resources.ApplyTaskResults(resources.PipelineRunState{rpt}, resolvedResultRefs)
+
+		if err := rpt.EvaluateCEL(); err != nil {
+			logger.Errorf("Final task %q is not executed, due to error evaluating CEL %s: %v", rpt.PipelineTask.Name, pr.Name, err)
+			pr.Status.MarkFailed(string(v1.PipelineRunReasonCELEvaluationFailed),
+				"Error evaluating CEL %s: %v", pr.Name, pipelineErrors.WrapUserError(err))
+			return nil, controller.NewPermanentError(err)
+		}
+
+		rpts = append(rpts, rpt)
+	}
+	return rpts, nil
+}
+
+// createRunsForPipelineTasks creates the child runs - TaskRuns, CustomRuns or child PipelineRuns -
+// of the given pipeline tasks. A creation the API server permanently rejected is charged to its
+// pipeline task rather than to the whole PipelineRun whenever that is possible, see
+// recordRunCreationFailure.
+func (c *Reconciler) createRunsForPipelineTasks(ctx context.Context, pr *v1.PipelineRun, pipelineRunFacts *resources.PipelineRunFacts, rpts []*resources.ResolvedPipelineTask) error {
+	logger := logging.FromContext(ctx)
+	recorder := controller.GetEventRecorder(ctx)
+
+	for _, rpt := range rpts {
 		if rpt.IsFinalTask(pipelineRunFacts) {
 			c.setFinallyStartedTimeIfNeeded(pr, pipelineRunFacts)
 		}
@@ -1078,12 +1134,19 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 			continue
 		}
 
+		// A rejection recorded below leaves the PipelineRun stopping, so the DAG tasks queued
+		// alongside the rejected one are not started either - they were not started before this
+		// failure was charged to its pipeline task, when the whole PipelineRun died on the spot.
+		// Final tasks in this batch are still created.
+		if len(pipelineRunFacts.RunCreationFailedTask) > 0 && !rpt.IsFinalTask(pipelineRunFacts) {
+			continue
+		}
+
 		// propagate previous task results
 		resources.PropagateResults(rpt, pipelineRunFacts.State)
 
 		// propagate previous task artifacts
-		err = resources.PropagateArtifacts(rpt, pipelineRunFacts.State)
-		if err != nil {
+		if err := resources.PropagateArtifacts(rpt, pipelineRunFacts.State); err != nil {
 			logger.Errorf("Failed to propagate artifacts due to error: %v", err)
 			return controller.NewPermanentError(err)
 		}
@@ -1098,12 +1161,16 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 			}
 		}
 
+		var err error
 		switch {
 		case rpt.IsChildPipeline():
 			rpt.ChildPipelineRuns, err = c.createChildPipelineRuns(ctx, rpt, pr, pipelineRunFacts)
 			if err != nil {
 				recorder.Eventf(pr, corev1.EventTypeWarning, "ChildPipelineRunsCreationFailed", "Failed to create child (PIP) PipelineRuns %q: %v", rpt.ChildPipelineRunNames, err)
 				err = fmt.Errorf("error creating child PipelineRuns called %s for PipelineTask %s from PipelineRun %s: %w", rpt.ChildPipelineRunNames, rpt.PipelineTask.Name, pr.Name, err)
+				if recordRunCreationFailure(pr, pipelineRunFacts, rpt, err) {
+					continue
+				}
 				return err
 			}
 		case rpt.IsCustomTask():
@@ -1111,6 +1178,9 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 			if err != nil {
 				recorder.Eventf(pr, corev1.EventTypeWarning, "RunsCreationFailed", "Failed to create CustomRuns %q: %v", rpt.CustomRunNames, err)
 				err = fmt.Errorf("error creating CustomRuns called %s for PipelineTask %s from PipelineRun %s: %w", rpt.CustomRunNames, rpt.PipelineTask.Name, pr.Name, err)
+				if recordRunCreationFailure(pr, pipelineRunFacts, rpt, err) {
+					continue
+				}
 				return err
 			}
 		default:
@@ -1118,12 +1188,56 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1.Pipeline
 			if err != nil {
 				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunsCreationFailed", "Failed to create TaskRuns %q: %v", rpt.TaskRunNames, err)
 				err = fmt.Errorf("error creating TaskRuns called %s for PipelineTask %s from PipelineRun %s: %w", rpt.TaskRunNames, rpt.PipelineTask.Name, pr.Name, err)
+				if recordRunCreationFailure(pr, pipelineRunFacts, rpt, err) {
+					continue
+				}
 				return err
 			}
 		}
 	}
 
 	return nil
+}
+
+// recordRunCreationFailure decides how to react to a child run creation the API server rejected.
+// The rejection is charged to the pipeline task - so that the DAG can converge and finally tasks
+// still get to run - only when it is permanent and there is something left to preserve. It
+// reports whether the failure was handled that way; if not, the caller keeps the previous
+// behaviour of failing the PipelineRun right away.
+//
+// Failing fast is kept for: an error the API server did not raise about this very creation, such
+// as an invalid Pipeline definition; a Pipeline without finally tasks, where nothing is gained by
+// carrying on; a matrix fan-out that was only partly created, whose child runs are still running;
+// and a finally task itself, where carrying on would only retry a creation that keeps being
+// rejected.
+func recordRunCreationFailure(pr *v1.PipelineRun, pipelineRunFacts *resources.PipelineRunFacts, rpt *resources.ResolvedPipelineTask, err error) bool {
+	var rejected *runCreationRejectedError
+	if !errors.As(err, &rejected) {
+		// A retryable error: leave the PipelineRun running and let the key be requeued.
+		return false
+	}
+
+	// A matrix fan-out may have created some child runs before one of them was rejected. Those
+	// keep running unattended, so there is nothing safe to converge on here.
+	partiallyCreated := len(rpt.TaskRuns) > 0 || len(rpt.CustomRuns) > 0 || len(rpt.ChildPipelineRuns) > 0
+
+	hasFinalTasks := pipelineRunFacts.FinalTasksGraph != nil && len(pipelineRunFacts.FinalTasksGraph.Nodes) > 0
+	if !rejected.apiRejection || !hasFinalTasks || partiallyCreated || rpt.IsFinalTask(pipelineRunFacts) {
+		// Report the rejection itself, not the caller's wrapping of it, to keep the condition
+		// message of a PipelineRun that fails right away unchanged.
+		pr.Status.MarkFailed(v1.PipelineRunReasonCreateRunFailed.String(), rejected.Error())
+		return false
+	}
+
+	pipelineRunFacts.RunCreationFailedTask = append(pipelineRunFacts.RunCreationFailedTask, rpt)
+
+	// The wrapped error is kept here instead: it names the pipeline task and the child runs that
+	// could not be created, which is the only place users can see them - no child resource exists.
+	if pipelineRunFacts.RunCreationFailedErrors == nil {
+		pipelineRunFacts.RunCreationFailedErrors = make(map[string]string)
+	}
+	pipelineRunFacts.RunCreationFailedErrors[rpt.PipelineTask.Name] = err.Error()
+	return true
 }
 
 // setFinallyStartedTimeIfNeeded sets the PipelineRun.Status.FinallyStartedTime to the current time if it's nil.
@@ -1149,8 +1263,9 @@ func (c *Reconciler) createChildPipelineRuns(
 	for _, childPipelineRunName := range rpt.ChildPipelineRunNames {
 		childPipelineRun, err := c.createChildPipelineRun(ctx, childPipelineRunName, rpt, pr, facts)
 		if err != nil {
-			err := c.handleRunCreationError(pr, err)
-			return nil, err
+			// Report what a matrix fan-out already created, so that the caller can tell a task
+			// with no child run at all from one that is left with running children.
+			return childPipelineRuns, handleRunCreationError(err)
 		}
 		childPipelineRuns = append(childPipelineRuns, childPipelineRun)
 	}
@@ -1351,8 +1466,9 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 		}
 		taskRun, err := c.createTaskRun(ctx, taskRunName, params, rpt, pr, facts)
 		if err != nil {
-			err := c.handleRunCreationError(pr, err)
-			return nil, err
+			// Report what a matrix fan-out already created, so that the caller can tell a task
+			// with no child run at all from one that is left with running children.
+			return taskRuns, handleRunCreationError(err)
 		}
 		taskRuns = append(taskRuns, taskRun)
 	}
@@ -1464,17 +1580,32 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 	return result, nil
 }
 
-// handleRunCreationError marks the PipelineRun as failed and returns a permanent error if the run creation error is not retryable
-func (c *Reconciler) handleRunCreationError(pr *v1.PipelineRun, err error) error {
-	if controller.IsPermanentError(err) {
-		pr.Status.MarkFailed(v1.PipelineRunReasonCreateRunFailed.String(), err.Error())
-		return err
-	}
+// runCreationRejectedError carries a permanent failure to create a child run, and whether the API
+// server is the one that refused it - an admission webhook denying the request, for instance.
+// Only such a refusal is about this one child run, and only it can be charged to the pipeline
+// task; the other permanent errors reported while scheduling a task, an invalid Pipeline
+// definition among them, keep failing the whole PipelineRun right away.
+type runCreationRejectedError struct {
+	err error
+	// apiRejection is true when the API server refused the creation request itself
+	apiRejection bool
+}
+
+func (e *runCreationRejectedError) Error() string { return e.err.Error() }
+
+func (e *runCreationRejectedError) Unwrap() error { return e.err }
+
+// handleRunCreationError returns a permanent error if the run creation error is not retryable.
+// Whether the PipelineRun fails right away or keeps going so that its finally tasks can run is
+// decided by the caller, see recordRunCreationFailure.
+func handleRunCreationError(err error) error {
 	// This is not a complete list of permanent errors. Any permanent error with child (PinP)
 	// PipelinRun/TaskRun/CustomRun creation can be added here.
 	if apierrors.IsInvalid(err) || apierrors.IsBadRequest(err) {
-		pr.Status.MarkFailed(v1.PipelineRunReasonCreateRunFailed.String(), err.Error())
-		return controller.NewPermanentError(err)
+		return controller.NewPermanentError(&runCreationRejectedError{err: err, apiRejection: true})
+	}
+	if controller.IsPermanentError(err) {
+		return controller.NewPermanentError(&runCreationRejectedError{err: err})
 	}
 	return err
 }
@@ -1495,8 +1626,9 @@ func (c *Reconciler) createCustomRuns(ctx context.Context, rpt *resources.Resolv
 		}
 		customRun, err := c.createCustomRun(ctx, customRunName, params, rpt, pr, facts)
 		if err != nil {
-			err := c.handleRunCreationError(pr, err)
-			return nil, err
+			// Report what a matrix fan-out already created, so that the caller can tell a task
+			// with no child run at all from one that is left with running children.
+			return customRuns, handleRunCreationError(err)
 		}
 		customRuns = append(customRuns, customRun)
 	}

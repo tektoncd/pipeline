@@ -17708,6 +17708,821 @@ spec:
 	}
 }
 
+func TestHandleTaskRunCreationErrorRunsFinally(t *testing.T) {
+	// A permanently rejected TaskRun creation - an admission webhook denying it, for instance -
+	// must not starve the finally tasks: the DAG task counts as failed so that the DAG converges
+	// and finally still gets scheduled.
+	prName := "taskrun-creation-fails-with-finally"
+	namespace := "default"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: gate
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo gate
+    - name: release
+      runAfter:
+      - gate
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo release
+    finally:
+    - name: notify
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo notify
+`, prName, namespace))
+
+	d := test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	// Reject the creation of the gate TaskRun only, the way an admission webhook would
+	clients.Pipeline.PrependReactor("create", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		tr, ok := action.(ktesting.CreateAction).GetObject().(*v1.TaskRun)
+		if ok && tr.Labels[pipeline.PipelineTaskLabelKey] == "gate" {
+			return true, nil, apierrors.NewBadRequest("admission webhook denied the request: gate params are not compliant")
+		}
+		return false, nil, nil
+	})
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName)); err != nil {
+		// A requeue key is normal: it is how a successful reconcile schedules the next timeout check
+		if ok, _ := controller.IsRequeueKey(err); !ok {
+			t.Fatalf("Expected the rejected TaskRun creation to be handled, but got error: %v", err)
+		}
+	}
+
+	reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(testAssets.Ctx, prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	// The finally task is created even though the gate TaskRun never was
+	taskRuns := getTaskRunsForPipelineRun(testAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 1)
+	for _, tr := range taskRuns {
+		if got := tr.Labels[pipeline.PipelineTaskLabelKey]; got != "notify" {
+			t.Errorf("Expected the finally task \"notify\" to be created, but got %q", got)
+		}
+	}
+
+	// The PipelineRun keeps running until its finally task is done
+	if reconciledRun.Status.CompletionTime != nil {
+		t.Errorf("Expected no CompletionTime while the finally task is running, but got %v", reconciledRun.Status.CompletionTime)
+	}
+
+	// The task waiting on the gate is skipped instead of being left pending
+	wantSkipped := []v1.SkippedTask{{
+		Name:   "release",
+		Reason: v1.StoppingSkip,
+	}}
+	if d := cmp.Diff(wantSkipped, reconciledRun.Status.SkippedTasks); d != "" {
+		t.Errorf("Expected the task after the gate to be skipped %s", diff.PrintWantGot(d))
+	}
+
+	// The rejection is recorded in the condition: it is what the next reconcile reads back, and
+	// the only record of a creation that left no child resource behind
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition.Reason != v1.PipelineRunReasonCreateRunFailedRunningFinally.String() {
+		t.Errorf("Expected the PipelineRun to record the rejection while finally runs, but condition is %v", condition)
+	}
+	if !strings.Contains(condition.Message, "admission webhook denied the request") {
+		t.Errorf("Expected the rejection reason in the condition message, but got %q", condition.Message)
+	}
+}
+
+func TestHandleTaskRunCreationErrorStopsSchedulingQueuedTasks(t *testing.T) {
+	// The DAG tasks queued alongside a rejected one must not be started: the PipelineRun is
+	// stopping, and before a rejection was charged to its pipeline task it died on the spot and
+	// never started them either. Whichever of the two is reached first is the one that is
+	// attempted, so exactly one creation is attempted no matter the order they are queued in.
+	prName := "taskrun-creation-fails-with-sibling"
+	namespace := "default"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: gate
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo gate
+    - name: sibling
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo sibling
+    finally:
+    - name: notify
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo notify
+`, prName, namespace))
+
+	d := test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	dagCreationAttempts := 0
+	clients.Pipeline.PrependReactor("create", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		tr, ok := action.(ktesting.CreateAction).GetObject().(*v1.TaskRun)
+		if ok && tr.Labels[pipeline.PipelineTaskLabelKey] != "notify" {
+			dagCreationAttempts++
+			return true, nil, apierrors.NewBadRequest("admission webhook denied the request: not compliant")
+		}
+		return false, nil, nil
+	})
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName)); err != nil {
+		if ok, _ := controller.IsRequeueKey(err); !ok {
+			t.Fatalf("Expected the rejected TaskRun creation to be handled, but got error: %v", err)
+		}
+	}
+
+	if dagCreationAttempts != 1 {
+		t.Errorf("Expected the queued DAG task not to be started after the rejection, but %d creations were attempted", dagCreationAttempts)
+	}
+
+	// The finally task in the same batch is still created
+	taskRuns := getTaskRunsForPipelineRun(testAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 1)
+	if _, ok := taskRuns[prName+"-notify"]; !ok {
+		t.Errorf("Expected the finally task to be created, but the TaskRuns are %v", taskRuns)
+	}
+}
+
+func TestHandleTaskRunCreationErrorFailsAfterFinally(t *testing.T) {
+	// Once the finally tasks are done, a PipelineRun whose DAG task could not be created ends as
+	// CreateRunFailed, carrying over the rejection recorded by the reconcile that hit it. That
+	// record also has to stop the rejected creation from being retried on every reconcile.
+	prName := "taskrun-creation-fails-after-finally"
+	namespace := "default"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: gate
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo gate
+    finally:
+    - name: notify
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo notify
+status:
+  startTime: "2021-12-31T23:59:59Z"
+  conditions:
+  - status: Unknown
+    reason: CreateRunFailedRunningFinally
+    message: 'Rejected PipelineTasks: gate; rejected because: error creating TaskRuns called [taskrun-creation-fails-after-finally-gate] for PipelineTask gate from PipelineRun taskrun-creation-fails-after-finally: admission webhook denied the request: gate params are not compliant'
+    type: Succeeded
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: %s-notify
+    pipelineTaskName: notify
+`, prName, namespace, prName))
+
+	trs := []*v1.TaskRun{parse.MustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta(prName+"-notify", namespace, prName, "", "notify", true),
+		`
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+`)}
+
+	d := test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+		TaskRuns:     trs,
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	// The recorded rejection has to keep the PipelineRun from creating that TaskRun again
+	creationAttempts := 0
+	clients.Pipeline.PrependReactor("create", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		creationAttempts++
+		return true, nil, apierrors.NewBadRequest("admission webhook denied the request: gate params are not compliant")
+	})
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName)); err != nil {
+		// A requeue key is normal: it is how a successful reconcile schedules the next timeout check
+		if ok, _ := controller.IsRequeueKey(err); !ok {
+			t.Fatalf("Expected the rejected TaskRun creation to be handled, but got error: %v", err)
+		}
+	}
+
+	if creationAttempts != 0 {
+		t.Errorf("Expected the rejected TaskRun creation not to be retried, but it was attempted %d time(s)", creationAttempts)
+	}
+
+	reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(testAssets.Ctx, prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	if reconciledRun.Status.CompletionTime == nil {
+		t.Errorf("Expected a CompletionTime once the finally task is done but was nil")
+	}
+
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition.Reason != v1.PipelineRunReasonCreateRunFailed.String() || !condition.IsFalse() {
+		t.Errorf("Expected PipelineRun to be create run failed, but condition is %v", condition)
+	}
+	if !strings.Contains(condition.Message, "admission webhook denied the request") {
+		t.Errorf("Expected the rejection reason in the condition message, but got %q", condition.Message)
+	}
+}
+
+func TestHandleTaskRunCreationErrorKeepsRejectedTaskFailedAcrossReconciles(t *testing.T) {
+	// Every reconcile that happens while the finally tasks run has to report the rejected task the
+	// same way the reconcile that hit the rejection did: as a failure of that task. Reading only
+	// the message back would leave it looking merely unscheduled, so it would turn up as a skipped
+	// task instead, and the reported failed and skipped counts would change under the user.
+	prName := "taskrun-creation-fails-reconciled-again"
+	namespace := "default"
+	rejection := "error creating TaskRuns called [" + prName + "-gate] for PipelineTask gate from PipelineRun " +
+		prName + ": admission webhook denied the request: gate params are not compliant"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: gate
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo gate
+    - name: release
+      runAfter:
+      - gate
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo release
+    finally:
+    - name: notify
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo notify
+status:
+  startTime: "2021-12-31T23:59:59Z"
+  conditions:
+  - status: Unknown
+    reason: CreateRunFailedRunningFinally
+    message: 'Rejected PipelineTasks: gate; rejected because: %s'
+    type: Succeeded
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: %s-notify
+    pipelineTaskName: notify
+`, prName, namespace, rejection, prName))
+
+	// The finally task is still running, which is what brings the reconciler back here
+	trs := []*v1.TaskRun{parse.MustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta(prName+"-notify", namespace, prName, "", "notify", true),
+		`
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+`)}
+
+	d := test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+		TaskRuns:     trs,
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName)); err != nil {
+		if ok, _ := controller.IsRequeueKey(err); !ok {
+			t.Fatalf("Expected the recorded rejection to be handled, but got error: %v", err)
+		}
+	}
+
+	reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(testAssets.Ctx, prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	// Only the task waiting on the gate is skipped: the gate itself failed, it was not skipped
+	wantSkipped := []v1.SkippedTask{{
+		Name:   "release",
+		Reason: v1.StoppingSkip,
+	}}
+	if d := cmp.Diff(wantSkipped, reconciledRun.Status.SkippedTasks); d != "" {
+		t.Errorf("Expected the rejected task not to be reported as skipped %s", diff.PrintWantGot(d))
+	}
+
+	// The record is rewritten as it was, so the reconcile after this one reads back the same state
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition.Reason != v1.PipelineRunReasonCreateRunFailedRunningFinally.String() {
+		t.Errorf("Expected the PipelineRun to keep recording the rejection, but condition is %v", condition)
+	}
+	if want := "Rejected PipelineTasks: gate; rejected because: " + rejection; condition.Message != want {
+		t.Errorf("Expected the record to be preserved, but got %q, want %q", condition.Message, want)
+	}
+}
+
+func TestHandleTaskRunCreationErrorReportsRejectedTaskStatusToFinally(t *testing.T) {
+	// Running the finally tasks is not enough on its own: a notification guarded by
+	// when: $(tasks.status) == Failed, or one reading $(tasks.<name>.status), has to see the
+	// rejected task as a failure. It has no child run to read a status from, so the DAG would
+	// otherwise aggregate to Completed and the notification would be skipped.
+	prName := "taskrun-creation-fails-with-guarded-finally"
+	namespace := "default"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: gate
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo gate
+    finally:
+    - name: notify
+      when:
+      - input: $(tasks.status)
+        operator: in
+        values: ["Failed"]
+      params:
+      - name: gate-status
+        value: $(tasks.gate.status)
+      - name: gate-reason
+        value: $(tasks.gate.reason)
+      taskSpec:
+        params:
+        - name: gate-status
+        - name: gate-reason
+        steps:
+        - image: busybox
+          script: echo $(params.gate-status) $(params.gate-reason)
+`, prName, namespace))
+
+	d := test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	clients.Pipeline.PrependReactor("create", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		tr, ok := action.(ktesting.CreateAction).GetObject().(*v1.TaskRun)
+		if ok && tr.Labels[pipeline.PipelineTaskLabelKey] == "gate" {
+			return true, nil, apierrors.NewBadRequest("admission webhook denied the request: gate params are not compliant")
+		}
+		return false, nil, nil
+	})
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName)); err != nil {
+		if ok, _ := controller.IsRequeueKey(err); !ok {
+			t.Fatalf("Expected the rejected TaskRun creation to be handled, but got error: %v", err)
+		}
+	}
+
+	taskRuns := getTaskRunsForPipelineRun(testAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 1)
+
+	notify, ok := taskRuns[prName+"-notify"]
+	if !ok {
+		t.Fatalf("Expected the guarded finally task to run, but the TaskRuns are %v", taskRuns)
+	}
+	wantParams := v1.Params{{
+		Name:  "gate-status",
+		Value: *v1.NewStructuredValues("Failed"),
+	}, {
+		Name:  "gate-reason",
+		Value: *v1.NewStructuredValues("CreateRunFailed"),
+	}}
+	if d := cmp.Diff(wantParams, notify.Spec.Params); d != "" {
+		t.Errorf("Expected the rejected task to be reported as failed to the finally task %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestHandleTaskRunCreationErrorReadsRecordWithoutTaskNames(t *testing.T) {
+	// A PipelineRun a previous version of this controller left behind records the rejection
+	// without naming the tasks it hit. The rejection still has to be reported rather than dropped,
+	// and the PipelineRun still has to end as CreateRunFailed.
+	prName := "taskrun-creation-fails-legacy-record"
+	namespace := "default"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: gate
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo gate
+    finally:
+    - name: notify
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo notify
+status:
+  startTime: "2021-12-31T23:59:59Z"
+  conditions:
+  - status: Unknown
+    reason: CreateRunFailedRunningFinally
+    message: 'admission webhook denied the request: gate params are not compliant'
+    type: Succeeded
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: %s-notify
+    pipelineTaskName: notify
+`, prName, namespace, prName))
+
+	trs := []*v1.TaskRun{parse.MustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta(prName+"-notify", namespace, prName, "", "notify", true),
+		`
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+`)}
+
+	d := test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+		TaskRuns:     trs,
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	creationAttempts := 0
+	clients.Pipeline.PrependReactor("create", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		creationAttempts++
+		return true, nil, apierrors.NewBadRequest("admission webhook denied the request: gate params are not compliant")
+	})
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName)); err != nil {
+		if ok, _ := controller.IsRequeueKey(err); !ok {
+			t.Fatalf("Expected the recorded rejection to be handled, but got error: %v", err)
+		}
+	}
+
+	if creationAttempts != 0 {
+		t.Errorf("Expected the rejected TaskRun creation not to be retried, but it was attempted %d time(s)", creationAttempts)
+	}
+
+	reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(testAssets.Ctx, prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition.Reason != v1.PipelineRunReasonCreateRunFailed.String() || !condition.IsFalse() {
+		t.Errorf("Expected PipelineRun to be create run failed, but condition is %v", condition)
+	}
+	if !strings.Contains(condition.Message, "admission webhook denied the request") {
+		t.Errorf("Expected the rejection reason in the condition message, but got %q", condition.Message)
+	}
+}
+
+func TestHandleTaskRunCreationErrorFailsFastForFinallyTask(t *testing.T) {
+	// When the rejected task is a finally task itself there is nothing left to preserve, so the
+	// PipelineRun fails right away instead of retrying a creation that keeps being rejected.
+	prName := "finally-taskrun-creation-fails"
+	namespace := "default"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: build
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo build
+    finally:
+    - name: notify
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo notify
+status:
+  startTime: "2021-12-31T23:59:59Z"
+  conditions:
+  - status: Unknown
+    reason: Running
+    type: Succeeded
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: %s-build
+    pipelineTaskName: build
+`, prName, namespace, prName))
+
+	trs := []*v1.TaskRun{parse.MustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta(prName+"-build", namespace, prName, "", "build", true),
+		`
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+`)}
+
+	d := test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+		TaskRuns:     trs,
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	clients.Pipeline.PrependReactor("create", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewBadRequest("admission webhook denied the request: notify is not allowed")
+	})
+
+	err := c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName))
+	if !controller.IsPermanentError(err) {
+		t.Errorf("expected permanent error but got %v", err)
+	}
+
+	reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(testAssets.Ctx, prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != v1.PipelineRunReasonCreateRunFailed.String() {
+		t.Errorf("Expected PipelineRun to be create run failed, but condition is %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+}
+
+func TestHandleTaskRunCreationErrorStopsOnErrorContinue(t *testing.T) {
+	// onError: continue covers a task that ran and failed. A task whose TaskRun the API server
+	// refused never ran and cannot be retried into running, so the PipelineRun stops for it either
+	// way - and it does so consistently, rather than carrying on until the next reconcile.
+	prName := "taskrun-creation-fails-on-error-continue"
+	namespace := "default"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: gate
+      onError: continue
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo gate
+    - name: release
+      runAfter:
+      - gate
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo release
+    finally:
+    - name: notify
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo notify
+`, prName, namespace))
+
+	d := test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	clients.Pipeline.PrependReactor("create", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		tr, ok := action.(ktesting.CreateAction).GetObject().(*v1.TaskRun)
+		if ok && tr.Labels[pipeline.PipelineTaskLabelKey] == "gate" {
+			return true, nil, apierrors.NewBadRequest("admission webhook denied the request: gate params are not compliant")
+		}
+		return false, nil, nil
+	})
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName)); err != nil {
+		// A requeue key is normal: it is how a successful reconcile schedules the next timeout check
+		if ok, _ := controller.IsRequeueKey(err); !ok {
+			t.Fatalf("Expected the rejected TaskRun creation to be handled, but got error: %v", err)
+		}
+	}
+
+	reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(testAssets.Ctx, prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	// The rejection is recorded like any other, so the next reconcile keeps the run stopping
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition.Reason != v1.PipelineRunReasonCreateRunFailedRunningFinally.String() {
+		t.Errorf("Expected the rejection to stop the PipelineRun despite onError: continue, but condition is %v", condition)
+	}
+
+	// The task after the rejected one is skipped, and the finally task runs
+	wantSkipped := []v1.SkippedTask{{
+		Name:   "release",
+		Reason: v1.StoppingSkip,
+	}}
+	if d := cmp.Diff(wantSkipped, reconciledRun.Status.SkippedTasks); d != "" {
+		t.Errorf("Expected the task after the gate to be skipped %s", diff.PrintWantGot(d))
+	}
+	taskRuns := getTaskRunsForPipelineRun(testAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 1)
+	for _, tr := range taskRuns {
+		if got := tr.Labels[pipeline.PipelineTaskLabelKey]; got != "notify" {
+			t.Errorf("Expected the finally task \"notify\" to be created, but got %q", got)
+		}
+	}
+}
+
+func TestHandleTaskRunCreationErrorFailsFastForOtherPermanentErrors(t *testing.T) {
+	// Only a refusal by the API server is about one child run. Any other permanent error - here a
+	// workspace the PipelineRun does not provide - keeps failing the whole PipelineRun right away,
+	// even when it has finally tasks.
+	prName := "taskrun-creation-fails-on-missing-workspace"
+	namespace := "default"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: build
+      taskRef:
+        name: unit-test-task
+      workspaces:
+      - name: source
+    finally:
+    - name: notify
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo notify
+`, prName, namespace))
+
+	ts := []*v1.Task{parse.MustParseV1Task(t, fmt.Sprintf(`
+metadata:
+  name: unit-test-task
+  namespace: %s
+spec:
+  workspaces:
+  - name: source
+  steps:
+  - image: busybox
+    name: test
+    script: echo hello
+`, namespace))}
+
+	d := test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+		Tasks:        ts,
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	err := c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName))
+	if !controller.IsPermanentError(err) {
+		t.Errorf("expected permanent error but got %v", err)
+	}
+
+	reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(testAssets.Ctx, prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != v1.PipelineRunReasonCreateRunFailed.String() {
+		t.Errorf("Expected PipelineRun to be create run failed, but condition is %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+
+	// The finally task is not started: the PipelineRun failed before converging the DAG
+	taskRuns := getTaskRunsForPipelineRun(testAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 0)
+}
+
+func TestHandleTaskRunCreationErrorFailsFastForPartialMatrix(t *testing.T) {
+	// A matrix fan-out can create some TaskRuns before one of them is rejected. Those keep running
+	// unattended, so the PipelineRun fails right away rather than converging the DAG around them.
+	prName := "matrix-taskrun-creation-partially-fails"
+	namespace := "default"
+	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: gate
+      matrix:
+        params:
+        - name: version
+          value:
+          - v1
+          - v2
+      taskSpec:
+        params:
+        - name: version
+        steps:
+        - image: busybox
+          script: echo $(params.version)
+    finally:
+    - name: notify
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo notify
+`, prName, namespace))
+
+	d := test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	// Let the first fan-out through and reject the second one
+	created := 0
+	clients.Pipeline.PrependReactor("create", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		created++
+		if created == 2 {
+			return true, nil, apierrors.NewBadRequest("admission webhook denied the request: matrix combination is not compliant")
+		}
+		return false, nil, nil
+	})
+
+	err := c.Reconciler.Reconcile(testAssets.Ctx, fmt.Sprintf("%s/%s", namespace, prName))
+	if !controller.IsPermanentError(err) {
+		t.Errorf("expected permanent error but got %v", err)
+	}
+
+	reconciledRun, err := clients.Pipeline.TektonV1().PipelineRuns(namespace).Get(testAssets.Ctx, prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != v1.PipelineRunReasonCreateRunFailed.String() {
+		t.Errorf("Expected PipelineRun to be create run failed, but condition is %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+
+	// Only the accepted matrix TaskRun exists, the finally task was not started
+	taskRuns := getTaskRunsForPipelineRun(testAssets.Ctx, t, clients, namespace, prName)
+	validateTaskRunsCount(t, taskRuns, 1)
+	for _, tr := range taskRuns {
+		if got := tr.Labels[pipeline.PipelineTaskLabelKey]; got != "gate" {
+			t.Errorf("Expected only the accepted matrix TaskRun of \"gate\", but got %q", got)
+		}
+	}
+}
+
 func TestHandleCustomRunCreationError(t *testing.T) {
 	prName := "customrun-creation-fails"
 	namespace := "default"
