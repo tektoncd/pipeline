@@ -1702,6 +1702,24 @@ With `finally`:
 | single failure of `PipelineTask`                                                                       | all `finally` tasks successful         | `false`              | `failed`    |
 | single failure of `PipelineTask`                                                                       | one or more failure of `finally` tasks | `false`              | `failed`    |
 
+A `PipelineTask` whose child run is permanently rejected when it is created - by an admission
+webhook denying the request, for instance - counts as a failure of that task: the `PipelineTasks`
+depending on it are skipped, `finally` tasks still run, and the `PipelineRun` ends with the reason
+`CreateRunFailed`. The rejection message is reported in the `PipelineRun` condition, because no
+child resource was created to carry it. [`onError: continue`](#using-the-onerror-field)
+does not apply to it: that setting covers a task that ran and failed, while a task the API server
+refused never ran and cannot be retried into running. The `PipelineRun` instead fails immediately,
+without running `finally`, when the rejected task is a `finally` task itself or when only part of a
+[`matrix`](matrix.md) fan-out was rejected and the created runs are still executing.
+
+Such a task reports `Failed` to the [execution status](#guard-finally-task-execution-using-when-expressions)
+a `finally` task reads, both as `$(tasks.<taskName>.status)` and in the aggregate
+`$(tasks.status)`, with `$(tasks.<taskName>.reason)` set to `CreateRunFailed`. A `finally` task
+guarded on a failure of the `Pipeline` therefore still runs.
+
+Which creation errors are permanent is unchanged: an invalid request and a bad request are, and
+every other error is still retried until the `PipelineRun` times out.
+
 Overall, `PipelineRun` state transitioning is explained below for respective scenarios:
 
 * All `PipelineTask` and `finally` tasks are successful: `Started` -> `Running` -> `Succeeded`
