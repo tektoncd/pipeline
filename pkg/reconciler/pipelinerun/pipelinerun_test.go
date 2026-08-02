@@ -7779,6 +7779,72 @@ spec:
 	}
 }
 
+func TestReconcile_KeepsEmbeddedTaskSpecDescriptionsOnChildTaskRun(t *testing.T) {
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-embedded-spec
+  namespace: foo
+spec:
+  pipelineSpec:
+    description: pipeline desc
+    tasks:
+    - name: a-task
+      description: pipeline task desc
+      taskSpec:
+        description: embedded task description
+        params:
+        - name: p
+          type: string
+          default: v
+          description: embedded param desc
+        steps:
+        - name: step1
+          image: foo
+`)}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data:       map[string]string{"keep-status-spec-descriptions": "false"},
+		}},
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-embedded-spec", nil, false)
+
+	// the child TaskRun spec is a real user-facing object, so descriptions must survive there
+	tr, err := clients.Pipeline.TektonV1().TaskRuns("foo").Get(prt.TestAssets.Ctx, "test-pipeline-run-embedded-spec-a-task", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting created TaskRun: %v", err)
+	}
+	if tr.Spec.TaskSpec == nil {
+		t.Fatal("expected child TaskRun to carry an embedded spec.taskSpec")
+	}
+	if got := tr.Spec.TaskSpec.Description; got != "embedded task description" {
+		t.Errorf("child TaskRun spec.taskSpec.description = %q, want %q", got, "embedded task description")
+	}
+	if got := tr.Spec.TaskSpec.Params[0].Description; got != "embedded param desc" {
+		t.Errorf("child TaskRun spec.taskSpec.params[0].description = %q, want %q", got, "embedded param desc")
+	}
+
+	// status stays stripped
+	got := reconciledRun.Status.PipelineSpec
+	if got == nil {
+		t.Fatal("expected status.pipelineSpec to be set after reconcile")
+	}
+	if got.Description != "" {
+		t.Errorf("status.pipelineSpec.description = %q, want empty", got.Description)
+	}
+	if got.Tasks[0].TaskSpec == nil {
+		t.Fatal("expected status.pipelineSpec.tasks[0].taskSpec to be set")
+	}
+	if d := got.Tasks[0].TaskSpec.Description; d != "" {
+		t.Errorf("status.pipelineSpec.tasks[0].taskSpec.description = %q, want empty", d)
+	}
+}
+
 func Test_storePipelineSpec_metadata(t *testing.T) {
 	pipelinerunlabels := map[string]string{"lbl1": "value1", "lbl2": "value2"}
 	pipelinerunannotations := map[string]string{"io.annotation.1": "value1", "io.annotation.2": "value2"}

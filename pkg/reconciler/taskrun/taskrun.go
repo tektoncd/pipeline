@@ -787,9 +787,11 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		return err
 	}
 	tr.Status.TaskSpec = ts
-	// ts is already a deep copy, so strip in place; this assignment overwrites the snapshot stored in prepare.
+	// strip a copy: ts stays live for the rest of the reconcile and is handed to createPod
 	if !config.FromContextOrDefaults(ctx).FeatureFlags.KeepStatusSpecDescriptions {
-		tr.Status.TaskSpec.StripDescriptions()
+		statusSpec := ts.DeepCopy()
+		statusSpec.StripDescriptions()
+		tr.Status.TaskSpec = statusSpec
 	}
 
 	if len(tr.Status.TaskSpec.Steps) > 0 {

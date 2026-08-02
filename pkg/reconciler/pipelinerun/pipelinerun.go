@@ -708,9 +708,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	pipelineSpec = resources.ApplyWorkspaces(pipelineSpec, pr)
 	// Update pipelinespec of pipelinerun's status field
 	pr.Status.PipelineSpec = pipelineSpec
-	// pipelineSpec is already a deep copy, so strip in place; this assignment overwrites the snapshot stored earlier.
+	// strip a copy: pipelineSpec stays live for the rest of the reconcile, including the embedded specs of child TaskRuns
 	if !config.FromContextOrDefaults(ctx).FeatureFlags.KeepStatusSpecDescriptions {
-		pr.Status.PipelineSpec.StripDescriptions()
+		statusSpec := pipelineSpec.DeepCopy()
+		statusSpec.StripDescriptions()
+		pr.Status.PipelineSpec = statusSpec
 	}
 
 	// validate pipelineSpec after apply parameters
