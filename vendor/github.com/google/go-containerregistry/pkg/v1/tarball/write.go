@@ -28,6 +28,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/partial"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
 // WriteToFile writes in the compressed format to a tarball, on disk.
@@ -184,7 +185,7 @@ func writeImagesToTar(imageToTags map[v1.Image][]string, m []byte, size int64, w
 
 			// gunzip expects certain file extensions:
 			// https://www.gnu.org/software/gzip/manual/html_node/Overview.html
-			layerFiles[i] = fmt.Sprintf("%s.tar.gz", hex)
+			layerFiles[i] = hex + layerExtension(l)
 
 			if _, ok := seenLayerDigests[hex]; ok {
 				continue
@@ -244,7 +245,7 @@ func calculateManifest(imageToTags map[v1.Image][]string) (m Manifest, err error
 
 			// gunzip expects certain file extensions:
 			// https://www.gnu.org/software/gzip/manual/html_node/Overview.html
-			layerFiles[i] = fmt.Sprintf("%s.tar.gz", hex)
+			layerFiles[i] = hex + layerExtension(l)
 
 			// Add to LayerSources if it's a foreign layer.
 			desc, err := partial.BlobDescriptor(img, d)
@@ -462,4 +463,17 @@ func calculateSingleFileInTarSize(in int64) (out int64) {
 	}
 	out += 512
 	return out
+}
+
+func layerExtension(l v1.Layer) string {
+	mt, _ := l.MediaType()
+	switch mt {
+	case types.OCILayerZStd:
+		return ".tar.zst"
+	case types.OCIUncompressedLayer, types.OCIUncompressedRestrictedLayer, types.DockerUncompressedLayer:
+		return ".tar"
+	default:
+		// historically, only gzip compressed tar was supported, so this is the fallback
+		return ".tar.gz"
+	}
 }
