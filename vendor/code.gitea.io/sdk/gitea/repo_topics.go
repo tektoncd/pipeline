@@ -45,8 +45,7 @@ func (c *Client) SetRepoTopics(user, repo string, list []string) (*Response, err
 	if err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("PUT", fmt.Sprintf("/repos/%s/%s/topics", user, repo), jsonHeader, bytes.NewReader(body))
-	return resp, err
+	return c.doRequestWithStatusHandle("PUT", fmt.Sprintf("/repos/%s/%s/topics", user, repo), jsonHeader, bytes.NewReader(body))
 }
 
 // AddRepoTopic adds a topic to a repo's topics list
@@ -54,8 +53,7 @@ func (c *Client) AddRepoTopic(user, repo, topic string) (*Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo, &topic); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("PUT", fmt.Sprintf("/repos/%s/%s/topics/%s", user, repo, topic), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("PUT", fmt.Sprintf("/repos/%s/%s/topics/%s", user, repo, topic), nil, nil)
 }
 
 // DeleteRepoTopic deletes a topic from repo's topics list
@@ -63,6 +61,5 @@ func (c *Client) DeleteRepoTopic(user, repo, topic string) (*Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo, &topic); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/topics/%s", user, repo, topic), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/topics/%s", user, repo, topic), nil, nil)
 }
