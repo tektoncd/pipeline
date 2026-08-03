@@ -118,7 +118,7 @@ jobs:
         name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}
         path: ${{ env.ARTIFACTS }}
 
-    - uses: chainguard-dev/actions/kind-diag@4d37df0d85a91f619edc34a8803323033cdcb124 # v1.6.27
+    - uses: chainguard-dev/actions/kind-diag@b2555de0cf9724fb9b49d050ff18bd1f49562ba7 # v1.6.29
       if: ${{ failure() }}
       with:
         artifact-name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}-logs
