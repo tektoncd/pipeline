@@ -41,8 +41,6 @@ type ListOptions struct {
 	// assume bookmarks are returned at any specific interval, nor may they
 	// assume the server will send any BOOKMARK event during a session.
 	// If this is not a watch, this field is ignored.
-	// If the feature gate WatchBookmarks is not enabled in apiserver,
-	// this field is ignored.
 	AllowWatchBookmarks bool
 	// resourceVersion sets a constraint on what resource versions a request may be served from.
 	// See https://kubernetes.io/docs/reference/using-api/api-concepts/#resource-versions for
@@ -91,6 +89,11 @@ type ListOptions struct {
 	// Defaults to true if `resourceVersion=""` or `resourceVersion="0"` (for backward
 	// compatibility reasons) and to false otherwise.
 	SendInitialEvents *bool
+
+	// ShardSelector is the raw shard selector string from the request.
+	// Parsing is deferred to the apiserver storage layer where the CEL
+	// parser dependency is available.
+	ShardSelector string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
