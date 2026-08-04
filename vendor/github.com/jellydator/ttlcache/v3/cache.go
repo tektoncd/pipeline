@@ -88,14 +88,11 @@ func New[K comparable, V any](opts ...Option[K, V]) *Cache[K, V] {
 
 // updateExpirations updates the expiration queue and notifies
 // the cache auto cleaner if needed.
+// 'oldExpiresAt' should reflect the front of the expiration queue
+// before any item mutations.
 // Not safe for concurrent use by multiple goroutines without additional
 // locking.
-func (c *Cache[K, V]) updateExpirations(fresh bool, elem *list.Element) {
-	var oldExpiresAt time.Time
-
-	if !c.items.expQueue.isEmpty() {
-		oldExpiresAt = c.items.expQueue[0].Value.(*Item[K, V]).expiresAt
-	}
+func (c *Cache[K, V]) updateExpirations(fresh bool, elem *list.Element, oldExpiresAt time.Time) {
 
 	if fresh {
 		c.items.expQueue.push(elem)
@@ -151,9 +148,14 @@ func (c *Cache[K, V]) set(key K, value V, ttl time.Duration) *Item[K, V] {
 		item := elem.Value.(*Item[K, V])
 		oldItemCost := item.cost
 
+		var oldExpiresAt time.Time
+		if !c.items.expQueue.isEmpty() {
+			oldExpiresAt = c.items.expQueue[0].Value.(*Item[K, V]).expiresAt
+		}
+
 		item.update(value, ttl)
 
-		c.updateExpirations(false, elem)
+		c.updateExpirations(false, elem, oldExpiresAt)
 
 		if c.options.maxCost != 0 {
 			c.cost = c.cost - oldItemCost + item.cost
@@ -185,11 +187,16 @@ func (c *Cache[K, V]) set(key K, value V, ttl time.Duration) *Item[K, V] {
 		ttl = c.options.ttl
 	}
 
+	var oldExpiresAt time.Time
+	if !c.items.expQueue.isEmpty() {
+		oldExpiresAt = c.items.expQueue[0].Value.(*Item[K, V]).expiresAt
+	}
+
 	// create a new item
 	item := NewItemWithOpts(key, value, ttl, c.options.itemOpts...)
 	elem = c.items.lru.PushFront(item)
 	c.items.values[key] = elem
-	c.updateExpirations(true, elem)
+	c.updateExpirations(true, elem, oldExpiresAt)
 
 	if c.options.maxCost != 0 {
 		c.cost += item.cost
@@ -231,8 +238,13 @@ func (c *Cache[K, V]) get(key K, touch bool, includeExpired bool) *list.Element 
 	c.items.lru.MoveToFront(elem)
 
 	if touch && item.ttl > 0 {
+		var oldExpiresAt time.Time
+		if !c.items.expQueue.isEmpty() {
+			oldExpiresAt = c.items.expQueue[0].Value.(*Item[K, V]).expiresAt
+		}
+
 		item.touch()
-		c.updateExpirations(false, elem)
+		c.updateExpirations(false, elem, oldExpiresAt)
 	}
 
 	return elem
