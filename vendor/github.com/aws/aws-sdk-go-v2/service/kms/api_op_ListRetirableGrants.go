@@ -5,14 +5,13 @@ package kms
 import (
 	"context"
 	"fmt"
-	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Returns information about all grants in the Amazon Web Services account and
-// Region that have the specified retiring principal.
+// Region that have the specified retiring principal or retiring service principal.
 //
 // You can specify any principal in your Amazon Web Services account. The grants
 // that are returned include grants for KMS keys in your Amazon Web Services
@@ -33,11 +32,15 @@ import (
 //
 // Required permissions: [kms:ListRetirableGrants] (IAM policy) in your Amazon Web Services account.
 //
-// KMS authorizes ListRetirableGrants requests by evaluating the caller account's
+// When listing retirable grants by RetiringPrincipal , KMS authorizes
+// ListRetirableGrants requests by evaluating the caller account's
 // kms:ListRetirableGrants permissions. The authorized resource in
 // ListRetirableGrants calls is the retiring principal specified in the request.
 // KMS does not evaluate the caller's permissions to verify their access to any KMS
 // keys or grants that might be returned by the ListRetirableGrants call.
+//
+// The RetiringServicePrincipal filter is only usable by callers in a service
+// principal.
 //
 // Related operations:
 //
@@ -73,20 +76,6 @@ func (c *Client) ListRetirableGrants(ctx context.Context, params *ListRetirableG
 
 type ListRetirableGrantsInput struct {
 
-	// The retiring principal for which to list grants. Enter a principal in your
-	// Amazon Web Services account.
-	//
-	// To specify the retiring principal, use the [Amazon Resource Name (ARN)] of an Amazon Web Services
-	// principal. Valid principals include Amazon Web Services accounts, IAM users, IAM
-	// roles, federated users, and assumed role users. For help with the ARN syntax for
-	// a principal, see [IAM ARNs]in the Identity and Access Management User Guide .
-	//
-	// [IAM ARNs]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-arns
-	// [Amazon Resource Name (ARN)]: https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
-	//
-	// This member is required.
-	RetiringPrincipal *string
-
 	// Use this parameter to specify the maximum number of items to return. When this
 	// value is present, KMS does not return more than the specified number of items,
 	// but it might return fewer.
@@ -99,6 +88,28 @@ type ListRetirableGrantsInput struct {
 	// truncated results. Set it to the value of NextMarker from the truncated
 	// response you just received.
 	Marker *string
+
+	// The retiring principal for which to list grants. Enter a principal in your
+	// Amazon Web Services account.
+	//
+	// To specify the retiring principal, use the [Amazon Resource Name (ARN)] of an Amazon Web Services
+	// principal. Valid principals include Amazon Web Services accounts, IAM users, IAM
+	// roles, federated users, and assumed role users. For help with the ARN syntax for
+	// a principal, see [IAM ARNs]in the Identity and Access Management User Guide .
+	//
+	// You must specify either RetiringPrincipal or RetiringServicePrincipal , but not
+	// both.
+	//
+	// [IAM ARNs]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-arns
+	// [Amazon Resource Name (ARN)]: https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
+	RetiringPrincipal *string
+
+	// The retiring service principal for which to list grants. This filter is only
+	// usable by callers in a service principal.
+	//
+	// You must specify either RetiringPrincipal or RetiringServicePrincipal , but not
+	// both.
+	RetiringServicePrincipal *string
 
 	noSmithyDocumentSerde
 }
@@ -125,9 +136,6 @@ type ListRetirableGrantsOutput struct {
 }
 
 func (c *Client) addOperationListRetirableGrantsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpListRetirableGrants{}, middleware.After)
 	if err != nil {
 		return err
@@ -136,17 +144,8 @@ func (c *Client) addOperationListRetirableGrantsMiddlewares(stack *middleware.St
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "ListRetirableGrants"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
 
 	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addSetLoggerMiddleware(stack, options); err != nil {
-		return err
-	}
-	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
 	if err = addComputeContentLength(stack); err != nil {
@@ -158,19 +157,7 @@ func (c *Client) addOperationListRetirableGrantsMiddlewares(stack *middleware.St
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
-		return err
-	}
-	if err = addRawResponseToMetadata(stack); err != nil {
-		return err
-	}
 	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = addSpanRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -179,25 +166,10 @@ func (c *Client) addOperationListRetirableGrantsMiddlewares(stack *middleware.St
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
-		return err
-	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
-		return err
-	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
-	if err = addOpListRetirableGrantsValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListRetirableGrants(options.Region), middleware.Before); err != nil {
-		return err
-	}
-	if err = addRecursionDetection(stack); err != nil {
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ListRetirableGrants"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -210,12 +182,6 @@ func (c *Client) addOperationListRetirableGrantsMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
 	if err = addInterceptors(stack, options); err != nil {
@@ -322,11 +288,3 @@ type ListRetirableGrantsAPIClient interface {
 }
 
 var _ ListRetirableGrantsAPIClient = (*Client)(nil)
-
-func newServiceMetadataMiddleware_opListRetirableGrants(region string) *awsmiddleware.RegisterServiceMetadata {
-	return &awsmiddleware.RegisterServiceMetadata{
-		Region:        region,
-		ServiceID:     ServiceID,
-		OperationName: "ListRetirableGrants",
-	}
-}
