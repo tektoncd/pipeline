@@ -877,6 +877,45 @@ func TestApplyStepResultSubstitutions_Env(t *testing.T) {
 			wantErr:    false,
 		},
 		{
+			name:       "string param that looks like an empty array",
+			stepName:   "foo",
+			resultName: "res",
+			result:     "[]",
+			envValue:   "$(steps.foo.results.res)",
+			want:       "[]",
+			wantErr:    false,
+		},
+		{
+			name:       "string param that looks like an object",
+			stepName:   "foo",
+			resultName: "res",
+			result:     `{"hello":"World"}`,
+			envValue:   "$(steps.foo.results.res)",
+			want:       `{"hello":"World"}`,
+			wantErr:    false,
+		},
+		// A reference without an index or a key substitutes the file contents verbatim.
+		// The two cases below used to be JSON decoded, so they are pinned here to keep
+		// the change deliberate: quotes and escapes are no longer interpreted.
+		{
+			name:       "string param holding a quoted json string",
+			stepName:   "foo",
+			resultName: "res",
+			result:     `"hello"`,
+			envValue:   "$(steps.foo.results.res)",
+			want:       `"hello"`,
+			wantErr:    false,
+		},
+		{
+			name:       "array param without an index",
+			stepName:   "foo",
+			resultName: "res",
+			result:     `["Hello","World"]`,
+			envValue:   "$(steps.foo.results.res)",
+			want:       `["Hello","World"]`,
+			wantErr:    false,
+		},
+		{
 			name:       "bad-result-format",
 			stepName:   "foo",
 			resultName: "res",
@@ -1064,6 +1103,14 @@ func TestApplyStepWhenSubstitutions_Input(t *testing.T) {
 		when:       v1.StepWhenExpressions{{Input: "$(steps.foo.results.res.hello.bar)"}},
 		want:       v1.StepWhenExpressions{{Input: "$(steps.foo.results.res.hello.bar)"}},
 		wantErr:    true,
+	}, {
+		name:       "string param that looks like an empty array",
+		stepName:   "foo",
+		resultName: "res",
+		result:     "[]",
+		when:       v1.StepWhenExpressions{{Input: "$(steps.foo.results.res)", Operator: selection.NotIn, Values: []string{"[]"}}},
+		want:       v1.StepWhenExpressions{{Input: "[]", Operator: selection.NotIn, Values: []string{"[]"}}},
+		wantErr:    false,
 	}}
 	stepDir := t.TempDir()
 	for _, tc := range testCases {

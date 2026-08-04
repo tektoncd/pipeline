@@ -267,6 +267,8 @@ Pipeline supports two new types of results and parameters: array `[]string` and 
 
 **Note:** Whole Array `Results` (using star notation) cannot be referred in `script` and `env`.
 
+**Note:** A reference without array indexing or an object key, `$(steps.<step-name>.results.<result-name>)`, substitutes the raw contents of the result file. A `string` result holding `[]` or `{}` is substituted as that literal text.
+
 The example below shows how you could pass `step results` from a `step` into following steps, in this case, into a `StepAction`.
 
 ```yaml
