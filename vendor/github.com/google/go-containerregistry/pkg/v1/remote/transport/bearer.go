@@ -221,6 +221,16 @@ func (bt *bearerTransport) RoundTrip(in *http.Request) (*http.Response, error) {
 		// close out old response, since we will not return it.
 		res.Body.Close()
 
+		// For cross-host challenges (the request was redirected to another host),
+		// never mutate bt's shared state: accumulating this host's scope into
+		// bt.scopes or refreshing bt's token from bt.realm would pollute future
+		// same-host requests with a scope/token that belongs to a request we
+		// only ever intended to send to the redirected host. Instead, attempt a
+		// fresh per-host token exchange scoped entirely to this one request.
+		if !matchesHost(bt.registry.RegistryStr(), in, bt.scheme) {
+			return bt.handleCrossHostChallenge(in, challenges)
+		}
+
 		newScopes := []string{}
 		bt.mx.Lock()
 		got := stringSet(bt.scopes)
@@ -247,18 +257,7 @@ func (bt *bearerTransport) RoundTrip(in *http.Request) (*http.Response, error) {
 		if err = bt.refresh(in.Context()); err != nil {
 			return nil, err
 		}
-		// Re-attach the freshly fetched token, but only when the request is
-		// still talking to the registry we authenticated against. matchesHost
-		// guards against forwarding the Authorization header across an
-		// http.Client-level redirect to a different host: a malicious or
-		// compromised registry can 302 the request to an attacker-controlled
-		// host, answer the follow-up with a Bearer challenge, and harvest the
-		// token if we re-attach it unconditionally. For a cross-host request
-		// fall back to sendRequest(), which omits the credential, rather than
-		// leaking it to a host we never logged in to.
-		if !matchesHost(bt.registry.RegistryStr(), in, bt.scheme) {
-			return sendRequest()
-		}
+
 		bt.mx.RLock()
 		tok := bt.bearer.RegistryToken
 		bt.mx.RUnlock()
@@ -267,6 +266,65 @@ func (bt *bearerTransport) RoundTrip(in *http.Request) (*http.Response, error) {
 	}
 
 	return res, err
+}
+
+// handleCrossHostChallenge performs a per-host bearer token exchange when
+// the request has been redirected to a host different from bt.registry. It
+// parses the redirected host's own WWW-Authenticate Bearer challenge, fetches
+// a token from that host's realm using anonymous auth (the original registry's
+// credentials are never forwarded cross-host), and applies the token only to
+// this request.
+//
+// If no usable Bearer challenge is present, or the token exchange fails, the
+// request is retried without an Authorization header.
+func (bt *bearerTransport) handleCrossHostChallenge(in *http.Request, challenges []authchallenge.Challenge) (*http.Response, error) {
+	for _, wac := range challenges {
+		if strings.ToLower(wac.Scheme) != "bearer" {
+			continue
+		}
+		if _, ok := wac.Parameters["realm"]; !ok {
+			continue
+		}
+
+		redirectedReg, err := name.NewRegistry(in.URL.Host, name.WeakValidation)
+		if err != nil {
+			logs.Warn.Printf("cross-host redirect: invalid host %q: %v", in.URL.Host, err)
+			continue
+		}
+
+		// Build a transport.Challenge from the redirected host's WWW-Authenticate
+		// parameters. fromChallenge validates the realm URL (SSRF guard).
+		pr := &Challenge{
+			Scheme:     wac.Scheme,
+			Parameters: wac.Parameters,
+			Insecure:   in.URL.Scheme == "http",
+		}
+		scope := wac.Parameters["scope"]
+		// TODO: use a keychain to resolve credentials for the redirected host so
+		// that token endpoints requiring auth are also supported. For now, anonymous
+		// auth covers the common case where the redirected host's token endpoint is
+		// public. See https://github.com/google/go-containerregistry/issues/2359.
+		tmpBt, err := fromChallenge(redirectedReg, authn.Anonymous, bt.inner, pr, scope)
+		if err != nil {
+			logs.Warn.Printf("cross-host bearer challenge setup for %q failed: %v", in.URL.Host, err)
+			continue
+		}
+
+		if err := tmpBt.refresh(in.Context()); err != nil {
+			logs.Warn.Printf("cross-host bearer exchange for %q failed: %v", in.URL.Host, err)
+			continue
+		}
+
+		tmpBt.mx.RLock()
+		tok := tmpBt.bearer.RegistryToken
+		tmpBt.mx.RUnlock()
+
+		in.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tok))
+		return bt.inner.RoundTrip(in)
+	}
+
+	// No usable bearer challenge; retry without credentials.
+	return bt.inner.RoundTrip(in)
 }
 
 // It's unclear which authentication flow to use based purely on the protocol,

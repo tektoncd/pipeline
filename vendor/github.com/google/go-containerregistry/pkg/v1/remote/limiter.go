@@ -48,6 +48,14 @@ type limitedReadCloser struct {
 	once    sync.Once
 }
 
+func (l *limitedReadCloser) Read(p []byte) (int, error) {
+	n, err := l.ReadCloser.Read(p)
+	if err != nil {
+		l.once.Do(l.release)
+	}
+	return n, err
+}
+
 func (l *limitedReadCloser) Close() error {
 	err := l.ReadCloser.Close()
 	l.once.Do(l.release)
