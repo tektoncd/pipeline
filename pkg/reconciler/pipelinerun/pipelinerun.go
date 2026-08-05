@@ -1377,11 +1377,11 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 	// Apply Pipeline-level overrides first, then PipelineRun-level overrides
 	// take precedence. This gives the chain: Task defaults < Pipeline < PipelineRun.
 	stepSpecs := rpt.PipelineTask.StepSpecs
-	if len(taskRunSpec.StepSpecs) > 0 {
+	if taskRunSpec.StepSpecs != nil {
 		stepSpecs = taskRunSpec.StepSpecs
 	}
 	sidecarSpecs := rpt.PipelineTask.SidecarSpecs
-	if len(taskRunSpec.SidecarSpecs) > 0 {
+	if taskRunSpec.SidecarSpecs != nil {
 		sidecarSpecs = taskRunSpec.SidecarSpecs
 	}
 	computeResources := rpt.PipelineTask.ComputeResources

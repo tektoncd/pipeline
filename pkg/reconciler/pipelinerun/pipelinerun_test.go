@@ -19445,6 +19445,47 @@ spec:
 			},
 		}},
 	}, {
+		name: "PipelineRun-level empty lists clear Pipeline-level overrides",
+		pipeline: parse.MustParseV1Pipeline(t, `
+metadata:
+  name: p
+  namespace: default
+spec:
+  tasks:
+  - name: task1
+    stepSpecs:
+    - name: build
+      computeResources:
+        requests:
+          memory: "4Gi"
+    sidecarSpecs:
+    - name: logging
+      computeResources:
+        requests:
+          cpu: "250m"
+    taskSpec:
+      steps:
+      - name: build
+        image: foo
+      sidecars:
+      - name: logging
+        image: log-image
+`),
+		pipelineRun: parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineRef:
+    name: p
+  taskRunSpecs:
+  - pipelineTaskName: task1
+    stepSpecs: []
+    sidecarSpecs: []
+`),
+		expectedStepSpecs:    []v1.TaskRunStepSpec{},
+		expectedSidecarSpecs: []v1.TaskRunSidecarSpec{},
+	}, {
 		name: "PipelineRun-level computeResources override Pipeline-level",
 		pipeline: parse.MustParseV1Pipeline(t, `
 metadata:
