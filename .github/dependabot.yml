@@ -21,6 +21,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
       groups:
         kubernetes:
             patterns:
@@ -49,6 +53,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
       groups:
         kubernetes:
             patterns:
@@ -74,6 +82,10 @@ updates:
         - kind/misc
       ignore:
         - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
@@ -149,6 +161,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
         - dependency-name: '*'
           update-types:
             - version-update:semver-major
@@ -184,6 +200,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
         - dependency-name: '*'
           update-types:
             - version-update:semver-major
@@ -216,6 +236,10 @@ updates:
         - kind/misc
       ignore:
         - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
@@ -319,6 +343,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
         - dependency-name: '*'
           update-types:
             - version-update:semver-major
@@ -354,6 +382,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
         - dependency-name: '*'
           update-types:
             - version-update:semver-major
@@ -386,6 +418,10 @@ updates:
         - kind/misc
       ignore:
         - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
@@ -489,6 +525,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
         - dependency-name: '*'
           update-types:
             - version-update:semver-major
@@ -524,6 +564,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
         - dependency-name: '*'
           update-types:
             - version-update:semver-major
@@ -556,6 +600,10 @@ updates:
         - kind/misc
       ignore:
         - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
@@ -659,6 +707,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
         - dependency-name: '*'
           update-types:
             - version-update:semver-major
@@ -694,6 +746,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
         - dependency-name: '*'
           update-types:
             - version-update:semver-major
@@ -726,6 +782,10 @@ updates:
         - kind/misc
       ignore:
         - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
           update-types:
             - version-update:semver-major
             - version-update:semver-minor

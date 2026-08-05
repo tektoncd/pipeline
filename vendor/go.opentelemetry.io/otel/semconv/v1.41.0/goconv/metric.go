@@ -21,6 +21,23 @@ var (
 	recOptPool = &sync.Pool{New: func() any { return &[]metric.RecordOption{} }}
 )
 
+// CPUStateAttr is an attribute conforming to the go.cpu.state semantic
+// conventions. It represents the state of the CPU.
+type CPUStateAttr string
+
+var (
+	// CPUStateUser is the CPU time spent running user Go code.
+	CPUStateUser CPUStateAttr = "user"
+	// CPUStateGC is the CPU time spent performing garbage collection tasks.
+	CPUStateGC CPUStateAttr = "gc"
+	// CPUStateScavenge is the CPU time spent returning unused memory to the
+	// underlying platform.
+	CPUStateScavenge CPUStateAttr = "scavenge"
+	// CPUStateIdle is the available CPU time not spent executing any Go or Go
+	// runtime code.
+	CPUStateIdle CPUStateAttr = "idle"
+)
+
 // MemoryTypeAttr is an attribute conforming to the go.memory.type semantic
 // conventions. It represents the type of memory.
 type MemoryTypeAttr string
@@ -90,6 +107,212 @@ func (ConfigGogc) Unit() string {
 // Description returns the semantic convention description of the instrument
 func (ConfigGogc) Description() string {
 	return "Heap size target percentage configured by the user, otherwise 100."
+}
+
+// CPUTime is an instrument used to record metric values conforming to the
+// "go.cpu.time" semantic conventions. It represents the estimated CPU time spent
+// by the Go runtime.
+type CPUTime struct {
+	metric.Float64Counter
+}
+
+var newCPUTimeOpts = []metric.Float64CounterOption{
+	metric.WithDescription("Estimated CPU time spent by the Go runtime."),
+	metric.WithUnit("s"),
+}
+
+// NewCPUTime returns a new CPUTime instrument.
+func NewCPUTime(
+	m metric.Meter,
+	opt ...metric.Float64CounterOption,
+) (CPUTime, error) {
+	// Check if the meter is nil.
+	if m == nil {
+		return CPUTime{noop.Float64Counter{}}, nil
+	}
+
+	if len(opt) == 0 {
+		opt = newCPUTimeOpts
+	} else {
+		opt = append(opt, newCPUTimeOpts...)
+	}
+
+	i, err := m.Float64Counter(
+		"go.cpu.time",
+		opt...,
+	)
+	if err != nil {
+		return CPUTime{noop.Float64Counter{}}, err
+	}
+	return CPUTime{i}, nil
+}
+
+// Inst returns the underlying metric instrument.
+func (m CPUTime) Inst() metric.Float64Counter {
+	return m.Float64Counter
+}
+
+// Name returns the semantic convention name of the instrument.
+func (CPUTime) Name() string {
+	return "go.cpu.time"
+}
+
+// Unit returns the semantic convention unit of the instrument
+func (CPUTime) Unit() string {
+	return "s"
+}
+
+// Description returns the semantic convention description of the instrument
+func (CPUTime) Description() string {
+	return "Estimated CPU time spent by the Go runtime."
+}
+
+// Add adds incr to the existing count for attrs.
+//
+// The cpuState is the the state of the CPU.
+//
+// All additional attrs passed are included in the recorded value.
+//
+// Computed from `/cpu/classes/...` metrics. This metric is an overestimate, and
+// not directly comparable to system CPU time measurements. Compare only with
+// other `go.cpu.time` metrics.
+func (m CPUTime) Add(
+	ctx context.Context,
+	incr float64,
+	cpuState CPUStateAttr,
+	attrs ...attribute.KeyValue,
+) {
+	if !m.Float64Counter.Enabled(ctx) {
+		return
+	}
+	if len(attrs) == 0 {
+		m.Float64Counter.Add(ctx, incr, metric.WithAttributes(
+			attribute.String("go.cpu.state", string(cpuState)),
+		))
+		return
+	}
+
+	o := addOptPool.Get().(*[]metric.AddOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		addOptPool.Put(o)
+	}()
+
+	*o = append(
+		*o,
+		metric.WithAttributes(
+			append(
+				attrs[:len(attrs):len(attrs)],
+				attribute.String("go.cpu.state", string(cpuState)),
+			)...,
+		),
+	)
+
+	m.Float64Counter.Add(ctx, incr, *o...)
+}
+
+// AddSet adds incr to the existing count for set.
+//
+// Computed from `/cpu/classes/...` metrics. This metric is an overestimate, and
+// not directly comparable to system CPU time measurements. Compare only with
+// other `go.cpu.time` metrics.
+func (m CPUTime) AddSet(ctx context.Context, incr float64, set attribute.Set) {
+	if !m.Float64Counter.Enabled(ctx) {
+		return
+	}
+	if set.Len() == 0 {
+		m.Float64Counter.Add(ctx, incr)
+		return
+	}
+
+	o := addOptPool.Get().(*[]metric.AddOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		addOptPool.Put(o)
+	}()
+
+	*o = append(*o, metric.WithAttributeSet(set))
+	m.Float64Counter.Add(ctx, incr, *o...)
+}
+
+// AttrCPUDetailedState returns an optional attribute for the
+// "go.cpu.detailed_state" semantic convention. It represents the detailed state
+// of the CPU.
+func (CPUTime) AttrCPUDetailedState(val string) attribute.KeyValue {
+	return attribute.String("go.cpu.detailed_state", val)
+}
+
+// CPUTimeObservable is an instrument used to record metric values conforming to
+// the "go.cpu.time" semantic conventions. It represents the estimated CPU time
+// spent by the Go runtime.
+type CPUTimeObservable struct {
+	metric.Float64ObservableCounter
+}
+
+var newCPUTimeObservableOpts = []metric.Float64ObservableCounterOption{
+	metric.WithDescription("Estimated CPU time spent by the Go runtime."),
+	metric.WithUnit("s"),
+}
+
+// NewCPUTimeObservable returns a new CPUTimeObservable instrument.
+func NewCPUTimeObservable(
+	m metric.Meter,
+	opt ...metric.Float64ObservableCounterOption,
+) (CPUTimeObservable, error) {
+	// Check if the meter is nil.
+	if m == nil {
+		return CPUTimeObservable{noop.Float64ObservableCounter{}}, nil
+	}
+
+	if len(opt) == 0 {
+		opt = newCPUTimeObservableOpts
+	} else {
+		opt = append(opt, newCPUTimeObservableOpts...)
+	}
+
+	i, err := m.Float64ObservableCounter(
+		"go.cpu.time",
+		opt...,
+	)
+	if err != nil {
+		return CPUTimeObservable{noop.Float64ObservableCounter{}}, err
+	}
+	return CPUTimeObservable{i}, nil
+}
+
+// Inst returns the underlying metric instrument.
+func (m CPUTimeObservable) Inst() metric.Float64ObservableCounter {
+	return m.Float64ObservableCounter
+}
+
+// Name returns the semantic convention name of the instrument.
+func (CPUTimeObservable) Name() string {
+	return "go.cpu.time"
+}
+
+// Unit returns the semantic convention unit of the instrument
+func (CPUTimeObservable) Unit() string {
+	return "s"
+}
+
+// Description returns the semantic convention description of the instrument
+func (CPUTimeObservable) Description() string {
+	return "Estimated CPU time spent by the Go runtime."
+}
+
+// AttrCPUState returns a required attribute for the "go.cpu.state" semantic
+// convention. It represents the state of the CPU.
+func (CPUTimeObservable) AttrCPUState(val CPUStateAttr) attribute.KeyValue {
+	return attribute.String("go.cpu.state", string(val))
+}
+
+// AttrCPUDetailedState returns an optional attribute for the
+// "go.cpu.detailed_state" semantic convention. It represents the detailed state
+// of the CPU.
+func (CPUTimeObservable) AttrCPUDetailedState(val string) attribute.KeyValue {
+	return attribute.String("go.cpu.detailed_state", val)
 }
 
 // GoroutineCount is an instrument used to record metric values conforming to the
@@ -266,6 +489,168 @@ func (MemoryAllocations) Description() string {
 	return "Count of allocations to the heap by the application."
 }
 
+// MemoryGCCycles is an instrument used to record metric values conforming to the
+// "go.memory.gc.cycles" semantic conventions. It represents the number of
+// completed GC cycles.
+type MemoryGCCycles struct {
+	metric.Int64Counter
+}
+
+var newMemoryGCCyclesOpts = []metric.Int64CounterOption{
+	metric.WithDescription("Number of completed GC cycles."),
+	metric.WithUnit("{gc_cycle}"),
+}
+
+// NewMemoryGCCycles returns a new MemoryGCCycles instrument.
+func NewMemoryGCCycles(
+	m metric.Meter,
+	opt ...metric.Int64CounterOption,
+) (MemoryGCCycles, error) {
+	// Check if the meter is nil.
+	if m == nil {
+		return MemoryGCCycles{noop.Int64Counter{}}, nil
+	}
+
+	if len(opt) == 0 {
+		opt = newMemoryGCCyclesOpts
+	} else {
+		opt = append(opt, newMemoryGCCyclesOpts...)
+	}
+
+	i, err := m.Int64Counter(
+		"go.memory.gc.cycles",
+		opt...,
+	)
+	if err != nil {
+		return MemoryGCCycles{noop.Int64Counter{}}, err
+	}
+	return MemoryGCCycles{i}, nil
+}
+
+// Inst returns the underlying metric instrument.
+func (m MemoryGCCycles) Inst() metric.Int64Counter {
+	return m.Int64Counter
+}
+
+// Name returns the semantic convention name of the instrument.
+func (MemoryGCCycles) Name() string {
+	return "go.memory.gc.cycles"
+}
+
+// Unit returns the semantic convention unit of the instrument
+func (MemoryGCCycles) Unit() string {
+	return "{gc_cycle}"
+}
+
+// Description returns the semantic convention description of the instrument
+func (MemoryGCCycles) Description() string {
+	return "Number of completed GC cycles."
+}
+
+// Add adds incr to the existing count for attrs.
+//
+// Computed from `/gc/cycles/total:gc-cycles`.
+func (m MemoryGCCycles) Add(ctx context.Context, incr int64, attrs ...attribute.KeyValue) {
+	if !m.Int64Counter.Enabled(ctx) {
+		return
+	}
+	if len(attrs) == 0 {
+		m.Int64Counter.Add(ctx, incr)
+		return
+	}
+
+	o := addOptPool.Get().(*[]metric.AddOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		addOptPool.Put(o)
+	}()
+
+	*o = append(*o, metric.WithAttributes(attrs...))
+	m.Int64Counter.Add(ctx, incr, *o...)
+}
+
+// AddSet adds incr to the existing count for set.
+//
+// Computed from `/gc/cycles/total:gc-cycles`.
+func (m MemoryGCCycles) AddSet(ctx context.Context, incr int64, set attribute.Set) {
+	if !m.Int64Counter.Enabled(ctx) {
+		return
+	}
+	if set.Len() == 0 {
+		m.Int64Counter.Add(ctx, incr)
+		return
+	}
+
+	o := addOptPool.Get().(*[]metric.AddOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		addOptPool.Put(o)
+	}()
+
+	*o = append(*o, metric.WithAttributeSet(set))
+	m.Int64Counter.Add(ctx, incr, *o...)
+}
+
+// MemoryGCCyclesObservable is an instrument used to record metric values
+// conforming to the "go.memory.gc.cycles" semantic conventions. It represents
+// the number of completed GC cycles.
+type MemoryGCCyclesObservable struct {
+	metric.Int64ObservableCounter
+}
+
+var newMemoryGCCyclesObservableOpts = []metric.Int64ObservableCounterOption{
+	metric.WithDescription("Number of completed GC cycles."),
+	metric.WithUnit("{gc_cycle}"),
+}
+
+// NewMemoryGCCyclesObservable returns a new MemoryGCCyclesObservable instrument.
+func NewMemoryGCCyclesObservable(
+	m metric.Meter,
+	opt ...metric.Int64ObservableCounterOption,
+) (MemoryGCCyclesObservable, error) {
+	// Check if the meter is nil.
+	if m == nil {
+		return MemoryGCCyclesObservable{noop.Int64ObservableCounter{}}, nil
+	}
+
+	if len(opt) == 0 {
+		opt = newMemoryGCCyclesObservableOpts
+	} else {
+		opt = append(opt, newMemoryGCCyclesObservableOpts...)
+	}
+
+	i, err := m.Int64ObservableCounter(
+		"go.memory.gc.cycles",
+		opt...,
+	)
+	if err != nil {
+		return MemoryGCCyclesObservable{noop.Int64ObservableCounter{}}, err
+	}
+	return MemoryGCCyclesObservable{i}, nil
+}
+
+// Inst returns the underlying metric instrument.
+func (m MemoryGCCyclesObservable) Inst() metric.Int64ObservableCounter {
+	return m.Int64ObservableCounter
+}
+
+// Name returns the semantic convention name of the instrument.
+func (MemoryGCCyclesObservable) Name() string {
+	return "go.memory.gc.cycles"
+}
+
+// Unit returns the semantic convention unit of the instrument
+func (MemoryGCCyclesObservable) Unit() string {
+	return "{gc_cycle}"
+}
+
+// Description returns the semantic convention description of the instrument
+func (MemoryGCCyclesObservable) Description() string {
+	return "Number of completed GC cycles."
+}
+
 // MemoryGCGoal is an instrument used to record metric values conforming to the
 // "go.memory.gc.goal" semantic conventions. It represents the heap size target
 // for the end of the GC cycle.
@@ -322,6 +707,113 @@ func (MemoryGCGoal) Unit() string {
 // Description returns the semantic convention description of the instrument
 func (MemoryGCGoal) Description() string {
 	return "Heap size target for the end of the GC cycle."
+}
+
+// MemoryGCPauseDuration is an instrument used to record metric values conforming
+// to the "go.memory.gc.pause.duration" semantic conventions. It represents the
+// distribution of individual GC-related stop-the-world pause latencies. This is
+// the time from deciding to stop the world until the world is started again.
+type MemoryGCPauseDuration struct {
+	metric.Float64Histogram
+}
+
+var newMemoryGCPauseDurationOpts = []metric.Float64HistogramOption{
+	metric.WithDescription("Distribution of individual GC-related stop-the-world pause latencies. This is the time from deciding to stop the world until the world is started again."),
+	metric.WithUnit("s"),
+}
+
+// NewMemoryGCPauseDuration returns a new MemoryGCPauseDuration instrument.
+func NewMemoryGCPauseDuration(
+	m metric.Meter,
+	opt ...metric.Float64HistogramOption,
+) (MemoryGCPauseDuration, error) {
+	// Check if the meter is nil.
+	if m == nil {
+		return MemoryGCPauseDuration{noop.Float64Histogram{}}, nil
+	}
+
+	if len(opt) == 0 {
+		opt = newMemoryGCPauseDurationOpts
+	} else {
+		opt = append(opt, newMemoryGCPauseDurationOpts...)
+	}
+
+	i, err := m.Float64Histogram(
+		"go.memory.gc.pause.duration",
+		opt...,
+	)
+	if err != nil {
+		return MemoryGCPauseDuration{noop.Float64Histogram{}}, err
+	}
+	return MemoryGCPauseDuration{i}, nil
+}
+
+// Inst returns the underlying metric instrument.
+func (m MemoryGCPauseDuration) Inst() metric.Float64Histogram {
+	return m.Float64Histogram
+}
+
+// Name returns the semantic convention name of the instrument.
+func (MemoryGCPauseDuration) Name() string {
+	return "go.memory.gc.pause.duration"
+}
+
+// Unit returns the semantic convention unit of the instrument
+func (MemoryGCPauseDuration) Unit() string {
+	return "s"
+}
+
+// Description returns the semantic convention description of the instrument
+func (MemoryGCPauseDuration) Description() string {
+	return "Distribution of individual GC-related stop-the-world pause latencies. This is the time from deciding to stop the world until the world is started again."
+}
+
+// Record records val to the current distribution for attrs.
+//
+// Computed from `/sched/pauses/total/gc:seconds`. Bucket boundaries are provided
+// by the runtime, and are subject to change.
+func (m MemoryGCPauseDuration) Record(ctx context.Context, val float64, attrs ...attribute.KeyValue) {
+	if !m.Float64Histogram.Enabled(ctx) {
+		return
+	}
+	if len(attrs) == 0 {
+		m.Float64Histogram.Record(ctx, val)
+		return
+	}
+
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
+
+	*o = append(*o, metric.WithAttributes(attrs...))
+	m.Float64Histogram.Record(ctx, val, *o...)
+}
+
+// RecordSet records val to the current distribution for set.
+//
+// Computed from `/sched/pauses/total/gc:seconds`. Bucket boundaries are provided
+// by the runtime, and are subject to change.
+func (m MemoryGCPauseDuration) RecordSet(ctx context.Context, val float64, set attribute.Set) {
+	if !m.Float64Histogram.Enabled(ctx) {
+		return
+	}
+	if set.Len() == 0 {
+		m.Float64Histogram.Record(ctx, val)
+		return
+	}
+
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
+
+	*o = append(*o, metric.WithAttributeSet(set))
+	m.Float64Histogram.Record(ctx, val, *o...)
 }
 
 // MemoryLimit is an instrument used to record metric values conforming to the
@@ -444,6 +936,13 @@ func (MemoryUsed) Description() string {
 // convention. It represents the type of memory.
 func (MemoryUsed) AttrMemoryType(val MemoryTypeAttr) attribute.KeyValue {
 	return attribute.String("go.memory.type", string(val))
+}
+
+// AttrMemoryDetailedType returns an optional attribute for the
+// "go.memory.detailed_type" semantic convention. It represents the detailed type
+// of memory.
+func (MemoryUsed) AttrMemoryDetailedType(val string) attribute.KeyValue {
+	return attribute.String("go.memory.detailed_type", val)
 }
 
 // ProcessorLimit is an instrument used to record metric values conforming to the
@@ -578,6 +1077,7 @@ func (m ScheduleDuration) Record(ctx context.Context, val float64, attrs ...attr
 
 	o := recOptPool.Get().(*[]metric.RecordOption)
 	defer func() {
+		clear(*o)
 		*o = (*o)[:0]
 		recOptPool.Put(o)
 	}()
@@ -601,6 +1101,7 @@ func (m ScheduleDuration) RecordSet(ctx context.Context, val float64, set attrib
 
 	o := recOptPool.Get().(*[]metric.RecordOption)
 	defer func() {
+		clear(*o)
 		*o = (*o)[:0]
 		recOptPool.Put(o)
 	}()

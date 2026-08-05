@@ -49,6 +49,8 @@ Leader election can be configured in [config-leader-election.yaml](./../config/c
 
 _Note_: The maximum value of `data.buckets` at this time is 10.
 
+When the controller is installed through the [Tekton Operator](https://github.com/tektoncd/operator), configure these high-availability settings through the `TektonConfig` `spec.pipeline.performance` field instead of editing the controller or the ConfigMap directly. That field exposes `replicas`, `buckets`, `disable-ha`, `threads-per-controller`, and `statefulset-ordinals`, the last of which runs the controller as a StatefulSet with the load spread evenly across replicas. See the Operator's [performance properties](https://github.com/tektoncd/operator/blob/main/docs/TektonPipeline.md#performance-properties) and the [Performance Configuration](./tekton-controller-performance-configuration.md) guide for details.
+
 ### Disabling Controller HA
 
 If HA is not required, you can disable it by scaling the deployment back to one replica. You can also modify the [controller deployment](./../config/controller.yaml), by specifying in the `tekton-pipelines-controller` container the `disable-ha` flag. For example:

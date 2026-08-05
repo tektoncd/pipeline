@@ -109,6 +109,12 @@ const (
 	CreateContainerConfigError = "CreateContainerConfigError" // Missing ConfigMap/Secret, invalid env vars, etc.
 	CreateContainerError       = "CreateContainerError"       // Other container creation failures
 	ErrImagePull               = "ErrImagePull"               // Initial image pull failure
+
+	// remoteResolutionRequeueAfter is how long to wait before re-reconciling a
+	// TaskRun that is awaiting an in-progress ResolutionRequest. Periodic
+	// requeue ensures progress even if the ResolutionRequest completion event
+	// is missed or cannot be mapped back via owner references (see #10414).
+	remoteResolutionRequeueAfter = time.Second
 )
 
 var (
@@ -354,6 +360,28 @@ func (c *Reconciler) checkContainerFailure(
 		return true, v1.TaskRunReasonImagePullFailed, message
 	}
 
+	// For CreateContainerError/CreateContainerConfigError with "context deadline exceeded",
+	// give the container runtime a grace period to recover (e.g. CRI-O under heavy load).
+	if (waiting.Reason == CreateContainerConfigError || waiting.Reason == CreateContainerError) &&
+		strings.Contains(waiting.Message, "context deadline exceeded") {
+		createContainerErrorTimeout := config.FromContextOrDefaults(ctx).Defaults.DefaultCreateContainerErrorTimeout
+		if createContainerErrorTimeout != 0 {
+			p, err := c.podLister.Pods(tr.Namespace).Get(tr.Status.PodName)
+			if err != nil {
+				message := fmt.Sprintf(`the %s %q in TaskRun %q failed to start. Failed to get pod with error: "%s."`, containerType, name, tr.Name, err)
+				return true, v1.TaskRunReasonPodCreationFailed, message
+			}
+			podConditions := []string{string(corev1.PodInitialized), "PodReadyToStartContainers"}
+			for _, condition := range p.Status.Conditions {
+				if slices.Contains(podConditions, string(condition.Type)) {
+					if c.Clock.Since(condition.LastTransitionTime.Time) < createContainerErrorTimeout {
+						return false, "", ""
+					}
+				}
+			}
+		}
+	}
+
 	// Handle CreateContainerConfigError (missing ConfigMap/Secret, invalid env vars, etc.)
 	if waiting.Reason == CreateContainerConfigError {
 		message := fmt.Sprintf(`the %s %q in TaskRun %q failed to start. The pod errored with the message: "%s."`, containerType, name, tr.Name, waiting.Message)
@@ -511,7 +539,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("TaskRun %s/%s awaiting remote resource", tr.Namespace, tr.Name)
 		tr.Status.MarkResourceOngoing(v1.TaskRunReasonResolvingTaskRef, message)
-		return nil, nil, err
+		return nil, nil, controller.NewRequeueAfter(remoteResolutionRequeueAfter)
 	case errors.Is(err, apiserver.ErrReferencedObjectValidationFailed), errors.Is(err, apiserver.ErrCouldntValidateObjectPermanent):
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonTaskFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -536,7 +564,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("TaskRun %s/%s awaiting remote StepAction", tr.Namespace, tr.Name)
 		tr.Status.MarkResourceOngoing(v1.TaskRunReasonResolvingStepActionRef, message)
-		return nil, nil, err
+		return nil, nil, controller.NewRequeueAfter(remoteResolutionRequeueAfter)
 	case errors.Is(err, apiserver.ErrReferencedObjectValidationFailed), errors.Is(err, apiserver.ErrCouldntValidateObjectPermanent):
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonTaskFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)

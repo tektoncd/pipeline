@@ -39,6 +39,10 @@ ecosystems:
         update-types:
           - version-update:semver-major
           - version-update:semver-minor
+      - dependency-name: "go.opentelemetry.io/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
     groups:
       kubernetes:
         patterns:
@@ -67,6 +71,10 @@ ecosystems:
         update-types:
           - version-update:semver-major
           - version-update:semver-minor
+      - dependency-name: "go.opentelemetry.io/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
     groups:
       kubernetes:
         patterns:
@@ -92,6 +100,10 @@ ecosystems:
       - kind/misc
     ignore:
       - dependency-name: "k8s.io/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      - dependency-name: "go.opentelemetry.io/*"
         update-types:
           - version-update:semver-major
           - version-update:semver-minor

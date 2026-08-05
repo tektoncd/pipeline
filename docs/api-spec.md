@@ -184,7 +184,7 @@ Declares a parameter whose value has to be provided at runtime
 | `name`        | string                      | REQUIRED            |                                                                                                                                                                                          |
 | `description` | string                      | REQUIRED            |                                                                                                                                                                                          |
 | `type`        | [`ParamType`](#paramtype)   | REQUIRED (see note) | The values `string` and `array` for this field are REQUIRED, and the value `object` is RECOMMENDED.                                                                                      |
-| `properties`  | map<string,PropertySpec>    | RECOMMENDED         | `PropertySpec` is a type that defines the spec of an individual key. See how to define the `properties` section in the [example](../examples/v1/taskruns/beta/object-param-result.yaml). |
+| `properties`  | map<string,PropertySpec>    | RECOMMENDED         | `PropertySpec` is a type that defines the spec of an individual key. See how to define the `properties` section in the [example](../examples/v1/taskruns/object-param-result.yaml).      |
 | `default`     | [`ParamValue`](#paramvalue) | REQUIRED            |                                                                                                                                                                                          |
 
 ### ParamType
@@ -239,7 +239,7 @@ Defines a result produced by a Task
 | `name`        | string                        | REQUIRED    | Declares the name by which a parameter is referenced.                                                                                                                                    |
 | `type`        | [`ResultsType`](#resultstype) | REQUIRED    | Type is the user-specified type of the result.  The values `string` this field is REQUIRED, and the values `array` and `object` are RECOMMENDED.                                         |
 | `description` | string                        | RECOMMENDED | Description of the result                                                                                                                                                                |
-| `properties`  | map<string,PropertySpec>      | RECOMMENDED | `PropertySpec` is a type that defines the spec of an individual key. See how to define the `properties` section in the [example](../examples/v1/taskruns/beta/object-param-result.yaml). |
+| `properties`  | map<string,PropertySpec>      | RECOMMENDED | `PropertySpec` is a type that defines the spec of an individual key. See how to define the `properties` section in the [example](../examples/v1/taskruns/object-param-result.yaml).      |
 
 ### ResultsType
 

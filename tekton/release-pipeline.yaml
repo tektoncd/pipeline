@@ -56,6 +56,12 @@ spec:
     - name: releaseName
       description: Release name (e.g. "Devon Rex Dreadnought"). If empty, uses version tag.
       default: ""
+    - name: releaseMode
+      description: |
+        Set to "nightly" to skip Chains signing verification and GitHub draft
+        release creation. Defaults to "stable" so official releases get the full
+        behaviour without needing to pass this param explicitly.
+      default: "stable"
   workspaces:
     - name: workarea
       description: The workspace where the repo will be cloned.
@@ -324,6 +330,7 @@ spec:
       runAfter: [publish-images]
       timeout: "30m"
       when:
+        - cel: "'$(params.releaseMode)' == 'stable'"
         - input: "$(workspaces.github-secret.bound)"
           operator: in
           values: ["true"]
@@ -465,6 +472,7 @@ spec:
     - name: prepare-draft-release
       runAfter: [publish-to-bucket]
       when:
+        - cel: "'$(params.releaseMode)' == 'stable'"
         - input: "$(workspaces.github-secret.bound)"
           operator: in
           values: ["true"]
@@ -541,10 +549,8 @@ spec:
     - name: create-draft-release
       runAfter: [prepare-draft-release, wait-for-chains]
       when:
+        - cel: "'$(params.releaseMode)' == 'stable'"
         - input: "$(workspaces.github-secret.bound)"
-          operator: in
-          values: ["true"]
-        - input: "$(tasks.wait-for-chains.results.signed)"
           operator: in
           values: ["true"]
       taskRef:

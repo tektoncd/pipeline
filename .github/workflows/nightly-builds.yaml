@@ -30,7 +30,7 @@ env:
 jobs:
   build:
     name: Nightly Build (K8s ${{ inputs.kubernetes_version || 'v1.33.x' }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     if: github.repository_owner == 'tektoncd'  # do not run this elsewhere
 
     permissions:
@@ -40,7 +40,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -54,7 +54,7 @@ jobs:
           echo "latest_sha=${latest_sha}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Kind cluster
-        uses: chainguard-dev/actions/setup-kind@f0be69916b439d0fcced2451b23d0f27cd46d545  # v1.6.26
+        uses: chainguard-dev/actions/setup-kind@4d37df0d85a91f619edc34a8803323033cdcb124  # v1.6.27
         with:
           k8s-version: ${{ env.KUBERNETES_VERSION }}
 
@@ -95,7 +95,12 @@ jobs:
           kubectl patch configmap feature-flags -n tekton-pipelines --patch='
           data:
             enable-cel-in-whenexpression: "true"
-          ' || true
+          '
+
+          # Restart the webhook so it picks up the feature-flag change before
+          # we apply the pipeline (which uses CEL in when expressions).
+          kubectl rollout restart deployment/tekton-pipelines-webhook -n tekton-pipelines
+          kubectl rollout status deployment/tekton-pipelines-webhook -n tekton-pipelines --timeout=60s
 
       - name: Apply Build Pipeline Definition
         run: |
@@ -170,6 +175,7 @@ jobs:
             --param serviceAccountImagesPath=docker-config.json \
             --param releaseAsLatest="true" \
             --param runTests="false" \
+            --param releaseMode="nightly" \
             --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
             --workspace name=release-secret,secret=release-secret \
             --workspace name=release-images-secret,secret=release-images-secret \
@@ -181,10 +187,13 @@ jobs:
           }
 
           echo "Pipeline started: ${PIPELINE_RUN}"
+          # Note: tkn pipelinerun logs -f exits 0 even when the PipelineRun fails,
+          # so the jq check below is the authoritative success gate.
           tkn pipelinerun logs "${PIPELINE_RUN}" -f
 
           # Check if pipeline succeeded
-          tkn pipelinerun describe "${PIPELINE_RUN}" --output jsonpath='{.status.conditions[?(@.type=="Succeeded")].status}' | grep -q "True" || {
+          tkn pipelinerun describe "${PIPELINE_RUN}" -o json \
+            | jq -e '.status.conditions[] | select(.type=="Succeeded") | .status == "True"' > /dev/null || {
             echo "Pipeline failed!"
             tkn pipelinerun describe "${PIPELINE_RUN}"
             exit 1
