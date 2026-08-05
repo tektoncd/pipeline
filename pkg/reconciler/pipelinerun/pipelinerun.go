@@ -1395,21 +1395,11 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 	// task-level computeResources, regardless of which layer set them.
 	// This follows specificity: more-specific (per-step) wins over
 	// less-specific (task-level), consistent with Kubernetes patterns.
-	if computeResources != nil && len(stepSpecs) > 0 {
-		hasStepResources := false
-		for _, s := range stepSpecs {
-			if len(s.ComputeResources.Requests) > 0 || len(s.ComputeResources.Limits) > 0 {
-				hasStepResources = true
-				break
-			}
-		}
-		if hasStepResources {
-			// Per-step resources and task-level computeResources conflict.
-			// Preserve any DRA Claims from computeResources, clear the rest.
-			if len(computeResources.Claims) > 0 {
-				computeResources = &corev1.ResourceRequirements{Claims: computeResources.Claims}
-			} else {
+	if computeResources != nil {
+		for _, spec := range stepSpecs {
+			if spec.ComputeResources.Size() != 0 {
 				computeResources = nil
+				break
 			}
 		}
 	}

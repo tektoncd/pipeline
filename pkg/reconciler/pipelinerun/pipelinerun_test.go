@@ -19575,13 +19575,13 @@ spec:
     stepSpecs:
     - name: build
       computeResources:
-        requests:
-          memory: "2Gi"
+        claims:
+        - name: build-cache
 `),
 		expectedStepSpecs: []v1.TaskRunStepSpec{{
 			Name: "build",
 			ComputeResources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+				Claims: []corev1.ResourceClaim{{Name: "build-cache"}},
 			},
 		}},
 		// computeResources should be nil because per-step resources take precedence
@@ -19617,6 +19617,8 @@ spec:
     computeResources:
       requests:
         cpu: "2"
+      claims:
+      - name: accelerator
 `),
 		// When both computeResources and stepSpecs with per-step resources exist,
 		// the stepSpecs remain (Pipeline-level since PipelineRun didn't override)
