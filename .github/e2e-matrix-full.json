@@ -1,5 +1,5 @@
 {
-  "os": ["ubuntu-latest", "ubuntu-24.04-arm"],
+  "os": ["ubuntu-latest-8-cores", "ubuntu-24.04-arm"],
   "k8s-name": ["k8s-oldest", "k8s-latest"],
   "feature-flags": ["stable", "beta", "alpha"],
   "include": [

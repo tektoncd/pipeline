@@ -51,6 +51,14 @@ The Knative [docs on dependency injection](https://github.com/knative/pkg/tree/m
 for generated reconcilers and webhooks, as well as the concept of ["informers"](https://github.com/knative/pkg/tree/main/injection#consuming-informers),
 which notify the reconcilers about other objects in the cluster.
 
+> **Note on Informer Cache Transforms**: Tekton applies [cache transform functions](../tekton-controller-performance-configuration.md#informer-cache-transform-memory-optimization)
+> to reduce memory usage. Objects retrieved from the informer cache (via listers) have large, unnecessary metadata
+> fields stripped (`managedFields` and the `last-applied-configuration` annotation). Only the controller's in-memory
+> cache is affected; the full objects always remain in etcd.
+>
+> **Developer Warning**: If you add reconciliation logic that reads a field from cached objects, verify that field
+> is not stripped by the transform. See `internal/reconciler/cachetransform/` for the complete list of stripped fields.
+
 #### Example: How does the TaskRun reconciler work?
 
 Please read ["Generated reconciler responsibilities"](https://github.com/knative/pkg/tree/main/injection#generated-reconciler-responsibilities)
@@ -70,3 +78,37 @@ It creates a pod to run the TaskRun and exits the reconcile loop.
 Later, the pod completes, resulting in another event that triggers reconciliation of the TaskRun that owns it.
 The reconciler sees that the TaskRun has a pod associated with it, and that the pod has completed. It updates the TaskRun status to mark it as completed
 and exits the reconcile loop.
+
+### Informer Cache Transforms
+
+To reduce controller memory usage, Tekton applies cache transform functions that strip unnecessary fields from objects before they are stored in the informer cache. This is implemented in `internal/reconciler/cachetransform/`.
+
+These transforms only affect the controller's **in-memory** informer cache; the full objects always remain in etcd.
+
+#### How It Works
+
+The `cachetransform.Setup` helper is called from the TaskRun and PipelineRun controller constructors (`NewController`). It calls `SharedIndexInformer.SetTransform` on the relevant informers so that objects are transformed as they enter the cache. Wiring it from the controllers (rather than globally) keeps the behaviour visible at the call sites.
+
+#### Fields Stripped
+
+**All cached objects** (PipelineRuns, TaskRuns, CustomRuns, Pods):
+- `metadata.managedFields` - Server-side apply metadata (can be 25-30% of object size)
+- `kubectl.kubernetes.io/last-applied-configuration` annotation
+
+No other fields are stripped. In particular, status fields are **not** stripped from completed objects, because several of them are still read from the cache after completion — for example `TaskRun.status.taskSpec` (read by the parent PipelineRun on every reconcile), `TaskRun.status.steps`/`status.sidecars` (used by `retryTaskRun()` and sidecar stop handling), and `PipelineRun.status.pipelineSpec` (needed once Pipelines-in-Pipelines result propagation lands). Stripping additional fields is being evaluated separately.
+
+#### Configuration
+
+The transforms are enabled by default and can be disabled by setting `enable-informer-cache-transforms: "false"` in the `feature-flags` ConfigMap. Changes require a controller restart.
+
+#### Developer Guidelines
+
+When adding new reconciliation logic:
+
+1. **Check if the field is stripped**: Review `internal/reconciler/cachetransform/` to see if the field you need is stripped from cached objects.
+
+2. **Use the API client for stripped fields**: If you need a stripped field, use the Kubernetes API client directly instead of the lister to get the full object from etcd.
+
+3. **Update transforms if needed**: If a field should not be stripped because it's needed for reconciliation, update the transform functions and add tests.
+
+4. **Consider memory impact**: Before stripping additional fields, verify they are never read from the cache, and weigh the memory savings against the added risk.

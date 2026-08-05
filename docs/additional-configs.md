@@ -32,6 +32,7 @@ installation.
   - [Verify Tekton Resources](#verify-tekton-resources)
   - [Pipelinerun with Affinity Assistant](#pipelineruns-with-affinity-assistant)
   - [TaskRuns with `imagePullBackOff` Timeout](#taskruns-with-imagepullbackoff-timeout)
+  - [TaskRuns with `CreateContainerError` Timeout](#taskruns-with-createcontainererror-timeout)
   - [Disabling Inline Spec in TaskRun and PipelineRun](#disabling-inline-spec-in-taskrun-and-pipelinerun)
   - [Exponential Backoff for TaskRun and CustomRun Creation](#exponential-backoff-for-taskrun-and-customrun-creation)
   - [Limiting Step reference concurrency resolution](#limiting-step-reference-concurrency-resolution)
@@ -178,7 +179,7 @@ _In the above example the environment variable `TEST_TEKTON` will not be overrid
 
 ## Configuring default resources requirements
 
-Resource requirements of containers created by the controller can be assigned default values. This allows to fully control the resources requirement of `TaskRun`.
+Resource requirements of containers created by the controller can be assigned default values. This allows you to fully control the resource requirements of `TaskRun` pods. Tekton does not apply resource requirements to its internal containers by default; configure this setting when your cluster policy requires requests or limits, for example in namespaces that enforce `ResourceQuota`.
 
 ```yaml
 apiVersion: v1
@@ -238,6 +239,74 @@ data:
 ```
 
 Any resource requirements set at the `Task` and `TaskRun` levels will override the default one specified in the `config-defaults` configmap.
+
+To make Tekton internal containers compatible with namespaces that require explicit requests and limits, configure named entries for `prepare`, `place-scripts`, `working-dir-initializer`, and `sidecar-tekton-log-results`, as in the following example:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-container-resource-requirements: |
+    prepare:
+      requests:
+        cpu: "100m"
+        memory: "64Mi"
+      limits:
+        cpu: "100m"
+        memory: "64Mi"
+    place-scripts:
+      requests:
+        cpu: "100m"
+        memory: "32Mi"
+      limits:
+        cpu: "100m"
+        memory: "32Mi"
+    working-dir-initializer:
+      requests:
+        cpu: "100m"
+        memory: "16Mi"
+      limits:
+        cpu: "100m"
+        memory: "16Mi"
+    sidecar-tekton-log-results:
+      requests:
+        cpu: "50m"
+        memory: "32Mi"
+      limits:
+        cpu: "50m"
+        memory: "32Mi"
+```
+
+### Performance tuning
+
+CPU **limits** on init containers cause [CFS throttling](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#how-pods-with-resource-limits-are-run), which can significantly slow down TaskRun execution — especially for the `prepare` init container that copies the entrypoint binary into every pod.
+
+If your namespace does **not** require CPU limits, you can specify only `requests`. This lets init containers burst to use available CPU while still giving the scheduler a request signal:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-container-resource-requirements: |
+    prepare:
+      requests:
+        cpu: "100m"
+        memory: "64Mi"
+    place-scripts:
+      requests:
+        cpu: "100m"
+        memory: "32Mi"
+    working-dir-initializer:
+      requests:
+        cpu: "100m"
+        memory: "16Mi"
+```
 
 ## Customizing basic execution parameters
 
@@ -721,6 +790,27 @@ metadata:
   namespace: tekton-pipelines
 data:
   default-imagepullbackoff-timeout: "5m"
+```
+
+## TaskRuns with `CreateContainerError` Timeout
+
+When the container runtime (e.g. CRI-O) is under heavy load, it may fail to create a container within the kubelet's
+`RuntimeRequestTimeout` (default 2 minutes), resulting in `CreateContainerError` or `CreateContainerConfigError` with the
+message `"context deadline exceeded"`. This is a transient error — the container runtime will typically succeed once its
+queue clears.
+
+The default value of `default-create-container-error-timeout` is `0`, which means the TaskRun fails immediately
+(fail fast) — preserving the existing behavior. To allow the controller to wait for the container runtime to recover,
+set a non-zero duration such as "1m", "5m", "10s", "1h", etc.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-create-container-error-timeout: "5m"
 ```
 
 ## Disabling Inline Spec in Pipeline, TaskRun and PipelineRun

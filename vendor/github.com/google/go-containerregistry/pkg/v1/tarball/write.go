@@ -191,16 +191,7 @@ func writeImagesToTar(imageToTags map[v1.Image][]string, m []byte, size int64, w
 			}
 			seenLayerDigests[hex] = struct{}{}
 
-			r, err := l.Compressed()
-			if err != nil {
-				return sendProgressWriterReturn(pw, err)
-			}
-			blobSize, err := l.Size()
-			if err != nil {
-				return sendProgressWriterReturn(pw, err)
-			}
-
-			if err := writeTarEntry(tf, layerFiles[i], r, blobSize); err != nil {
+			if err := writeLayer(tf, layerFiles[i], l); err != nil {
 				return sendProgressWriterReturn(pw, err)
 			}
 		}
@@ -378,6 +369,23 @@ func writeTarEntry(tf *tar.Writer, path string, r io.Reader, size int64) error {
 	}
 	_, err := io.Copy(tf, r)
 	return err
+}
+
+// writeLayer streams a layer's compressed blob into the tar writer and closes
+// the reader before returning. The close releases any pull-limiter slot held
+// by a remote-backed layer (remote.WithJobs); leaving it open would deadlock
+// the write loop after defaultJobs layers.
+func writeLayer(tf *tar.Writer, name string, l v1.Layer) error {
+	r, err := l.Compressed()
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+	blobSize, err := l.Size()
+	if err != nil {
+		return err
+	}
+	return writeTarEntry(tf, name, r, blobSize)
 }
 
 // ComputeManifest get the manifest.json that will be written to the tarball

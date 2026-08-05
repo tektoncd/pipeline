@@ -21,7 +21,7 @@ import (
 
 	bc "github.com/allegro/bigcache/v3"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/attribute"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -44,9 +44,13 @@ type EventClientsProvider interface {
 
 // ReconcileRunObject observes a v1beta1.RunObject and triggers notifications.
 func ReconcileRunObject(ctx context.Context, e EventClientsProvider, readOnlyRun v1beta1.RunObject) pkgreconciler.Event {
-	var span trace.Span
-	ctx, span = otel.GetTracerProvider().Tracer(TracerName).Start(ctx, "ReconcileRunObject")
+	ctx, span := otel.GetTracerProvider().Tracer(TracerName).Start(ctx, "ReconcileRunObject")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("run", readOnlyRun.GetObjectMeta().GetName()),
+		attribute.String("namespace", readOnlyRun.GetObjectMeta().GetNamespace()),
+		attribute.String("kind", readOnlyRun.GetObjectKind().GroupVersionKind().Kind),
+	)
 	logger := logging.FromContext(ctx)
 	ctx = cloudevent.ToContext(ctx, e.GetCloudEventsClient())
 	ctx = cache.ToContext(ctx, e.GetCacheClient())

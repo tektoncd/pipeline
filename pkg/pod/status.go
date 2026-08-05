@@ -131,7 +131,7 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 	// are completed before considering the taskRun complete, in addition to the regular containers.
 	// This is because sidecars in Kubernetes can keep running after the main containers complete.
 	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
-		complete = complete && areInitContainersCompleted(ctx, pod)
+		complete = complete && areInitContainersDone(ctx, pod)
 	}
 
 	if complete {
@@ -710,8 +710,14 @@ func isMatchingAnyFilter(name string, filters []containerNameFilter) bool {
 	return false
 }
 
-// areInitContainersCompleted returns true if all init containers in the pod are completed.
-func areInitContainersCompleted(ctx context.Context, pod *corev1.Pod) bool {
+// areInitContainersDone returns true if all init containers in the pod are
+// done — either terminated normally or stopped because the pod failed.
+// When the pod has failed (e.g. an init container was OOMKilled), nothing
+// else will run, so there is nothing left to wait for.
+func areInitContainersDone(ctx context.Context, pod *corev1.Pod) bool {
+	if pod.Status.Phase == corev1.PodFailed {
+		return true
+	}
 	if len(pod.Status.InitContainerStatuses) == 0 ||
 		!(pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodSucceeded) {
 		return false

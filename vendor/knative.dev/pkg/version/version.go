@@ -33,14 +33,21 @@ const (
 	// NOTE: If you are changing this line, please also update the minimum kubernetes
 	// version listed here:
 	// https://github.com/knative/docs/blob/main/docs/snippets/prerequisites.md
-	defaultMinimumVersion = "v1.34.0"
+
+	// DefaultKubernetesMinVersion is the default minimum Kubernetes version
+	// Knative is built and tested against. The value has a leading "v"
+	// (e.g. "v1.34.0").
+	DefaultKubernetesMinVersion = "v1.34.0"
 )
 
-func getMinimumVersion() string {
+// KubernetesMinimumVersion returns the minimum Kubernetes version required by
+// Knative. It returns the value of the KUBERNETES_MIN_VERSION environment
+// variable if set, otherwise DefaultKubernetesMinVersion.
+func KubernetesMinimumVersion() string {
 	if v := os.Getenv(KubernetesMinVersionKey); v != "" {
 		return v
 	}
-	return defaultMinimumVersion
+	return DefaultKubernetesMinVersion
 }
 
 // CheckMinimumVersion checks if the currently installed version of
@@ -59,7 +66,7 @@ func CheckMinimumVersion(versioner discovery.ServerVersionInterface) error {
 	if err != nil {
 		return err
 	}
-	minimumVersion, err := semver.Make(normalizeVersion(getMinimumVersion()))
+	minimumVersion, err := semver.Make(normalizeVersion(KubernetesMinimumVersion()))
 	if err != nil {
 		return err
 	}

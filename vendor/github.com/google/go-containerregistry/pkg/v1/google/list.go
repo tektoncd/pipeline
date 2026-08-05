@@ -17,6 +17,7 @@ package google
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -143,7 +144,7 @@ func (l *lister) list(repo name.Repository) (*Tags, error) {
 		// This isn't GCR, just append the tags and keep paginating.
 		tags.Tags = append(tags.Tags, parsed.Tags...)
 
-		uri, err = getNextPageURL(resp)
+		uri, err = getNextPageURL(resp, repo)
 		if err != nil {
 			return nil, err
 		}
@@ -159,8 +160,11 @@ func (l *lister) list(repo name.Repository) (*Tags, error) {
 
 // getNextPageURL checks if there is a Link header in a http.Response which
 // contains a link to the next page. If yes it returns the url.URL of the next
-// page otherwise it returns nil.
-func getNextPageURL(resp *http.Response) (*url.URL, error) {
+// page otherwise it returns nil. It validates that the resolved URL points
+// to the same registry to prevent SSRF attacks where a malicious registry
+// could redirect pagination requests to internal services like cloud metadata
+// endpoints.
+func getNextPageURL(resp *http.Response, repo name.Repository) (*url.URL, error) {
 	link := resp.Header.Get("Link")
 	if link == "" {
 		return nil, nil
@@ -175,6 +179,9 @@ func getNextPageURL(resp *http.Response) (*url.URL, error) {
 		return nil, fmt.Errorf("failed to parse link header: missing '>' in: %s", link)
 	}
 	link = link[1:end]
+	if link == "" {
+		return nil, nil
+	}
 
 	linkURL, err := url.Parse(link)
 	if err != nil {
@@ -184,7 +191,31 @@ func getNextPageURL(resp *http.Response) (*url.URL, error) {
 		return nil, nil
 	}
 	linkURL = resp.Request.URL.ResolveReference(linkURL)
+
+	// Validate that the pagination URL points to the same registry to prevent SSRF.
+	if err := validatePaginationURL(linkURL, repo); err != nil {
+		return nil, err
+	}
+
 	return linkURL, nil
+}
+
+// validatePaginationURL checks that a pagination URL is safe to follow.
+// It ensures the URL points to the same registry host to prevent SSRF attacks
+// where a malicious registry could include a Link header pointing to internal
+// services (e.g., cloud metadata endpoints at 169.254.169.254).
+func validatePaginationURL(u *url.URL, repo name.Repository) error {
+	// Must use same scheme as the registry
+	if u.Scheme != repo.Scheme() {
+		return fmt.Errorf("pagination URL scheme %q does not match registry scheme %q", u.Scheme, repo.Scheme())
+	}
+
+	// Must point to the same registry host
+	if u.Host != repo.RegistryStr() {
+		return errors.New("pagination URL host does not match registry host: potential SSRF attack")
+	}
+
+	return nil
 }
 
 type rawManifestInfo struct {

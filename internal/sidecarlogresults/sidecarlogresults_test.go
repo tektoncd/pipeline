@@ -259,6 +259,63 @@ func TestExtractResultsFromLogs(t *testing.T) {
 	}
 }
 
+// TestExtractResultsFromLogs_LargeResult is a regression test for
+// https://github.com/tektoncd/pipeline/issues/10402
+// Results whose JSON line exceeds bufio.Reader's default 4096-byte buffer
+// but is within maxResultLimit must be extracted correctly.
+func TestExtractResultsFromLogs_LargeResult(t *testing.T) {
+	// Value >4096 bytes but within maxResultLimit (8192)
+	largeValue := strings.Repeat("x", 5000)
+	inputResults := []SidecarLogResult{
+		{
+			Name:  "small-result",
+			Value: "hello",
+			Type:  "task",
+		},
+		{
+			Name:  "large-result",
+			Value: largeValue,
+			Type:  "task",
+		},
+		{
+			Name:  "after-large",
+			Value: "world",
+			Type:  "task",
+		},
+	}
+	podLogs := ""
+	for _, r := range inputResults {
+		res, _ := json.Marshal(&r)
+		podLogs = fmt.Sprintf("%s%s\n", podLogs, string(res))
+	}
+	logs := strings.NewReader(podLogs)
+
+	results, err := extractResultsFromLogs(logs, []result.RunResult{}, 8192)
+	if err != nil {
+		t.Fatalf("expected no error but got: %v", err)
+	}
+	want := []result.RunResult{
+		{
+			Key:        "small-result",
+			Value:      "hello",
+			ResultType: result.TaskRunResultType,
+		},
+		{
+			Key:        "large-result",
+			Value:      largeValue,
+			ResultType: result.TaskRunResultType,
+		},
+		{
+			Key:        "after-large",
+			Value:      "world",
+			ResultType: result.TaskRunResultType,
+		},
+	}
+	if d := cmp.Diff(want, results); d != "" {
+		t.Fatalf("results mismatch (-want +got):\n%s", d)
+	}
+}
+
 func TestExtractResultsFromLogs_Failure(t *testing.T) {
 	inputResults := []SidecarLogResult{
 		{

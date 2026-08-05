@@ -15,6 +15,7 @@ WOKE_VERSION     = v0.19.0
 GO           = go
 TIMEOUT_UNIT = 5m
 TIMEOUT_E2E  = 20m
+DEFAULT_GOTESTSUM_FORMAT ?= testdox
 V = 0
 Q = $(if $(filter 1,$V),,@)
 M = $(shell printf "\033[34;1m🐱\033[0m")
@@ -90,7 +91,11 @@ test-unit-verbose-and-race: ARGS=-v -race
 $(TEST_UNIT_TARGETS): test-unit
 .PHONY: $(TEST_UNIT_TARGETS) test-unit
 test-unit: ## Run unit tests
-	$(GO) test -timeout $(TIMEOUT_UNIT) $(ARGS) ./...
+	@if command -v gotestsum >/dev/null 2>&1; then \
+		gotestsum --format $(DEFAULT_GOTESTSUM_FORMAT) -- $(ARGS) -timeout $(TIMEOUT_UNIT) ./...; \
+	else \
+		$(GO) test -timeout $(TIMEOUT_UNIT) $(ARGS) ./...; \
+	fi
 
 TEST_E2E_TARGETS := test-e2e-short test-e2e-verbose test-e2e-race
 test-e2e-short:   ARGS=-short

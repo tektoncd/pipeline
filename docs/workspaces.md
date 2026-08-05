@@ -12,6 +12,7 @@ weight: 405
   - [`Workspaces` in `Pipelines` and `PipelineRuns`](#workspaces-in-pipelines-and-pipelineruns)
   - [Optional `Workspaces`](#optional-workspaces)
   - [Isolated `Workspaces`](#isolated-workspaces)
+  - [Workspace isolation across trust boundaries](#workspace-isolation-across-trust-boundaries)
 - [Configuring `Workspaces`](#configuring-workspaces)
   - [Using `Workspaces` in `Tasks`](#using-workspaces-in-tasks)
     - [Isolating `Workspaces` to Specific `Steps` or `Sidecars`](#isolating-workspaces-to-specific-steps-or-sidecars)
@@ -109,8 +110,30 @@ authors can isolate `Workspaces` to only those `Steps` and `Sidecars` that requi
 them. The primary use-case for this is credentials but it can apply to any data that should have
 its access strictly limited to only specific container images.
 
+Isolated `Workspaces` limit access within a single `Task`. They do not provide
+storage isolation between separate `PipelineRuns` that bind the same
+`PersistentVolumeClaim`.
+
 See the section [Isolating `Workspaces` to Specific `Steps` or `Sidecars`](#isolating-workspaces-to-specific-steps-or-sidecars)
 for more info on this feature.
+
+### Workspace isolation across trust boundaries
+
+Tekton does not enforce filesystem-level isolation between `PipelineRuns` that
+intentionally bind the same persistent workspace. When two `PipelineRuns` mount
+the same `PersistentVolumeClaim`, each run's Pods can access the same files
+according to the PVC access mode, Kubernetes volume permissions, and container
+security context.
+
+Use `volumeClaimTemplate` when a `PipelineRun` needs a writeable persistent
+workspace that should be isolated from other runs. Avoid binding the same
+existing PVC to pipelines that operate at different trust levels, such as
+untrusted pull-request validation and trusted release automation. In particular,
+`ReadWriteMany` PVCs are shared Kubernetes filesystems that can be mounted by
+multiple Pods concurrently; Tekton does not add another isolation boundary on
+top of that behavior.
+
+For more guidance, see [Security Best Practices](./security/README.md#workspace-isolation-across-trust-boundaries).
 
 ## Configuring `Workspaces`
 
@@ -425,8 +448,10 @@ options differ for each type. `Workspaces` support the following fields:
 #### Using `PersistentVolumeClaims` as `VolumeSource`
 
 `PersistentVolumeClaim` volumes are a good choice for sharing data among `Tasks` within a `Pipeline`.
+If storage should be isolated for each run, use a `volumeClaimTemplate` instead of an existing
+`persistentVolumeClaim`.
 Beware that the [access mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
-configured for the `PersistentVolumeClaim` effects how you can use the volume for parallel `Tasks` in a `Pipeline`. See
+configured for the `PersistentVolumeClaim` affects how you can use the volume for parallel `Tasks` in a `Pipeline`. See
 [Specifying `workspace` order in a `Pipeline` and Affinity Assistants](#specifying-workspace-order-in-a-pipeline-and-affinity-assistants) for more information about this.
 There are two ways of using `PersistentVolumeClaims` as a `VolumeSource`.
 
@@ -435,6 +460,9 @@ There are two ways of using `PersistentVolumeClaims` as a `VolumeSource`.
 The `volumeClaimTemplate` is a template of a [`PersistentVolumeClaim` volume](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim),
 created for each `PipelineRun` or `TaskRun`. When the volume is created from a template in a `PipelineRun` or `TaskRun` 
 it will be deleted when the `PipelineRun` or `TaskRun` is deleted.
+
+Use `volumeClaimTemplate` for writeable workspaces that should be isolated per run, especially when runs are triggered
+by inputs at different trust levels.
 
 ```yaml
 workspaces:
@@ -451,6 +479,10 @@ workspaces:
 ##### `persistentVolumeClaim`
 
 The `persistentVolumeClaim` field references an *existing* [`persistentVolumeClaim` volume](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim). The example exposes only the subdirectory `my-subdir` from that `PersistentVolumeClaim`
+
+**Caution:** Binding an existing `PersistentVolumeClaim` can share data across `PipelineRuns`.
+Do not use the same PVC for pipelines that operate at different trust levels unless the sharing is intentional and safe
+for every workload that can mount the claim.
 
 ```yaml
 workspaces:
@@ -593,7 +625,8 @@ the storage solution that you are using.
   in some way before use. Dynamically provided volumes can usually not be used in read-only mode.
 
 * `ReadWriteMany` is the least commonly available Access Mode. If you use this access mode and these volumes are available
-  to all Nodes within your cluster, you may want to disable the Affinity Assistant.
+  to all Nodes within your cluster, you may want to disable the Affinity Assistant. Any Pod that is allowed to mount a
+  `ReadWriteMany` PVC can access the same filesystem concurrently, so do not share one across trust boundaries.
 
 ### Availability Zones
 `Persistent Volumes` are "zonal" in some cloud providers like GKE (i.e. they live within a single Availability Zone and cannot be accessed from a `pod` living in another Availability Zone). When using a workspace backed by a `PersistentVolumeClaim` (typically only available within a Data Center), the `TaskRun` `pods` can be scheduled to any Availability Zone in a regional cluster. This results in potential Availability Zone scheduling conflict when two `pods` requiring the same Volume are scheduled to different Availability Zones (see issue [#3480](https://github.com/tektoncd/pipeline/issues/3480) and [#5275](https://github.com/tektoncd/pipeline/issues/5275)).

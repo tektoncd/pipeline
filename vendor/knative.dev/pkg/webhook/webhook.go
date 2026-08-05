@@ -395,7 +395,9 @@ func (wh *Webhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wh.mux.ServeHTTP(w, r)
+	const MaxBodySize = 3 * 1024 * 1024 // 3 MiB
+	h := http.MaxBytesHandler(&wh.mux, MaxBodySize)
+	h.ServeHTTP(w, r)
 }
 
 type routeLabeler struct {

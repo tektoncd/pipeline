@@ -72,9 +72,15 @@ var _ reconciler.LeaderAware = &Reconciler{}
 // the framework.TimedResolution interface.
 const defaultMaximumResolutionDuration = time.Minute
 
+// allowedResourceKinds lists the kinds of resources which
+// are allowed to be resolved by resolvers
 var allowedResourceKinds = []string{
+	pipelineapi.PipelineRunControllerName,
 	pipelineapi.PipelineControllerName,
+	pipelineapi.TaskRunControllerName,
 	pipelineapi.TaskControllerName,
+	pipelineapi.RunControllerName,
+	pipelineapi.CustomRunControllerName,
 	pipelinev1beta1.StepActionKind,
 }
 
@@ -88,6 +94,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 	if err != nil {
 		err = &resolutioncommon.InvalidResourceKeyError{Key: key, Original: err}
 		return controller.NewPermanentError(err)
+	}
+
+	// Resolver controllers use controller.NewContext directly rather than a
+	// generated reconciler, so they must enforce bucket ownership here.
+	if !r.IsLeaderFor(types.NamespacedName{Namespace: namespace, Name: name}) {
+		return controller.NewSkipKey(key)
 	}
 
 	rr, err := r.resolutionRequestLister.ResolutionRequests(namespace).Get(name)

@@ -37,7 +37,6 @@ import (
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/version"
@@ -138,20 +137,6 @@ var (
 
 	// MaxActiveDeadlineSeconds is a maximum permitted value to be used for a task with no timeout
 	MaxActiveDeadlineSeconds = int64(math.MaxInt32)
-
-	// internalContainerDefaultCPU is the default CPU request for lightweight init containers (prepare, working-dir-initializer).
-	internalContainerDefaultCPU = resource.MustParse("10m")
-	// internalContainerDefaultScriptCPU is the default CPU request for the script materialization init container.
-	// This init container can process large inline scripts, so avoid throttling it as aggressively as the lightweight init containers.
-	internalContainerDefaultScriptCPU = resource.MustParse("100m")
-	// internalContainerDefaultSidecarCPU is the default CPU request for the results sidecar which runs continuously.
-	internalContainerDefaultSidecarCPU = resource.MustParse("50m")
-	// internalContainerDefaultPrepareMemory is the default memory request for the prepare init container.
-	internalContainerDefaultPrepareMemory = resource.MustParse("32Mi")
-	// internalContainerDefaultMemorySmall is the default memory request (16Mi) for working-dir-initializer.
-	internalContainerDefaultMemorySmall = resource.MustParse("16Mi")
-	// internalContainerDefaultMemoryMedium is the default memory request (32Mi) for place-scripts and results sidecar.
-	internalContainerDefaultMemoryMedium = resource.MustParse("32Mi")
 )
 
 // IsInternalContainer returns true if the container name is one of Tekton's
@@ -663,16 +648,6 @@ func entrypointInitContainer(image string, steps []v1.Step, securityContext Secu
 		WorkingDir:   "/",
 		Command:      command,
 		VolumeMounts: volumeMounts,
-		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    internalContainerDefaultCPU,
-				corev1.ResourceMemory: internalContainerDefaultPrepareMemory,
-			},
-			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    internalContainerDefaultCPU,
-				corev1.ResourceMemory: internalContainerDefaultPrepareMemory,
-			},
-		},
 	}
 	if securityContext.SetSecurityContext {
 		prepareInitContainer.SecurityContext = securityContext.GetSecurityContext(windows)
@@ -738,16 +713,6 @@ func createResultsSidecar(taskSpec v1.TaskSpec, image string, securityContext Se
 			{
 				Name:  "SIDECAR_LOG_POLLING_INTERVAL",
 				Value: pollingInterval.String(),
-			},
-		},
-		ComputeResources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    internalContainerDefaultSidecarCPU,
-				corev1.ResourceMemory: internalContainerDefaultMemoryMedium,
-			},
-			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    internalContainerDefaultSidecarCPU,
-				corev1.ResourceMemory: internalContainerDefaultMemoryMedium,
 			},
 		},
 	}

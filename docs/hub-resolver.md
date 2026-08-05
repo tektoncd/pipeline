@@ -13,9 +13,9 @@ Use resolver type `hub`.
 
 | Param Name       | Description                                                                   | Example Value                                              |
 |------------------|-------------------------------------------------------------------------------|------------------------------------------------------------|
-| `catalog`        | The catalog from where to pull the resource (Optional)                        | Default:  `tekton-catalog-tasks` (for `task` kind);  `tekton-catalog-pipelines` (for `pipeline` kind)                                        |
+| `catalog`        | The catalog from where to pull the resource (Optional)                        | Default:  `tekton-catalog-tasks` (for `task` kind);  `tekton-catalog-pipelines` (for `pipeline` kind); no default for `stepaction` kind, so `catalog` must be set explicitly |
 | `type`           | The type of Hub from where to pull the resource (Optional). Either `artifact` or `tekton` | Default:  `artifact` (recommended). Note: `tekton` type is deprecated.                                         |
-| `kind`           | Either `task` or `pipeline` (Optional)                                        | Default: `task`                                                     |
+| `kind`           | `task`, `pipeline` or `stepaction` (Optional)                                        | Default: `task`                                                     |
 | `name`           | The name of the task or pipeline to fetch from the hub                        | `golang-build`                                             |
 | `version`        | Version or a Constraint (see [below](#version-constraint) of a task or a pipeline to pull in from. Wrap the number in quotes!   | `"0.5.0"`, `">= 0.5.0"`                                                    |
 | `url`            | Custom hub API endpoint to query instead of the cluster-configured default (Optional). Must be an absolute HTTP or HTTPS URL. Overrides all other URL configuration (ConfigMap URL lists, environment variables, and defaults). | `https://internal-hub.example.com`                        |
@@ -129,6 +129,33 @@ spec:
   # Note: the buildpacks pipeline requires parameters.
   # Resolution of the pipeline will succeed but the PipelineRun
   # overall will not succeed without those parameters.
+```
+
+### StepAction Resolution
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: hub-stepaction-demo
+spec:
+  taskSpec:
+    steps:
+    - name: git-clone
+      ref:
+        resolver: hub
+        params:
+        - name: catalog
+          value: git-clone-stepaction
+        - name: type # optional
+          value: artifact
+        - name: kind
+          value: stepaction
+        - name: name
+          value: git-clone
+        - name: version
+          value: "1.6.0"
+  # Note: Artifact Hub StepAction packages use the tekton-stepaction package type
 ```
 
 ### Task Resolution from a Private Hub

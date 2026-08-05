@@ -277,8 +277,8 @@ func (i *impl) GetObservers(obj interface{}) []types.NamespacedName {
 				keys = append(keys, key)
 			}
 		}
-		if len(s) == 0 {
-			delete(i.exact, ref)
+		if len(ms) == 0 {
+			delete(i.inexact, ref)
 		}
 	}
 
@@ -309,7 +309,7 @@ func (i *impl) OnDeletedObserver(obj interface{}) {
 	for ref, matchers := range i.inexact {
 		delete(matchers, key)
 		if len(matchers) == 0 {
-			delete(i.exact, ref)
+			delete(i.inexact, ref)
 		}
 	}
 }

@@ -20,7 +20,7 @@ limitations under the License.
 package tools
 
 import (
-	_ "github.com/ahmetb/gen-crd-api-reference-docs"
+	_ "github.com/elastic/crd-ref-docs"
 	_ "github.com/tektoncd/plumbing"
 	_ "github.com/tektoncd/plumbing/cmd/combine"
 	_ "github.com/tektoncd/plumbing/scripts"

@@ -567,6 +567,26 @@ func TestTaskSpecValidate(t *testing.T) {
 				hello "$(context.taskRun.namespace)"`,
 			}},
 		},
+	}, {
+		name: "valid step script with both step results and task results",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Name:  "collect-data",
+				Image: "my-image",
+				Script: `
+				#!/usr/bin/env sh
+				echo -n "value" > $(step.results.stepResult.path)
+				echo -n "other" > $(results.taskResult.path)`,
+				Results: []v1.StepResult{{
+					Name: "stepResult",
+					Type: v1.ResultsTypeString,
+				}},
+			}},
+			Results: []v1beta1.TaskResult{{
+				Name: "taskResult",
+				Type: v1beta1.ResultsTypeString,
+			}},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -2486,7 +2506,7 @@ func TestTaskSpecValidate_StepResults_Error(t *testing.T) {
 			Results: []v1.StepResult{{Name: "a-result"}},
 		},
 		expectedError: apis.FieldError{
-			Message: "non-existent variable `non-exist` in \"\\n\\t\\t\\t#!/usr/bin/env bash\\n\\t\\t\\tdate | tee $(results.non-exist.path)\": steps[0].script\nnon-existent variable in \"\\n\\t\\t\\t#!/usr/bin/env bash\\n\\t\\t\\tdate | tee $(results.non-exist.path)\"",
+			Message: "non-existent variable `non-exist` in \"\\n\\t\\t\\t#!/usr/bin/env bash\\n\\t\\t\\tdate | tee $(results.non-exist.path)\"",
 			Paths:   []string{"steps[0].script"},
 		},
 	}, {

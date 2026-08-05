@@ -63,37 +63,57 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 		}
 	}
 
-	switch {
-	case pr != nil && pr.Resolver != "" && requester != nil:
-		return func(ctx context.Context, name string) (*v1.Pipeline, *v1.RefSource, *trustedresources.VerificationResult, error) {
-			stringReplacements, arrayReplacements, objectReplacements := paramsFromPipelineRun(pipelineRun)
-			for k, v := range GetContextReplacements("", pipelineRun) {
-				stringReplacements[k] = v
-			}
-			replacedParams := pr.Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)
-			var url string
-			// The name is url-like so its not a local reference.
-			if err := v1.RefNameLikeUrl(pr.Name); err == nil {
-				// apply variable replacements in the name.
-				pr.Name = substitution.ApplyReplacements(pr.Name, stringReplacements)
-				url = pr.Name
-			}
-			resolverPayload := remoteresource.ResolverPayload{
-				ResolutionSpec: &resolutionV1beta1.ResolutionRequestSpec{
-					Params: replacedParams,
-					URL:    url,
-				},
-			}
-			resolver := resolution.NewResolver(requester, pipelineRun, string(pr.Resolver), resolverPayload)
-			return resolvePipeline(ctx, resolver, name, namespace, k8s, tekton, verificationPolicies)
+	if pr != nil && pr.Resolver != "" && requester != nil {
+		return pipelineResolverFunc(ctx, k8s, tekton, requester, pipelineRun, pr, namespace, verificationPolicies)
+	}
+
+	// Even if there is no pipeline ref, we should try to return a local resolver.
+	local := &LocalPipelineRefResolver{
+		Namespace:    namespace,
+		Tektonclient: tekton,
+	}
+	return local.GetPipeline
+}
+
+// GetChildPipelineFunc is a factory function that will use the given PipelineRef from a PipelineTask
+// to return a valid GetPipeline function that looks up the pipeline. It handles both local cluster
+// and remote resolution.
+func GetChildPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, pipelineRun *v1.PipelineRun, pipelineRef *v1.PipelineRef, verificationPolicies []*v1alpha1.VerificationPolicy) rprp.GetPipeline {
+	namespace := pipelineRun.Namespace
+
+	if pipelineRef != nil && pipelineRef.Resolver != "" && requester != nil {
+		return pipelineResolverFunc(ctx, k8s, tekton, requester, pipelineRun, pipelineRef, namespace, verificationPolicies)
+	}
+
+	local := &LocalPipelineRefResolver{
+		Namespace:    namespace,
+		Tektonclient: tekton,
+	}
+	return local.GetPipeline
+}
+
+// pipelineResolverFunc returns a GetPipeline function that resolves a pipeline using a remote resolver.
+// It is shared by GetPipelineFunc and GetChildPipelineFunc to avoid code duplication.
+func pipelineResolverFunc(_ context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, pipelineRun *v1.PipelineRun, pipelineRef *v1.PipelineRef, namespace string, verificationPolicies []*v1alpha1.VerificationPolicy) rprp.GetPipeline {
+	return func(ctx context.Context, name string) (*v1.Pipeline, *v1.RefSource, *trustedresources.VerificationResult, error) {
+		stringReplacements, arrayReplacements, objectReplacements := paramsFromPipelineRun(pipelineRun)
+		for k, v := range GetContextReplacements("", pipelineRun) {
+			stringReplacements[k] = v
 		}
-	default:
-		// Even if there is no pipeline ref, we should try to return a local resolver.
-		local := &LocalPipelineRefResolver{
-			Namespace:    namespace,
-			Tektonclient: tekton,
+		replacedParams := pipelineRef.Params.ReplaceVariables(stringReplacements, arrayReplacements, objectReplacements)
+		var url string
+		if err := v1.RefNameLikeUrl(pipelineRef.Name); err == nil {
+			pipelineRef.Name = substitution.ApplyReplacements(pipelineRef.Name, stringReplacements)
+			url = pipelineRef.Name
 		}
-		return local.GetPipeline
+		resolverPayload := remoteresource.ResolverPayload{
+			ResolutionSpec: &resolutionV1beta1.ResolutionRequestSpec{
+				Params: replacedParams,
+				URL:    url,
+			},
+		}
+		resolver := resolution.NewResolver(requester, pipelineRun, string(pipelineRef.Resolver), resolverPayload)
+		return resolvePipeline(ctx, resolver, name, namespace, k8s, tekton, verificationPolicies)
 	}
 }
 

@@ -1,0 +1,31 @@
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - main: ./main.go
+    goos:
+      - linux
+      - windows
+      - darwin
+    ldflags: -s -w -X main.buildVersion={{.Tag}} -X main.buildCommit={{.ShortCommit}} -X main.buildDate={{.Date}}
+    env:
+      - CGO_ENABLED=0
+archives:
+  - name_template: >-
+      {{- .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - LICENSE
+      - README.md
+checksum:
+  name_template: 'checksums.txt'
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
