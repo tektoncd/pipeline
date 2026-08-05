@@ -19314,7 +19314,7 @@ spec:
 			},
 		}},
 	}, {
-		name: "PipelineRun-level stepSpecs override Pipeline-level",
+		name: "PipelineRun-level stepSpecs atomically replace Pipeline-level",
 		pipeline: parse.MustParseV1Pipeline(t, `
 metadata:
   name: p
@@ -19327,9 +19327,15 @@ spec:
       computeResources:
         requests:
           memory: "4Gi"
+    - name: test
+      computeResources:
+        requests:
+          memory: "2Gi"
     taskSpec:
       steps:
       - name: build
+        image: foo
+      - name: test
         image: foo
 `),
 		pipelineRun: parse.MustParseV1PipelineRun(t, `
@@ -19390,7 +19396,7 @@ spec:
 			},
 		}},
 	}, {
-		name: "PipelineRun-level sidecarSpecs override Pipeline-level",
+		name: "PipelineRun-level sidecarSpecs atomically replace Pipeline-level",
 		pipeline: parse.MustParseV1Pipeline(t, `
 metadata:
   name: p
@@ -19403,6 +19409,10 @@ spec:
       computeResources:
         requests:
           cpu: "250m"
+    - name: metrics
+      computeResources:
+        requests:
+          cpu: "100m"
     taskSpec:
       steps:
       - name: build
@@ -19410,6 +19420,8 @@ spec:
       sidecars:
       - name: logging
         image: log-image
+      - name: metrics
+        image: metrics-image
 `),
 		pipelineRun: parse.MustParseV1PipelineRun(t, `
 metadata:
