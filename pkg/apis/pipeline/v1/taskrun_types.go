@@ -359,6 +359,11 @@ type TaskRunStatusFields struct {
 
 	// SpanContext contains tracing span context fields
 	SpanContext map[string]string `json:"spanContext,omitempty"`
+
+	// ResolvedTaskNamespace is the namespace of the resolved Task, used for
+	// cross-namespace StepAction resolution. Set by the controller, not user-modifiable.
+	// +optional
+	ResolvedTaskNamespace string `json:"resolvedTaskNamespace,omitempty"`
 }
 
 // TaskRunStepSpec is used to override the values of a Step in the corresponding Task.
