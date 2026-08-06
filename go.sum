@@ -900,8 +900,8 @@ github.com/shurcooL/graphql v0.0.0-20181231061246-d48a9a75455f/go.mod h1:AuYgA5K
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
 github.com/sigstore/protobuf-specs v0.5.1 h1:/5OPaNuolRJmQfeZLayJGFXMpsRJEdgC6ah1/+7Px7U=
 github.com/sigstore/protobuf-specs v0.5.1/go.mod h1:DRBzpFuE+LnvQMN10/dU6nBeKwVLGEQ6o2FovN2Rats=
-github.com/sigstore/sigstore v1.10.8 h1:1Mgkxvkw4AXMfIP1DOjc6kw0GkUgA8pGVpveN/EfOq4=
-github.com/sigstore/sigstore v1.10.8/go.mod h1:f9+B/4iaYimvUkySyb2mvc73n3RLqNn24grHZM/ET8M=
+github.com/sigstore/sigstore v1.10.9 h1:7Dcpt+ibnltHQZ8XhaU0dFmhHaf/T491eJfA9WDex4Y=
+github.com/sigstore/sigstore v1.10.9/go.mod h1:LYW9+qH7bK8wZmLm6lPxIC5lkHtkJDCgkqjChzTAIBs=
 github.com/sigstore/sigstore/pkg/signature/kms/aws v1.10.9 h1:2NWAU/utJRwzy1OrQurlY3wlDSynyH1rNJS5GgFchrg=
 github.com/sigstore/sigstore/pkg/signature/kms/aws v1.10.9/go.mod h1:2shgYiPHTzeb5NNEu6okco+LOojMS5n9p/5Wdp0jhGI=
 github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.9 h1:zcg/EG6JW/8RSx9T2g5j6zqxplaE4dymmhiFflDE6ks=
