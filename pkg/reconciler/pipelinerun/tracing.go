@@ -27,6 +27,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 )
 
@@ -113,8 +114,12 @@ func tracerFromContext(ctx context.Context) trace.Tracer {
 // recordSpanError marks the span as failed and records the error, mirroring the
 // convention used by the notifications reconcilers.
 func recordSpanError(span trace.Span, err error) {
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		span.RecordError(err)
+	if err == nil {
+		return
 	}
+	if ok, _ := controller.IsRequeueKey(err); ok {
+		return
+	}
+	span.SetStatus(codes.Error, err.Error())
+	span.RecordError(err)
 }
