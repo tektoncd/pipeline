@@ -450,6 +450,26 @@ func (m *validateOpGenerateMac) HandleInitialize(ctx context.Context, in middlew
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpGetKeyLastUsage struct {
+}
+
+func (*validateOpGetKeyLastUsage) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpGetKeyLastUsage) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*GetKeyLastUsageInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpGetKeyLastUsageInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpGetKeyPolicy struct {
 }
 
@@ -625,26 +645,6 @@ func (m *validateOpListResourceTags) HandleInitialize(ctx context.Context, in mi
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpListResourceTagsInput(input); err != nil {
-		return out, metadata, err
-	}
-	return next.HandleInitialize(ctx, in)
-}
-
-type validateOpListRetirableGrants struct {
-}
-
-func (*validateOpListRetirableGrants) ID() string {
-	return "OperationInputValidation"
-}
-
-func (m *validateOpListRetirableGrants) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
-	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
-) {
-	input, ok := in.Parameters.(*ListRetirableGrantsInput)
-	if !ok {
-		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
-	}
-	if err := validateOpListRetirableGrantsInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -1038,6 +1038,10 @@ func addOpGenerateMacValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpGenerateMac{}, middleware.After)
 }
 
+func addOpGetKeyLastUsageValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpGetKeyLastUsage{}, middleware.After)
+}
+
 func addOpGetKeyPolicyValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpGetKeyPolicy{}, middleware.After)
 }
@@ -1072,10 +1076,6 @@ func addOpListKeyRotationsValidationMiddleware(stack *middleware.Stack) error {
 
 func addOpListResourceTagsValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpListResourceTags{}, middleware.After)
-}
-
-func addOpListRetirableGrantsValidationMiddleware(stack *middleware.Stack) error {
-	return stack.Initialize.Add(&validateOpListRetirableGrants{}, middleware.After)
 }
 
 func addOpPutKeyPolicyValidationMiddleware(stack *middleware.Stack) error {
@@ -1266,9 +1266,6 @@ func validateOpCreateGrantInput(v *CreateGrantInput) error {
 	invalidParams := smithy.InvalidParamsError{Context: "CreateGrantInput"}
 	if v.KeyId == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("KeyId"))
-	}
-	if v.GranteePrincipal == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("GranteePrincipal"))
 	}
 	if v.Operations == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("Operations"))
@@ -1558,6 +1555,21 @@ func validateOpGenerateMacInput(v *GenerateMacInput) error {
 	}
 }
 
+func validateOpGetKeyLastUsageInput(v *GetKeyLastUsageInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "GetKeyLastUsageInput"}
+	if v.KeyId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("KeyId"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpGetKeyPolicyInput(v *GetKeyPolicyInput) error {
 	if v == nil {
 		return nil
@@ -1697,21 +1709,6 @@ func validateOpListResourceTagsInput(v *ListResourceTagsInput) error {
 	invalidParams := smithy.InvalidParamsError{Context: "ListResourceTagsInput"}
 	if v.KeyId == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("KeyId"))
-	}
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	} else {
-		return nil
-	}
-}
-
-func validateOpListRetirableGrantsInput(v *ListRetirableGrantsInput) error {
-	if v == nil {
-		return nil
-	}
-	invalidParams := smithy.InvalidParamsError{Context: "ListRetirableGrantsInput"}
-	if v.RetiringPrincipal == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("RetiringPrincipal"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
