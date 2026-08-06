@@ -53,8 +53,8 @@ fortio.org/safecast
 # github.com/42wim/httpsig v1.2.3
 ## explicit; go 1.23.0
 github.com/42wim/httpsig
-# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.0
-## explicit; go 1.24.0
+# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.22.0
+## explicit; go 1.25.0
 github.com/Azure/azure-sdk-for-go/sdk/azcore
 github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/internal/resource
 github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy
@@ -82,8 +82,8 @@ github.com/Azure/azure-sdk-for-go/sdk/azidentity/internal
 # github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.3
 ## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry
-# github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2
-## explicit; go 1.23.0
+# github.com/Azure/azure-sdk-for-go/sdk/internal v1.12.0
+## explicit; go 1.24.0
 github.com/Azure/azure-sdk-for-go/sdk/internal/diag
 github.com/Azure/azure-sdk-for-go/sdk/internal/errorinfo
 github.com/Azure/azure-sdk-for-go/sdk/internal/exported
@@ -91,13 +91,13 @@ github.com/Azure/azure-sdk-for-go/sdk/internal/log
 github.com/Azure/azure-sdk-for-go/sdk/internal/poller
 github.com/Azure/azure-sdk-for-go/sdk/internal/temporal
 github.com/Azure/azure-sdk-for-go/sdk/internal/uuid
-# github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys v1.4.0
-## explicit; go 1.23.0
+# github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys v1.5.0
+## explicit; go 1.25.0
 github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys
 # github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.2.0
 ## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal
-# github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0
+# github.com/AzureAD/microsoft-authentication-library-for-go v1.7.0
 ## explicit; go 1.18
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/cache
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential
@@ -387,7 +387,7 @@ github.com/gobuffalo/flect
 # github.com/goccy/kpoward v0.1.0
 ## explicit; go 1.17
 github.com/goccy/kpoward
-# github.com/golang-jwt/jwt/v5 v5.3.0
+# github.com/golang-jwt/jwt/v5 v5.3.1
 ## explicit; go 1.21
 github.com/golang-jwt/jwt/v5
 # github.com/google/cel-go v0.28.1
@@ -713,7 +713,7 @@ github.com/sigstore/sigstore/pkg/signature/payload
 # github.com/sigstore/sigstore/pkg/signature/kms/aws v1.10.9
 ## explicit; go 1.25.0
 github.com/sigstore/sigstore/pkg/signature/kms/aws
-# github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.8
+# github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.9
 ## explicit; go 1.25.0
 github.com/sigstore/sigstore/pkg/signature/kms/azure
 # github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.10.8
