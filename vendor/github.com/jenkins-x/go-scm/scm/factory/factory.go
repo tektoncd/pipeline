@@ -26,7 +26,7 @@ import (
 )
 
 // ErrMissingGitServerURL the error returned if you use a git driver that needs a git server URL
-var ErrMissingGitServerURL = fmt.Errorf("No git serverURL was specified")
+var ErrMissingGitServerURL = fmt.Errorf("no git serverURL was specified")
 
 // DefaultIdentifier is the default driver identifier used by FromRepoURL.
 var DefaultIdentifier = NewDriverIdentifier()
@@ -64,7 +64,7 @@ func NewClientWithBasicAuth(driver, serverURL, user, password string, opts ...Cl
 		}
 		client, err = gitea.NewWithBasicAuth(serverURL, user, password)
 	default:
-		return nil, fmt.Errorf("Unsupported $GIT_KIND value: %s", driver)
+		return nil, fmt.Errorf("unsupported $GIT_KIND value: %s", driver)
 	}
 	if err != nil {
 		return client, err
@@ -134,7 +134,7 @@ func newClient(driver, serverURL string, authOptions *AuthOptions, opts ...Clien
 		}
 		client, err = stash.New(serverURL)
 	default:
-		return nil, fmt.Errorf("Unsupported $GIT_KIND value: %s", driver)
+		return nil, fmt.Errorf("unsupported $GIT_KIND value: %s", driver)
 	}
 	if err != nil {
 		return client, err
@@ -216,7 +216,7 @@ func NewClientFromEnvironment() (*scm.Client, error) {
 	}
 
 	if oauthToken == "" {
-		return nil, fmt.Errorf("No Git OAuth token specified for $GIT_TOKEN")
+		return nil, fmt.Errorf("no Git OAuth token specified for $GIT_TOKEN")
 	}
 
 	authOptions := &AuthOptions{
@@ -306,7 +306,7 @@ func NewWebHookService(driver string) (scm.WebhookService, error) {
 	case "stash", "bitbucketserver":
 		service = stash.NewWebHookService()
 	default:
-		return nil, fmt.Errorf("Unsupported GIT_KIND value: %s", driver)
+		return nil, fmt.Errorf("unsupported GIT_KIND value: %s", driver)
 	}
 
 	return service, nil

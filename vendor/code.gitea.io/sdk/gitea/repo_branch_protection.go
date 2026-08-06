@@ -168,6 +168,5 @@ func (c *Client) DeleteBranchProtection(owner, repo, name string) (*Response, er
 	if err := c.checkServerVersionGreaterThanOrEqual(version1_12_0); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/branch_protections/%s", owner, repo, name), jsonHeader, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/branch_protections/%s", owner, repo, name), jsonHeader, nil)
 }
