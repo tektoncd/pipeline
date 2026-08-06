@@ -17,15 +17,21 @@ limitations under the License.
 package k8sevent_test
 
 import (
+	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	k8sevents "github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -252,6 +258,10 @@ func TestEmitError(t *testing.T) {
 		err:        errors.New("something went wrong"),
 		wantEvents: []string{"Warning Error something went wrong"},
 	}, {
+		name:       "with percent in error",
+		err:        errors.New("progress at 100% complete"),
+		wantEvents: []string{"Warning Error progress at 100% complete"},
+	}, {
 		name:       "without error",
 		err:        nil,
 		wantEvents: []string{},
@@ -260,10 +270,88 @@ func TestEmitError(t *testing.T) {
 	for _, ts := range testcases {
 		fr := record.NewFakeRecorder(1)
 		tr := &corev1.Pod{}
-		k8sevents.EmitError(fr, ts.err, tr)
+		ctx := context.Background()
+		k8sevents.EmitError(ctx, fr, ts.err, tr)
 		err := k8sevents.CheckEventsOrdered(t, fr.Events, ts.name, ts.wantEvents)
 		if err != nil {
 			t.Error(err.Error())
 		}
+	}
+}
+
+func TestEmitK8sEventsWithPercentInMessage(t *testing.T) {
+	objectStatus := duckv1.Status{
+		Conditions: []apis.Condition{{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  v1.TaskRunReasonStarted.String(),
+			Message: "",
+		}},
+	}
+	object := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "test",
+		},
+		Status: v1.TaskRunStatus{Status: objectStatus},
+	}
+
+	after := &apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionTrue,
+		Message: "progress at 100% complete",
+	}
+	wantEvents := []string{"Normal Succeeded progress at 100% complete"}
+
+	recorder := record.NewFakeRecorder(1)
+	ctx := controller.WithEventRecorder(context.Background(), recorder)
+	k8sevents.EmitK8sEvents(ctx, object.Status.GetCondition(apis.ConditionSucceeded), after, object)
+	if err := k8sevents.CheckEventsOrdered(t, recorder.Events, "percent-in-message", wantEvents); err != nil {
+		t.Fatal(err.Error())
+	}
+}
+
+func TestEmitK8sEventsWithTraceContext(t *testing.T) {
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	objectStatus := duckv1.Status{
+		Conditions: []apis.Condition{{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  v1.TaskRunReasonStarted.String(),
+			Message: "",
+		}},
+	}
+	object := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "test",
+		},
+		Status: v1.TaskRunStatus{Status: objectStatus},
+	}
+	after := &apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionTrue,
+		Message: "all done",
+	}
+
+	tp := tracesdk.NewTracerProvider()
+	ctx, span := tp.Tracer("test").Start(context.Background(), "test-span")
+	defer span.End()
+
+	recorder := record.NewFakeRecorder(1)
+	ctx = controller.WithEventRecorder(ctx, recorder)
+	k8sevents.EmitK8sEvents(ctx, object.Status.GetCondition(apis.ConditionSucceeded), after, object)
+
+	select {
+	case got := <-recorder.Events:
+		if !strings.Contains(got, "Normal Succeeded all done") {
+			t.Fatalf("unexpected event message: %q", got)
+		}
+		if !strings.Contains(got, "traceparent") {
+			t.Fatalf("expected traceparent annotation in event %q", got)
+		}
+	case <-time.After(wait.ForeverTestTimeout):
+		t.Fatal("timed out waiting for event")
 	}
 }
