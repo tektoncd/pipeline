@@ -2,10 +2,7 @@ package gitdiff
 
 import (
 	"bytes"
-	"compress/zlib"
-	"fmt"
 	"io"
-	"io/ioutil"
 	"strconv"
 	"strings"
 )
@@ -50,11 +47,11 @@ func (p *parser) ParseBinaryFragments(f *File) (n int, err error) {
 }
 
 func (p *parser) ParseBinaryMarker() (isBinary bool, hasData bool, err error) {
-	switch p.Line(0) {
-	case "GIT binary patch\n":
+	line := p.Line(0)
+	switch {
+	case line == "GIT binary patch\n":
 		hasData = true
-	case "Binary files differ\n":
-	case "Files differ\n":
+	case isBinaryNoDataMarker(line):
 	default:
 		return false, false, nil
 	}
@@ -63,6 +60,13 @@ func (p *parser) ParseBinaryMarker() (isBinary bool, hasData bool, err error) {
 		return false, false, err
 	}
 	return true, hasData, nil
+}
+
+func isBinaryNoDataMarker(line string) bool {
+	if strings.HasSuffix(line, " differ\n") {
+		return strings.HasPrefix(line, "Binary files ") || strings.HasPrefix(line, "Files ")
+	}
+	return false
 }
 
 func (p *parser) ParseBinaryFragmentHeader() (*BinaryFragment, error) {
@@ -85,6 +89,9 @@ func (p *parser) ParseBinaryFragmentHeader() (*BinaryFragment, error) {
 	if frag.Size, err = strconv.ParseInt(parts[1], 10, 64); err != nil {
 		nerr := err.(*strconv.NumError)
 		return nil, p.Errorf(0, "binary patch: invalid size: %v", nerr.Err)
+	}
+	if frag.Size < 0 {
+		return nil, p.Errorf(0, "binary patch: invalid size: %d", frag.Size)
 	}
 
 	if err := p.Next(); err != nil && err != io.EOF {
@@ -145,35 +152,11 @@ func (p *parser) ParseBinaryChunk(frag *BinaryFragment) error {
 			return err
 		}
 	}
-
-	if err := inflateBinaryChunk(frag, &data); err != nil {
-		return p.Errorf(0, "binary patch: %v", err)
-	}
+	frag.RawData = data.Bytes()
 
 	// consume the empty line that ended the fragment
 	if err := p.Next(); err != nil && err != io.EOF {
 		return err
 	}
-	return nil
-}
-
-func inflateBinaryChunk(frag *BinaryFragment, r io.Reader) error {
-	zr, err := zlib.NewReader(r)
-	if err != nil {
-		return err
-	}
-
-	data, err := ioutil.ReadAll(zr)
-	if err != nil {
-		return err
-	}
-	if err := zr.Close(); err != nil {
-		return err
-	}
-
-	if int64(len(data)) != frag.Size {
-		return fmt.Errorf("%d byte fragment inflated to %d", frag.Size, len(data))
-	}
-	frag.Data = data
 	return nil
 }
