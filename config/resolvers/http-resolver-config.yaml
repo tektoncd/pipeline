@@ -24,3 +24,7 @@ metadata:
 data:
   # The maximum amount of time the http resolver will wait for a response from the server.
   fetch-timeout: "1m"
+  # Controls whether the HTTP resolver blocks requests to private, loopback,
+  # link-local, and unspecified IP addresses (SSRF protection). Set to "false"
+  # to allow requests to internal/private network addresses (e.g. internal registries).
+  # block-private-ips: "true"
