@@ -35,6 +35,7 @@ data:
   enable-cel-in-whenexpression: "true"
   enable-param-enum: "true"
   enable-artifacts: "true"
+  enable-notices: "true"
   disable-inline-spec: "pipeline,pipelinerun,taskrun"
   enable-concise-resolver-syntax: "true"
   enable-kubernetes-sidecar: "true"
