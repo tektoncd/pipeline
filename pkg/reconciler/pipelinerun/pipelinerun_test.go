@@ -11957,7 +11957,7 @@ spec:
 
 	expectedTaskRuns := []*v1.TaskRun{
 		parse.MustParseTaskRunWithObjectMeta(t,
-			taskRunObjectMeta("pr-matrix-include-0", "foo",
+			taskRunObjectMeta("pr-matrix-include-build-1", "foo",
 				"pr", "p", "matrix-include", false),
 			`
 spec:
@@ -11972,7 +11972,7 @@ spec:
     kind: Task
 `),
 		parse.MustParseTaskRunWithObjectMeta(t,
-			taskRunObjectMeta("pr-matrix-include-1", "foo",
+			taskRunObjectMeta("pr-matrix-include-build-2", "foo",
 				"pr", "p", "matrix-include", false),
 			`
 spec:
@@ -11987,7 +11987,7 @@ spec:
     kind: Task
 `),
 		parse.MustParseTaskRunWithObjectMeta(t,
-			taskRunObjectMeta("pr-matrix-include-2", "foo",
+			taskRunObjectMeta("pr-matrix-include-build-3", "foo",
 				"pr", "p", "matrix-include", false),
 			`
 spec:
@@ -12090,17 +12090,17 @@ status:
   childReferences:
   - apiVersion: tekton.dev/v1
     kind: TaskRun
-    name: pr-matrix-include-0
+    name: pr-matrix-include-build-1
     displayName: build-1
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
-    name: pr-matrix-include-1
+    name: pr-matrix-include-build-2
     displayName: build-2
     pipelineTaskName: matrix-include
   - apiVersion: tekton.dev/v1
     kind: TaskRun
-    name: pr-matrix-include-2
+    name: pr-matrix-include-build-3
     displayName: build-3
     pipelineTaskName: matrix-include
 `),
