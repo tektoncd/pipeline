@@ -141,7 +141,10 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:ReconcileKind")
 	defer span.End()
 
-	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
+	span.SetAttributes(
+		attribute.String("taskrun", tr.Name),
+		attribute.String("namespace", tr.Namespace),
+	)
 	if spanCtx := span.SpanContext(); spanCtx.IsValid() {
 		logger = logger.With(zap.String("traceID", spanCtx.TraceID().String()), zap.String("spanID", spanCtx.SpanID().String()))
 		ctx = logging.WithLogger(ctx, logger)
@@ -402,6 +405,7 @@ func (c *Reconciler) checkContainerFailure(
 func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "durationAndCountMetrics")
 	defer span.End()
+	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace), attribute.Bool("done", tr.IsDone()))
 	logger := logging.FromContext(ctx)
 	if tr.IsDone() {
 		if err := c.metrics.DurationAndCount(ctx, tr, beforeCondition); err != nil {
@@ -442,6 +446,11 @@ func newNativeSidecarFromCluster(client kubernetes.Interface, log *zap.SugaredLo
 func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "stopSidecars")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("taskrun", tr.Name),
+		attribute.String("namespace", tr.Namespace),
+		attribute.String("pod", tr.Status.PodName),
+	)
 	logger := logging.FromContext(ctx)
 	// do not continue without knowing the associated pod
 	if tr.Status.PodName == "" {
@@ -485,6 +494,7 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
 func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "finishReconcileUpdateEmitEvents")
 	defer span.End()
+	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 	logger := logging.FromContext(ctx)
 
 	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
@@ -524,6 +534,10 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec, *resources.ResolvedTask, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "prepare")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("taskrun", tr.Name),
+		attribute.String("namespace", tr.Namespace),
+	)
 	logger := logging.FromContext(ctx)
 	tr.SetDefaults(ctx)
 
@@ -722,6 +736,11 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resources.ResolvedTask) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "reconcile")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("taskrun", tr.Name),
+		attribute.String("namespace", tr.Namespace),
+		attribute.Int("step.count", len(rtr.TaskSpec.Steps)),
+	)
 
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
@@ -836,6 +855,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr *v1.TaskRun, taskSpec *v1.TaskSpec) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updateTaskRunWithDefaultWorkspaces")
 	defer span.End()
+	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 	configMap := config.FromContextOrDefaults(ctx)
 	defaults := configMap.Defaults
 	if defaults.DefaultTaskRunWorkspaceBinding != "" {
@@ -879,6 +899,7 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1.Task
 			span.RecordError(err)
 		}
 	}()
+	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 	// Ensure the TaskRun is properly decorated with the version of the Tekton controller processing it.
 	if tr.Annotations == nil {
 		tr.Annotations = make(map[string]string, 1)
@@ -942,6 +963,11 @@ func (c *Reconciler) handlePodCreationError(tr *v1.TaskRun, err error) error {
 func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.TaskRunReason, message string) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "failTaskRun")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("taskrun", tr.Name),
+		attribute.String("namespace", tr.Namespace),
+		attribute.String("failure.reason", string(reason)),
+	)
 	logger := logging.FromContext(ctx)
 
 	logger.Warnf("stopping task run %q because of %q", tr.Name, reason)
@@ -1075,6 +1101,11 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 			span.RecordError(err)
 		}
 	}()
+	span.SetAttributes(
+		attribute.String("taskrun", tr.Name),
+		attribute.String("namespace", tr.Namespace),
+		attribute.Int("step.count", len(ts.Steps)),
+	)
 	logger := logging.FromContext(ctx)
 
 	// We don't want to mutate tr.Status.TaskSpec inside
