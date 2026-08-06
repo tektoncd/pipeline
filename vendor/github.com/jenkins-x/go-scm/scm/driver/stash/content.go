@@ -33,7 +33,7 @@ func (s *contentService) List(ctx context.Context, repo, path, ref string, opts 
 	endpoint := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/files/%s?at=%s&%s", namespace, name, path, ref, encodeListOptions(opts))
 	out := new(contents)
 	res, err := s.client.do(ctx, "GET", endpoint, nil, out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}

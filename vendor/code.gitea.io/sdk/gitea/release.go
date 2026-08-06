@@ -173,10 +173,9 @@ func (c *Client) DeleteRelease(user, repo string, id int64) (*Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE",
+	return c.doRequestWithStatusHandle("DELETE",
 		fmt.Sprintf("/repos/%s/%s/releases/%d", user, repo, id),
 		nil, nil)
-	return resp, err
 }
 
 // DeleteReleaseByTag deletes a release frm a repository by tag
@@ -187,10 +186,9 @@ func (c *Client) DeleteReleaseByTag(user, repo, tag string) (*Response, error) {
 	if err := c.checkServerVersionGreaterThanOrEqual(version1_14_0); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE",
+	return c.doRequestWithStatusHandle("DELETE",
 		fmt.Sprintf("/repos/%s/%s/releases/tags/%s", user, repo, tag),
 		nil, nil)
-	return resp, err
 }
 
 // fallbackGetReleaseByTag is fallback for old gitea installations ( < 1.13.0 )
