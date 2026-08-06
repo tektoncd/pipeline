@@ -1231,7 +1231,7 @@ func TestFindWorkspacesUsedByTask(t *testing.T) {
 	tests := []struct {
 		name string
 		ts   *v1.TaskSpec
-		want sets.String
+		want sets.Set[string]
 	}{{
 		name: "completespec",
 		ts: &v1.TaskSpec{
@@ -1255,7 +1255,7 @@ func TestFindWorkspacesUsedByTask(t *testing.T) {
 				Args:    []string{"$(workspaces.steptemplate-args.path)"},
 			},
 		},
-		want: sets.NewString(
+		want: sets.New[string](
 			"step-script",
 			"step-args",
 			"step-command",
@@ -1278,7 +1278,7 @@ func TestFindWorkspacesUsedByTask(t *testing.T) {
 				Command: []string{"ls"},
 			}},
 		},
-		want: sets.NewString(
+		want: sets.New[string](
 			"env-ws",
 		),
 	}, {
@@ -1291,7 +1291,7 @@ func TestFindWorkspacesUsedByTask(t *testing.T) {
 				Command:    []string{"ls"},
 			}},
 		},
-		want: sets.NewString(
+		want: sets.New[string](
 			"shared",
 		),
 	}, {
@@ -1308,7 +1308,7 @@ func TestFindWorkspacesUsedByTask(t *testing.T) {
 				},
 			}},
 		},
-		want: sets.NewString(
+		want: sets.New[string](
 			"shared",
 		),
 	}, {
@@ -1324,7 +1324,7 @@ func TestFindWorkspacesUsedByTask(t *testing.T) {
 				Command: []string{"ls"},
 			}},
 		},
-		want: sets.NewString(
+		want: sets.New[string](
 			"env-ws",
 		),
 	}, {
@@ -1337,7 +1337,7 @@ func TestFindWorkspacesUsedByTask(t *testing.T) {
 				Command:    []string{"ls"},
 			}},
 		},
-		want: sets.NewString(
+		want: sets.New[string](
 			"shared",
 		),
 	}, {
@@ -1350,7 +1350,7 @@ func TestFindWorkspacesUsedByTask(t *testing.T) {
 				}},
 			},
 		},
-		want: sets.NewString(
+		want: sets.New[string](
 			"env-ws",
 		),
 	}, {
@@ -1360,7 +1360,7 @@ func TestFindWorkspacesUsedByTask(t *testing.T) {
 				WorkingDir: "$(workspaces.shared.path)",
 			},
 		},
-		want: sets.NewString(
+		want: sets.New[string](
 			"shared",
 		),
 	}}
