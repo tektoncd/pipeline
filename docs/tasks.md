@@ -331,10 +331,14 @@ When a `step` in a `task` results in a failure, the rest of the steps in the `ta
 declared a failure. If you would like to ignore such step errors and continue executing the rest of the steps in
 the task, you can specify `onError` for such a `step`.
 
-`onError` can be set to either `continue` or `stopAndFail` as part of the step definition. If `onError` is
+`onError` can be set to `continue`, `stopAndFail`, or `continueAndFail` as part of the step definition. If `onError` is
 set to `continue`, the entrypoint sets the original failed exit code of the [script](#running-scripts-within-steps)
 in the container terminated state. A `step` with `onError` set to `continue` does not fail the `taskRun` and continues
 executing the rest of the steps in a task.
+
+If `onError` is set to `continueAndFail`, the remaining steps continue to execute, but the `taskRun` fails after they
+complete. When multiple steps fail, the `taskRun` reports the first failed step whose `onError` is set to
+`continueAndFail`.
 
 To ignore a step error, set `onError` to `continue`:
 
@@ -345,6 +349,21 @@ steps:
     onError: continue
     script: |
       go test .
+```
+
+To continue executing subsequent steps while still failing the `taskRun`, set `onError` to `continueAndFail`:
+
+```yaml
+steps:
+  - image: docker.io/library/golang:latest
+    name: run-unit-tests
+    onError: continueAndFail
+    script: |
+      go test ./...
+  - image: registry.access.redhat.com/ubi9/ubi-minimal
+    name: publish-test-report
+    script: |
+      ./publish-report
 ```
 
 The original failed exit code of the [script](#running-scripts-within-steps) is available in the terminated state of
