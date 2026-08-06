@@ -22,12 +22,12 @@ func ValidateParamArrayIndex(ts *v1.TaskSpec, params v1.Params) error {
 // based on the param declarations, the parameters passed in at runtime, and the indexing references
 // to array params from a task or pipeline spec.
 // Example of arrayIndexingReferences: ["$(params.a-array-param[1])", "$(params.b-array-param[2])"]
-func ValidateOutOfBoundArrayParams(declarations v1.ParamSpecs, params v1.Params, arrayIndexingReferences sets.String) error {
+func ValidateOutOfBoundArrayParams(declarations v1.ParamSpecs, params v1.Params, arrayIndexingReferences sets.Set[string]) error {
 	arrayParamLengths := declarations.ExtractDefaultParamArrayLengths()
 	for k, v := range params.ExtractParamArrayLengths() {
 		arrayParamLengths[k] = v
 	}
-	outofBoundParams := sets.String{}
+	outofBoundParams := sets.Set[string]{}
 	for val := range arrayIndexingReferences {
 		indexString := substitution.ExtractIndexString(val)
 		idx, _ := substitution.ExtractIndex(indexString)
@@ -42,13 +42,13 @@ func ValidateOutOfBoundArrayParams(declarations v1.ParamSpecs, params v1.Params,
 		}
 	}
 	if outofBoundParams.Len() > 0 {
-		return pipelineErrors.WrapUserError(fmt.Errorf("non-existent param references:%v", outofBoundParams.List()))
+		return pipelineErrors.WrapUserError(fmt.Errorf("non-existent param references:%v", sets.List(outofBoundParams)))
 	}
 	return nil
 }
 
 func validateStepHasStepActionParameters(stepParams v1.Params, stepActionDefaults []v1.ParamSpec) error {
-	stepActionParams := sets.String{}
+	stepActionParams := sets.Set[string]{}
 	requiredStepActionParams := []string{}
 	for _, sa := range stepActionDefaults {
 		stepActionParams.Insert(sa.Name)
@@ -57,7 +57,7 @@ func validateStepHasStepActionParameters(stepParams v1.Params, stepActionDefault
 		}
 	}
 
-	stepProvidedParams := sets.String{}
+	stepProvidedParams := sets.Set[string]{}
 	extra := []string{}
 	for _, sp := range stepParams {
 		stepProvidedParams.Insert(sp.Name)

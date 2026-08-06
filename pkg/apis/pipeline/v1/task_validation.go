@@ -101,7 +101,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 func ValidateUsageOfDeclaredParameters(ctx context.Context, steps []Step, params ParamSpecs) *apis.FieldError {
 	var errs *apis.FieldError
 	_, _, objectParams := params.SortByType()
-	allParameterNames := sets.NewString(params.GetNames()...)
+	allParameterNames := sets.New[string](params.GetNames()...)
 	errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
 	errs = errs.Also(validateObjectUsage(ctx, steps, objectParams))
 	errs = errs.Also(ValidateObjectParamsHaveProperties(ctx, params))
@@ -129,7 +129,7 @@ func validateResults(ctx context.Context, results []TaskResult) (errs *apis.Fiel
 // a mount path which conflicts with any other declared workspaces, with the explicitly
 // declared volume mounts, or with the stepTemplate. The names must also be unique.
 func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step, stepTemplate *StepTemplate) (errs *apis.FieldError) {
-	mountPaths := sets.NewString()
+	mountPaths := sets.New[string]()
 	for _, step := range steps {
 		for _, vm := range step.VolumeMounts {
 			mountPaths.Insert(filepath.Clean(vm.MountPath))
@@ -141,7 +141,7 @@ func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step,
 		}
 	}
 
-	wsNames := sets.NewString()
+	wsNames := sets.New[string]()
 	for idx, w := range workspaces {
 		// Workspace names must be unique
 		if wsNames.Has(w.Name) {
@@ -169,7 +169,7 @@ func validateWorkspaceUsages(ctx context.Context, ts *TaskSpec) (errs *apis.Fiel
 	steps := ts.Steps
 	sidecars := ts.Sidecars
 
-	wsNames := sets.NewString()
+	wsNames := sets.New[string]()
 	for _, w := range workspaces {
 		wsNames.Insert(w.Name)
 	}
@@ -202,7 +202,7 @@ func validateWorkspaceUsages(ctx context.Context, ts *TaskSpec) (errs *apis.Fiel
 // ValidateVolumes validates a slice of volumes to make sure there are no duplicate names
 func ValidateVolumes(volumes []corev1.Volume) (errs *apis.FieldError) {
 	// Task must not have duplicate volume names.
-	vols := sets.NewString()
+	vols := sets.New[string]()
 	for idx, v := range volumes {
 		if vols.Has(v.Name) {
 			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("multiple volumes with same name %q", v.Name), "name").ViaIndex(idx))
@@ -216,7 +216,7 @@ func ValidateVolumes(volumes []corev1.Volume) (errs *apis.FieldError) {
 // Validate implements apis.Validatable
 func (l StepList) Validate(ctx context.Context) (errs *apis.FieldError) {
 	// Task must not have duplicate step names.
-	names := sets.NewString()
+	names := sets.New[string]()
 	for idx, s := range l {
 		// names cannot be duplicated - checking that Step names are unique
 		if s.Name != "" {
@@ -250,7 +250,7 @@ func ValidateStepResults(ctx context.Context, results []StepResult) (errs *apis.
 // It only validates $(step.results.<name>.path) references. Task-level $(results.<name>.path) references
 // are validated separately by validateTaskResultsVariables which has the task results context.
 func ValidateStepResultsVariables(ctx context.Context, results []StepResult, script string) (errs *apis.FieldError) {
-	resultsNames := sets.NewString()
+	resultsNames := sets.New[string]()
 	for _, r := range results {
 		resultsNames.Insert(r.Name)
 	}
@@ -262,7 +262,7 @@ func ValidateStepResultsVariables(ctx context.Context, results []StepResult, scr
 // in the StepAction's results. Unlike ValidateStepResultsVariables, this also validates $(results.<name>.path)
 // references since a standalone StepAction has no task-level result context.
 func ValidateStepActionResultsVariables(ctx context.Context, results []StepResult, script string) (errs *apis.FieldError) {
-	resultsNames := sets.NewString()
+	resultsNames := sets.New[string]()
 	for _, r := range results {
 		resultsNames.Insert(r.Name)
 	}
@@ -342,20 +342,20 @@ func ValidateParameterVariables(ctx context.Context, steps []Step, params ParamS
 	errs = errs.Also(params.ValidateNoDuplicateNames())
 	errs = errs.Also(params.validateParamEnums(ctx).ViaField("params"))
 	stringParams, arrayParams, objectParams := params.SortByType()
-	stringParameterNames := sets.NewString(stringParams.GetNames()...)
-	arrayParameterNames := sets.NewString(arrayParams.GetNames()...)
-	errs = errs.Also(ValidateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParams))
+	stringParameterNames := sets.New[string](stringParams.GetNames()...)
+	arrayParameterNames := sets.New[string](arrayParams.GetNames()...)
+	errs = errs.Also(ValidateNameFormat(stringParameterNames.Insert(sets.List(arrayParameterNames)...), objectParams))
 	return errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
 }
 
 // validateTaskContextVariables returns an error if any Steps reference context variables that don't exist.
 func validateTaskContextVariables(ctx context.Context, steps []Step) *apis.FieldError {
-	taskRunContextNames := sets.NewString().Insert(
+	taskRunContextNames := sets.New[string]().Insert(
 		"name",
 		"namespace",
 		"uid",
 	)
-	taskContextNames := sets.NewString().Insert(
+	taskContextNames := sets.New[string]().Insert(
 		"name",
 		"retry-count",
 	)
@@ -365,7 +365,7 @@ func validateTaskContextVariables(ctx context.Context, steps []Step) *apis.Field
 
 // validateTaskResultsVariables validates if the results referenced in step script are defined in task results
 func validateTaskResultsVariables(ctx context.Context, steps []Step, results []TaskResult) (errs *apis.FieldError) {
-	resultsNames := sets.NewString()
+	resultsNames := sets.New[string]()
 	for _, r := range results {
 		resultsNames.Insert(r.Name)
 	}
@@ -377,13 +377,13 @@ func validateTaskResultsVariables(ctx context.Context, steps []Step, results []T
 
 // validateObjectUsage validates the usage of individual attributes of an object param and the usage of the entire object
 func validateObjectUsage(ctx context.Context, steps []Step, params []ParamSpec) (errs *apis.FieldError) {
-	objectParameterNames := sets.NewString()
+	objectParameterNames := sets.New[string]()
 	for _, p := range params {
 		// collect all names of object type params
 		objectParameterNames.Insert(p.Name)
 
 		// collect all keys for this object param
-		objectKeys := sets.NewString()
+		objectKeys := sets.New[string]()
 		for key := range p.Properties {
 			objectKeys.Insert(key)
 		}
@@ -396,7 +396,7 @@ func validateObjectUsage(ctx context.Context, steps []Step, params []ParamSpec) 
 }
 
 // validateObjectUsageAsWhole returns an error if the Steps contain references to the entire input object params in fields where these references are prohibited
-func validateObjectUsageAsWhole(steps []Step, prefix string, vars sets.String) (errs *apis.FieldError) {
+func validateObjectUsageAsWhole(steps []Step, prefix string, vars sets.Set[string]) (errs *apis.FieldError) {
 	for idx, step := range steps {
 		errs = errs.Also(validateStepObjectUsageAsWhole(step, prefix, vars)).ViaFieldIndex("steps", idx)
 	}
@@ -404,7 +404,7 @@ func validateObjectUsageAsWhole(steps []Step, prefix string, vars sets.String) (
 }
 
 // validateStepObjectUsageAsWhole returns an error if the Step contains references to the entire input object params in fields where these references are prohibited
-func validateStepObjectUsageAsWhole(step Step, prefix string, vars sets.String) *apis.FieldError {
+func validateStepObjectUsageAsWhole(step Step, prefix string, vars sets.Set[string]) *apis.FieldError {
 	errs := substitution.ValidateNoReferencesToEntireProhibitedVariables(step.Name, prefix, vars).ViaField("name")
 	errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(step.Image, prefix, vars).ViaField("image"))
 	errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(step.WorkingDir, prefix, vars).ViaField("workingDir"))
@@ -427,7 +427,7 @@ func validateStepObjectUsageAsWhole(step Step, prefix string, vars sets.String) 
 }
 
 // validateArrayUsage returns an error if the Steps contain references to the input array params in fields where these references are prohibited
-func validateArrayUsage(steps []Step, prefix string, arrayParamNames sets.String) (errs *apis.FieldError) {
+func validateArrayUsage(steps []Step, prefix string, arrayParamNames sets.Set[string]) (errs *apis.FieldError) {
 	for idx, step := range steps {
 		errs = errs.Also(validateStepArrayUsage(step, prefix, arrayParamNames)).ViaFieldIndex("steps", idx)
 	}
@@ -435,7 +435,7 @@ func validateArrayUsage(steps []Step, prefix string, arrayParamNames sets.String
 }
 
 // validateStepArrayUsage returns an error if the Step contains references to the input array params in fields where these references are prohibited
-func validateStepArrayUsage(step Step, prefix string, arrayParamNames sets.String) *apis.FieldError {
+func validateStepArrayUsage(step Step, prefix string, arrayParamNames sets.Set[string]) *apis.FieldError {
 	errs := substitution.ValidateNoReferencesToProhibitedVariables(step.Name, prefix, arrayParamNames).ViaField("name")
 	errs = errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(step.Image, prefix, arrayParamNames).ViaField("image"))
 	errs = errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(step.WorkingDir, prefix, arrayParamNames).ViaField("workingDir"))
@@ -458,7 +458,7 @@ func validateStepArrayUsage(step Step, prefix string, arrayParamNames sets.Strin
 }
 
 // validateVariables returns an error if the Steps contain references to any unknown variables
-func validateVariables(ctx context.Context, steps []Step, prefix string, vars sets.String) (errs *apis.FieldError) {
+func validateVariables(ctx context.Context, steps []Step, prefix string, vars sets.Set[string]) (errs *apis.FieldError) {
 	for idx, step := range steps {
 		errs = errs.Also(validateStepVariables(ctx, step, prefix, vars).ViaFieldIndex("steps", idx))
 	}
@@ -466,13 +466,13 @@ func validateVariables(ctx context.Context, steps []Step, prefix string, vars se
 }
 
 // ValidateNameFormat validates that the name format of all param types follows the rules
-func ValidateNameFormat(stringAndArrayParams sets.String, objectParams []ParamSpec) (errs *apis.FieldError) {
+func ValidateNameFormat(stringAndArrayParams sets.Set[string], objectParams []ParamSpec) (errs *apis.FieldError) {
 	// checking string or array name format
 	// ----
 	invalidStringAndArrayNames := []string{}
 	// Converting to sorted list here rather than just looping map keys
 	// because we want the order of items in vars to be deterministic for purpose of unit testing
-	for _, name := range stringAndArrayParams.List() {
+	for _, name := range sets.List(stringAndArrayParams) {
 		if !stringAndArrayVariableNameFormatRegex.MatchString(name) {
 			invalidStringAndArrayNames = append(invalidStringAndArrayNames, name)
 		}
@@ -515,7 +515,7 @@ func ValidateNameFormat(stringAndArrayParams sets.String, objectParams []ParamSp
 }
 
 // validateStepVariables returns an error if the Step contains references to any unknown variables
-func validateStepVariables(ctx context.Context, step Step, prefix string, vars sets.String) *apis.FieldError {
+func validateStepVariables(ctx context.Context, step Step, prefix string, vars sets.Set[string]) *apis.FieldError {
 	errs := substitution.ValidateNoReferencesToUnknownVariables(step.Name, prefix, vars).ViaField("name")
 	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.Image, prefix, vars).ViaField("image"))
 	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.WorkingDir, prefix, vars).ViaField("workingDir"))
@@ -542,7 +542,7 @@ func validateStepVariables(ctx context.Context, step Step, prefix string, vars s
 // from parameters, workspaces, and when expressions defined in the Task.
 // For example, if a Task has a parameter with a value "$(params.array-param-name[1])",
 // this would be one of the strings returned.
-func (ts *TaskSpec) GetIndexingReferencesToArrayParams() sets.String {
+func (ts *TaskSpec) GetIndexingReferencesToArrayParams() sets.Set[string] {
 	// collect all the possible places to use param references
 	paramsRefs := []string{}
 	paramsRefs = append(paramsRefs, extractParamRefsFromSteps(ts.Steps)...)
@@ -557,5 +557,5 @@ func (ts *TaskSpec) GetIndexingReferencesToArrayParams() sets.String {
 	for _, p := range paramsRefs {
 		arrayIndexParamRefs = append(arrayIndexParamRefs, extractArrayIndexingParamRefs(p)...)
 	}
-	return sets.NewString(arrayIndexParamRefs...)
+	return sets.New[string](arrayIndexParamRefs...)
 }
