@@ -25,6 +25,7 @@ import (
 	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 )
 
 // ErrInvalidTaskResultReference indicates that the reason for the failure status is that there
@@ -45,8 +46,8 @@ type ResolvedResultRef struct {
 }
 
 // ResolveResultRef resolves any ResultReference that are found in the target ResolvedPipelineTask
-func ResolveResultRef(pipelineRunState PipelineRunState, target *ResolvedPipelineTask) (ResolvedResultRefs, string, error) {
-	resolvedResultRefs, pt, err := convertToResultRefs(pipelineRunState, target)
+func ResolveResultRef(enableDefaultResults bool, pipelineRunState PipelineRunState, target *ResolvedPipelineTask) (ResolvedResultRefs, string, error) {
+	resolvedResultRefs, pt, err := convertToResultRefs(enableDefaultResults, pipelineRunState, target)
 	if err != nil {
 		return nil, pt, err
 	}
@@ -54,10 +55,10 @@ func ResolveResultRef(pipelineRunState PipelineRunState, target *ResolvedPipelin
 }
 
 // ResolveResultRefs resolves any ResultReference that are found in the target ResolvedPipelineTask
-func ResolveResultRefs(pipelineRunState PipelineRunState, targets PipelineRunState) (ResolvedResultRefs, string, error) {
+func ResolveResultRefs(enableDefaultResults bool, pipelineRunState PipelineRunState, targets PipelineRunState) (ResolvedResultRefs, string, error) {
 	var allResolvedResultRefs ResolvedResultRefs
 	for _, target := range targets {
-		resolvedResultRefs, pt, err := convertToResultRefs(pipelineRunState, target)
+		resolvedResultRefs, pt, err := convertToResultRefs(enableDefaultResults, pipelineRunState, target)
 		if err != nil {
 			return nil, pt, err
 		}
@@ -113,7 +114,7 @@ func removeDup(refs ResolvedResultRefs) ResolvedResultRefs {
 // found they are resolved to a value by searching pipelineRunState. The list of resolved
 // references are returned. If an error is encountered due to an invalid result reference
 // then a nil list and error is returned instead.
-func convertToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipelineTask) (ResolvedResultRefs, string, error) {
+func convertToResultRefs(enableDefaultResults bool, pipelineRunState PipelineRunState, target *ResolvedPipelineTask) (ResolvedResultRefs, string, error) {
 	var resolvedResultRefs ResolvedResultRefs
 	for _, resultRef := range v1.PipelineTaskResultRefs(target.PipelineTask) {
 		referencedPipelineTask := pipelineRunState.ToMap()[resultRef.PipelineTask]
@@ -122,6 +123,13 @@ func convertToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipe
 		}
 
 		if !referencedPipelineTask.isSuccessful() && !referencedPipelineTask.isFailure() {
+			// Task did not run (e.g. skipped due to when expressions). If the feature flag is
+			// enabled, try to use the declared default value for the referenced result so that
+			// downstream tasks (both DAG and finally) can still execute with the default.
+			if resolved, err := resolveDefaultForUnfinishedTask(enableDefaultResults, referencedPipelineTask, resultRef); err == nil {
+				resolvedResultRefs = append(resolvedResultRefs, resolved...)
+				continue
+			}
 			return nil, resultRef.PipelineTask, fmt.Errorf("task %q referenced by result was not finished", referencedPipelineTask.PipelineTask.Name)
 		}
 		// Custom Task
@@ -135,7 +143,7 @@ func convertToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipe
 		default:
 			// Matrixed referenced Pipeline Task
 			if referencedPipelineTask.PipelineTask.IsMatrixed() {
-				arrayValues, err := findResultValuesForMatrix(referencedPipelineTask, resultRef)
+				arrayValues, err := findResultValuesForMatrix(enableDefaultResults, referencedPipelineTask, resultRef)
 				if err != nil {
 					return nil, resultRef.PipelineTask, err
 				}
@@ -145,7 +153,7 @@ func convertToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipe
 				}
 			} else {
 				// Regular PipelineTask
-				resolved, err := resolveResultRef(referencedPipelineTask.TaskRuns, resultRef)
+				resolved, err := resolveResultRef(enableDefaultResults, referencedPipelineTask.TaskRuns, resultRef, referencedPipelineTask.ResolvedTask)
 				if err != nil {
 					return nil, resultRef.PipelineTask, err
 				}
@@ -186,10 +194,10 @@ func paramValueFromCustomRunResult(result string) *v1.ParamValue {
 	return v1.NewStructuredValues(result)
 }
 
-func resolveResultRef(taskRuns []*v1.TaskRun, resultRef *v1.ResultRef) (*ResolvedResultRef, error) {
+func resolveResultRef(enableDefaultResults bool, taskRuns []*v1.TaskRun, resultRef *v1.ResultRef, resolvedTask *resources.ResolvedTask) (*ResolvedResultRef, error) {
 	taskRun := taskRuns[0]
 	taskRunName := taskRun.Name
-	resultValue, err := findTaskResultForParam(taskRun, resultRef)
+	resultValue, err := findTaskResultForParam(enableDefaultResults, taskRun, resultRef, resolvedTask)
 	if err != nil {
 		return nil, err
 	}
@@ -211,20 +219,88 @@ func findRunResultForParam(customRun *v1beta1.CustomRun, reference *v1.ResultRef
 	return "", err
 }
 
-func findTaskResultForParam(taskRun *v1.TaskRun, reference *v1.ResultRef) (v1.ResultValue, error) {
+// resolveDefaultForUnfinishedTask attempts to resolve a default result value for a task that
+// did not produce a result because it did not run (e.g. skipped due to when expressions).
+// Returns one or more ResolvedResultRefs using the declared default, or an error if no default
+// is available or the feature flag is disabled.
+func resolveDefaultForUnfinishedTask(enableDefaultResults bool, referencedPipelineTask *ResolvedPipelineTask, resultRef *v1.ResultRef) (ResolvedResultRefs, error) {
+	var err error
+	if !enableDefaultResults {
+		return nil, errors.New("enable-default-results feature flag is disabled")
+	}
+	if referencedPipelineTask.ResolvedTask == nil || referencedPipelineTask.ResolvedTask.TaskSpec == nil {
+		return nil, fmt.Errorf("no task spec available for task %q", referencedPipelineTask.PipelineTask.Name)
+	}
+	for _, taskResult := range referencedPipelineTask.ResolvedTask.TaskSpec.Results {
+		if taskResult.Name != resultRef.Result || taskResult.Default == nil {
+			continue
+		}
+		if referencedPipelineTask.PipelineTask.IsMatrixed() {
+			// For a matrix task that didn't run, wrap the default into array format.
+			var arrayVal v1.ParamValue
+			arrayVal, err = matrixDefaultValue(taskResult.Name, taskResult.Default)
+			if err != nil {
+				return nil, err
+			}
+			return ResolvedResultRefs{{
+				Value:           arrayVal,
+				FromTaskRun:     "",
+				ResultReference: *resultRef,
+			}}, nil
+		}
+		return ResolvedResultRefs{{
+			Value:           *taskResult.Default,
+			FromTaskRun:     "",
+			ResultReference: *resultRef,
+		}}, nil
+	}
+	return nil, fmt.Errorf("%w: no default value for result %q in task %q", ErrInvalidTaskResultReference, resultRef.Result, resultRef.PipelineTask)
+}
+
+func findTaskResultForParam(enableDefaultResults bool, taskRun *v1.TaskRun, reference *v1.ResultRef, resolvedTask *resources.ResolvedTask) (v1.ResultValue, error) {
 	results := taskRun.Status.TaskRunStatusFields.Results
 	for _, result := range results {
 		if result.Name == reference.Result {
 			return result.Value, nil
 		}
 	}
+	// If result not found, check for default value in the Task spec (only if feature flag is enabled)
+	if resolvedTask != nil && resolvedTask.TaskSpec != nil {
+		if enableDefaultResults {
+			for _, taskResult := range resolvedTask.TaskSpec.Results {
+				if taskResult.Name == reference.Result && taskResult.Default != nil {
+					return *taskResult.Default, nil
+				}
+			}
+		}
+	}
 	err := fmt.Errorf("%w: Could not find result with name %s for pipeline task %s", ErrInvalidTaskResultReference, reference.Result, reference.PipelineTask)
 	return v1.ResultValue{}, err
 }
 
+// matrixDefaultValue converts a task result default value into the array format required
+// for matrixed tasks. Matrix result references are always represented as arrays (one entry
+// per matrix iteration), so scalar string defaults are wrapped in a single-element array.
+// Object defaults are not supported for matrixed tasks because matrix results cannot be
+// of object type.
+func matrixDefaultValue(resultName string, def *v1.ResultValue) (v1.ParamValue, error) {
+	switch def.Type {
+	case v1.ParamTypeArray:
+		// Array defaults are already in the expected format; return as-is.
+		return *def, nil
+	case v1.ParamTypeString:
+		// String defaults are wrapped in a single-element array to satisfy the
+		// array representation required for matrix result references.
+		return v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{def.StringVal}}, nil
+	case v1.ParamTypeObject:
+		return v1.ParamValue{}, fmt.Errorf("object default for result %q is not supported for matrixed tasks", resultName)
+	}
+	return v1.ParamValue{}, fmt.Errorf("unsupported default type %q for result %q", def.Type, resultName)
+}
+
 // findResultValuesForMatrix checks the resultsCache of the referenced Matrixed TaskRun to retrieve the resultValues and aggregate them into
 // arrayValues. If the resultCache is empty, it will create the ResultCache so that the results can be accessed in subsequent tasks.
-func findResultValuesForMatrix(referencedPipelineTask *ResolvedPipelineTask, resultRef *v1.ResultRef) (v1.ParamValue, error) {
+func findResultValuesForMatrix(enableDefaultResults bool, referencedPipelineTask *ResolvedPipelineTask, resultRef *v1.ResultRef) (v1.ParamValue, error) {
 	var resultsCache *map[string][]string
 	if len(referencedPipelineTask.ResultsCache) == 0 {
 		cache := createResultsCacheMatrixedTaskRuns(referencedPipelineTask)
@@ -236,6 +312,16 @@ func findResultValuesForMatrix(referencedPipelineTask *ResolvedPipelineTask, res
 			Type:     v1.ParamTypeArray,
 			ArrayVal: arrayValues,
 		}, nil
+	}
+	// If result not found in cache, check for default value in the Task spec (only if feature flag is enabled)
+	if referencedPipelineTask.ResolvedTask != nil && referencedPipelineTask.ResolvedTask.TaskSpec != nil {
+		if enableDefaultResults {
+			for _, taskResult := range referencedPipelineTask.ResolvedTask.TaskSpec.Results {
+				if taskResult.Name == resultRef.Result && taskResult.Default != nil {
+					return matrixDefaultValue(taskResult.Name, taskResult.Default)
+				}
+			}
+		}
 	}
 	err := fmt.Errorf("%w: Could not find result with name %s for task %s", ErrInvalidTaskResultReference, resultRef.Result, resultRef.PipelineTask)
 	return v1.ParamValue{}, err

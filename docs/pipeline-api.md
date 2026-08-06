@@ -1412,6 +1412,7 @@ _Appears in:_
 | `type` _[ResultsType](#resultstype)_ | Type is the user-specified type of the result. The possible type<br />is currently "string" and will support "array" in following work. |  | Optional: \{\} <br /> |
 | `properties` _object (keys:string, values:[PropertySpec](#propertyspec))_ | Properties is the JSON Schema properties to support key-value pairs results. |  | Optional: \{\} <br /> |
 | `description` _string_ | Description is a human-readable description of the result |  | Optional: \{\} <br /> |
+| `default` _[ResultValue](#resultvalue)_ | Default is the value a result takes if no actual value is produced by the task.<br />If default is set, a task may be executed without producing the result and<br />the default value will be used instead. |  | Schemaless: \{\} <br />Optional: \{\} <br /> |
 | `value` _[ResultValue](#resultvalue)_ | Value the expression used to retrieve the value of the result from an underlying Step. |  | Schemaless: \{\} <br />Optional: \{\} <br /> |
 
 
@@ -3871,6 +3872,7 @@ _Appears in:_
 | `type` _[ResultsType](#resultstype)_ | Type is the user-specified type of the result. The possible type<br />is currently "string" and will support "array" in following work. |  | Optional: \{\} <br /> |
 | `properties` _object (keys:string, values:[PropertySpec](#propertyspec))_ | Properties is the JSON Schema properties to support key-value pairs results. |  | Optional: \{\} <br /> |
 | `description` _string_ | Description is a human-readable description of the result |  | Optional: \{\} <br /> |
+| `default` _[ResultValue](#resultvalue)_ | Default is the value a result takes if no actual value is produced by the task.<br />If default is set, a task may be executed without producing the result and<br />the default value will be used instead. |  | Schemaless: \{\} <br />Optional: \{\} <br /> |
 | `value` _[ResultValue](#resultvalue)_ | Value the expression used to retrieve the value of the result from an underlying Step. |  | Schemaless: \{\} <br />Optional: \{\} <br /> |
 
 
