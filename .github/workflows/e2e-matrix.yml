@@ -9,6 +9,21 @@ on:
         required: false
         default: false
         type: boolean
+      k8s-versions:
+        description: 'JSON array of k8s versions e.g. ["v1.28.x","v1.34.x"]'
+        type: string
+        required: false
+        default: '["v1.28.x", "v1.34.x"]'
+      arm64-k8s-version:
+        description: 'k8s version to run on arm64 with stable'
+        type: string
+        required: false
+        default: 'v1.34.x'
+      feature-flags:
+        description: 'JSON array of feature flags e.g. ["stable","beta","alpha"]'
+        type: string
+        required: false
+        default: '["stable", "beta", "alpha"]'
 
 permissions:
   contents: read
@@ -34,12 +49,70 @@ jobs:
         if [ "${IS_DRAFT}" = "true" ]; then
           echo "Using draft matrix (amd64, k8s-latest, stable)"
           echo "matrix=$(jq -c . .github/e2e-matrix-draft.json)" >> $GITHUB_OUTPUT
-        else
-          echo "Using full matrix"
-          echo "matrix=$(jq -c . .github/e2e-matrix-full.json)" >> $GITHUB_OUTPUT
+          exit 0
         fi
+
+        echo "Building full matrix from inputs"
+        VERSIONS="${K8S_VERSIONS}"
+        FLAGS="${FEATURE_FLAGS}"
+        ARM64_VER="${ARM64_K8S_VERSION}"
+        COUNT=$(echo "${VERSIONS}" | jq 'length')
+
+        # Build k8s-name labels:
+        #   2 versions  → k8s-oldest / k8s-latest  (stable names for branch protection)
+        #   N versions  → k8s-<version>             (readable names for nightly)
+        NAMES='[]'
+        INCLUDES='[]'
+        i=0
+        for ver in $(echo "${VERSIONS}" | jq -r '.[]'); do
+          if [ "${COUNT}" -eq 2 ]; then
+            if [ "$i" -eq 0 ]; then name="k8s-oldest"; else name="k8s-latest"; fi
+          else
+            name="k8s-${ver}"
+          fi
+          NAMES=$(echo "${NAMES}" | jq -c --arg n "${name}" '. + [$n]')
+          INCLUDES=$(echo "${INCLUDES}" | jq -c --arg n "${name}" --arg v "${ver}" \
+            '. + [{"k8s-name": $n, "k8s-version": $v}]')
+          i=$((i + 1))
+        done
+
+        # Build arm64 excludes: run only arm64-k8s-version + stable on arm64
+        ARM64_NAME=$(echo "${INCLUDES}" | jq -r --arg v "${ARM64_VER}" \
+          '.[] | select(."k8s-version" == $v) | ."k8s-name"')
+        EXCLUDES='[]'
+        for name in $(echo "${NAMES}" | jq -r '.[]'); do
+          if [ "${name}" != "${ARM64_NAME}" ]; then
+            EXCLUDES=$(echo "${EXCLUDES}" | jq -c --arg n "${name}" \
+              '. + [{"k8s-name": $n, "os": "ubuntu-24.04-arm"}]')
+          else
+            for flag in $(echo "${FLAGS}" | jq -r '.[]'); do
+              if [ "${flag}" != "stable" ]; then
+                EXCLUDES=$(echo "${EXCLUDES}" | jq -c --arg n "${name}" --arg f "${flag}" \
+                  '. + [{"k8s-name": $n, "os": "ubuntu-24.04-arm", "feature-flags": $f}]')
+              fi
+            done
+          fi
+        done
+
+        MATRIX=$(jq -n -c \
+          --argjson names "${NAMES}" \
+          --argjson flags "${FLAGS}" \
+          --argjson inc "${INCLUDES}" \
+          --argjson exc "${EXCLUDES}" \
+          '{
+            "os": ["ubuntu-latest", "ubuntu-24.04-arm"],
+            "k8s-name": $names,
+            "feature-flags": $flags,
+            "include": $inc,
+            "exclude": $exc
+          }')
+        echo "Generated matrix: ${MATRIX}"
+        echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
       env:
         IS_DRAFT: ${{ inputs.is-draft }}
+        K8S_VERSIONS: ${{ inputs.k8s-versions }}
+        FEATURE_FLAGS: ${{ inputs.feature-flags }}
+        ARM64_K8S_VERSION: ${{ inputs.arm64-k8s-version }}
 
   e2e-tests:
     needs: [compute-matrix]
