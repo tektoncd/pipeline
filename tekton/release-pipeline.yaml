@@ -559,7 +559,7 @@ spec:
           - name: url
             value: https://github.com/tektoncd/plumbing
           - name: revision
-            value: 7abffd25eb2e578e6698a9ff13470d04906f79e6
+            value: ddcbc8eb56fe4b340ec4c0930f78e68b6a56783e
           - name: pathInRepo
             value: tekton/resources/release/base/github_release_oci.yaml
       params:
