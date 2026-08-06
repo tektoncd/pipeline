@@ -33,6 +33,7 @@
         "api_op_GenerateDataKeyWithoutPlaintext.go",
         "api_op_GenerateMac.go",
         "api_op_GenerateRandom.go",
+        "api_op_GetKeyLastUsage.go",
         "api_op_GetKeyPolicy.go",
         "api_op_GetKeyRotationStatus.go",
         "api_op_GetParametersForImport.go",
@@ -71,7 +72,7 @@
         "internal/endpoints/endpoints.go",
         "internal/endpoints/endpoints_test.go",
         "options.go",
-        "protocol_test.go",
+        "serde_snapshot_test.go",
         "serializers.go",
         "snapshot_test.go",
         "sra_operation_order_test.go",
@@ -80,7 +81,7 @@
         "types/types.go",
         "validators.go"
     ],
-    "go": "1.23",
+    "go": "1.24",
     "module": "github.com/aws/aws-sdk-go-v2/service/kms",
     "unstable": false
 }
