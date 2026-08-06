@@ -141,8 +141,7 @@ func (c *Client) EditOrg(orgname string, opt EditOrgOption) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("PATCH", fmt.Sprintf("/orgs/%s", orgname), jsonHeader, bytes.NewReader(body))
-	return resp, err
+	return c.doRequestWithStatusHandle("PATCH", fmt.Sprintf("/orgs/%s", orgname), jsonHeader, bytes.NewReader(body))
 }
 
 // DeleteOrg deletes an organization
@@ -150,6 +149,5 @@ func (c *Client) DeleteOrg(orgname string) (*Response, error) {
 	if err := escapeValidatePathSegments(&orgname); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/orgs/%s", orgname), jsonHeader, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/orgs/%s", orgname), jsonHeader, nil)
 }

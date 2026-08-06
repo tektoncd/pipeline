@@ -20,7 +20,7 @@ type contentService struct {
 
 func (s *contentService) Find(ctx context.Context, repo, path, ref string) (*scm.Content, *scm.Response, error) {
 	path = url.QueryEscape(path)
-	path = strings.Replace(path, ".", "%2E", -1)
+	path = strings.ReplaceAll(path, ".", "%2E")
 	endpoint := fmt.Sprintf("api/v4/projects/%s/repository/files/%s?ref=%s", encode(repo), path, ref)
 	out := new(content)
 	res, err := s.client.do(ctx, "GET", endpoint, nil, out)
@@ -62,7 +62,7 @@ func (s *contentService) Create(ctx context.Context, repo, path string, params *
 
 func (s *contentService) Update(ctx context.Context, repo, path string, params *scm.ContentParams) (*scm.Response, error) {
 	path = url.QueryEscape(path)
-	path = strings.Replace(path, ".", "%2E", -1)
+	path = strings.ReplaceAll(path, ".", "%2E")
 	endpoint := fmt.Sprintf("api/v4/projects/%s/repository/files/%s", encode(repo), path)
 
 	body := &updateContentBody{
