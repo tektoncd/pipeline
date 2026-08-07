@@ -59,8 +59,13 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 			panic(err.Error())
 		}
 
+		// The promote path and the informer's event handler below must filter
+		// ResolutionRequests with the same selector, or a resolver reconciles
+		// requests that are not addressed to it.
+		selector := resolver.GetSelector(ctx)
+
 		r := &Reconciler{
-			LeaderAwareFuncs:           LeaderAwareFuncs(rrInformer.Lister()),
+			LeaderAwareFuncs:           LeaderAwareFuncs(rrInformer.Lister(), selector),
 			kubeClientSet:              kubeclientset,
 			resolutionRequestLister:    rrInformer.Lister(),
 			resolutionRequestClientSet: rrclientset,
@@ -82,7 +87,7 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 		})
 
 		_, err := rrInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: FilterResolutionRequestsBySelector(resolver.GetSelector(ctx)),
+			FilterFunc: FilterResolutionRequestsBySelector(selector),
 			Handler: cache.ResourceEventHandlerFuncs{
 				AddFunc: impl.Enqueue,
 				UpdateFunc: func(oldObj, newObj interface{}) {
@@ -151,14 +156,20 @@ func FilterResolutionRequestsBySelector(selector map[string]string) func(obj int
 	}
 }
 
-// TODO(sbwsg): I don't really understand the LeaderAwareness types beyond the
-// fact that the controller crashes if they're missing. It looks
-// like this is bucketing based on labels. Should we use the filter
-// selector from above in the call to lister.List here?
-func LeaderAwareFuncs(lister rrlister.ResolutionRequestLister) reconciler.LeaderAwareFuncs {
+// LeaderAwareFuncs returns the LeaderAwareFuncs for a resolver's reconciler.
+// On promotion it re-enqueues only the ResolutionRequests this resolver is
+// responsible for, matching the labels that FilterResolutionRequestsBySelector
+// applies to the informer's event handler. Listing without the selector hands
+// every resolver every ResolutionRequest, and since the reconciler has no label
+// guard of its own the wrong resolver then fails requests never addressed to it.
+//
+// selector must be non-empty: labels.SelectorFromSet treats an empty set as
+// labels.Everything(). Callers get this from ValidateResolver, which rejects a
+// selector without a resolution.tekton.dev/type label.
+func LeaderAwareFuncs(lister rrlister.ResolutionRequestLister, selector map[string]string) reconciler.LeaderAwareFuncs {
 	return reconciler.LeaderAwareFuncs{
 		PromoteFunc: func(bkt reconciler.Bucket, enq func(reconciler.Bucket, types.NamespacedName)) error {
-			all, err := lister.List(labels.Everything())
+			all, err := lister.List(labels.SelectorFromSet(selector))
 			if err != nil {
 				return err
 			}
