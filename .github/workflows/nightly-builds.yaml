@@ -158,7 +158,12 @@ jobs:
 
           echo "Starting Tekton pipeline..."
 
-          PIPELINE_RUN=$(tkn pipeline start pipeline-release \
+          # Capture stdout and stderr to separate files so that on failure we can
+          # print BOTH: interactive prompts (e.g. "? Value for param `foo`") are
+          # written to stdout, while the terminating error (e.g. "Error: EOF") goes
+          # to stderr. On success, stdout is just the PipelineRun name.
+          set +e
+          tkn pipeline start pipeline-release \
             --serviceaccount=release-right-meow \
             --param package="${PACKAGE}" \
             --param repoName="${REPO_NAME}" \
@@ -176,15 +181,33 @@ jobs:
             --param releaseAsLatest="true" \
             --param runTests="false" \
             --param releaseMode="nightly" \
+            --param previousReleaseTag="" \
+            --param releaseName="" \
             --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
             --workspace name=release-secret,secret=release-secret \
             --workspace name=release-images-secret,secret=release-images-secret \
             --tasks-timeout 2h \
             --pipeline-timeout 3h \
-            --output name) || {
+            --output name >/tmp/tkn-start-out 2>/tmp/tkn-start-err
+          START_RC=$?
+          set -e
+          if [ "${START_RC}" -ne 0 ]; then
             echo "Failed to start Tekton pipeline!"
+            echo "----- tkn pipeline start stdout (prompts appear here) -----"
+            cat /tmp/tkn-start-out || true
+            echo "----- tkn pipeline start stderr (error appears here) -----"
+            cat /tmp/tkn-start-err || true
+            echo "-----------------------------------------------------------"
             exit 1
-          }
+          fi
+          # With --output name, tkn prints only the PipelineRun name to stdout.
+          # Take the last non-empty line to be robust against any stray output.
+          PIPELINE_RUN=$(grep -v '^[[:space:]]*$' /tmp/tkn-start-out | tail -n1)
+          if [ -z "${PIPELINE_RUN}" ]; then
+            echo "Could not determine PipelineRun name from tkn output!"
+            cat /tmp/tkn-start-out || true
+            exit 1
+          fi
 
           echo "Pipeline started: ${PIPELINE_RUN}"
           # Note: tkn pipelinerun logs -f exits 0 even when the PipelineRun fails,
