@@ -68,7 +68,7 @@ func (f *fakeHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check auth if we've fetching the image.
-	if strings.HasPrefix(r.URL.Path, "/v2/task") && r.Method == "GET" {
+	if strings.HasPrefix(r.URL.Path, "/v2/task") && r.Method == http.MethodGet {
 		u, p, ok := r.BasicAuth()
 		if !ok || username != u || password != p {
 			w.WriteHeader(http.StatusUnauthorized)

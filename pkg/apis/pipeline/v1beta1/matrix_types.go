@@ -19,10 +19,10 @@ import (
 	"sort"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"golang.org/x/exp/maps"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/strings/slices"
 	"knative.dev/pkg/apis"
+	"maps"
 )
 
 // Matrix is used to fan out Tasks in a Pipeline

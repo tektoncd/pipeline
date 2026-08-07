@@ -23,9 +23,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 
+	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
@@ -675,6 +677,20 @@ func TestResolve(t *testing.T) {
 				}
 			})
 		})
+	}
+}
+
+func TestBillyRejectsSymlinkLoop(t *testing.T) {
+	fs := memfs.New()
+	if err := fs.Symlink("b", "a"); err != nil {
+		t.Fatal(err)
+	}
+	if err := fs.Symlink("a", "b"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := fs.Open("a"); !errors.Is(err, syscall.ELOOP) {
+		t.Fatalf("Open() error = %v, want %v", err, syscall.ELOOP)
 	}
 }
 
