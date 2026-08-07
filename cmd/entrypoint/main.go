@@ -29,7 +29,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/containerd/containerd/platforms"
 	"github.com/tektoncd/pipeline/cmd/entrypoint/subcommands"
 	featureFlags "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -37,6 +36,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
+	"github.com/tektoncd/pipeline/pkg/platforms"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/spire/config"
 	"github.com/tektoncd/pipeline/pkg/termination"
@@ -65,6 +65,7 @@ var (
 const (
 	defaultWaitPollingInterval = time.Second
 	breakpointExitSuffix       = ".breakpointexit"
+	TektonPlatformCommandsEnv  = "TEKTON_PLATFORM_COMMANDS"
 )
 
 func checkForBreakpointOnFailure(e entrypoint.Entrypointer, breakpointExitPostFile string) {
@@ -122,7 +123,7 @@ func main() {
 	if *ep != "" {
 		cmd = []string{*ep}
 	} else {
-		env := os.Getenv("TEKTON_PLATFORM_COMMANDS")
+		env := os.Getenv(TektonPlatformCommandsEnv)
 		var cmds map[string][]string
 		if err := json.Unmarshal([]byte(env), &cmds); err != nil {
 			log.Fatal(err)
@@ -131,7 +132,7 @@ func main() {
 		// It doesn't include osversion, which is necessary to
 		// disambiguate two images both for e.g., Windows, that only
 		// differ by osversion.
-		plat := platforms.DefaultString()
+		plat := platforms.NewPlatform().Format()
 		var err error
 		cmd, err = selectCommandForPlatform(cmds, plat)
 		if err != nil {
