@@ -90,6 +90,8 @@ jobs:
       with:
         go-version-file: "go.mod"
     - uses: ko-build/setup-ko@d982fec422852203cfb2053a8ec6ad302280d04d # v0.8
+      with:
+        version: v0.18.1
     - name: ko-resolve
       run: |
           cat <<EOF > .ko.yaml
