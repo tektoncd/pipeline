@@ -198,6 +198,12 @@ go test -v -count=1 -tags=e2e,windows_e2e -timeout=20m ./test
 
 Please note that in order to run Windows tests there must be at least one Windows node available in the target Kubernetes cluster.
 
+Additionally, to run the e2e tests in local machine, apply below optional RBAC config that grants controller access to Pod logs
+
+```shell
+kubectl apply -f optional_config/enable-log-access-to-controller/
+```
+
 ### Flags
 
 - By default the e2e tests against the current cluster in `~/.kube/config` using
