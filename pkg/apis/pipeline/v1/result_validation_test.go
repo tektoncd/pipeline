@@ -297,10 +297,10 @@ func TestExtractStepResultName(t *testing.T) {
 				t.Errorf("Did not expect an error but got: %v", err)
 			}
 			if d := cmp.Diff(tt.wantStep, gotStep); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(tt.wantResult, gotResult); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -320,7 +320,7 @@ func TestExtractStepResultNameError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			gotStep, gotResult, err := v1.ExtractStepResultName(tt.value)
 			if d := cmp.Diff(tt.wantErr.Error(), err.Error()); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 			if gotStep != "" {
 				t.Errorf("Expected an empty string but got: %v", gotStep)
