@@ -154,11 +154,12 @@ jobs:
 
       - name: Start Tekton Build Pipeline
         run: |
-          set -euo pipefail  # Exit on any error, undefined variables, or pipe failures
+          set -euo pipefail
 
           echo "Starting Tekton pipeline..."
 
-          PIPELINE_RUN=$(tkn pipeline start pipeline-release \
+          set +e
+          tkn pipeline start pipeline-release \
             --serviceaccount=release-right-meow \
             --param package="${PACKAGE}" \
             --param repoName="${REPO_NAME}" \
@@ -176,22 +177,35 @@ jobs:
             --param releaseAsLatest="true" \
             --param runTests="false" \
             --param releaseMode="nightly" \
+            --param previousReleaseTag="" \
+            --param releaseName="" \
             --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
             --workspace name=release-secret,secret=release-secret \
             --workspace name=release-images-secret,secret=release-images-secret \
             --tasks-timeout 2h \
             --pipeline-timeout 3h \
-            --output name) || {
+            --output name >/tmp/tkn-start-out 2>/tmp/tkn-start-err
+          START_RC=$?
+          set -e
+          if [ "${START_RC}" -ne 0 ]; then
             echo "Failed to start Tekton pipeline!"
+            echo "----- tkn pipeline start stdout (prompts appear here) -----"
+            cat /tmp/tkn-start-out || true
+            echo "----- tkn pipeline start stderr (error appears here) -----"
+            cat /tmp/tkn-start-err || true
+            echo "-----------------------------------------------------------"
             exit 1
-          }
+          fi
+          PIPELINE_RUN=$(awk 'NF{line=$0} END{print line}' /tmp/tkn-start-out)
+          if [ -z "${PIPELINE_RUN}" ]; then
+            echo "Could not determine PipelineRun name from tkn output!"
+            cat /tmp/tkn-start-out || true
+            exit 1
+          fi
 
           echo "Pipeline started: ${PIPELINE_RUN}"
-          # Note: tkn pipelinerun logs -f exits 0 even when the PipelineRun fails,
-          # so the jq check below is the authoritative success gate.
           tkn pipelinerun logs "${PIPELINE_RUN}" -f
 
-          # Check if pipeline succeeded
           tkn pipelinerun describe "${PIPELINE_RUN}" -o json \
             | jq -e '.status.conditions[] | select(.type=="Succeeded") | .status == "True"' > /dev/null || {
             echo "Pipeline failed!"
