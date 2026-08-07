@@ -18,6 +18,9 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+# The pinned generators predate Go's alias type representation.
+export GODEBUG="${GODEBUG:+${GODEBUG},}gotypesalias=0"
+
 source $(git rev-parse --show-toplevel)/hack/setup-temporary-gopath.sh
 shim_gopath
 trap shim_gopath_clean EXIT

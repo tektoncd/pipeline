@@ -1,0 +1,12 @@
+diff --git a/vendor/github.com/go-git/go-billy/v5/fs.go b/vendor/github.com/go-git/go-billy/v5/fs.go
+--- a/vendor/github.com/go-git/go-billy/v5/fs.go
++++ b/vendor/github.com/go-git/go-billy/v5/fs.go
+@@ -170,7 +170,7 @@ type File interface {
+ 	// Name returns the name of the file as presented to Open.
+ 	Name() string
+ 	io.Writer
+-	// TODO: Add io.WriterAt for v6  
++	// TODO: Add io.WriterAt for v6
+ 	// io.WriterAt
+ 	io.Reader
+ 	io.ReaderAt
