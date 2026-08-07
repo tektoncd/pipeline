@@ -801,3 +801,112 @@ func TestExtractVariablesFromString(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateNoReferencesToBareVariables(t *testing.T) {
+	type args struct {
+		value  string
+		prefix string
+		vars   sets.String
+	}
+	for _, tc := range []struct {
+		name          string
+		args          args
+		expectedError *apis.FieldError
+	}{{
+		name: "bare workspace reference is rejected",
+		args: args{
+			value:  "echo $(workspaces.myws)",
+			prefix: "workspaces",
+			vars:   sets.NewString("myws"),
+		},
+		expectedError: &apis.FieldError{
+			Message: `variable $(workspaces.myws) must specify a property (path, bound, claim, or volume)`,
+			Paths:   []string{""},
+		},
+	}, {
+		name: "qualified workspace reference is allowed",
+		args: args{
+			value:  "echo $(workspaces.myws.path)",
+			prefix: "workspaces",
+			vars:   sets.NewString("myws"),
+		},
+		expectedError: nil,
+	}, {
+		name: "bare reference for undeclared workspace is not flagged",
+		args: args{
+			value:  "echo $(workspaces.other)",
+			prefix: "workspaces",
+			vars:   sets.NewString("myws"),
+		},
+		expectedError: nil,
+	}, {
+		name: "no variable references at all",
+		args: args{
+			value:  "echo hello",
+			prefix: "workspaces",
+			vars:   sets.NewString("myws"),
+		},
+		expectedError: nil,
+	}, {
+		name: "empty value is fine",
+		args: args{
+			value:  "",
+			prefix: "workspaces",
+			vars:   sets.NewString("myws"),
+		},
+		expectedError: nil,
+	}, {
+		name: "bare reference with bracket notation is not matched",
+		args: args{
+			value:  `echo $(workspaces.myws["path"])`,
+			prefix: "workspaces",
+			vars:   sets.NewString("myws"),
+		},
+		expectedError: nil,
+	}, {
+		name: "multiple bare references returns error for first",
+		args: args{
+			value:  "$(workspaces.ws1) and $(workspaces.ws2)",
+			prefix: "workspaces",
+			vars:   sets.NewString("ws1", "ws2"),
+		},
+		expectedError: &apis.FieldError{
+			Message: `variable $(workspaces.ws1) must specify a property (path, bound, claim, or volume)`,
+			Paths:   []string{""},
+		},
+	}, {
+		name: "workspace name with hyphen is caught",
+		args: args{
+			value:  "$(workspaces.my-ws)",
+			prefix: "workspaces",
+			vars:   sets.NewString("my-ws"),
+		},
+		expectedError: &apis.FieldError{
+			Message: `variable $(workspaces.my-ws) must specify a property (path, bound, claim, or volume)`,
+			Paths:   []string{""},
+		},
+	}, {
+		name: "no false positive when var name is prefix of actual reference",
+		args: args{
+			value:  "$(workspaces.myws)",
+			prefix: "workspaces",
+			vars:   sets.NewString("my"),
+		},
+		expectedError: nil,
+	}, {
+		name: "array star notation is not bare",
+		args: args{
+			value:  "$(workspaces.myws[*])",
+			prefix: "workspaces",
+			vars:   sets.NewString("myws"),
+		},
+		expectedError: nil,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := substitution.ValidateNoReferencesToBareVariables(tc.args.value, tc.args.prefix, tc.args.vars)
+			if d := cmp.Diff(tc.expectedError, got, cmp.AllowUnexported(apis.FieldError{})); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
