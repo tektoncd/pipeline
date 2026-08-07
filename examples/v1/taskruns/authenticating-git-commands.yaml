@@ -166,7 +166,7 @@ spec:
         git commit -m "Test commit!"
         git push origin master
     - name: git-clone-and-check
-      image: gcr.io/tekton-releases/dogfooding/alpine-git-nonroot:latest
+      image: ghcr.io/tektoncd/plumbing/alpine-git-nonroot:latest
       # Because this Step runs with a non-root security context, the creds-init
       # credentials will fail to copy into /tekton/home. This happens because
       # our previous step _already_ wrote to /tekton/home and ran as a root
