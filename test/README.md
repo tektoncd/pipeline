@@ -149,6 +149,12 @@ Environment variables used by end to end tests:
   is used to create/delete a bucket which will be used for output to input
   linking by the `PipelineRun` controller.
 
+Please note that in order to run the e2e tests in local machine, apply below optional RBAC config that grants controller access to Pod logs:
+
+```shell
+kubectl apply -f optional_config/enable-log-access-to-controller/
+```
+
 To create a service account usable in the e2e tests:
 
 ```bash
