@@ -145,6 +145,11 @@ data:
   # Alpha feature — this is a short-term measure. External result storage
   # (TEP-0164) will address the underlying 4KB limitation.
   enable-termination-message-compression: "false"
+  # Setting this flag to "true" will enable surfacing Pod Warning events
+  # (e.g. FailedMount, FailedScheduling) onto the TaskRun status when a
+  # Pod is stuck pending with no useful status message.
+  # See https://github.com/tektoncd/pipeline/issues/10373 for more info.
+  surface-pod-events: "false"
   # Controls whether informer cache transforms are enabled. When enabled (default),
   # the controller strips large, unnecessary metadata fields (managedFields and the
   # kubectl last-applied-configuration annotation) from PipelineRuns, TaskRuns,
