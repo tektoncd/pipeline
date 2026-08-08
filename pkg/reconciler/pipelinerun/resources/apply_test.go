@@ -2073,6 +2073,46 @@ func TestApplyParameters(t *testing.T) {
 				}},
 			},
 		},
+		{
+			// An object param may be supplied partially: the API explicitly allows it, and
+			// MissingKeysObjectParamNames treats a key as provided when the ParamSpec default
+			// carries it. The keys the PipelineRun leaves out must therefore keep coming from the
+			// default, otherwise $(params.<name>.<key>) is left unresolved in the produced TaskRun.
+			name: "object param supplied partially keeps default values for the missing keys",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "prepare", Type: v1.ParamTypeObject, Default: v1.NewObject(map[string]string{
+						"command": "make build",
+						"image":   "golang:1.24",
+					})},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-command", Value: *v1.NewStructuredValues("$(params.prepare.command)")},
+						{Name: "task-image", Value: *v1.NewStructuredValues("$(params.prepare.image)")},
+					},
+				}},
+			},
+			params: v1.Params{
+				{Name: "prepare", Value: *v1.NewObject(map[string]string{
+					"command": "make test",
+				})},
+			},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "prepare", Type: v1.ParamTypeObject, Default: v1.NewObject(map[string]string{
+						"command": "make build",
+						"image":   "golang:1.24",
+					})},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-command", Value: *v1.NewStructuredValues("make test")},
+						{Name: "task-image", Value: *v1.NewStructuredValues("golang:1.24")},
+					},
+				}},
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
