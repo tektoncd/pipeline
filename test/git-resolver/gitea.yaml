@@ -486,13 +486,8 @@ spec:
       serviceAccountName: gitea-memcached
       containers:
         - name: memcached
-          image: docker.io/bitnami/memcached:1.6.9-debian-10-r114
+          image: mirror.gcr.io/library/memcached@sha256:eeb9eaa939ffaa2304899674c9e88a9247ec8e5e40e424a892df7b09914bd2ec
           imagePullPolicy: "IfNotPresent"
-          args:
-            - /run.sh
-          env:
-            - name: BITNAMI_DEBUG
-              value: "false"
           ports:
             - name: memcache
               containerPort: 11211
@@ -572,7 +567,7 @@ spec:
         fsGroup: 1001
       containers:
         - name: gitea-postgresql
-          image: docker.io/bitnami/postgresql:11.11.0-debian-10-r62
+          image: mirror.gcr.io/library/postgres@sha256:5d2aa4a7b5f9bdadeddcf87cf7f90a176737a02a30d917de4ab2e6a329bd2d45
           imagePullPolicy: "IfNotPresent"
           resources:
             requests:
