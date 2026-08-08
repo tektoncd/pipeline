@@ -91,10 +91,11 @@ func (key *KeyRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 }
 
 // Validate ResourcePattern and make sure the Pattern is valid regex expression.
-// Patterns that are not anchored with ^ and $ are flagged with a warning because
-// unanchored patterns can match unintended substrings in resource URIs, which
-// could allow an attacker to craft a URI that contains the trusted pattern as a
-// substring.
+// Patterns that are not anchored with ^ and $ are flagged with a warning, since an
+// unanchored pattern matches anywhere in a resource URI and so is usually broader
+// than its author intended. This is a usability guardrail rather than a security
+// control: substring matching is already prevented at evaluation time by
+// getMatchedPolicies, which strips the resolver prefix and anchors the pattern.
 func (r *ResourcePattern) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if _, err := regexp.Compile(r.Pattern); err != nil {
 		errs = errs.Also(apis.ErrInvalidValue(r.Pattern, "ResourcePattern", fmt.Sprintf("%v: %v", InvalidResourcePatternErr, err)))

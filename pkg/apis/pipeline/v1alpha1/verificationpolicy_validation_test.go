@@ -374,6 +374,11 @@ func TestVerificationPolicy_UnanchoredPatternWarnsNotRejects(t *testing.T) {
 
 	t.Run("unanchored pattern warns without rejecting", func(t *testing.T) {
 		err := vpWithPattern("https://github.com/tektoncd/catalog.git").Validate(t.Context())
+		// Guard explicitly: if the warning ever stops being emitted, report that
+		// rather than panicking inside Filter on a nil FieldError.
+		if err == nil {
+			t.Fatal("expected a warning for unanchored pattern, got no diagnostics")
+		}
 		if err.Filter(apis.ErrorLevel) != nil {
 			t.Errorf("unanchored pattern must not be rejected, got error: %v", err)
 		}
