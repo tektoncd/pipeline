@@ -3905,8 +3905,184 @@ func TestUpdateIncompleteTaskRunStatus_SubPathError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			updateIncompleteTaskRunStatus(tt.trs, tt.pod)
+			ctx := config.ToContext(t.Context(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{},
+			})
+			logger, _ := logging.NewLogger("", "")
+			kubeclient := fakek8s.NewSimpleClientset()
+			updateIncompleteTaskRunStatus(ctx, logger, tt.trs, tt.pod, kubeclient)
 			if d := cmp.Diff(tt.expected, tt.trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")); d != "" {
+				t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestUpdateIncompleteTaskRunStatus_SurfacePodEvents(t *testing.T) {
+	tests := []struct {
+		name     string
+		pod      *corev1.Pod
+		events   []corev1.Event
+		flagOn   bool
+		expected *apis.Condition
+	}{
+		{
+			name: "generic pending with FailedMount event and flag on",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+					UID:       "test-uid",
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodPending,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name: "step-foo",
+						State: corev1.ContainerState{
+							Waiting: &corev1.ContainerStateWaiting{
+								Reason: "ContainerCreating",
+							},
+						},
+					}},
+				},
+			},
+			events: []corev1.Event{{
+				ObjectMeta:     metav1.ObjectMeta{Name: "evt1", Namespace: "ns"},
+				InvolvedObject: corev1.ObjectReference{UID: "test-uid"},
+				Type:           "Warning",
+				Reason:         "FailedMount",
+				Message:        `MountVolume.SetUp failed for volume "vol" : secret "does-not-exist" not found`,
+				LastTimestamp:   metav1.Now(),
+			}},
+			flagOn: true,
+			expected: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: `FailedMount: MountVolume.SetUp failed for volume "vol" : secret "does-not-exist" not found`,
+			},
+		},
+		{
+			name: "generic pending with FailedMount event but flag off",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+					UID:       "test-uid",
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodPending,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name: "step-foo",
+						State: corev1.ContainerState{
+							Waiting: &corev1.ContainerStateWaiting{
+								Reason: "ContainerCreating",
+							},
+						},
+					}},
+				},
+			},
+			events: []corev1.Event{{
+				ObjectMeta:     metav1.ObjectMeta{Name: "evt1", Namespace: "ns"},
+				InvolvedObject: corev1.ObjectReference{UID: "test-uid"},
+				Type:           "Warning",
+				Reason:         "FailedMount",
+				Message:        `MountVolume.SetUp failed for volume "vol" : secret "does-not-exist" not found`,
+				LastTimestamp:   metav1.Now(),
+			}},
+			flagOn: false,
+			expected: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: "Pending",
+			},
+		},
+		{
+			name: "generic pending with no events and flag on",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+					UID:       "test-uid",
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodPending,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name: "step-foo",
+						State: corev1.ContainerState{
+							Waiting: &corev1.ContainerStateWaiting{
+								Reason: "ContainerCreating",
+							},
+						},
+					}},
+				},
+			},
+			events: nil,
+			flagOn: true,
+			expected: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: "Pending",
+			},
+		},
+		{
+			name: "non-generic pending skips event lookup even with flag on",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+					UID:       "test-uid",
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodPending,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name: "step-foo",
+						State: corev1.ContainerState{
+							Waiting: &corev1.ContainerStateWaiting{
+								Reason:  "ContainerCreating",
+								Message: "some useful message from kubelet",
+							},
+						},
+					}},
+				},
+			},
+			events: []corev1.Event{{
+				ObjectMeta:     metav1.ObjectMeta{Name: "evt1", Namespace: "ns"},
+				InvolvedObject: corev1.ObjectReference{UID: "test-uid"},
+				Type:           "Warning",
+				Reason:         "FailedMount",
+				Message:        "should not appear",
+				LastTimestamp:   metav1.Now(),
+			}},
+			flagOn: true,
+			expected: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: `build step "step-foo" is pending with reason "some useful message from kubelet"`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			kubeclient := fakek8s.NewSimpleClientset()
+			for i := range tt.events {
+				_, _ = kubeclient.CoreV1().Events(tt.events[i].Namespace).Create(t.Context(), &tt.events[i], metav1.CreateOptions{})
+			}
+
+			ctx := config.ToContext(t.Context(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableSurfacePodEvents: tt.flagOn,
+				},
+			})
+
+			logger, _ := logging.NewLogger("", "")
+			trs := &v1.TaskRunStatus{}
+			updateIncompleteTaskRunStatus(ctx, logger, trs, tt.pod, kubeclient)
+			if d := cmp.Diff(tt.expected, trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")); d != "" {
 				t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
 			}
 		})
