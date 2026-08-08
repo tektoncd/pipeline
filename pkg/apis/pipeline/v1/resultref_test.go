@@ -761,7 +761,7 @@ func TestHasResultReferenceWhenExpression(t *testing.T) {
 			}
 			got := v1.NewResultRefs(expressions)
 			if d := cmp.Diff(tt.wantRef, got); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}

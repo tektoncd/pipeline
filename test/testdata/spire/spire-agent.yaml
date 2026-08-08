@@ -147,7 +147,7 @@ spec:
         # of all the little details required to register a CSI driver with
         # the kubelet.
         - name: node-driver-registrar
-          image: quay.io/k8scsi/csi-node-driver-registrar:v2.0.1
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar@sha256:e07f914c32f0505e4c470a62a40ee43f84cbf8dc46ff861f31b14457ccbad108
           imagePullPolicy: IfNotPresent
           args: [
             "-csi-address", "/spiffe-csi/csi.sock",

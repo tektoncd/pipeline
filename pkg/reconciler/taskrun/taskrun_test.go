@@ -620,7 +620,7 @@ spec:
 
 	err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, "reconcile-cloud-events", wantEvents)
 	if !(err == nil) {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 
 	wantCloudEvents := []string{
@@ -961,7 +961,7 @@ spec:
 
 			err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
 			if err != nil {
-				t.Errorf(err.Error())
+				t.Error(err)
 			}
 		})
 	}
@@ -1115,7 +1115,7 @@ spec:
 
 			err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
 			if err != nil {
-				t.Errorf(err.Error())
+				t.Error(err)
 			}
 		})
 	}
@@ -1454,7 +1454,7 @@ spec:
 
 			err := k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
 			if !(err == nil) {
-				t.Errorf(err.Error())
+				t.Error(err)
 			}
 
 			newTr, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
@@ -2474,7 +2474,7 @@ status:
 	}
 	err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, "test-reconcile-pod-updateStatus", wantEvents)
 	if !(err == nil) {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 }
 
@@ -2573,7 +2573,7 @@ status:
 	}
 	err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, "test-reconcile-on-cancelled-taskrun", wantEvents)
 	if !(err == nil) {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 
 	// reconcile the completed TaskRun again without the pod as that was deleted
@@ -2646,7 +2646,7 @@ status:
 	}
 	err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, "test-reconcile-on-timedout-taskrun", wantEvents)
 	if !(err == nil) {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 
 	// reconcile the completed TaskRun again without the pod as that was deleted
@@ -2879,7 +2879,7 @@ status:
 				}
 				err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, taskRun.Name, wantEvents)
 				if err != nil {
-					t.Errorf(err.Error())
+					t.Error(err)
 				}
 			}
 		})
@@ -3084,7 +3084,7 @@ status:
 			}
 			err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.taskRun.Name, tc.wantEvents)
 			if !(err == nil) {
-				t.Errorf(err.Error())
+				t.Error(err)
 			}
 		})
 	}
@@ -5218,7 +5218,7 @@ status:
 				t.Fatal(err)
 			}
 			if d := cmp.Diff(&tc.expectedStatus, tc.taskRun.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
-				t.Fatalf(diff.PrintWantGot(d))
+				t.Fatal(diff.PrintWantGot(d))
 			}
 
 			if tc.expectedStepStates != nil {
@@ -5322,7 +5322,7 @@ spec:
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
 			if d := cmp.Diff(tc.wantTaskRun, tr); d != "" {
-				t.Fatalf(diff.PrintWantGot(d))
+				t.Fatal(diff.PrintWantGot(d))
 			}
 
 			// mock second reconcile
@@ -5330,7 +5330,7 @@ spec:
 				t.Errorf("storePipelineSpec() error = %v", err)
 			}
 			if d := cmp.Diff(tc.wantTaskRun, tr); d != "" {
-				t.Fatalf(diff.PrintWantGot(d))
+				t.Fatal(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -5355,10 +5355,10 @@ func Test_storeTaskSpec_metadata(t *testing.T) {
 		t.Errorf("storeTaskSpecAndMergeMeta error = %v", err)
 	}
 	if d := cmp.Diff(wantedlabels, tr.ObjectMeta.Labels); d != "" {
-		t.Fatalf(diff.PrintWantGot(d))
+		t.Fatal(diff.PrintWantGot(d))
 	}
 	if d := cmp.Diff(wantedannotations, tr.ObjectMeta.Annotations); d != "" {
-		t.Fatalf(diff.PrintWantGot(d))
+		t.Fatal(diff.PrintWantGot(d))
 	}
 }
 

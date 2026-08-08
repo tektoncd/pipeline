@@ -2,29 +2,19 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build !(go1.27 && !http2legacy)
+
 // Transport code's client connection pooling.
 
 package http2
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
+	"net"
 	"net/http"
 	"sync"
 )
-
-// ClientConnPool manages a pool of HTTP/2 client connections.
-type ClientConnPool interface {
-	// GetClientConn returns a specific HTTP/2 connection (usually
-	// a TLS-TCP connection) to an HTTP/2 server. On success, the
-	// returned ClientConn accounts for the upcoming RoundTrip
-	// call, so the caller should not omit it. If the caller needs
-	// to, ClientConn.RoundTrip can be called with a bogus
-	// new(http.Request) to release the stream reservation.
-	GetClientConn(req *http.Request, addr string) (*ClientConn, error)
-	MarkDead(*ClientConn)
-}
 
 // clientConnPoolIdleCloser is the interface implemented by ClientConnPool
 // implementations which can close their idle connections.
@@ -158,7 +148,7 @@ func (c *dialCall) dial(ctx context.Context, addr string) {
 // This code decides which ones live or die.
 // The return value used is whether c was used.
 // c is never closed.
-func (p *clientConnPool) addConnIfNeeded(key string, t *Transport, c *tls.Conn) (used bool, err error) {
+func (p *clientConnPool) addConnIfNeeded(key string, t *Transport, c net.Conn) (used bool, err error) {
 	p.mu.Lock()
 	for _, cc := range p.conns[key] {
 		if cc.CanTakeNewRequest() {
@@ -194,8 +184,8 @@ type addConnCall struct {
 	err  error
 }
 
-func (c *addConnCall) run(t *Transport, key string, tc *tls.Conn) {
-	cc, err := t.NewClientConn(tc)
+func (c *addConnCall) run(t *Transport, key string, nc net.Conn) {
+	cc, err := t.NewClientConn(nc)
 
 	p := c.p
 	p.mu.Lock()

@@ -6,4 +6,5 @@
 /pkg/client/** linguist-generated=true
 /third_party/** linguist-generated=true
 /vendor/** linguist-generated=true
+/hack/patches/*.patch -whitespace
 go.sum linguist-generated=true

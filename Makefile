@@ -9,7 +9,7 @@ TESTPKGS = $(shell env GO111MODULE=on $(GO) list -f \
 BIN      = $(CURDIR)/.bin
 WOKE 	?= go run -modfile go.mod github.com/get-woke/woke
 
-GOLANGCI_VERSION = v1.57.2
+GOLANGCI_VERSION = v2.4.0
 WOKE_VERSION     = v0.19.0
 
 GO           = go
@@ -165,9 +165,10 @@ $(BIN)/errcheck: PACKAGE=github.com/kisielk/errcheck
 errcheck: | $(ERRCHECK) ; $(info $(M) running errcheck…) ## Run errcheck
 	$Q $(ERRCHECK) ./...
 
-GOLANGCILINT = $(BIN)/golangci-lint
-$(BIN)/golangci-lint: ; $(info $(M) getting golangci-lint $(GOLANGCI_VERSION))
-	cd tools; GOBIN=$(BIN) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_VERSION)
+GOLANGCILINT = $(BIN)/golangci-lint-$(GOLANGCI_VERSION)
+$(GOLANGCILINT): ; $(info $(M) getting golangci-lint $(GOLANGCI_VERSION))
+	cd tools; GOBIN=$(BIN) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION)
+	mv $(BIN)/golangci-lint $(GOLANGCILINT)
 
 .PHONY: golangci-lint
 golangci-lint: | $(GOLANGCILINT) ; $(info $(M) running golangci-lint…) @ ## Run golangci-lint

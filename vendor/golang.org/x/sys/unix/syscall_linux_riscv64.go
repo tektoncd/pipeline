@@ -112,6 +112,9 @@ func Time(t *Time_t) (Time_t, error) {
 }
 
 func Utime(path string, buf *Utimbuf) error {
+	if buf == nil {
+		return Utimes(path, nil)
+	}
 	tv := []Timeval{
 		{Sec: buf.Actime},
 		{Sec: buf.Modtime},
@@ -187,3 +190,5 @@ func RISCVHWProbe(pairs []RISCVHWProbePairs, set *CPUSet, flags uint) (err error
 	}
 	return riscvHWProbe(pairs, setSize, set, flags)
 }
+
+const SYS_FSTATAT = SYS_NEWFSTATAT

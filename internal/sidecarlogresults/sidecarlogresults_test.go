@@ -80,7 +80,7 @@ func TestLookForResults_FanOutAndWait(t *testing.T) {
 			sort.Slice(wantResults, func(i int, j int) bool { return wantResults[i] < wantResults[j] })
 			sort.Slice(got.Bytes(), func(i int, j int) bool { return got.Bytes()[i] < got.Bytes()[j] })
 			if d := cmp.Diff(wantResults, got.Bytes()); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -143,7 +143,7 @@ func TestLookForResults(t *testing.T) {
 				t.Fatalf("Did not expect any error but got: %v", err)
 			}
 			if d := cmp.Diff(want, got.Bytes()); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -213,7 +213,7 @@ func TestLookForStepResults(t *testing.T) {
 				t.Fatalf("Did not expect any error but got: %v", err)
 			}
 			if d := cmp.Diff(want, got.Bytes()); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}

@@ -2548,7 +2548,7 @@ func TestResolvePipelineRun_VerificationFailed(t *testing.T) {
 	for _, pt := range pts {
 		rt, _ := ResolvePipelineTask(context.Background(), pr, getTask, getTaskRun, nopGetCustomRun, pt, nil)
 		if d := cmp.Diff(verificationResult, rt.ResolvedTask.VerificationResult, cmpopts.EquateErrors()); d != "" {
-			t.Errorf(diff.PrintWantGot(d))
+			t.Error(diff.PrintWantGot(d))
 		}
 	}
 }

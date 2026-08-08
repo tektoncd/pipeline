@@ -522,7 +522,7 @@ func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string,
 			}},
 			Containers: []corev1.Container{{
 				Name:       "skopeo",
-				Image:      "gcr.io/tekton-releases/dogfooding/skopeo:latest",
+				Image:      "ghcr.io/tektoncd/catalog/upstream/tasks/skopeo-copy@sha256:ca7fabbd99b4387609ab593cd5fad86f340584d21c8b200f5cd002cf24d5070d",
 				WorkingDir: "/var",
 				Command:    []string{"/bin/sh", "-c"},
 				Args:       []string{"skopeo copy --dest-tls-verify=false oci:image docker://" + ref.String()},

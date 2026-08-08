@@ -32,8 +32,10 @@ type keyring struct {
 
 var errLocked = errors.New("agent: locked")
 
-// NewKeyring returns an Agent that holds keys in memory.  It is safe
-// for concurrent use by multiple goroutines.
+// NewKeyring returns an Agent that holds keys in memory.  It is safe for
+// concurrent use by multiple goroutines.
+//
+// The returned Agent only supports the "lifetime" constraint.
 func NewKeyring() Agent {
 	return &keyring{}
 }
@@ -112,7 +114,7 @@ func (r *keyring) Unlock(passphrase []byte) error {
 }
 
 // expireKeysLocked removes expired keys from the keyring. If a key was added
-// with a lifetimesecs contraint and seconds >= lifetimesecs seconds have
+// with a lifetimesecs constraint and seconds >= lifetimesecs seconds have
 // elapsed, it is removed. The caller *must* be holding the keyring mutex.
 func (r *keyring) expireKeysLocked() {
 	for _, k := range r.keys {
@@ -143,15 +145,26 @@ func (r *keyring) List() ([]*Key, error) {
 	return ids, nil
 }
 
-// Insert adds a private key to the keyring. If a certificate
-// is given, that certificate is added as public key. Note that
-// any constraints given are ignored.
+// Add adds a private key to the keyring. If a certificate is given, that
+// certificate is added as public key.
+//
+// Add returns an error if key contains ConstraintExtensions or
+// ConfirmBeforeUse.
 func (r *keyring) Add(key AddedKey) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.locked {
 		return errLocked
 	}
+
+	if key.ConfirmBeforeUse {
+		return errors.New("agent: confirm before use constraint is not supported")
+	}
+
+	if len(key.ConstraintExtensions) > 0 {
+		return errors.New("agent: constraint extensions are present but not supported")
+	}
+
 	signer, err := ssh.NewSignerFromKey(key.PrivateKey)
 
 	if err != nil {
@@ -173,6 +186,15 @@ func (r *keyring) Add(key AddedKey) error {
 	if key.LifetimeSecs > 0 {
 		t := time.Now().Add(time.Duration(key.LifetimeSecs) * time.Second)
 		p.expire = &t
+	}
+
+	// If we already have a Signer with the same public key, replace it with the
+	// new one.
+	for idx, k := range r.keys {
+		if bytes.Equal(k.signer.PublicKey().Marshal(), p.signer.PublicKey().Marshal()) {
+			r.keys[idx] = p
+			return nil
+		}
 	}
 
 	r.keys = append(r.keys, p)
