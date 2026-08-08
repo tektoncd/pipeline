@@ -81,6 +81,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableConciseResolverSyntax:              true,
 				EnableKubernetesSidecar:                  true,
 				EnableTerminationMessageCompression:      true,
+				EnableSurfacePodEvents:                   true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -303,6 +304,9 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	}, {
 		fileName: "feature-flags-invalid-enable-termination-message-compression",
 		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-termination-message-compression`,
+	}, {
+		fileName: "feature-flags-invalid-surface-pod-events",
+		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature surface-pod-events`,
 	}, {
 		fileName: "feature-flags-invalid-set_security_context_read_only_root_filesystem",
 		want:     `failed parsing feature flags config "invalid read only root filesystem flag": strconv.ParseBool: parsing "invalid read only root filesystem flag": invalid syntax`,
