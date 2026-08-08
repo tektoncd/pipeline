@@ -403,12 +403,15 @@ func resolveObjectParam(paramKey string, paramValue map[string]string, resolvedS
 	for key, value := range paramValue {
 		resolvedValues[key] = substitution.ApplyReplacements(value, resolvedStringParams)
 	}
-	// paramValue holds only the keys the run left out. When the run supplied the param its value
-	// stays the whole-object replacement, so the entry must not be overwritten with this partial
-	// map -- only individual key access below falls back to the default.
-	if _, supplied := resolvedObjectParams[paramKey]; !supplied {
-		resolvedObjectParams[paramKey] = resolvedValues
+	// paramValue holds only the keys the run left out, so the entry is merged rather than replaced:
+	// the value of a partially supplied object param is the default with the run's keys layered on
+	// top, which is what $(params.<name>[*]) has to hand on. The TaskRun side already resolves the
+	// whole-object form that way (getTaskParameters merges run values key by key into the
+	// default's), so merging here makes the same expression mean the same thing at both levels.
+	for key, value := range resolvedObjectParams[paramKey] {
+		resolvedValues[key] = value
 	}
+	resolvedObjectParams[paramKey] = resolvedValues
 
 	// Add keyed access to enable references like $(params.config.host) in other params
 	for key, value := range resolvedValues {

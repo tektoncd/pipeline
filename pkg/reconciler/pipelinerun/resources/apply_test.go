@@ -2113,6 +2113,47 @@ func TestApplyParameters(t *testing.T) {
 				}},
 			},
 		},
+		{
+			// The whole-object form has to carry the same value as the individual keys: the default
+			// with the run's keys layered on top. The TaskRun side already resolves $(params.<name>[*])
+			// that way, so a partially supplied object must not reach a Task missing the keys the
+			// default was supposed to cover.
+			name: "object param supplied partially resolves the whole-object form from the default too",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "prepare", Type: v1.ParamTypeObject, Default: v1.NewObject(map[string]string{
+						"command": "make build",
+						"image":   "golang:1.24",
+					})},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-prepare", Value: *v1.NewStructuredValues("$(params.prepare[*])")},
+					},
+				}},
+			},
+			params: v1.Params{
+				{Name: "prepare", Value: *v1.NewObject(map[string]string{
+					"command": "make test",
+				})},
+			},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "prepare", Type: v1.ParamTypeObject, Default: v1.NewObject(map[string]string{
+						"command": "make build",
+						"image":   "golang:1.24",
+					})},
+				},
+				Tasks: []v1.PipelineTask{{
+					Params: v1.Params{
+						{Name: "task-prepare", Value: *v1.NewObject(map[string]string{
+							"command": "make test",
+							"image":   "golang:1.24",
+						})},
+					},
+				}},
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
