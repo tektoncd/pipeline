@@ -410,7 +410,7 @@ func (rw *repoWriter) writeChild(ctx context.Context, child partial.Describable,
 func (rw *repoWriter) manifestExists(ctx context.Context, ref name.Reference, t Taggable) (bool, error) {
 	f := &fetcher{
 		target: ref.Context(),
-		client: rw.w.client,
+		client: rw.w.getClient(),
 	}
 
 	m, err := taggableToManifest(t)

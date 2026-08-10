@@ -69,6 +69,13 @@ type writer struct {
 	scopes   []string
 }
 
+// getClient returns the HTTP client, blocking on scope updates.
+func (w *writer) getClient() *http.Client {
+	w.scopeLock.Lock()
+	defer w.scopeLock.Unlock()
+	return w.client
+}
+
 // makeDeleteClient returns an HTTP client whose token includes the "delete"
 // action so that registries requiring an explicit delete permission grant
 // access for manifest deletion.
@@ -208,7 +215,7 @@ func (w *writer) checkExistingBlob(ctx context.Context, h v1.Hash) (bool, error)
 		return false, err
 	}
 
-	resp, err := w.client.Do(req.WithContext(ctx))
+	resp, err := w.getClient().Do(req.WithContext(ctx))
 	if err != nil {
 		return false, err
 	}
@@ -246,7 +253,7 @@ func (w *writer) initiateUpload(ctx context.Context, from, mount, origin string)
 		return "", false, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := w.client.Do(req.WithContext(ctx))
+	resp, err := w.getClient().Do(req.WithContext(ctx))
 	if err != nil {
 		if from != "" {
 			// https://github.com/google/go-containerregistry/issues/1679
@@ -326,7 +333,7 @@ func (w *writer) streamBlob(ctx context.Context, layer v1.Layer, streamLocation 
 	}
 	req.Header.Set("Content-Type", "application/octet-stream")
 
-	resp, err := w.client.Do(req.WithContext(ctx))
+	resp, err := w.getClient().Do(req.WithContext(ctx))
 	if err != nil {
 		return "", err
 	}
@@ -358,7 +365,7 @@ func (w *writer) commitBlob(ctx context.Context, location, digest string) error 
 	}
 	req.Header.Set("Content-Type", "application/octet-stream")
 
-	resp, err := w.client.Do(req.WithContext(ctx))
+	resp, err := w.getClient().Do(req.WithContext(ctx))
 	if err != nil {
 		return err
 	}
@@ -517,7 +524,7 @@ func (w *writer) commitSubjectReferrers(ctx context.Context, sub name.Digest, ad
 		return err
 	}
 	req.Header.Set("Accept", string(types.OCIImageIndex))
-	resp, err := w.client.Do(req.WithContext(ctx))
+	resp, err := w.getClient().Do(req.WithContext(ctx))
 	if err != nil {
 		return err
 	}
@@ -543,7 +550,7 @@ func (w *writer) commitSubjectReferrers(ctx context.Context, sub name.Digest, ad
 		return err
 	}
 	req.Header.Set("Accept", string(types.OCIImageIndex))
-	resp, err = w.client.Do(req.WithContext(ctx))
+	resp, err = w.getClient().Do(req.WithContext(ctx))
 	if err != nil {
 		return err
 	}
@@ -630,7 +637,7 @@ func (w *writer) commitManifest(ctx context.Context, t Taggable, ref name.Refere
 		}
 		req.Header.Set("Content-Type", string(desc.MediaType))
 
-		resp, err := w.client.Do(req.WithContext(ctx))
+		resp, err := w.getClient().Do(req.WithContext(ctx))
 		if err != nil {
 			return err
 		}
