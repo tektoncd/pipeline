@@ -317,7 +317,12 @@ func (c *Client) getWebResponse(method, path string, body io.Reader) ([]byte, *R
 		return nil, nil, err
 	}
 
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+
 	data, err := io.ReadAll(resp.Body)
 	if debug {
 		fmt.Printf("Response: %v\n\n", resp)
@@ -397,7 +402,12 @@ func statusCodeToErr(resp *Response) (body []byte, err error) {
 	//
 	// error: body will be read for details
 	//
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("body read on HTTP error %d: %v", resp.StatusCode, err)
@@ -410,7 +420,7 @@ func statusCodeToErr(resp *Response) (body []byte, err error) {
 		// plain string, so we try to return a helpful error anyway
 		path := resp.Request.URL.Path
 		method := resp.Request.Method
-		return data, fmt.Errorf("Unknown API Error: %d\nRequest: '%s' with '%s' method and '%s' body", resp.StatusCode, path, method, string(data))
+		return data, fmt.Errorf("unknown API error: %d\nRequest: '%s' with '%s' method and '%s' body", resp.StatusCode, path, method, string(data))
 	}
 
 	if msg, ok := errMap["message"]; ok {
@@ -436,12 +446,36 @@ func (c *Client) getResponseReader(method, path string, header http.Header, body
 	return resp.Body, resp, nil
 }
 
+func (c *Client) doRequestWithStatusHandle(method, path string, header http.Header, body io.Reader) (*Response, error) {
+	resp, err := c.doRequest(method, path, header, body)
+	if err != nil {
+		return resp, err
+	}
+
+	// check for errors
+	if _, err = statusCodeToErr(resp); err != nil {
+		// resp.Body has already been closed in statusCodeToErr
+		return resp, err
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+
+	return resp, err
+}
+
 func (c *Client) getResponse(method, path string, header http.Header, body io.Reader) ([]byte, *Response, error) {
 	resp, err := c.doRequest(method, path, header, body)
 	if err != nil {
 		return nil, resp, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
 
 	// check for errors
 	data, err := statusCodeToErr(resp)
@@ -471,7 +505,11 @@ func (c *Client) getStatusCode(method, path string, header http.Header, body io.
 	if err != nil {
 		return -1, resp, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
 
 	return resp.StatusCode, resp, nil
 }
