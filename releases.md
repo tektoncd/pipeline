@@ -65,13 +65,13 @@ Further documentation available:
 - **End of Life**: 2026-10-31
 - **Patch Releases**: [v1.6.0][v1.6-0], [v1.6.1][v1.6-1], [v1.6.2][v1.6-2]
 
+## End of Life Releases
+
 ### v1.3 (LTS)
 - **Latest Release**: [v1.3.4][v1.3-4] (2026-04-21) ([docs][v1.3-4-docs], [examples][v1.3-4-examples])
 - **Initial Release**: [v1.3.0][v1.3-0] (2025-08-04)
 - **End of Life**: 2026-08-04
 - **Patch Releases**: [v1.3.0][v1.3-0], [v1.3.1][v1.3-1], [v1.3.2][v1.3-2], [v1.3.3][v1.3-3], [v1.3.4][v1.3-4]
-
-## End of Life Releases
 
 ### v1.14
 - **Latest Release**: [v1.14.1][v1.14-1] (2026-07-22) ([docs][v1.14-1-docs], [examples][v1.14-1-examples])
