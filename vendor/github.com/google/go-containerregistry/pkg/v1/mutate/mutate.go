@@ -437,7 +437,7 @@ func inWhiteoutDir(fileMap map[string]bool, file string) bool {
 
 func unsafeArchivePath(name string) bool {
 	clean := cleanArchivePath(name)
-	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
+	if clean == ".." || strings.HasPrefix(clean, "../") {
 		return true
 	}
 	if strings.HasPrefix(name, "\\") {
