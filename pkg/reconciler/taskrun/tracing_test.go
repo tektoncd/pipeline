@@ -18,8 +18,10 @@ import (
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -119,5 +121,51 @@ func TestInitTracing(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestChildSpanAttributes(t *testing.T) {
+	sr := tracetest.NewSpanRecorder()
+	tp := tracesdk.NewTracerProvider(tracesdk.WithSpanProcessor(sr))
+	defer tp.Shutdown(t.Context())
+
+	r := &Reconciler{tracerProvider: tp}
+
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-taskrun",
+			Namespace: "my-ns",
+		},
+	}
+
+	if err := r.stopSidecars(t.Context(), tr); err != nil {
+		t.Fatalf("stopSidecars() returned unexpected error: %v", err)
+	}
+
+	spans := sr.Ended()
+	if len(spans) != 1 {
+		t.Fatalf("expected 1 ended span, got %d", len(spans))
+	}
+
+	span := spans[0]
+	if span.Name() != "stopSidecars" {
+		t.Errorf("span name = %q, want %q", span.Name(), "stopSidecars")
+	}
+
+	wantAttrs := map[attribute.Key]string{
+		"taskrun":   "my-taskrun",
+		"namespace": "my-ns",
+		"pod":       "",
+	}
+	for _, kv := range span.Attributes() {
+		if want, ok := wantAttrs[kv.Key]; ok {
+			if kv.Value.AsString() != want {
+				t.Errorf("attribute %q = %q, want %q", kv.Key, kv.Value.AsString(), want)
+			}
+			delete(wantAttrs, kv.Key)
+		}
+	}
+	for key := range wantAttrs {
+		t.Errorf("missing expected attribute %q on stopSidecars span", key)
 	}
 }
