@@ -218,7 +218,22 @@ func (pr *PipelineRun) HaveTasksTimedOut(ctx context.Context, c clock.PassiveClo
 		if timeout.Duration == config.NoTimeoutDuration {
 			return false
 		}
+		// The tasks timeout only budgets the DAG phase. status.FinallyStartTime marks the end
+		// of that phase, so once it is set the elapsed time is frozen there instead of growing
+		// while finally tasks run - otherwise a DAG that finished within its budget would still
+		// be reported as timed out just because the finally phase crossed the deadline.
+		// Both markers are metav1.Time, which serialises with second granularity, so their
+		// difference under-reports the real DAG runtime by up to a second; take the upper end
+		// of that interval, or a DAG that this very timeout cut off would read back as having
+		// finished exactly on the deadline and stop being reported as timed out.
+		// The frozen value is only ever used when it is shorter than the live one, so a marker
+		// written by a clock ahead of ours can never make this stricter than plain wall clock.
 		runtime := c.Since(startTime.Time)
+		if finallyStartTime := pr.Status.FinallyStartTime; finallyStartTime != nil && !finallyStartTime.IsZero() {
+			if dagRuntime := finallyStartTime.Sub(startTime.Time) + time.Second; dagRuntime < runtime {
+				runtime = dagRuntime
+			}
+		}
 		if runtime > timeout.Duration {
 			return true
 		}
