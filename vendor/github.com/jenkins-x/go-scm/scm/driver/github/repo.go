@@ -87,11 +87,12 @@ func (s *repositoryService) AddCollaborator(ctx context.Context, repo, user, per
 		return false, false, res, err
 	}
 	code := res.Status
-	if code == 201 {
+	switch code {
+	case 201:
 		return true, false, res, nil
-	} else if code == 204 {
+	case 204:
 		return false, true, res, nil
-	} else if code == 404 {
+	case 404:
 		return false, false, res, nil
 	}
 	return false, false, res, fmt.Errorf("unexpected status: %d", code)
@@ -121,9 +122,10 @@ func (s *repositoryService) IsCollaborator(ctx context.Context, repo, user strin
 		return false, res, err
 	}
 	code := res.Status
-	if code == 204 {
+	switch code {
+	case 204:
 		return true, res, nil
-	} else if code == 404 {
+	case 404:
 		return false, res, nil
 	}
 	return false, res, fmt.Errorf("unexpected status: %d", code)
@@ -403,10 +405,7 @@ func convertHookList(from []*hook) []*scm.Hook {
 
 func convertHook(from *hook) *scm.Hook {
 
-	skipVerify := false
-	if from.Config.InsecureSSL == "1" {
-		skipVerify = true
-	}
+	skipVerify := from.Config.InsecureSSL == "1"
 
 	return &scm.Hook{
 		ID:         strconv.Itoa(from.ID),
