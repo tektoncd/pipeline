@@ -1,5 +1,10 @@
 # Release History
 
+## 1.5.0 (2026-05-25)
+
+### Other Changes
+* Upgraded to API service version `2025-07-01`
+
 ## 1.4.0 (2025-06-12)
 
 ### Features Added
