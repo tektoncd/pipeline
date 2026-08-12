@@ -179,69 +179,6 @@ func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipel
 	}, cancel
 }
 
-// validateTaskRunsCount ensure that there are `expectedCount` TaskRuns
-// It will fatal the test if the number of TaskRuns is not `expectedCount`
-func validateTaskRunsCount(t *testing.T, taskRuns map[string]*v1.TaskRun, expectedCount int) {
-	t.Helper()
-
-	actualCount := len(taskRuns)
-	if actualCount != expectedCount {
-		t.Fatalf("Expected %d taskruns but it has %d", expectedCount, actualCount)
-	}
-}
-
-// getTaskRunByName retrieves the TaskRun with the specified name from the given TaskRuns
-// It will fatal the test if the name does not exist
-func getTaskRunByName(t *testing.T, taskRuns map[string]*v1.TaskRun, expectedName string) *v1.TaskRun {
-	t.Helper()
-
-	tr, exist := taskRuns[expectedName]
-	if !exist {
-		t.Fatalf("Expected taskrun %s does not exist", expectedName)
-	}
-
-	return tr
-}
-
-// getTaskRunsForPipelineRun returns the set of TaskRuns associated with the input PipelineRun.
-// It will fatal the test if an error occurred.
-func getTaskRunsForPipelineRun(ctx context.Context, t *testing.T, clients test.Clients, namespace string, prName string) map[string]*v1.TaskRun {
-	t.Helper()
-	labelSelector := pipeline.PipelineRunLabelKey + "=" + prName
-	return getTaskRuns(ctx, t, clients, namespace, labelSelector)
-}
-
-// getTaskRunsForPipelineTask returns the set of TaskRuns associated with the input PipelineRun and PipelineTask
-// It will fatal the test if an error occurred.
-func getTaskRunsForPipelineTask(ctx context.Context, t *testing.T, clients test.Clients, namespace string, prName string, ptLabel string) map[string]*v1.TaskRun {
-	t.Helper()
-	labelSelector := pipeline.PipelineRunLabelKey + "=" + prName + "," + pipeline.PipelineTaskLabelKey + "=" + ptLabel
-	return getTaskRuns(ctx, t, clients, namespace, labelSelector)
-}
-
-// getTaskRuns returns the set of TaskRuns matching the label selector.
-// It will fatal the test if an error occurred.
-func getTaskRuns(ctx context.Context, t *testing.T, clients test.Clients, namespace string, labelSelector string) map[string]*v1.TaskRun {
-	t.Helper()
-
-	opt := metav1.ListOptions{
-		LabelSelector: labelSelector,
-	}
-
-	taskRuns, err := clients.Pipeline.TektonV1().TaskRuns(namespace).List(ctx, opt)
-	if err != nil {
-		t.Fatalf("failed to list taskruns, %s", err)
-	}
-
-	outputs := make(map[string]*v1.TaskRun)
-	for _, item := range taskRuns.Items {
-		tr := item
-		outputs[item.Name] = &tr
-	}
-
-	return outputs
-}
-
 // runTestReconcile runs "Reconcile" on a PipelineRun with one
 // Task that has not been started yet.  It verifies that the TaskRun is created,
 // it checks the resulting API actions, status and events.
@@ -380,12 +317,12 @@ spec:
 	}
 	reconciledRun, clients := prt.reconcileRun(namespace, prName, wantEvents, false)
 
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prName)
 	// Ensure that there are 2 TaskRuns associated with this PipelineRun
-	validateTaskRunsCount(t, taskRuns, 2)
+	th.ValidateTaskRunsCount(t, taskRuns, 2)
 
 	// Check that the expected TaskRun was created
-	actual := getTaskRunByName(t, taskRuns, trName)
+	actual := th.GetTaskRunByName(t, taskRuns, trName)
 	expectedTaskRun := parse.MustParseTaskRunWithObjectMeta(t,
 		taskRunObjectMeta(trName, namespace, prName,
 			"test-pipeline", "unit-test-1", false),
@@ -665,10 +602,10 @@ spec:
 	reconciledRun, clients := prt.reconcileRun(namespace, prName, wantEvents, false)
 
 	// Check that the expected TaskRun was created
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
-	validateTaskRunsCount(t, taskRuns, 1)
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prName)
+	th.ValidateTaskRunsCount(t, taskRuns, 1)
 
-	actual := getTaskRunByName(t, taskRuns, trName)
+	actual := th.GetTaskRunByName(t, taskRuns, trName)
 	expectedTaskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(`
 spec:
   taskSpec:
@@ -1357,10 +1294,10 @@ status:
 	}
 
 	// Check that the expected TaskRun was created
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, "foo", "test-pipeline-missing-results")
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, "foo", "test-pipeline-missing-results")
 
 	// We expect only 1 TaskRun to be created, since the PipelineRun should fail before creating the 2nd TaskRun due to the InvalidTaskResultReference
-	validateTaskRunsCount(t, taskRuns, 1)
+	th.ValidateTaskRunsCount(t, taskRuns, 1)
 }
 
 func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
@@ -1492,8 +1429,8 @@ status:
 	wantEvents := []string{}
 	reconciledRun, clients := prt.reconcileRun(namespace, pipelineRunName, wantEvents, false)
 
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, pipelineRunName)
-	validateTaskRunsCount(t, taskRuns, 1)
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, pipelineRunName)
+	th.ValidateTaskRunsCount(t, taskRuns, 1)
 
 	// This PipelineRun should still be complete and the status should reflect that
 	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
@@ -3865,10 +3802,10 @@ spec:
 	_, clients := prt.reconcileRun(namespace, prName, []string{}, false)
 
 	// Check that the expected TaskRun was created
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
-	validateTaskRunsCount(t, taskRuns, 1)
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prName)
+	th.ValidateTaskRunsCount(t, taskRuns, 1)
 
-	actual := getTaskRunByName(t, taskRuns, trName)
+	actual := th.GetTaskRunByName(t, taskRuns, trName)
 	// We're ignoring TypeMeta here because parse.MustParseV1TaskRun populates that, but ktesting does not, so actual does not have it.
 	if d := cmp.Diff(expected, actual, ignoreTypeMeta, ignoreResourceVersion); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expected, diff.PrintWantGot(d))
@@ -4119,10 +4056,10 @@ spec:
 	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
 
 	// Check that the expected TaskRun was created
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
-	validateTaskRunsCount(t, taskRuns, 1)
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prName)
+	th.ValidateTaskRunsCount(t, taskRuns, 1)
 
-	actual := getTaskRunByName(t, taskRuns, trName)
+	actual := th.GetTaskRunByName(t, taskRuns, trName)
 	expectedTaskRunObjectMeta := taskRunObjectMeta(trName, namespace, prName, "test-pipeline", "hello-world-1", false)
 	expectedTaskRunObjectMeta.Annotations["PipelineRunAnnotation"] = "PipelineRunValue"
 	expectedTaskRun := parse.MustParseTaskRunWithObjectMeta(t, expectedTaskRunObjectMeta, `
@@ -4233,10 +4170,10 @@ spec:
 	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
 
 	// Check that the expected TaskRun was created with correct timeout
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
-	validateTaskRunsCount(t, taskRuns, 1)
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prName)
+	th.ValidateTaskRunsCount(t, taskRuns, 1)
 
-	actual := getTaskRunByName(t, taskRuns, trName)
+	actual := th.GetTaskRunByName(t, taskRuns, trName)
 	expectedTimeout := metav1.Duration{Duration: 2 * time.Hour}
 	if actual.Spec.Timeout == nil {
 		t.Errorf("expected TaskRun timeout to be set, but was nil")
@@ -4290,10 +4227,10 @@ spec:
 	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
 
 	// Check that TaskRun uses taskRunSpec timeout, not pipeline task timeout
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
-	validateTaskRunsCount(t, taskRuns, 1)
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prName)
+	th.ValidateTaskRunsCount(t, taskRuns, 1)
 
-	actual := getTaskRunByName(t, taskRuns, trName)
+	actual := th.GetTaskRunByName(t, taskRuns, trName)
 	expectedTimeout := metav1.Duration{Duration: 30 * time.Minute}
 	if actual.Spec.Timeout == nil {
 		t.Errorf("expected TaskRun timeout to be set, but was nil")
@@ -4557,10 +4494,10 @@ spec:
 
 			_, clients := prt.reconcileRun(namespace, prName, []string{}, false)
 
-			taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
-			validateTaskRunsCount(t, taskRuns, 1)
+			taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prName)
+			th.ValidateTaskRunsCount(t, taskRuns, 1)
 
-			actual := getTaskRunByName(t, taskRuns, trName)
+			actual := th.GetTaskRunByName(t, taskRuns, trName)
 
 			if tc.expectedTimeout == nil {
 				if actual.Spec.Timeout != nil {
@@ -4641,7 +4578,7 @@ status:
 
 	_, clients := prt.reconcileRun(namespace, prName, []string{}, false)
 
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prName)
 
 	var finallyTaskRun *v1.TaskRun
 	for name, tr := range taskRuns {
@@ -7785,8 +7722,8 @@ status:
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun(namespace, prOutOfSyncName, []string{}, false)
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prOutOfSyncName)
-	validateTaskRunsCount(t, taskRuns, 2)
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prOutOfSyncName)
+	th.ValidateTaskRunsCount(t, taskRuns, 2)
 
 	// This PipelineRun should still be running and the status should reflect that
 	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
@@ -9146,10 +9083,10 @@ metadata:
 	reconciledRun, clients := prt.reconcileRun(namespace, prName, wantEvents, false)
 
 	// Check that the expected TaskRun was created
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
-	validateTaskRunsCount(t, taskRuns, 1)
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prName)
+	th.ValidateTaskRunsCount(t, taskRuns, 1)
 
-	actual := getTaskRunByName(t, taskRuns, trName)
+	actual := th.GetTaskRunByName(t, taskRuns, trName)
 	expectedTaskRun := parse.MustParseTaskRunWithObjectMeta(t,
 		taskRunObjectMeta(trName, namespace, prName,
 			"test-pipeline", "unit-test-1", false), `
@@ -9440,10 +9377,10 @@ spec:
 	reconciledRun, clients := prt.reconcileRun(namespace, prName, nil, false)
 
 	// Check that the expected TaskRun was created
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
-	validateTaskRunsCount(t, taskRuns, 1)
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prName)
+	th.ValidateTaskRunsCount(t, taskRuns, 1)
 
-	actual := getTaskRunByName(t, taskRuns, trName)
+	actual := th.GetTaskRunByName(t, taskRuns, trName)
 	expectedTaskRun := parse.MustParseTaskRunWithObjectMeta(t,
 		taskRunObjectMeta(trName, namespace, prName,
 			"test-pipeline-run-success", "unit-test-1", false),
@@ -10486,10 +10423,10 @@ spec:
 
 	_, clients := prt.reconcileRun(namespace, prName, []string{}, false)
 
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
-	validateTaskRunsCount(t, taskRuns, 1)
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prName)
+	th.ValidateTaskRunsCount(t, taskRuns, 1)
 
-	actual := getTaskRunByName(t, taskRuns, trName)
+	actual := th.GetTaskRunByName(t, taskRuns, trName)
 	expectedTaskRunObjectMeta := taskRunObjectMeta(trName, namespace, prName, "test-pipeline", "hello-world-1", false)
 	expectedTaskRunObjectMeta.Labels["PipelineTaskRunSpecLabel"] = "PipelineTaskRunSpecValue"
 	expectedTaskRunObjectMeta.Annotations["PipelineTaskRunSpecAnnotation"] = "PipelineTaskRunSpecValue"
@@ -10563,10 +10500,10 @@ spec:
 
 	_, clients := prt.reconcileRun(namespace, prName, []string{}, false)
 
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
-	validateTaskRunsCount(t, taskRuns, 1)
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prName)
+	th.ValidateTaskRunsCount(t, taskRuns, 1)
 
-	actual := getTaskRunByName(t, taskRuns, trName)
+	actual := th.GetTaskRunByName(t, taskRuns, trName)
 	expectedTaskRunObjectMeta := taskRunObjectMeta(trName, namespace, prName, "test-pipeline", "hello-world-1", false)
 	expectedTaskRunObjectMeta.Labels["TestPrecedenceLabel"] = "PipelineTaskRunSpecValue"
 	expectedTaskRunObjectMeta.Annotations["TestPrecedenceAnnotation"] = "PipelineTaskRunSpecValue"
@@ -11362,12 +11299,12 @@ labels:
 			defer prt.Cancel()
 
 			pipelineRun, clients := prt.reconcileRun(pr.Namespace, pr.Name /*wantEvents*/, []string{} /*permanentError*/, false)
-			taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, pr.Namespace, pr.Name)
-			validateTaskRunsCount(t, taskRuns, len(expectedTaskRuns))
+			taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, pr.Namespace, pr.Name)
+			th.ValidateTaskRunsCount(t, taskRuns, len(expectedTaskRuns))
 
 			for i, expectedTaskRun := range expectedTaskRuns {
 				trName := expectedTaskRun.Name
-				actual := getTaskRunByName(t, taskRuns, trName)
+				actual := th.GetTaskRunByName(t, taskRuns, trName)
 				if d := cmp.Diff(expectedTaskRun, actual, ignoreResourceVersion, ignoreTypeMeta); d != "" {
 					t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i].Name, diff.PrintWantGot(d))
 				}
@@ -13240,11 +13177,11 @@ spec:
 			defer prt.Cancel()
 			pipelineRun, clients := prt.reconcileRun(pr.Namespace, pr.Name, []string{} /* wantEvents*/, false /* permanentError*/)
 
-			taskRuns := getTaskRunsForPipelineTask(prt.TestAssets.Ctx, t, clients, pr.Namespace, pr.Name, "echo-platforms")
-			validateTaskRunsCount(t, taskRuns, len(tt.expectedTaskRuns))
+			taskRuns := th.GetTaskRunsForPipelineTask(prt.TestAssets.Ctx, t, clients.Pipeline, pr.Namespace, pr.Name, "echo-platforms")
+			th.ValidateTaskRunsCount(t, taskRuns, len(tt.expectedTaskRuns))
 			for _, expectedTaskRun := range tt.expectedTaskRuns {
 				trName := expectedTaskRun.Name
-				actual := getTaskRunByName(t, taskRuns, trName)
+				actual := th.GetTaskRunByName(t, taskRuns, trName)
 				if d := cmp.Diff(expectedTaskRun, actual, ignoreResourceVersion, ignoreTypeMeta); d != "" {
 					t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun.Name, diff.PrintWantGot(d))
 				}
@@ -14573,9 +14510,9 @@ spec:
 			pipelineRun, clients := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents /* wantEvents*/, true /* permanentError*/)
 			// Validate the PR failed due to out of bounds array index reference
 			th.CheckPipelineRunConditionStatusAndReason(t, pipelineRun.Status, corev1.ConditionFalse, "PipelineValidationFailed")
-			taskRuns := getTaskRunsForPipelineTask(prt.TestAssets.Ctx, t, clients, pr.Namespace, pr.Name, "echo-platforms")
+			taskRuns := th.GetTaskRunsForPipelineTask(prt.TestAssets.Ctx, t, clients.Pipeline, pr.Namespace, pr.Name, "echo-platforms")
 			// Validate no TaskRuns were created
-			validateTaskRunsCount(t, taskRuns, 0)
+			th.ValidateTaskRunsCount(t, taskRuns, 0)
 		})
 	}
 }
@@ -16503,11 +16440,11 @@ spec:
 	reconciledRun, clients := prt.reconcileRun(namespace, prName, wantEvents, false)
 
 	// Check that the expected TaskRun was created
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prName)
 	// Ensure that there are 2 TaskRuns associated with this PipelineRun
-	validateTaskRunsCount(t, taskRuns, 2)
+	th.ValidateTaskRunsCount(t, taskRuns, 2)
 
-	actual := getTaskRunByName(t, taskRuns, trName)
+	actual := th.GetTaskRunByName(t, taskRuns, trName)
 	expectedTaskRun := parse.MustParseTaskRunWithObjectMeta(t,
 		taskRunObjectMeta(trName, namespace, prName,
 			"test-pipeline", "unit-test-1", false),
@@ -18043,12 +17980,12 @@ spec:
 `)
 	// The taskSpec is already set by the reconcile to avoid an extra resolution
 	expectedTaskRun.Spec.TaskSpec = &ps[0].Spec.Tasks[1].TaskSpec.TaskSpec
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, prt.TestAssets.Clients, "foo", "7103-reproducer-run-7jp4w")
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, prt.TestAssets.Clients.Pipeline, "foo", "7103-reproducer-run-7jp4w")
 	// Ensure that there are 2 TaskRuns associated with this PipelineRun
-	validateTaskRunsCount(t, taskRuns, 3)
+	th.ValidateTaskRunsCount(t, taskRuns, 3)
 
 	// Check that the expected TaskRun was created
-	actual := getTaskRunByName(t, taskRuns, "7103-reproducer-run-7jp4w-task3")
+	actual := th.GetTaskRunByName(t, taskRuns, "7103-reproducer-run-7jp4w-task3")
 	// The TaskRun for task3 should include resolved results
 	if d := cmp.Diff(expectedTaskRun, actual, ignoreResourceVersion, ignoreLastTransitionTime, ignoreTypeMeta, ignoreProvenance, ignoreStartTime); d != "" {
 		t.Errorf("Expected to see PipelineRun run with a task3 child reference %s", diff.PrintWantGot(d))
@@ -18638,8 +18575,8 @@ spec:
 	reconciledRun, clients := prt.reconcileRun(namespace, prName, wantEvents, true)
 
 	// Check that the expected TaskRun was not created
-	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prName)
-	validateTaskRunsCount(t, taskRuns, 0)
+	taskRuns := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prName)
+	th.ValidateTaskRunsCount(t, taskRuns, 0)
 	th.VerifyTaskRunStatusesCount(t, reconciledRun.Status, 0)
 }
 
@@ -19080,7 +19017,7 @@ spec:
 	})
 
 	// Verify no TaskRuns were created for the externally managed PipelineRun
-	taskRunsOther := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prManagedByOtherName)
+	taskRunsOther := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prManagedByOtherName)
 	if len(taskRunsOther) != 0 {
 		t.Errorf("Expected no TaskRuns for externally managed PipelineRun, but found %d", len(taskRunsOther))
 	}
@@ -19103,7 +19040,7 @@ spec:
 	reconciledTekton, clients := prt.reconcileRun(namespace, prManagedByTektonName, wantEvents, false)
 
 	// Verify a TaskRun was created for the Tekton-managed PipelineRun
-	taskRunsTekton := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, namespace, prManagedByTektonName)
+	taskRunsTekton := th.GetTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients.Pipeline, namespace, prManagedByTektonName)
 	if len(taskRunsTekton) != 1 {
 		t.Errorf("Expected 1 TaskRun for Tekton-managed PipelineRun, but found %d", len(taskRunsTekton))
 	}
