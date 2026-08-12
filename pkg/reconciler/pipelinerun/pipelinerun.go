@@ -1181,7 +1181,7 @@ func (c *Reconciler) createChildPipelineRun(
 		}
 	}
 
-	childAnnotations := createChildResourceAnnotations(pr)
+	childAnnotations := createChildResourceAnnotations(ctx, pr, nil, SpanContextAnnotation)
 
 	childLabels := createChildResourceLabels(pr, rpt.PipelineTask.Name, true)
 	// Override the pipeline label with the child's actual pipeline name to avoid
@@ -1379,7 +1379,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 			Namespace:       pr.Namespace,
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(pr)},
 			Labels:          combineTaskRunAndTaskSpecLabels(pr, rpt.PipelineTask),
-			Annotations:     combineTaskRunAndTaskSpecAnnotations(pr, rpt.PipelineTask),
+			Annotations:     combineTaskRunAndTaskSpecAnnotations(ctx, pr, rpt.PipelineTask),
 		},
 		Spec: v1.TaskRunSpec{
 			Retries:            rpt.PipelineTask.Retries,
@@ -1392,11 +1392,6 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 		},
 	}
 
-	// Add current spanContext as annotations to TaskRun
-	// so that tracing can be continued under the same traceId
-	if spanContext, err := getMarshalledSpanFromContext(ctx); err == nil {
-		tr.Annotations[TaskRunSpanContextAnnotation] = spanContext
-	}
 	if rpt.PipelineTask.OnError == v1.PipelineTaskContinue {
 		tr.Annotations[v1.PipelineTaskOnErrorAnnotation] = string(v1.PipelineTaskContinue)
 	}
@@ -1538,7 +1533,7 @@ func (c *Reconciler) createCustomRun(ctx context.Context, runName string, params
 		Namespace:       pr.Namespace,
 		OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(pr)},
 		Labels:          createChildResourceLabels(pr, rpt.PipelineTask.Name, true),
-		Annotations:     createChildResourceAnnotations(pr),
+		Annotations:     createChildResourceAnnotations(ctx, pr, nil, CustomRunSpanContextAnnotation),
 	}
 
 	// TaskRef, Params and Workspaces are converted to v1beta1 since CustomRuns
@@ -1795,15 +1790,23 @@ func combinedSubPath(workspaceSubPath string, pipelineTaskSubPath string) string
 	return filepath.Join(workspaceSubPath, pipelineTaskSubPath)
 }
 
-func createChildResourceAnnotations(pr *v1.PipelineRun) map[string]string {
-	// propagate annotations from PipelineRun to child (PinP) PipelineRun/TaskRun/CustomRun
-	annotations := make(map[string]string, len(pr.ObjectMeta.Annotations)+1)
-	for key, val := range pr.ObjectMeta.Annotations {
-		annotations[key] = val
+func createChildResourceAnnotations(ctx context.Context, pr *v1.PipelineRun, annotations map[string]string, spanContextAnnotation string) map[string]string {
+	// Propagate annotations from PipelineRun to child (PinP) PipelineRun/TaskRun/CustomRun.
+	if annotations == nil {
+		annotations = make(map[string]string, len(pr.ObjectMeta.Annotations)+1)
 	}
-	return kmap.Filter(annotations, func(s string) bool {
+	propagated := kmap.Filter(pr.ObjectMeta.Annotations, func(s string) bool {
 		return filterReservedAnnotationRegexp.MatchString(s)
 	})
+	addMetadataByPrecedence(annotations, propagated)
+
+	spanContext, err := getMarshalledSpanFromContext(ctx)
+	if err != nil {
+		logging.FromContext(ctx).Debugf("Could not propagate span context to child resource: %v", err)
+		return annotations
+	}
+	annotations[spanContextAnnotation] = spanContext
+	return annotations
 }
 
 func propagatePipelineNameLabelToPipelineRun(pr *v1.PipelineRun) error {
@@ -1905,7 +1908,7 @@ func combineTaskRunAndTaskSpecLabels(pr *v1.PipelineRun, pipelineTask *v1.Pipeli
 	return labels
 }
 
-func combineTaskRunAndTaskSpecAnnotations(pr *v1.PipelineRun, pipelineTask *v1.PipelineTask) map[string]string {
+func combineTaskRunAndTaskSpecAnnotations(ctx context.Context, pr *v1.PipelineRun, pipelineTask *v1.PipelineTask) map[string]string {
 	annotations := make(map[string]string)
 
 	taskRunSpec := pr.GetTaskRunSpec(pipelineTask.Name)
@@ -1913,7 +1916,7 @@ func combineTaskRunAndTaskSpecAnnotations(pr *v1.PipelineRun, pipelineTask *v1.P
 		addMetadataByPrecedence(annotations, taskRunSpec.Metadata.Annotations)
 	}
 
-	addMetadataByPrecedence(annotations, createChildResourceAnnotations(pr))
+	annotations = createChildResourceAnnotations(ctx, pr, annotations, TaskRunSpanContextAnnotation)
 
 	if pipelineTask.TaskSpec != nil {
 		addMetadataByPrecedence(annotations, pipelineTask.TaskSpecMetadata().Annotations)

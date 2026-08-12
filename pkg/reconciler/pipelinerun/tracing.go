@@ -37,6 +37,8 @@ const (
 	SpanContextAnnotation = "tekton.dev/pipelinerunSpanContext"
 	// TaskRunSpanContextAnnotation is the name of the Annotation used for propagating SpanContext to TaskRun
 	TaskRunSpanContextAnnotation = "tekton.dev/taskrunSpanContext"
+	// CustomRunSpanContextAnnotation is the name of the Annotation used for propagating SpanContext to CustomRun
+	CustomRunSpanContextAnnotation = "tekton.dev/customrunSpanContext"
 )
 
 // initialize tracing by creating the root span and injecting the
