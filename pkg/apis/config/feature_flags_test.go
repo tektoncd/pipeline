@@ -83,6 +83,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableTerminationMessageCompression:      true,
 				KeepStatusSpecDescriptions:               true,
 				EnableSurfacePodEvents:                   true,
+				EnableImageWorkspace:                     true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},

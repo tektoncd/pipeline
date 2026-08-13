@@ -1794,6 +1794,7 @@ _Appears in:_
 | `secret` _[SecretVolumeSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#secretvolumesource-v1-core)_ | Secret represents a secret that should populate this workspace. |  | Optional: \{\} <br /> |
 | `projected` _[ProjectedVolumeSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#projectedvolumesource-v1-core)_ | Projected represents a projected volume that should populate this workspace. |  | Optional: \{\} <br /> |
 | `csi` _[CSIVolumeSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#csivolumesource-v1-core)_ | CSI (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers. |  | Optional: \{\} <br /> |
+| `image` _[ImageVolumeSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#imagevolumesource-v1-core)_ | Image represents a volume populated from a container image's filesystem.<br />The image is pulled at pod startup. Contents are mounted read-only.<br />Requires Kubernetes 1.31+ with the ImageVolume feature gate enabled. |  | Optional: \{\} <br /> |
 
 
 #### WorkspaceDeclaration
@@ -1860,7 +1861,9 @@ _Appears in:_
 
 ## tekton.dev/v1alpha1
 
-Package v1alpha1 contains API Schema definitions for the run v1alpha1 API group
+Package v1alpha1 contains API Schema definitions for the pipeline v1alpha1 API group
+
+The contents of this package are deprecated and unused. Preserved for backwards compatibility.
 
 ### Resource Types
 - [PipelineResource](#pipelineresource)
@@ -2254,7 +2257,7 @@ _Appears in:_
 
 ## tekton.dev/v1beta1
 
-Package v1beta1 contains API Schema definitions for the customrun v1beta1 API group
+Package v1beta1 contains API Schema definitions for the pipeline v1beta1 API group
 
 ### Resource Types
 - [CustomRun](#customrun)
@@ -4284,6 +4287,7 @@ _Appears in:_
 | `secret` _[SecretVolumeSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#secretvolumesource-v1-core)_ | Secret represents a secret that should populate this workspace. |  | Optional: \{\} <br /> |
 | `projected` _[ProjectedVolumeSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#projectedvolumesource-v1-core)_ | Projected represents a projected volume that should populate this workspace. |  | Optional: \{\} <br /> |
 | `csi` _[CSIVolumeSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#csivolumesource-v1-core)_ | CSI (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers. |  | Optional: \{\} <br /> |
+| `image` _[ImageVolumeSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#imagevolumesource-v1-core)_ | Image represents a volume populated from a container image's filesystem.<br />The image is pulled at pod startup. Contents are mounted read-only.<br />Requires Kubernetes 1.31+ with the ImageVolume feature gate enabled. |  | Optional: \{\} <br /> |
 
 
 #### WorkspaceDeclaration
