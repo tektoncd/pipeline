@@ -18,7 +18,9 @@ package v1
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
 )
@@ -31,6 +33,9 @@ var allVolumeSourceFields = []string{
 	"emptydir",
 	"configmap",
 	"secret",
+	"projected",
+	"csi",
+	"image",
 }
 
 // Validate looks at the Volume provided in wb and makes sure that it is valid.
@@ -80,6 +85,17 @@ func (b *WorkspaceBinding) Validate(ctx context.Context) (errs *apis.FieldError)
 		}
 	}
 
+	// Image workspace bindings require the enable-image-workspace feature flag.
+	if b.Image != nil {
+		cfg := config.FromContextOrDefaults(ctx)
+		if !cfg.FeatureFlags.EnableImageWorkspace {
+			return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use image workspace bindings", config.EnableImageWorkspace), "")
+		}
+		if b.Image.Reference == "" {
+			return apis.ErrMissingField("image.reference")
+		}
+	}
+
 	return nil
 }
 
@@ -106,6 +122,9 @@ func (b *WorkspaceBinding) numSources() int {
 		n++
 	}
 	if b.CSI != nil {
+		n++
+	}
+	if b.Image != nil {
 		n++
 	}
 	return n
