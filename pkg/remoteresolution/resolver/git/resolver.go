@@ -79,9 +79,7 @@ type Resolver struct {
 func (r *Resolver) Initialize(ctx context.Context) error {
 	r.kubeClient = kubeclient.Get(ctx)
 	r.logger = logging.FromContext(ctx).Named(gitResolverName)
-	if r.cache == nil {
-		r.cache = k8scache.NewLRUExpireCache(cacheSize)
-	}
+	r.cache = k8scache.NewLRUExpireCache(cacheSize)
 	if r.ttl == 0 {
 		r.ttl = ttl
 	}
