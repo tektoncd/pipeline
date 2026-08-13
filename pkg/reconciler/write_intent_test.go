@@ -29,35 +29,35 @@ import (
 
 func TestClassifyWriteIntent(t *testing.T) {
 	tests := []struct {
-		name            string
-		metadataChanged bool
-		statusChanged   bool
-		want            string
+		name                    string
+		metadataUpdateAttempted bool
+		statusDirty             bool
+		want                    string
 	}{{
 		name: "nothing changed is a no-op",
 		want: "no-op",
 	}, {
-		name:          "only the status changed",
-		statusChanged: true,
-		want:          "status-only",
+		name:        "only the status changed",
+		statusDirty: true,
+		want:        "status-only",
 	}, {
-		name:            "a labels/annotations change is a full object write",
-		metadataChanged: true,
-		want:            "metadata-only",
+		name:                    "a labels/annotations change is a full object write",
+		metadataUpdateAttempted: true,
+		want:                    "metadata-only",
 	}, {
 		// Two writes to the same key: the object update inside ReconcileKind
 		// and the status update the framework issues after it returns.
-		name:            "metadata and status are two separate writes",
-		metadataChanged: true,
-		statusChanged:   true,
-		want:            "metadata-and-status",
+		name:                    "metadata and status are two separate writes",
+		metadataUpdateAttempted: true,
+		statusDirty:             true,
+		want:                    "metadata-and-status",
 	}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := classifyWriteIntent(tc.metadataChanged, tc.statusChanged)
+			got := classifyWriteIntent(tc.metadataUpdateAttempted, tc.statusDirty)
 			if got != tc.want {
-				t.Errorf("classifyWriteIntent(%t, %t) = %q, want %q", tc.metadataChanged, tc.statusChanged, got, tc.want)
+				t.Errorf("classifyWriteIntent(%t, %t) = %q, want %q", tc.metadataUpdateAttempted, tc.statusDirty, got, tc.want)
 			}
 		})
 	}
@@ -136,7 +136,7 @@ func (s *spanSpy) IsRecording() bool                   { return s.recording }
 func (s *spanSpy) SetAttributes(...attribute.KeyValue) { s.attrsSet = true }
 
 // A non-recording span must be left untouched: RecordWriteIntent returns before
-// comparing anything or setting the attribute, so a sampled-out reconcile pays
+// comparing anything or setting the attribute, so a non-recording reconcile pays
 // nothing. Dropping the guard would make the not-recording case fail.
 func TestRecordWriteIntentGuardsOnRecording(t *testing.T) {
 	moved := v1.PipelineRunStatus{}

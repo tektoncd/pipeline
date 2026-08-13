@@ -204,13 +204,15 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) pkgr
 	defer span.End()
 
 	// Everything the attribute needs is set up here rather than above, so a
-	// reconcile whose span does not record pays for none of it. A cluster with
-	// tracing off, or one whose trace was not sampled, reconciles as before.
+	// reconcile whose span does not record pays for none of it. Recording is
+	// the only thing checked: a span can record without being exported.
 	if span.IsRecording() {
 		var metadataUpdateAttempted *atomic.Bool
 		ctx, metadataUpdateAttempted = tknreconciler.TrackMetadataUpdate(ctx)
 		oldStatus := pr.Status.DeepCopy()
-		oldStatus.SpanContext = oldSpanContext // restore the pre-initTracing value
+		// Cloned, so the baseline does not depend on initTracing never writing
+		// into a map it was handed.
+		oldStatus.SpanContext = maps.Clone(oldSpanContext)
 		defer func() {
 			tknreconciler.RecordWriteIntent(span, oldStatus, &pr.Status, metadataUpdateAttempted.Load())
 		}()
