@@ -86,6 +86,11 @@ type WorkspaceBinding struct {
 	// CSI (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
 	// +optional
 	CSI *corev1.CSIVolumeSource `json:"csi,omitempty"`
+	// Image represents a volume populated from a container image's filesystem.
+	// The image is pulled at pod startup. Contents are mounted read-only.
+	// Requires Kubernetes 1.31+ with the ImageVolume feature gate enabled.
+	// +optional
+	Image *corev1.ImageVolumeSource `json:"image,omitempty"`
 }
 
 // WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun
