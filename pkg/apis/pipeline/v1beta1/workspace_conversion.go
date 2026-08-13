@@ -82,6 +82,7 @@ func (w WorkspaceBinding) convertTo(ctx context.Context, sink *v1.WorkspaceBindi
 	sink.Secret = w.Secret
 	sink.Projected = w.Projected
 	sink.CSI = w.CSI
+	sink.Image = w.Image
 }
 
 // ConvertFrom converts v1beta1 Param from v1 Param
@@ -95,4 +96,5 @@ func (w *WorkspaceBinding) ConvertFrom(ctx context.Context, source v1.WorkspaceB
 	w.Secret = source.Secret
 	w.Projected = source.Projected
 	w.CSI = source.CSI
+	w.Image = source.Image
 }

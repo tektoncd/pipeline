@@ -591,6 +591,24 @@ policies=internal-app \
 ttl=20m
 ```
 
+##### `image`
+
+The `image` field references an [`image` volume](https://kubernetes.io/docs/concepts/storage/volumes/#image).
+Using an `image` volume has the following limitations:
+
+- This feature is gated behind the `enable-image-workspace` feature flag. Set `enable-image-workspace: "true"` in the `feature-flags` ConfigMap to enable it.
+- Requires Kubernetes 1.31+ with the `ImageVolume` feature gate enabled (beta since Kubernetes 1.33).
+- `image` volume sources are always mounted read-only by the kubelet. Workspaces using `image` should be declared with `readOnly: true`.
+- `subPath` is not supported with `image` volumes on Kubernetes 1.31 and 1.32. Support for `subPath` begins in Kubernetes 1.33.
+
+```yaml
+workspaces:
+  - name: my-tools
+    image:
+      reference: quay.io/example/my-tools:latest
+      pullPolicy: IfNotPresent
+```
+
 If you need support for a `VolumeSource` type not listed above, [open an issue](https://github.com/tektoncd/pipeline/issues) or
 a [pull request](https://github.com/tektoncd/pipeline/blob/main/CONTRIBUTING.md).
 
