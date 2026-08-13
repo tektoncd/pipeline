@@ -1504,7 +1504,7 @@ status:
 		t.Fatalf("Expected PipelineRun status to match ChildReference(s) status, but got a mismatch %s", diff.PrintWantGot(d))
 	}
 
-	checkTaskRunStatusFromChildRefs(prt.TestAssets.Ctx, t, "foo", clients, reconciledRun.Status.ChildReferences, expectedTaskRunsStatus)
+	th.CheckTaskRunStatusFromChildRefs(prt.TestAssets.Ctx, t, "foo", clients.Pipeline, reconciledRun.Status.ChildReferences, expectedTaskRunsStatus)
 }
 
 // TestReconcileOnCancelledPipelineRun runs "Reconcile" on a PipelineRun that
@@ -1849,10 +1849,7 @@ status:
 			}
 
 			// The PipelineRun should be timed out.
-			if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "PipelineRunTimeout" {
-				t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s",
-					reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-			}
+			th.CheckPipelineRunConditionStatusAndReason(t, reconciledRun.Status, corev1.ConditionFalse, "PipelineRunTimeout")
 
 			actions := clients.Pipeline.Actions()
 			if len(actions) < 2 {
@@ -1911,9 +1908,7 @@ func TestReconcileOnCancelledRunFinallyPipelineRun(t *testing.T) {
 	}
 
 	// This PipelineRun should still be complete and false, and the status should reflect that
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
-		t.Errorf("Expected PipelineRun status to be complete and false, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionFalse)
 
 	// There should be no task runs triggered for the pipeline tasks
 	th.VerifyTaskRunStatusesCount(t, reconciledRun.Status, 0)
@@ -1982,9 +1977,7 @@ spec:
 	}
 
 	// This PipelineRun should still be complete and false, and the status should reflect that
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
-		t.Errorf("Expected PipelineRun status to be complete and unknown, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionUnknown)
 
 	// There should be exactly one task run triggered for the "final-task-1" final task
 	th.VerifyTaskRunStatusesCount(t, reconciledRun.Status, 1)
@@ -2068,9 +2061,7 @@ spec:
 	}
 
 	// This PipelineRun should still be complete and unknown, and the status should reflect that
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
-		t.Errorf("Expected PipelineRun status to be complete and unknown, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionUnknown)
 
 	// There should be 2 task runs, one for already completed "hello-world-1" task and one for the "final-task-1" final task
 	if len(reconciledRun.Status.ChildReferences) != 2 {
@@ -2163,10 +2154,7 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *tes
 	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-cancelled-run-finally", wantEvents, false)
 
 	// This PipelineRun should still be running to execute the finally task, and the status should reflect that
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
-		t.Errorf("Expected PipelineRun status to be running to execute the finally task, but was %v",
-			reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionUnknown)
 
 	// There should be two task runs (failed dag task and one triggered for the finally task)
 	th.VerifyTaskRunStatusesCount(t, reconciledRun.Status, 2)
@@ -2243,10 +2231,7 @@ status:
 	}
 
 	// The PipelineRun should not be cancelled since the error was retryable
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if !condition.IsUnknown() {
-		t.Errorf("Expected PipelineRun to still be running but succeeded condition is %v", condition.Status)
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionUnknown)
 
 	failingReactorActivated = false
 	err = c.Reconciler.Reconcile(testAssets.Ctx, "foo/test-pipeline-fails-task-resolution")
@@ -2255,10 +2240,7 @@ status:
 			t.Errorf("unexpected error in PipelineRun reconciliation: %v", err)
 		}
 	}
-	condition = reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if !condition.IsUnknown() {
-		t.Errorf("Expected PipelineRun to still be running but succeeded condition is %v", condition.Status)
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionUnknown)
 }
 
 func TestReconcileOnStoppedPipelineRun(t *testing.T) {
@@ -2374,10 +2356,10 @@ status:
 				t.Errorf("Expected CompletionTime == nil to be %t on invalid PipelineRun but was %t", tc.hasNilCompletionTime, reconciledRun.Status.CompletionTime == nil)
 			}
 
-			if tc.isFailed && !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
-				t.Errorf("Expected PipelineRun status to be complete and false, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-			} else if !tc.isFailed && !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
-				t.Errorf("Expected PipelineRun status to be complete and unknown, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+			if tc.isFailed {
+				th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionFalse)
+			} else {
+				th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionUnknown)
 			}
 
 			if len(reconciledRun.Status.ChildReferences) != tc.childRefInStatusCount {
@@ -2504,9 +2486,7 @@ spec:
 	}
 
 	// The PipelineRun should be timed out.
-	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "PipelineRunTimeout" {
-		t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
+	th.CheckPipelineRunConditionStatusAndReason(t, reconciledRun.Status, corev1.ConditionFalse, "PipelineRunTimeout")
 
 	// Check that there is a skipped task for the expected reason
 	if len(reconciledRun.Status.SkippedTasks) != 1 {
@@ -2612,9 +2592,7 @@ spec:
 			if err != nil {
 				prt.Test.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
 			}
-			if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "PipelineRunTimeout" {
-				t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-			}
+			th.CheckPipelineRunConditionStatusAndReason(t, reconciledRun.Status, corev1.ConditionFalse, "PipelineRunTimeout")
 		})
 	}
 }
@@ -2910,7 +2888,8 @@ spec:
 				prt.Test.Error(err.Error())
 			}
 
-			// The PipelineRun should be timed out.
+			// The PipelineRun should be timed out. This test uses v1beta1 objects,
+			// so the v1-typed status helpers do not apply here.
 			if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "PipelineRunTimeout" {
 				t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
 			}
@@ -3031,9 +3010,7 @@ status:
 		}
 
 		// The PipelineRun should be timeout.
-		if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != v1.PipelineRunReasonTimedOut.String() {
-			t.Errorf("Expected PipelineRun to be time out, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason)
-		}
+		th.CheckPipelineRunConditionStatusAndReason(t, reconciledRun.Status, corev1.ConditionFalse, v1.PipelineRunReasonTimedOut.String())
 
 		// Check that there is a skipped task for the expected reason
 
@@ -3239,9 +3216,7 @@ status:
 		}
 
 		// The PipelineRun should be running.
-		if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != v1.PipelineRunReasonRunning.String() {
-			t.Errorf("Expected PipelineRun to be running, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason)
-		}
+		th.CheckPipelineRunConditionStatusAndReason(t, reconciledRun.Status, corev1.ConditionUnknown, v1.PipelineRunReasonRunning.String())
 
 		// Check that there is a skipped task for the expected reason
 		if tc.wantOneFinalTaskSkipped {
@@ -3568,9 +3543,7 @@ spec:
 		}
 	}
 
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
-		t.Errorf("Expected PipelineRun to be running, but condition status is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionUnknown)
 }
 
 func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
@@ -5996,9 +5969,7 @@ spec:
 		t.Errorf("expected only one of two TaskRuns to have Affinity Assistant affinity. %d was detected", taskRunsWithPropagatedAffinityAssistantName)
 	}
 
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
-		t.Errorf("Expected PipelineRun to be running, but condition status is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionUnknown)
 }
 
 // TestReconcileWithVolumeClaimTemplateWorkspace tests that given a pipeline with volumeClaimTemplate workspace,
@@ -6092,9 +6063,7 @@ spec:
 		}
 	}
 
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
-		t.Errorf("Expected PipelineRun to be running, but condition status is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionUnknown)
 }
 
 // TestReconcileWithVolumeClaimTemplateWorkspaceUsingSubPaths tests that given a pipeline with volumeClaimTemplate workspace and
@@ -6280,9 +6249,7 @@ spec:
 		t.Fatalf("did not see a taskRun with workspace using pipelineTaks subPath1 and a subPath from pipelineRun using context variables")
 	}
 
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
-		t.Errorf("Expected PipelineRun to be running, but condition status is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionUnknown)
 }
 
 func TestReconcileAndPopulateParamsToWorkspaceBindings(t *testing.T) {
@@ -7029,9 +6996,7 @@ spec:
 
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, false)
 
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
-		t.Errorf("Expected PipelineRun to be running, but condition status is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionUnknown)
 
 	// Since b-task is dependent on a-task, via the results, only a-task should run
 	expectedTaskRun := parse.MustParseTaskRunWithObjectMeta(t,
@@ -7789,9 +7754,7 @@ status:
 	validateTaskRunsCount(t, taskRuns, 2)
 
 	// This PipelineRun should still be running and the status should reflect that
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
-		t.Errorf("Expected PipelineRun status to be running, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionUnknown)
 
 	expectedTaskRunsStatus := make(map[string]*v1.PipelineRunTaskRunStatus)
 	expectedRunsStatus := make(map[string]*v1.PipelineRunRunStatus)
@@ -8398,58 +8361,18 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 
 			if tt.pipelineRunStatusFalse {
 				// This PipelineRun should still be failed and the status should reflect that
-				if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
-					t.Errorf("Expected PipelineRun status to be failed, but was %v for %s",
-						reconciledRun.Status.GetCondition(apis.ConditionSucceeded), tt.name)
-				}
+				th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionFalse)
 			} else if tt.pipelineRunStatusUnknown {
 				// This PipelineRun should still be running and the status should reflect that
-				if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
-					t.Errorf("Expected PipelineRun status to be unknown (running), but was %v for %s",
-						reconciledRun.Status.GetCondition(apis.ConditionSucceeded), tt.name)
-				}
+				th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionUnknown)
 			}
 
 			if d := cmp.Diff(reconciledRun.Status.ChildReferences, tt.expectedChildReferences, cmpopts.SortSlices(lessChildReferences)); d != "" {
 				t.Fatalf("Expected PipelineRunTaskRun status to match ChildReferences status, but got a mismatch for %s: %s", tt.name, d)
 			}
 
-			checkTaskRunStatusFromChildRefs(prt.TestAssets.Ctx, t, namespace, clients, reconciledRun.Status.ChildReferences, tt.expectedTaskRuns)
+			th.CheckTaskRunStatusFromChildRefs(prt.TestAssets.Ctx, t, namespace, clients.Pipeline, reconciledRun.Status.ChildReferences, tt.expectedTaskRuns)
 		})
-	}
-}
-
-// checkTaskRunStatusFromChildRefs checks the status of taskruns from ChildReferences to be expected.
-func checkTaskRunStatusFromChildRefs(ctx context.Context, t *testing.T, namespace string, clients test.Clients,
-	childRefs []v1.ChildStatusReference, expectedTaskRuns map[string]*v1.PipelineRunTaskRunStatus,
-) {
-	t.Helper()
-	taskrunsToCheck := len(expectedTaskRuns)
-	if taskrunsToCheck == 0 {
-		return
-	}
-
-	for _, childRef := range childRefs {
-		if childRef.Kind != taskRun {
-			continue
-		}
-		trName := childRef.Name
-
-		trFromChildRef, err := clients.Pipeline.TektonV1().TaskRuns(namespace).Get(ctx, trName, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("Failure to get TaskRun from ChildReference %s: %s", childRef.Name, err)
-		}
-
-		if expectedTaskRunStatus, ok := expectedTaskRuns[trName]; !ok {
-			t.Fatalf("Expected not to have TaskRun status from ChildReferences %s", trName)
-		} else if d := cmp.Diff(*expectedTaskRunStatus.Status, trFromChildRef.Status); d != "" {
-			t.Fatalf("Expected TaskRun Status to match ChildReferences TaskRun Status, but got a mismatch %s", diff.PrintWantGot(d))
-		}
-		taskrunsToCheck--
-	}
-
-	if taskrunsToCheck != 0 {
-		t.Fatalf("Expected ChildReferences to match all the TaskRun Status, but there are TaskRuns that did not: %v", expectedTaskRuns)
 	}
 }
 
@@ -9252,10 +9175,9 @@ spec:
 			t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
 		}
 
-		if tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != v1.PipelineRunReasonFailedValidation.String() {
-			t.Errorf("Expected PipelineRun to have reason FailedValidation, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-		}
-		if !tc.wantFailed && reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
+		if tc.wantFailed {
+			th.CheckPipelineRunConditionStatusAndReason(t, reconciledRun.Status, corev1.ConditionFalse, v1.PipelineRunReasonFailedValidation.String())
+		} else if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
 			t.Errorf("Expected PipelineRun to not be failed but has condition status false")
 		}
 	}
@@ -9627,13 +9549,7 @@ spec:
 			if run == nil {
 				t.Fatalf("Could not reconcile run %s", tc.name)
 			}
-			c := run.Status.GetCondition(apis.ConditionSucceeded)
-			if c.Status != corev1.ConditionFalse {
-				t.Errorf("expected Succeeded/False condition but saw: %v", c)
-			}
-			if c.Reason != tc.reason {
-				t.Errorf("want reason %s but got %s", tc.reason, c.Reason)
-			}
+			th.CheckPipelineRunConditionStatusAndReason(t, run.Status, corev1.ConditionFalse, tc.reason)
 		})
 	}
 }
@@ -9914,12 +9830,10 @@ metadata:
 			}
 
 			// The PipelineRun should not be cancelled since the error was retryable
-			condition := updatedPipelineRun.Status.GetCondition(apis.ConditionSucceeded)
-			if testCase.isPermanentError && condition.IsUnknown() {
-				t.Errorf("Expected PipelineRun to be failed but succeeded condition is %v", condition.Status)
-			}
-			if !testCase.isPermanentError && !condition.IsUnknown() {
-				t.Errorf("Expected PipelineRun to still be running but succeeded condition is %v", condition.Status)
+			if testCase.isPermanentError {
+				th.CheckPipelineRunConditionStatus(t, updatedPipelineRun.Status, corev1.ConditionFalse)
+			} else {
+				th.CheckPipelineRunConditionStatus(t, updatedPipelineRun.Status, corev1.ConditionUnknown)
 			}
 		})
 	}
@@ -17561,9 +17475,7 @@ spec:
 	}
 
 	// The PipelineRun should be create run failed.
-	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "CreateRunFailed" {
-		t.Errorf("Expected PipelineRun to be create run failed, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
+	th.CheckPipelineRunConditionStatusAndReason(t, reconciledRun.Status, corev1.ConditionFalse, "CreateRunFailed")
 }
 
 func TestHandleAffinityAssistantAndPVCCreationError(t *testing.T) {
@@ -17702,9 +17614,7 @@ spec:
 		}
 
 		// The PipelineRun should be create run failed.
-		if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "CreateRunFailed" {
-			t.Errorf("Expected PipelineRun to be create run failed, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-		}
+		th.CheckPipelineRunConditionStatusAndReason(t, reconciledRun.Status, corev1.ConditionFalse, "CreateRunFailed")
 	}
 }
 
@@ -17766,9 +17676,7 @@ spec:
 		}
 
 		// The PipelineRun should be create run failed.
-		if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "CreateRunFailed" {
-			t.Errorf("Expected PipelineRun to be create run failed, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-		}
+		th.CheckPipelineRunConditionStatusAndReason(t, reconciledRun.Status, corev1.ConditionFalse, "CreateRunFailed")
 	}
 }
 
@@ -17834,9 +17742,7 @@ spec:
 	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-with-timeout", wantEvents, false)
 
 	// The PipelineRun should not be timed out.
-	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "Succeeded" {
-		t.Errorf("Expected PipelineRun to still be Succeeded, but reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
+	th.CheckPipelineRunConditionStatusAndReason(t, reconciledRun.Status, corev1.ConditionTrue, "Succeeded")
 }
 
 func TestReconcileWithResultsAndOutOfOrderTasks7103(t *testing.T) {
@@ -19109,9 +19015,7 @@ spec:
 	}
 
 	// Verify its status was updated
-	if !reconciledTekton.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
-		t.Errorf("Expected Tekton-managed PipelineRun to be running, but it was not")
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledTekton.Status, corev1.ConditionUnknown)
 }
 
 func TestPropagatePipelineNameLabelToPipelineRun_AnonymousPipeline(t *testing.T) {
@@ -19345,13 +19249,7 @@ status:
 	reconciledRun, _ := prt.reconcileRun(namespace, prName, nil, false)
 
 	// PipelineRun should remain Running (failure deferred)
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if condition == nil {
-		t.Fatal("Expected condition on PipelineRun, got nil")
-	}
-	if !condition.IsUnknown() {
-		t.Errorf("Expected PipelineRun to remain Running (Unknown), got status %s reason %s", condition.Status, condition.Reason)
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionUnknown)
 }
 
 // TestReconcile_ConfirmFailureWhenTaskRunFailedInAPIServer tests that when both the
@@ -19412,13 +19310,7 @@ status:
 	reconciledRun, _ := prt.reconcileRun(namespace, prName, nil, false)
 
 	// PipelineRun should be marked Failed since API server confirmed the eviction failure
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if condition == nil {
-		t.Fatal("Expected condition on PipelineRun, got nil")
-	}
-	if !condition.IsFalse() {
-		t.Errorf("Expected PipelineRun to be marked Failed, got status %s reason %s", condition.Status, condition.Reason)
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionFalse)
 }
 
 // TestReconcile_APIServerErrorReturnsError tests that when the API server returns
@@ -19563,13 +19455,7 @@ status:
 	reconciledRun, _ := prt.reconcileRun(namespace, prName, nil, false)
 
 	// PipelineRun should be Failed (falls back to cached eviction failure since API server returned NotFound)
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if condition == nil {
-		t.Fatal("Expected condition on PipelineRun, got nil")
-	}
-	if !condition.IsFalse() {
-		t.Errorf("Expected PipelineRun to be marked Failed (fallback to cache on NotFound), got status %s reason %s", condition.Status, condition.Reason)
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionFalse)
 }
 
 // TestReconcile_CancelledTaskRunNoFalsePositive tests that when a TaskRun is cancelled
@@ -19631,13 +19517,7 @@ status:
 	reconciledRun, _ := prt.reconcileRun(namespace, prName, nil, false)
 
 	// PipelineRun should be marked Failed — cancelled TaskRun is a legitimate failure
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if condition == nil {
-		t.Fatal("Expected condition on PipelineRun, got nil")
-	}
-	if !condition.IsFalse() {
-		t.Errorf("Expected PipelineRun to be marked Failed for cancelled TaskRun, got status %s reason %s", condition.Status, condition.Reason)
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionFalse)
 }
 
 // TestReconcile_TimedOutTaskRunNoFalsePositive tests that when a TaskRun has timed out
@@ -19699,13 +19579,7 @@ status:
 	reconciledRun, _ := prt.reconcileRun(namespace, prName, nil, false)
 
 	// PipelineRun should be marked Failed — timed out TaskRun is a legitimate failure
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if condition == nil {
-		t.Fatal("Expected condition on PipelineRun, got nil")
-	}
-	if !condition.IsFalse() {
-		t.Errorf("Expected PipelineRun to be marked Failed for timed out TaskRun, got status %s reason %s", condition.Status, condition.Reason)
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionFalse)
 }
 
 // TestReconcile_GenericFailedTaskRunSkipsAPIVerification tests that when a TaskRun
@@ -19776,11 +19650,5 @@ status:
 	}
 
 	// PipelineRun should be marked Failed — generic failure is deterministic
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if condition == nil {
-		t.Fatal("Expected condition on PipelineRun, got nil")
-	}
-	if !condition.IsFalse() {
-		t.Errorf("Expected PipelineRun to be marked Failed for generic failed TaskRun, got status %s reason %s", condition.Status, condition.Reason)
-	}
+	th.CheckPipelineRunConditionStatus(t, reconciledRun.Status, corev1.ConditionFalse)
 }
