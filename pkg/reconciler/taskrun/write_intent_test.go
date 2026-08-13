@@ -114,7 +114,7 @@ func TestReconcileKindRecordsWriteIntent(t *testing.T) {
 
 // The metadata half is taken from the branch that actually updates the object,
 // not from comparing its labels and annotations before and after. Those differ:
-// updateLabelsAndAnnotations compares against a freshly read object, so metadata
+// updateLabelsAndAnnotations compares against the informer lister's copy, so metadata
 // another actor changed during the reconcile makes it write even though nothing
 // local moved. Inferring from the local object reports no-op for that.
 func TestReconcileKindRecordsMetadataWriteAnotherActorCaused(t *testing.T) {
