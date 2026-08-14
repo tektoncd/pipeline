@@ -5348,14 +5348,9 @@ status:
   - name: aResult
     value: aResultValue
 `)}
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-cel-in-whenexpression": "true",
-			},
-		},
-	}
+	cms := th.NewFeatureFlagsConfigMapWithDataInSlice(map[string]string{
+		"enable-cel-in-whenexpression": "true",
+	})
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -5512,14 +5507,9 @@ status:
   - status: "False"
     type: Succeeded
 `)}
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-cel-in-whenexpression": "true",
-			},
-		},
-	}
+	cms := th.NewFeatureFlagsConfigMapWithDataInSlice(map[string]string{
+		"enable-cel-in-whenexpression": "true",
+	})
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -5632,14 +5622,9 @@ spec:
 	ts := []*v1.Task{
 		{ObjectMeta: baseObjectMeta("a-task", "foo")},
 	}
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-cel-in-whenexpression": "true",
-			},
-		},
-	}
+	cms := th.NewFeatureFlagsConfigMapWithDataInSlice(map[string]string{
+		"enable-cel-in-whenexpression": "true",
+	})
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -5726,14 +5711,9 @@ spec:
   pipelineRef:
     name: test-pipeline-level-enum
 `)}
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-param-enum": "true",
-			},
-		},
-	}
+	cms := th.NewFeatureFlagsConfigMapWithDataInSlice(map[string]string{
+		"enable-param-enum": "true",
+	})
 	d := test.Data{
 		Tasks:        refTasks,
 		PipelineRuns: prs,
@@ -5784,14 +5764,9 @@ spec:
   pipelineRef:
     name: test-pipeline-level-enum
 `)}
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-param-enum": "true",
-			},
-		},
-	}
+	cms := th.NewFeatureFlagsConfigMapWithDataInSlice(map[string]string{
+		"enable-param-enum": "true",
+	})
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -5847,14 +5822,9 @@ spec:
     enum: ["v3", "v4"]
 `)}
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-param-enum": "true",
-			},
-		},
-	}
+	cms := th.NewFeatureFlagsConfigMapWithDataInSlice(map[string]string{
+		"enable-param-enum": "true",
+	})
 	d := test.Data{
 		Tasks:        refTasks,
 		PipelineRuns: prs,
@@ -9125,14 +9095,9 @@ metadata:
 		ServiceAccounts: []*corev1.ServiceAccount{{
 			ObjectMeta: metav1.ObjectMeta{Name: prs[0].Spec.TaskRunTemplate.ServiceAccountName, Namespace: namespace},
 		}},
-		ConfigMaps: []*corev1.ConfigMap{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-				Data: map[string]string{
-					"enable-api-fields": "beta",
-				},
-			},
-		},
+		ConfigMaps: th.NewFeatureFlagsConfigMapWithDataInSlice(map[string]string{
+			"enable-api-fields": "beta",
+		}),
 		ResolutionRequests: []*resolutionv1beta1.ResolutionRequest{&taskReq, &pipelineReq},
 	}
 
@@ -9225,14 +9190,9 @@ spec:
 		// Unlike the tests above, we do *not* locally define our pipeline or unit-test task.
 		d := test.Data{
 			PipelineRuns: prs,
-			ConfigMaps: []*corev1.ConfigMap{
-				{
-					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-					Data: map[string]string{
-						"enable-api-fields": "beta",
-					},
-				},
-			},
+			ConfigMaps: th.NewFeatureFlagsConfigMapWithDataInSlice(map[string]string{
+				"enable-api-fields": "beta",
+			}),
 			ResolutionRequests: []*resolutionv1beta1.ResolutionRequest{&pipelineReq},
 		}
 		testAssets, cancel := getPipelineRunController(t, d)
@@ -9348,14 +9308,9 @@ metadata:
 			ServiceAccounts: []*corev1.ServiceAccount{{
 				ObjectMeta: metav1.ObjectMeta{Name: prs[0].Spec.TaskRunTemplate.ServiceAccountName, Namespace: namespace},
 			}},
-			ConfigMaps: []*corev1.ConfigMap{
-				{
-					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-					Data: map[string]string{
-						"enable-api-fields": "beta",
-					},
-				},
-			},
+			ConfigMaps: th.NewFeatureFlagsConfigMapWithDataInSlice(map[string]string{
+				"enable-api-fields": "beta",
+			}),
 			ResolutionRequests: []*resolutionv1beta1.ResolutionRequest{&tc.taskReq, &tc.pipelineReq},
 		}
 
@@ -16927,14 +16882,9 @@ spec:
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cms := []*corev1.ConfigMap{
-				{
-					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-					Data: map[string]string{
-						"trusted-resources-verification-no-match-policy": tc.noMatchPolicy,
-					},
-				},
-			}
+			cms := th.NewFeatureFlagsConfigMapWithDataInSlice(map[string]string{
+				"trusted-resources-verification-no-match-policy": tc.noMatchPolicy,
+			})
 
 			pipelineReq := getResolvedResolutionRequest(t, resolverName, signedPipelineBytes, prs.Namespace, prs.Name)
 			taskReq := getResolvedResolutionRequest(t, resolverName, signedTaskBytes, prs.Namespace, prs.Name+"-"+ps.Spec.Tasks[0].Name)
@@ -17070,15 +17020,10 @@ spec:
 		t.Fatal("fail to marshal task", err)
 	}
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
-				"enable-tekton-oci-bundles":                      "true",
-			},
-		},
-	}
+	cms := th.NewFeatureFlagsConfigMapWithDataInSlice(map[string]string{
+		"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
+		"enable-tekton-oci-bundles":                      "true",
+	})
 
 	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
@@ -17264,15 +17209,10 @@ spec:
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cms := []*corev1.ConfigMap{
-				{
-					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-					Data: map[string]string{
-						"trusted-resources-verification-no-match-policy": tc.noMatchPolicy,
-						"enable-api-fields": config.BetaAPIFields,
-					},
-				},
-			}
+			cms := th.NewFeatureFlagsConfigMapWithDataInSlice(map[string]string{
+				"trusted-resources-verification-no-match-policy": tc.noMatchPolicy,
+				"enable-api-fields": config.BetaAPIFields,
+			})
 
 			pipelineReq := getResolvedResolutionRequest(t, resolverName, signedPipelineBytes, prs.Namespace, prs.Name)
 			taskReq := getResolvedResolutionRequest(t, resolverName, signedTaskBytes, prs.Namespace, prs.Name+"-"+ps.Spec.Tasks[0].Name)
@@ -17408,15 +17348,10 @@ spec:
 		t.Fatal("fail to marshal task", err)
 	}
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
-				"enable-api-fields": config.BetaAPIFields,
-			},
-		},
-	}
+	cms := th.NewFeatureFlagsConfigMapWithDataInSlice(map[string]string{
+		"trusted-resources-verification-no-match-policy": config.FailNoMatchPolicy,
+		"enable-api-fields": config.BetaAPIFields,
+	})
 
 	pr := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
@@ -18725,12 +18660,9 @@ spec:
 	trs := []*v1.TaskRun{}
 
 	// Create feature flags config with exponential backoff enabled
-	featureFlagsConfig := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
-		Data: map[string]string{
-			"enable-wait-exponential-backoff": "true",
-		},
-	}
+	featureFlagsConfig := th.NewFeatureFlagsConfigMapWithData(map[string]string{
+		"enable-wait-exponential-backoff": "true",
+	})
 
 	// Create wait exponential backoff config
 	waitExponentialBackoffConfig := &corev1.ConfigMap{
@@ -18888,12 +18820,9 @@ spec:
 	crs := []*v1beta1.CustomRun{}
 
 	// Create feature flags config with exponential backoff enabled
-	featureFlagsConfig := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
-		Data: map[string]string{
-			"enable-wait-exponential-backoff": "true",
-		},
-	}
+	featureFlagsConfig := th.NewFeatureFlagsConfigMapWithData(map[string]string{
+		"enable-wait-exponential-backoff": "true",
+	})
 
 	// Create wait exponential backoff config
 	waitExponentialBackoffConfig := &corev1.ConfigMap{
