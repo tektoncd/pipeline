@@ -1231,7 +1231,9 @@ func (c *Reconciler) createChildPipelineRun(
 
 // getChildPipelineRunWorkspaces resolves workspace bindings from the parent PipelineRun
 // for the given PipelineTask that references a child Pipeline. It reuses the same volume
-// source handling as TaskRun workspaces.
+// source handling as TaskRun workspaces, and fails with a permanent error if a
+// non-optional workspace declared by the child Pipeline has no matching binding on
+// the parent, mirroring the validation done for TaskRun workspaces in getTaskrunWorkspaces.
 func (c *Reconciler) getChildPipelineRunWorkspaces(ctx context.Context, pr *v1.PipelineRun, rpt *resources.ResolvedPipelineTask) ([]v1.WorkspaceBinding, error) {
 	if len(rpt.PipelineTask.Workspaces) == 0 {
 		return nil, nil
@@ -1254,10 +1256,19 @@ func (c *Reconciler) getChildPipelineRunWorkspaces(ctx context.Context, pr *v1.P
 		}
 		b, hasBinding := parentWorkspaces[parentName]
 		if !hasBinding {
-			// Tracking parent-side validation of non-optional child workspaces:
-			// https://github.com/tektoncd/pipeline/issues/9924 (TEP-0056).
-			// Today, missing non-optional child workspaces fail the child PipelineRun
-			// rather than the parent.
+			workspaceIsOptional := false
+			if rpt.ResolvedPipeline.PipelineSpec != nil {
+				for _, pipelineWorkspaceDeclaration := range rpt.ResolvedPipeline.PipelineSpec.Workspaces {
+					if pipelineWorkspaceDeclaration.Name == childPipelineWorkspaceName && pipelineWorkspaceDeclaration.Optional {
+						workspaceIsOptional = true
+						break
+					}
+				}
+			}
+			if !workspaceIsOptional {
+				err := fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", parentName, rpt.PipelineTask.Name)
+				return nil, controller.NewPermanentError(err)
+			}
 			continue
 		}
 		if b.PersistentVolumeClaim != nil || b.VolumeClaimTemplate != nil {
