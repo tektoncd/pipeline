@@ -142,7 +142,7 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 			updateCompletedTaskRunStatus(logger, trs, pod, "")
 		}
 	} else {
-		updateIncompleteTaskRunStatus(ctx, logger, trs, pod, kubeclient)
+		updateIncompleteTaskRunStatus(ctx, trs, pod, kubeclient)
 	}
 
 	trs.PodName = pod.Name
@@ -622,7 +622,7 @@ func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1.TaskRunStat
 	trs.CompletionTime = &metav1.Time{Time: time.Now()}
 }
 
-func updateIncompleteTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, trs *v1.TaskRunStatus, pod *corev1.Pod, kubeclient kubernetes.Interface) {
+func updateIncompleteTaskRunStatus(ctx context.Context, trs *v1.TaskRunStatus, pod *corev1.Pod, kubeclient kubernetes.Interface) {
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		markStatusRunning(trs, v1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
@@ -639,8 +639,11 @@ func updateIncompleteTaskRunStatus(ctx context.Context, logger *zap.SugaredLogge
 		default:
 			msg := getWaitingMessage(pod)
 			if config.FromContextOrDefaults(ctx).FeatureFlags.EnableSurfacePodEvents && isGenericPending(pod) {
-				if evReason, evMsg := latestWarningEvent(ctx, logger, kubeclient, pod); evMsg != "" {
-					msg = formatEventMessage(evReason, evMsg)
+				if eventReason, eventMsg := latestWarningEvent(ctx, kubeclient, pod); eventReason != "" {
+					msg = eventReason
+					if eventMsg = strings.TrimSpace(eventMsg); eventMsg != "" {
+						msg += ": " + eventMsg
+					}
 				}
 			}
 			markStatusRunning(trs, ReasonPodPending, msg)
