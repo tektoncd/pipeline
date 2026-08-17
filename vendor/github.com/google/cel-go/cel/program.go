@@ -22,7 +22,8 @@ import (
 
 	"github.com/google/cel-go/cel/async"
 	"github.com/google/cel-go/common/ast"
-	"github.com/google/cel-go/common/functions"
+	"github.com/google/cel-go/common/operators"
+	"github.com/google/cel-go/common/overloads"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter"
@@ -200,13 +201,45 @@ type prog struct {
 	asyncMaxConcurrency       int
 }
 
+// scanOptTargets walks the AST once and reports whether the Optimize()
+// decorator (needOpt) and the regex-constant compiler (needRegex) have any
+// target node present. The conditions are a superset of what each decorator
+// acts on, so a false negative — skipping a decorator that would have
+// optimized something — is impossible.
+func scanOptTargets(root ast.Expr) (needOpt, needRegex bool) {
+	ast.PostOrderVisit(root, ast.NewExprVisitor(func(e ast.Expr) {
+		switch e.Kind() {
+		case ast.ListKind, ast.MapKind:
+			needOpt = true // maybeBuildListLiteral / maybeBuildMapLiteral
+		case ast.CallKind:
+			switch fn := e.AsCall().FunctionName(); {
+			case fn == overloads.Matches:
+				needRegex = true
+			case fn == operators.In || fn == operators.OldIn:
+				needOpt = true // maybeOptimizeSetMembership
+			case overloads.IsTypeConversionFunction(fn):
+				needOpt = true // maybeOptimizeConstUnary
+			}
+		}
+	}))
+	return
+}
+
 // newProgram creates a program instance with an environment, an ast, and an optional list of
 // ProgramOption values.
 //
 // If the program cannot be configured the prog will be nil, with a non-nil error response.
 func newProgram(e *Env, a *ast.AST, opts []ProgramOption) (Program, error) {
-	// Build the dispatcher, interpreter, and default program value.
-	disp := interpreter.NewDispatcher()
+	// Build the env's function bindings and shared dispatcher once (pure functions of the
+	// env). The dispatcher holding the env's function bindings is identical across every
+	// Program() built from it and read-only during planning — so assemble it once per env
+	// and layer a thin child over it here for per-program Functions() isolation, rather than
+	// re-indexing overloads on every Program() call.
+	sharedDisp, hasAsync, err := e.initDispatcher()
+	if err != nil {
+		return nil, err
+	}
+	disp := interpreter.ExtendDispatcher(sharedDisp)
 
 	// Ensure the default attribute factory is set after the adapter and provider are
 	// configured.
@@ -216,46 +249,14 @@ func newProgram(e *Env, a *ast.AST, opts []ProgramOption) (Program, error) {
 		dispatcher:     disp,
 		costOptions:    []interpreter.CostTrackerOption{},
 		drainStrategy:  async.DrainReady(100 * time.Microsecond),
+		hasAsync:       hasAsync,
 	}
 
 	// Configure the program via the ProgramOption values.
-	var err error
 	for _, opt := range opts {
 		p, err = opt(p)
 		if err != nil {
 			return nil, err
-		}
-	}
-
-	e.funcBindOnce.Do(func() {
-		var bindings []*functions.Overload
-		e.functionBindings = []*functions.Overload{}
-		for _, fn := range e.functions {
-			bindings, err = fn.Bindings()
-			if err != nil {
-				return
-			}
-			e.functionBindings = append(e.functionBindings, bindings...)
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// Add the function bindings created via Function() options.
-	err = disp.Add(e.functionBindings...)
-	if err != nil {
-		return nil, err
-	}
-
-	// Determine whether the environment declares any asynchronous function. Async is a property of
-	// the binding, so its presence is known from the environment alone, without inspecting the
-	// program plan. The synchronous entry points (Eval, ContextEval) reject programs from an env
-	// with async functions; callers needing synchronous evaluation should use a non-async env.
-	for _, b := range e.functionBindings {
-		if b.Async != nil {
-			p.hasAsync = true
-			break
 		}
 	}
 
@@ -288,12 +289,28 @@ func newProgram(e *Env, a *ast.AST, opts []ProgramOption) (Program, error) {
 	}
 	// Enable constant folding first.
 	if p.evalOpts&OptOptimize == OptOptimize {
-		plannerOptions = append(plannerOptions, interpreter.Optimize())
-		p.regexOptimizations = append(p.regexOptimizations, interpreter.MatchesRegexOptimization)
+		// The Optimize() decorator (set-membership, constant list/map literals,
+		// const type conversions) and the regex-constant compiler each walk
+		// every planned node. When the AST provably contains no node they can
+		// act on, adding them is pure overhead — so gate each on a single AST
+		// scan. The scan condition is a superset of what the decorators touch,
+		// so a decorator is only skipped when its target node is definitely
+		// absent and evaluation is never affected (an ungated regex would
+		// recompile per eval, etc.).
+		addOptimize, addRegex := scanOptTargets(a.Expr())
+		if addOptimize {
+			plannerOptions = append(plannerOptions, interpreter.Optimize())
+		}
+		if addRegex {
+			p.regexOptimizations = append(p.regexOptimizations, interpreter.MatchesRegexOptimization)
+		}
 	}
 	// Enable regex compilation of constants immediately after folding constants.
 	if len(p.regexOptimizations) > 0 {
 		plannerOptions = append(plannerOptions, interpreter.CompileRegexConstants(p.regexOptimizations...))
+	}
+	if limit := p.limits[limitRegexProgramSize]; limit > 0 {
+		plannerOptions = append(plannerOptions, interpreter.RegexProgramSizeLimit(limit))
 	}
 
 	// Enable exhaustive eval, state tracking and cost tracking last since they require a factory.

@@ -227,6 +227,11 @@ func CompileRegexConstants(regexOptimizations ...*RegexOptimization) PlannerOpti
 	return CustomDecoratorV2(decRegexOptimizer(regexOptimizations...))
 }
 
+// RegexProgramSizeLimit caps the maximum regex program plan size permitted during evaluation.
+func RegexProgramSizeLimit(limit int) PlannerOption {
+	return CustomDecoratorV2(decRegexProgramSizeLimit(limit))
+}
+
 type exprInterpreter struct {
 	dispatcher  Dispatcher
 	container   *containers.Container

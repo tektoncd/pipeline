@@ -16,6 +16,7 @@
 package stdlib
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -1053,7 +1054,7 @@ func inTimeZone(ts, tz ref.Val) (time.Time, error) {
 	}
 
 	// If the input is not the name of a timezone (for example, 'US/Central'), it should be a numerical offset from UTC
-	// in the format ^(+|-)(0[0-9]|1[0-4]):[0-5][0-9]$. The numerical input is parsed in terms of hours and minutes.
+	// in the format ^(+|-)([01]\d|2[0-3]):[0-5][0-9]$. The numerical input is parsed in terms of hours and minutes.
 	hr, err := strconv.Atoi(string(val[0:ind]))
 	if err != nil {
 		return time.Time{}, err
@@ -1061,6 +1062,12 @@ func inTimeZone(ts, tz ref.Val) (time.Time, error) {
 	min, err := strconv.Atoi(string(val[ind+1:]))
 	if err != nil {
 		return time.Time{}, err
+	}
+	if hr < -23 || hr > 23 {
+		return time.Time{}, fmt.Errorf("timezone offset hours out of range [-23, 23]: %s", val)
+	}
+	if min < 0 || min > 59 {
+		return time.Time{}, fmt.Errorf("timezone offset minutes out of range [0, 59]: %s", val)
 	}
 	var offset int
 	if string(val[0]) == "-" {
