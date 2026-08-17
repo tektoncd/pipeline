@@ -23,15 +23,17 @@ import (
 	"github.com/google/cel-go/common/ast"
 	"github.com/google/cel-go/common/env"
 	"github.com/google/cel-go/common/overloads"
+	"github.com/google/cel-go/common/types"
 )
 
 const (
-	durationValidatorName         = "cel.validator.duration"
-	regexValidatorName            = "cel.validator.matches"
-	timestampValidatorName        = "cel.validator.timestamp"
-	homogeneousValidatorName      = "cel.validator.homogeneous_literals"
-	nestingLimitValidatorName     = "cel.validator.comprehension_nesting_limit"
-	bindNestingLimitValidatorName = "cel.validator.bind_nesting_limit"
+	durationValidatorName              = "cel.validator.duration"
+	regexValidatorName                 = "cel.validator.matches"
+	timestampValidatorName             = "cel.validator.timestamp"
+	homogeneousValidatorName           = "cel.validator.homogeneous_literals"
+	nestingLimitValidatorName          = "cel.validator.comprehension_nesting_limit"
+	bindNestingLimitValidatorName      = "cel.validator.bind_nesting_limit"
+	regexProgramSizeLimitValidatorName = "cel.validator.regex_program_size_limit"
 
 	// HomogeneousAggregateLiteralExemptFunctions is the ValidatorConfig key used to configure
 	// the set of function names which are exempt from homogeneous type checks. The expected type
@@ -46,38 +48,25 @@ const (
 var (
 	astValidatorFactories = map[string]ASTValidatorFactory{
 		nestingLimitValidatorName: func(val *env.Validator) (ASTValidator, error) {
-			if limit, found := val.ConfigValue("limit"); found {
-				// In case of protos, config value is of type by google.protobuf.Value, which numeric values are always a double.
-				if val, isDouble := limit.(float64); isDouble {
-					if val != float64(int64(val)) {
-						return nil, fmt.Errorf("invalid validator: %s, limit value is not a whole number: %v", nestingLimitValidatorName, limit)
-					}
-					return ValidateComprehensionNestingLimit(int(val)), nil
-				}
-
-				if val, isInt := limit.(int); isInt {
-					return ValidateComprehensionNestingLimit(val), nil
-				}
-				return nil, fmt.Errorf("invalid validator: %s unsupported limit type: %v", nestingLimitValidatorName, limit)
+			limit, err := validatorIntConfig(val, "limit")
+			if err != nil {
+				return nil, err
 			}
-			return nil, fmt.Errorf("invalid validator: %s missing limit", nestingLimitValidatorName)
+			return ValidateComprehensionNestingLimit(limit), nil
 		},
 		bindNestingLimitValidatorName: func(val *env.Validator) (ASTValidator, error) {
-			if limit, found := val.ConfigValue("limit"); found {
-				// In case of protos, config value is of type by google.protobuf.Value, which numeric values are always a double.
-				if val, isDouble := limit.(float64); isDouble {
-					if val != float64(int64(val)) {
-						return nil, fmt.Errorf("invalid validator: %s, limit value is not a whole number: %v", bindNestingLimitValidatorName, limit)
-					}
-					return ValidateBindNestingLimit(int(val)), nil
-				}
-
-				if val, isInt := limit.(int); isInt {
-					return ValidateBindNestingLimit(val), nil
-				}
-				return nil, fmt.Errorf("invalid validator: %s unsupported limit type: %v", bindNestingLimitValidatorName, limit)
+			limit, err := validatorIntConfig(val, "limit")
+			if err != nil {
+				return nil, err
 			}
-			return nil, fmt.Errorf("invalid validator: %s missing limit", bindNestingLimitValidatorName)
+			return ValidateBindNestingLimit(limit), nil
+		},
+		regexProgramSizeLimitValidatorName: func(val *env.Validator) (ASTValidator, error) {
+			limit, err := validatorIntConfig(val, "limit")
+			if err != nil {
+				return nil, err
+			}
+			return ValidateRegexProgramSizeLimit(limit), nil
 		},
 		durationValidatorName: func(*env.Validator) (ASTValidator, error) {
 			return ValidateDurationLiterals(), nil
@@ -264,6 +253,11 @@ func ValidateComprehensionNestingLimit(limit int) ASTValidator {
 // This validator can be useful for preventing arbitrarily nested cel.bind() macro calls.
 func ValidateBindNestingLimit(limit int) ASTValidator {
 	return bindNestingLimitValidator{limit: limit}
+}
+
+// ValidateRegexProgramSizeLimit ensures that regex pattern literals do not exceed the specified regex program size limit.
+func ValidateRegexProgramSizeLimit(limit int) ASTValidator {
+	return regexProgramSizeLimitValidator{limit: limit}
 }
 
 type argChecker func(env *Env, call, arg ast.Expr) error
@@ -495,6 +489,20 @@ func (v bindNestingLimitValidator) ToConfig() *env.Validator {
 	return env.NewValidator(v.Name()).SetConfig(map[string]any{"limit": v.limit})
 }
 
+type regexProgramSizeLimitValidator struct {
+	limit int
+}
+
+// Name returns the name of the regex program size limit validator.
+func (v regexProgramSizeLimitValidator) Name() string {
+	return regexProgramSizeLimitValidatorName
+}
+
+// ToConfig converts the ASTValidator to an env.Validator specifying the validator name and the limit.
+func (v regexProgramSizeLimitValidator) ToConfig() *env.Validator {
+	return env.NewValidator(v.Name()).SetConfig(map[string]any{"limit": v.limit})
+}
+
 // Validate implements the ASTValidator interface method.
 func (v bindNestingLimitValidator) Validate(e *Env, _ ValidatorConfig, a *ast.AST, iss *Issues) {
 	root := ast.NavigateAST(a)
@@ -525,6 +533,47 @@ func (v bindNestingLimitValidator) Validate(e *Env, _ ValidatorConfig, a *ast.AS
 	}
 }
 
+func (v regexProgramSizeLimitValidator) Validate(e *Env, _ ValidatorConfig, a *ast.AST, iss *Issues) {
+	if v.limit <= 0 {
+		return
+	}
+	root := ast.NavigateAST(a)
+	callExprs := ast.MatchDescendants(root, ast.KindMatcher(ast.CallKind))
+	for _, call := range callExprs {
+		c := call.AsCall()
+		fn := c.FunctionName()
+		if !isRegexFunctionName(fn) {
+			continue
+		}
+		args := c.Args()
+		var regexArgIndex int
+		if (fn == overloads.Matches || fn == "matches") && c.Target() != nil {
+			regexArgIndex = 0
+		} else {
+			regexArgIndex = 1
+		}
+		if len(args) <= regexArgIndex {
+			continue
+		}
+		arg := args[regexArgIndex]
+		if arg.Kind() != ast.LiteralKind {
+			continue
+		}
+		pattern, ok := arg.AsLiteral().Value().(string)
+		if !ok {
+			continue
+		}
+		sz, err := types.RegexProgramSize(pattern)
+		if err != nil {
+			// Invalid regex literals are handled in a different validator.
+			continue
+		}
+		if sz > v.limit {
+			iss.ReportErrorAtID(arg.ID(), "regex program size %d exceeds limit of %d", sz, v.limit)
+		}
+	}
+}
+
 func isEmptyRangeComprehension(e ast.NavigableExpr) bool {
 	if e.Kind() != ast.ComprehensionKind {
 		return false
@@ -543,4 +592,26 @@ func isCelBind(e ast.NavigableExpr) bool {
 	return compre.IterVar() == unusedIterVar &&
 		loopCond.Kind() == ast.LiteralKind && loopCond.AsLiteral().Value() == false &&
 		loopStep.Kind() == ast.IdentKind && loopStep.AsIdent() == compre.AccuVar()
+}
+
+func isRegexFunctionName(fn string) bool {
+	return fn == overloads.Matches || fn == "matches" || fn == "regex.extract" || fn == "regex.extractAll" || fn == "regex.replace"
+}
+
+func validatorIntConfig(val *env.Validator, configKey string) (int, error) {
+	if limit, found := val.ConfigValue(configKey); found {
+		// In case of protos, config value is of type google.protobuf.Value, which numeric values are always a double.
+		if v, isDouble := limit.(float64); isDouble {
+			if v != float64(int64(v)) {
+				return 0, fmt.Errorf("invalid validator: %s, %s value is not a whole number: %v", val.Name, configKey, limit)
+			}
+			return int(v), nil
+		}
+
+		if v, isInt := limit.(int); isInt {
+			return v, nil
+		}
+		return 0, fmt.Errorf("invalid validator: %s unsupported %s type: %v", val.Name, configKey, limit)
+	}
+	return 0, fmt.Errorf("invalid validator: %s missing %s", val.Name, configKey)
 }

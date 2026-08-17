@@ -78,6 +78,9 @@ type FunctionDecl struct {
 
 	// overloadOrdinals indicates the order in which the overload was declared.
 	overloadOrdinals []string
+
+	// overloadDecls caches the slice of overloads in declaration order.
+	overloadDecls []*OverloadDecl
 }
 
 type declarationState int
@@ -151,7 +154,8 @@ func (f *FunctionDecl) Merge(other *FunctionDecl) (*FunctionDecl, error) {
 		name:             f.Name(),
 		overloads:        make(map[string]*OverloadDecl, len(f.overloads)),
 		singleton:        f.singleton,
-		overloadOrdinals: make([]string, len(f.overloads)),
+		overloadOrdinals: make([]string, len(f.overloadOrdinals)),
+		overloadDecls:    make([]*OverloadDecl, len(f.overloadDecls)),
 		// if one function is expecting type-guards and the other is not, then they
 		// must not be disabled.
 		disableTypeGuards: f.disableTypeGuards && other.disableTypeGuards,
@@ -170,6 +174,7 @@ func (f *FunctionDecl) Merge(other *FunctionDecl) (*FunctionDecl, error) {
 	}
 	// baseline copy of the overloads and their ordinals
 	copy(merged.overloadOrdinals, f.overloadOrdinals)
+	copy(merged.overloadDecls, f.overloadDecls)
 	for oID, o := range f.overloads {
 		merged.overloads[oID] = o
 	}
@@ -232,11 +237,13 @@ func (f *FunctionDecl) Subset(selector OverloadSelector) *FunctionDecl {
 	}
 	overloads := make(map[string]*OverloadDecl)
 	overloadOrdinals := make([]string, 0, len(f.overloadOrdinals))
+	overloadDecls := make([]*OverloadDecl, 0, len(f.overloadDecls))
 	for _, oID := range f.overloadOrdinals {
 		overload := f.overloads[oID]
 		if selector(overload) {
 			overloads[oID] = overload
 			overloadOrdinals = append(overloadOrdinals, oID)
+			overloadDecls = append(overloadDecls, overload)
 		}
 	}
 	if len(overloads) == 0 {
@@ -250,6 +257,7 @@ func (f *FunctionDecl) Subset(selector OverloadSelector) *FunctionDecl {
 		disableTypeGuards: f.disableTypeGuards,
 		state:             f.state,
 		overloadOrdinals:  overloadOrdinals,
+		overloadDecls:     overloadDecls,
 	}
 	return subset
 }
@@ -273,6 +281,12 @@ func (f *FunctionDecl) AddOverload(overload *OverloadDecl) error {
 				// Allow redefinition of an overload implementation so long as the signatures match.
 				if overload.HasBinding() {
 					f.overloads[oID] = overload
+					for i, decl := range f.overloadDecls {
+						if decl.ID() == oID {
+							f.overloadDecls[i] = overload
+							break
+						}
+					}
 				}
 				// Allow redefinition of the doc string.
 				if len(overload.doc) != 0 && o.doc != overload.doc {
@@ -288,20 +302,16 @@ func (f *FunctionDecl) AddOverload(overload *OverloadDecl) error {
 	}
 	f.overloadOrdinals = append(f.overloadOrdinals, overload.ID())
 	f.overloads[overload.ID()] = overload
+	f.overloadDecls = append(f.overloadDecls, overload)
 	return nil
 }
 
 // OverloadDecls returns the overload declarations in the order in which they were declared.
 func (f *FunctionDecl) OverloadDecls() []*OverloadDecl {
-	var emptySet []*OverloadDecl
 	if f == nil {
-		return emptySet
+		return nil
 	}
-	overloads := make([]*OverloadDecl, 0, len(f.overloads))
-	for _, oID := range f.overloadOrdinals {
-		overloads = append(overloads, f.overloads[oID])
-	}
-	return overloads
+	return f.overloadDecls
 }
 
 // HasSingletonBinding indicates whether the function has a singleton binding definition.

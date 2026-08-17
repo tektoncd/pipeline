@@ -175,7 +175,7 @@ func evaluateExpr(ctx *OptimizerContext, a *ast.AST, navigableExpr ast.Navigable
 	}
 	prg, err := ctx.Program(subAST)
 	if err != nil {
-		return nil, err
+		return nil, errCannotFold
 	}
 	// Folding will not attempt to call async functions which are all marked as late-bound,
 	// but the presence of such functions requires the use of `ConcurrentEval` in order to
@@ -243,6 +243,26 @@ func maybePruneBranches(ctx *OptimizerContext, a *ast.AST, expr ast.NavigableExp
 					return true
 				}
 			}
+		}
+	case operators.Add:
+		if len(args) == 2 && args[0].Kind() == ast.ListKind && args[1].Kind() == ast.ListKind {
+			leftList := args[0].AsList()
+			rightList := args[1].AsList()
+
+			elems := make([]ast.Expr, 0, leftList.Size()+rightList.Size())
+			elems = append(elems, leftList.Elements()...)
+			elems = append(elems, rightList.Elements()...)
+
+			optIndices := make([]int32, 0, len(leftList.OptionalIndices())+len(rightList.OptionalIndices()))
+			optIndices = append(optIndices, leftList.OptionalIndices()...)
+			offset := int32(leftList.Size())
+			for _, idx := range rightList.OptionalIndices() {
+				optIndices = append(optIndices, offset+idx)
+			}
+
+			combinedList := ctx.NewList(elems, optIndices)
+			ctx.UpdateExpr(expr, combinedList)
+			return true
 		}
 	}
 	return false
@@ -628,6 +648,11 @@ func constantCallMatcher(e ast.NavigableExpr) bool {
 					return true
 				}
 			}
+		}
+	}
+	if fnName == operators.Add {
+		if len(children) == 2 && children[0].Kind() == ast.ListKind && children[1].Kind() == ast.ListKind {
+			return true
 		}
 	}
 	// convert all other calls with constant arguments

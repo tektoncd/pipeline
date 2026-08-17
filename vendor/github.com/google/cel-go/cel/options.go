@@ -114,6 +114,8 @@ const (
 	limitMaxASTDepth
 	// The maximum number of expression nodes permitted in parsing (including macro expansion).
 	limitExpressionNodeCount
+	// The maximum regex program plan size permitted.
+	limitRegexProgramSize
 )
 
 // defaultMaxASTDepth mirrors the parser's default maxRecursionDepth (250) and
@@ -127,6 +129,7 @@ var limitIDsToNames = map[limitID]string{
 	limitParseRecursionDepth: "cel.limit.parse_recursion_depth",
 	limitMaxASTDepth:         "cel.limit.max_ast_depth",
 	limitExpressionNodeCount: "cel.limit.expression_node_count",
+	limitRegexProgramSize:    "cel.limit.regex_program_size",
 }
 
 func limitNameByID(id limitID) (string, bool) {
@@ -917,7 +920,11 @@ func ContextProtoVars(ctx proto.Message, opts ...types.RegistryOption) (Activati
 	}
 	regOpts := []types.RegistryOption{types.ProtoTypeDefs(ctx)}
 	regOpts = append(regOpts, opts...)
-	reg, err := types.NewProtoRegistry(regOpts...)
+	var ro []any
+	for _, opt := range regOpts {
+		ro = append(ro, opt)
+	}
+	reg, err := types.NewRegistry(ro...)
 	if err != nil {
 		return nil, err
 	}
@@ -970,6 +977,7 @@ func DefaultUTCTimeZone(enabled bool) EnvOption {
 // features sets the given feature flags.  See list of Feature constants above.
 func features(flag int, enabled bool) EnvOption {
 	return func(e *Env) (*Env, error) {
+		e.ensureMutableFeatures()
 		e.features[flag] = enabled
 		return e, nil
 	}
@@ -980,6 +988,7 @@ func setLimit(id limitID, limit int) EnvOption {
 		limit = -1
 	}
 	return func(e *Env) (*Env, error) {
+		e.ensureMutableLimits()
 		e.limits[id] = limit
 		return e, nil
 	}
@@ -1020,6 +1029,25 @@ func ExpressionNodeLimit(limit int) EnvOption {
 // through the common/ast package directly rather than the cel conversion helpers.
 func ExpressionNestingDepthLimit(limit int) EnvOption {
 	return setLimit(limitMaxASTDepth, limit)
+}
+
+// RegexProgramSizeLimit caps the maximum regex program plan size permitted for regular expressions.
+// A negative or zero value means unbounded.
+func RegexProgramSizeLimit(limit int) EnvOption {
+	return func(e *Env) (*Env, error) {
+		var err error
+		e, err = setLimit(limitRegexProgramSize, limit)(e)
+		if err != nil {
+			return nil, err
+		}
+		if limit > 0 {
+			e, err = ASTValidators(ValidateRegexProgramSizeLimit(limit))(e)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return e, nil
+	}
 }
 
 // EnableHiddenAccumulatorName sets the parser to use the identifier '@result' for accumulators
