@@ -3908,9 +3908,8 @@ func TestUpdateIncompleteTaskRunStatus_SubPathError(t *testing.T) {
 			ctx := config.ToContext(t.Context(), &config.Config{
 				FeatureFlags: &config.FeatureFlags{},
 			})
-			logger, _ := logging.NewLogger("", "")
 			kubeclient := fakek8s.NewSimpleClientset()
-			updateIncompleteTaskRunStatus(ctx, logger, tt.trs, tt.pod, kubeclient)
+			updateIncompleteTaskRunStatus(ctx, tt.trs, tt.pod, kubeclient)
 			if d := cmp.Diff(tt.expected, tt.trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")); d != "" {
 				t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
 			}
@@ -3952,7 +3951,7 @@ func TestUpdateIncompleteTaskRunStatus_SurfacePodEvents(t *testing.T) {
 				Type:           "Warning",
 				Reason:         "FailedMount",
 				Message:        `MountVolume.SetUp failed for volume "vol" : secret "does-not-exist" not found`,
-				LastTimestamp:   metav1.Now(),
+				LastTimestamp:  metav1.Now(),
 			}},
 			flagOn: true,
 			expected: &apis.Condition{
@@ -3988,7 +3987,7 @@ func TestUpdateIncompleteTaskRunStatus_SurfacePodEvents(t *testing.T) {
 				Type:           "Warning",
 				Reason:         "FailedMount",
 				Message:        `MountVolume.SetUp failed for volume "vol" : secret "does-not-exist" not found`,
-				LastTimestamp:   metav1.Now(),
+				LastTimestamp:  metav1.Now(),
 			}},
 			flagOn: false,
 			expected: &apis.Condition{
@@ -4054,7 +4053,7 @@ func TestUpdateIncompleteTaskRunStatus_SurfacePodEvents(t *testing.T) {
 				Type:           "Warning",
 				Reason:         "FailedMount",
 				Message:        "should not appear",
-				LastTimestamp:   metav1.Now(),
+				LastTimestamp:  metav1.Now(),
 			}},
 			flagOn: true,
 			expected: &apis.Condition{
@@ -4062,6 +4061,74 @@ func TestUpdateIncompleteTaskRunStatus_SurfacePodEvents(t *testing.T) {
 				Status:  corev1.ConditionUnknown,
 				Reason:  "Pending",
 				Message: `build step "step-foo" is pending with reason "some useful message from kubelet"`,
+			},
+		},
+		{
+			name: "unschedulable pod surfaces FailedScheduling event",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+					UID:       "test-uid",
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodPending,
+					Conditions: []corev1.PodCondition{{
+						Type:   corev1.PodScheduled,
+						Status: corev1.ConditionFalse,
+						Reason: "Unschedulable",
+					}},
+				},
+			},
+			events: []corev1.Event{{
+				ObjectMeta:     metav1.ObjectMeta{Name: "evt1", Namespace: "ns"},
+				InvolvedObject: corev1.ObjectReference{UID: "test-uid"},
+				Type:           "Warning",
+				Reason:         "FailedScheduling",
+				Message:        "0/3 nodes are available: 3 Insufficient cpu.",
+				LastTimestamp:  metav1.Now(),
+			}},
+			flagOn: true,
+			expected: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: "FailedScheduling: 0/3 nodes are available: 3 Insufficient cpu.",
+			},
+		},
+		{
+			name: "event with reason but no message surfaces the reason alone",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+					UID:       "test-uid",
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodPending,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name: "step-foo",
+						State: corev1.ContainerState{
+							Waiting: &corev1.ContainerStateWaiting{
+								Reason: "ContainerCreating",
+							},
+						},
+					}},
+				},
+			},
+			events: []corev1.Event{{
+				ObjectMeta:     metav1.ObjectMeta{Name: "evt1", Namespace: "ns"},
+				InvolvedObject: corev1.ObjectReference{UID: "test-uid"},
+				Type:           "Warning",
+				Reason:         "FailedCreatePodSandBox",
+				LastTimestamp:  metav1.Now(),
+			}},
+			flagOn: true,
+			expected: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: "FailedCreatePodSandBox",
 			},
 		},
 	}
@@ -4079,9 +4146,8 @@ func TestUpdateIncompleteTaskRunStatus_SurfacePodEvents(t *testing.T) {
 				},
 			})
 
-			logger, _ := logging.NewLogger("", "")
 			trs := &v1.TaskRunStatus{}
-			updateIncompleteTaskRunStatus(ctx, logger, trs, tt.pod, kubeclient)
+			updateIncompleteTaskRunStatus(ctx, trs, tt.pod, kubeclient)
 			if d := cmp.Diff(tt.expected, trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")); d != "" {
 				t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
 			}
