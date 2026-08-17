@@ -319,7 +319,26 @@ type pr struct {
 	Created         time.Time `json:"created_at"`
 	Updated         time.Time `json:"updated_at"`
 	Closed          time.Time
-	DiffRefs        struct {
+	// DiffRefs is only populated by GitLab on the single-MR endpoint
+	// (GET /merge_requests/:iid); the list endpoint omits it entirely.
+	//
+	// IMPORTANT: DiffRefs.BaseSHA must NOT be mapped to scm.PullRequest.Base.Sha.
+	// They look like they mean the same thing but they do not:
+	//   - GitLab's diff_refs.base_sha is the *merge-base* (common ancestor of
+	//     source and target at the time the MR's diff was last computed).
+	//   - GitHub's pull_request.base.sha — and therefore scm.PullRequest.Base.Sha —
+	//     is the *HEAD of the base branch* at the time of the PR's last sync.
+	// Consumers (e.g. lighthouse's step-git-merge / PULL_BASE_SHA) treat
+	// Base.Sha as "the commit to merge the PR head into", which is the
+	// branch tip, not the merge-base. Using diff_refs.base_sha there can
+	// merge the PR onto a stale commit.
+	//
+	// Consequence: scm.PullRequest.Base.Sha is left empty by the GitLab driver
+	// on both Find and List. Callers that need the base-branch HEAD (rare —
+	// at the time of writing only lighthouse keeper actually relies on it,
+	// and it can compute it per-subpool rather than per-PR) must resolve it
+	// themselves via Git.FindBranch(target_project, target_branch).
+	DiffRefs struct {
 		BaseSHA string `json:"base_sha"`
 		HeadSHA string `json:"head_sha"`
 	} `json:"diff_refs"`
@@ -429,8 +448,12 @@ func (s *pullService) convertPullRequest(ctx context.Context, from *pr) (*scm.Pu
 			Repo: *headRepo,
 		},
 		Base: scm.PullRequestBranch{
-			Ref:  from.TargetBranch,
-			Sha:  from.DiffRefs.BaseSHA,
+			Ref: from.TargetBranch,
+			// Sha is intentionally left empty. GitLab's diff_refs.base_sha is
+			// the merge-base, not the base-branch HEAD that GitHub's API
+			// (and scm.PullRequest.Base.Sha consumers) expect — see the
+			// comment on the DiffRefs field. Callers that need it must
+			// resolve via Git.FindBranch.
 			Repo: *baseRepo,
 		},
 		Created: from.Created,
