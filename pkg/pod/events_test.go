@@ -25,7 +25,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
-	"knative.dev/pkg/logging"
 )
 
 func TestLatestWarningEvent(t *testing.T) {
@@ -53,7 +52,7 @@ func TestLatestWarningEvent(t *testing.T) {
 					Type:           "Warning",
 					Reason:         "FailedScheduling",
 					Message:        "old scheduling error",
-					LastTimestamp:   earlier,
+					LastTimestamp:  earlier,
 				},
 				{
 					ObjectMeta:     metav1.ObjectMeta{Name: "new-evt", Namespace: "ns"},
@@ -61,7 +60,7 @@ func TestLatestWarningEvent(t *testing.T) {
 					Type:           "Warning",
 					Reason:         "FailedMount",
 					Message:        `secret "my-secret" not found`,
-					LastTimestamp:   now,
+					LastTimestamp:  now,
 				},
 			},
 			wantReason: "FailedMount",
@@ -102,10 +101,10 @@ func TestLatestWarningEvent(t *testing.T) {
 				Type:           "Warning",
 				Reason:         "FailedMount",
 				Message:        strings.Repeat("x", 2000),
-				LastTimestamp:   now,
+				LastTimestamp:  now,
 			}},
 			wantReason: "FailedMount",
-			wantMsg:    strings.Repeat("x", maxEventMessageLength) + "...",
+			wantMsg:    strings.Repeat("x", maxEventMessageLength-len(truncationSuffix)) + truncationSuffix,
 		},
 	}
 
@@ -116,13 +115,15 @@ func TestLatestWarningEvent(t *testing.T) {
 				_, _ = kubeclient.CoreV1().Events(tt.events[i].Namespace).Create(t.Context(), &tt.events[i], metav1.CreateOptions{})
 			}
 
-			logger, _ := logging.NewLogger("", "")
-			reason, msg := latestWarningEvent(t.Context(), logger, kubeclient, tt.pod)
+			reason, msg := latestWarningEvent(t.Context(), kubeclient, tt.pod)
 			if reason != tt.wantReason {
 				t.Errorf("reason = %q, want %q", reason, tt.wantReason)
 			}
 			if msg != tt.wantMsg {
 				t.Errorf("message = %q, want %q", msg, tt.wantMsg)
+			}
+			if len(msg) > maxEventMessageLength {
+				t.Errorf("message length = %d, want at most %d", len(msg), maxEventMessageLength)
 			}
 		})
 	}
@@ -182,16 +183,22 @@ func TestIsGenericPending(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "no containers at all is not generic",
+			name: "unschedulable pod is generic",
 			pod: &corev1.Pod{
 				Status: corev1.PodStatus{
 					Conditions: []corev1.PodCondition{{
 						Type:   corev1.PodScheduled,
-						Status: corev1.ConditionTrue,
+						Status: corev1.ConditionFalse,
+						Reason: "Unschedulable",
 					}},
 				},
 			},
-			want: false,
+			want: true,
+		},
+		{
+			name: "pod with no container statuses yet is generic",
+			pod:  &corev1.Pod{},
+			want: true,
 		},
 		{
 			name: "ImagePullBackOff is not generic",
@@ -233,24 +240,5 @@ func TestIsGenericPending(t *testing.T) {
 				t.Errorf("isGenericPending() = %v, want %v", got, tt.want)
 			}
 		})
-	}
-}
-
-func TestFormatEventMessage(t *testing.T) {
-	tests := []struct {
-		reason  string
-		message string
-		want    string
-	}{
-		{"FailedMount", "secret not found", "FailedMount: secret not found"},
-		{"FailedMount", "", "FailedMount"},
-		{"FailedMount", "   ", "FailedMount"},
-	}
-
-	for _, tt := range tests {
-		got := formatEventMessage(tt.reason, tt.message)
-		if got != tt.want {
-			t.Errorf("formatEventMessage(%q, %q) = %q, want %q", tt.reason, tt.message, got, tt.want)
-		}
 	}
 }
