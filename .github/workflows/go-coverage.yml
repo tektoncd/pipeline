@@ -50,7 +50,11 @@ jobs:
       - name: Generate coverage
         working-directory: ${{ github.workspace }}/src/github.com/tektoncd/pipeline
         run: |
-          go test -coverprofile=coverage.out -covermode=atomic ./... || true
+          PACKAGES=$(go list ./... | grep -vE '/cmd(/|$)|/vendor(/|$)|/hack(/|$)|/test(/|$)|/fake(/|$)|/pkg/client(/|$)|/examples(/|$)|/tekton(/|$)')
+          COVERPKG=$(echo $PACKAGES | tr ' ' ',')
+          go test -coverprofile=coverage_raw.out -covermode=atomic -coverpkg="$COVERPKG" $PACKAGES || true
+          grep -vE 'zz_generated\.deepcopy\.go|openapi_generated\.go' coverage_raw.out > coverage.out
+          rm -f coverage_raw.out
           echo "Generated coverage profile"
 
       - name: Archive coverage results
@@ -101,3 +105,4 @@ jobs:
           flags: unit-tests
           use_oidc: true
           fail_ci_if_error: false
+          disable_search: true
