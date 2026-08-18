@@ -52,6 +52,13 @@ data:
     metrics-export-interval: ""
 
     # OpenTelemetry Tracing Configuration
+    #
+    # NOTE: these keys configure the global OpenTelemetry tracer provider used by the
+    # notification and cloud event reconcilers only. The TaskRun and PipelineRun
+    # reconcilers instead use their own tracer, configured separately via config-tracing
+    # (see docs/developers/tracing.md). Setting these keys does not affect TaskRun/PipelineRun
+    # tracing, and vice versa.
+    #
     # Protocol for tracing export (grpc, http/protobuf, none, stdout)
     # Default: none
     tracing-protocol: none
