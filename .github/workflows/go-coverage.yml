@@ -52,7 +52,7 @@ jobs:
         run: |
           PACKAGES=$(go list ./... | grep -vE '/cmd(/|$)|/vendor(/|$)|/hack(/|$)|/test(/|$)|/fake(/|$)|/pkg/client(/|$)|/examples(/|$)|/tekton(/|$)')
           COVERPKG=$(echo $PACKAGES | tr ' ' ',')
-          go test -coverprofile=coverage_raw.out -covermode=atomic -coverpkg="$COVERPKG" $PACKAGES || true
+          go test -coverprofile=coverage_raw.out -covermode=atomic -coverpkg="$COVERPKG" $PACKAGES
           grep -vE 'zz_generated\.deepcopy\.go|openapi_generated\.go' coverage_raw.out > coverage.out
           rm -f coverage_raw.out
           echo "Generated coverage profile"
@@ -73,7 +73,6 @@ jobs:
 
   codecov-upload:
     name: Upload coverage to Codecov
-    if: github.event_name != 'pull_request'
     needs: go-coverage
     runs-on: ubuntu-24.04
     permissions:
