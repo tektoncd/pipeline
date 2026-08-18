@@ -195,15 +195,6 @@ func scrapeResolverMetrics(ctx context.Context, t *testing.T, c *clients) map[st
 	return families
 }
 
-// assertMetricExists checks that a metric family exists in the scraped output.
-func assertMetricExists(t *testing.T, families map[string]*dto.MetricFamily, name string) {
-	t.Helper()
-	if _, ok := families[name]; !ok {
-		t.Errorf("Expected metric %q to exist, but it was not found. Available metrics: %s",
-			name, availableMetricNames(families))
-	}
-}
-
 // assertMetricCounterValue checks that a counter metric has at least one data point
 // matching the given labels and with a value > 0.
 func assertMetricCounterValue(t *testing.T, families map[string]*dto.MetricFamily, name string, labels map[string]string) {
@@ -236,14 +227,4 @@ func matchLabels(m *dto.Metric, expected map[string]string) bool {
 		}
 	}
 	return true
-}
-
-func availableMetricNames(families map[string]*dto.MetricFamily) string {
-	names := make([]string, 0, len(families))
-	for name := range families {
-		if strings.HasPrefix(name, "tekton_") {
-			names = append(names, name)
-		}
-	}
-	return strings.Join(names, ", ")
 }
