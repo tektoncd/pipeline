@@ -92,7 +92,7 @@ func validateResultRef(ref *v1.ResultRef, ptMap map[string]*ResolvedPipelineTask
 // prevents a situation where a Task requires a workspace but a Pipeline does not offer
 // the same guarantee the workspace will be provided at runtime.
 func ValidateOptionalWorkspaces(pipelineWorkspaces []v1.PipelineWorkspaceDeclaration, state PipelineRunState) error {
-	optionalWorkspaces := sets.NewString()
+	optionalWorkspaces := sets.New[string]()
 	for _, ws := range pipelineWorkspaces {
 		if ws.Optional {
 			optionalWorkspaces.Insert(ws.Name)
