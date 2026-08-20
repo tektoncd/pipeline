@@ -28,6 +28,8 @@ data:
   default-artifact-hub-task-catalog: "tekton-catalog-tasks"
   # the default Artifact Hub Pipeline catalog from where to pull the resource.
   default-artifact-hub-pipeline-catalog: "tekton-catalog-pipelines"
+  # the default Artifact Hub StepAction catalog from where to pull the resource.
+  default-artifact-hub-stepaction-catalog: "git-clone-stepaction"
   # the default layer kind in the hub image.
   default-kind: "task"
   # the default hub source to pull the resource from.
