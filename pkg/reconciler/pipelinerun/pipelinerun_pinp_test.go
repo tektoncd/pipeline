@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ktesting "k8s.io/client-go/testing"
+	"knative.dev/pkg/controller"
 )
 
 // TestReconcile_ChildPipelineRunPipelineSpec verifies the reconciliation logic for PipelineRuns that create child
@@ -779,10 +780,11 @@ func TestReconcile_ChildPipelineRunPipelineRefWhenSkipped(t *testing.T) {
 // direct table-driven style of the sibling TestGetTaskrunWorkspaces_Success.
 func TestGetChildPipelineRunWorkspaces_Success(t *testing.T) {
 	tests := []struct {
-		name             string
-		parentWorkspaces []v1.WorkspaceBinding
-		childWorkspaces  []v1.WorkspacePipelineTaskBinding
-		want             []v1.WorkspaceBinding
+		name               string
+		parentWorkspaces   []v1.WorkspaceBinding
+		childWorkspaces    []v1.WorkspacePipelineTaskBinding
+		pipelineWorkspaces []v1.PipelineWorkspaceDeclaration
+		want               []v1.WorkspaceBinding
 	}{{
 		name:            "no workspaces returns nil",
 		childWorkspaces: nil,
@@ -812,13 +814,14 @@ func TestGetChildPipelineRunWorkspaces_Success(t *testing.T) {
 		childWorkspaces:  []v1.WorkspacePipelineTaskBinding{{Name: "shared"}},
 		want:             []v1.WorkspaceBinding{{Name: "shared", EmptyDir: &corev1.EmptyDirVolumeSource{}}},
 	}, {
-		name:             "unbound workspace is skipped",
+		name:             "unbound optional workspace is skipped",
 		parentWorkspaces: []v1.WorkspaceBinding{{Name: "data", EmptyDir: &corev1.EmptyDirVolumeSource{}}},
 		childWorkspaces: []v1.WorkspacePipelineTaskBinding{
 			{Name: "data", Workspace: "data"},
 			{Name: "missing", Workspace: "does-not-exist"},
 		},
-		want: []v1.WorkspaceBinding{{Name: "data", EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+		pipelineWorkspaces: []v1.PipelineWorkspaceDeclaration{{Name: "missing", Optional: true}},
+		want:               []v1.WorkspaceBinding{{Name: "data", EmptyDir: &corev1.EmptyDirVolumeSource{}}},
 	}, {
 		name:             "PVC-source workspace",
 		parentWorkspaces: []v1.WorkspaceBinding{{Name: "pvc-ws", PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "my-pvc"}}},
@@ -855,18 +858,23 @@ func TestGetChildPipelineRunWorkspaces_Success(t *testing.T) {
 			{Name: "cache", PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "my-pvc"}},
 		},
 	}, {
-		name:             "no child workspace name matches any parent workspace",
+		name:             "no child workspace name matches any parent workspace, but both are optional",
 		parentWorkspaces: []v1.WorkspaceBinding{{Name: "data", EmptyDir: &corev1.EmptyDirVolumeSource{}}},
 		childWorkspaces: []v1.WorkspacePipelineTaskBinding{
 			{Name: "src"},
 			{Name: "artifacts"},
 		},
+		pipelineWorkspaces: []v1.PipelineWorkspaceDeclaration{
+			{Name: "src", Optional: true},
+			{Name: "artifacts", Optional: true},
+		},
 		want: nil,
 	}, {
-		name:             "parent PipelineRun has no workspaces",
-		parentWorkspaces: nil,
-		childWorkspaces:  []v1.WorkspacePipelineTaskBinding{{Name: "source", Workspace: "shared-vol"}},
-		want:             nil,
+		name:               "parent PipelineRun has no workspaces, child workspace is optional",
+		parentWorkspaces:   nil,
+		childWorkspaces:    []v1.WorkspacePipelineTaskBinding{{Name: "source", Workspace: "shared-vol"}},
+		pipelineWorkspaces: []v1.PipelineWorkspaceDeclaration{{Name: "source", Optional: true}},
+		want:               nil,
 	}}
 
 	c := Reconciler{}
@@ -877,7 +885,8 @@ func TestGetChildPipelineRunWorkspaces_Success(t *testing.T) {
 				Spec:       v1.PipelineRunSpec{Workspaces: tt.parentWorkspaces},
 			}
 			rpt := &resources.ResolvedPipelineTask{
-				PipelineTask: &v1.PipelineTask{Name: "child-task", Workspaces: tt.childWorkspaces},
+				PipelineTask:     &v1.PipelineTask{Name: "child-task", Workspaces: tt.childWorkspaces},
+				ResolvedPipeline: resources.ResolvedPipeline{PipelineSpec: &v1.PipelineSpec{Workspaces: tt.pipelineWorkspaces}},
 			}
 
 			got, err := c.getChildPipelineRunWorkspaces(t.Context(), pr, rpt)
@@ -886,6 +895,59 @@ func TestGetChildPipelineRunWorkspaces_Success(t *testing.T) {
 			}
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Errorf("getChildPipelineRunWorkspaces() bindings diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+// TestGetChildPipelineRunWorkspaces_MissingNonOptionalWorkspace verifies that a
+// non-optional workspace declared by the child Pipeline with no matching binding
+// on the parent PipelineRun fails the parent up front with a permanent error,
+// mirroring the validation already done for TaskRun workspaces in
+// TestGetTaskrunWorkspaces_Failure.
+func TestGetChildPipelineRunWorkspaces_MissingNonOptionalWorkspace(t *testing.T) {
+	tests := []struct {
+		name             string
+		resolvedPipeline resources.ResolvedPipeline
+	}{{
+		name: "workspace declared as required",
+		resolvedPipeline: resources.ResolvedPipeline{
+			PipelineSpec: &v1.PipelineSpec{
+				Workspaces: []v1.PipelineWorkspaceDeclaration{{Name: "missing"}},
+			},
+		},
+	}, {
+		name:             "resolved child pipeline spec is unavailable",
+		resolvedPipeline: resources.ResolvedPipeline{},
+	}}
+
+	c := Reconciler{}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pr := &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "parent-pr", Namespace: "foo"},
+				Spec: v1.PipelineRunSpec{
+					Workspaces: []v1.WorkspaceBinding{{Name: "data", EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+				},
+			}
+			rpt := &resources.ResolvedPipelineTask{
+				PipelineTask: &v1.PipelineTask{
+					Name:       "child-task",
+					Workspaces: []v1.WorkspacePipelineTaskBinding{{Name: "missing", Workspace: "missing"}},
+				},
+				ResolvedPipeline: tt.resolvedPipeline,
+			}
+
+			_, err := c.getChildPipelineRunWorkspaces(t.Context(), pr, rpt)
+			if err == nil {
+				t.Fatalf("getChildPipelineRunWorkspaces() expected an error for a missing non-optional workspace, got nil")
+			}
+			expectedError := `expected workspace "missing" to be provided by pipelinerun for pipeline task "child-task"`
+			if err.Error() != expectedError {
+				t.Errorf("getChildPipelineRunWorkspaces() error = %q, want %q", err.Error(), expectedError)
+			}
+			if !controller.IsPermanentError(err) {
+				t.Errorf("getChildPipelineRunWorkspaces() did not return a permanent error for a missing non-optional workspace")
 			}
 		})
 	}
