@@ -33,7 +33,6 @@ import (
 	common "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -334,22 +333,18 @@ func getBasicAuthSecret(ctx context.Context, params map[string]string, kubeclien
 		}
 	}
 	secretNS := common.RequestNamespace(ctx)
+	if secretNS == "" {
+		return "", errors.New("cannot get API token, secret not accessible: request namespace not available in context")
+	}
 	secret, err := kubeclient.CoreV1().Secrets(secretNS).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			notFoundErr := fmt.Errorf("cannot get API token, secret %s not found in namespace %s", secretName, secretNS)
-			logger.Info(notFoundErr)
-			return "", notFoundErr
-		}
-		wrappedErr := fmt.Errorf("error reading API token from secret %s in namespace %s: %w", secretName, secretNS, err)
-		logger.Info(wrappedErr)
-		return "", wrappedErr
+		logger.Debugf("secret lookup failed: ns=%s name=%s err=%v", secretNS, secretName, err)
+		return "", fmt.Errorf("cannot get API token, secret not accessible in namespace %s", secretNS)
 	}
 	secretVal, ok := secret.Data[tokenSecretKey]
 	if !ok {
-		err := fmt.Errorf("cannot get API token, key %s not found in secret %s in namespace %s", tokenSecretKey, secretName, secretNS)
-		logger.Info(err)
-		return "", err
+		logger.Debugf("secret key not found in secret: ns=%s name=%s", secretNS, secretName)
+		return "", fmt.Errorf("cannot get API token, secret not accessible in namespace %s", secretNS)
 	}
 	return "Basic " + base64.StdEncoding.EncodeToString(
 		[]byte(fmt.Sprintf("%s:%s", userName, secretVal))), nil
