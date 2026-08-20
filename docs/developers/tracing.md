@@ -32,6 +32,12 @@ The configmap `config/config-tracing.yaml` contains the configuration for tracin
 * endpoint: API endpoint for jaeger collector to send the traces. By default the endpoint is configured to be `http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces`.
 * credentialsSecret: Name of the secret which contains `username` and `password` to authenticate against the endpoint
 
+This configmap only controls the `TaskRun` and `PipelineRun` reconcilers, which build their own
+tracer from these values (see `pkg/tracing`). It is a separate configuration path from the
+`tracing-protocol`/`tracing-endpoint`/`tracing-sampling-rate` keys in `config-observability`,
+which configure the global OpenTelemetry tracer provider used by the notification and cloud
+event reconcilers instead. Enabling one does not enable the other.
+
 ## Security considerations for multi-tenant environments
 
 Exported spans from the TaskRun and PipelineRun reconciliation paths include
