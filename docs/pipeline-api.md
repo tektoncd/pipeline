@@ -1184,6 +1184,7 @@ _Appears in:_
 | `PipelineRun Tasks timeout has been reached` | TasksTimedOutSkip means the task was skipped because the PipelineRun has passed its Timeouts.Tasks.<br /> |
 | `PipelineRun Finally timeout has been reached` | FinallyTimedOutSkip means the task was skipped because the PipelineRun has passed its Timeouts.Finally.<br /> |
 | `Matrix Parameters have an empty array` | EmptyArrayInMatrixParams means the task was skipped because Matrix parameters contain empty array.<br /> |
+| `Matrix Include When Expressions evaluated to false` | MatrixIncludeWhenSkip means the task was skipped because all Matrix Include When Expressions evaluated to false.<br /> |
 | `None` | None means the task was not skipped<br /> |
 
 
@@ -1761,6 +1762,7 @@ All of them need to evaluate to True for a guarded Task to be executed.
 
 
 _Appears in:_
+- [IncludeParams](#includeparams)
 - [PipelineTask](#pipelinetask)
 
 | Field | Description | Default | Validation |
@@ -3524,6 +3526,7 @@ _Appears in:_
 | `PipelineRun Tasks timeout has been reached` | TasksTimedOutSkip means the task was skipped because the PipelineRun has passed its Timeouts.Tasks.<br /> |
 | `PipelineRun Finally timeout has been reached` | FinallyTimedOutSkip means the task was skipped because the PipelineRun has passed its Timeouts.Finally.<br /> |
 | `Matrix Parameters have an empty array` | EmptyArrayInMatrixParams means the task was skipped because Matrix parameters contain empty array.<br /> |
+| `Matrix Include When Expressions evaluated to false` | MatrixIncludeWhenSkip means the task was skipped because all Matrix Include When Expressions evaluated to false.<br /> |
 | `None` | None means the task was not skipped<br /> |
 
 
@@ -4249,6 +4252,7 @@ All of them need to evaluate to True for a guarded Task to be executed.
 
 
 _Appears in:_
+- [IncludeParams](#includeparams)
 - [PipelineTask](#pipelinetask)
 
 | Field | Description | Default | Validation |
