@@ -6546,7 +6546,7 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 				},
 			},
 			StepTemplate: &v1.StepTemplate{
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("4"),
 						corev1.ResourceMemory: resource.MustParse("8Gi"),
@@ -6560,7 +6560,7 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 			Steps: []v1.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("8"),
 						corev1.ResourceMemory: resource.MustParse("4Gi"),
@@ -6574,7 +6574,7 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 			Steps: []v1.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("8"),
 						corev1.ResourceMemory: resource.MustParse("4Gi"),
@@ -6586,7 +6586,7 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 				},
 			}},
 			StepTemplate: &v1.StepTemplate{
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("4"),
 						corev1.ResourceMemory: resource.MustParse("4Gi"),
@@ -6600,7 +6600,7 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 			Steps: []v1.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("8"),
 						corev1.ResourceMemory: resource.MustParse("4Gi"),
@@ -6618,7 +6618,7 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 			Steps: []v1.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("8"),
 						corev1.ResourceMemory: resource.MustParse("4Gi"),
@@ -6626,7 +6626,7 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 				},
 			}},
 			StepTemplate: &v1.StepTemplate{
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("8"),
 						corev1.ResourceMemory: resource.MustParse("8Gi"),
@@ -6655,7 +6655,7 @@ func Test_validateTaskSpecRequestResources_InvalidResources(t *testing.T) {
 			Steps: []v1.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("8"),
 						corev1.ResourceMemory: resource.MustParse("8Gi"),
@@ -6673,7 +6673,7 @@ func Test_validateTaskSpecRequestResources_InvalidResources(t *testing.T) {
 			Steps: []v1.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("8"),
 						corev1.ResourceMemory: resource.MustParse("8Gi"),
@@ -6681,7 +6681,7 @@ func Test_validateTaskSpecRequestResources_InvalidResources(t *testing.T) {
 				},
 			}},
 			StepTemplate: &v1.StepTemplate{
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("8"),
 						corev1.ResourceMemory: resource.MustParse("4Gi"),

@@ -746,6 +746,7 @@ spec:
                       computeResources:
                         description: ComputeResources
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                         properties:
                           claims:
                             description: |-
@@ -3317,62 +3318,7 @@ spec:
                       computeResources:
                         description: Compute resources to use for this TaskRun
                         type: object
-                        properties:
-                          claims:
-                            description: |-
-                              Claims lists the names of resources, defined in spec.resourceClaims,
-                              that are used by this container.
-
-                              This field depends on the
-                              DynamicResourceAllocation feature gate.
-
-                              This field is immutable. It can only be set for containers.
-                            type: array
-                            items:
-                              description: ResourceClaim references one entry in PodSpec.ResourceClaims.
-                              type: object
-                              required:
-                                - name
-                              properties:
-                                name:
-                                  description: |-
-                                    Name must match the name of one entry in pod.spec.resourceClaims of
-                                    the Pod where this field is used. It makes that resource available
-                                    inside a container.
-                                  type: string
-                                request:
-                                  description: |-
-                                    Request is the name chosen for a request in the referenced claim.
-                                    If empty, everything from the claim is made available, otherwise
-                                    only the result of this request.
-                                  type: string
-                            x-kubernetes-list-map-keys:
-                              - name
-                            x-kubernetes-list-type: map
-                          limits:
-                            description: |-
-                              Limits describes the maximum amount of compute resources allowed.
-                              More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-                            type: object
-                            additionalProperties:
-                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                              anyOf:
-                                - type: integer
-                                - type: string
-                              x-kubernetes-int-or-string: true
-                          requests:
-                            description: |-
-                              Requests describes the minimum amount of compute resources required.
-                              If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
-                              otherwise to an implementation-defined value. Requests cannot exceed Limits.
-                              More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-                            type: object
-                            additionalProperties:
-                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                              anyOf:
-                                - type: integer
-                                - type: string
-                              x-kubernetes-int-or-string: true
+                        x-kubernetes-preserve-unknown-fields: true
                       metadata:
                         description: PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask
                         type: object
@@ -3935,62 +3881,7 @@ spec:
                             computeResources:
                               description: The resource requirements to apply to the Sidecar.
                               type: object
-                              properties:
-                                claims:
-                                  description: |-
-                                    Claims lists the names of resources, defined in spec.resourceClaims,
-                                    that are used by this container.
-
-                                    This field depends on the
-                                    DynamicResourceAllocation feature gate.
-
-                                    This field is immutable. It can only be set for containers.
-                                  type: array
-                                  items:
-                                    description: ResourceClaim references one entry in PodSpec.ResourceClaims.
-                                    type: object
-                                    required:
-                                      - name
-                                    properties:
-                                      name:
-                                        description: |-
-                                          Name must match the name of one entry in pod.spec.resourceClaims of
-                                          the Pod where this field is used. It makes that resource available
-                                          inside a container.
-                                        type: string
-                                      request:
-                                        description: |-
-                                          Request is the name chosen for a request in the referenced claim.
-                                          If empty, everything from the claim is made available, otherwise
-                                          only the result of this request.
-                                        type: string
-                                  x-kubernetes-list-map-keys:
-                                    - name
-                                  x-kubernetes-list-type: map
-                                limits:
-                                  description: |-
-                                    Limits describes the maximum amount of compute resources allowed.
-                                    More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-                                  type: object
-                                  additionalProperties:
-                                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                    anyOf:
-                                      - type: integer
-                                      - type: string
-                                    x-kubernetes-int-or-string: true
-                                requests:
-                                  description: |-
-                                    Requests describes the minimum amount of compute resources required.
-                                    If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
-                                    otherwise to an implementation-defined value. Requests cannot exceed Limits.
-                                    More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-                                  type: object
-                                  additionalProperties:
-                                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                    anyOf:
-                                      - type: integer
-                                      - type: string
-                                    x-kubernetes-int-or-string: true
+                              x-kubernetes-preserve-unknown-fields: true
                             name:
                               description: The name of the Sidecar to override.
                               type: string
@@ -4007,62 +3898,7 @@ spec:
                             computeResources:
                               description: The resource requirements to apply to the Step.
                               type: object
-                              properties:
-                                claims:
-                                  description: |-
-                                    Claims lists the names of resources, defined in spec.resourceClaims,
-                                    that are used by this container.
-
-                                    This field depends on the
-                                    DynamicResourceAllocation feature gate.
-
-                                    This field is immutable. It can only be set for containers.
-                                  type: array
-                                  items:
-                                    description: ResourceClaim references one entry in PodSpec.ResourceClaims.
-                                    type: object
-                                    required:
-                                      - name
-                                    properties:
-                                      name:
-                                        description: |-
-                                          Name must match the name of one entry in pod.spec.resourceClaims of
-                                          the Pod where this field is used. It makes that resource available
-                                          inside a container.
-                                        type: string
-                                      request:
-                                        description: |-
-                                          Request is the name chosen for a request in the referenced claim.
-                                          If empty, everything from the claim is made available, otherwise
-                                          only the result of this request.
-                                        type: string
-                                  x-kubernetes-list-map-keys:
-                                    - name
-                                  x-kubernetes-list-type: map
-                                limits:
-                                  description: |-
-                                    Limits describes the maximum amount of compute resources allowed.
-                                    More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-                                  type: object
-                                  additionalProperties:
-                                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                    anyOf:
-                                      - type: integer
-                                      - type: string
-                                    x-kubernetes-int-or-string: true
-                                requests:
-                                  description: |-
-                                    Requests describes the minimum amount of compute resources required.
-                                    If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
-                                    otherwise to an implementation-defined value. Requests cannot exceed Limits.
-                                    More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-                                  type: object
-                                  additionalProperties:
-                                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                    anyOf:
-                                      - type: integer
-                                      - type: string
-                                    x-kubernetes-int-or-string: true
+                              x-kubernetes-preserve-unknown-fields: true
                             name:
                               description: The name of the Step to override.
                               type: string
