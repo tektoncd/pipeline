@@ -657,3 +657,100 @@ spec:
 	}
 	t.Logf("Successfully finished test TestPipelineRunMatrixedFailed")
 }
+
+// TestPipelineRunMatrixedWithIncludeNames is an integration test that verifies that an include-only
+// Matrix whose every combination has a unique, DNS-label-valid name generates TaskRuns named using
+// the `matrix.include[].name` value as a suffix (e.g. "<pr>-<pt>-robots-txt") instead of the default
+// numeric index, while still populating `childReferences[].displayName` with the include name.
+// @test:execution=parallel
+func TestPipelineRunMatrixedWithIncludeNames(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{
+		"enable-api-fields": "alpha",
+	}))
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	t.Logf("Creating Task in namespace %s", namespace)
+	task := parse.MustParseV1Task(t, fmt.Sprintf(`
+metadata:
+  name: mytask
+  namespace: %s
+spec:
+  params:
+    - name: test-case
+      type: string
+  steps:
+    - name: echo
+      image: mirror.gcr.io/alpine
+      script: |
+        echo "Running $(params.test-case)"
+`, namespace))
+	if _, err := c.V1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
+	}
+
+	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  serviceAccountName: "default"
+  pipelineSpec:
+    tasks:
+      - name: integration
+        taskRef:
+          name: mytask
+        matrix:
+          include:
+            - name: default-config-macro
+              params:
+                - name: test-case
+                  value: default-config-macro
+            - name: robots-txt
+              params:
+                - name: test-case
+                  value: robots-txt
+`, helpers.ObjectNameForTest(t), namespace))
+	prName := pipelineRun.Name
+
+	t.Logf("Creating PipelineRun %s", prName)
+	if _, err := c.V1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1Version); err != nil {
+		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
+	}
+
+	pr, err := c.V1PipelineRunClient.Get(ctx, prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Couldn't get expected PipelineRun %s: %s", prName, err)
+	}
+
+	// The TaskRun names must use the include names as suffixes instead of a numeric index, and the
+	// childReferences must carry the include name as the displayName.
+	wantNames := map[string]string{
+		prName + "-integration-default-config-macro": "default-config-macro",
+		prName + "-integration-robots-txt":           "robots-txt",
+	}
+	gotChildRefs := map[string]string{}
+	for _, cr := range pr.Status.ChildReferences {
+		gotChildRefs[cr.Name] = cr.DisplayName
+	}
+	if d := cmp.Diff(wantNames, gotChildRefs); d != "" {
+		t.Errorf("Unexpected child TaskRun names/displayNames: %s", diff.PrintWantGot(d))
+	}
+
+	for name := range wantNames {
+		if _, err := c.V1TaskRunClient.Get(ctx, name, metav1.GetOptions{}); err != nil {
+			t.Errorf("Expected TaskRun %q to exist but got error: %s", name, err)
+		}
+	}
+
+	t.Logf("Successfully finished test TestPipelineRunMatrixedWithIncludeNames")
+}

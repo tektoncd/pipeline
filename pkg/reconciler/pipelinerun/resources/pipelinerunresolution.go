@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -731,6 +732,14 @@ func ResolvePipelineTask(
 		numCombinations = rpt.PipelineTask.Matrix.CountCombinations()
 	}
 
+	// includeNames, when non-nil, are used as suffixes for the fanned out run names instead
+	// of the numeric combination index. They are only returned for include-only matrices
+	// where every combination has a unique, DNS-label-valid name (see Matrix.IncludeNames).
+	var includeNames []string
+	if rpt.PipelineTask.IsMatrixed() {
+		includeNames = rpt.PipelineTask.Matrix.IncludeNames()
+	}
+
 	switch {
 	case rpt.IsChildPipeline():
 		rpt.ChildPipelineRunNames = GetNamesOfChildPipelineRuns(
@@ -738,6 +747,7 @@ func ResolvePipelineTask(
 			pipelineTask.Name,
 			pipelineRun.Name,
 			numCombinations,
+			includeNames,
 		)
 
 		for _, childPipelineRunName := range rpt.ChildPipelineRunNames {
@@ -747,7 +757,7 @@ func ResolvePipelineTask(
 		}
 
 	case rpt.IsCustomTask():
-		rpt.CustomRunNames = getNamesOfCustomRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, numCombinations)
+		rpt.CustomRunNames = getNamesOfCustomRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, numCombinations, includeNames)
 		for _, runName := range rpt.CustomRunNames {
 			run, err := getRun(runName)
 			if err != nil && !kerrors.IsNotFound(err) {
@@ -759,7 +769,7 @@ func ResolvePipelineTask(
 		}
 
 	default:
-		rpt.TaskRunNames = GetNamesOfTaskRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, numCombinations)
+		rpt.TaskRunNames = GetNamesOfTaskRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, numCombinations, includeNames)
 		for _, taskRunName := range rpt.TaskRunNames {
 			if err := rpt.setTaskRunsAndResolvedTask(ctx, taskRunName, getTask, getTaskRun, pipelineTask); err != nil {
 				return nil, err
@@ -907,20 +917,20 @@ func GetTaskRunName(childRefs []v1.ChildStatusReference, ptName, prName string) 
 }
 
 // GetNamesOfTaskRuns should return unique names for `TaskRuns` if one has not already been defined, and the existing one otherwise.
-func GetNamesOfTaskRuns(childRefs []v1.ChildStatusReference, ptName, prName string, numberOfTaskRuns int) []string {
+func GetNamesOfTaskRuns(childRefs []v1.ChildStatusReference, ptName, prName string, numberOfTaskRuns int, includeNames []string) []string {
 	if taskRunNames := getTaskRunNamesFromChildRefs(childRefs, ptName); taskRunNames != nil {
 		return taskRunNames
 	}
-	return getNewRunNames(ptName, prName, numberOfTaskRuns)
+	return getNewRunNames(ptName, prName, numberOfTaskRuns, includeNames)
 }
 
 // GetNamesOfChildPipelineRuns should return unique names for child PipelineRuns if one has not already been
 // defined, and the existing one otherwise.
-func GetNamesOfChildPipelineRuns(childRefs []v1.ChildStatusReference, ptName, prName string, numberOfPipelineRuns int) []string {
+func GetNamesOfChildPipelineRuns(childRefs []v1.ChildStatusReference, ptName, prName string, numberOfPipelineRuns int, includeNames []string) []string {
 	if pipelineRunNames := getChildPipelineRunNamesFromChildRefs(childRefs, ptName); pipelineRunNames != nil {
 		return pipelineRunNames
 	}
-	return getNewRunNames(ptName, prName, numberOfPipelineRuns)
+	return getNewRunNames(ptName, prName, numberOfPipelineRuns, includeNames)
 }
 
 // getTaskRunNamesFromChildRefs returns the names of TaskRuns defined in childRefs that are associated with the named Pipeline Task.
@@ -934,16 +944,42 @@ func getTaskRunNamesFromChildRefs(childRefs []v1.ChildStatusReference, ptName st
 	return taskRunNames
 }
 
-func getNewRunNames(ptName, prName string, numberOfRuns int) []string {
+// getNewRunNames returns the names to use for the fanned out TaskRuns/PipelineRuns/CustomRuns of a
+// PipelineTask. For a non-matrixed PipelineTask the name is just "<pr>-<pt>". For a matrixed
+// PipelineTask the suffix is, by default, the numeric combination index (e.g. "<pr>-<pt>-0").
+// When includeNames contains exactly one valid name per combination (see Matrix.IncludeNames), those
+// names are used as the suffix instead (e.g. "<pr>-<pt>-robots-txt") - including for a
+// single-combination include-only matrix - otherwise the numeric index is used so behavior remains
+// fully backward compatible.
+func getNewRunNames(ptName, prName string, numberOfRuns int, includeNames []string) []string {
+	// Use the Matrix include names as suffixes only when there is exactly one non-empty name per
+	// combination; otherwise fall back to numeric indexing. This is applied regardless of the
+	// number of combinations, so a single-combination include-only matrix is still named
+	// "<pr>-<pt>-<includeName>" rather than the bare "<pr>-<pt>". The non-empty check guards the
+	// exported callers (GetNamesOfTaskRuns/GetNamesOfChildPipelineRuns), which accept a raw
+	// []string: an empty suffix would otherwise produce an invalid "<pr>-<pt>-" name.
+	useIncludeNames := len(includeNames) == numberOfRuns && !slices.Contains(includeNames, "")
+
 	var runNames []string
-	// If it is a singular PipelineRun/TaskRun/CustomRun, we only append the ptName
-	if numberOfRuns == 1 {
+	// A singular, non-matrixed PipelineRun/TaskRun/CustomRun is named just "<pr>-<pt>".
+	if numberOfRuns == 1 && !useIncludeNames {
 		runName := kmeta.ChildName(prName, "-"+ptName)
 		return append(runNames, runName)
 	}
 
-	// For a matrix we append i to the end of the fanned out PipelineRun/TaskRun/CustomRun "matrixed-pr-taskrun-0"
 	for i := range numberOfRuns {
+		if useIncludeNames {
+			// Name the combination "<pr>-<pt>-<includeName>". Nesting kmeta.ChildName keeps the
+			// result within the 63 character limit while remaining unique per
+			// (prName, ptName, includeName): the inner call yields a bounded, unique base for
+			// "<pr>-<pt>" and the outer call appends the include name, hashing only when needed.
+			// Unlike a plain string truncation this never drops the md5 hash kmeta adds for long
+			// names, so combinations of distinct PipelineTasks cannot collide.
+			runNames = append(runNames, kmeta.ChildName(kmeta.ChildName(prName, "-"+ptName), "-"+includeNames[i]))
+			continue
+		}
+
+		// For a matrix we append i to the end of the fanned out PipelineRun/TaskRun/CustomRun "matrixed-pr-taskrun-0"
 		runName := kmeta.ChildName(prName, fmt.Sprintf("-%s-%d", ptName, i))
 		// check if the PipelineRun/TaskRun/CustomRun name ends with a matrix instance count
 		if !strings.HasSuffix(runName, fmt.Sprintf("-%d", i)) {
@@ -976,11 +1012,11 @@ func getCustomRunName(childRefs []v1.ChildStatusReference, ptName, prName string
 
 // getNamesOfCustomRuns should return a unique names for `CustomRuns` if they have not already been defined,
 // and the existing ones otherwise.
-func getNamesOfCustomRuns(childRefs []v1.ChildStatusReference, ptName, prName string, numberOfRuns int) []string {
+func getNamesOfCustomRuns(childRefs []v1.ChildStatusReference, ptName, prName string, numberOfRuns int, includeNames []string) []string {
 	if customRunNames := getRunNamesFromChildRefs(childRefs, ptName); customRunNames != nil {
 		return customRunNames
 	}
-	return getNewRunNames(ptName, prName, numberOfRuns)
+	return getNewRunNames(ptName, prName, numberOfRuns, includeNames)
 }
 
 // getRunNamesFromChildRefs returns the names of CustomRuns defined in childRefs that are associated with the named Pipeline Task.
