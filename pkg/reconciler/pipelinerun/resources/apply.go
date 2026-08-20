@@ -17,11 +17,13 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -719,11 +721,15 @@ func PropagateArtifacts(rpt *ResolvedPipelineTask, runStates PipelineRunState) e
 // non-existent TaskResults or failed TaskRuns or Runs result in a PipelineResult being considered invalid
 // and omitted from the returned slice. A nil slice is returned if no results are passed in or all
 // results are invalid.
+// If taskResultDefaults is provided and the enable-default-results feature flag is enabled, default values
+// will be used for task results that are not initialized.
 func ApplyTaskResultsToPipelineResults(
+	ctx context.Context,
 	results []v1.PipelineResult,
 	taskRunResults map[string][]v1.TaskRunResult,
 	customTaskResults map[string][]v1beta1.CustomRunResult,
 	taskstatus map[string]string,
+	taskResultDefaults map[string]map[string]*v1.ResultValue,
 ) ([]v1.PipelineRunResult, error) {
 	var runResults []v1.PipelineRunResult
 	var invalidPipelineResults []string
@@ -783,6 +789,27 @@ func ApplyTaskResultsToPipelineResults(
 					}
 				} else if resultValue := runResultValue(taskName, resultName, customTaskResults); resultValue != nil {
 					stringReplacements[variable] = *resultValue
+				} else if defaultValue := taskResultDefaultValue(ctx, taskName, resultName, taskResultDefaults); defaultValue != nil {
+					// Use default value if the result is not found but a default is defined
+					switch defaultValue.Type {
+					case v1.ParamTypeString:
+						stringReplacements[variable] = defaultValue.StringVal
+					case v1.ParamTypeArray:
+						if stringIdx != "*" {
+							intIdx, _ := strconv.Atoi(stringIdx)
+							if intIdx < len(defaultValue.ArrayVal) {
+								stringReplacements[variable] = defaultValue.ArrayVal[intIdx]
+							} else {
+								// referred array index out of bound
+								invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
+								validPipelineResult = false
+							}
+						} else {
+							arrayReplacements[substitution.StripStarVarSubExpression(variable)] = defaultValue.ArrayVal
+						}
+					case v1.ParamTypeObject:
+						objectReplacements[substitution.StripStarVarSubExpression(variable)] = defaultValue.ObjectVal
+					}
 				} else {
 					// if the task is not successful (e.g. skipped or failed) and the results is missing, don't return error
 					if status, ok := taskstatus[PipelineTaskStatusPrefix+taskName+PipelineTaskStatusSuffix]; ok {
@@ -804,6 +831,21 @@ func ApplyTaskResultsToPipelineResults(
 						stringReplacements[variable] = resultValue.ObjectVal[objectKey]
 					} else {
 						// referred object key is not existent
+						invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
+						validPipelineResult = false
+					}
+				} else if defaultValue := taskResultDefaultValue(ctx, taskName, resultName, taskResultDefaults); defaultValue != nil {
+					// Use default value if the result is not found but a default is defined
+					if defaultValue.Type == v1.ParamTypeObject {
+						if _, ok := defaultValue.ObjectVal[objectKey]; ok {
+							stringReplacements[variable] = defaultValue.ObjectVal[objectKey]
+						} else {
+							// referred object key is not existent in default
+							invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
+							validPipelineResult = false
+						}
+					} else {
+						// default type doesn't match expected object type
 						invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
 						validPipelineResult = false
 					}
@@ -860,6 +902,24 @@ func runResultValue(taskName string, resultName string, runResults map[string][]
 	for _, runResult := range runResults[taskName] {
 		if runResult.Name == resultName {
 			return &runResult.Value
+		}
+	}
+	return nil
+}
+
+// taskResultDefaultValue returns the default value for a given task result if the enable-default-results feature flag
+// is enabled and a default is defined in the task spec. It returns nil if the feature flag is disabled, the task
+// doesn't have defaults defined, or the specific result doesn't have a default value.
+func taskResultDefaultValue(ctx context.Context, taskName string, resultName string, taskResultDefaults map[string]map[string]*v1.ResultValue) *v1.ResultValue {
+	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableDefaultResults {
+		return nil
+	}
+	if taskResultDefaults == nil {
+		return nil
+	}
+	if taskDefaults, ok := taskResultDefaults[taskName]; ok {
+		if defaultValue, ok := taskDefaults[resultName]; ok {
+			return defaultValue
 		}
 	}
 	return nil

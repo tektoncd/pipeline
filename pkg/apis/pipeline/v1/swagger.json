@@ -1910,6 +1910,10 @@
         "name"
       ],
       "properties": {
+        "default": {
+          "description": "Default is the value a result takes if no actual value is produced by the task. If default is set, a task may be executed without producing the result and the default value will be used instead.",
+          "$ref": "#/definitions/v1.ParamValue"
+        },
         "description": {
           "description": "Description is a human-readable description of the result",
           "type": "string"

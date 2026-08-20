@@ -1875,6 +1875,8 @@ spec:
                           type: boolean
                         enableConciseResolverSyntax:
                           type: boolean
+                        enableDefaultResults:
+                          type: boolean
                         enableKeepPodOnCancel:
                           type: boolean
                         enableKubernetesSidecar:
@@ -2147,6 +2149,8 @@ spec:
                               enableCELInWhenExpression:
                                 type: boolean
                               enableConciseResolverSyntax:
+                                type: boolean
+                              enableDefaultResults:
                                 type: boolean
                               enableKeepPodOnCancel:
                                 type: boolean
@@ -4029,6 +4033,8 @@ spec:
                           type: boolean
                         enableConciseResolverSyntax:
                           type: boolean
+                        enableDefaultResults:
+                          type: boolean
                         enableKeepPodOnCancel:
                           type: boolean
                         enableKubernetesSidecar:
@@ -4294,6 +4300,8 @@ spec:
                                 type: boolean
                               enableConciseResolverSyntax:
                                 type: boolean
+                              enableDefaultResults:
+                                type: boolean
                               enableKeepPodOnCancel:
                                 type: boolean
                               enableKubernetesSidecar:
@@ -4512,6 +4520,12 @@ spec:
                         required:
                           - name
                         properties:
+                          default:
+                            description: |-
+                              Default is the value a result takes if no actual value is produced by the task.
+                              If default is set, a task may be executed without producing the result and
+                              the default value will be used instead.
+                            x-kubernetes-preserve-unknown-fields: true
                           description:
                             description: Description is a human-readable description of the result
                             type: string
