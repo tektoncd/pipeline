@@ -76,6 +76,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				Coschedule:                               config.CoscheduleDisabled,
 				EnableCELInWhenExpression:                true,
 				EnableArtifacts:                          true,
+				EnableNotices:                            true,
 				EnableParamEnum:                          true,
 				DisableInlineSpec:                        "pipeline,pipelinerun,taskrun",
 				EnableConciseResolverSyntax:              true,
@@ -294,6 +295,9 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 	}, {
 		fileName: "feature-flags-invalid-enable-artifacts",
 		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-artifacts`,
+	}, {
+		fileName: "feature-flags-invalid-enable-notices",
+		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-notices`,
 	}, {
 		fileName: "feature-flags-invalid-enable-concise-resolver-syntax",
 		want:     `failed parsing feature flags config "invalid": strconv.ParseBool: parsing "invalid": invalid syntax for feature enable-concise-resolver-syntax`,

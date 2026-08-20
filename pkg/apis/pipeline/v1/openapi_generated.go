@@ -37,6 +37,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.EmbeddedTask":                 schema_pkg_apis_pipeline_v1_EmbeddedTask(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.IncludeParams":                schema_pkg_apis_pipeline_v1_IncludeParams(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Matrix":                       schema_pkg_apis_pipeline_v1_Matrix(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Notice":                       schema_pkg_apis_pipeline_v1_Notice(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param":                        schema_pkg_apis_pipeline_v1_Param(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec":                    schema_pkg_apis_pipeline_v1_ParamSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue":                   schema_pkg_apis_pipeline_v1_ParamValue(ref),
@@ -845,6 +846,57 @@ func schema_pkg_apis_pipeline_v1_Matrix(ref common.ReferenceCallback) common.Ope
 		},
 		Dependencies: []string{
 			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.IncludeParams", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_Notice(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Notice represents a structured message emitted by a controller that does not affect the run's success/failure status.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"level": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Level indicates the severity of the notice. Valid values: \"info\", \"warning\".",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Message is the human-readable notice text. Maximum length: 1024 characters.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"step": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Step is the name of the step that emitted this notice. Empty for controller-emitted notices.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"file": {
+						SchemaProps: spec.SchemaProps{
+							Description: "File is the source file path related to this notice. Used by VCS integrations to create inline annotations. Maximum length: 256 characters.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"startLine": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StartLine is the starting line number in the source file (1-based). Pointer type so that absence (nil) is distinguishable from line 0.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+				Required: []string{"level", "message"},
+			},
+		},
 	}
 }
 
@@ -4233,6 +4285,25 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts"),
 						},
 					},
+					"notices": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Notices are structured messages emitted by controllers that do not affect the task's success/failure status.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Notice"),
+									},
+								},
+							},
+						},
+					},
 					"sidecars": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -4285,7 +4356,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Provenance", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SidecarState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Time", "knative.dev/pkg/apis.Condition"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Notice", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Provenance", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SidecarState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Time", "knative.dev/pkg/apis.Condition"},
 	}
 }
 
@@ -4374,6 +4445,25 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref common.ReferenceCallbac
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts"),
 						},
 					},
+					"notices": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Notices are structured messages emitted by controllers that do not affect the task's success/failure status.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Notice"),
+									},
+								},
+							},
+						},
+					},
 					"sidecars": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -4426,7 +4516,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Provenance", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SidecarState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Notice", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Provenance", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SidecarState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
