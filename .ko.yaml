@@ -5,4 +5,4 @@ baseImageOverrides:
   github.com/tektoncd/pipeline/cmd/entrypoint: ghcr.io/tektoncd/pipeline/github.com/tektoncd/pipeline/combined-base-image:latest
   github.com/tektoncd/pipeline/cmd/nop: ghcr.io/tektoncd/pipeline/github.com/tektoncd/pipeline/combined-base-image:latest
   github.com/tektoncd/pipeline/cmd/workingdirinit: ghcr.io/tektoncd/pipeline/github.com/tektoncd/pipeline/combined-base-image:latest
-  github.com/tektoncd/pipeline/cmd/resolvers: ghcr.io/tektoncd/plumbing/tini-git@sha256:2c18f0b3ed4394e27068b5c70bb55419797e8fc743d8ea9e0c2766001b36b5b4
+  github.com/tektoncd/pipeline/cmd/resolvers: ghcr.io/tektoncd/plumbing/tini-git@sha256:6faeb2d1f5f43133e90a55ecb34ea1e93a82a1fbe8a2ee3592f275f550ebe3f9
