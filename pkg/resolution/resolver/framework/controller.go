@@ -59,8 +59,22 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 			panic(err.Error())
 		}
 
+		// The promote path and the informer's event handler below must filter
+		// ResolutionRequests with the same selector, or a resolver reconciles
+		// requests that are not addressed to it.
+		//
+		// This is a second GetSelector call: the one validated above runs with
+		// a different context and before Initialize, so re-validate the exact
+		// value both paths are about to use rather than trusting that the two
+		// calls agree. An empty selector here would otherwise widen the
+		// promote path back to every ResolutionRequest in the cluster.
+		selector := resolver.GetSelector(ctx)
+		if err := ValidateResolver(ctx, selector); err != nil {
+			panic(err.Error())
+		}
+
 		r := &Reconciler{
-			LeaderAwareFuncs:           LeaderAwareFuncs(rrInformer.Lister()),
+			LeaderAwareFuncs:           LeaderAwareFuncsWithSelector(rrInformer.Lister(), selector),
 			kubeClientSet:              kubeclientset,
 			resolutionRequestLister:    rrInformer.Lister(),
 			resolutionRequestClientSet: rrclientset,
@@ -82,7 +96,7 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 		})
 
 		_, err := rrInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: FilterResolutionRequestsBySelector(resolver.GetSelector(ctx)),
+			FilterFunc: FilterResolutionRequestsBySelector(selector),
 			Handler: cache.ResourceEventHandlerFuncs{
 				AddFunc: impl.Enqueue,
 				UpdateFunc: func(oldObj, newObj interface{}) {
@@ -151,14 +165,48 @@ func FilterResolutionRequestsBySelector(selector map[string]string) func(obj int
 	}
 }
 
-// TODO(sbwsg): I don't really understand the LeaderAwareness types beyond the
-// fact that the controller crashes if they're missing. It looks
-// like this is bucketing based on labels. Should we use the filter
-// selector from above in the call to lister.List here?
+// LeaderAwareFuncs returns the LeaderAwareFuncs for a resolver's reconciler,
+// re-enqueueing every ResolutionRequest in the cluster on promotion.
+//
+// Deprecated: use LeaderAwareFuncsWithSelector. Listing without a selector
+// hands every resolver every ResolutionRequest, and since the reconciler has
+// no label guard of its own the wrong resolver then fails requests never
+// addressed to it. This signature is kept so that callers outside this
+// repository keep compiling, and its behaviour is unchanged.
 func LeaderAwareFuncs(lister rrlister.ResolutionRequestLister) reconciler.LeaderAwareFuncs {
+	return leaderAwareFuncs(lister, labels.Everything())
+}
+
+// LeaderAwareFuncsWithSelector returns the LeaderAwareFuncs for a resolver's
+// reconciler. On promotion it re-enqueues only the ResolutionRequests this
+// resolver is responsible for, matching the labels that
+// FilterResolutionRequestsBySelector applies to the informer's event handler,
+// so the two paths cannot drift.
+//
+// An empty selector fails closed and enqueues nothing. labels.SelectorFromSet
+// treats an empty set as labels.Everything(), which is the very bug this
+// function exists to fix, so it must not be reachable by way of a resolver
+// that returns no selector. Callers validate the selector with
+// ValidateResolver, which rejects one without a resolution.tekton.dev/type
+// label; failing closed here is the second line of defence.
+func LeaderAwareFuncsWithSelector(lister rrlister.ResolutionRequestLister, selector map[string]string) reconciler.LeaderAwareFuncs {
+	return leaderAwareFuncs(lister, promotionSelector(selector))
+}
+
+// promotionSelector converts a resolver's label set into the selector the
+// promote path lists with, mapping the empty set to labels.Nothing() rather
+// than to labels.Everything().
+func promotionSelector(selector map[string]string) labels.Selector {
+	if len(selector) == 0 {
+		return labels.Nothing()
+	}
+	return labels.SelectorFromSet(selector)
+}
+
+func leaderAwareFuncs(lister rrlister.ResolutionRequestLister, selector labels.Selector) reconciler.LeaderAwareFuncs {
 	return reconciler.LeaderAwareFuncs{
 		PromoteFunc: func(bkt reconciler.Bucket, enq func(reconciler.Bucket, types.NamespacedName)) error {
-			all, err := lister.List(labels.Everything())
+			all, err := lister.List(selector)
 			if err != nil {
 				return err
 			}

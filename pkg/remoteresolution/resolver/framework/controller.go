@@ -54,8 +54,22 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 			panic(err.Error())
 		}
 
+		// The promote path and the informer's event handler below must filter
+		// ResolutionRequests with the same selector, or a resolver reconciles
+		// requests that are not addressed to it.
+		//
+		// This is a second GetSelector call: the one validated above runs with
+		// a different context and before Initialize, so re-validate the exact
+		// value both paths are about to use rather than trusting that the two
+		// calls agree. An empty selector here would otherwise widen the
+		// promote path back to every ResolutionRequest in the cluster.
+		selector := resolver.GetSelector(ctx)
+		if err := framework.ValidateResolver(ctx, selector); err != nil {
+			panic(err.Error())
+		}
+
 		r := &Reconciler{
-			LeaderAwareFuncs:           framework.LeaderAwareFuncs(rrInformer.Lister()),
+			LeaderAwareFuncs:           framework.LeaderAwareFuncsWithSelector(rrInformer.Lister(), selector),
 			kubeClientSet:              kubeclientset,
 			resolutionRequestLister:    rrInformer.Lister(),
 			resolutionRequestClientSet: rrclientset,
@@ -78,7 +92,7 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 		})
 
 		_, err := rrInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: framework.FilterResolutionRequestsBySelector(resolver.GetSelector(ctx)),
+			FilterFunc: framework.FilterResolutionRequestsBySelector(selector),
 			Handler: cache.ResourceEventHandlerFuncs{
 				AddFunc: impl.Enqueue,
 				UpdateFunc: func(oldObj, newObj interface{}) {
