@@ -143,8 +143,8 @@ github.com/Microsoft/go-winio/internal/fs
 github.com/Microsoft/go-winio/internal/socket
 github.com/Microsoft/go-winio/internal/stringbuffer
 github.com/Microsoft/go-winio/pkg/guid
-# github.com/allegro/bigcache/v3 v3.1.0
-## explicit; go 1.16
+# github.com/allegro/bigcache/v3 v3.2.0
+## explicit; go 1.22
 github.com/allegro/bigcache/v3
 github.com/allegro/bigcache/v3/queue
 # github.com/antlr4-go/antlr/v4 v4.13.1
