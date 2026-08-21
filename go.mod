@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/allegro/bigcache/v3 v3.1.0
+	github.com/allegro/bigcache/v3 v3.2.0
 	github.com/cloudevents/sdk-go/v2 v2.16.2
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.21.9
