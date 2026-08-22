@@ -31,6 +31,9 @@ The configmap `config/config-tracing.yaml` contains the configuration for tracin
 * enabled: Set this to true to enable tracing
 * endpoint: API endpoint for jaeger collector to send the traces. By default the endpoint is configured to be `http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces`.
 * credentialsSecret: Name of the secret which contains `username` and `password` to authenticate against the endpoint
+* cacert: (optional) CA certificate for verifying the tracing endpoint over HTTPS. Can be a path to a mounted PEM bundle or inline PEM. Required when the collector uses a certificate signed by a custom CA (for example, OpenShift service-ca or cert-manager).
+
+When `cacert` is a file path, the file is read when the tracing provider is initialized (on controller startup or when `config-tracing` changes). If the CA bundle is rotated in place at the same path without a ConfigMap update, the controller continues using the previous certificate until `config-tracing` is updated or the controller is restarted.
 
 ## Security considerations for multi-tenant environments
 
