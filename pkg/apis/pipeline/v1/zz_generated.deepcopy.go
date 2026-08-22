@@ -2274,6 +2274,11 @@ func (in *WorkspaceBinding) DeepCopyInto(out *WorkspaceBinding) {
 		*out = new(corev1.CSIVolumeSource)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Image != nil {
+		in, out := &in.Image, &out.Image
+		*out = new(corev1.ImageVolumeSource)
+		**out = **in
+	}
 	return
 }
 

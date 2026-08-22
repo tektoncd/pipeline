@@ -155,3 +155,7 @@ data:
   #
   # See https://github.com/tektoncd/pipeline/issues/7691 for more info.
   enable-informer-cache-transforms: "true"
+  # Setting this flag to "true" will enable image volume sources in workspace bindings.
+  # This allows using container images as read-only workspace content.
+  # Requires Kubernetes 1.31+ with the ImageVolume feature gate enabled (beta since Kubernetes 1.33).
+  enable-image-workspace: "false"
