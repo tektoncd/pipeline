@@ -61,7 +61,7 @@ type fragLineNum int
 
 // applyError creates a new *ApplyError wrapping err or augments the information
 // in err with args if it is already an *ApplyError. Returns nil if err is nil.
-func applyError(err error, args ...interface{}) error {
+func applyError(err error, args ...any) error {
 	if err == nil {
 		return nil
 	}
@@ -97,7 +97,7 @@ var (
 // If an error occurs while applying, Apply returns an *ApplyError that
 // annotates the error with additional information. If the error is because of
 // a conflict with the source, the wrapped error will be a *Conflict.
-func Apply(dst io.Writer, src io.ReaderAt, f *File) error {
+func Apply(dst io.Writer, src io.ReaderAt, f *File, opts ...ApplyOption) error {
 	if f.IsBinary {
 		if len(f.TextFragments) > 0 {
 			return applyError(errors.New("binary file contains text fragments"))
@@ -113,7 +113,7 @@ func Apply(dst io.Writer, src io.ReaderAt, f *File) error {
 
 	switch {
 	case f.BinaryFragment != nil:
-		applier := NewBinaryApplier(dst, src)
+		applier := NewBinaryApplier(dst, src, opts...)
 		if err := applier.ApplyFragment(f.BinaryFragment); err != nil {
 			return err
 		}
@@ -131,7 +131,7 @@ func Apply(dst io.Writer, src io.ReaderAt, f *File) error {
 		// right now, the application fails if fragments overlap, but it should be
 		// possible to precompute the result of applying them in order
 
-		applier := NewTextApplier(dst, src)
+		applier := NewTextApplier(dst, src, opts...)
 		for i, frag := range frags {
 			if err := applier.ApplyFragment(frag); err != nil {
 				return applyError(err, fragNum(i))
