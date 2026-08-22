@@ -30,8 +30,7 @@ func (c *Client) AddRepoTeam(user, repo, team string) (*Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo, &team); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("PUT", fmt.Sprintf("/repos/%s/%s/teams/%s", user, repo, team), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("PUT", fmt.Sprintf("/repos/%s/%s/teams/%s", user, repo, team), nil, nil)
 }
 
 // RemoveRepoTeam delete a team from a repository
@@ -42,8 +41,7 @@ func (c *Client) RemoveRepoTeam(user, repo, team string) (*Response, error) {
 	if err := escapeValidatePathSegments(&user, &repo, &team); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/teams/%s", user, repo, team), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/teams/%s", user, repo, team), nil, nil)
 }
 
 // CheckRepoTeam check if team is assigned to repo by name and return it.
