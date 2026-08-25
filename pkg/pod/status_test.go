@@ -3939,7 +3939,7 @@ func TestUpdateIncompleteTaskRunStatus_SurfacePodEvents(t *testing.T) {
 						Name: "step-foo",
 						State: corev1.ContainerState{
 							Waiting: &corev1.ContainerStateWaiting{
-								Reason: "ContainerCreating",
+								Reason: containerWaitingReasonCreating,
 							},
 						},
 					}},
@@ -3975,7 +3975,7 @@ func TestUpdateIncompleteTaskRunStatus_SurfacePodEvents(t *testing.T) {
 						Name: "step-foo",
 						State: corev1.ContainerState{
 							Waiting: &corev1.ContainerStateWaiting{
-								Reason: "ContainerCreating",
+								Reason: containerWaitingReasonCreating,
 							},
 						},
 					}},
@@ -4011,7 +4011,7 @@ func TestUpdateIncompleteTaskRunStatus_SurfacePodEvents(t *testing.T) {
 						Name: "step-foo",
 						State: corev1.ContainerState{
 							Waiting: &corev1.ContainerStateWaiting{
-								Reason: "ContainerCreating",
+								Reason: containerWaitingReasonCreating,
 							},
 						},
 					}},
@@ -4040,7 +4040,7 @@ func TestUpdateIncompleteTaskRunStatus_SurfacePodEvents(t *testing.T) {
 						Name: "step-foo",
 						State: corev1.ContainerState{
 							Waiting: &corev1.ContainerStateWaiting{
-								Reason:  "ContainerCreating",
+								Reason:  containerWaitingReasonCreating,
 								Message: "some useful message from kubelet",
 							},
 						},
@@ -4110,7 +4110,7 @@ func TestUpdateIncompleteTaskRunStatus_SurfacePodEvents(t *testing.T) {
 						Name: "step-foo",
 						State: corev1.ContainerState{
 							Waiting: &corev1.ContainerStateWaiting{
-								Reason: "ContainerCreating",
+								Reason: containerWaitingReasonCreating,
 							},
 						},
 					}},
