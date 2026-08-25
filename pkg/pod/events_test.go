@@ -142,7 +142,7 @@ func TestIsGenericPending(t *testing.T) {
 					ContainerStatuses: []corev1.ContainerStatus{{
 						State: corev1.ContainerState{
 							Waiting: &corev1.ContainerStateWaiting{
-								Reason: "ContainerCreating",
+								Reason: containerWaitingReasonCreating,
 							},
 						},
 					}},
@@ -157,7 +157,7 @@ func TestIsGenericPending(t *testing.T) {
 					ContainerStatuses: []corev1.ContainerStatus{{
 						State: corev1.ContainerState{
 							Waiting: &corev1.ContainerStateWaiting{
-								Reason:  "ContainerCreating",
+								Reason:  containerWaitingReasonCreating,
 								Message: "something useful",
 							},
 						},
@@ -223,7 +223,7 @@ func TestIsGenericPending(t *testing.T) {
 					InitContainerStatuses: []corev1.ContainerStatus{{
 						State: corev1.ContainerState{
 							Waiting: &corev1.ContainerStateWaiting{
-								Reason: "ContainerCreating",
+								Reason: containerWaitingReasonCreating,
 							},
 						},
 					}},
