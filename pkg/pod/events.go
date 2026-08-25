@@ -28,8 +28,9 @@ import (
 )
 
 const (
-	maxEventMessageLength = 1024
-	truncationSuffix      = "..."
+	maxEventMessageLength          = 1024
+	truncationSuffix               = "..."
+	containerWaitingReasonCreating = "ContainerCreating"
 )
 
 // latestWarningEvent returns the reason and message of the most recent Warning
@@ -68,12 +69,12 @@ func latestWarningEvent(ctx context.Context, kubeclient kubernetes.Interface, po
 // fallbacks.
 func isGenericPending(pod *corev1.Pod) bool {
 	for _, s := range pod.Status.ContainerStatuses {
-		if s.State.Waiting != nil && s.State.Waiting.Reason == "ContainerCreating" && s.State.Waiting.Message == "" {
+		if s.State.Waiting != nil && s.State.Waiting.Reason == containerWaitingReasonCreating && s.State.Waiting.Message == "" {
 			return true
 		}
 	}
 	for _, s := range pod.Status.InitContainerStatuses {
-		if s.State.Waiting != nil && s.State.Waiting.Reason == "ContainerCreating" && s.State.Waiting.Message == "" {
+		if s.State.Waiting != nil && s.State.Waiting.Reason == containerWaitingReasonCreating && s.State.Waiting.Message == "" {
 			return true
 		}
 	}
