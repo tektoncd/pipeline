@@ -4792,6 +4792,27 @@ func Test_validateMatrix(t *testing.T) {
 		}},
 		wantErrs: apis.ErrInvalidValue("Matrixed PipelineTasks emitting results must have an underlying type string, but result array-result has type array in pipelineTask", ""),
 	}, {
+		name: "execution status reference in matrix include when expression",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Include: IncludeParamsList{
+					{
+						When: WhenExpressions{
+							{
+								Input:    "$(tasks.b-task.status)",
+								Operator: selection.In,
+								Values:   []string{"Succeeded"},
+							},
+						},
+					},
+				},
+			},
+		}},
+		wantErrs: apis.ErrInvalidValue("pipeline tasks can not refer to execution status of any other pipeline task or aggregate status of tasks", "").
+			ViaFieldIndex("when", 0).ViaFieldIndex("matrix.include", 0).ViaIndex(0),
+	}, {
 		name: "cel in matrix include when expression",
 		tasks: PipelineTaskList{{
 			Name:    "a-task",

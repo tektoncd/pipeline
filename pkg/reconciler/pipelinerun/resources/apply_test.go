@@ -3009,6 +3009,54 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 		}},
 	}, {
+		name: "Test result substitution on minimal variable substitution expression - matrix include when expressions",
+		resolvedResultRefs: resources.ResolvedResultRefs{{
+			Value: *v1.NewStructuredValues("aResultValue"),
+			ResultReference: v1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: resources.PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1.TaskRef{Name: "bTask"},
+				Matrix: &v1.Matrix{
+					Include: v1.IncludeParamsList{{
+						Name: "build-1",
+						Params: v1.Params{{
+							Name: "bParam", Value: *v1.NewStructuredValues("bValue"),
+						}},
+						When: v1.WhenExpressions{{
+							Input:    "$(tasks.aTask.results.aResult)",
+							Operator: selection.In,
+							Values:   []string{"aResultValue"},
+						}},
+					}},
+				},
+			},
+		}},
+		want: resources.PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1.TaskRef{Name: "bTask"},
+				Matrix: &v1.Matrix{
+					Include: v1.IncludeParamsList{{
+						Name: "build-1",
+						Params: v1.Params{{
+							Name: "bParam", Value: *v1.NewStructuredValues("bValue"),
+						}},
+						When: v1.WhenExpressions{{
+							Input:    "aResultValue",
+							Operator: selection.In,
+							Values:   []string{"aResultValue"},
+						}},
+					}},
+				},
+			},
+		}},
+	}, {
 		name: "Test array indexing result substitution on minimal variable substitution expression - matrix",
 		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),

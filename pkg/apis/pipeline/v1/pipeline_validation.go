@@ -238,11 +238,16 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 		if pt.Matrix.HasInclude() {
 			for i := range pt.Matrix.Include {
 				if pt.Matrix.Include[i].When != nil {
-					for _, we := range pt.Matrix.Include[i].When {
+					for j, we := range pt.Matrix.Include[i].When {
 						if we.CEL != "" {
 							// CEL is not allowed in matrix.include.when
 							errs = errs.Also(apis.ErrDisallowedFields("matrix.include.when.cel"))
 							return errs
+						}
+						// execution status references are not resolved in matrix.include.when
+						if expressions, ok := we.GetVarSubstitutionExpressions(); ok {
+							errs = errs.Also(validateContainsExecutionStatusVariablesDisallowed(expressions, "").
+								ViaFieldIndex("when", j).ViaFieldIndex("matrix.include", i))
 						}
 					}
 					errs = errs.Also(pt.Matrix.Include[i].When.validateWhenExpressionsFields(ctx).ViaField("when").ViaFieldIndex("matrix.include", i))
