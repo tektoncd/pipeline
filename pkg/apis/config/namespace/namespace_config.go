@@ -18,433 +18,367 @@ package namespace
 
 import (
 	"context"
+	"fmt"
+	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/informers"
-	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1listers "k8s.io/client-go/listers/core/v1"
+	"knative.dev/pkg/logging"
+	"knative.dev/pkg/system"
 	"sigs.k8s.io/yaml"
 )
 
-// nsConfigCacheKey is the context key for storing the NamespaceConfigCache.
-type nsConfigCacheKey struct{}
-
-// ToContext adds a NamespaceConfigCache to the context.
-func ToContext(ctx context.Context, cache *NamespaceConfigCache) context.Context {
-	return context.WithValue(ctx, nsConfigCacheKey{}, cache)
-}
-
-// FromContext retrieves the NamespaceConfigCache from the context.
-// Returns nil if no cache is stored.
-func FromContext(ctx context.Context) *NamespaceConfigCache {
-	val := ctx.Value(nsConfigCacheKey{})
-	if val == nil {
-		return nil
-	}
-	return val.(*NamespaceConfigCache)
-}
-
 const (
-	// NamespaceConfigLabel is the label that identifies namespace-scoped Tekton config overrides.
-	NamespaceConfigLabel = "tekton.dev/pipeline-config"
+	namespaceConfigLabel               = "tekton.dev/pipeline-config"
+	partOfLabel                        = "app.kubernetes.io/part-of"
+	partOfValue                        = "tekton-pipelines"
+	namespaceFeatureFlagsConfigMapName = "tekton-feature-flags"
+	namespaceDefaultsConfigMapName     = "tekton-config-defaults"
+	configValueTrue                    = "true"
+	exampleConfigKey                   = "_example"
 
-	// PartOfLabel is the standard Kubernetes recommended label for identifying part-of relationships.
-	PartOfLabel = "app.kubernetes.io/part-of"
+	defaultTimeoutMinutesKey                = "default-timeout-minutes"
+	defaultServiceAccountKey                = "default-service-account"
+	defaultManagedByLabelValueKey           = "default-managed-by-label-value"
+	defaultPodTemplateKey                   = "default-pod-template"
+	defaultAAPodTemplateKey                 = "default-affinity-assistant-pod-template"
+	defaultCloudEventsSinkKey               = "default-cloud-events-sink"
+	defaultTaskRunWorkspaceBindingKey       = "default-task-run-workspace-binding"
+	defaultMaxMatrixCombinationsCountKey    = "default-max-matrix-combinations-count"
+	defaultForbiddenEnvKey                  = "default-forbidden-env"
+	defaultResolverTypeKey                  = "default-resolver-type"
+	defaultContainerResourceRequirementsKey = "default-container-resource-requirements"
+	defaultImagePullBackOffTimeoutKey       = "default-imagepullbackoff-timeout"
+	defaultCreateContainerErrorTimeoutKey   = "default-create-container-error-timeout"
+	defaultMaximumResolutionTimeoutKey      = "default-maximum-resolution-timeout"
+	defaultSidecarLogPollingIntervalKey     = "default-sidecar-log-polling-interval"
+	defaultStepRefConcurrencyLimitKey       = "default-step-ref-concurrency-limit"
 
-	// PartOfValue is the value for the part-of label for Tekton Pipelines.
-	PartOfValue = "tekton-pipelines"
-
-	// NamespaceFeatureFlagsConfigMapName is the name of the namespace-level feature-flags ConfigMap.
-	NamespaceFeatureFlagsConfigMapName = "tekton-feature-flags"
-
-	// NamespaceDefaultsConfigMapName is the name of the namespace-level config-defaults ConfigMap.
-	NamespaceDefaultsConfigMapName = "tekton-config-defaults"
-
-	// DefaultResyncPeriod disables periodic relists; watch events keep the cache current.
-	DefaultResyncPeriod = 0 * time.Minute
-
-	configValueTrue              = "true"
-	exampleConfigKey             = "_example"
-	defaultServiceAccountKey     = "default-service-account"
-	defaultTimeoutMinutesKey     = "default-timeout-minutes"
-	maxResultSizeKey             = "max-result-size"
-	coscheduleKey                = "coschedule"
-	enableCELInWhenExpressionKey = "enable-cel-in-whenexpression"
-	enforceNonfalsifiabilityKey  = "enforce-nonfalsifiability"
-	setSecurityContextKey        = "set-security-context"
-	defaultResolverTypeKey       = "default-resolver-type"
-	enableStepActionsKey         = "enable-step-actions"
+	disableCredsInitKey                         = "disable-creds-init"
+	runningInEnvWithInjectedSidecarsKey         = "running-in-environment-with-injected-sidecars"
+	requireGitSSHSecretKnownHostsKey            = "require-git-ssh-secret-known-hosts"
+	enableAPIFieldsKey                          = "enable-api-fields"
+	sendCloudEventsForRunsKey                   = "send-cloudevents-for-runs"
+	awaitSidecarReadinessKey                    = "await-sidecar-readiness"
+	enforceNonfalsifiabilityKey                 = "enforce-nonfalsifiability"
+	verificationNoMatchPolicyKey                = "trusted-resources-verification-no-match-policy"
+	enableProvenanceInStatusKey                 = "enable-provenance-in-status"
+	resultsFromKey                              = "results-from"
+	maxResultSizeKey                            = "max-result-size"
+	setSecurityContextKey                       = "set-security-context"
+	setSecurityContextReadOnlyRootFilesystemKey = "set-security-context-read-only-root-filesystem"
+	coscheduleKey                               = "coschedule"
+	keepPodOnCancelKey                          = "keep-pod-on-cancel"
+	enableCELInWhenExpressionKey                = "enable-cel-in-whenexpression"
+	enableStepActionsKey                        = "enable-step-actions"
+	enableArtifactsKey                          = "enable-artifacts"
+	enableParamEnumKey                          = "enable-param-enum"
+	disableInlineSpecKey                        = "disable-inline-spec"
+	enableConciseResolverSyntaxKey              = "enable-concise-resolver-syntax"
+	enableKubernetesSidecarKey                  = "enable-kubernetes-sidecar"
+	enableWaitExponentialBackoffKey             = "enable-wait-exponential-backoff"
+	enableTerminationMessageCompressionKey      = "enable-termination-message-compression"
+	perNamespaceConfigurationKey                = "per-namespace-configuration"
+	nonOverridableFieldsKey                     = "non-overridable-fields"
+	deprecatedEnableTektonOCIBundlesKey         = "enable-tekton-oci-bundles"
 )
 
-// OverridableDefaultsFields lists config-defaults fields that can be overridden per namespace.
-// Phase 1 is intentionally limited to TaskRun/PipelineRun admission and reconciliation defaults.
-var OverridableDefaultsFields = map[string]bool{
-	defaultServiceAccountKey:                  true,
-	defaultTimeoutMinutesKey:                  true,
-	"default-managed-by-label-value":          true,
-	"default-pod-template":                    true,
-	"default-task-run-workspace-binding":      true,
-	"default-max-matrix-combinations-count":   true,
-	"default-imagepullbackoff-timeout":        true,
-	"default-container-resource-requirements": true,
+var defaultsAllowList = map[string]bool{
+	defaultServiceAccountKey:                true,
+	defaultTimeoutMinutesKey:                true,
+	defaultManagedByLabelValueKey:           true,
+	defaultPodTemplateKey:                   true,
+	defaultTaskRunWorkspaceBindingKey:       true,
+	defaultMaxMatrixCombinationsCountKey:    true,
+	defaultImagePullBackOffTimeoutKey:       true,
+	defaultContainerResourceRequirementsKey: true,
 }
 
-// OverridableFeatureFlagsFields lists feature-flags fields that can be overridden per namespace.
-// Phase 1 is intentionally limited to flags used by TaskRun/PipelineRun admission and reconciliation.
-var OverridableFeatureFlagsFields = map[string]bool{
-	"running-in-environment-with-injected-sidecars": true,
-	"await-sidecar-readiness":                       true,
-	maxResultSizeKey:                                true,
-	coscheduleKey:                                   true,
-	"keep-pod-on-cancel":                            true,
-	enableCELInWhenExpressionKey:                    true,
-	"enable-artifacts":                              true,
-	"enable-param-enum":                             true,
-	"enable-kubernetes-sidecar":                     true,
-	"enable-wait-exponential-backoff":               true,
+var featureFlagsAllowList = map[string]bool{
+	runningInEnvWithInjectedSidecarsKey: true,
+	awaitSidecarReadinessKey:            true,
+	maxResultSizeKey:                    true,
+	coscheduleKey:                       true,
+	keepPodOnCancelKey:                  true,
+	enableCELInWhenExpressionKey:        true,
+	enableArtifactsKey:                  true,
+	enableParamEnumKey:                  true,
+	enableKubernetesSidecarKey:          true,
+	enableWaitExponentialBackoffKey:     true,
 }
 
-// NonOverridableFields lists fields that can NEVER be overridden per namespace, regardless of operator settings.
-var NonOverridableFields = map[string]bool{
-	// Security-critical fields
-	enforceNonfalsifiabilityKey:                      true,
-	setSecurityContextKey:                            true,
-	"set-security-context-read-only-root-filesystem": true,
-	"trusted-resources-verification-no-match-policy": true,
-	"default-forbidden-env":                          true,
-	"disable-creds-init":                             true,
-	"disable-inline-spec":                            true,
-	// Stability gate field
-	"enable-api-fields": true,
-	// Infrastructure fields
-	"results-from":                         true,
-	"default-sidecar-log-polling-interval": true,
-	"default-step-ref-concurrency-limit":   true,
-	// Per-namespace config fields themselves
-	"per-namespace-configuration": true,
-	"non-overridable-fields":      true,
+var blockList = map[string]bool{
+	enforceNonfalsifiabilityKey:                 true,
+	setSecurityContextKey:                       true,
+	setSecurityContextReadOnlyRootFilesystemKey: true,
+	verificationNoMatchPolicyKey:                true,
+	defaultForbiddenEnvKey:                      true,
+	disableCredsInitKey:                         true,
+	disableInlineSpecKey:                        true,
+	enableAPIFieldsKey:                          true,
+	resultsFromKey:                              true,
+	defaultSidecarLogPollingIntervalKey:         true,
+	defaultStepRefConcurrencyLimitKey:           true,
+	perNamespaceConfigurationKey:                true,
+	nonOverridableFieldsKey:                     true,
 }
 
-// SystemNamespaces that are excluded from per-namespace configuration.
-var SystemNamespaces = map[string]bool{
-	"tekton-pipelines": true,
-	"kube-system":      true,
-	"kube-public":      true,
+var excludedNamespaces = map[string]bool{
+	"kube-system": true,
+	"kube-public": true,
 }
 
-// NamespaceConfig holds the raw and parsed overrides for a single namespace.
-type NamespaceConfig struct {
-	// RawDefaults holds the raw ConfigMap data from the namespace tekton-config-defaults.
-	RawDefaults map[string]string
-	// RawFlags holds the raw ConfigMap data from the namespace tekton-feature-flags.
-	RawFlags map[string]string
+type namespaceConfig struct {
+	defaults map[string]string
+	flags    map[string]string
 }
 
-// NamespaceConfigCache provides per-namespace configuration lookups backed by
-// a cluster-scoped ConfigMap informer filtered by label. The informer's store
-// serves as the cache, eliminating the need for an LRU and direct API calls.
-type NamespaceConfigCache struct {
+// PerNamespaceConfig merges labeled namespace ConfigMaps with the global config.
+type PerNamespaceConfig struct {
 	configMapLister corev1listers.ConfigMapLister
 }
 
-// NewNamespaceConfigInformer creates a cluster-scoped ConfigMap informer that
-// watches only ConfigMaps with the label tekton.dev/pipeline-config=true.
-// The caller must start the returned factory (factory.Start) and wait for
-// cache sync before using the lister. The informer is registered with the
-// factory before returning so that factory.Start will include it.
-func NewNamespaceConfigInformer(kubeClient kubernetes.Interface, resyncPeriod time.Duration) (informers.SharedInformerFactory, coreinformers.ConfigMapInformer) {
-	labelSelector := labels.Set{NamespaceConfigLabel: configValueTrue}.AsSelector().String()
-	factory := informers.NewSharedInformerFactoryWithOptions(kubeClient, resyncPeriod,
+// NewPerNamespaceConfig starts and syncs a filtered ConfigMap informer.
+func NewPerNamespaceConfig(ctx context.Context, kubeClient kubernetes.Interface) *PerNamespaceConfig {
+	selector := labels.Set{
+		namespaceConfigLabel: configValueTrue,
+		partOfLabel:          partOfValue,
+	}.AsSelector().String()
+	factory := informers.NewSharedInformerFactoryWithOptions(kubeClient, 0,
 		informers.WithTweakListOptions(func(opts *metav1.ListOptions) {
-			opts.LabelSelector = labelSelector
+			opts.LabelSelector = selector
 		}),
 	)
-	cmInformer := factory.Core().V1().ConfigMaps()
-	// Register the informer with the factory so it starts when factory.Start is called.
-	_ = cmInformer.Informer()
-	return factory, cmInformer
+	configMaps := factory.Core().V1().ConfigMaps()
+	_ = configMaps.Informer()
+	factory.Start(ctx.Done())
+	factory.WaitForCacheSync(ctx.Done())
+	return &PerNamespaceConfig{configMapLister: configMaps.Lister()}
 }
 
-// NewNamespaceConfigCache creates a NamespaceConfigCache backed by the given ConfigMapLister.
-// The lister should come from a filtered informer that only tracks ConfigMaps
-// with the label tekton.dev/pipeline-config=true.
-func NewNamespaceConfigCache(lister corev1listers.ConfigMapLister) *NamespaceConfigCache {
-	return &NamespaceConfigCache{
-		configMapLister: lister,
+// MergeGlobalConfigWithLocal returns a context containing the namespace overrides.
+// It returns the original context when the feature is disabled, the namespace is
+// excluded, or no matching ConfigMaps exist. Invalid values are returned as errors.
+func (p *PerNamespaceConfig) MergeGlobalConfigWithLocal(ctx context.Context, namespace string) (context.Context, error) {
+	if p == nil || namespace == system.Namespace() || excludedNamespaces[namespace] {
+		return ctx, nil
 	}
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg.FeatureFlags == nil || !cfg.FeatureFlags.PerNamespaceConfiguration {
+		return ctx, nil
+	}
+	local := p.get(namespace)
+	if local == nil {
+		return ctx, nil
+	}
+
+	logger := logging.FromContext(ctx)
+	operatorBlockList := parseOperatorBlockList(cfg.FeatureFlags.NonOverridableFields)
+	merged := cfg.DeepCopy()
+
+	if len(local.defaults) > 0 {
+		globalConfig, err := configToDefaultsMap(cfg.Defaults)
+		if err != nil {
+			return ctx, fmt.Errorf("serialize global defaults: %w", err)
+		}
+		mergedConfig := mergeConfigMaps(globalConfig, local.defaults, defaultsAllowList, operatorBlockList, logger)
+		mergedDefaults, err := config.NewDefaultsFromMap(mergedConfig)
+		if err != nil {
+			return ctx, fmt.Errorf("parse namespace defaults for %q: %w", namespace, err)
+		}
+		merged.Defaults = mergedDefaults
+		logOverrides(logger, namespace, "config-defaults", local.defaults, defaultsAllowList, operatorBlockList)
+	}
+
+	if len(local.flags) > 0 {
+		globalConfig := configToFeatureFlagsMap(cfg.FeatureFlags)
+		mergedConfig := mergeConfigMaps(globalConfig, local.flags, featureFlagsAllowList, operatorBlockList, logger)
+		mergedFlags, err := config.NewFeatureFlagsFromMap(mergedConfig)
+		if err != nil {
+			return ctx, fmt.Errorf("parse namespace feature flags for %q: %w", namespace, err)
+		}
+		mergedFlags.PerNamespaceConfiguration = cfg.FeatureFlags.PerNamespaceConfiguration
+		mergedFlags.NonOverridableFields = cfg.FeatureFlags.NonOverridableFields
+		merged.FeatureFlags = mergedFlags
+		logOverrides(logger, namespace, "feature-flags", local.flags, featureFlagsAllowList, operatorBlockList)
+	}
+
+	return config.ToContext(ctx, merged), nil
 }
 
-// Get returns the NamespaceConfig for the given namespace by looking up
-// ConfigMaps from the informer's cache (the lister). No API calls are made.
-// Returns nil (no error) if no namespace config exists.
-func (c *NamespaceConfigCache) Get(_ context.Context, namespace string) *NamespaceConfig {
-	if SystemNamespaces[namespace] {
-		return nil
-	}
-
-	nsConfig := &NamespaceConfig{}
+func (p *PerNamespaceConfig) get(namespace string) *namespaceConfig {
+	local := &namespaceConfig{}
 	found := false
-
-	// Look up tekton-config-defaults from the lister
-	if defaultsCM := c.getConfigMap(namespace, NamespaceDefaultsConfigMapName); defaultsCM != nil {
-		nsConfig.RawDefaults = defaultsCM.Data
+	if defaults := p.getConfigMap(namespace, namespaceDefaultsConfigMapName); defaults != nil {
+		local.defaults = defaults.Data
 		found = true
 	}
-
-	// Look up tekton-feature-flags from the lister
-	if flagsCM := c.getConfigMap(namespace, NamespaceFeatureFlagsConfigMapName); flagsCM != nil {
-		nsConfig.RawFlags = flagsCM.Data
+	if flags := p.getConfigMap(namespace, namespaceFeatureFlagsConfigMapName); flags != nil {
+		local.flags = flags.Data
 		found = true
 	}
-
 	if !found {
 		return nil
 	}
-
-	return nsConfig
+	return local
 }
 
-// getConfigMap retrieves a ConfigMap by namespace and name from the lister and validates labels.
-// Returns nil if the ConfigMap doesn't exist or lacks required labels.
-func (c *NamespaceConfigCache) getConfigMap(namespace, name string) *corev1.ConfigMap {
-	cm, err := c.configMapLister.ConfigMaps(namespace).Get(name)
+func (p *PerNamespaceConfig) getConfigMap(namespace, name string) *corev1.ConfigMap {
+	if p.configMapLister == nil {
+		return nil
+	}
+	cm, err := p.configMapLister.ConfigMaps(namespace).Get(name)
 	if err != nil {
-		// The lister only contains labeled ConfigMaps. A "not found" means
-		// either the ConfigMap doesn't exist or it lacks the required label.
 		return nil
 	}
-
-	// Double-check required labels (the informer filter should already ensure
-	// the pipeline-config label, but verify part-of too).
-	if cm.Labels[PartOfLabel] != PartOfValue {
+	if cm.Labels[namespaceConfigLabel] != configValueTrue || cm.Labels[partOfLabel] != partOfValue {
 		return nil
 	}
-
 	return cm
 }
 
-// MergeConfigMaps merges global and namespace ConfigMap data, filtering out non-overridable fields.
-// operatorLockedFields is the set of additional fields locked by the operator via non-overridable-fields.
-func MergeConfigMaps(globalData, namespaceData map[string]string, overridableFields map[string]bool, operatorLockedFields map[string]bool, logger *zap.SugaredLogger) map[string]string {
-	merged := make(map[string]string, len(globalData))
-	for k, v := range globalData {
-		merged[k] = v
+func mergeConfigMaps(globalConfig, localConfig map[string]string, allowList, operatorBlockList map[string]bool, logger *zap.SugaredLogger) map[string]string {
+	merged := make(map[string]string, len(globalConfig))
+	for key, value := range globalConfig {
+		merged[key] = value
 	}
-
-	for k, v := range namespaceData {
-		if k == exampleConfigKey {
+	for key, value := range localConfig {
+		switch {
+		case key == exampleConfigKey:
 			continue
+		case blockList[key]:
+			logger.Warnf("Namespace config attempted to override non-overridable field %q, ignoring", key)
+		case operatorBlockList[key]:
+			logger.Warnf("Namespace config attempted to override operator-locked field %q, ignoring", key)
+		case allowList[key]:
+			merged[key] = value
+		default:
+			logger.Warnf("Namespace config contains unknown or non-overridable field %q, ignoring", key)
 		}
-		if NonOverridableFields[k] {
-			if logger != nil {
-				logger.Warnf("Namespace config attempted to override non-overridable field %q, ignoring", k)
-			}
-			continue
-		}
-		if operatorLockedFields != nil && operatorLockedFields[k] {
-			if logger != nil {
-				logger.Warnf("Namespace config attempted to override operator-locked field %q, ignoring", k)
-			}
-			continue
-		}
-		if !overridableFields[k] {
-			if logger != nil {
-				logger.Warnf("Namespace config contains unknown or non-overridable field %q, ignoring", k)
-			}
-			continue
-		}
-		merged[k] = v
 	}
-
 	return merged
 }
 
-// ParseOperatorLockedFields parses the non-overridable-fields value from the cluster feature-flags.
-func ParseOperatorLockedFields(nonOverridableFieldsStr string) map[string]bool {
-	if nonOverridableFieldsStr == "" {
+func parseOperatorBlockList(value string) map[string]bool {
+	if value == "" {
 		return nil
 	}
 	result := make(map[string]bool)
-	for _, field := range strings.Split(nonOverridableFieldsStr, ",") {
-		f := strings.TrimSpace(field)
-		if f != "" {
-			result[f] = true
+	for _, field := range strings.Split(value, ",") {
+		if field := strings.TrimSpace(field); field != "" {
+			result[field] = true
 		}
 	}
 	return result
 }
 
-// WithNamespaceConfig merges namespace-specific configuration into the context.
-// If per-namespace-configuration is disabled or no namespace config exists, the original context is returned.
-func WithNamespaceConfig(ctx context.Context, cache *NamespaceConfigCache, namespace string, logger *zap.SugaredLogger) context.Context {
-	if cache == nil {
-		return ctx
-	}
-
-	cfg := config.FromContextOrDefaults(ctx)
-	if cfg == nil || cfg.FeatureFlags == nil {
-		return ctx
-	}
-
-	if !cfg.FeatureFlags.PerNamespaceConfiguration {
-		return ctx
-	}
-
-	nsConfig := cache.Get(ctx, namespace)
-	if nsConfig == nil {
-		return ctx
-	}
-
-	// Parse operator-locked fields from cluster config
-	operatorLockedFields := ParseOperatorLockedFields(cfg.FeatureFlags.NonOverridableFields)
-
-	// Create merged config
-	mergedCfg := cfg.DeepCopy()
-
-	// Merge config-defaults
-	if nsConfig.RawDefaults != nil && len(nsConfig.RawDefaults) > 0 {
-		globalDefaultsData := configToDefaultsMap(cfg.Defaults)
-		mergedDefaultsData := MergeConfigMaps(globalDefaultsData, nsConfig.RawDefaults, OverridableDefaultsFields, operatorLockedFields, logger)
-		mergedDefaults, err := config.NewDefaultsFromMap(mergedDefaultsData)
-		if err != nil {
-			if logger != nil {
-				logger.Warnf("Failed to parse merged defaults for namespace %q: %v", namespace, err)
-			}
-		} else {
-			mergedCfg.Defaults = mergedDefaults
-			if logger != nil {
-				overridden := getOverriddenFields(nsConfig.RawDefaults, OverridableDefaultsFields, operatorLockedFields)
-				if len(overridden) > 0 {
-					logger.Infof("Applying namespace config for %q: overriding config-defaults fields: %s", namespace, strings.Join(overridden, ", "))
-				}
-			}
-		}
-	}
-
-	// Merge feature-flags
-	if nsConfig.RawFlags != nil && len(nsConfig.RawFlags) > 0 {
-		globalFlagsData := configToFeatureFlagsMap(cfg.FeatureFlags)
-		mergedFlagsData := MergeConfigMaps(globalFlagsData, nsConfig.RawFlags, OverridableFeatureFlagsFields, operatorLockedFields, logger)
-		mergedFlags, err := config.NewFeatureFlagsFromMap(mergedFlagsData)
-		if err != nil {
-			if logger != nil {
-				logger.Warnf("Failed to parse merged feature flags for namespace %q: %v", namespace, err)
-			}
-		} else {
-			// Preserve per-namespace-configuration fields from the cluster config
-			mergedFlags.PerNamespaceConfiguration = cfg.FeatureFlags.PerNamespaceConfiguration
-			mergedFlags.NonOverridableFields = cfg.FeatureFlags.NonOverridableFields
-			mergedCfg.FeatureFlags = mergedFlags
-			if logger != nil {
-				overridden := getOverriddenFields(nsConfig.RawFlags, OverridableFeatureFlagsFields, operatorLockedFields)
-				if len(overridden) > 0 {
-					logger.Infof("Applying namespace config for %q: overriding feature-flags fields: %s", namespace, strings.Join(overridden, ", "))
-				}
-			}
-		}
-	}
-
-	return config.ToContext(ctx, mergedCfg)
-}
-
-// getOverriddenFields returns the list of fields that were actually overridden (for logging).
-func getOverriddenFields(nsData map[string]string, overridableFields map[string]bool, operatorLockedFields map[string]bool) []string {
+func logOverrides(logger *zap.SugaredLogger, namespace, configMap string, localConfig map[string]string, allowList, operatorBlockList map[string]bool) {
 	var overridden []string
-	for k := range nsData {
-		if k == exampleConfigKey {
-			continue
-		}
-		if NonOverridableFields[k] || (operatorLockedFields != nil && operatorLockedFields[k]) {
-			continue
-		}
-		if overridableFields[k] {
-			overridden = append(overridden, k)
+	for key := range localConfig {
+		if key != exampleConfigKey && !blockList[key] && !operatorBlockList[key] && allowList[key] {
+			overridden = append(overridden, key)
 		}
 	}
-	return overridden
-}
-
-// configToDefaultsMap converts a Defaults struct back to a map[string]string for merging.
-func configToDefaultsMap(d *config.Defaults) map[string]string {
-	if d == nil {
-		return map[string]string{}
-	}
-	m := map[string]string{
-		defaultTimeoutMinutesKey:                strconv.Itoa(d.DefaultTimeoutMinutes),
-		defaultServiceAccountKey:                d.DefaultServiceAccount,
-		"default-managed-by-label-value":        d.DefaultManagedByLabelValue,
-		"default-cloud-events-sink":             d.DefaultCloudEventsSink,
-		"default-max-matrix-combinations-count": strconv.Itoa(d.DefaultMaxMatrixCombinationsCount),
-		defaultResolverTypeKey:                  d.DefaultResolverType,
-		"default-imagepullbackoff-timeout":      d.DefaultImagePullBackOffTimeout.String(),
-		"default-maximum-resolution-timeout":    d.DefaultMaximumResolutionTimeout.String(),
-		"default-sidecar-log-polling-interval":  d.DefaultSidecarLogPollingInterval.String(),
-		"default-step-ref-concurrency-limit":    strconv.Itoa(d.DefaultStepRefConcurrencyLimit),
-	}
-	if d.DefaultTaskRunWorkspaceBinding != "" {
-		m["default-task-run-workspace-binding"] = d.DefaultTaskRunWorkspaceBinding
-	}
-	if len(d.DefaultForbiddenEnv) > 0 {
-		m["default-forbidden-env"] = strings.Join(d.DefaultForbiddenEnv, ",")
-	}
-	if d.DefaultPodTemplate != nil {
-		setYAMLValue(m, "default-pod-template", d.DefaultPodTemplate)
-	}
-	if d.DefaultAAPodTemplate != nil {
-		setYAMLValue(m, "default-affinity-assistant-pod-template", d.DefaultAAPodTemplate)
-	}
-	if len(d.DefaultContainerResourceRequirements) > 0 {
-		setYAMLValue(m, "default-container-resource-requirements", d.DefaultContainerResourceRequirements)
-	}
-	return m
-}
-
-func setYAMLValue(m map[string]string, key string, value interface{}) {
-	if value == nil {
+	if len(overridden) == 0 {
 		return
 	}
-	if data, err := yaml.Marshal(value); err == nil {
-		m[key] = string(data)
-	}
+	sort.Strings(overridden)
+	logger.Infof("Applying namespace config for %q: overriding %s fields: %s", namespace, configMap, strings.Join(overridden, ", "))
 }
 
-// configToFeatureFlagsMap converts a FeatureFlags struct back to a map[string]string for merging.
-func configToFeatureFlagsMap(f *config.FeatureFlags) map[string]string {
-	if f == nil {
+func configToDefaultsMap(defaults *config.Defaults) (map[string]string, error) {
+	if defaults == nil {
+		return map[string]string{}, nil
+	}
+	result := map[string]string{
+		defaultTimeoutMinutesKey:              strconv.Itoa(defaults.DefaultTimeoutMinutes),
+		defaultServiceAccountKey:              defaults.DefaultServiceAccount,
+		defaultManagedByLabelValueKey:         defaults.DefaultManagedByLabelValue,
+		defaultCloudEventsSinkKey:             defaults.DefaultCloudEventsSink,
+		defaultMaxMatrixCombinationsCountKey:  strconv.Itoa(defaults.DefaultMaxMatrixCombinationsCount),
+		defaultResolverTypeKey:                defaults.DefaultResolverType,
+		defaultImagePullBackOffTimeoutKey:     defaults.DefaultImagePullBackOffTimeout.String(),
+		defaultCreateContainerErrorTimeoutKey: defaults.DefaultCreateContainerErrorTimeout.String(),
+		defaultMaximumResolutionTimeoutKey:    defaults.DefaultMaximumResolutionTimeout.String(),
+		defaultSidecarLogPollingIntervalKey:   defaults.DefaultSidecarLogPollingInterval.String(),
+		defaultStepRefConcurrencyLimitKey:     strconv.Itoa(defaults.DefaultStepRefConcurrencyLimit),
+	}
+	if defaults.DefaultTaskRunWorkspaceBinding != "" {
+		result[defaultTaskRunWorkspaceBindingKey] = defaults.DefaultTaskRunWorkspaceBinding
+	}
+	if len(defaults.DefaultForbiddenEnv) > 0 {
+		result[defaultForbiddenEnvKey] = strings.Join(defaults.DefaultForbiddenEnv, ",")
+	}
+	if defaults.DefaultPodTemplate != nil {
+		if err := setYAMLValue(result, defaultPodTemplateKey, defaults.DefaultPodTemplate); err != nil {
+			return nil, err
+		}
+	}
+	if defaults.DefaultAAPodTemplate != nil {
+		if err := setYAMLValue(result, defaultAAPodTemplateKey, defaults.DefaultAAPodTemplate); err != nil {
+			return nil, err
+		}
+	}
+	if len(defaults.DefaultContainerResourceRequirements) > 0 {
+		if err := setYAMLValue(result, defaultContainerResourceRequirementsKey, defaults.DefaultContainerResourceRequirements); err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func setYAMLValue[T *pod.Template | *pod.AffinityAssistantTemplate | map[string]corev1.ResourceRequirements](values map[string]string, key string, value T) error {
+	data, err := yaml.Marshal(value)
+	if err != nil {
+		return fmt.Errorf("marshal %s: %w", key, err)
+	}
+	values[key] = string(data)
+	return nil
+}
+
+func configToFeatureFlagsMap(flags *config.FeatureFlags) map[string]string {
+	if flags == nil {
 		return map[string]string{}
 	}
-	return map[string]string{
-		"disable-creds-init":                             strconv.FormatBool(f.DisableCredsInit),
-		"running-in-environment-with-injected-sidecars":  strconv.FormatBool(f.RunningInEnvWithInjectedSidecars),
-		"require-git-ssh-secret-known-hosts":             strconv.FormatBool(f.RequireGitSSHSecretKnownHosts),
-		"enable-api-fields":                              f.EnableAPIFields,
-		"send-cloudevents-for-runs":                      strconv.FormatBool(f.SendCloudEventsForRuns),
-		"await-sidecar-readiness":                        strconv.FormatBool(f.AwaitSidecarReadiness),
-		enforceNonfalsifiabilityKey:                      f.EnforceNonfalsifiability,
-		"trusted-resources-verification-no-match-policy": f.VerificationNoMatchPolicy,
-		"enable-provenance-in-status":                    strconv.FormatBool(f.EnableProvenanceInStatus),
-		"results-from":                                   f.ResultExtractionMethod,
-		maxResultSizeKey:                                 strconv.FormatInt(int64(f.MaxResultSize), 10),
-		setSecurityContextKey:                            strconv.FormatBool(f.SetSecurityContext),
-		"set-security-context-read-only-root-filesystem": strconv.FormatBool(f.SetSecurityContextReadOnlyRootFilesystem),
-		coscheduleKey:                                    f.Coschedule,
-		"keep-pod-on-cancel":                             strconv.FormatBool(f.EnableKeepPodOnCancel),
-		enableCELInWhenExpressionKey:                     strconv.FormatBool(f.EnableCELInWhenExpression),
-		enableStepActionsKey:                             strconv.FormatBool(f.EnableStepActions),
-		"enable-artifacts":                               strconv.FormatBool(f.EnableArtifacts),
-		"enable-param-enum":                              strconv.FormatBool(f.EnableParamEnum),
-		"disable-inline-spec":                            f.DisableInlineSpec,
-		"enable-concise-resolver-syntax":                 strconv.FormatBool(f.EnableConciseResolverSyntax),
-		"enable-kubernetes-sidecar":                      strconv.FormatBool(f.EnableKubernetesSidecar),
-		"enable-wait-exponential-backoff":                strconv.FormatBool(f.EnableWaitExponentialBackoff),
-		"enable-termination-message-compression":         strconv.FormatBool(f.EnableTerminationMessageCompression),
+	result := map[string]string{
+		disableCredsInitKey:                         strconv.FormatBool(flags.DisableCredsInit),
+		runningInEnvWithInjectedSidecarsKey:         strconv.FormatBool(flags.RunningInEnvWithInjectedSidecars),
+		requireGitSSHSecretKnownHostsKey:            strconv.FormatBool(flags.RequireGitSSHSecretKnownHosts),
+		enableAPIFieldsKey:                          flags.EnableAPIFields,
+		sendCloudEventsForRunsKey:                   strconv.FormatBool(flags.SendCloudEventsForRuns),
+		awaitSidecarReadinessKey:                    strconv.FormatBool(flags.AwaitSidecarReadiness),
+		enforceNonfalsifiabilityKey:                 flags.EnforceNonfalsifiability,
+		verificationNoMatchPolicyKey:                flags.VerificationNoMatchPolicy,
+		enableProvenanceInStatusKey:                 strconv.FormatBool(flags.EnableProvenanceInStatus),
+		resultsFromKey:                              flags.ResultExtractionMethod,
+		maxResultSizeKey:                            strconv.Itoa(flags.MaxResultSize),
+		setSecurityContextKey:                       strconv.FormatBool(flags.SetSecurityContext),
+		setSecurityContextReadOnlyRootFilesystemKey: strconv.FormatBool(flags.SetSecurityContextReadOnlyRootFilesystem),
+		coscheduleKey:                               flags.Coschedule,
+		keepPodOnCancelKey:                          strconv.FormatBool(flags.EnableKeepPodOnCancel),
+		enableCELInWhenExpressionKey:                strconv.FormatBool(flags.EnableCELInWhenExpression),
+		enableStepActionsKey:                        strconv.FormatBool(flags.EnableStepActions),
+		enableArtifactsKey:                          strconv.FormatBool(flags.EnableArtifacts),
+		enableParamEnumKey:                          strconv.FormatBool(flags.EnableParamEnum),
+		disableInlineSpecKey:                        flags.DisableInlineSpec,
+		enableConciseResolverSyntaxKey:              strconv.FormatBool(flags.EnableConciseResolverSyntax),
+		enableKubernetesSidecarKey:                  strconv.FormatBool(flags.EnableKubernetesSidecar),
+		enableWaitExponentialBackoffKey:             strconv.FormatBool(flags.EnableWaitExponentialBackoff),
+		enableTerminationMessageCompressionKey:      strconv.FormatBool(flags.EnableTerminationMessageCompression),
+		perNamespaceConfigurationKey:                strconv.FormatBool(flags.PerNamespaceConfiguration),
+		nonOverridableFieldsKey:                     flags.NonOverridableFields,
 	}
+	if flags.DeprecatedEnableTektonOCIBundles != nil {
+		result[deprecatedEnableTektonOCIBundlesKey] = strconv.FormatBool(*flags.DeprecatedEnableTektonOCIBundles)
+	}
+	return result
 }
