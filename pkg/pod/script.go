@@ -179,9 +179,15 @@ func placeScriptInContainer(script, scriptFile string, c *corev1.Container, init
 	// script file in a known location in the scripts volume.
 	if requiresWindows {
 		command, args, script, scriptFile := extractWindowsScriptComponents(script, scriptFile)
-		initContainer.Args[1] += fmt.Sprintf(`@"
+		// A literal here-string (@'...'@) is the PowerShell equivalent of the
+		// single-quoted heredoc used for Linux below: the script is written out
+		// verbatim, with no variable expansion, and only a line consisting of
+		// '@ ends it. An expandable here-string (@"..."@) would both expand the
+		// script's own variables and let a line of "@ end it early, leaving the
+		// rest of the script to run as commands in the init container.
+		initContainer.Args[1] += fmt.Sprintf(`@'
 %s
-"@ | Out-File -FilePath %s
+'@ | Out-File -FilePath %s
 `, script, scriptFile)
 
 		c.Command = command
