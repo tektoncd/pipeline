@@ -122,7 +122,7 @@ const (
 	// DefaultEnableTerminationMessageCompression is the default value for EnableTerminationMessageCompression
 	DefaultEnableTerminationMessageCompression = false
 
-	// PerNamespaceConfigurationKey is the flag to enable per-namespace configuration overrides (TEP-0085).
+	// PerNamespaceConfigurationKey enables per-namespace configuration overrides.
 	PerNamespaceConfigurationKey = "per-namespace-configuration"
 	// DefaultPerNamespaceConfiguration is the default value for per-namespace-configuration.
 	DefaultPerNamespaceConfiguration = false
@@ -243,7 +243,7 @@ type FeatureFlags struct {
 	EnableWaitExponentialBackoff        bool   `json:"enableWaitExponentialBackoff,omitempty"`
 	EnableTerminationMessageCompression bool   `json:"enableTerminationMessageCompression,omitempty"`
 	// PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
-	// are honored (TEP-0085). Default: false.
+	// are honored. Default: false.
 	PerNamespaceConfiguration bool `json:"perNamespaceConfiguration,omitempty"`
 	// NonOverridableFields is a comma-separated list of additional fields that operators
 	// can lock from being overridden per namespace.
@@ -365,7 +365,7 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 
-	// TEP-0085: Per-namespace configuration fields
+	// Per-namespace configuration fields
 	if err := setFeature(PerNamespaceConfigurationKey, DefaultPerNamespaceConfiguration, &tc.PerNamespaceConfiguration); err != nil {
 		return nil, err
 	}

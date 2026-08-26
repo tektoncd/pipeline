@@ -178,7 +178,7 @@ type Reconciler struct {
 	pvcHandler               volumeclaim.PvcHandler
 	resolutionRequester      resolution.Requester
 	tracerProvider           trace.TracerProvider
-	namespaceConfigCache     *nsconfig.NamespaceConfigCache
+	perNamespaceConfig       *nsconfig.PerNamespaceConfig
 }
 
 var (
@@ -192,7 +192,11 @@ var (
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) (reconcileErr pkgreconciler.Event) {
 	logger := logging.FromContext(ctx)
-	ctx = nsconfig.WithNamespaceConfig(ctx, c.namespaceConfigCache, pr.Namespace, logger)
+	if mergedCtx, err := c.perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, pr.Namespace); err != nil {
+		logger.Warnf("namespace config for %q: %v", pr.Namespace, err)
+	} else {
+		ctx = mergedCtx
+	}
 	ctx, rootSpan := initTracing(ctx, c.tracerProvider, pr)
 	defer rootSpan.End()
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "PipelineRun:ReconcileKind")

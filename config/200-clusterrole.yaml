@@ -84,10 +84,7 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 rules:
-  # TEP-0085: Read namespace-scoped ConfigMaps for per-namespace configuration.
-  # The webhook runs a cluster-scoped ConfigMap informer filtered by label
-  # (tekton.dev/pipeline-config=true). K8s RBAC does not support scoping
-  # list/watch by resourceNames, so broad list/watch is required.
+  # Read namespace-scoped ConfigMaps for per-namespace configuration.
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get", "list", "watch"]

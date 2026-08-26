@@ -157,11 +157,7 @@ data:
   enable-informer-cache-transforms: "true"
   # Setting this flag to "true" enables namespace-scoped ConfigMap overrides for a
   # limited set of TaskRun/PipelineRun defaulting and validation fields from
-  # config-defaults and feature-flags. Namespace administrators can create ConfigMaps
-  # named "tekton-config-defaults" and "tekton-feature-flags" with labels:
-  #   app.kubernetes.io/part-of: tekton-pipelines
-  #   tekton.dev/pipeline-config: "true"
-  # to override supported configuration fields for their namespace.
+  # config-defaults and feature-flags.
   # Default: "false" (namespace overrides are ignored).
   per-namespace-configuration: "false"
   # Comma-separated list of additional supported fields that operators can lock from

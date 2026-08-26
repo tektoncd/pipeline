@@ -389,6 +389,22 @@ func getRunName(tr *v1.TaskRun) string {
 	return strings.Join([]string{tr.Namespace, tr.Name}, "/")
 }
 
+func assertClientActions(t *testing.T, actions []ktesting.Action, expected [][2]string) {
+	t.Helper()
+	for _, want := range expected {
+		found := false
+		for _, action := range actions {
+			if action.Matches(want[0], want[1]) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("missing %s %s action; got %#v", want[0], want[1], actions)
+		}
+	}
+}
+
 // getTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
@@ -1571,6 +1587,7 @@ spec:
 			testAssets, cancel := getTaskRunController(t, d)
 			defer cancel()
 			c := testAssets.Controller
+			clients := testAssets.Clients
 			reconcileErr := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun))
 
 			// When a TaskRun is invalid and can't run, we return a permanent error because
@@ -1582,6 +1599,8 @@ spec:
 			if !controller.IsPermanentError(reconcileErr) {
 				t.Fatalf("Expected to see a permanent error when reconciling invalid TaskRun, got %s instead", reconcileErr)
 			}
+
+			assertClientActions(t, clients.Kube.Actions(), [][2]string{{"list", "configmaps"}, {"watch", "configmaps"}})
 
 			err := k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
 			if !(err == nil) {
@@ -2434,6 +2453,8 @@ status:
 	if reconcileErr != nil {
 		t.Fatalf("Expected to see no error when reconciling TaskRun with Permanent Error but was not none")
 	}
+
+	assertClientActions(t, clients.Kube.Actions(), [][2]string{{"list", "configmaps"}, {"watch", "configmaps"}})
 
 	newTr, err := clients.Pipeline.TektonV1().TaskRuns(noTaskRun.Namespace).Get(t.Context(), noTaskRun.Name, metav1.GetOptions{})
 	if err != nil {
