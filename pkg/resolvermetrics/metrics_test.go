@@ -259,7 +259,10 @@ func TestRecordCacheMiss(t *testing.T) {
 		t.Fatal("cache_miss_total not found")
 	}
 	sum := cacheMiss.Data.(metricdata.Sum[int64])
-	if len(sum.DataPoints) == 0 || sum.DataPoints[0].Value != 1 {
+	if len(sum.DataPoints) == 0 {
+		t.Fatal("cache miss has no data points")
+	}
+	if sum.DataPoints[0].Value != 1 {
 		t.Errorf("expected cache miss count 1, got %d", sum.DataPoints[0].Value)
 	}
 }
@@ -282,7 +285,10 @@ func TestRecordSingleflightDedup(t *testing.T) {
 		t.Fatal("singleflight_dedup_total not found")
 	}
 	sum := dedup.Data.(metricdata.Sum[int64])
-	if len(sum.DataPoints) == 0 || sum.DataPoints[0].Value != 2 {
+	if len(sum.DataPoints) == 0 {
+		t.Fatal("singleflight dedup has no data points")
+	}
+	if sum.DataPoints[0].Value != 2 {
 		t.Errorf("expected singleflight dedup count 2, got %d", sum.DataPoints[0].Value)
 	}
 }

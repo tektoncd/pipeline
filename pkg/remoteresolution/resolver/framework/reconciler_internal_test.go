@@ -21,10 +21,21 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	rrfake "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/fake"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"github.com/tektoncd/pipeline/pkg/resolvermetrics"
+	"go.opentelemetry.io/otel"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	k8stesting "k8s.io/client-go/testing"
+	clock "k8s.io/utils/clock/testing"
 )
 
 type testResolvedResource struct {
@@ -45,7 +56,7 @@ func TestResolutionMetricStatus(t *testing.T) {
 		{name: "wrapped deadline", err: fmt.Errorf("resolver: %w", context.DeadlineExceeded), want: resolvermetrics.StatusTimeout},
 		{name: "canceled", err: context.Canceled, want: ""},
 		{name: "invalid request", err: &resolutioncommon.InvalidRequestError{ResolutionRequestKey: "ns/name", Message: "bad param"}, want: resolvermetrics.StatusInvalidRequest},
-		{name: "transient", err: errors.New("etcdserver: leader changed"), want: ""},
+		{name: "transient", err: errors.New("etcdserver: leader changed"), want: resolvermetrics.StatusError},
 		{name: "generic", err: errors.New("boom"), want: resolvermetrics.StatusError},
 	}
 
@@ -56,6 +67,73 @@ func TestResolutionMetricStatus(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestResolveRecordsWriteFailureAsError(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	oldProvider := otel.GetMeterProvider()
+	otel.SetMeterProvider(provider)
+	defer func() {
+		otel.SetMeterProvider(oldProvider)
+		_ = provider.Shutdown(context.Background())
+	}()
+
+	recorder, err := resolvermetrics.NewRecorder()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rr := &v1beta1.ResolutionRequest{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "request",
+			Namespace: "test",
+			Labels: map[string]string{
+				resolutioncommon.LabelKeyResolverType: resolutionframework.LabelValueFakeResolverType,
+			},
+		},
+		Spec: v1beta1.ResolutionRequestSpec{Params: []pipelinev1.Param{{
+			Name:  resolutionframework.FakeParamName,
+			Value: *pipelinev1.NewStructuredValues("resource"),
+		}}},
+	}
+	client := rrfake.NewSimpleClientset(rr)
+	client.PrependReactor("patch", "resolutionrequests", func(k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.New("patch failed")
+	})
+	r := &Reconciler{
+		Clock: clock.NewFakePassiveClock(time.Unix(0, 0)),
+		resolver: &FakeResolver{ForParam: map[string]*resolutionframework.FakeResolvedResource{
+			"resource": {Content: `apiVersion: tekton.dev/v1
+kind: Pipeline`},
+		}},
+		resolutionRequestClientSet: client,
+		metrics:                    recorder,
+	}
+
+	if err := r.resolve(context.Background(), "test/request", rr); err == nil {
+		t.Fatal("resolve() succeeded, want patch error")
+	}
+	var metrics metricdata.ResourceMetrics
+	if err := reader.Collect(context.Background(), &metrics); err != nil {
+		t.Fatal(err)
+	}
+	for _, scope := range metrics.ScopeMetrics {
+		for _, metric := range scope.Metrics {
+			if metric.Name != "tekton_pipelines_resolver_resolution_total" {
+				continue
+			}
+			sum := metric.Data.(metricdata.Sum[int64])
+			if len(sum.DataPoints) != 1 {
+				t.Fatalf("resolution metric has %d data points, want 1", len(sum.DataPoints))
+			}
+			status, _ := sum.DataPoints[0].Attributes.Value("status")
+			if got := status.AsString(); got != resolvermetrics.StatusError {
+				t.Fatalf("resolution status = %q, want %q", got, resolvermetrics.StatusError)
+			}
+			return
+		}
+	}
+	t.Fatal("resolution metric not found")
 }
 
 func TestResolvedResourceKind(t *testing.T) {

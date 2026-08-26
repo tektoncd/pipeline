@@ -214,9 +214,13 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 			return r.OnError(ctx, rr, err)
 		}
 	case resource := <-resourceChan:
-		metricsStatus = resolvermetrics.StatusSuccess
 		resourceKind = resolvedResourceKind(resource)
-		return r.writeResolvedData(ctx, rr, resource)
+		if err := r.writeResolvedData(ctx, rr, resource); err != nil {
+			metricsStatus = resolutionMetricStatus(err)
+			return err
+		}
+		metricsStatus = resolvermetrics.StatusSuccess
+		return nil
 	}
 
 	return errors.New("unknown error")
@@ -299,7 +303,7 @@ func resolutionMetricStatus(err error) string {
 	case isInvalidRequestError(err):
 		return resolvermetrics.StatusInvalidRequest
 	case resolutioncommon.IsErrTransient(err):
-		return ""
+		return resolvermetrics.StatusError
 	default:
 		return resolvermetrics.StatusError
 	}
