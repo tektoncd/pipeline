@@ -508,6 +508,7 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
 func (c *Reconciler) emitReconcileEvents(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "emitReconcileEvents")
 	defer span.End()
+	logger := logging.FromContext(ctx)
 
 	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
 	var rescheduleErr error
