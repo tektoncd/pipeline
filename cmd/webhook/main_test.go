@@ -66,7 +66,7 @@ func TestWithPerNamespaceConfig(t *testing.T) {
 		{name: "missing request"},
 		{name: "missing body", request: &http.Request{}},
 		{name: "body read error", request: &http.Request{Body: errorReadCloser{}}},
-		{name: "invalid JSON", request: httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString("{"))},
+		{name: "invalid JSON", request: httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewBufferString("{"))},
 		{name: "missing admission request", request: admissionReviewHTTPRequest(t, "", "", false)},
 		{name: "missing namespace", request: admissionReviewHTTPRequest(t, "", taskRunKind, true)},
 		{name: "Task", request: admissionReviewHTTPRequest(t, "team-alpha", "Task", true)},
