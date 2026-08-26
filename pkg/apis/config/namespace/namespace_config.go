@@ -65,7 +65,7 @@ const (
 
 	disableCredsInitKey                         = "disable-creds-init"
 	runningInEnvWithInjectedSidecarsKey         = "running-in-environment-with-injected-sidecars"
-	requireGitSSHSecretKnownHostsKey            = "require-git-ssh-secret-known-hosts"
+	requireGitSSHSecretKnownHostsKey            = "require-git-ssh-secret-known-hosts" //nolint:gosec
 	enableAPIFieldsKey                          = "enable-api-fields"
 	sendCloudEventsForRunsKey                   = "send-cloudevents-for-runs"
 	awaitSidecarReadinessKey                    = "await-sidecar-readiness"
