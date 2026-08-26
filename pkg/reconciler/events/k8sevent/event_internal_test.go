@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -65,4 +66,55 @@ func TestTraceAnnotations(t *testing.T) {
 			t.Errorf("traceparent = %q, want %q", got["traceparent"], want)
 		}
 	})
+}
+
+func TestTraceAnnotationsOmitsBaggage(t *testing.T) {
+	prev := otel.GetTextMapPropagator()
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+	t.Cleanup(func() { otel.SetTextMapPropagator(prev) })
+
+	traceID, err := trace.TraceIDFromHex("4bf92f3577b34da6a3ce929d0e0e4736")
+	if err != nil {
+		t.Fatalf("invalid trace id: %v", err)
+	}
+	spanID, err := trace.SpanIDFromHex("00f067aa0ba902b7")
+	if err != nil {
+		t.Fatalf("invalid span id: %v", err)
+	}
+	sc := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    traceID,
+		SpanID:     spanID,
+		TraceFlags: trace.FlagsSampled,
+		Remote:     true,
+	})
+	ctx := trace.ContextWithSpanContext(context.Background(), sc)
+
+	member, err := baggage.NewMember("userId", "alice")
+	if err != nil {
+		t.Fatalf("baggage member: %v", err)
+	}
+	bag, err := baggage.New(member)
+	if err != nil {
+		t.Fatalf("baggage: %v", err)
+	}
+	ctx = baggage.ContextWithBaggage(ctx, bag)
+
+	got := traceAnnotations(ctx)
+	if got == nil {
+		t.Fatal("expected annotations for a valid span context, got nil")
+	}
+	if _, ok := got["baggage"]; ok {
+		t.Fatalf("baggage must not be copied onto events, got %v", got)
+	}
+	if got["traceparent"] == "" {
+		t.Fatalf("expected traceparent, got %v", got)
+	}
+	for k := range got {
+		if k != "traceparent" && k != "tracestate" {
+			t.Fatalf("unexpected annotation key %q in %v", k, got)
+		}
+	}
 }

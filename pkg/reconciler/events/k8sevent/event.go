@@ -42,11 +42,11 @@ const (
 	EventReasonError = "Error"
 )
 
-// traceAnnotations extracts the trace context from ctx using the globally
-// configured OpenTelemetry propagator and returns it as event annotations.
-// Using the configured propagator (rather than formatting traceparent by hand)
-// keeps this consistent with the rest of Tekton's tracing setup and preserves
-// additional fields such as tracestate when the propagator emits them.
+// traceAnnotations extracts W3C trace context from ctx using the globally
+// configured OpenTelemetry propagator and returns only the traceparent and
+// tracestate keys as event annotations. Other propagator fields such as
+// baggage are intentionally omitted so Kubernetes Events stay limited to
+// trace correlation metadata.
 // It returns nil when no trace context is present, so callers fall back to
 // un-annotated events.
 func traceAnnotations(ctx context.Context) map[string]string {
@@ -55,10 +55,16 @@ func traceAnnotations(ctx context.Context) map[string]string {
 	}
 	carrier := propagation.MapCarrier{}
 	otel.GetTextMapPropagator().Inject(ctx, carrier)
-	if len(carrier) == 0 {
+	out := make(map[string]string, 2)
+	for _, key := range []string{"traceparent", "tracestate"} {
+		if v, ok := carrier[key]; ok && v != "" {
+			out[key] = v
+		}
+	}
+	if len(out) == 0 {
 		return nil
 	}
-	return carrier
+	return out
 }
 
 // emitEvent emits a Kubernetes event, attaching trace context annotations when
