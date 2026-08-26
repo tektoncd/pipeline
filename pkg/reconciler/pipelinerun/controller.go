@@ -91,13 +91,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		)
 		configStore.WatchConfigs(cmw)
 
-		// TEP-0085: Create filtered informer for per-namespace configuration.
-		// This watches only ConfigMaps labeled tekton.dev/pipeline-config=true
-		// across all namespaces, so no direct API calls are needed per namespace.
-		nsConfigFactory, nsConfigCMInformer := nsconfig.NewNamespaceConfigInformer(kubeclientset, nsconfig.DefaultResyncPeriod)
-		nsConfigFactory.Start(ctx.Done())
-		nsConfigFactory.WaitForCacheSync(ctx.Done())
-		nsConfigCache := nsconfig.NewNamespaceConfigCache(nsConfigCMInformer.Lister())
+		perNamespaceConfig := nsconfig.NewPerNamespaceConfig(ctx, kubeclientset)
 
 		c := &Reconciler{
 			KubeClientSet:            kubeclientset,
@@ -112,7 +106,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			pvcHandler:               volumeclaim.NewPVCHandler(kubeclientset, logger),
 			resolutionRequester:      resolution.NewCRDRequester(resolutionclient.Get(ctx), resolutionInformer.Lister()),
 			tracerProvider:           tracerProvider,
-			namespaceConfigCache:     nsConfigCache,
+			perNamespaceConfig:       perNamespaceConfig,
 		}
 		impl := pipelinerunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
 			return controller.Options{

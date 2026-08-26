@@ -2397,7 +2397,7 @@ spec:
                         perNamespaceConfiguration:
                           description: |-
                             PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
-                            are honored (TEP-0085). Default: false.
+                            are honored. Default: false.
                           type: boolean
                         requireGitSSHSecretKnownHosts:
                           type: boolean
@@ -2789,7 +2789,7 @@ spec:
                                   perNamespaceConfiguration:
                                     description: |-
                                       PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
-                                      are honored (TEP-0085). Default: false.
+                                      are honored. Default: false.
                                     type: boolean
                                   requireGitSSHSecretKnownHosts:
                                     type: boolean
@@ -3074,7 +3074,7 @@ spec:
                                         perNamespaceConfiguration:
                                           description: |-
                                             PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
-                                            are honored (TEP-0085). Default: false.
+                                            are honored. Default: false.
                                           type: boolean
                                         requireGitSSHSecretKnownHosts:
                                           type: boolean
@@ -5532,7 +5532,7 @@ spec:
                         perNamespaceConfiguration:
                           description: |-
                             PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
-                            are honored (TEP-0085). Default: false.
+                            are honored. Default: false.
                           type: boolean
                         requireGitSSHSecretKnownHosts:
                           type: boolean

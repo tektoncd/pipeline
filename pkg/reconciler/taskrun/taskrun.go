@@ -95,7 +95,7 @@ type Reconciler struct {
 	pvcHandler               volumeclaim.PvcHandler
 	resolutionRequester      resolution.Requester
 	tracerProvider           trace.TracerProvider
-	namespaceConfigCache     *nsconfig.NamespaceConfigCache
+	perNamespaceConfig       *nsconfig.PerNamespaceConfig
 
 	// Native-sidecar detection (ServerVersion + IsNativeSidecarSupport) when EnableKubernetesSidecar
 	// is set is memoized via sync.OnceValues after lazy init guarded by nativeSidecarOnce (#9755).
@@ -138,7 +138,11 @@ var (
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) (reconcileErr pkgreconciler.Event) {
 	logger := logging.FromContext(ctx)
-	ctx = nsconfig.WithNamespaceConfig(ctx, c.namespaceConfigCache, tr.Namespace, logger)
+	if mergedCtx, err := c.perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, tr.Namespace); err != nil {
+		logger.Warnf("namespace config for %q: %v", tr.Namespace, err)
+	} else {
+		ctx = mergedCtx
+	}
 	ctx, rootSpan := initTracing(ctx, c.tracerProvider, tr)
 	defer rootSpan.End()
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:ReconcileKind")

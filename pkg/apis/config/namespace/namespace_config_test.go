@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package namespace
+package namespace_test
 
 import (
 	"context"
@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	namespaceconfig "github.com/tektoncd/pipeline/pkg/apis/config/namespace"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"go.uber.org/zap/zaptest"
 	corev1 "k8s.io/api/core/v1"
@@ -30,336 +31,62 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+	"knative.dev/pkg/logging"
+	"knative.dev/pkg/system"
+	_ "knative.dev/pkg/system/testing"
 )
 
-// newTestCache creates a NamespaceConfigCache backed by a fake informer
-// seeded with the given ConfigMaps. The informer is started and synced
-// before returning.
-func newTestCache(t *testing.T, cms ...*corev1.ConfigMap) *NamespaceConfigCache {
+func newPerNamespaceConfig(t *testing.T, configMaps ...*corev1.ConfigMap) (*namespaceconfig.PerNamespaceConfig, *fakek8s.Clientset, context.Context) {
 	t.Helper()
-
-	runtimeObjs := make([]runtime.Object, len(cms))
-	for i, cm := range cms {
-		runtimeObjs[i] = cm
+	objects := make([]runtime.Object, len(configMaps))
+	for i, configMap := range configMaps {
+		objects[i] = configMap
 	}
-
-	kubeClient := fakek8s.NewSimpleClientset(runtimeObjs...)
-
-	factory, cmInformer := NewNamespaceConfigInformer(kubeClient, 0)
-	stopCh := make(chan struct{})
-	t.Cleanup(func() { close(stopCh) })
-	factory.Start(stopCh)
-	factory.WaitForCacheSync(stopCh)
-
-	return NewNamespaceConfigCache(cmInformer.Lister())
+	client := fakek8s.NewSimpleClientset(objects...)
+	ctx, cancel := context.WithCancel(logging.WithLogger(t.Context(), zaptest.NewLogger(t).Sugar()))
+	t.Cleanup(cancel)
+	return namespaceconfig.NewPerNamespaceConfig(ctx, client), client, ctx
 }
 
-func TestMergeConfigMaps(t *testing.T) {
-	logger := zaptest.NewLogger(t).Sugar()
-
-	tests := []struct {
-		name              string
-		globalData        map[string]string
-		namespaceData     map[string]string
-		overridableFields map[string]bool
-		operatorLocked    map[string]bool
-		expected          map[string]string
-	}{
-		{
-			name:              "no namespace overrides",
-			globalData:        map[string]string{"default-timeout-minutes": "60"},
-			namespaceData:     map[string]string{},
-			overridableFields: OverridableDefaultsFields,
-			expected:          map[string]string{"default-timeout-minutes": "60"},
-		},
-		{
-			name:              "override allowed field",
-			globalData:        map[string]string{"default-timeout-minutes": "60", "default-service-account": "default"},
-			namespaceData:     map[string]string{"default-timeout-minutes": "120"},
-			overridableFields: OverridableDefaultsFields,
-			expected:          map[string]string{"default-timeout-minutes": "120", "default-service-account": "default"},
-		},
-		{
-			name:              "block non-overridable field",
-			globalData:        map[string]string{"enforce-nonfalsifiability": "none"},
-			namespaceData:     map[string]string{"enforce-nonfalsifiability": "spire"},
-			overridableFields: OverridableFeatureFlagsFields,
-			expected:          map[string]string{"enforce-nonfalsifiability": "none"},
-		},
-		{
-			name:              "block operator-locked field",
-			globalData:        map[string]string{"coschedule": "workspaces"},
-			namespaceData:     map[string]string{"coschedule": "disabled"},
-			overridableFields: OverridableFeatureFlagsFields,
-			operatorLocked:    map[string]bool{"coschedule": true},
-			expected:          map[string]string{"coschedule": "workspaces"},
-		},
-		{
-			name:              "ignore unknown fields",
-			globalData:        map[string]string{"default-timeout-minutes": "60"},
-			namespaceData:     map[string]string{"unknown-field": "value"},
-			overridableFields: OverridableDefaultsFields,
-			expected:          map[string]string{"default-timeout-minutes": "60"},
-		},
-		{
-			name:              "skip _example key",
-			globalData:        map[string]string{"default-timeout-minutes": "60"},
-			namespaceData:     map[string]string{"_example": "foo", "default-timeout-minutes": "120"},
-			overridableFields: OverridableDefaultsFields,
-			expected:          map[string]string{"default-timeout-minutes": "120"},
-		},
-		{
-			name: "multiple overrides",
-			globalData: map[string]string{
-				"default-timeout-minutes": "60",
-				"default-service-account": "default",
-				"default-resolver-type":   "",
-			},
-			namespaceData: map[string]string{
-				"default-timeout-minutes": "120",
-				"default-service-account": "team-sa",
-			},
-			overridableFields: OverridableDefaultsFields,
-			expected: map[string]string{
-				"default-timeout-minutes": "120",
-				"default-service-account": "team-sa",
-				"default-resolver-type":   "",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := MergeConfigMaps(tt.globalData, tt.namespaceData, tt.overridableFields, tt.operatorLocked, logger)
-			if diff := cmp.Diff(tt.expected, got); diff != "" {
-				t.Errorf("MergeConfigMaps() mismatch (-want +got):\n%s", diff)
-			}
-		})
-	}
-}
-
-func TestParseOperatorLockedFields(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected map[string]bool
-	}{
-		{
-			name:     "empty string",
-			input:    "",
-			expected: nil,
-		},
-		{
-			name:  "single field",
-			input: "coschedule",
-			expected: map[string]bool{
-				"coschedule": true,
-			},
-		},
-		{
-			name:  "multiple fields",
-			input: "coschedule,enable-step-actions,max-result-size",
-			expected: map[string]bool{
-				"coschedule":          true,
-				"enable-step-actions": true,
-				"max-result-size":     true,
-			},
-		},
-		{
-			name:  "fields with spaces",
-			input: "coschedule , enable-step-actions",
-			expected: map[string]bool{
-				"coschedule":          true,
-				"enable-step-actions": true,
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := ParseOperatorLockedFields(tt.input)
-			if diff := cmp.Diff(tt.expected, got); diff != "" {
-				t.Errorf("ParseOperatorLockedFields() mismatch (-want +got):\n%s", diff)
-			}
-		})
-	}
-}
-
-func TestNamespaceConfigCache(t *testing.T) {
-	ctx := context.Background()
-
-	cm := &corev1.ConfigMap{
+func labeledConfigMap(namespace, name string, data map[string]string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      NamespaceFeatureFlagsConfigMapName,
-			Namespace: "team-alpha",
+			Name:      name,
+			Namespace: namespace,
 			Labels: map[string]string{
-				PartOfLabel:          PartOfValue,
-				NamespaceConfigLabel: "true",
+				"app.kubernetes.io/part-of":  "tekton-pipelines",
+				"tekton.dev/pipeline-config": "true",
 			},
 		},
-		Data: map[string]string{
-			"enable-cel-in-whenexpression": "true",
-		},
-	}
-
-	cache := newTestCache(t, cm)
-
-	// First access (lister lookup)
-	nsConfig := cache.Get(ctx, "team-alpha")
-	if nsConfig == nil {
-		t.Fatal("expected non-nil namespace config")
-	}
-	if nsConfig.RawFlags["enable-cel-in-whenexpression"] != "true" {
-		t.Errorf("expected enable-cel-in-whenexpression=true, got %q", nsConfig.RawFlags["enable-cel-in-whenexpression"])
-	}
-
-	// System namespace
-	nsConfig3 := cache.Get(ctx, "tekton-pipelines")
-	if nsConfig3 != nil {
-		t.Error("expected nil for system namespace")
-	}
-
-	// Namespace with no config
-	nsConfig4 := cache.Get(ctx, "no-config-ns")
-	if nsConfig4 != nil {
-		t.Error("expected nil for namespace without config")
+		Data: data,
 	}
 }
 
-func TestNamespaceConfigCacheInformerUpdate(t *testing.T) {
-	ctx := context.Background()
-
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      NamespaceFeatureFlagsConfigMapName,
-			Namespace: "team-alpha",
-			Labels: map[string]string{
-				PartOfLabel:          PartOfValue,
-				NamespaceConfigLabel: "true",
-			},
-		},
-		Data: map[string]string{
-			"enable-cel-in-whenexpression": "true",
-		},
-	}
-
-	kubeClient := fakek8s.NewSimpleClientset(cm)
-	factory, cmInformer := NewNamespaceConfigInformer(kubeClient, 0)
-	stopCh := make(chan struct{})
-	defer close(stopCh)
-	factory.Start(stopCh)
-	factory.WaitForCacheSync(stopCh)
-
-	cache := NewNamespaceConfigCache(cmInformer.Lister())
-
-	// Verify initial state
-	nsConfig := cache.Get(ctx, "team-alpha")
-	if nsConfig == nil || nsConfig.RawFlags["enable-cel-in-whenexpression"] != "true" {
-		t.Fatal("expected enable-cel-in-whenexpression=true initially")
-	}
-
-	// Update the ConfigMap via the client
-	cm.Data["enable-cel-in-whenexpression"] = "false"
-	if _, err := kubeClient.CoreV1().ConfigMaps("team-alpha").Update(ctx, cm, metav1.UpdateOptions{}); err != nil {
-		t.Fatalf("failed to update ConfigMap: %v", err)
-	}
-
-	// Wait for informer to sync (with a short timeout)
-	deadline := time.After(5 * time.Second)
-	for {
-		nsConfig = cache.Get(ctx, "team-alpha")
-		if nsConfig != nil && nsConfig.RawFlags["enable-cel-in-whenexpression"] == "false" {
-			break
-		}
-		select {
-		case <-deadline:
-			t.Fatal("timed out waiting for informer to sync updated ConfigMap")
-		case <-time.After(100 * time.Millisecond):
-			// retry
-		}
-	}
-}
-
-func TestWithNamespaceConfig(t *testing.T) {
-	logger := zaptest.NewLogger(t).Sugar()
-
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      NamespaceDefaultsConfigMapName,
-			Namespace: "team-alpha",
-			Labels: map[string]string{
-				PartOfLabel:          PartOfValue,
-				NamespaceConfigLabel: "true",
-			},
-		},
-		Data: map[string]string{
-			"default-timeout-minutes": "120",
-			"default-service-account": "team-alpha-sa",
-		},
-	}
-
-	cache := newTestCache(t, cm)
-
-	// Create context with per-namespace-configuration enabled
+func enabledConfigContext(ctx context.Context) (context.Context, *config.Config) {
 	cfg := &config.Config{
 		Defaults:     config.DefaultConfig.DeepCopy(),
 		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
 	}
 	cfg.FeatureFlags.PerNamespaceConfiguration = true
-	ctx := config.ToContext(context.Background(), cfg)
-
-	// Apply namespace config
-	ctx = WithNamespaceConfig(ctx, cache, "team-alpha", logger)
-
-	// Verify merged config
-	mergedCfg := config.FromContext(ctx)
-	if mergedCfg == nil {
-		t.Fatal("expected non-nil config from context")
-	}
-	if mergedCfg.Defaults.DefaultTimeoutMinutes != 120 {
-		t.Errorf("expected DefaultTimeoutMinutes=120, got %d", mergedCfg.Defaults.DefaultTimeoutMinutes)
-	}
-	if mergedCfg.Defaults.DefaultServiceAccount != "team-alpha-sa" {
-		t.Errorf("expected DefaultServiceAccount=team-alpha-sa, got %q", mergedCfg.Defaults.DefaultServiceAccount)
-	}
+	return config.ToContext(ctx, cfg), cfg
 }
 
-func TestWithNamespaceConfigPreservesClusterConfig(t *testing.T) {
-	logger := zaptest.NewLogger(t).Sugar()
-
-	defaultsCM := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      NamespaceDefaultsConfigMapName,
-			Namespace: "team-alpha",
-			Labels: map[string]string{
-				PartOfLabel:          PartOfValue,
-				NamespaceConfigLabel: "true",
-			},
-		},
-		Data: map[string]string{
-			"default-timeout-minutes": "120",
-		},
-	}
-	flagsCM := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      NamespaceFeatureFlagsConfigMapName,
-			Namespace: "team-alpha",
-			Labels: map[string]string{
-				PartOfLabel:          PartOfValue,
-				NamespaceConfigLabel: "true",
-			},
-		},
-		Data: map[string]string{
-			"enable-cel-in-whenexpression": "true",
-		},
-	}
-	cache := newTestCache(t, defaultsCM, flagsCM)
-
-	cfg := &config.Config{
-		Defaults:     config.DefaultConfig.DeepCopy(),
-		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
-	}
-	cfg.FeatureFlags.PerNamespaceConfiguration = true
+func TestMergeGlobalConfigWithLocal(t *testing.T) {
+	defaults := labeledConfigMap("team-a", "tekton-config-defaults", map[string]string{
+		"default-timeout-minutes": "120",
+		"default-service-account": "team-a-sa",
+		"default-resolver-type":   "ignored",
+		"unknown-default":         "ignored",
+	})
+	flags := labeledConfigMap("team-a", "tekton-feature-flags", map[string]string{
+		"enable-cel-in-whenexpression": "true",
+		"coschedule":                   "isolate-pipelinerun",
+		"set-security-context":         "true",
+		"unknown-flag":                 "true",
+	})
+	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, defaults, flags)
+	ctx, cfg := enabledConfigContext(baseCtx)
+	cfg.FeatureFlags.NonOverridableFields = " coschedule "
 	cfg.FeatureFlags.EnableTerminationMessageCompression = true
 	cfg.Defaults.DefaultPodTemplate = &pod.Template{NodeSelector: map[string]string{"disk": "ssd"}}
 	cfg.Defaults.DefaultAAPodTemplate = &pod.AffinityAssistantTemplate{NodeSelector: map[string]string{"zone": "west"}}
@@ -369,211 +96,143 @@ func TestWithNamespaceConfigPreservesClusterConfig(t *testing.T) {
 		},
 	}
 
-	ctx := WithNamespaceConfig(config.ToContext(context.Background(), cfg), cache, "team-alpha", logger)
-	mergedCfg := config.FromContext(ctx)
-	if mergedCfg.Defaults.DefaultTimeoutMinutes != 120 {
-		t.Errorf("expected DefaultTimeoutMinutes=120, got %d", mergedCfg.Defaults.DefaultTimeoutMinutes)
+	mergedCtx, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, "team-a")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if diff := cmp.Diff(cfg.Defaults.DefaultPodTemplate, mergedCfg.Defaults.DefaultPodTemplate); diff != "" {
-		t.Errorf("DefaultPodTemplate was not preserved: %s", diff)
+	merged := config.FromContext(mergedCtx)
+	if merged.Defaults.DefaultTimeoutMinutes != 120 || merged.Defaults.DefaultServiceAccount != "team-a-sa" {
+		t.Fatalf("namespace defaults were not applied: %#v", merged.Defaults)
 	}
-	if diff := cmp.Diff(cfg.Defaults.DefaultAAPodTemplate, mergedCfg.Defaults.DefaultAAPodTemplate); diff != "" {
-		t.Errorf("DefaultAAPodTemplate was not preserved: %s", diff)
+	if !merged.FeatureFlags.EnableCELInWhenExpression {
+		t.Error("namespace feature flag was not applied")
 	}
-	if diff := cmp.Diff(cfg.Defaults.DefaultContainerResourceRequirements, mergedCfg.Defaults.DefaultContainerResourceRequirements); diff != "" {
-		t.Errorf("DefaultContainerResourceRequirements was not preserved: %s", diff)
+	if merged.FeatureFlags.Coschedule != cfg.FeatureFlags.Coschedule {
+		t.Error("operator-locked field was overridden")
 	}
-	if !mergedCfg.FeatureFlags.EnableTerminationMessageCompression {
-		t.Error("expected EnableTerminationMessageCompression to remain true")
+	if merged.FeatureFlags.SetSecurityContext != cfg.FeatureFlags.SetSecurityContext {
+		t.Error("blocked security field was overridden")
 	}
-}
-
-func TestWithNamespaceConfigDisabled(t *testing.T) {
-	logger := zaptest.NewLogger(t).Sugar()
-
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      NamespaceDefaultsConfigMapName,
-			Namespace: "team-alpha",
-			Labels: map[string]string{
-				PartOfLabel:          PartOfValue,
-				NamespaceConfigLabel: "true",
-			},
-		},
-		Data: map[string]string{
-			"default-timeout-minutes": "120",
-		},
+	if merged.Defaults.DefaultResolverType != cfg.Defaults.DefaultResolverType {
+		t.Error("unsupported default was overridden")
 	}
-
-	cache := newTestCache(t, cm)
-
-	// Create context with per-namespace-configuration DISABLED (default)
-	cfg := &config.Config{
-		Defaults:     config.DefaultConfig.DeepCopy(),
-		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
+	if diff := cmp.Diff(cfg.Defaults.DefaultPodTemplate, merged.Defaults.DefaultPodTemplate); diff != "" {
+		t.Errorf("pod template changed (-want +got):\n%s", diff)
 	}
-	ctx := config.ToContext(context.Background(), cfg)
-
-	// Apply namespace config - should be a no-op
-	ctx = WithNamespaceConfig(ctx, cache, "team-alpha", logger)
-
-	mergedCfg := config.FromContext(ctx)
-	if mergedCfg.Defaults.DefaultTimeoutMinutes != 60 {
-		t.Errorf("expected DefaultTimeoutMinutes=60 (not overridden), got %d", mergedCfg.Defaults.DefaultTimeoutMinutes)
+	if diff := cmp.Diff(cfg.Defaults.DefaultAAPodTemplate, merged.Defaults.DefaultAAPodTemplate); diff != "" {
+		t.Errorf("affinity assistant template changed (-want +got):\n%s", diff)
+	}
+	if diff := cmp.Diff(cfg.Defaults.DefaultContainerResourceRequirements, merged.Defaults.DefaultContainerResourceRequirements); diff != "" {
+		t.Errorf("container resources changed (-want +got):\n%s", diff)
+	}
+	if !merged.FeatureFlags.EnableTerminationMessageCompression || !merged.FeatureFlags.PerNamespaceConfiguration || merged.FeatureFlags.NonOverridableFields != " coschedule " {
+		t.Error("cluster feature flags were not preserved")
 	}
 }
 
-func TestWithNamespaceConfigInvalidNamespaceValuesFallBackToClusterConfig(t *testing.T) {
-	logger := zaptest.NewLogger(t).Sugar()
+func TestMergeGlobalConfigWithLocalNoOp(t *testing.T) {
+	valid := labeledConfigMap("team-a", "tekton-config-defaults", map[string]string{"default-timeout-minutes": "120"})
+	missingPartOf := valid.DeepCopy()
+	missingPartOf.Namespace = "missing-label"
+	delete(missingPartOf.Labels, "app.kubernetes.io/part-of")
+	missingSelector := valid.DeepCopy()
+	missingSelector.Namespace = "missing-selector"
+	delete(missingSelector.Labels, "tekton.dev/pipeline-config")
+	systemConfig := valid.DeepCopy()
+	systemConfig.Namespace = system.Namespace()
+	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, valid, missingPartOf, missingSelector, systemConfig)
 
-	cache := newTestCache(t,
-		&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      NamespaceDefaultsConfigMapName,
-				Namespace: "team-alpha",
-				Labels: map[string]string{
-					PartOfLabel:          PartOfValue,
-					NamespaceConfigLabel: "true",
-				},
-			},
-			Data: map[string]string{
+	tests := []struct {
+		name      string
+		namespace string
+		enabled   bool
+	}{
+		{name: "disabled", namespace: "team-a"},
+		{name: "missing config", namespace: "missing", enabled: true},
+		{name: "missing part-of label", namespace: "missing-label", enabled: true},
+		{name: "missing selector label", namespace: "missing-selector", enabled: true},
+		{name: "system namespace", namespace: system.Namespace(), enabled: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &config.Config{Defaults: config.DefaultConfig.DeepCopy(), FeatureFlags: config.DefaultFeatureFlags.DeepCopy()}
+			cfg.FeatureFlags.PerNamespaceConfiguration = tt.enabled
+			ctx := config.ToContext(baseCtx, cfg)
+			mergedCtx, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, tt.namespace)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := config.FromContext(mergedCtx).Defaults.DefaultTimeoutMinutes; got != config.DefaultTimeoutMinutes {
+				t.Fatalf("timeout = %d, want %d", got, config.DefaultTimeoutMinutes)
+			}
+		})
+	}
+}
+
+func TestMergeGlobalConfigWithLocalReturnsParseErrors(t *testing.T) {
+	tests := []struct {
+		name      string
+		configMap *corev1.ConfigMap
+	}{
+		{
+			name: "defaults",
+			configMap: labeledConfigMap("team-a", "tekton-config-defaults", map[string]string{
 				"default-timeout-minutes": "not-an-int",
-				"default-service-account": "team-alpha-sa",
-			},
+			}),
 		},
-		&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      NamespaceFeatureFlagsConfigMapName,
-				Namespace: "team-alpha",
-				Labels: map[string]string{
-					PartOfLabel:          PartOfValue,
-					NamespaceConfigLabel: "true",
-				},
-			},
-			Data: map[string]string{
-				enableCELInWhenExpressionKey: "not-a-bool",
-				maxResultSizeKey:             "8192",
-			},
+		{
+			name: "feature flags",
+			configMap: labeledConfigMap("team-a", "tekton-feature-flags", map[string]string{
+				"enable-cel-in-whenexpression": "not-a-bool",
+			}),
 		},
-	)
-
-	cfg := &config.Config{
-		Defaults:     config.DefaultConfig.DeepCopy(),
-		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
 	}
-	cfg.FeatureFlags.PerNamespaceConfiguration = true
-	cfg.Defaults.DefaultServiceAccount = "cluster-sa"
-	cfg.FeatureFlags.EnableCELInWhenExpression = false
-	cfg.FeatureFlags.MaxResultSize = 4096
-
-	ctx := WithNamespaceConfig(config.ToContext(context.Background(), cfg), cache, "team-alpha", logger)
-	mergedCfg := config.FromContext(ctx)
-
-	if mergedCfg.Defaults.DefaultTimeoutMinutes != cfg.Defaults.DefaultTimeoutMinutes {
-		t.Errorf("DefaultTimeoutMinutes = %d, want cluster value %d", mergedCfg.Defaults.DefaultTimeoutMinutes, cfg.Defaults.DefaultTimeoutMinutes)
-	}
-	if mergedCfg.Defaults.DefaultServiceAccount != "cluster-sa" {
-		t.Errorf("DefaultServiceAccount = %q, want cluster-sa", mergedCfg.Defaults.DefaultServiceAccount)
-	}
-	if mergedCfg.FeatureFlags.EnableCELInWhenExpression {
-		t.Error("EnableCELInWhenExpression = true, want cluster false")
-	}
-	if mergedCfg.FeatureFlags.MaxResultSize != 4096 {
-		t.Errorf("MaxResultSize = %d, want cluster value 4096", mergedCfg.FeatureFlags.MaxResultSize)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, tt.configMap)
+			ctx, cfg := enabledConfigContext(baseCtx)
+			mergedCtx, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, "team-a")
+			if err == nil {
+				t.Fatal("expected parse error")
+			}
+			if config.FromContext(mergedCtx) != cfg {
+				t.Error("parse error returned a partially merged config")
+			}
+		})
 	}
 }
 
-func TestWithNamespaceConfigBlocksSecurityFields(t *testing.T) {
-	logger := zaptest.NewLogger(t).Sugar()
+func TestPerNamespaceConfigTracksUpdatesAndNamespaces(t *testing.T) {
+	alpha := labeledConfigMap("team-alpha", "tekton-config-defaults", map[string]string{"default-timeout-minutes": "90"})
+	beta := labeledConfigMap("team-beta", "tekton-config-defaults", map[string]string{
+		"default-timeout-minutes": "240",
+		"default-service-account": "beta-sa",
+	})
+	perNamespaceConfig, client, baseCtx := newPerNamespaceConfig(t, alpha, beta)
 
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      NamespaceFeatureFlagsConfigMapName,
-			Namespace: "team-alpha",
-			Labels: map[string]string{
-				PartOfLabel:          PartOfValue,
-				NamespaceConfigLabel: "true",
-			},
-		},
-		Data: map[string]string{
-			"enforce-nonfalsifiability":    "spire",
-			"set-security-context":         "true",
-			"enable-cel-in-whenexpression": "true",
-		},
+	assertConfig := func(namespace string, timeout int, serviceAccount string) bool {
+		ctx, _ := enabledConfigContext(baseCtx)
+		mergedCtx, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, namespace)
+		if err != nil {
+			return false
+		}
+		merged := config.FromContext(mergedCtx)
+		return merged.Defaults.DefaultTimeoutMinutes == timeout && merged.Defaults.DefaultServiceAccount == serviceAccount
+	}
+	if !assertConfig("team-alpha", 90, config.DefaultServiceAccountValue) || !assertConfig("team-beta", 240, "beta-sa") {
+		t.Fatal("namespace configs were not isolated")
 	}
 
-	cache := newTestCache(t, cm)
-
-	cfg := &config.Config{
-		Defaults:     config.DefaultConfig.DeepCopy(),
-		FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
+	updated := alpha.DeepCopy()
+	updated.Data["default-timeout-minutes"] = "200"
+	if _, err := client.CoreV1().ConfigMaps("team-alpha").Update(baseCtx, updated, metav1.UpdateOptions{}); err != nil {
+		t.Fatal(err)
 	}
-	cfg.FeatureFlags.PerNamespaceConfiguration = true
-	ctx := config.ToContext(context.Background(), cfg)
-
-	ctx = WithNamespaceConfig(ctx, cache, "team-alpha", logger)
-
-	mergedCfg := config.FromContext(ctx)
-	// Security fields should NOT be overridden
-	if mergedCfg.FeatureFlags.EnforceNonfalsifiability != "none" {
-		t.Errorf("expected enforce-nonfalsifiability=none (not overridden), got %q", mergedCfg.FeatureFlags.EnforceNonfalsifiability)
-	}
-	if mergedCfg.FeatureFlags.SetSecurityContext != false {
-		t.Error("expected set-security-context=false (not overridden)")
-	}
-	// Allowed field should be overridden
-	if mergedCfg.FeatureFlags.EnableCELInWhenExpression != true {
-		t.Error("expected enable-cel-in-whenexpression=true (overridden)")
-	}
-}
-
-func TestConfigMapWithoutLabelsIgnored(t *testing.T) {
-	ctx := context.Background()
-
-	// ConfigMap without required labels - won't be picked up by the filtered informer
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      NamespaceFeatureFlagsConfigMapName,
-			Namespace: "team-alpha",
-			// No labels - informer filter won't include this
-		},
-		Data: map[string]string{
-			"enable-cel-in-whenexpression": "true",
-		},
-	}
-
-	// The filtered informer only watches CMs with NamespaceConfigLabel=true,
-	// so this CM won't appear in the lister even though the fake client has it.
-	cache := newTestCache(t, cm)
-
-	nsConfig := cache.Get(ctx, "team-alpha")
-	if nsConfig != nil {
-		t.Error("expected nil for ConfigMap without required labels")
-	}
-}
-
-func TestConfigMapWithoutPartOfLabelIgnored(t *testing.T) {
-	ctx := context.Background()
-
-	// ConfigMap with pipeline-config label but missing part-of label
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      NamespaceFeatureFlagsConfigMapName,
-			Namespace: "team-alpha",
-			Labels: map[string]string{
-				NamespaceConfigLabel: "true",
-				// Missing PartOfLabel
-			},
-		},
-		Data: map[string]string{
-			"enable-cel-in-whenexpression": "true",
-		},
-	}
-
-	cache := newTestCache(t, cm)
-
-	nsConfig := cache.Get(ctx, "team-alpha")
-	if nsConfig != nil {
-		t.Error("expected nil for ConfigMap without part-of label")
+	deadline := time.Now().Add(5 * time.Second)
+	for !assertConfig("team-alpha", 200, config.DefaultServiceAccountValue) {
+		if time.Now().After(deadline) {
+			t.Fatal("timed out waiting for ConfigMap update")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }

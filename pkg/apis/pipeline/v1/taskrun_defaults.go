@@ -35,7 +35,6 @@ const ManagedByLabelKey = "app.kubernetes.io/managed-by"
 // SetDefaults implements apis.Defaultable
 func (tr *TaskRun) SetDefaults(ctx context.Context) {
 	ctx = apis.WithinParent(ctx, tr.ObjectMeta)
-
 	tr.Spec.SetDefaults(ctx)
 
 	// Silently filtering out Tekton Reserved annotations at creation
