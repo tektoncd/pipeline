@@ -694,7 +694,7 @@ _EOF_
 				Steps: []v1.Step{{
 					Image:   "image",
 					Command: []string{"cmd"}, // avoid entrypoint lookup.
-					ComputeResources: corev1.ResourceRequirements{
+					ComputeResources: v1.ComputeResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("8"),
 							corev1.ResourceMemory: resource.MustParse("10Gi"),
@@ -703,7 +703,7 @@ _EOF_
 				}, {
 					Image:   "image",
 					Command: []string{"cmd"}, // avoid entrypoint lookup.
-					ComputeResources: corev1.ResourceRequirements{
+					ComputeResources: v1.ComputeResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("1"),
 							corev1.ResourceMemory: resource.MustParse("100Gi"),
@@ -792,7 +792,7 @@ _EOF_
 					Name:    "step1",
 					Image:   "image",
 					Command: []string{"cmd"},
-					ComputeResources: corev1.ResourceRequirements{
+					ComputeResources: v1.ComputeResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("8"),
 							corev1.ResourceMemory: resource.MustParse("10Gi"),
@@ -803,7 +803,7 @@ _EOF_
 			trs: v1.TaskRunSpec{
 				StepSpecs: []v1.TaskRunStepSpec{{
 					Name: "step1",
-					ComputeResources: corev1.ResourceRequirements{
+					ComputeResources: v1.ComputeResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("6"),
 							corev1.ResourceMemory: resource.MustParse("5Gi"),
@@ -857,7 +857,7 @@ _EOF_
 			desc: "with stepOverrides and stepTemplate",
 			ts: v1.TaskSpec{
 				StepTemplate: &v1.StepTemplate{
-					ComputeResources: corev1.ResourceRequirements{
+					ComputeResources: v1.ComputeResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("8"),
 							corev1.ResourceMemory: resource.MustParse("10Gi"),
@@ -873,7 +873,7 @@ _EOF_
 			trs: v1.TaskRunSpec{
 				StepSpecs: []v1.TaskRunStepSpec{{
 					Name: "step1",
-					ComputeResources: corev1.ResourceRequirements{
+					ComputeResources: v1.ComputeResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("6"),
 							corev1.ResourceMemory: resource.MustParse("5Gi"),
@@ -934,7 +934,7 @@ _EOF_
 				Sidecars: []v1.Sidecar{{
 					Name:  "sc-name",
 					Image: "sidecar-image",
-					ComputeResources: corev1.ResourceRequirements{
+					ComputeResources: v1.ComputeResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("8"),
 							corev1.ResourceMemory: resource.MustParse("10Gi"),
@@ -945,7 +945,7 @@ _EOF_
 			trs: v1.TaskRunSpec{
 				SidecarSpecs: []v1.TaskRunSidecarSpec{{
 					Name: "sc-name",
-					ComputeResources: corev1.ResourceRequirements{
+					ComputeResources: v1.ComputeResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("6"),
 							corev1.ResourceMemory: resource.MustParse("5Gi"),
@@ -2937,7 +2937,7 @@ func TestPodBuild_TaskLevelResourceRequirements(t *testing.T) {
 				Command: []string{"cmd"},
 			}},
 			StepTemplate: &v1.StepTemplate{
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("500m"),
 						corev1.ResourceMemory: resource.MustParse("500Mi"),
@@ -2946,7 +2946,7 @@ func TestPodBuild_TaskLevelResourceRequirements(t *testing.T) {
 			},
 		},
 		trs: v1.TaskRunSpec{
-			ComputeResources: &corev1.ResourceRequirements{
+			ComputeResources: &v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("2"),
 					corev1.ResourceMemory: resource.MustParse("2Gi"),
@@ -2977,7 +2977,7 @@ func TestPodBuild_TaskLevelResourceRequirements(t *testing.T) {
 				Name:    "1st-step",
 				Image:   "image",
 				Command: []string{"cmd"},
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("250m"),
 						corev1.ResourceMemory: resource.MustParse("500Mi"),
@@ -2987,7 +2987,7 @@ func TestPodBuild_TaskLevelResourceRequirements(t *testing.T) {
 				Name:    "2nd-step",
 				Image:   "image",
 				Command: []string{"cmd"},
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("300m"),
 						corev1.ResourceMemory: resource.MustParse("500Mi"),
@@ -2996,7 +2996,7 @@ func TestPodBuild_TaskLevelResourceRequirements(t *testing.T) {
 			}},
 		},
 		trs: v1.TaskRunSpec{
-			ComputeResources: &corev1.ResourceRequirements{
+			ComputeResources: &v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("2"),
 					corev1.ResourceMemory: resource.MustParse("2Gi"),
@@ -3030,7 +3030,7 @@ func TestPodBuild_TaskLevelResourceRequirements(t *testing.T) {
 			}},
 			Sidecars: []v1.Sidecar{{
 				Name: "sidecar",
-				ComputeResources: corev1.ResourceRequirements{
+				ComputeResources: v1.ComputeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU: resource.MustParse("750m"),
 					},
@@ -3041,7 +3041,7 @@ func TestPodBuild_TaskLevelResourceRequirements(t *testing.T) {
 			}},
 		},
 		trs: v1.TaskRunSpec{
-			ComputeResources: &corev1.ResourceRequirements{
+			ComputeResources: &v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("2"),
 					corev1.ResourceMemory: resource.MustParse("2Gi"),
@@ -4116,6 +4116,95 @@ func TestPodBuild_CompressTerminationMessage(t *testing.T) {
 			}
 			if hasFlag != tc.wantFlag {
 				t.Errorf("compress_termination_message flag: got %v, want %v; args: %v", hasFlag, tc.wantFlag, stepContainer.Args)
+			}
+		})
+	}
+}
+
+// TestPodBuildRejectsUnresolvedComputeResources ensures that compute resource values
+// which are still not valid quantities when the Pod is built fail the TaskRun instead
+// of being silently dropped, which would produce a Pod with no resource requirements.
+func TestPodBuildRejectsUnresolvedComputeResources(t *testing.T) {
+	for _, tc := range []struct {
+		desc    string
+		ts      v1.TaskSpec
+		trs     v1.TaskRunSpec
+		wantErr string
+	}{{
+		desc: "step with an unresolved variable reference",
+		ts: v1.TaskSpec{
+			Steps: []v1.Step{{
+				Name:  "build",
+				Image: "image",
+				ComputeResources: v1.ComputeResourceRequirements{
+					RawRequests: map[corev1.ResourceName]string{corev1.ResourceMemory: "$(params.MEM)"},
+				},
+			}},
+		},
+		wantErr: `TaskRun validation failed: step "build": invalid compute resources, values are not valid quantities: requests.memory=$(params.MEM)`,
+	}, {
+		desc: "step with a variable that resolved to a non-quantity",
+		ts: v1.TaskSpec{
+			Steps: []v1.Step{{
+				Name:  "build",
+				Image: "image",
+				ComputeResources: v1.ComputeResourceRequirements{
+					RawRequests: map[corev1.ResourceName]string{corev1.ResourceMemory: "notaquantity"},
+				},
+			}},
+		},
+		wantErr: `TaskRun validation failed: step "build": invalid compute resources, values are not valid quantities: requests.memory=notaquantity`,
+	}, {
+		desc: "sidecar with an unresolved variable reference",
+		ts: v1.TaskSpec{
+			Steps: []v1.Step{{Name: "build", Image: "image"}},
+			Sidecars: []v1.Sidecar{{
+				Name:  "server",
+				Image: "image",
+				ComputeResources: v1.ComputeResourceRequirements{
+					RawLimits: map[corev1.ResourceName]string{corev1.ResourceCPU: "$(params.CPU)"},
+				},
+			}},
+		},
+		wantErr: `TaskRun validation failed: sidecar "server": invalid compute resources, values are not valid quantities: limits.cpu=$(params.CPU)`,
+	}, {
+		desc: "stepTemplate with an unresolved variable reference",
+		ts: v1.TaskSpec{
+			StepTemplate: &v1.StepTemplate{
+				ComputeResources: v1.ComputeResourceRequirements{
+					RawRequests: map[corev1.ResourceName]string{corev1.ResourceMemory: "$(params.MEM)"},
+				},
+			},
+			Steps: []v1.Step{{Name: "build", Image: "image"}},
+		},
+		wantErr: `TaskRun validation failed: stepTemplate: invalid compute resources, values are not valid quantities: requests.memory=$(params.MEM)`,
+	}, {
+		desc: "taskRun computeResources with an unresolved variable reference",
+		ts:   v1.TaskSpec{Steps: []v1.Step{{Name: "build", Image: "image"}}},
+		trs: v1.TaskRunSpec{
+			ComputeResources: &v1.ComputeResourceRequirements{
+				RawRequests: map[corev1.ResourceName]string{corev1.ResourceMemory: "$(params.MEM)"},
+			},
+		},
+		wantErr: `TaskRun validation failed: taskRun computeResources: invalid compute resources, values are not valid quantities: requests.memory=$(params.MEM)`,
+	}} {
+		t.Run(tc.desc, func(t *testing.T) {
+			names.TestingSeed()
+			kubeclient := fakek8s.NewSimpleClientset(
+				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
+			)
+			builder := Builder{Images: images, KubeClient: kubeclient}
+			tr := &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo-taskrun", Namespace: "default"},
+				Spec:       tc.trs,
+			}
+
+			_, err := builder.Build(t.Context(), tr, tc.ts)
+			if err == nil {
+				t.Fatal("expected builder.Build to fail, got no error")
+			}
+			if d := cmp.Diff(tc.wantErr, err.Error()); d != "" {
+				t.Errorf("wrong error (-want +got): %s", d)
 			}
 		})
 	}

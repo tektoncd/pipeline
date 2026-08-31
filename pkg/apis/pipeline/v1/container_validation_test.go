@@ -19,6 +19,7 @@ package v1_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -1143,4 +1144,61 @@ func TestSidecarValidateError(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestStepAndSidecarValidateComputeResources(t *testing.T) {
+	valid := v1.ComputeResourceRequirements{
+		RawRequests: map[corev1.ResourceName]string{corev1.ResourceMemory: "$(params.MEM)"},
+	}
+	invalid := v1.ComputeResourceRequirements{
+		RawRequests: map[corev1.ResourceName]string{corev1.ResourceMemory: "notaquantity"},
+	}
+	wantErr := apis.ErrInvalidValue("notaquantity", "computeResources.requests.memory",
+		"must be a valid quantity or a variable reference like $(params.name)")
+
+	t.Run("step with a variable reference is valid", func(t *testing.T) {
+		s := v1.Step{Image: "busybox", ComputeResources: valid}
+		if err := s.Validate(apis.WithinCreate(t.Context())); err != nil {
+			t.Errorf("expected no error, got %v", err)
+		}
+	})
+	t.Run("step with a bogus quantity is rejected", func(t *testing.T) {
+		s := v1.Step{Image: "busybox", ComputeResources: invalid}
+		err := s.Validate(apis.WithinCreate(t.Context()))
+		if err == nil {
+			t.Fatal("expected an error, got none")
+		}
+		if d := cmp.Diff(wantErr.Error(), err.Error()); d != "" {
+			t.Errorf("wrong error (-want +got): %s", d)
+		}
+	})
+	t.Run("sidecar with a variable reference is valid", func(t *testing.T) {
+		s := v1.Sidecar{Name: "sc", Image: "busybox", ComputeResources: valid}
+		if err := s.Validate(apis.WithinCreate(t.Context())); err != nil {
+			t.Errorf("expected no error, got %v", err)
+		}
+	})
+	t.Run("sidecar with a bogus quantity is rejected", func(t *testing.T) {
+		s := v1.Sidecar{Name: "sc", Image: "busybox", ComputeResources: invalid}
+		err := s.Validate(apis.WithinCreate(t.Context()))
+		if err == nil {
+			t.Fatal("expected an error, got none")
+		}
+		if d := cmp.Diff(wantErr.Error(), err.Error()); d != "" {
+			t.Errorf("wrong error (-want +got): %s", d)
+		}
+	})
+	t.Run("stepTemplate with a bogus quantity is rejected", func(t *testing.T) {
+		ts := v1.TaskSpec{
+			StepTemplate: &v1.StepTemplate{ComputeResources: invalid},
+			Steps:        []v1.Step{{Image: "busybox"}},
+		}
+		err := ts.Validate(apis.WithinCreate(t.Context()))
+		if err == nil {
+			t.Fatal("expected an error, got none")
+		}
+		if !strings.Contains(err.Error(), "stepTemplate.computeResources.requests.memory") {
+			t.Errorf("expected an error on the stepTemplate field, got %v", err)
+		}
+	})
 }

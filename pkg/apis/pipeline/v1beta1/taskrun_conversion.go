@@ -110,7 +110,10 @@ func (trs *TaskRunSpec) ConvertTo(ctx context.Context, sink *v1.TaskRunSpec, met
 		so.convertTo(ctx, &new)
 		sink.SidecarSpecs = append(sink.SidecarSpecs, new)
 	}
-	sink.ComputeResources = trs.ComputeResources
+	if trs.ComputeResources != nil {
+		cr := v1.FromK8sResourceRequirements(*trs.ComputeResources)
+		sink.ComputeResources = &cr
+	}
 	return nil
 }
 
@@ -193,7 +196,10 @@ func (trs *TaskRunSpec) ConvertFrom(ctx context.Context, source *v1.TaskRunSpec,
 		new.convertFrom(ctx, so)
 		trs.SidecarOverrides = append(trs.SidecarOverrides, new)
 	}
-	trs.ComputeResources = source.ComputeResources
+	if source.ComputeResources != nil {
+		k8s := source.ComputeResources.MustToK8s()
+		trs.ComputeResources = &k8s
+	}
 	return nil
 }
 
@@ -230,22 +236,22 @@ func (tbp *TaskBreakpoints) convertFrom(ctx context.Context, source v1.TaskBreak
 
 func (trso TaskRunStepOverride) convertTo(ctx context.Context, sink *v1.TaskRunStepSpec) {
 	sink.Name = trso.Name
-	sink.ComputeResources = trso.Resources
+	sink.ComputeResources = v1.FromK8sResourceRequirements(trso.Resources)
 }
 
 func (trso *TaskRunStepOverride) convertFrom(ctx context.Context, source v1.TaskRunStepSpec) {
 	trso.Name = source.Name
-	trso.Resources = source.ComputeResources
+	trso.Resources = source.ComputeResources.MustToK8s()
 }
 
 func (trso TaskRunSidecarOverride) convertTo(ctx context.Context, sink *v1.TaskRunSidecarSpec) {
 	sink.Name = trso.Name
-	sink.ComputeResources = trso.Resources
+	sink.ComputeResources = v1.FromK8sResourceRequirements(trso.Resources)
 }
 
 func (trso *TaskRunSidecarOverride) convertFrom(ctx context.Context, source v1.TaskRunSidecarSpec) {
 	trso.Name = source.Name
-	trso.Resources = source.ComputeResources
+	trso.Resources = source.ComputeResources.MustToK8s()
 }
 
 // ConvertTo implements apis.Convertible

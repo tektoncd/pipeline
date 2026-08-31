@@ -78,6 +78,9 @@ func MergeStepsWithStepTemplate(template *StepTemplate, steps []Step) ([]Step, e
 			Workspaces:   s.Workspaces,
 		}
 		newStep.SetContainerFields(merged)
+		// The merge above round-trips through corev1.Container, which cannot hold
+		// unresolved variable references, so compute resources are merged separately.
+		newStep.ComputeResources = template.ComputeResources.Merge(s.ComputeResources)
 		steps[i] = newStep
 	}
 	return steps, nil
@@ -96,12 +99,7 @@ func MergeStepsWithSpecs(steps []Step, overrides []TaskRunStepSpec) ([]Step, err
 		if !found {
 			continue
 		}
-		merged := corev1.ResourceRequirements{}
-		err := mergeObjWithTemplate(&s.ComputeResources, &o.ComputeResources, &merged)
-		if err != nil {
-			return nil, err
-		}
-		steps[i].ComputeResources = merged
+		steps[i].ComputeResources = s.ComputeResources.Merge(o.ComputeResources)
 	}
 	return steps, nil
 }
@@ -122,24 +120,9 @@ func MergeSidecarsWithSpecs(sidecars []Sidecar, overrides []TaskRunSidecarSpec) 
 		if !found {
 			continue
 		}
-		merged := corev1.ResourceRequirements{}
-		err := mergeObjWithTemplate(&s.ComputeResources, &o.ComputeResources, &merged)
-		if err != nil {
-			return nil, err
-		}
-		sidecars[i].ComputeResources = merged
+		sidecars[i].ComputeResources = s.ComputeResources.Merge(o.ComputeResources)
 	}
 	return sidecars, nil
-}
-
-// mergeObjWithTemplate merges obj with template and updates out to reflect the merged result.
-// template, obj, and out should point to the same type. out points to the zero value of that type.
-func mergeObjWithTemplate(template, obj, out interface{}) error {
-	md, err := getMergeData(template, out)
-	if err != nil {
-		return err
-	}
-	return mergeObjWithTemplateBytes(md, obj, out)
 }
 
 // getMergeData serializes the template and empty object to get the intermediate results necessary for
