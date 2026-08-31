@@ -2068,8 +2068,8 @@ _EOF_
 			},
 		},
 		{
-			desc:         "sidecar logs enabled with step results, artifacts not enabled",
-			featureFlags: map[string]string{"results-from": "sidecar-logs"},
+			desc:         "sidecar logs enabled with step results and security context disabled",
+			featureFlags: map[string]string{"results-from": "sidecar-logs", "set-security-context": "false"},
 			ts: v1.TaskSpec{
 				Results: []v1.TaskResult{{
 					Name: "foo",
@@ -2088,7 +2088,7 @@ _EOF_
 			want: &corev1.PodSpec{
 				RestartPolicy: corev1.RestartPolicyNever,
 				InitContainers: []corev1.Container{
-					entrypointInitContainer(images.EntrypointImage, []v1.Step{{Name: "name"}}, SecurityContextConfig{SetSecurityContext: true, SetReadOnlyRootFilesystem: false}, false /* windows */),
+					entrypointInitContainer(images.EntrypointImage, []v1.Step{{Name: "name"}}, SecurityContextConfig{SetSecurityContext: false, SetReadOnlyRootFilesystem: false}, false /* windows */),
 				},
 				Containers: []corev1.Container{{
 					Name:    "step-name",
@@ -2137,8 +2137,7 @@ _EOF_
 						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
 						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
 					}, implicitVolumeMounts...),
-					SecurityContext: SecurityContextConfig{SetSecurityContext: true, SetReadOnlyRootFilesystem: false}.GetSecurityContext(false),
-					Env:             []corev1.EnvVar{{Name: "SIDECAR_LOG_POLLING_INTERVAL", Value: "100ms"}},
+					Env: []corev1.EnvVar{{Name: "SIDECAR_LOG_POLLING_INTERVAL", Value: "100ms"}},
 				}},
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",

@@ -447,8 +447,11 @@ Defaults to "ignore".
   set to `"sidecar-logs"` since sidecar logs bypass the termination message entirely. This is an
   alpha feature gated behind `enable-api-fields: "alpha"` or the per-feature flag. Defaults to `"false"`.
 
-- `set-security-context`: Set this flag to `true` to set a security context for containers injected by Tekton that will allow TaskRun pods
-to run in namespaces with `restricted` pod security admission. By default, this is set to `true`.
+- `set-security-context`: By default, Tekton applies a security context intended to satisfy
+  `restricted` pod security admission to containers it injects into TaskRuns and to Affinity
+  Assistant containers. It does not modify the security contexts of user-defined Steps or
+  Sidecars; those containers must independently satisfy the namespace's pod security requirements. Set this flag to
+  `false` to disable the generated security contexts.
 
 - `set-security-context-read-only-root-filesystem`: Set this flag to `true` to enable `readOnlyRootFilesystem` in the
   security context for containers injected by Tekton. This makes the root filesystem of the container read-only,
@@ -554,10 +557,20 @@ Out-of-the-box, Tekton Pipelines Controller is configured for relatively small-s
 
 ## Running TaskRuns and PipelineRuns with restricted pod security standards
 
-To allow TaskRuns and PipelineRuns to run in namespaces with [restricted pod security standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/),
-set the "set-security-context" feature flag to "true" in the [feature-flags configMap](#customizing-the-pipelines-controller-behavior). This configuration option applies a [SecurityContext](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/)
-to any containers injected into TaskRuns by the Pipelines controller. If the [Affinity Assistants](affinityassistants.md) feature is enabled, the SecurityContext is also applied to those containers.
-This SecurityContext may not be supported in all Kubernetes implementations (for example, OpenShift).
+The `set-security-context` feature flag defaults to `"true"`. It applies a
+[SecurityContext](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/)
+to containers injected into TaskRuns by the Pipelines controller and to
+[Affinity Assistant](affinityassistants.md) containers. It does not modify security contexts on
+user-defined Steps or Sidecars; those containers must independently meet the namespace's
+[restricted pod security standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/).
+
+Some injected images and Kubernetes implementations (for example, OpenShift) may not
+support the generated security context. Disable it with:
+
+```shell
+kubectl patch configmap feature-flags -n tekton-pipelines --type merge \
+  -p '{"data":{"set-security-context":"false"}}'
+```
 
 **Note**: running TaskRuns and PipelineRuns in the "tekton-pipelines" namespace is discouraged.
 
