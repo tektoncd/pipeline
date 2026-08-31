@@ -26,7 +26,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-containerregistry/internal/gzip"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/match"
@@ -469,7 +468,8 @@ func hasWindowsDrivePrefix(name string) bool {
 }
 
 // Time sets all timestamps in an image to the given timestamp.
-func Time(img v1.Image, t time.Time) (v1.Image, error) {
+// Layers are rewritten as dockerv2+gzip unless opts say otherwise.
+func Time(img v1.Image, t time.Time, opts ...tarball.LayerOption) (v1.Image, error) {
 	newImage := empty.Image
 
 	layers, err := img.Layers()
@@ -485,7 +485,7 @@ func Time(img v1.Image, t time.Time) (v1.Image, error) {
 	addendums := make([]Addendum, max(len(ocf.History), len(layers)))
 	var historyIdx, addendumIdx int
 	for layerIdx := 0; layerIdx < len(layers); addendumIdx, layerIdx = addendumIdx+1, layerIdx+1 {
-		newLayer, err := layerTime(layers[layerIdx], t)
+		newLayer, err := layerTime(layers[layerIdx], t, opts...)
 		if err != nil {
 			return nil, fmt.Errorf("setting layer times: %w", err)
 		}
@@ -547,7 +547,7 @@ func Time(img v1.Image, t time.Time) (v1.Image, error) {
 	return ConfigFile(newImage, cfg)
 }
 
-func layerTime(layer v1.Layer, t time.Time) (v1.Layer, error) {
+func layerTime(layer v1.Layer, t time.Time, opts ...tarball.LayerOption) (v1.Layer, error) {
 	layerReader, err := layer.Uncompressed()
 	if err != nil {
 		return nil, fmt.Errorf("getting layer: %w", err)
@@ -598,11 +598,10 @@ func layerTime(layer v1.Layer, t time.Time) (v1.Layer, error) {
 	}
 
 	b := w.Bytes()
-	// gzip the contents, then create the layer
 	opener := func() (io.ReadCloser, error) {
-		return gzip.ReadCloser(io.NopCloser(bytes.NewReader(b))), nil
+		return io.NopCloser(bytes.NewReader(b)), nil
 	}
-	layer, err = tarball.LayerFromOpener(opener)
+	layer, err = tarball.LayerFromOpener(opener, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("creating layer: %w", err)
 	}
@@ -612,10 +611,10 @@ func layerTime(layer v1.Layer, t time.Time) (v1.Layer, error) {
 
 // Canonical is a helper function to combine Time and configFile
 // to remove any randomness during a docker build.
-func Canonical(img v1.Image) (v1.Image, error) {
+func Canonical(img v1.Image, opts ...tarball.LayerOption) (v1.Image, error) {
 	// Set all timestamps to 0
 	created := time.Time{}
-	img, err := Time(img, created)
+	img, err := Time(img, created, opts...)
 	if err != nil {
 		return nil, err
 	}
