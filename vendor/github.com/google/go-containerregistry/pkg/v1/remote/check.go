@@ -32,9 +32,9 @@ import (
 //
 // TODO(#412): Remove the need for this method.
 func CheckPushPermission(ref name.Reference, kc authn.Keychain, t http.RoundTripper) error {
-	auth, err := kc.Resolve(ref.Context().Registry)
+	auth, err := authn.Resolve(context.TODO(), kc, ref.Context())
 	if err != nil {
-		return fmt.Errorf("resolving authorization for %v failed: %w", ref.Context().Registry, err)
+		return fmt.Errorf("resolving authorization for %v failed: %w", ref.Context(), err)
 	}
 
 	scopes := []string{ref.Scope(transport.PushScope)}
