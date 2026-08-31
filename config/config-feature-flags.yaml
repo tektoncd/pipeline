@@ -104,9 +104,11 @@ data:
   # This flag is optional and only associated with the previous flag, results-from
   # When results-from is set to "sidecar-logs", this flag can be used to configure the upper limit of a task result
   # max-result-size: "4096"
-  # Setting this flag to "true" will limit privileges for containers injected by Tekton into TaskRuns.
-  # This allows TaskRuns to run in namespaces with "restricted" pod security standards.
-  # Not all Kubernetes implementations support this option.
+  # Setting this flag to "true" limits privileges for containers injected by Tekton into
+  # TaskRuns and Affinity Assistants. Security contexts on user-defined Steps and Sidecars
+  # are unchanged and must independently meet the namespace's pod security requirements.
+  # Set it to "false" if the generated security contexts are incompatible with the injected
+  # images or Kubernetes implementation.
   set-security-context: "true"
   # Setting this flag to "true" will set readOnlyRootFilesystem in securityContext for all containers used in TaskRuns and AffinityAssistant.
   set-security-context-read-only-root-filesystem: "false"
