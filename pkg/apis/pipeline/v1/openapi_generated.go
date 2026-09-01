@@ -114,9 +114,8 @@ func schema_pkg_apis_pipeline_pod_AffinityAssistantTemplate(ref common.Reference
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -134,8 +133,7 @@ func schema_pkg_apis_pipeline_pod_AffinityAssistantTemplate(ref common.Reference
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.Toleration"),
+										Ref: ref("k8s.io/api/core/v1.Toleration"),
 									},
 								},
 							},
@@ -153,8 +151,7 @@ func schema_pkg_apis_pipeline_pod_AffinityAssistantTemplate(ref common.Reference
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.LocalObjectReference"),
+										Ref: ref("k8s.io/api/core/v1.LocalObjectReference"),
 									},
 								},
 							},
@@ -203,9 +200,8 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -225,8 +221,7 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.EnvVar"),
+										Ref: ref("k8s.io/api/core/v1.EnvVar"),
 									},
 								},
 							},
@@ -244,8 +239,7 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.Toleration"),
+										Ref: ref("k8s.io/api/core/v1.Toleration"),
 									},
 								},
 							},
@@ -276,8 +270,7 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.Volume"),
+										Ref: ref("k8s.io/api/core/v1.Volume"),
 									},
 								},
 							},
@@ -343,8 +336,7 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.LocalObjectReference"),
+										Ref: ref("k8s.io/api/core/v1.LocalObjectReference"),
 									},
 								},
 							},
@@ -362,8 +354,7 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.HostAlias"),
+										Ref: ref("k8s.io/api/core/v1.HostAlias"),
 									},
 								},
 							},
@@ -395,8 +386,7 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.TopologySpreadConstraint"),
+										Ref: ref("k8s.io/api/core/v1.TopologySpreadConstraint"),
 									},
 								},
 							},
@@ -431,8 +421,7 @@ func schema_pkg_apis_pipeline_v1_Artifact(ref common.ReferenceCallback) common.O
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArtifactValue"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArtifactValue"),
 									},
 								},
 							},
@@ -467,9 +456,8 @@ func schema_pkg_apis_pipeline_v1_ArtifactValue(ref common.ReferenceCallback) com
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -506,8 +494,7 @@ func schema_pkg_apis_pipeline_v1_Artifacts(ref common.ReferenceCallback) common.
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact"),
 									},
 								},
 							},
@@ -524,8 +511,7 @@ func schema_pkg_apis_pipeline_v1_Artifacts(ref common.ReferenceCallback) common.
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact"),
 									},
 								},
 							},
@@ -591,8 +577,7 @@ func schema_pkg_apis_pipeline_v1_ChildStatusReference(ref common.ReferenceCallba
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression"),
 									},
 								},
 							},
@@ -644,8 +629,7 @@ func schema_pkg_apis_pipeline_v1_EmbeddedTask(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec"),
 									},
 								},
 							},
@@ -677,8 +661,7 @@ func schema_pkg_apis_pipeline_v1_EmbeddedTask(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Step"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Step"),
 									},
 								},
 							},
@@ -691,8 +674,7 @@ func schema_pkg_apis_pipeline_v1_EmbeddedTask(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.Volume"),
+										Ref: ref("k8s.io/api/core/v1.Volume"),
 									},
 								},
 							},
@@ -716,8 +698,7 @@ func schema_pkg_apis_pipeline_v1_EmbeddedTask(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Sidecar"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Sidecar"),
 									},
 								},
 							},
@@ -735,8 +716,7 @@ func schema_pkg_apis_pipeline_v1_EmbeddedTask(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceDeclaration"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceDeclaration"),
 									},
 								},
 							},
@@ -754,8 +734,7 @@ func schema_pkg_apis_pipeline_v1_EmbeddedTask(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskResult"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskResult"),
 									},
 								},
 							},
@@ -790,8 +769,7 @@ func schema_pkg_apis_pipeline_v1_IncludeParams(ref common.ReferenceCallback) com
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
 									},
 								},
 							},
@@ -819,8 +797,7 @@ func schema_pkg_apis_pipeline_v1_Matrix(ref common.ReferenceCallback) common.Ope
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
 									},
 								},
 							},
@@ -833,8 +810,7 @@ func schema_pkg_apis_pipeline_v1_Matrix(ref common.ReferenceCallback) common.Ope
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.IncludeParams"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.IncludeParams"),
 									},
 								},
 							},
@@ -913,8 +889,7 @@ func schema_pkg_apis_pipeline_v1_ParamSpec(ref common.ReferenceCallback) common.
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"),
 									},
 								},
 							},
@@ -933,9 +908,8 @@ func schema_pkg_apis_pipeline_v1_ParamSpec(ref common.ReferenceCallback) common.
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -983,9 +957,8 @@ func schema_pkg_apis_pipeline_v1_ParamValue(ref common.ReferenceCallback) common
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -998,9 +971,8 @@ func schema_pkg_apis_pipeline_v1_ParamValue(ref common.ReferenceCallback) common
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -1088,8 +1060,7 @@ func schema_pkg_apis_pipeline_v1_PipelineList(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Pipeline"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Pipeline"),
 									},
 								},
 							},
@@ -1125,9 +1096,31 @@ func schema_pkg_apis_pipeline_v1_PipelineRef(ref common.ReferenceCallback) commo
 							Format:      "",
 						},
 					},
+					"resolver": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Resolver is the name of the resolver that should perform resolution of the referenced Tekton resource, such as \"git\".",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"params": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Params contains the parameters used to identify the referenced Tekton resource. Example entries might include \"repo\" or \"path\" but the set of params ultimately depends on the chosen resolver.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"},
 	}
 }
 
@@ -1256,8 +1249,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunList(ref common.ReferenceCallback) c
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRun"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRun"),
 									},
 								},
 							},
@@ -1334,8 +1326,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunRunStatus(ref common.ReferenceCallba
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression"),
 									},
 								},
 							},
@@ -1374,8 +1365,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunSpec(ref common.ReferenceCallback) c
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
 									},
 								},
 							},
@@ -1413,8 +1403,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunSpec(ref common.ReferenceCallback) c
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceBinding"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceBinding"),
 									},
 								},
 							},
@@ -1432,8 +1421,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunSpec(ref common.ReferenceCallback) c
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineTaskRunSpec"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineTaskRunSpec"),
 									},
 								},
 							},
@@ -1481,8 +1469,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatus(ref common.ReferenceCallback)
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("knative.dev/pkg/apis.Condition"),
+										Ref: ref("knative.dev/pkg/apis.Condition"),
 									},
 								},
 							},
@@ -1496,9 +1483,8 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatus(ref common.ReferenceCallback)
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -1528,8 +1514,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatus(ref common.ReferenceCallback)
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRunResult"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRunResult"),
 									},
 								},
 							},
@@ -1553,8 +1538,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatus(ref common.ReferenceCallback)
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SkippedTask"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SkippedTask"),
 									},
 								},
 							},
@@ -1572,8 +1556,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatus(ref common.ReferenceCallback)
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ChildStatusReference"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ChildStatusReference"),
 									},
 								},
 							},
@@ -1599,9 +1582,8 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatus(ref common.ReferenceCallback)
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -1646,8 +1628,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatusFields(ref common.ReferenceCal
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRunResult"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRunResult"),
 									},
 								},
 							},
@@ -1671,8 +1652,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatusFields(ref common.ReferenceCal
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SkippedTask"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SkippedTask"),
 									},
 								},
 							},
@@ -1690,8 +1670,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatusFields(ref common.ReferenceCal
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ChildStatusReference"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ChildStatusReference"),
 									},
 								},
 							},
@@ -1717,9 +1696,8 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatusFields(ref common.ReferenceCal
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -1765,8 +1743,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunTaskRunStatus(ref common.ReferenceCa
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression"),
 									},
 								},
 							},
@@ -1813,8 +1790,7 @@ func schema_pkg_apis_pipeline_v1_PipelineSpec(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineTask"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineTask"),
 									},
 								},
 							},
@@ -1827,8 +1803,7 @@ func schema_pkg_apis_pipeline_v1_PipelineSpec(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec"),
 									},
 								},
 							},
@@ -1846,8 +1821,7 @@ func schema_pkg_apis_pipeline_v1_PipelineSpec(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineWorkspaceDeclaration"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineWorkspaceDeclaration"),
 									},
 								},
 							},
@@ -1865,8 +1839,7 @@ func schema_pkg_apis_pipeline_v1_PipelineSpec(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineResult"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineResult"),
 									},
 								},
 							},
@@ -1884,8 +1857,7 @@ func schema_pkg_apis_pipeline_v1_PipelineSpec(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineTask"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineTask"),
 									},
 								},
 							},
@@ -1946,8 +1918,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTask(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression"),
 									},
 								},
 							},
@@ -1972,9 +1943,8 @@ func schema_pkg_apis_pipeline_v1_PipelineTask(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -1987,8 +1957,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTask(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
 									},
 								},
 							},
@@ -2012,8 +1981,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTask(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspacePipelineTaskBinding"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspacePipelineTaskBinding"),
 									},
 								},
 							},
@@ -2066,9 +2034,8 @@ func schema_pkg_apis_pipeline_v1_PipelineTaskMetadata(ref common.ReferenceCallba
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -2081,9 +2048,8 @@ func schema_pkg_apis_pipeline_v1_PipelineTaskMetadata(ref common.ReferenceCallba
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -2177,8 +2143,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTaskRunSpec(ref common.ReferenceCallbac
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec"),
 									},
 								},
 							},
@@ -2195,8 +2160,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTaskRunSpec(ref common.ReferenceCallbac
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec"),
 									},
 								},
 							},
@@ -2349,9 +2313,31 @@ func schema_pkg_apis_pipeline_v1_Ref(ref common.ReferenceCallback) common.OpenAP
 							Format:      "",
 						},
 					},
+					"resolver": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Resolver is the name of the resolver that should perform resolution of the referenced Tekton resource, such as \"git\".",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"params": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Params contains the parameters used to identify the referenced Tekton resource. Example entries might include \"repo\" or \"path\" but the set of params ultimately depends on the chosen resolver.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"},
 	}
 }
 
@@ -2377,9 +2363,8 @@ func schema_pkg_apis_pipeline_v1_RefSource(ref common.ReferenceCallback) common.
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -2419,8 +2404,7 @@ func schema_pkg_apis_pipeline_v1_ResolverRef(ref common.ReferenceCallback) commo
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
 									},
 								},
 							},
@@ -2509,9 +2493,8 @@ func schema_pkg_apis_pipeline_v1_Sidecar(ref common.ReferenceCallback) common.Op
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -2529,9 +2512,8 @@ func schema_pkg_apis_pipeline_v1_Sidecar(ref common.ReferenceCallback) common.Op
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -2562,8 +2544,7 @@ func schema_pkg_apis_pipeline_v1_Sidecar(ref common.ReferenceCallback) common.Op
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.ContainerPort"),
+										Ref: ref("k8s.io/api/core/v1.ContainerPort"),
 									},
 								},
 							},
@@ -2581,8 +2562,7 @@ func schema_pkg_apis_pipeline_v1_Sidecar(ref common.ReferenceCallback) common.Op
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.EnvFromSource"),
+										Ref: ref("k8s.io/api/core/v1.EnvFromSource"),
 									},
 								},
 							},
@@ -2602,8 +2582,7 @@ func schema_pkg_apis_pipeline_v1_Sidecar(ref common.ReferenceCallback) common.Op
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.EnvVar"),
+										Ref: ref("k8s.io/api/core/v1.EnvVar"),
 									},
 								},
 							},
@@ -2630,8 +2609,7 @@ func schema_pkg_apis_pipeline_v1_Sidecar(ref common.ReferenceCallback) common.Op
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.VolumeMount"),
+										Ref: ref("k8s.io/api/core/v1.VolumeMount"),
 									},
 								},
 							},
@@ -2651,8 +2629,7 @@ func schema_pkg_apis_pipeline_v1_Sidecar(ref common.ReferenceCallback) common.Op
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.VolumeDevice"),
+										Ref: ref("k8s.io/api/core/v1.VolumeDevice"),
 									},
 								},
 							},
@@ -2749,8 +2726,7 @@ func schema_pkg_apis_pipeline_v1_Sidecar(ref common.ReferenceCallback) common.Op
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceUsage"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceUsage"),
 									},
 								},
 							},
@@ -2858,8 +2834,7 @@ func schema_pkg_apis_pipeline_v1_SkippedTask(ref common.ReferenceCallback) commo
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression"),
 									},
 								},
 							},
@@ -2915,9 +2890,8 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -2935,9 +2909,8 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -2962,8 +2935,7 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.EnvFromSource"),
+										Ref: ref("k8s.io/api/core/v1.EnvFromSource"),
 									},
 								},
 							},
@@ -2983,8 +2955,7 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.EnvVar"),
+										Ref: ref("k8s.io/api/core/v1.EnvVar"),
 									},
 								},
 							},
@@ -3011,8 +2982,7 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.VolumeMount"),
+										Ref: ref("k8s.io/api/core/v1.VolumeMount"),
 									},
 								},
 							},
@@ -3032,8 +3002,7 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.VolumeDevice"),
+										Ref: ref("k8s.io/api/core/v1.VolumeDevice"),
 									},
 								},
 							},
@@ -3077,8 +3046,7 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceUsage"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceUsage"),
 									},
 								},
 							},
@@ -3116,8 +3084,7 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
 									},
 								},
 							},
@@ -3135,8 +3102,7 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepResult"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepResult"),
 									},
 								},
 							},
@@ -3149,8 +3115,7 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression"),
 									},
 								},
 							},
@@ -3215,8 +3180,7 @@ func schema_pkg_apis_pipeline_v1_StepResult(ref common.ReferenceCallback) common
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"),
 									},
 								},
 							},
@@ -3287,8 +3251,7 @@ func schema_pkg_apis_pipeline_v1_StepState(ref common.ReferenceCallback) common.
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunResult"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunResult"),
 									},
 								},
 							},
@@ -3311,8 +3274,7 @@ func schema_pkg_apis_pipeline_v1_StepState(ref common.ReferenceCallback) common.
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact"),
 									},
 								},
 							},
@@ -3324,8 +3286,7 @@ func schema_pkg_apis_pipeline_v1_StepState(ref common.ReferenceCallback) common.
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact"),
 									},
 								},
 							},
@@ -3365,9 +3326,8 @@ func schema_pkg_apis_pipeline_v1_StepTemplate(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -3385,9 +3345,8 @@ func schema_pkg_apis_pipeline_v1_StepTemplate(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -3412,8 +3371,7 @@ func schema_pkg_apis_pipeline_v1_StepTemplate(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.EnvFromSource"),
+										Ref: ref("k8s.io/api/core/v1.EnvFromSource"),
 									},
 								},
 							},
@@ -3433,8 +3391,7 @@ func schema_pkg_apis_pipeline_v1_StepTemplate(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.EnvVar"),
+										Ref: ref("k8s.io/api/core/v1.EnvVar"),
 									},
 								},
 							},
@@ -3461,8 +3418,7 @@ func schema_pkg_apis_pipeline_v1_StepTemplate(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.VolumeMount"),
+										Ref: ref("k8s.io/api/core/v1.VolumeMount"),
 									},
 								},
 							},
@@ -3482,8 +3438,7 @@ func schema_pkg_apis_pipeline_v1_StepTemplate(ref common.ReferenceCallback) comm
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.VolumeDevice"),
+										Ref: ref("k8s.io/api/core/v1.VolumeDevice"),
 									},
 								},
 							},
@@ -3577,9 +3532,8 @@ func schema_pkg_apis_pipeline_v1_TaskBreakpoints(ref common.ReferenceCallback) c
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -3624,8 +3578,7 @@ func schema_pkg_apis_pipeline_v1_TaskList(ref common.ReferenceCallback) common.O
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Task"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Task"),
 									},
 								},
 							},
@@ -3668,9 +3621,31 @@ func schema_pkg_apis_pipeline_v1_TaskRef(ref common.ReferenceCallback) common.Op
 							Format:      "",
 						},
 					},
+					"resolver": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Resolver is the name of the resolver that should perform resolution of the referenced Tekton resource, such as \"git\".",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"params": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Params contains the parameters used to identify the referenced Tekton resource. Example entries might include \"repo\" or \"path\" but the set of params ultimately depends on the chosen resolver.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"},
 	}
 }
 
@@ -3704,8 +3679,7 @@ func schema_pkg_apis_pipeline_v1_TaskResult(ref common.ReferenceCallback) common
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"),
 									},
 								},
 							},
@@ -3818,8 +3792,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunInputs(ref common.ReferenceCallback) com
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
 									},
 								},
 							},
@@ -3866,8 +3839,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunList(ref common.ReferenceCallback) commo
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRun"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRun"),
 									},
 								},
 							},
@@ -3968,8 +3940,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunSpec(ref common.ReferenceCallback) commo
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
 									},
 								},
 							},
@@ -4039,8 +4010,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunSpec(ref common.ReferenceCallback) commo
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceBinding"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceBinding"),
 									},
 								},
 							},
@@ -4058,8 +4028,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunSpec(ref common.ReferenceCallback) commo
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec"),
 									},
 								},
 							},
@@ -4077,8 +4046,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunSpec(ref common.ReferenceCallback) commo
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec"),
 									},
 								},
 							},
@@ -4132,8 +4100,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("knative.dev/pkg/apis.Condition"),
+										Ref: ref("knative.dev/pkg/apis.Condition"),
 									},
 								},
 							},
@@ -4147,9 +4114,8 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -4187,8 +4153,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepState"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepState"),
 									},
 								},
 							},
@@ -4201,8 +4166,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus"),
 									},
 								},
 							},
@@ -4220,8 +4184,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunResult"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunResult"),
 									},
 								},
 							},
@@ -4245,8 +4208,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SidecarState"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SidecarState"),
 									},
 								},
 							},
@@ -4272,9 +4234,8 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -4328,8 +4289,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref common.ReferenceCallbac
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepState"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepState"),
 									},
 								},
 							},
@@ -4342,8 +4302,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref common.ReferenceCallbac
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus"),
 									},
 								},
 							},
@@ -4361,8 +4320,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref common.ReferenceCallbac
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunResult"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunResult"),
 									},
 								},
 							},
@@ -4386,8 +4344,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref common.ReferenceCallbac
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SidecarState"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SidecarState"),
 									},
 								},
 							},
@@ -4413,9 +4370,8 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref common.ReferenceCallbac
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -4475,8 +4431,7 @@ func schema_pkg_apis_pipeline_v1_TaskSpec(ref common.ReferenceCallback) common.O
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec"),
 									},
 								},
 							},
@@ -4508,8 +4463,7 @@ func schema_pkg_apis_pipeline_v1_TaskSpec(ref common.ReferenceCallback) common.O
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Step"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Step"),
 									},
 								},
 							},
@@ -4522,8 +4476,7 @@ func schema_pkg_apis_pipeline_v1_TaskSpec(ref common.ReferenceCallback) common.O
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/api/core/v1.Volume"),
+										Ref: ref("k8s.io/api/core/v1.Volume"),
 									},
 								},
 							},
@@ -4547,8 +4500,7 @@ func schema_pkg_apis_pipeline_v1_TaskSpec(ref common.ReferenceCallback) common.O
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Sidecar"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Sidecar"),
 									},
 								},
 							},
@@ -4566,8 +4518,7 @@ func schema_pkg_apis_pipeline_v1_TaskSpec(ref common.ReferenceCallback) common.O
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceDeclaration"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceDeclaration"),
 									},
 								},
 							},
@@ -4585,8 +4536,7 @@ func schema_pkg_apis_pipeline_v1_TaskSpec(ref common.ReferenceCallback) common.O
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskResult"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskResult"),
 									},
 								},
 							},
@@ -4666,9 +4616,8 @@ func schema_pkg_apis_pipeline_v1_WhenExpression(ref common.ReferenceCallback) co
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
