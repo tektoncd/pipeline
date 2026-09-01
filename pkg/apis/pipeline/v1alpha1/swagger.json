@@ -15,7 +15,6 @@
           "description": "ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified",
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1.LocalObjectReference"
           },
           "x-kubernetes-list-type": "atomic"
@@ -24,8 +23,7 @@
           "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
-            "default": ""
+            "type": "string"
           }
         },
         "priorityClassName": {
@@ -44,7 +42,6 @@
           "description": "If specified, the pod's tolerations.",
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1.Toleration"
           },
           "x-kubernetes-list-type": "atomic"
@@ -79,7 +76,6 @@
           "description": "List of environment variables that can be provided to the containers belonging to the pod.",
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1.EnvVar"
           },
           "x-kubernetes-list-type": "atomic",
@@ -90,7 +86,6 @@
           "description": "HostAliases is an optional list of hosts and IPs that will be injected into the pod's hosts file if specified. This is only valid for non-hostNetwork pods.",
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1.HostAlias"
           },
           "x-kubernetes-list-type": "atomic"
@@ -107,7 +102,6 @@
           "description": "ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified",
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1.LocalObjectReference"
           },
           "x-kubernetes-list-type": "atomic"
@@ -116,8 +110,7 @@
           "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
-            "default": ""
+            "type": "string"
           }
         },
         "priorityClassName": {
@@ -140,7 +133,6 @@
           "description": "If specified, the pod's tolerations.",
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1.Toleration"
           },
           "x-kubernetes-list-type": "atomic"
@@ -149,7 +141,6 @@
           "description": "TopologySpreadConstraints controls how Pods are spread across your cluster among failure-domains such as regions, zones, nodes, and other user-defined topology domains.",
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1.TopologySpreadConstraint"
           },
           "x-kubernetes-list-type": "atomic"
@@ -158,7 +149,6 @@
           "description": "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes See Pod.spec.volumes (API version: v1)",
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1.Volume"
           },
           "x-kubernetes-patch-merge-key": "name",
@@ -280,7 +270,6 @@
         "items": {
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1alpha1.Run"
           }
         },
@@ -301,7 +290,6 @@
         "params": {
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1beta1.Param"
           }
         },
@@ -341,7 +329,6 @@
           "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1beta1.WorkspaceBinding"
           }
         }
@@ -384,7 +371,6 @@
         "items": {
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1alpha1.StepAction"
           }
         },
@@ -406,8 +392,7 @@
           "description": "Arguments to the entrypoint. The image's CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
           "type": "array",
           "items": {
-            "type": "string",
-            "default": ""
+            "type": "string"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -415,8 +400,7 @@
           "description": "Entrypoint array. Not executed within a shell. The image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
           "type": "array",
           "items": {
-            "type": "string",
-            "default": ""
+            "type": "string"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -428,7 +412,6 @@
           "description": "List of environment variables to set in the container. Cannot be updated.",
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1.EnvVar"
           },
           "x-kubernetes-list-type": "atomic",
@@ -443,7 +426,6 @@
           "description": "Params is a list of input parameters required to run the stepAction. Params must be supplied as inputs in Steps unless they declare a defaultvalue.",
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1.ParamSpec"
           }
         },
@@ -451,7 +433,6 @@
           "description": "Results are values that this StepAction can output",
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1.StepResult"
           },
           "x-kubernetes-list-type": "atomic"
@@ -468,7 +449,6 @@
           "description": "Volumes to mount into the Step's filesystem. Cannot be updated.",
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1.VolumeMount"
           },
           "x-kubernetes-list-type": "atomic",
@@ -521,7 +501,6 @@
         "items": {
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1alpha1.VerificationPolicy"
           }
         },
@@ -547,7 +526,6 @@
           "description": "Authorities defines the rules for validating signatures.",
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1alpha1.Authority"
           }
         },
@@ -559,7 +537,6 @@
           "description": "Resources defines the patterns of resources sources that should be subject to this policy. For example, we may want to apply this Policy from a certain GitHub repo. Then the ResourcesPattern should be valid regex. E.g. If using gitresolver, and we want to config keys from a certain git repo. `ResourcesPattern` can be `https://github.com/tektoncd/catalog.git`, we will use regex to filter out those resources.",
           "type": "array",
           "items": {
-            "default": {},
             "$ref": "#/definitions/v1alpha1.ResourcePattern"
           }
         }
