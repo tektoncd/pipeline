@@ -26,6 +26,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -1314,6 +1315,92 @@ func TestTaskRunSpec_ValidateUpdate_FinalizerChanges(t *testing.T) {
 				} else if !strings.Contains(err.Error(), tt.expectedError) {
 					t.Errorf("Expected error containing %q, but got: %v", tt.expectedError, err)
 				}
+			}
+		})
+	}
+}
+
+func TestTaskRun_ValidateImmutableLabels(t *testing.T) {
+	tests := []struct {
+		name          string
+		baselineList  map[string]string
+		updatedLabels map[string]string
+		asController  bool
+		noUserInfo    bool
+		expectedError apis.FieldError
+	}{{
+		name:          "non-managed label added by user is allowed",
+		baselineList:  map[string]string{},
+		updatedLabels: map[string]string{"example.com/team": "blue"},
+		expectedError: apis.FieldError{},
+	}, {
+		name:          "controller-managed label first stamped from empty is allowed",
+		baselineList:  map[string]string{},
+		updatedLabels: map[string]string{pipeline.PipelineLabelKey: "my-pipeline"},
+		expectedError: apis.FieldError{},
+	}, {
+		name:          "controller may change a controller-managed label",
+		baselineList:  map[string]string{pipeline.PipelineLabelKey: "parent-pipeline"},
+		updatedLabels: map[string]string{pipeline.PipelineLabelKey: "child-own-name"},
+		asController:  true,
+		expectedError: apis.FieldError{},
+	}, {
+		name:          "controller-managed label unchanged is allowed",
+		baselineList:  map[string]string{pipeline.PipelineRunLabelKey: "my-pipelinerun"},
+		updatedLabels: map[string]string{pipeline.PipelineRunLabelKey: "my-pipelinerun"},
+		expectedError: apis.FieldError{},
+	}, {
+		name:          "user mutating a controller-managed label is rejected",
+		baselineList:  map[string]string{pipeline.PipelineRunLabelKey: "my-pipelinerun"},
+		updatedLabels: map[string]string{pipeline.PipelineRunLabelKey: "user-edited"},
+		expectedError: apis.FieldError{
+			Message: `invalid value: label "tekton.dev/pipelineRun" is immutable once set`,
+			Paths:   []string{"metadata.labels.[tekton.dev/pipelineRun]"},
+		},
+	}, {
+		name:          "user removing a controller-managed label is rejected",
+		baselineList:  map[string]string{pipeline.PipelineTaskLabelKey: "my-task"},
+		updatedLabels: map[string]string{},
+		expectedError: apis.FieldError{
+			Message: `invalid value: label "tekton.dev/pipelineTask" is immutable once set`,
+			Paths:   []string{"metadata.labels.[tekton.dev/pipelineTask]"},
+		},
+	}, {
+		name:          "empty controller-managed label present is immutable",
+		baselineList:  map[string]string{pipeline.PipelineRunLabelKey: ""},
+		updatedLabels: map[string]string{pipeline.PipelineRunLabelKey: "user-edited"},
+		expectedError: apis.FieldError{
+			Message: `invalid value: label "tekton.dev/pipelineRun" is immutable once set`,
+			Paths:   []string{"metadata.labels.[tekton.dev/pipelineRun]"},
+		},
+	}, {
+		name:          "no user info falls back to enforcing immutability",
+		baselineList:  map[string]string{pipeline.PipelineRunLabelKey: "my-pipelinerun"},
+		updatedLabels: map[string]string{pipeline.PipelineRunLabelKey: "user-edited"},
+		noUserInfo:    true,
+		expectedError: apis.FieldError{
+			Message: `invalid value: label "tekton.dev/pipelineRun" is immutable once set`,
+			Paths:   []string{"metadata.labels.[tekton.dev/pipelineRun]"},
+		},
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			baseline := &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "tr", Labels: tt.baselineList},
+				Spec:       v1.TaskRunSpec{TaskRef: &v1.TaskRef{Name: "foo"}},
+			}
+			updated := &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "tr", Labels: tt.updatedLabels},
+				Spec:       v1.TaskRunSpec{TaskRef: &v1.TaskRef{Name: "foo"}},
+			}
+			ctx := apis.WithinUpdate(t.Context(), baseline)
+			if !tt.noUserInfo {
+				ctx = withCaller(ctx, tt.asController)
+			}
+			err := updated.Validate(ctx)
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("TaskRun.Validate() label immutability errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
