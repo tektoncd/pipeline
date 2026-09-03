@@ -896,7 +896,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 
 	if pr.Status.FinallyStartTime == nil {
 		if pr.HaveTasksTimedOut(ctx, c.Clock) {
-			tasksToTimeOut := sets.NewString()
+			tasksToTimeOut := sets.New[string]()
 			for _, pt := range pipelineRunFacts.State {
 				if !pt.IsFinalTask(pipelineRunFacts) && pt.IsRunning() {
 					tasksToTimeOut.Insert(pt.PipelineTask.Name)
@@ -913,7 +913,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 			}
 		}
 	} else if pr.HasFinallyTimedOut(ctx, c.Clock) {
-		tasksToTimeOut := sets.NewString()
+		tasksToTimeOut := sets.New[string]()
 		for _, pt := range pipelineRunFacts.State {
 			if pt.IsFinalTask(pipelineRunFacts) && pt.IsRunning() {
 				tasksToTimeOut.Insert(pt.PipelineTask.Name)
@@ -1639,7 +1639,7 @@ func propagateWorkspaces(rpt *resources.ResolvedPipelineTask) (*resources.Resolv
 		return rpt, err
 	}
 
-	ptw := sets.NewString()
+	ptw := sets.New[string]()
 	for _, ws := range rpt.PipelineTask.Workspaces {
 		ptw.Insert(ws.Name)
 	}

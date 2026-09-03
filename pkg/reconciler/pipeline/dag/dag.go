@@ -19,7 +19,6 @@ package dag
 import (
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/list"
@@ -100,12 +99,12 @@ func Build(tasks Tasks, deps map[string][]string) (*Graph, error) {
 // given a list of finished doneTasks. If the specified
 // doneTasks are invalid (i.e. if it is indicated that a Task is done, but the
 // previous Tasks are not done), an error is returned.
-func GetCandidateTasks(g *Graph, doneTasks ...string) (sets.String, error) {
+func GetCandidateTasks(g *Graph, doneTasks ...string) (sets.Set[string], error) {
 	roots := getRoots(g)
-	tm := sets.NewString(doneTasks...)
-	d := sets.NewString()
+	tm := sets.New[string](doneTasks...)
+	d := sets.New[string]()
 
-	visited := sets.NewString()
+	visited := sets.New[string]()
 	for _, root := range roots {
 		schedulable := findSchedulable(root, visited, tm)
 		for _, taskName := range schedulable {
@@ -133,14 +132,14 @@ func linkPipelineTasks(prev *Node, next *Node) {
 
 // use Kahn's algorithm to find cycles in dependencies
 func findCyclesInDependencies(deps map[string][]string) error {
-	independentTasks := sets.NewString()
-	dag := make(map[string]sets.String, len(deps))
-	childMap := make(map[string]sets.String, len(deps))
+	independentTasks := sets.New[string]()
+	dag := make(map[string]sets.Set[string], len(deps))
+	childMap := make(map[string]sets.Set[string], len(deps))
 	for task, taskDeps := range deps {
 		if len(taskDeps) == 0 {
 			continue
 		}
-		dag[task] = sets.NewString(taskDeps...)
+		dag[task] = sets.New[string](taskDeps...)
 		for _, dep := range taskDeps {
 			if len(deps[dep]) == 0 {
 				independentTasks.Insert(dep)
@@ -148,7 +147,7 @@ func findCyclesInDependencies(deps map[string][]string) error {
 			if children, ok := childMap[dep]; ok {
 				children.Insert(task)
 			} else {
-				childMap[dep] = sets.NewString(task)
+				childMap[dep] = sets.New[string](task)
 			}
 		}
 	}
@@ -175,7 +174,7 @@ func findCyclesInDependencies(deps map[string][]string) error {
 	return getInterdependencyError(dag)
 }
 
-func getInterdependencyError(dag map[string]sets.String) error {
+func getInterdependencyError(dag map[string]sets.Set[string]) error {
 	if len(dag) == 0 {
 		return nil
 	}
@@ -185,9 +184,8 @@ func getInterdependencyError(dag map[string]sets.String) error {
 			firstChild = task
 		}
 	}
-	deps := dag[firstChild].List()
+	deps := sets.List(dag[firstChild])
 	depNames := make([]string, 0, len(deps))
-	sort.Strings(deps)
 	for _, dep := range deps {
 		depNames = append(depNames, fmt.Sprintf("%q", dep))
 	}
@@ -214,7 +212,7 @@ func getRoots(g *Graph) []*Node {
 	return n
 }
 
-func findSchedulable(n *Node, visited sets.String, doneTasks sets.String) []string {
+func findSchedulable(n *Node, visited sets.Set[string], doneTasks sets.Set[string]) []string {
 	if visited.Has(n.Key) {
 		return []string{}
 	}
@@ -238,7 +236,7 @@ func findSchedulable(n *Node, visited sets.String, doneTasks sets.String) []stri
 	return []string{}
 }
 
-func isSchedulable(doneTasks sets.String, prevs []*Node) bool {
+func isSchedulable(doneTasks sets.Set[string], prevs []*Node) bool {
 	if len(prevs) == 0 {
 		return true
 	}

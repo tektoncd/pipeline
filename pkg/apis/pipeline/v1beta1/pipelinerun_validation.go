@@ -225,7 +225,7 @@ func (ps *PipelineRunSpec) validatePropagatedWorkspaces(ctx context.Context) (er
 	if ps.PipelineSpec == nil {
 		return errs
 	}
-	workspaceNames := sets.NewString()
+	workspaceNames := sets.New[string]()
 	for _, w := range ps.Workspaces {
 		workspaceNames.Insert(w.Name)
 	}
