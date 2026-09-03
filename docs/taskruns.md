@@ -765,6 +765,24 @@ The `status` field defines the observed state of `TaskRun`
   - [`sidecars`](tasks.md#using-a-sidecar-in-a-task) - This field is a list. The list has one entry per `sidecar` in the manifest. Each entry represents the imageid of the corresponding sidecar.
   - `spanContext` - Contains tracing span context fields.
 
+### Pod Warning Event fallback
+
+When the `surface-pod-events` feature flag is enabled, Tekton can copy the
+latest Warning Event for a Pending TaskRun Pod into the TaskRun's `Succeeded`
+condition. This is a fallback: a useful current Pod or container diagnosis
+always takes precedence.
+
+The controller does not watch or cache Kubernetes Events. For an eligible Pod,
+it Lists Warning Events immediately and retries an empty result after 5 seconds
+and 30 seconds, for at most three Lists per Pod UID during one controller
+process lifetime. Events remain best-effort, so a warning created after the
+last attempt can be missed. A controller restart can start a new bounded set of
+attempts.
+
+Surfaced messages begin with `Last observed Pod warning:`. Internally, Tekton
+retains the message only while it can associate it with the current TaskRun UID
+and Pod UID. This prevents a replacement Pod with the same name from inheriting
+an older Pod's warning.
 
 
 ## Monitoring execution status

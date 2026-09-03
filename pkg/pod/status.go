@@ -638,11 +638,21 @@ func updateIncompleteTaskRunStatus(ctx context.Context, trs *v1.TaskRunStatus, p
 			markStatusRunning(trs, ReasonPullImageFailed, getWaitingMessage(pod))
 		default:
 			msg := getWaitingMessage(pod)
-			if config.FromContextOrDefaults(ctx).FeatureFlags.EnableSurfacePodEvents && isGenericPending(pod) {
-				if eventReason, eventMsg := latestWarningEvent(ctx, kubeclient, pod); eventReason != "" {
-					msg = eventReason
-					if eventMsg = strings.TrimSpace(eventMsg); eventMsg != "" {
-						msg += ": " + eventMsg
+			if config.FromContextOrDefaults(ctx).FeatureFlags.EnableSurfacePodEvents {
+				if diagnostic, useful := currentPodDiagnostic(pod); useful {
+					msg = diagnostic
+				} else if isGenericPending(pod) {
+					if podEventLookupEnabled(ctx) {
+						eventReason, eventMsg := latestWarningEvent(ctx, kubeclient, pod)
+						if eventReason != "" || eventMsg != "" {
+							msg = lastObservedPodWarningPrefix + eventReason
+							if eventMsg != "" {
+								msg += ": " + eventMsg
+							}
+						}
+					}
+					if previous := trs.GetCondition(apis.ConditionSucceeded); msg == ReasonPodPending && previous != nil && IsLastObservedPodWarning(previous.Message) {
+						msg = previous.Message
 					}
 				}
 			}
@@ -1029,8 +1039,7 @@ func getWaitingMessage(pod *corev1.Pod) string {
 	for _, status := range pod.Status.ContainerStatuses {
 		wait := status.State.Waiting
 		if wait != nil && wait.Message != "" {
-			return fmt.Sprintf("build step %q is pending with reason %q",
-				status.Name, wait.Message)
+			return fmt.Sprintf("build step %q is pending with reason %q", status.Name, wait.Message)
 		}
 	}
 	// Try to surface underlying reason by inspecting pod's recent status if condition is not true
