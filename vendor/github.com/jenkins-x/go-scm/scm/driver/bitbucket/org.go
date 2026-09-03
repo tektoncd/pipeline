@@ -68,7 +68,7 @@ func (s *organizationService) Find(ctx context.Context, name string) (*scm.Organ
 }
 
 func (s *organizationService) List(ctx context.Context, opts *scm.ListOptions) ([]*scm.Organization, *scm.Response, error) {
-	path := fmt.Sprintf("2.0/workspaces?%s", encodeListRoleOptions(opts))
+	path := fmt.Sprintf("2.0/user/workspaces?%s", encodeListRoleOptions(opts))
 	out := new(organizationList)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
 	if err != nil {

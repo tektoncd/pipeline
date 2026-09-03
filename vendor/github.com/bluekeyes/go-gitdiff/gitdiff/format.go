@@ -1,8 +1,6 @@
 package gitdiff
 
 import (
-	"bytes"
-	"compress/zlib"
 	"fmt"
 	"io"
 	"strconv"
@@ -242,7 +240,7 @@ func (fm *formatter) FormatBinaryFragment(f *BinaryFragment) {
 	fm.Write(strconv.AppendInt(nil, f.Size, 10))
 	fm.WriteByte('\n')
 
-	data := deflateBinaryChunk(f.Data)
+	data := f.RawData
 	n := (len(data) / maxBytesPerLine) * maxBytesPerLine
 
 	buf := make([]byte, base85Len(maxBytesPerLine))
@@ -268,14 +266,4 @@ func (fm *formatter) FormatBinaryFragment(f *BinaryFragment) {
 		fm.WriteByte('\n')
 	}
 	fm.WriteByte('\n')
-}
-
-func deflateBinaryChunk(data []byte) []byte {
-	var b bytes.Buffer
-
-	zw := zlib.NewWriter(&b)
-	_, _ = zw.Write(data)
-	_ = zw.Close()
-
-	return b.Bytes()
 }
