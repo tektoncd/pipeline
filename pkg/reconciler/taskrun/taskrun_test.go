@@ -8579,6 +8579,566 @@ spec:
 	}
 }
 
+func TestReconcile_SurfacePodEvents_RetriesEmptyWarningLookupByPodUID(t *testing.T) {
+	originalTime := testClock.Now()
+	defer testClock.SetTime(originalTime)
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: retry-pod-events
+  namespace: foo
+  uid: taskrun-uid
+spec:
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+  podName: retry-pod-events-pod
+`)
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      taskRun.Status.PodName,
+			Namespace: taskRun.Namespace,
+			UID:       types.UID("pod-uid"),
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodPending,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-simple-step",
+				State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{
+					Reason: "ContainerCreating",
+				}},
+			}},
+		},
+	}
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Tasks:    []*v1.Task{simpleTask},
+		Pods:     []*corev1.Pod{pod},
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+			Data:       map[string]string{config.SurfacePodEvents: "true"},
+		}},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+
+	var eventLists int
+	testAssets.Clients.Kube.PrependReactor("list", "events", func(action ktesting.Action) (bool, runtime.Object, error) {
+		eventLists++
+		return true, &corev1.EventList{}, nil
+	})
+
+	assertRetryAfter := func(want time.Duration) {
+		t.Helper()
+		err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun))
+		ok, got := controller.IsRequeueKey(err)
+		if !ok || got != want {
+			t.Fatalf("Reconcile() retry = (%t, %v), want (true, %v), err = %v", ok, got, want, err)
+		}
+	}
+
+	// The initial empty lookup schedules the first retry. A duplicate reconcile
+	// before that retry is due must not issue another Event List or timer.
+	assertRetryAfter(5 * time.Second)
+	assertRetryAfter(5 * time.Second)
+	if eventLists != 1 {
+		t.Fatalf("Event List calls before first retry = %d, want 1", eventLists)
+	}
+
+	// Each delayed retry gets exactly one more lookup. After the third empty
+	// result, generic reconciles for this Pod UID must not keep polling Events.
+	testClock.SetTime(testClock.Now().Add(5 * time.Second))
+	assertRetryAfter(30 * time.Second)
+	testClock.SetTime(testClock.Now().Add(30 * time.Second))
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Fatal("Reconcile() = nil, want its normal TaskRun timeout requeue after retry budget is exhausted")
+	}
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Fatal("Reconcile() = nil, want its normal TaskRun timeout requeue after retry budget is exhausted")
+	}
+	if eventLists != 3 {
+		t.Fatalf("Event List calls after retry budget exhausted = %d, want 3", eventLists)
+	}
+}
+
+func TestPodEventRetryStateLifecycle(t *testing.T) {
+	originalTime := testClock.Now()
+	defer testClock.SetTime(originalTime)
+	c := &Reconciler{Clock: testClock}
+	tr := &v1.TaskRun{ObjectMeta: metav1.ObjectMeta{UID: types.UID("taskrun-uid")}}
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: types.UID("pod-uid")}}
+
+	if !c.beginPodEventLookup(tr, pod) {
+		t.Fatal("first lookup was suppressed")
+	}
+	c.schedulePodEventRetry(tr, pod)
+	if c.beginPodEventLookup(tr, pod) {
+		t.Fatal("lookup was allowed before the scheduled retry")
+	}
+
+	// Terminal cleanup removes the old budget, so a replacement Pod UID can start fresh.
+	c.clearPodEventRetryForTaskRun(tr)
+	replacement := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{UID: types.UID("replacement-pod-uid")}}
+	if !c.beginPodEventLookup(tr, replacement) {
+		t.Fatal("lookup was suppressed after terminal cleanup")
+	}
+
+	// Time alone cannot renew a Pod UID's exhausted lookup budget.
+	c.schedulePodEventRetry(tr, replacement)
+	testClock.SetTime(testClock.Now().Add(podEventInitialRetryAfter))
+	if !c.beginPodEventLookup(tr, replacement) {
+		t.Fatal("second lookup was suppressed")
+	}
+	c.schedulePodEventRetry(tr, replacement)
+	testClock.SetTime(testClock.Now().Add(podEventFinalRetryAfter))
+	if !c.beginPodEventLookup(tr, replacement) {
+		t.Fatal("third lookup was suppressed")
+	}
+	testClock.SetTime(testClock.Now().Add(time.Minute))
+	if c.beginPodEventLookup(tr, replacement) {
+		t.Fatal("lookup was renewed after time elapsed")
+	}
+}
+
+func TestEarliestPodEventOrTimeoutRequeue(t *testing.T) {
+	tests := []struct {
+		name       string
+		retryAfter time.Duration
+		hasRetry   bool
+		timeout    time.Duration
+		elapsed    time.Duration
+		want       time.Duration
+		wantOK     bool
+	}{
+		{name: "TaskRun timeout wins", retryAfter: 30 * time.Second, hasRetry: true, timeout: 10 * time.Second, elapsed: 2 * time.Second, want: 8 * time.Second, wantOK: true},
+		{name: "Event retry wins", retryAfter: 5 * time.Second, hasRetry: true, timeout: 10 * time.Second, elapsed: 2 * time.Second, want: 5 * time.Second, wantOK: true},
+		{name: "no TaskRun timeout", retryAfter: 5 * time.Second, hasRetry: true, timeout: config.NoTimeoutDuration, want: 5 * time.Second, wantOK: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, gotOK := earliestPodEventOrTimeoutRequeue(tc.retryAfter, tc.hasRetry, tc.timeout, tc.elapsed)
+			if got != tc.want || gotOK != tc.wantOK {
+				t.Fatalf("earliestPodEventOrTimeoutRequeue() = (%v, %t), want (%v, %t)", got, gotOK, tc.want, tc.wantOK)
+			}
+		})
+	}
+}
+
+func TestShouldLookupPodEventsOnlyForPendingPods(t *testing.T) {
+	for _, phase := range []corev1.PodPhase{corev1.PodRunning, corev1.PodUnknown, corev1.PodSucceeded, corev1.PodFailed} {
+		if shouldLookupPodEvents(&corev1.Pod{Status: corev1.PodStatus{Phase: phase}}) {
+			t.Errorf("shouldLookupPodEvents() = true for %s Pod", phase)
+		}
+	}
+	if !shouldLookupPodEvents(&corev1.Pod{Status: corev1.PodStatus{Phase: corev1.PodPending}}) {
+		t.Error("shouldLookupPodEvents() = false for generic Pending Pod")
+	}
+}
+
+func TestReconcile_SurfacePodEvents_PersistsWarningFoundOnDelayedRetry(t *testing.T) {
+	originalTime := testClock.Now()
+	defer testClock.SetTime(originalTime)
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: delayed-pod-event
+  namespace: foo
+  uid: delayed-taskrun-uid
+spec:
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+  podName: delayed-pod-event-pod
+`)
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: taskRun.Status.PodName, Namespace: taskRun.Namespace, UID: types.UID("delayed-pod-uid")},
+		Status: corev1.PodStatus{Phase: corev1.PodPending, ContainerStatuses: []corev1.ContainerStatus{{
+			Name: "step-simple-step",
+			State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{
+				Reason: "ContainerCreating",
+			}},
+		}}},
+	}
+	testAssets, cancel := getTaskRunController(t, test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Tasks:    []*v1.Task{simpleTask},
+		Pods:     []*corev1.Pod{pod},
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+			Data:       map[string]string{config.SurfacePodEvents: "true"},
+		}},
+	})
+	defer cancel()
+
+	firstList := true
+	testAssets.Clients.Kube.PrependReactor("list", "events", func(action ktesting.Action) (bool, runtime.Object, error) {
+		if firstList {
+			firstList = false
+			return true, &corev1.EventList{}, nil
+		}
+		return false, nil, nil
+	})
+
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Fatal("initial Reconcile() = nil, want the 5-second Event lookup retry")
+	}
+	if _, err := testAssets.Clients.Kube.CoreV1().Events(taskRun.Namespace).Create(testAssets.Ctx, &corev1.Event{
+		ObjectMeta:     metav1.ObjectMeta{Name: "failed-mount", Namespace: taskRun.Namespace},
+		InvolvedObject: corev1.ObjectReference{UID: pod.UID},
+		Type:           corev1.EventTypeWarning,
+		Reason:         "FailedMount",
+		Message:        "secret missing",
+	}, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("creating Event: %v", err)
+	}
+
+	testClock.SetTime(testClock.Now().Add(5 * time.Second))
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Fatal("delayed Reconcile() = nil, want the normal TaskRun timeout requeue")
+	}
+	updated, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting TaskRun: %v", err)
+	}
+	condition := updated.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil || condition.Message != "Last observed Pod warning: FailedMount: secret missing" {
+		t.Fatalf("condition = %#v, want labelled warning from delayed retry", condition)
+	}
+}
+
+func TestReconcile_SurfacePodEvents_DoesNotPreserveUntrustedWarningInTimeoutStatus(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: timeout-pod-events
+  namespace: foo
+  uid: timeout-taskrun-uid
+spec:
+  taskRef:
+    name: test-task
+  timeout: 10s
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+    reason: Pending
+    message: 'Last observed Pod warning: FailedMount: secret "missing" not found'
+  startTime: "2021-12-31T23:59:45Z"
+  podName: timeout-pod-events-pod
+`)
+
+	testAssets, cancel := getTaskRunController(t, test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Tasks:    []*v1.Task{simpleTask},
+	})
+	defer cancel()
+
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+		t.Fatalf("Reconcile() = %v", err)
+	}
+	updated, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting TaskRun: %v", err)
+	}
+	condition := updated.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil {
+		t.Fatal("expected a completion condition")
+	}
+	want := `TaskRun "timeout-pod-events" failed to finish within "10s"`
+	if condition.Message != want {
+		t.Fatalf("timeout condition message = %q, want %q", condition.Message, want)
+	}
+}
+
+func TestReconcile_SurfacePodEvents_ReplacementPodGetsOwnWarning(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: replacement-pod-events
+  namespace: foo
+  uid: replacement-taskrun-uid
+spec:
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+  podName: replacement-pod
+`)
+	podA := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: taskRun.Status.PodName, Namespace: taskRun.Namespace, UID: types.UID("pod-a")},
+		Status: corev1.PodStatus{Phase: corev1.PodPending, ContainerStatuses: []corev1.ContainerStatus{{
+			Name: "step-simple-step",
+			State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{
+				Reason: "ContainerCreating",
+			}},
+		}}},
+	}
+	podB := podA.DeepCopy()
+	podB.UID = types.UID("pod-b")
+
+	testAssets, cancel := getTaskRunController(t, test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Tasks:    []*v1.Task{simpleTask},
+		Pods:     []*corev1.Pod{podA},
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+			Data:       map[string]string{config.SurfacePodEvents: "true"},
+		}},
+	})
+	defer cancel()
+
+	for _, event := range []*corev1.Event{
+		{
+			ObjectMeta:     metav1.ObjectMeta{Name: "warning-a", Namespace: taskRun.Namespace},
+			InvolvedObject: corev1.ObjectReference{UID: podA.UID},
+			Type:           corev1.EventTypeWarning,
+			Reason:         "FailedMount",
+			Message:        "secret-a missing",
+		},
+		{
+			ObjectMeta:     metav1.ObjectMeta{Name: "warning-b", Namespace: taskRun.Namespace},
+			InvolvedObject: corev1.ObjectReference{UID: podB.UID},
+			Type:           corev1.EventTypeWarning,
+			Reason:         "FailedMount",
+			Message:        "secret-b missing",
+		},
+	} {
+		if _, err := testAssets.Clients.Kube.CoreV1().Events(taskRun.Namespace).Create(testAssets.Ctx, event, metav1.CreateOptions{}); err != nil {
+			t.Fatalf("creating Event %q: %v", event.Name, err)
+		}
+	}
+
+	var eventLists int
+	testAssets.Clients.Kube.PrependReactor("list", "events", func(action ktesting.Action) (bool, runtime.Object, error) {
+		eventLists++
+		return false, nil, nil
+	})
+	reconcileAndCache := func() *v1.TaskRun {
+		t.Helper()
+		if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+			t.Fatal("Reconcile() = nil, want the normal TaskRun timeout requeue")
+		}
+		updated, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("getting TaskRun: %v", err)
+		}
+		if err := testAssets.Informers.TaskRun.Informer().GetIndexer().Update(updated); err != nil {
+			t.Fatalf("updating TaskRun informer: %v", err)
+		}
+		return updated
+	}
+
+	updated := reconcileAndCache()
+	if got := updated.Status.GetCondition(apis.ConditionSucceeded).Message; got != "Last observed Pod warning: FailedMount: secret-a missing" {
+		t.Fatalf("Pod A condition message = %q, want its warning", got)
+	}
+
+	if err := testAssets.Clients.Kube.CoreV1().Pods(taskRun.Namespace).Delete(testAssets.Ctx, podA.Name, metav1.DeleteOptions{}); err != nil {
+		t.Fatalf("deleting Pod A: %v", err)
+	}
+	if err := testAssets.Informers.Pod.Informer().GetIndexer().Delete(podA); err != nil {
+		t.Fatalf("removing Pod A from informer: %v", err)
+	}
+	if _, err := testAssets.Clients.Kube.CoreV1().Pods(taskRun.Namespace).Create(testAssets.Ctx, podB, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("creating replacement Pod B: %v", err)
+	}
+
+	updated = reconcileAndCache()
+	if got := updated.Status.GetCondition(apis.ConditionSucceeded).Message; got != "Last observed Pod warning: FailedMount: secret-b missing" {
+		t.Fatalf("Pod B condition message = %q, want its own warning and never Pod A's", got)
+	}
+	if eventLists != 2 {
+		t.Fatalf("Event List calls = %d, want one independent lookup for each Pod UID", eventLists)
+	}
+}
+
+func TestReconcile_SurfacePodEvents_ReplacementPodDoesNotAppendOldWarningAtTimeout(t *testing.T) {
+	originalTime := testClock.Now()
+	defer testClock.SetTime(originalTime)
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: replacement-timeout-pod-events
+  namespace: foo
+  uid: replacement-timeout-taskrun-uid
+spec:
+  taskRef:
+    name: test-task
+  timeout: 10s
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+    reason: Pending
+  podName: replacement-timeout-pod
+`)
+	taskRun.Status.StartTime = &metav1.Time{Time: testClock.Now()}
+	podA := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: taskRun.Status.PodName, Namespace: taskRun.Namespace, UID: types.UID("timeout-pod-a")}}
+	podA.Status = corev1.PodStatus{Phase: corev1.PodPending, ContainerStatuses: []corev1.ContainerStatus{{
+		Name: "step-simple-step",
+		State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{
+			Reason: "ContainerCreating",
+		}},
+	}}}
+	podB := podA.DeepCopy()
+	podB.UID = types.UID("timeout-pod-b")
+	testAssets, cancel := getTaskRunController(t, test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Tasks:    []*v1.Task{simpleTask},
+		Pods:     []*corev1.Pod{podA},
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+			Data:       map[string]string{config.SurfacePodEvents: "true"},
+		}},
+	})
+	defer cancel()
+
+	if _, err := testAssets.Clients.Kube.CoreV1().Events(taskRun.Namespace).Create(testAssets.Ctx, &corev1.Event{
+		ObjectMeta:     metav1.ObjectMeta{Name: "warning-a", Namespace: taskRun.Namespace},
+		InvolvedObject: corev1.ObjectReference{UID: podA.UID},
+		Type:           corev1.EventTypeWarning,
+		Reason:         "FailedMount",
+		Message:        "secret-a missing",
+	}, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("creating Pod A Event: %v", err)
+	}
+
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Fatal("initial Reconcile() = nil, want a normal TaskRun timeout requeue")
+	}
+	updated, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting TaskRun: %v", err)
+	}
+	if got := updated.Status.GetCondition(apis.ConditionSucceeded).Message; got != "Last observed Pod warning: FailedMount: secret-a missing" {
+		t.Fatalf("Pod A condition message = %q, want its warning", got)
+	}
+	if err := testAssets.Informers.TaskRun.Informer().GetIndexer().Update(updated); err != nil {
+		t.Fatalf("updating TaskRun informer: %v", err)
+	}
+	if err := testAssets.Clients.Kube.CoreV1().Pods(taskRun.Namespace).Delete(testAssets.Ctx, podA.Name, metav1.DeleteOptions{}); err != nil {
+		t.Fatalf("deleting Pod A: %v", err)
+	}
+	if err := testAssets.Informers.Pod.Informer().GetIndexer().Delete(podA); err != nil {
+		t.Fatalf("removing Pod A from informer: %v", err)
+	}
+	if _, err := testAssets.Clients.Kube.CoreV1().Pods(taskRun.Namespace).Create(testAssets.Ctx, podB, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("creating replacement Pod B: %v", err)
+	}
+	testClock.SetTime(testClock.Now().Add(11 * time.Second))
+
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+		t.Fatalf("Reconcile() = %v", err)
+	}
+	updated, err = testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting timed out TaskRun: %v", err)
+	}
+	condition := updated.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil {
+		t.Fatal("expected a timeout condition")
+	}
+	want := `TaskRun "replacement-timeout-pod-events" failed to finish within "10s"`
+	if condition.Message != want {
+		t.Fatalf("timeout condition message = %q, want no warning from replacement Pod A", condition.Message)
+	}
+}
+
+func TestReconcile_SurfacePodEvents_ControllerRestartReestablishesWarningProvenance(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		event       *corev1.Event
+		wantMessage string
+		wantWarning bool
+	}{
+		{
+			name: "matching current Pod warning is re-established",
+			event: &corev1.Event{
+				ObjectMeta:     metav1.ObjectMeta{Name: "warning", Namespace: "foo"},
+				InvolvedObject: corev1.ObjectReference{UID: types.UID("restart-pod")},
+				Type:           corev1.EventTypeWarning,
+				Reason:         "FailedMount",
+				Message:        "secret missing",
+			},
+			wantMessage: "Last observed Pod warning: FailedMount: secret missing",
+			wantWarning: true,
+		},
+		{
+			name:        "old warning is discarded when its provenance cannot be re-established",
+			wantMessage: "Pending",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: restart-pod-events
+  namespace: foo
+  uid: restart-taskrun-uid
+spec:
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+    reason: Pending
+    message: 'Last observed Pod warning: FailedMount: secret missing'
+  podName: restart-pod
+`)
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: taskRun.Status.PodName, Namespace: taskRun.Namespace, UID: types.UID("restart-pod")},
+				Status: corev1.PodStatus{Phase: corev1.PodPending, ContainerStatuses: []corev1.ContainerStatus{{
+					Name:  "step-simple-step",
+					State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ContainerCreating"}},
+				}}},
+			}
+			d := test.Data{
+				TaskRuns: []*v1.TaskRun{taskRun},
+				Tasks:    []*v1.Task{simpleTask},
+				Pods:     []*corev1.Pod{pod},
+				ConfigMaps: []*corev1.ConfigMap{{
+					ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+					Data:       map[string]string{config.SurfacePodEvents: "true"},
+				}},
+			}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			if tc.event != nil {
+				if _, err := testAssets.Clients.Kube.CoreV1().Events(taskRun.Namespace).Create(testAssets.Ctx, tc.event, metav1.CreateOptions{}); err != nil {
+					t.Fatalf("creating current Pod Event: %v", err)
+				}
+			}
+
+			var eventLists int
+			testAssets.Clients.Kube.PrependReactor("list", "events", func(action ktesting.Action) (bool, runtime.Object, error) {
+				eventLists++
+				return false, nil, nil
+			})
+			if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+				t.Fatal("Reconcile() = nil, want the normal TaskRun timeout requeue")
+			}
+			updated, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting TaskRun: %v", err)
+			}
+			condition := updated.Status.GetCondition(apis.ConditionSucceeded)
+			if condition == nil || condition.Message != tc.wantMessage {
+				t.Fatalf("restart condition = %#v, want message %q", condition, tc.wantMessage)
+			}
+			if got := podconvert.IsLastObservedPodWarning(condition.Message); got != tc.wantWarning {
+				t.Fatalf("warning retained after restart = %t, want %t", got, tc.wantWarning)
+			}
+			if eventLists != 1 {
+				t.Fatalf("Event List calls after fresh controller start = %d, want 1 new lookup budget", eventLists)
+			}
+		})
+	}
+}
+
 func TestAppendPreviousConditionContext(t *testing.T) {
 	tests := []struct {
 		name             string
