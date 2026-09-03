@@ -183,10 +183,3 @@ func parseRange(s string) (start int64, end int64, err error) {
 
 	return
 }
-
-func max(a, b int64) int64 {
-	if a > b {
-		return a
-	}
-	return b
-}
