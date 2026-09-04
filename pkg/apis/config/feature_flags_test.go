@@ -358,6 +358,63 @@ func TestGetVerificationNoMatchPolicy(t *testing.T) {
 	}
 }
 
+func TestNewFeatureFlagsPerNamespaceConfiguration(t *testing.T) {
+	tests := []struct {
+		name    string
+		data    map[string]string
+		want    *config.FeatureFlags
+		wantErr bool
+	}{
+		{
+			name: "defaults disabled",
+			data: map[string]string{},
+			want: &config.FeatureFlags{
+				PerNamespaceConfiguration: false,
+				NonOverridableFields:      "",
+			},
+		},
+		{
+			name: "enabled with operator locked fields",
+			data: map[string]string{
+				config.PerNamespaceConfigurationKey: "true",
+				config.NonOverridableFieldsKey:      "coschedule,max-result-size",
+			},
+			want: &config.FeatureFlags{
+				PerNamespaceConfiguration: true,
+				NonOverridableFields:      "coschedule,max-result-size",
+			},
+		},
+		{
+			name: "invalid enabled flag",
+			data: map[string]string{
+				config.PerNamespaceConfigurationKey: "not-a-bool",
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := config.NewFeatureFlagsFromMap(tc.data)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("NewFeatureFlagsFromMap() expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("NewFeatureFlagsFromMap() = %v", err)
+			}
+			if got.PerNamespaceConfiguration != tc.want.PerNamespaceConfiguration {
+				t.Fatalf("PerNamespaceConfiguration = %v, want %v", got.PerNamespaceConfiguration, tc.want.PerNamespaceConfiguration)
+			}
+			if got.NonOverridableFields != tc.want.NonOverridableFields {
+				t.Fatalf("NonOverridableFields = %q, want %q", got.NonOverridableFields, tc.want.NonOverridableFields)
+			}
+		})
+	}
+}
+
 func TestIsSpireEnabled(t *testing.T) {
 	testCases := []struct {
 		name      string

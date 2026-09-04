@@ -365,11 +365,25 @@ spec:
 `),
 	}
 
+	configMaps := th.NewFeatureFlagsConfigMapInSlice()
+	configMaps[0].Data["per-namespace-configuration"] = "true"
+	configMaps = append(configMaps, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "tekton-config-defaults",
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app.kubernetes.io/part-of":  "tekton-pipelines",
+				"tekton.dev/pipeline-config": "true",
+			},
+		},
+		Data: map[string]string{"default-timeout-minutes": "invalid"},
+	})
+	// An invalid namespace override must not prevent reconciliation with global defaults.
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
-		ConfigMaps:   th.NewFeatureFlagsConfigMapInSlice(),
+		ConfigMaps:   configMaps,
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
