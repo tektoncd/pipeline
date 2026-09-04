@@ -1,7 +1,6 @@
 package pipelinerun
 
 import (
-	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -119,44 +118,15 @@ func reconcileOncePinP(
 	)
 
 	// fetch created child PipelineRun(s)
-	childPipelineRuns := getChildPipelineRunsForPipelineRun(
+	childPipelineRuns := th.GetChildPipelineRunsForPipelineRun(
 		prt.TestAssets.Ctx,
 		t,
-		clients,
+		clients.Pipeline,
 		namespace,
 		parentPipelineRunName,
 	)
 
 	return reconciledRun, childPipelineRuns
-}
-
-func getChildPipelineRunsForPipelineRun(
-	ctx context.Context,
-	t *testing.T,
-	clients test.Clients,
-	namespace, parentPipelineRunName string,
-) map[string]*v1.PipelineRun {
-	t.Helper()
-
-	opt := metav1.ListOptions{
-		LabelSelector: pipeline.PipelineRunLabelKey + "=" + parentPipelineRunName,
-	}
-
-	pipelineRunList, err := clients.
-		Pipeline.
-		TektonV1().
-		PipelineRuns(namespace).
-		List(ctx, opt)
-	if err != nil {
-		t.Fatalf("failed to list child PipelineRuns: %v", err)
-	}
-
-	result := make(map[string]*v1.PipelineRun)
-	for _, pipelineRun := range pipelineRunList.Items {
-		result[pipelineRun.Name] = &pipelineRun
-	}
-
-	return result
 }
 
 func validatePinP(
@@ -184,11 +154,11 @@ func validatePinP(
 	}
 	th.VerifyChildPipelineRunStatusesNames(t, reconciledRunStatus, expectedNames...)
 
-	validateChildPipelineRunCount(t, childPipelineRuns, len(expectedChildPipelineRuns))
+	th.ValidateChildPipelineRunCount(t, childPipelineRuns, len(expectedChildPipelineRuns))
 
 	// validate the actual child PipelineRuns are as expected
 	for _, expectedChild := range expectedChildPipelineRuns {
-		actualChild := getChildPipelineRunByName(t, childPipelineRuns, expectedChild.Name)
+		actualChild := th.GetChildPipelineRunByName(t, childPipelineRuns, expectedChild.Name)
 		if d := cmp.Diff(expectedChild, actualChild, ignoreTypeMeta, ignoreResourceVersion); d != "" {
 			t.Errorf("expected to see child PipelineRun %v created. Diff %s", expectedChild, diff.PrintWantGot(d))
 		}
@@ -198,26 +168,6 @@ func validatePinP(
 			t.Errorf("Child PipelineRun should be owned by parent %s", reconciledRunName)
 		}
 	}
-}
-
-func validateChildPipelineRunCount(t *testing.T, pipelineRuns map[string]*v1.PipelineRun, expectedCount int) {
-	t.Helper()
-
-	actualCount := len(pipelineRuns)
-	if actualCount != expectedCount {
-		t.Fatalf("Expected %d child PipelineRuns, got %d", expectedCount, actualCount)
-	}
-}
-
-func getChildPipelineRunByName(t *testing.T, pipelineRuns map[string]*v1.PipelineRun, expectedName string) *v1.PipelineRun {
-	t.Helper()
-
-	pr, exist := pipelineRuns[expectedName]
-	if !exist {
-		t.Fatalf("Expected pipelinerun %s does not exist", expectedName)
-	}
-
-	return pr
 }
 
 // TestReconcile_NestedChildPipelineRuns verifies the reconciliation logic for multi-level nested PipelineRuns.
@@ -265,7 +215,7 @@ func TestReconcile_NestedChildPipelineRuns(t *testing.T) {
 
 	// GIVEN
 	// use the child from previous reconcile
-	childPipelineRun := getChildPipelineRunByName(t, childPipelineRuns, expectedChildPipelineRun.Name)
+	childPipelineRun := th.GetChildPipelineRunByName(t, childPipelineRuns, expectedChildPipelineRun.Name)
 	childTestData := test.Data{
 		PipelineRuns: []*v1.PipelineRun{childPipelineRun},
 		ConfigMaps:   th.NewAlphaFeatureFlagsConfigMapInSlice(),
@@ -354,7 +304,7 @@ func TestReconcile_ChildPipelineRunHasDefaultLabels(t *testing.T) {
 	)
 
 	// THEN
-	validateChildPipelineRunCount(t, childPipelineRuns, 1)
+	th.ValidateChildPipelineRunCount(t, childPipelineRuns, 1)
 
 	actualLabels := childPipelineRuns[expectedChildPipelineRun.Name].Labels
 	for k, v := range expectedLabels {
@@ -510,7 +460,7 @@ func TestReconcile_NestedChildPipelineRunsWithPipelineRef(t *testing.T) {
 	)
 
 	// use the child from previous reconcile
-	childPipelineRun := getChildPipelineRunByName(t, childPipelineRuns, expectedChildPipelineRun.Name)
+	childPipelineRun := th.GetChildPipelineRunByName(t, childPipelineRuns, expectedChildPipelineRun.Name)
 	childTestData := test.Data{
 		PipelineRuns: []*v1.PipelineRun{childPipelineRun},
 		Pipelines:    []*v1.Pipeline{childPipeline, grandchildPipeline},
@@ -696,7 +646,7 @@ func TestReconcile_ChildPipelineRunsMultiplePipelineRefs(t *testing.T) {
 		corev1.ConditionUnknown,
 		v1.PipelineRunReasonRunning.String(),
 	)
-	validateChildPipelineRunCount(t, childPipelineRuns, 2)
+	th.ValidateChildPipelineRunCount(t, childPipelineRuns, 2)
 }
 
 // TestReconcile_ChildPipelineRunsMixedPipelineRefSpecAndTaskRef verifies that a parent
@@ -733,7 +683,7 @@ func TestReconcile_ChildPipelineRunsMixedPipelineRefSpecAndTaskRef(t *testing.T)
 	)
 	// Two child PipelineRuns (pipelineRef + pipelineSpec); the direct taskRef task
 	// produces a TaskRun, not a child PipelineRun.
-	validateChildPipelineRunCount(t, childPipelineRuns, 2)
+	th.ValidateChildPipelineRunCount(t, childPipelineRuns, 2)
 }
 
 // TestReconcile_ChildPipelineRunPipelineRefWhenSkipped verifies that a pipelineRef
@@ -762,7 +712,7 @@ func TestReconcile_ChildPipelineRunPipelineRefWhenSkipped(t *testing.T) {
 	)
 
 	// No child PipelineRun is created for the skipped task, and the run succeeds.
-	validateChildPipelineRunCount(t, childPipelineRuns, 0)
+	th.ValidateChildPipelineRunCount(t, childPipelineRuns, 0)
 	th.CheckPipelineRunConditionStatusAndReason(
 		t,
 		reconciledRun.Status,
@@ -1036,7 +986,7 @@ func TestReconcile_ChildPipelineRunPipelineRefCycleDetection_TwoLevel(t *testing
 	)
 
 	// Verify that the child PipelineRun for B was created
-	validateChildPipelineRunCount(t, childPipelineRuns, 1)
+	th.ValidateChildPipelineRunCount(t, childPipelineRuns, 1)
 	var childPR *v1.PipelineRun
 	for _, cpr := range childPipelineRuns {
 		childPR = cpr
@@ -1117,7 +1067,7 @@ func TestReconcile_ChildPipelineRunPipelineRefParentNotFound(t *testing.T) {
 		corev1.ConditionUnknown,
 		v1.PipelineRunReasonRunning.String(),
 	)
-	validateChildPipelineRunCount(t, childPipelineRuns, 1)
+	th.ValidateChildPipelineRunCount(t, childPipelineRuns, 1)
 }
 
 // TestDetectPipelineRefCycle_OwnerNotPipelineRun verifies that the cycle walker
