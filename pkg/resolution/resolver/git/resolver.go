@@ -276,7 +276,7 @@ func (g *GitResolver) ResolveGitClone(ctx context.Context) (framework.ResolvedRe
 
 	path := g.Params[PathParam]
 
-	repo, cleanupFunc, err := remote{url: repoURL, username: username, password: password}.clone(ctx)
+	repo, cleanupFunc, err := remote{url: repoURL, username: username, password: password, pathInRepo: path}.clone(ctx)
 	defer cleanupFunc()
 	if err != nil {
 		return nil, fmt.Errorf("error resolving repository: %w", err)
