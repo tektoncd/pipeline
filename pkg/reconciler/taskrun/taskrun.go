@@ -794,6 +794,12 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		return err
 	}
 	tr.Status.TaskSpec = ts
+	// strip a copy: ts stays live for the rest of the reconcile and is handed to createPod
+	if !config.FromContextOrDefaults(ctx).FeatureFlags.KeepStatusSpecDescriptions {
+		statusSpec := ts.DeepCopy()
+		statusSpec.StripDescriptions()
+		tr.Status.TaskSpec = statusSpec
+	}
 
 	if len(tr.Status.TaskSpec.Steps) > 0 {
 		logger.Debugf("set taskspec for %s/%s - script: %s", tr.Namespace, tr.Name, tr.Status.TaskSpec.Steps[0].Script)
@@ -1319,7 +1325,12 @@ func applyVolumeClaimTemplates(workspaceBindings []v1.WorkspaceBinding, owner me
 func storeTaskSpecAndMergeMeta(ctx context.Context, tr *v1.TaskRun, ts *v1.TaskSpec, meta *resolutionutil.ResolvedObjectMeta) error {
 	// Only store the TaskSpec once, if it has never been set before.
 	if tr.Status.TaskSpec == nil {
-		tr.Status.TaskSpec = ts
+		// Snapshot the spec, stripping documentation-only descriptions to reduce etcd usage unless opted out. See #10321.
+		snapshot := ts.DeepCopy()
+		if !config.FromContextOrDefaults(ctx).FeatureFlags.KeepStatusSpecDescriptions {
+			snapshot.StripDescriptions()
+		}
+		tr.Status.TaskSpec = snapshot
 		if meta == nil {
 			return nil
 		}
