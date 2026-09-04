@@ -35,11 +35,11 @@ require (
 )
 
 require (
+	cel.dev/cel-go v0.32.0
 	code.gitea.io/sdk/gitea v0.22.1
 	github.com/elastic/crd-ref-docs v0.3.0
 	github.com/go-jose/go-jose/v3 v3.0.5
 	github.com/goccy/kpoward v0.1.0
-	github.com/google/cel-go v0.31.0
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20260414223304-7a662782a11f
 	github.com/sigstore/sigstore/pkg/signature/kms/aws v1.10.9
 	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.9
