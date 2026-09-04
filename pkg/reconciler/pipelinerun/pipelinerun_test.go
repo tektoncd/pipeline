@@ -9996,6 +9996,81 @@ metadata:
 	}
 }
 
+func TestReconcileSubmitsAllTaskResolutionRequests(t *testing.T) {
+	pr := parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineSpec:
+    tasks:
+    - name: remote-a
+      taskRef:
+        resolver: foobar
+        params:
+        - name: name
+          value: task-a
+    - name: remote-b
+      taskRef:
+        resolver: foobar
+        params:
+        - name: name
+          value: task-b
+    - name: remote-c
+      taskRef:
+        resolver: foobar
+        params:
+        - name: name
+          value: task-c
+  taskRunTemplate:
+    serviceAccountName: default
+`)
+	// Put one task in the ran-or-running partition to ensure a pending request
+	// there does not prevent requests for not-started tasks.
+	pr.Status.ChildReferences = []v1.ChildStatusReference{{
+		TypeMeta: runtime.TypeMeta{
+			APIVersion: v1.SchemeGroupVersion.String(),
+			Kind:       pipeline.TaskRunControllerName,
+		},
+		Name:             "pr-remote-a",
+		PipelineTaskName: "remote-a",
+	}}
+
+	d := test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+		ServiceAccounts: []*corev1.ServiceAccount{{
+			ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.TaskRunTemplate.ServiceAccountName, Namespace: pr.Namespace},
+		}},
+		ConfigMaps: th.NewAlphaFeatureFlagsConfigMapInSlice(),
+	}
+
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	reconcileError := prt.TestAssets.Controller.Reconciler.Reconcile(prt.TestAssets.Ctx, pr.Namespace+"/"+pr.Name)
+	if ok, duration := controller.IsRequeueKey(reconcileError); !ok {
+		t.Fatalf("expected requeue while awaiting remote TaskRef resolution, got: %v", reconcileError)
+	} else if duration != remoteResolutionRequeueAfter {
+		t.Fatalf("expected requeue after %v, got %v", remoteResolutionRequeueAfter, duration)
+	}
+
+	resolutionRequests, err := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests(pr.Namespace).List(prt.TestAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("listing ResolutionRequests: %v", err)
+	}
+	if len(resolutionRequests.Items) != 3 {
+		t.Fatalf("expected 3 ResolutionRequests, got %d", len(resolutionRequests.Items))
+	}
+
+	taskRuns, err := prt.TestAssets.Clients.Pipeline.TektonV1().TaskRuns(pr.Namespace).List(prt.TestAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("listing TaskRuns: %v", err)
+	}
+	if len(taskRuns.Items) != 0 {
+		t.Errorf("expected no TaskRuns while resolution is pending, got %d", len(taskRuns.Items))
+	}
+}
+
 // TestReconcileWithTaskResolver checks that a PipelineRun with a populated Resolver
 // field for a Task creates a ResolutionRequest object for that Resolver's type, and
 // that when the request is successfully resolved the PipelineRun begins running.
