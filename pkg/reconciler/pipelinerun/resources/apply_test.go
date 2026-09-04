@@ -6106,3 +6106,108 @@ func TestApplyResultsToWorkspaceBindings(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyParameters_PipelineTaskStepAndSidecarSpecs(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		original v1.PipelineSpec
+		params   []v1.Param
+		expected v1.PipelineSpec
+	}{
+		{
+			name: "stepSpecs and sidecarSpecs name substitution",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "step-name", Type: v1.ParamTypeString},
+					{Name: "sidecar-name", Type: v1.ParamTypeString},
+				},
+				Tasks: []v1.PipelineTask{{
+					Name: "task1",
+					StepSpecs: []v1.TaskRunStepSpec{{
+						Name:             "$(params.step-name)",
+						ComputeResources: corev1.ResourceRequirements{},
+					}},
+					SidecarSpecs: []v1.TaskRunSidecarSpec{{
+						Name:             "$(params.sidecar-name)",
+						ComputeResources: corev1.ResourceRequirements{},
+					}},
+				}},
+			},
+			params: v1.Params{
+				{Name: "step-name", Value: *v1.NewStructuredValues("my-step")},
+				{Name: "sidecar-name", Value: *v1.NewStructuredValues("my-sidecar")},
+			},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "step-name", Type: v1.ParamTypeString},
+					{Name: "sidecar-name", Type: v1.ParamTypeString},
+				},
+				Tasks: []v1.PipelineTask{{
+					Name: "task1",
+					StepSpecs: []v1.TaskRunStepSpec{{
+						Name:             "my-step",
+						ComputeResources: corev1.ResourceRequirements{},
+					}},
+					SidecarSpecs: []v1.TaskRunSidecarSpec{{
+						Name:             "my-sidecar",
+						ComputeResources: corev1.ResourceRequirements{},
+					}},
+				}},
+			},
+		},
+		{
+			name: "stepSpecs and sidecarSpecs name substitution with defaults",
+			original: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "step-name", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-step")},
+					{Name: "sidecar-name", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-sidecar")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Name: "task1",
+					StepSpecs: []v1.TaskRunStepSpec{{
+						Name:             "$(params.step-name)",
+						ComputeResources: corev1.ResourceRequirements{},
+					}},
+					SidecarSpecs: []v1.TaskRunSidecarSpec{{
+						Name:             "$(params.sidecar-name)",
+						ComputeResources: corev1.ResourceRequirements{},
+					}},
+				}},
+			},
+			params: v1.Params{},
+			expected: v1.PipelineSpec{
+				Params: []v1.ParamSpec{
+					{Name: "step-name", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-step")},
+					{Name: "sidecar-name", Type: v1.ParamTypeString, Default: v1.NewStructuredValues("default-sidecar")},
+				},
+				Tasks: []v1.PipelineTask{{
+					Name: "task1",
+					StepSpecs: []v1.TaskRunStepSpec{{
+						Name:             "default-step",
+						ComputeResources: corev1.ResourceRequirements{},
+					}},
+					SidecarSpecs: []v1.TaskRunSidecarSpec{{
+						Name:             "default-sidecar",
+						ComputeResources: corev1.ResourceRequirements{},
+					}},
+				}},
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			run := &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: tt.params,
+				},
+			}
+			got, err := resources.ApplyParameters(&tt.original, run)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if d := cmp.Diff(&tt.expected, got); d != "" {
+				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
