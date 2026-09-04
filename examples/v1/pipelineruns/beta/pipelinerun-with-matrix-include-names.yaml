@@ -1,0 +1,45 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: mytask
+  annotations:
+    description: |
+      A task that echoes the test case it is running.
+spec:
+  params:
+    - name: test-case
+      type: string
+  steps:
+    - name: echo
+      image: mirror.gcr.io/alpine
+      script: |
+        echo "Running $(params.test-case)"
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: matrix-include-names-
+spec:
+  taskRunTemplate:
+    serviceAccountName: 'default'
+  pipelineSpec:
+    tasks:
+      # This Matrix is "include-only" (it has no `matrix.params`) and every `include`
+      # entry declares a unique, DNS-label-valid `name`. As a result the generated
+      # TaskRuns are named using the include name as a suffix, for example
+      # "<pipelineRunName>-integration-default-config-macro" and
+      # "<pipelineRunName>-integration-robots-txt", instead of the default numeric
+      # index ("<pipelineRunName>-integration-0", "...-1").
+      - name: integration
+        matrix:
+          include:
+            - name: default-config-macro
+              params:
+                - name: test-case
+                  value: default-config-macro
+            - name: robots-txt
+              params:
+                - name: test-case
+                  value: robots-txt
+        taskRef:
+          name: mytask
