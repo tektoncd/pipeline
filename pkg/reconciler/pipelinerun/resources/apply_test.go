@@ -3009,6 +3009,54 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 		}},
 	}, {
+		name: "Test result substitution on minimal variable substitution expression - matrix include when expressions",
+		resolvedResultRefs: resources.ResolvedResultRefs{{
+			Value: *v1.NewStructuredValues("aResultValue"),
+			ResultReference: v1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: resources.PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1.TaskRef{Name: "bTask"},
+				Matrix: &v1.Matrix{
+					Include: v1.IncludeParamsList{{
+						Name: "build-1",
+						Params: v1.Params{{
+							Name: "bParam", Value: *v1.NewStructuredValues("bValue"),
+						}},
+						When: v1.WhenExpressions{{
+							Input:    "$(tasks.aTask.results.aResult)",
+							Operator: selection.In,
+							Values:   []string{"aResultValue"},
+						}},
+					}},
+				},
+			},
+		}},
+		want: resources.PipelineRunState{{
+			PipelineTask: &v1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1.TaskRef{Name: "bTask"},
+				Matrix: &v1.Matrix{
+					Include: v1.IncludeParamsList{{
+						Name: "build-1",
+						Params: v1.Params{{
+							Name: "bParam", Value: *v1.NewStructuredValues("bValue"),
+						}},
+						When: v1.WhenExpressions{{
+							Input:    "aResultValue",
+							Operator: selection.In,
+							Values:   []string{"aResultValue"},
+						}},
+					}},
+				},
+			},
+		}},
+	}, {
 		name: "Test array indexing result substitution on minimal variable substitution expression - matrix",
 		resolvedResultRefs: resources.ResolvedResultRefs{{
 			Value: *v1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
@@ -3824,6 +3872,103 @@ func TestContext(t *testing.T) {
 				t.Error(diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(tc.expectedDisplayName, got.Finally[0].DisplayName); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestApplyMatrixIncludeWhenExpressions(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		pt          *v1.PipelineTask
+		pr          *v1.PipelineRun
+		want        v1.IncludeParamsList
+	}{
+		{
+			description: "string replacement",
+			pt: &v1.PipelineTask{
+				Matrix: &v1.Matrix{
+					Include: v1.IncludeParamsList{
+						{
+							When: v1.WhenExpressions{
+								{
+									Input:    "arm64",
+									Operator: selection.In,
+									Values:   []string{"$(params.platform)"},
+								},
+							},
+						},
+					},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: v1.Params{
+						{
+							Name:  "platform",
+							Value: *v1.NewStructuredValues("arm64"),
+						},
+					},
+				},
+			},
+			want: v1.IncludeParamsList{
+				{
+					When: v1.WhenExpressions{
+						{
+							Input:    "arm64",
+							Operator: selection.In,
+							Values:   []string{"arm64"},
+						},
+					},
+				},
+			},
+		}, {
+			description: "array replacement",
+			pt: &v1.PipelineTask{
+				Matrix: &v1.Matrix{
+					Include: v1.IncludeParamsList{
+						{
+							When: v1.WhenExpressions{
+								{
+									Input:    "arm64",
+									Operator: selection.In,
+									Values:   []string{"$(params.platform[*])"},
+								},
+							},
+						},
+					},
+				},
+			},
+			pr: &v1.PipelineRun{
+				Spec: v1.PipelineRunSpec{
+					Params: v1.Params{
+						{
+							Name: "platform",
+							Value: v1.ParamValue{
+								Type:     v1.ParamTypeArray,
+								ArrayVal: []string{"arm64", "amd64"},
+							},
+						},
+					},
+				},
+			},
+			want: v1.IncludeParamsList{
+				{
+					When: v1.WhenExpressions{
+						{
+							Input:    "arm64",
+							Operator: selection.In,
+							Values:   []string{"arm64", "amd64"},
+						},
+					},
+				},
+			},
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			resources.ApplyMatrixIncludeWhenExpressions(tc.pt, tc.pr)
+			if d := cmp.Diff(tc.want, tc.pt.Matrix.Include); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})

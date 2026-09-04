@@ -191,6 +191,11 @@ func TestPipelineConversion(t *testing.T) {
 								Name: "a-param", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "$(params.baz)"},
 							}, {
 								Name: "flags", Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "-cover -v"}}},
+							When: v1beta1.WhenExpressions{{
+								Input:    "$(params.baz)",
+								Operator: selection.In,
+								Values:   []string{"foo"},
+							}},
 						}},
 					},
 					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
