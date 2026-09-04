@@ -130,6 +130,13 @@ ecosystems:
       - dependencies
       - release-note-none
       - kind/misc
+    # All github/codeql-action/* sub-actions must be bumped together: the CodeQL
+    # bundle refuses to run when init and analyze come from different versions.
+    groups:
+      codeql-action:
+        patterns:
+          - github/codeql-action
+          - github/codeql-action/*
     cooldown:
       default-days: 7
   - package-ecosystem: docker
