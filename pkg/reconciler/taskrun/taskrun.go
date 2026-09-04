@@ -215,6 +215,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) (reconci
 
 	// If the TaskRun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
+		span.SetAttributes(attribute.String("reason", "Cancelled"))
 		message := fmt.Sprintf("TaskRun %q was cancelled. %s", tr.Name, tr.Spec.StatusMessage)
 		message = appendPreviousConditionContext(before, message)
 		err := c.failTaskRun(ctx, tr, v1.TaskRunReasonCancelled, message)
@@ -230,6 +231,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) (reconci
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
 	if tr.HasTimedOut(ctx, c.Clock) {
+		span.SetAttributes(attribute.String("reason", "TimedOut"))
 		// Before failing the TaskRun, ensure step statuses are populated from the pod
 		// This prevents a race condition where the timeout occurs before pod status is fetched
 		if err := c.updateStepStatusesFromPod(ctx, tr); err != nil {
