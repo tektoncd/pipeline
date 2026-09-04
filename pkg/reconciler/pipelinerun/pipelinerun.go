@@ -210,7 +210,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) (rec
 	defer func() {
 		if err := c.syncMetadata(ctx, pr); err != nil {
 			logger.Warn("Failed to sync PipelineRun metadata", zap.Error(err))
-			events.EmitError(controller.GetEventRecorder(ctx), err, pr)
+			events.EmitErrorWithContext(ctx, controller.GetEventRecorder(ctx), err, pr)
 			reconcileErr = errors.Join(reconcileErr, err)
 		}
 	}()
