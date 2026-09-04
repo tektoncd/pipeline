@@ -70,7 +70,7 @@ func (o *Resolver) List(ctx context.Context) ([]remote.ResolvedObject, error) {
 
 	manifest, err := img.Manifest()
 	if err != nil {
-		return nil, fmt.Errorf("Could not parse image manifest: %w", err)
+		return nil, fmt.Errorf("could not parse image manifest: %w", err)
 	}
 
 	if err := o.checkImageCompliance(manifest); err != nil {
@@ -181,7 +181,7 @@ func (o *Resolver) checkImageCompliance(manifest *v1.Manifest) error {
 func readTarLayer(layer v1.Layer) (runtime.Object, error) {
 	rc, err := layer.Uncompressed()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to read image layer: %w", err)
+		return nil, fmt.Errorf("failed to read image layer: %w", err)
 	}
 	defer rc.Close()
 
