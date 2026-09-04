@@ -28,6 +28,7 @@ import (
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	clusterresolution "github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -88,8 +89,23 @@ func (r *Resolver) IsImmutable([]v1.Param) bool {
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
+	ctx, span := framework.StartResolverSpan(ctx, ClusterResolverName)
+	defer span.End()
+
+	paramsMap := make(map[string]string)
+	for _, p := range req.Params {
+		paramsMap[p.Name] = p.Value.StringVal
+	}
+	span.SetAttributes(
+		attribute.String("resolver.cluster.kind", paramsMap[clusterresolution.KindParam]),
+		attribute.String("resolver.cluster.name", paramsMap[clusterresolution.NameParam]),
+		attribute.String("resolver.cluster.namespace", paramsMap[clusterresolution.NamespaceParam]),
+	)
+
+	var resource resolutionframework.ResolvedResource
+	var err error
 	if cache.ShouldUse(ctx, r, req.Params) {
-		return cache.Get(ctx).GetCachedOrResolveFromRemote(
+		resource, err = cache.Get(ctx).GetCachedOrResolveFromRemote(
 			ctx,
 			req.Params,
 			LabelValueClusterResolverType,
@@ -97,7 +113,9 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 				return clusterresolution.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
 			},
 		)
+	} else {
+		resource, err = clusterresolution.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
 	}
-
-	return clusterresolution.ResolveFromParams(ctx, req.Params, r.pipelineClientSet)
+	framework.RecordSpanError(span, err)
+	return resource, err
 }
