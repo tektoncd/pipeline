@@ -463,6 +463,12 @@ func TestResolveCatalogName(t *testing.T) {
 			expectedCat: "tekton-catalog-pipelines",
 		},
 		{
+			name:        "artifact type default stepaction catalog",
+			kind:        StepActionKind,
+			hubType:     "artifact",
+			expectedCat: "git-clone-stepaction",
+		},
+		{
 			name:        "custom catalog",
 			inputCat:    "custom-catalog",
 			kind:        "task",
@@ -493,6 +499,48 @@ func TestResolveCatalogName(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestResolveCatalogNameWithoutStepActionCatalog(t *testing.T) {
+	conf := framework.GetResolverConfigFromContext(contextWithConfig())
+	delete(conf, ConfigArtifactHubStepActionCatalog)
+
+	t.Run("stepaction requires its default", func(t *testing.T) {
+		params := map[string]string{ParamKind: StepActionKind, ParamType: ArtifactHubType}
+		_, err := resolveCatalogName(params, conf)
+		if err == nil {
+			t.Fatal("expected an error when the default StepAction catalog is not configured")
+		}
+		if want := "default Artifact Hub StepAction catalog was not set during installation of the hub resolver"; err.Error() != want {
+			t.Errorf("expected error %q but got %q", want, err)
+		}
+	})
+
+	t.Run("explicit stepaction catalog remains compatible", func(t *testing.T) {
+		params := map[string]string{
+			ParamCatalog: "custom-stepactions",
+			ParamKind:    StepActionKind,
+			ParamType:    ArtifactHubType,
+		}
+		got, err := resolveCatalogName(params, conf)
+		if err != nil {
+			t.Fatalf("unexpected error resolving explicit StepAction catalog: %v", err)
+		}
+		if want := "custom-stepactions"; got != want {
+			t.Errorf("expected catalog %q but got %q", want, got)
+		}
+	})
+
+	t.Run("task remains compatible", func(t *testing.T) {
+		params := map[string]string{ParamKind: "task", ParamType: ArtifactHubType}
+		got, err := resolveCatalogName(params, conf)
+		if err != nil {
+			t.Fatalf("unexpected error resolving task catalog: %v", err)
+		}
+		if want := "tekton-catalog-tasks"; got != want {
+			t.Errorf("expected catalog %q but got %q", want, got)
+		}
+	})
 }
 
 func TestResolveDisabled(t *testing.T) {
@@ -641,10 +689,11 @@ func toParams(m map[string]string) []pipelinev1.Param {
 
 func contextWithConfig() context.Context {
 	config := map[string]string{
-		"default-tekton-hub-catalog":            "Tekton",
-		"default-artifact-hub-task-catalog":     "tekton-catalog-tasks",
-		"default-artifact-hub-pipeline-catalog": "tekton-catalog-pipelines",
-		"default-type":                          "artifact",
+		"default-tekton-hub-catalog":              "Tekton",
+		"default-artifact-hub-task-catalog":       "tekton-catalog-tasks",
+		"default-artifact-hub-pipeline-catalog":   "tekton-catalog-pipelines",
+		"default-artifact-hub-stepaction-catalog": "git-clone-stepaction",
+		"default-type": "artifact",
 	}
 
 	return framework.InjectResolverConfigToContext(context.Background(), config)
