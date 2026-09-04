@@ -86,7 +86,7 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(ValidateWorkspaceBindings(ctx, ts.Workspaces).ViaField("workspaces"))
 	if ts.Debug != nil {
 		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "debug", config.AlphaAPIFields).ViaField("debug"))
-		errs = errs.Also(validateDebug(ts.Debug).ViaField("debug"))
+		errs = errs.Also(validateDebug(ts.Debug, ts.TaskSpec).ViaField("debug"))
 	}
 	if ts.StepOverrides != nil {
 		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepOverrides", config.BetaAPIFields).ViaField("stepOverrides"))
@@ -275,7 +275,9 @@ func combineParamSpec(p ParamSpec, paramSpecForValidation map[string]ParamSpec) 
 
 // validateDebug validates the debug section of the TaskRun.
 // if set, onFailure breakpoint must be "enabled"
-func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
+// if taskSpec is provided (i.e. it's inline, not a remote taskRef), beforeSteps entries must
+// name an actual step in the task.
+func validateDebug(db *TaskRunDebug, taskSpec *TaskSpec) (errs *apis.FieldError) {
 	if db == nil || db.Breakpoints == nil {
 		return errs
 	}
@@ -287,12 +289,26 @@ func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
 	if db.Breakpoints.OnFailure != "" && db.Breakpoints.OnFailure != EnabledOnFailureBreakpoint {
 		errs = errs.Also(apis.ErrInvalidValue(db.Breakpoints.OnFailure+" is not a valid onFailure breakpoint value, onFailure breakpoint is only allowed to be set as enabled", "breakpoints.onFailure"))
 	}
+
+	// Step names can only be validated when the TaskSpec is inline; a remote taskRef isn't
+	// resolved yet at admission time.
+	var stepNames sets.String
+	if taskSpec != nil {
+		stepNames = sets.NewString()
+		for _, step := range taskSpec.Steps {
+			stepNames.Insert(step.Name)
+		}
+	}
+
 	beforeSteps := sets.NewString()
 	for i, step := range db.Breakpoints.BeforeSteps {
 		if beforeSteps.Has(step) {
 			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("before step must be unique, the same step: %s is defined multiple times at", step), fmt.Sprintf("breakpoints.beforeSteps[%d]", i)))
 		}
 		beforeSteps.Insert(step)
+		if stepNames != nil && !stepNames.Has(step) {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("before step %s does not exist in the task", step), fmt.Sprintf("breakpoints.beforeSteps[%d]", i)))
+		}
 	}
 	return errs
 }
