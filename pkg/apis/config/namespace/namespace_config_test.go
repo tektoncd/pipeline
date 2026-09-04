@@ -88,6 +88,8 @@ func TestMergeGlobalConfigWithLocal(t *testing.T) {
 	ctx, cfg := enabledConfigContext(baseCtx)
 	cfg.FeatureFlags.NonOverridableFields = " coschedule "
 	cfg.FeatureFlags.EnableTerminationMessageCompression = true
+	cfg.Defaults.DefaultTaskRunWorkspaceBinding = "emptyDir: {}"
+	cfg.Defaults.DefaultForbiddenEnv = []string{"FORBIDDEN_ENV"}
 	cfg.Defaults.DefaultPodTemplate = &pod.Template{NodeSelector: map[string]string{"disk": "ssd"}}
 	cfg.Defaults.DefaultAAPodTemplate = &pod.AffinityAssistantTemplate{NodeSelector: map[string]string{"zone": "west"}}
 	cfg.Defaults.DefaultContainerResourceRequirements = map[string]corev1.ResourceRequirements{
@@ -125,6 +127,10 @@ func TestMergeGlobalConfigWithLocal(t *testing.T) {
 	if diff := cmp.Diff(cfg.Defaults.DefaultContainerResourceRequirements, merged.Defaults.DefaultContainerResourceRequirements); diff != "" {
 		t.Errorf("container resources changed (-want +got):\n%s", diff)
 	}
+	if merged.Defaults.DefaultTaskRunWorkspaceBinding != cfg.Defaults.DefaultTaskRunWorkspaceBinding ||
+		!cmp.Equal(merged.Defaults.DefaultForbiddenEnv, cfg.Defaults.DefaultForbiddenEnv) {
+		t.Error("optional cluster defaults were not preserved")
+	}
 	if !merged.FeatureFlags.EnableTerminationMessageCompression || !merged.FeatureFlags.PerNamespaceConfiguration || merged.FeatureFlags.NonOverridableFields != " coschedule " {
 		t.Error("cluster feature flags were not preserved")
 	}
@@ -140,7 +146,8 @@ func TestMergeGlobalConfigWithLocalNoOp(t *testing.T) {
 	delete(missingSelector.Labels, "tekton.dev/pipeline-config")
 	systemConfig := valid.DeepCopy()
 	systemConfig.Namespace = system.Namespace()
-	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, valid, missingPartOf, missingSelector, systemConfig)
+	example := labeledConfigMap("example", "tekton-config-defaults", map[string]string{"_example": "ignored"})
+	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, valid, missingPartOf, missingSelector, systemConfig, example)
 
 	tests := []struct {
 		name      string
@@ -151,6 +158,7 @@ func TestMergeGlobalConfigWithLocalNoOp(t *testing.T) {
 		{name: "missing config", namespace: "missing", enabled: true},
 		{name: "missing part-of label", namespace: "missing-label", enabled: true},
 		{name: "missing selector label", namespace: "missing-selector", enabled: true},
+		{name: "example key", namespace: "example", enabled: true},
 		{name: "system namespace", namespace: system.Namespace(), enabled: true},
 	}
 	for _, tt := range tests {
@@ -166,6 +174,30 @@ func TestMergeGlobalConfigWithLocalNoOp(t *testing.T) {
 				t.Fatalf("timeout = %d, want %d", got, config.DefaultTimeoutMinutes)
 			}
 		})
+	}
+
+	ctx, _ := enabledConfigContext(baseCtx)
+	mergedCtx, err := (&namespaceconfig.PerNamespaceConfig{}).MergeGlobalConfigWithLocal(ctx, "team-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mergedCtx != ctx {
+		t.Error("zero-value namespace config changed the context")
+	}
+}
+
+func TestMergeGlobalConfigWithLocalWithNilGlobalDefaults(t *testing.T) {
+	defaults := labeledConfigMap("team-a", "tekton-config-defaults", map[string]string{"default-timeout-minutes": "120"})
+	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, defaults)
+	ctx, cfg := enabledConfigContext(baseCtx)
+	cfg.Defaults = nil
+
+	mergedCtx, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, "team-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := config.FromContext(mergedCtx).Defaults.DefaultTimeoutMinutes; got != 120 {
+		t.Fatalf("timeout = %d, want 120", got)
 	}
 }
 

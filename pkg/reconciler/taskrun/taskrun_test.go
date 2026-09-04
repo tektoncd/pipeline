@@ -463,19 +463,34 @@ spec:
 `)
 	taskruns := []*v1.TaskRun{taskRunSuccess, taskRunWithSaSuccess}
 	defaultSAName := "pipelines"
-	d := test.Data{
-		TaskRuns: taskruns,
-		Tasks:    []*v1.Task{simpleTask, saTask},
-		ConfigMaps: []*corev1.ConfigMap{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-				Data: map[string]string{
-					"default-service-account":        defaultSAName,
-					"default-timeout-minutes":        "60",
-					"default-managed-by-label-value": "tekton-pipelines",
-				},
+	configMaps := ttesting.NewFeatureFlagsConfigMapInSlice()
+	configMaps[0].Data["per-namespace-configuration"] = "true"
+	configMaps = append(configMaps,
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"default-service-account":        defaultSAName,
+				"default-timeout-minutes":        "60",
+				"default-managed-by-label-value": "tekton-pipelines",
 			},
 		},
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tekton-config-defaults",
+				Namespace: "foo",
+				Labels: map[string]string{
+					"app.kubernetes.io/part-of":  "tekton-pipelines",
+					"tekton.dev/pipeline-config": "true",
+				},
+			},
+			Data: map[string]string{"default-timeout-minutes": "invalid"},
+		},
+	)
+	// An invalid namespace override must fall back to the global service account.
+	d := test.Data{
+		TaskRuns:   taskruns,
+		Tasks:      []*v1.Task{simpleTask, saTask},
+		ConfigMaps: configMaps,
 	}
 	for _, tc := range []struct {
 		name    string
