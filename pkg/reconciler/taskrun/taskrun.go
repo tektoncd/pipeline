@@ -62,6 +62,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	corev1Listers "k8s.io/client-go/listers/core/v1"
@@ -101,6 +102,8 @@ type Reconciler struct {
 	// are not listed there but buildSidecarStopPatch stops them using the live Pod.
 	nativeSidecarOnce        sync.Once
 	nativeSidecarFromCluster func() (useTektonNop bool, err error)
+	podEventRetryMu          sync.Mutex
+	podEventRetries          map[types.UID]podEventRetry
 }
 
 const (
@@ -115,7 +118,106 @@ const (
 	// requeue ensures progress even if the ResolutionRequest completion event
 	// is missed or cannot be mapped back via owner references (see #10414).
 	remoteResolutionRequeueAfter = time.Second
+	podEventInitialRetryAfter    = 5 * time.Second
+	podEventFinalRetryAfter      = 30 * time.Second
+	podEventRetryTTL             = time.Minute
+	podEventMaxLookupAttempts    = 3
 )
+
+type podEventRetry struct {
+	attempts  int
+	retryAt   time.Time
+	expiresAt time.Time
+}
+
+func shouldLookupPodEvents(pod *corev1.Pod) bool {
+	return pod.Status.Phase == corev1.PodPending && podconvert.IsGenericPending(pod)
+}
+
+func (c *Reconciler) beginPodEventLookup(uid types.UID) bool {
+	now := c.Clock.Now()
+	c.podEventRetryMu.Lock()
+	defer c.podEventRetryMu.Unlock()
+	c.expirePodEventRetriesLocked(now)
+	retry, ok := c.podEventRetries[uid]
+	if ok {
+		if retry.attempts >= podEventMaxLookupAttempts || retry.retryAt.After(now) {
+			return false
+		}
+		retry.attempts++
+		retry.retryAt = time.Time{}
+		c.podEventRetries[uid] = retry
+		return true
+	}
+	if c.podEventRetries == nil {
+		c.podEventRetries = make(map[types.UID]podEventRetry)
+	}
+	c.podEventRetries[uid] = podEventRetry{attempts: 1, expiresAt: now.Add(podEventRetryTTL)}
+	return true
+}
+
+func (c *Reconciler) schedulePodEventRetry(uid types.UID) {
+	now := c.Clock.Now()
+	c.podEventRetryMu.Lock()
+	defer c.podEventRetryMu.Unlock()
+	retry, ok := c.podEventRetries[uid]
+	if !ok || retry.attempts >= podEventMaxLookupAttempts || retry.retryAt.After(now) {
+		return
+	}
+	switch retry.attempts {
+	case 1:
+		retry.retryAt = now.Add(podEventInitialRetryAfter)
+	case 2:
+		retry.retryAt = now.Add(podEventFinalRetryAfter)
+	}
+	c.podEventRetries[uid] = retry
+}
+
+func (c *Reconciler) pendingPodEventRetryForTaskRun(tr *v1.TaskRun) (time.Duration, bool) {
+	if tr.Status.PodName == "" {
+		return 0, false
+	}
+	pod, err := c.podLister.Pods(tr.Namespace).Get(tr.Status.PodName)
+	if err != nil || pod.UID == "" {
+		return 0, false
+	}
+	now := c.Clock.Now()
+	c.podEventRetryMu.Lock()
+	defer c.podEventRetryMu.Unlock()
+	c.expirePodEventRetriesLocked(now)
+	retry, ok := c.podEventRetries[pod.UID]
+	if !ok || retry.retryAt.IsZero() || !retry.retryAt.After(now) {
+		return 0, false
+	}
+	return retry.retryAt.Sub(now), true
+}
+
+func (c *Reconciler) clearPodEventRetryForTaskRun(tr *v1.TaskRun) {
+	if tr.Status.PodName == "" {
+		return
+	}
+	pod, err := c.podLister.Pods(tr.Namespace).Get(tr.Status.PodName)
+	if err == nil {
+		c.clearPodEventRetry(pod.UID)
+	}
+}
+
+func (c *Reconciler) clearPodEventRetry(uid types.UID) {
+	if uid == "" {
+		return
+	}
+	c.podEventRetryMu.Lock()
+	defer c.podEventRetryMu.Unlock()
+	delete(c.podEventRetries, uid)
+}
+
+func (c *Reconciler) expirePodEventRetriesLocked(now time.Time) {
+	for uid, retry := range c.podEventRetries {
+		if !retry.expiresAt.After(now) {
+			delete(c.podEventRetries, uid)
+		}
+	}
+}
 
 var (
 	// Check that our Reconciler implements taskrunreconciler.Interface
@@ -194,6 +296,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) (reconci
 
 	// If the TaskRun is complete, run some post run fixtures when applicable
 	if tr.IsDone() {
+		c.clearPodEventRetryForTaskRun(tr)
 		logger.Infof("taskrun done : %s \n", tr.Name)
 
 		// stopSidecars must run whenever we use Tekton-managed sidecars: TaskRun status only
@@ -237,6 +340,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) (reconci
 		}
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout(ctx))
 		message = appendPreviousConditionContext(before, message)
+		message = appendLastObservedPodWarning(before, message)
 		err := c.failTaskRun(ctx, tr, v1.TaskRunReasonTimedOut, message)
 		return c.emitReconcileEvents(ctx, tr, before, err)
 	}
@@ -282,6 +386,9 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) (reconci
 	}
 
 	if tr.Status.StartTime != nil {
+		if retryAfter, ok := c.pendingPodEventRetryForTaskRun(tr); ok {
+			return controller.NewRequeueAfter(retryAfter)
+		}
 		// Compute the time since the task started.
 		elapsed := c.Clock.Since(tr.Status.StartTime.Time)
 		// Snooze this resource until the timeout has elapsed.
@@ -808,6 +915,24 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 		}
 	}
 
+	if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+		c.clearPodEventRetry(pod.UID)
+	}
+
+	lookupPodEvents := true
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableSurfacePodEvents && shouldLookupPodEvents(pod) {
+		condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+		if condition != nil && podconvert.IsLastObservedPodWarning(condition.Message) {
+			lookupPodEvents = false
+			c.clearPodEventRetry(pod.UID)
+		} else if pod.UID != "" {
+			lookupPodEvents = c.beginPodEventLookup(pod.UID)
+		}
+	}
+	if !lookupPodEvents {
+		ctx = podconvert.WithPodEventLookup(ctx, false)
+	}
+
 	if podconvert.IsPodExceedingNodeResources(pod) {
 		recorder.Eventf(tr, corev1.EventTypeWarning, podconvert.ReasonExceededNodeResources, "Insufficient resources to schedule pod %q", pod.Name)
 	}
@@ -825,6 +950,14 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	tr.Status, err = podconvert.MakeTaskRunStatus(ctx, logger, *tr, pod, c.KubeClientSet, rtr.TaskSpec)
 	if err != nil {
 		return err
+	}
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableSurfacePodEvents && shouldLookupPodEvents(pod) {
+		condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+		if condition != nil && podconvert.IsLastObservedPodWarning(condition.Message) {
+			c.clearPodEventRetry(pod.UID)
+		} else if lookupPodEvents && pod.UID != "" {
+			c.schedulePodEventRetry(pod.UID)
+		}
 	}
 
 	if err := func() error {
@@ -1000,6 +1133,9 @@ func appendPreviousConditionContext(prevCondition *apis.Condition, message strin
 	if prevCondition == nil {
 		return message
 	}
+	if podconvert.IsLastObservedPodWarning(prevCondition.Message) {
+		return message
+	}
 	switch prevCondition.Reason {
 	case v1.TaskRunReasonStarted.String(),
 		v1.TaskRunReasonRunning.String(),
@@ -1010,6 +1146,13 @@ func appendPreviousConditionContext(prevCondition *apis.Condition, message strin
 		return fmt.Sprintf("%s\nPrevious status: [%s] %s", message, prevCondition.Reason, prevCondition.Message)
 	}
 	return message
+}
+
+func appendLastObservedPodWarning(prevCondition *apis.Condition, message string) string {
+	if prevCondition == nil || !podconvert.IsLastObservedPodWarning(prevCondition.Message) || strings.Contains(message, prevCondition.Message) {
+		return message
+	}
+	return fmt.Sprintf("%s. %s", message, prevCondition.Message)
 }
 
 // updateStepStatusesFromPod fetches the pod and updates step statuses in the TaskRun
@@ -1033,7 +1176,7 @@ func (c *Reconciler) updateStepStatusesFromPod(ctx context.Context, tr *v1.TaskR
 
 	// Update step statuses from pod using the existing MakeTaskRunStatus function
 	// This ensures consistency with the normal reconciliation path
-	status, err := podconvert.MakeTaskRunStatus(ctx, logger, *tr, pod, c.KubeClientSet, tr.Status.TaskSpec)
+	status, err := podconvert.MakeTaskRunStatus(podconvert.WithPodEventLookup(ctx, false), logger, *tr, pod, c.KubeClientSet, tr.Status.TaskSpec)
 	if err != nil {
 		return err
 	}

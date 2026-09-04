@@ -3905,12 +3905,307 @@ func TestUpdateIncompleteTaskRunStatus_SubPathError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			updateIncompleteTaskRunStatus(tt.trs, tt.pod)
+			ctx := config.ToContext(t.Context(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{},
+			})
+			kubeclient := fakek8s.NewSimpleClientset()
+			updateIncompleteTaskRunStatus(ctx, tt.trs, tt.pod, kubeclient)
 			if d := cmp.Diff(tt.expected, tt.trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")); d != "" {
 				t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
 			}
 		})
 	}
+}
+
+func TestUpdateIncompleteTaskRunStatus_SurfacePodEvents(t *testing.T) {
+	tests := []struct {
+		name     string
+		pod      *corev1.Pod
+		events   []corev1.Event
+		flagOn   bool
+		expected *apis.Condition
+	}{
+		{
+			name: "generic pending with FailedMount event and flag on",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+					UID:       "test-uid",
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodPending,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name: "step-foo",
+						State: corev1.ContainerState{
+							Waiting: &corev1.ContainerStateWaiting{
+								Reason: containerWaitingReasonCreating,
+							},
+						},
+					}},
+				},
+			},
+			events: []corev1.Event{{
+				ObjectMeta:     metav1.ObjectMeta{Name: "evt1", Namespace: "ns"},
+				InvolvedObject: corev1.ObjectReference{UID: "test-uid"},
+				Type:           "Warning",
+				Reason:         "FailedMount",
+				Message:        `MountVolume.SetUp failed for volume "vol" : secret "does-not-exist" not found`,
+				LastTimestamp:  metav1.Now(),
+			}},
+			flagOn: true,
+			expected: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: `Last observed Pod warning: FailedMount: MountVolume.SetUp failed for volume "vol" : secret "does-not-exist" not found`,
+			},
+		},
+		{
+			name: "generic pending with FailedMount event but flag off",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+					UID:       "test-uid",
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodPending,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name: "step-foo",
+						State: corev1.ContainerState{
+							Waiting: &corev1.ContainerStateWaiting{
+								Reason: containerWaitingReasonCreating,
+							},
+						},
+					}},
+				},
+			},
+			events: []corev1.Event{{
+				ObjectMeta:     metav1.ObjectMeta{Name: "evt1", Namespace: "ns"},
+				InvolvedObject: corev1.ObjectReference{UID: "test-uid"},
+				Type:           "Warning",
+				Reason:         "FailedMount",
+				Message:        `MountVolume.SetUp failed for volume "vol" : secret "does-not-exist" not found`,
+				LastTimestamp:  metav1.Now(),
+			}},
+			flagOn: false,
+			expected: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: "Pending",
+			},
+		},
+		{
+			name: "generic pending with no events and flag on",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+					UID:       "test-uid",
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodPending,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name: "step-foo",
+						State: corev1.ContainerState{
+							Waiting: &corev1.ContainerStateWaiting{
+								Reason: containerWaitingReasonCreating,
+							},
+						},
+					}},
+				},
+			},
+			events: nil,
+			flagOn: true,
+			expected: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: "Pending",
+			},
+		},
+		{
+			name: "non-generic pending skips event lookup even with flag on",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+					UID:       "test-uid",
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodPending,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name: "step-foo",
+						State: corev1.ContainerState{
+							Waiting: &corev1.ContainerStateWaiting{
+								Reason:  containerWaitingReasonCreating,
+								Message: "some useful message from kubelet",
+							},
+						},
+					}},
+				},
+			},
+			events: []corev1.Event{{
+				ObjectMeta:     metav1.ObjectMeta{Name: "evt1", Namespace: "ns"},
+				InvolvedObject: corev1.ObjectReference{UID: "test-uid"},
+				Type:           "Warning",
+				Reason:         "FailedMount",
+				Message:        "should not appear",
+				LastTimestamp:  metav1.Now(),
+			}},
+			flagOn: true,
+			expected: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: `build step "step-foo" is pending with reason "some useful message from kubelet"`,
+			},
+		},
+		{
+			name: "meaningful pod condition wins over event fallback",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+					UID:       "test-uid",
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodPending,
+					Conditions: []corev1.PodCondition{{
+						Type:   corev1.PodScheduled,
+						Status: corev1.ConditionFalse,
+						Reason: "Unschedulable",
+					}},
+				},
+			},
+			events: []corev1.Event{{
+				ObjectMeta:     metav1.ObjectMeta{Name: "evt1", Namespace: "ns"},
+				InvolvedObject: corev1.ObjectReference{UID: "test-uid"},
+				Type:           "Warning",
+				Reason:         "FailedScheduling",
+				Message:        "0/3 nodes are available: 3 Insufficient cpu.",
+				LastTimestamp:  metav1.Now(),
+			}},
+			flagOn: true,
+			expected: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: `pod status "PodScheduled":"False"; reason: "Unschedulable"; message: ""`,
+			},
+		},
+		{
+			name: "event with reason but no message surfaces the reason alone",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+					UID:       "test-uid",
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodPending,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name: "step-foo",
+						State: corev1.ContainerState{
+							Waiting: &corev1.ContainerStateWaiting{
+								Reason: containerWaitingReasonCreating,
+							},
+						},
+					}},
+				},
+			},
+			events: []corev1.Event{{
+				ObjectMeta:     metav1.ObjectMeta{Name: "evt1", Namespace: "ns"},
+				InvolvedObject: corev1.ObjectReference{UID: "test-uid"},
+				Type:           "Warning",
+				Reason:         "FailedCreatePodSandBox",
+				LastTimestamp:  metav1.Now(),
+			}},
+			flagOn: true,
+			expected: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: "Last observed Pod warning: FailedCreatePodSandBox",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			kubeclient := fakek8s.NewSimpleClientset()
+			for i := range tt.events {
+				_, _ = kubeclient.CoreV1().Events(tt.events[i].Namespace).Create(t.Context(), &tt.events[i], metav1.CreateOptions{})
+			}
+
+			ctx := config.ToContext(t.Context(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableSurfacePodEvents: tt.flagOn,
+				},
+			})
+
+			trs := &v1.TaskRunStatus{}
+			updateIncompleteTaskRunStatus(ctx, trs, tt.pod, kubeclient)
+			if !tt.flagOn {
+				for _, action := range kubeclient.Actions() {
+					if action.GetVerb() == "list" && action.GetResource().Resource == "events" {
+						t.Error("feature flag off unexpectedly listed Events")
+					}
+				}
+			}
+			if d := cmp.Diff(tt.expected, trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")); d != "" {
+				t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestUpdateIncompleteTaskRunStatusSurfacePodEventsPriorityAndRetention(t *testing.T) {
+	genericPod := func() *corev1.Pod {
+		return &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "pod", Namespace: "ns", UID: "uid-1"},
+			Status: corev1.PodStatus{Phase: corev1.PodPending, ContainerStatuses: []corev1.ContainerStatus{{
+				Name:  "step-main",
+				State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: containerWaitingReasonCreating}},
+			}}},
+		}
+	}
+	ctx := config.ToContext(t.Context(), &config.Config{FeatureFlags: &config.FeatureFlags{EnableSurfacePodEvents: true}})
+
+	t.Run("useful pod diagnosis skips event lookup", func(t *testing.T) {
+		kubeclient := fakek8s.NewSimpleClientset()
+		pod := genericPod()
+		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, corev1.ContainerStatus{
+			Name: "step-useful", State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ImagePullBackOff", Message: "image unavailable"}},
+		})
+		trs := &v1.TaskRunStatus{}
+		updateIncompleteTaskRunStatus(ctx, trs, pod, kubeclient)
+		if got := len(kubeclient.Actions()); got != 0 {
+			t.Errorf("event list calls = %d, want 0", got)
+		}
+		if got, want := trs.GetCondition(apis.ConditionSucceeded).Message, `build step "step-useful" is pending with reason "image unavailable"`; got != want {
+			t.Errorf("status message = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("previous warning survives generic reconcile then useful diagnosis replaces it", func(t *testing.T) {
+		trs := &v1.TaskRunStatus{}
+		trs.SetCondition(&apis.Condition{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown, Reason: ReasonPodPending, Message: "Last observed Pod warning: FailedMount: secret missing"})
+		kubeclient := fakek8s.NewSimpleClientset()
+		updateIncompleteTaskRunStatus(ctx, trs, genericPod(), kubeclient)
+		if got, want := trs.GetCondition(apis.ConditionSucceeded).Message, "Last observed Pod warning: FailedMount: secret missing"; got != want {
+			t.Errorf("retained message = %q, want %q", got, want)
+		}
+
+		pod := genericPod()
+		pod.Status.Message = "pod-level diagnosis"
+		updateIncompleteTaskRunStatus(ctx, trs, pod, kubeclient)
+		if got, want := trs.GetCondition(apis.ConditionSucceeded).Message, "pod-level diagnosis"; got != want {
+			t.Errorf("replacement message = %q, want %q", got, want)
+		}
+	})
 }
 
 func Test_getFailureInfo(t *testing.T) {

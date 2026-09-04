@@ -62,10 +62,11 @@ rules:
   - apiGroups: [""]
     resources: ["pods", "persistentvolumeclaims"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
-  # Write permissions to publish events.
+  # Read/write permissions for events: create/update/patch to publish events,
+  # list to surface Pod warning events onto TaskRun status (surface-pod-events flag).
   - apiGroups: [""]
     resources: ["events"]
-    verbs: ["create", "update", "patch"]
+    verbs: ["list", "create", "update", "patch"]
   # Read-only access to these.
   - apiGroups: [""]
     resources: ["configmaps", "limitranges", "secrets", "serviceaccounts"]

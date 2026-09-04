@@ -142,7 +142,7 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 			updateCompletedTaskRunStatus(logger, trs, pod, "")
 		}
 	} else {
-		updateIncompleteTaskRunStatus(trs, pod)
+		updateIncompleteTaskRunStatus(ctx, trs, pod, kubeclient)
 	}
 
 	trs.PodName = pod.Name
@@ -622,7 +622,7 @@ func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1.TaskRunStat
 	trs.CompletionTime = &metav1.Time{Time: time.Now()}
 }
 
-func updateIncompleteTaskRunStatus(trs *v1.TaskRunStatus, pod *corev1.Pod) {
+func updateIncompleteTaskRunStatus(ctx context.Context, trs *v1.TaskRunStatus, pod *corev1.Pod, kubeclient kubernetes.Interface) {
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		markStatusRunning(trs, v1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
@@ -631,14 +631,28 @@ func updateIncompleteTaskRunStatus(trs *v1.TaskRunStatus, pod *corev1.Pod) {
 		case IsPodExceedingNodeResources(pod):
 			markStatusRunning(trs, ReasonExceededNodeResources, "TaskRun Pod exceeded available resources")
 		case isSubPathDirectoryError(pod):
-			// if subPath directory creation errors, mark as running and wait for recovery
 			markStatusRunning(trs, ReasonPodPending, "Waiting for subPath directory creation to complete")
 		case isPodHitConfigError(pod):
 			markStatusFailure(trs, ReasonCreateContainerConfigError, "Failed to create pod due to config error")
 		case isPullImageError(pod):
 			markStatusRunning(trs, ReasonPullImageFailed, getWaitingMessage(pod))
 		default:
-			markStatusRunning(trs, ReasonPodPending, getWaitingMessage(pod))
+			msg := getWaitingMessage(pod)
+			if config.FromContextOrDefaults(ctx).FeatureFlags.EnableSurfacePodEvents && isGenericPending(pod) {
+				if podEventLookupEnabled(ctx) {
+					eventReason, eventMsg := latestWarningEvent(ctx, kubeclient, pod)
+					if eventReason != "" || eventMsg != "" {
+						msg = lastObservedPodWarningPrefix + eventReason
+						if eventMsg != "" {
+							msg += ": " + eventMsg
+						}
+					}
+				}
+				if previous := trs.GetCondition(apis.ConditionSucceeded); msg == "Pending" && previous != nil && IsLastObservedPodWarning(previous.Message) {
+					msg = previous.Message
+				}
+			}
+			markStatusRunning(trs, ReasonPodPending, msg)
 		}
 	case corev1.PodSucceeded, corev1.PodFailed, corev1.PodUnknown:
 		// Do nothing; pod has completed or is in an unknown state.
@@ -1020,14 +1034,44 @@ func getWaitingMessage(pod *corev1.Pod) string {
 	// First, try to surface reason for pending/unknown about the actual build step.
 	for _, status := range pod.Status.ContainerStatuses {
 		wait := status.State.Waiting
-		if wait != nil && wait.Message != "" {
-			return fmt.Sprintf("build step %q is pending with reason %q",
-				status.Name, wait.Message)
+		if wait != nil {
+			if wait.Message != "" {
+				return fmt.Sprintf("build step %q is pending with reason %q", status.Name, wait.Message)
+			}
+			if usefulReason(wait.Reason) {
+				return fmt.Sprintf("build step %q is pending with reason %q", status.Name, wait.Reason)
+			}
+		}
+		if terminated := status.State.Terminated; terminated != nil && usefulState(terminated.Reason, terminated.Message) {
+			if terminated.Message != "" {
+				return fmt.Sprintf("build step %q terminated with reason %q", status.Name, terminated.Message)
+			}
+			return fmt.Sprintf("build step %q terminated with reason %q", status.Name, terminated.Reason)
+		}
+	}
+	for _, status := range pod.Status.InitContainerStatuses {
+		wait := status.State.Waiting
+		if wait != nil {
+			if wait.Message != "" {
+				return fmt.Sprintf("init container %q is pending with reason %q", status.Name, wait.Message)
+			}
+			if usefulReason(wait.Reason) {
+				return fmt.Sprintf("init container %q is pending with reason %q", status.Name, wait.Reason)
+			}
+		}
+		if terminated := status.State.Terminated; terminated != nil && usefulState(terminated.Reason, terminated.Message) {
+			if terminated.Message != "" {
+				return fmt.Sprintf("init container %q terminated with reason %q", status.Name, terminated.Message)
+			}
+			return fmt.Sprintf("init container %q terminated with reason %q", status.Name, terminated.Reason)
 		}
 	}
 	// Try to surface underlying reason by inspecting pod's recent status if condition is not true
 	for i, podStatus := range pod.Status.Conditions {
-		if podStatus.Status != corev1.ConditionTrue {
+		if podStatus.Status != corev1.ConditionTrue && (podStatus.Message != "" || usefulReason(podStatus.Reason)) {
+			if podStatus.Reason != "" {
+				return fmt.Sprintf("pod status %q:%q; reason: %q; message: %q", pod.Status.Conditions[i].Type, pod.Status.Conditions[i].Status, pod.Status.Conditions[i].Reason, pod.Status.Conditions[i].Message)
+			}
 			return fmt.Sprintf("pod status %q:%q; message: %q",
 				pod.Status.Conditions[i].Type,
 				pod.Status.Conditions[i].Status,
