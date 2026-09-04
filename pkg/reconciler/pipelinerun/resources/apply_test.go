@@ -17,11 +17,13 @@ limitations under the License.
 package resources_test
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
@@ -4244,7 +4246,7 @@ func TestApplyFinallyResultsToPipelineResults(t *testing.T) {
 		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
-			received, _ := resources.ApplyTaskResultsToPipelineResults(tc.results, tc.taskResults, tc.runResults, nil /* skippedTasks */)
+			received, _ := resources.ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, nil /* skippedTasks */, nil /* taskResultDefaults */)
 			if d := cmp.Diff(tc.expected, received); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
@@ -4577,7 +4579,7 @@ func TestApplyTaskResultsToPipelineResults_Success(t *testing.T) {
 		}},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			received, err := resources.ApplyTaskResultsToPipelineResults(tc.results, tc.taskResults, tc.runResults, tc.taskstatus)
+			received, err := resources.ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, tc.taskstatus, nil /* taskResultDefaults */)
 			if err != nil {
 				t.Errorf("Got unexpected error:%v", err)
 			}
@@ -4793,7 +4795,7 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 		expectedError:   errors.New("invalid pipelineresults [foo], the referenced results don't exist"),
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			received, err := resources.ApplyTaskResultsToPipelineResults(tc.results, tc.taskResults, tc.runResults, nil /*skipped tasks*/)
+			received, err := resources.ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, nil /*skipped tasks*/, nil /* taskResultDefaults */)
 			if err == nil {
 				t.Errorf("Expect error but got nil")
 				return
@@ -4803,6 +4805,143 @@ func TestApplyTaskResultsToPipelineResults_Error(t *testing.T) {
 				t.Errorf("ApplyTaskResultsToPipelineResults() errors diff %s", diff.PrintWantGot(d))
 			}
 
+			if d := cmp.Diff(tc.expectedResults, received); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestApplyTaskResultsToPipelineResults_DefaultResults(t *testing.T) {
+	for _, tc := range []struct {
+		description        string
+		results            []v1.PipelineResult
+		taskResults        map[string][]v1.TaskRunResult
+		taskResultDefaults map[string]map[string]*v1.ResultValue
+		enableDefaults     bool
+		expectedResults    []v1.PipelineRunResult
+		expectedError      error
+	}{{
+		description: "use default when result not produced and feature enabled",
+		results: []v1.PipelineResult{{
+			Name:  "pipeline-result",
+			Value: *v1.NewStructuredValues("$(tasks.pt1.results.foo)"),
+		}},
+		taskResults: map[string][]v1.TaskRunResult{
+			"pt1": {}, // task succeeded but didn't produce the result
+		},
+		taskResultDefaults: map[string]map[string]*v1.ResultValue{
+			"pt1": {
+				"foo": v1.NewStructuredValues("default-value"),
+			},
+		},
+		enableDefaults: true,
+		expectedResults: []v1.PipelineRunResult{{
+			Name:  "pipeline-result",
+			Value: *v1.NewStructuredValues("default-value"),
+		}},
+	}, {
+		description: "use actual result when available even with default defined",
+		results: []v1.PipelineResult{{
+			Name:  "pipeline-result",
+			Value: *v1.NewStructuredValues("$(tasks.pt1.results.foo)"),
+		}},
+		taskResults: map[string][]v1.TaskRunResult{
+			"pt1": {{
+				Name:  "foo",
+				Value: *v1.NewStructuredValues("actual-value"),
+			}},
+		},
+		taskResultDefaults: map[string]map[string]*v1.ResultValue{
+			"pt1": {
+				"foo": v1.NewStructuredValues("default-value"),
+			},
+		},
+		enableDefaults: true,
+		expectedResults: []v1.PipelineRunResult{{
+			Name:  "pipeline-result",
+			Value: *v1.NewStructuredValues("actual-value"),
+		}},
+	}, {
+		description: "use default for array result",
+		results: []v1.PipelineResult{{
+			Name:  "pipeline-result",
+			Value: *v1.NewStructuredValues("$(tasks.pt1.results.array-result[*])"),
+		}},
+		taskResults: map[string][]v1.TaskRunResult{
+			"pt1": {},
+		},
+		taskResultDefaults: map[string]map[string]*v1.ResultValue{
+			"pt1": {
+				"array-result": v1.NewStructuredValues("val1", "val2", "val3"),
+			},
+		},
+		enableDefaults: true,
+		expectedResults: []v1.PipelineRunResult{{
+			Name:  "pipeline-result",
+			Value: *v1.NewStructuredValues("val1", "val2", "val3"),
+		}},
+	}, {
+		description: "use default for object result element",
+		results: []v1.PipelineResult{{
+			Name:  "pipeline-result",
+			Value: *v1.NewStructuredValues("$(tasks.pt1.results.obj-result.key1)"),
+		}},
+		taskResults: map[string][]v1.TaskRunResult{
+			"pt1": {},
+		},
+		taskResultDefaults: map[string]map[string]*v1.ResultValue{
+			"pt1": {
+				"obj-result": &v1.ResultValue{
+					Type:      v1.ParamTypeObject,
+					ObjectVal: map[string]string{"key1": "value1", "key2": "value2"},
+				},
+			},
+		},
+		enableDefaults: true,
+		expectedResults: []v1.PipelineRunResult{{
+			Name:  "pipeline-result",
+			Value: *v1.NewStructuredValues("value1"),
+		}},
+	}, {
+		description: "don't use default when feature flag disabled",
+		results: []v1.PipelineResult{{
+			Name:  "pipeline-result",
+			Value: *v1.NewStructuredValues("$(tasks.pt1.results.foo)"),
+		}},
+		taskResults: map[string][]v1.TaskRunResult{
+			"pt1": {},
+		},
+		taskResultDefaults: map[string]map[string]*v1.ResultValue{
+			"pt1": {
+				"foo": v1.NewStructuredValues("default-value"),
+			},
+		},
+		enableDefaults:  false,
+		expectedResults: nil,
+		expectedError:   errors.New("invalid pipelineresults [pipeline-result], the referenced results don't exist"),
+	}} {
+		t.Run(tc.description, func(t *testing.T) {
+			ctx := context.Background()
+			if tc.enableDefaults {
+				ctx = config.ToContext(ctx, &config.Config{
+					FeatureFlags: &config.FeatureFlags{
+						EnableDefaultResults: true,
+					},
+				})
+			}
+			received, err := resources.ApplyTaskResultsToPipelineResults(ctx, tc.results, tc.taskResults, nil /* customTaskResults */, nil /* taskstatus */, tc.taskResultDefaults)
+			if tc.expectedError != nil {
+				if err == nil {
+					t.Errorf("Expected error but got nil")
+					return
+				}
+				if d := cmp.Diff(tc.expectedError.Error(), err.Error()); d != "" {
+					t.Errorf("ApplyTaskResultsToPipelineResults() errors diff %s", diff.PrintWantGot(d))
+				}
+			} else if err != nil {
+				t.Errorf("Got unexpected error: %v", err)
+			}
 			if d := cmp.Diff(tc.expectedResults, received); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
