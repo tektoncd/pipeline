@@ -50,7 +50,7 @@ func CheckPushPermission(ref name.Reference, kc authn.Keychain, t http.RoundTrip
 	// to avoid a roundtrip for spec-compliant registries.
 	w := writer{
 		repo:   ref.Context(),
-		client: &http.Client{Transport: tr},
+		client: &http.Client{Transport: tr, CheckRedirect: checkRedirectSSRF},
 	}
 	loc, _, err := w.initiateUpload(context.Background(), "", "", "")
 	if loc != "" {
