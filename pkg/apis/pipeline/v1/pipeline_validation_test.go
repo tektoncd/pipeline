@@ -46,6 +46,36 @@ func TestPipeline_Validate_Success(t *testing.T) {
 			},
 		},
 	}, {
+		name: "tt.params reference in pipeline task param is allowed (Triggers-owned prefix)",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					Params: Params{{
+						Name: "MESSAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tt.params.MESSAGE)"},
+					}},
+				}},
+			},
+		},
+	}, {
+		name: "tt.params reference in matrix param is allowed (Triggers-owned prefix)",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					Matrix: &Matrix{
+						Params: Params{{
+							Name: "IMAGE", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tt.params.IMAGE)", "image2"}},
+						}},
+					},
+				}},
+			},
+		},
+	}, {
 		name: "pipelinetask custom task references",
 		p: &Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
@@ -722,7 +752,61 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			},
 		},
 		expectedError: apis.FieldError{
-			Message: `invalid value: invalid variable reference "$(env_value_set_from_yq)", must start with a valid prefix: params, tasks, finally, context, workspaces, or results; if you meant a shell variable, use ${VAR} instead`,
+			Message: `invalid value: invalid variable reference "$(env_value_set_from_yq)", must start with a valid prefix: params, tasks, finally, context, workspaces, results, or tt.params; if you meant a shell variable, use ${VAR} instead`,
+			Paths:   []string{"spec.tasks[0].params[SCRIPT].value"},
+		},
+	}, {
+		name: "tt prefix without params segment is still rejected",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					Params: Params{{
+						Name: "SCRIPT", Value: ParamValue{Type: ParamTypeString, StringVal: "echo $(tt.foo)"},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalid variable reference "$(tt.foo)", must start with a valid prefix: params, tasks, finally, context, workspaces, results, or tt.params; if you meant a shell variable, use ${VAR} instead`,
+			Paths:   []string{"spec.tasks[0].params[SCRIPT].value"},
+		},
+	}, {
+		name: "tt.params without a param name is still rejected",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					Params: Params{{
+						Name: "SCRIPT", Value: ParamValue{Type: ParamTypeString, StringVal: "echo $(tt.params)"},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalid variable reference "$(tt.params)", must start with a valid prefix: params, tasks, finally, context, workspaces, results, or tt.params; if you meant a shell variable, use ${VAR} instead`,
+			Paths:   []string{"spec.tasks[0].params[SCRIPT].value"},
+		},
+	}, {
+		name: "tt.params with an empty param name is still rejected",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					Params: Params{{
+						Name: "SCRIPT", Value: ParamValue{Type: ParamTypeString, StringVal: "echo $(tt.params.)"},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalid variable reference "$(tt.params.)", must start with a valid prefix: params, tasks, finally, context, workspaces, results, or tt.params; if you meant a shell variable, use ${VAR} instead`,
 			Paths:   []string{"spec.tasks[0].params[SCRIPT].value"},
 		},
 	}, {
@@ -742,7 +826,7 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			},
 		},
 		expectedError: apis.FieldError{
-			Message: `invalid value: invalid variable reference "$(invalid_ref)", must start with a valid prefix: params, tasks, finally, context, workspaces, or results; if you meant a shell variable, use ${VAR} instead`,
+			Message: `invalid value: invalid variable reference "$(invalid_ref)", must start with a valid prefix: params, tasks, finally, context, workspaces, results, or tt.params; if you meant a shell variable, use ${VAR} instead`,
 			Paths:   []string{"spec.tasks[0].matrix.params[IMAGE].value"},
 		},
 	}, {
@@ -765,8 +849,28 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			},
 		},
 		expectedError: apis.FieldError{
-			Message: `invalid value: invalid variable reference "$(invalid_ref)", must start with a valid prefix: params, tasks, finally, context, workspaces, or results; if you meant a shell variable, use ${VAR} instead`,
+			Message: `invalid value: invalid variable reference "$(invalid_ref)", must start with a valid prefix: params, tasks, finally, context, workspaces, results, or tt.params; if you meant a shell variable, use ${VAR} instead`,
 			Paths:   []string{"spec.tasks[0].matrix.include[0].params[IMAGE].value"},
+		},
+	}, {
+		name: "invalid variable reference in when expression",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "foo",
+					TaskRef: &TaskRef{Name: "foo-task"},
+					When: WhenExpressions{{
+						Input:    "$(invalid_ref)",
+						Operator: selection.In,
+						Values:   []string{"bar"},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalid variable reference "$(invalid_ref)", must start with a valid prefix: params, tasks, finally, context, workspaces, results, or tt.params; if you meant a shell variable, use ${VAR} instead`,
+			Paths:   []string{"spec.tasks[0].when[0]"},
 		},
 	}}
 	for _, tt := range tests {
