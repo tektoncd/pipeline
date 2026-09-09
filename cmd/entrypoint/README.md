@@ -12,8 +12,9 @@ The following flags are available:
 
 - `-entrypoint`: "original" command to be executed (as
   entrypoint). This will be executed as a sub-process on `entrypoint`
-- `-post_file`: file path to write once the sub-process has
-  finished. If the sub-process failed, it will write to
+- `-post_file`: file path to write once the sub-process has finished and its
+  results and termination message have been recorded. If execution or result
+  collection failed, it will write to
   `{{post_file}}.err` instead of `{{post_file}}`.
 - `-wait_file`: file path to watch before starting the sub-process. It
   watches for `{{wait_file}}` and `{{wait_file}}.err` presence and
@@ -23,6 +24,11 @@ The following flags are available:
 - `-wait_file_content`: expects the `wait_file` to contain actual
   contents. It will continue watching for `wait_file` until it has
   content.
+- `-previous_step_metadata_dir`: metadata directory of the previous step.
+  With termination-message extraction, task result fingerprints in this
+  directory prevent unchanged results from being reported again. The controller
+  sets this for subsequent steps of tasks declaring results. Omit it for the
+  first step.
 - `-stdout_path`: If specified, the stdout of the sub-process will be
   copied to the given path on the local filesystem.
 - `-stderr_path`: If specified, the stderr of the sub-process will be

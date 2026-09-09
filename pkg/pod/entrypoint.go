@@ -184,6 +184,9 @@ func orderContainers(ctx context.Context, commonExtraEntrypointArgs []string, st
 				}
 			}
 			argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, taskSpec.Results)...)
+			if i > 0 && len(taskSpec.Results) > 0 {
+				argsForEntrypoint = append(argsForEntrypoint, "-previous_step_metadata_dir", filepath.Join(RunDir, strconv.Itoa(i-1), "status"))
+			}
 		}
 
 		if breakpointConfig != nil && breakpointConfig.NeedsDebugOnFailure() {
