@@ -154,6 +154,16 @@ func TestTaskRef_Invalid(t *testing.T) {
 			Message: `feature flag enable-concise-resolver-syntax should be set to true to use concise resolver syntax`,
 		}),
 	}, {
+		name: "taskRef with resolver and k8s style name without enable-concise-resolver-syntax",
+		taskRef: &v1.TaskRef{
+			Name: "foo",
+			ResolverRef: v1.ResolverRef{
+				Resolver: "git",
+			},
+		},
+		wantErr: apis.ErrMultipleOneOf("name", "resolver"),
+		wc:      cfgtesting.EnableBetaAPIFields,
+	}, {
 		name:    "taskRef without enable-concise-resolver-syntax",
 		taskRef: &v1.TaskRef{Name: "https://foo.com/bar", ResolverRef: v1.ResolverRef{Resolver: "git"}},
 		wantErr: &apis.FieldError{
