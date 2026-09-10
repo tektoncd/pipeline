@@ -716,6 +716,13 @@ func TestStepOnError(t *testing.T) {
 			Args:    []string{"arg"},
 		},
 	}, {
+		name: "valid step - valid onError usage - set to continueAndFail",
+		step: v1.Step{
+			OnError: v1.ContinueAndFail,
+			Image:   "image",
+			Args:    []string{"arg"},
+		},
+	}, {
 		name: "valid step - valid onError usage - set to a task parameter",
 		params: []v1.ParamSpec{{
 			Name:    "CONTINUE",
@@ -736,7 +743,7 @@ func TestStepOnError(t *testing.T) {
 		expectedError: &apis.FieldError{
 			Message: `invalid value: "onError"`,
 			Paths:   []string{"onError"},
-			Details: `Task step onError must be either "continue" or "stopAndFail"`,
+			Details: `Task step onError must be "continue", "stopAndFail" or "continueAndFail"`,
 		},
 	}}
 	for _, st := range tests {

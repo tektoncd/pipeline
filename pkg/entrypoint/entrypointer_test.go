@@ -510,6 +510,18 @@ func TestEntrypointer_OnError(t *testing.T) {
 		onError:       FailOnError,
 		expectedError: false,
 	}, {
+		desc:          "the step is exiting with 1, continue and preserve the step error when onError is set to continueAndFail",
+		runner:        &fakeExitErrorRunner{},
+		postFile:      "step-one",
+		onError:       ContinueAndFailOnError,
+		expectedError: true,
+	}, {
+		desc:          "the step is exiting with 0, succeed when onError is set to continueAndFail",
+		runner:        &fakeRunner{},
+		postFile:      "step-one",
+		onError:       ContinueAndFailOnError,
+		expectedError: false,
+	}, {
 		desc:            "the step set debug before step, and before step breakpoint fail-continue",
 		runner:          &fakeRunner{},
 		postFile:        "step-one",
@@ -573,6 +585,21 @@ func TestEntrypointer_OnError(t *testing.T) {
 					t.Error("Wanted post file written, got nil")
 				case c.expectedError && *fpw.wrote != c.postFile+".err":
 					t.Errorf("Wrote post file %q, want %q", *fpw.wrote, c.postFile+".err")
+				}
+			}
+
+			if c.onError == ContinueAndFailOnError {
+				switch {
+				case fpw.wrote == nil:
+					t.Error("Wanted post file written, got nil")
+				case fpw.exitCodeFile == nil:
+					t.Error("Wanted exitCode file written, got nil")
+				case *fpw.wrote != c.postFile:
+					t.Errorf("Wrote post file %q, want %q", *fpw.wrote, c.postFile)
+				case *fpw.exitCodeFile != "exitCode":
+					t.Errorf("Wrote exitCode file %q, want %q", *fpw.exitCodeFile, "exitCode")
+				case c.expectedError && *fpw.exitCode == "0":
+					t.Errorf("Wrote zero exit code but want non-zero when expecting an error")
 				}
 			}
 		})
