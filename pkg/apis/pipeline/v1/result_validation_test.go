@@ -19,10 +19,12 @@ package v1_test
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/apis"
@@ -405,6 +407,125 @@ func TestStepResultsValidateError(t *testing.T) {
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestTaskResultValidateDefault(t *testing.T) {
+	tests := []struct {
+		name          string
+		result        v1.TaskResult
+		featureFlag   bool
+		expectedError string
+	}{{
+		name: "valid default value with feature flag enabled - string",
+		result: v1.TaskResult{
+			Name:        "MY-RESULT",
+			Type:        v1.ResultsTypeString,
+			Description: "my great result",
+			Default:     v1.NewStructuredValues("defaultValue"),
+		},
+		featureFlag:   true,
+		expectedError: "",
+	}, {
+		name: "valid default value with feature flag enabled - array",
+		result: v1.TaskResult{
+			Name:        "MY-RESULT",
+			Type:        v1.ResultsTypeArray,
+			Description: "my great result",
+			Default:     v1.NewStructuredValues("value1", "value2"),
+		},
+		featureFlag:   true,
+		expectedError: "",
+	}, {
+		name: "valid default value with feature flag enabled - object",
+		result: v1.TaskResult{
+			Name:        "MY-RESULT",
+			Type:        v1.ResultsTypeObject,
+			Description: "my great result",
+			Properties:  map[string]v1.PropertySpec{"key1": {Type: v1.ParamTypeString}, "key2": {Type: v1.ParamTypeString}},
+			Default:     v1.NewObject(map[string]string{"key1": "value1", "key2": "value2"}),
+		},
+		featureFlag:   true,
+		expectedError: "",
+	}, {
+		name: "default value rejected when feature flag disabled",
+		result: v1.TaskResult{
+			Name:        "MY-RESULT",
+			Type:        v1.ResultsTypeString,
+			Description: "my great result",
+			Default:     v1.NewStructuredValues("defaultValue"),
+		},
+		featureFlag:   false,
+		expectedError: "feature flag \"enable-default-results\" must be set to true to use default values for results",
+	}, {
+		name: "invalid default type - string result with array default",
+		result: v1.TaskResult{
+			Name:        "MY-RESULT",
+			Type:        v1.ResultsTypeString,
+			Description: "my great result",
+			Default:     v1.NewStructuredValues("value1", "value2"),
+		},
+		featureFlag:   true,
+		expectedError: "Invalid default type. Result type is \"string\" but default type is \"array\"",
+	}, {
+		name: "invalid default type - array result with string default",
+		result: v1.TaskResult{
+			Name:        "MY-RESULT",
+			Type:        v1.ResultsTypeArray,
+			Description: "my great result",
+			Default:     v1.NewStructuredValues("singleValue"),
+		},
+		featureFlag:   true,
+		expectedError: "Invalid default type. Result type is \"array\" but default type is \"string\"",
+	}, {
+		name: "invalid default type - object result with string default",
+		result: v1.TaskResult{
+			Name:        "MY-RESULT",
+			Type:        v1.ResultsTypeObject,
+			Description: "my great result",
+			Properties:  map[string]v1.PropertySpec{"key1": {Type: v1.ParamTypeString}},
+			Default:     v1.NewStructuredValues("stringValue"),
+		},
+		featureFlag:   true,
+		expectedError: "Invalid default type. Result type is \"object\" but default type is \"string\"",
+	}, {
+		name: "invalid default object key not in properties",
+		result: v1.TaskResult{
+			Name:        "MY-RESULT",
+			Type:        v1.ResultsTypeObject,
+			Description: "my great result",
+			Properties:  map[string]v1.PropertySpec{"key1": {Type: v1.ParamTypeString}},
+			Default:     v1.NewObject(map[string]string{"key1": "value1", "invalidKey": "value2"}),
+		},
+		featureFlag:   true,
+		expectedError: "default object key \"invalidKey\" is not defined in properties",
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+			if tt.featureFlag {
+				ctx = cfgtesting.SetFeatureFlags(ctx, t, map[string]string{
+					"enable-default-results": "true",
+				})
+			} else {
+				ctx = cfgtesting.SetFeatureFlags(ctx, t, map[string]string{
+					"enable-default-results": "false",
+				})
+			}
+			err := tt.result.Validate(ctx)
+			if tt.expectedError == "" {
+				if err != nil {
+					t.Errorf("TaskResult.Validate() = %v, expected no error", err)
+				}
+			} else {
+				if err == nil {
+					t.Fatalf("Expected an error containing %q, got nothing", tt.expectedError)
+				}
+				if !strings.Contains(err.Error(), tt.expectedError) {
+					t.Errorf("TaskResult.Validate() error = %v, expected to contain %q", err.Error(), tt.expectedError)
+				}
 			}
 		})
 	}
