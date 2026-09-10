@@ -4520,3 +4520,63 @@ func Test_getFailureMessage_consistent_with_reason(t *testing.T) {
 		})
 	}
 }
+
+func TestMakeTaskRunStatus_CancelledStepTimestamps(t *testing.T) {
+	podStatus := corev1.PodStatus{
+		Phase: corev1.PodFailed,
+		ContainerStatuses: []corev1.ContainerStatus{{
+			Name:    "step-cancelled",
+			ImageID: "image",
+			State: corev1.ContainerState{
+				Terminated: &corev1.ContainerStateTerminated{
+					ExitCode:   1,
+					Reason:     v1.TaskRunReasonCancelled.String(),
+					Message:    "Step step-cancelled terminated as pod test-pod is terminated",
+					StartedAt:  metav1.NewTime(time.Date(2025, 1, 10, 20, 7, 10, 0, time.UTC)),
+					FinishedAt: metav1.NewTime(time.Date(2025, 1, 10, 20, 7, 22, 0, time.UTC)),
+				},
+			},
+		}},
+	}
+
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "pod",
+			Namespace:         "foo",
+			CreationTimestamp: metav1.Now(),
+		},
+		Status: podStatus,
+	}
+
+	startTime := time.Date(2010, 1, 1, 1, 1, 1, 1, time.UTC)
+	tr := v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "task-run",
+			Namespace: "foo",
+		},
+		Status: v1.TaskRunStatus{
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				StartTime: &metav1.Time{Time: startTime},
+			},
+		},
+	}
+
+	logger, _ := logging.NewLogger("", "status")
+	kubeclient := fakek8s.NewSimpleClientset()
+	got, _ := MakeTaskRunStatus(t.Context(), logger, tr, &pod, kubeclient, &v1.TaskSpec{})
+
+	if len(got.Steps) != 1 {
+		t.Fatalf("expected 1 step, got %d", len(got.Steps))
+	}
+	step := got.Steps[0]
+	if step.Terminated == nil {
+		t.Fatal("expected Terminated state, got nil")
+	}
+	if !step.Terminated.StartedAt.Time.Equal(step.Terminated.FinishedAt.Time) {
+		t.Errorf("StartedAt (%v) != FinishedAt (%v); cancelled steps should have equal timestamps",
+			step.Terminated.StartedAt.Time, step.Terminated.FinishedAt.Time)
+	}
+	if step.TerminationReason != v1.TaskRunReasonCancelled.String() {
+		t.Errorf("TerminationReason = %q, want %q", step.TerminationReason, v1.TaskRunReasonCancelled.String())
+	}
+}
