@@ -121,7 +121,9 @@ func (ts *TaskSpec) ConvertTo(ctx context.Context, sink *v1.TaskSpec, meta *meta
 	}
 	sink.DisplayName = ts.DisplayName
 	sink.Description = ts.Description
-	return nil
+	// Restore compute resource values that v1beta1 could not represent (variable
+	// references), if this object was previously converted down from v1.
+	return deserializeComputeResources(meta, sink, taskName)
 }
 
 // ConvertFrom implements apis.Convertible
@@ -184,21 +186,22 @@ func (ts *TaskSpec) ConvertFrom(ctx context.Context, source *v1.TaskSpec, meta *
 	}
 	ts.DisplayName = source.DisplayName
 	ts.Description = source.Description
-	return nil
+	// Compute resource values holding variable references cannot be represented in
+	// v1beta1, so keep them in an annotation to survive a round-trip.
+	return serializeComputeResources(meta, source, taskName)
 }
 
-// taskDeprecation contains deprecated fields of a Task
+// taskDeprecation
 // +k8s:openapi-gen=false
 type taskDeprecation struct {
-	// DeprecatedSteps contains Steps of a Task that with deprecated fields defined.
+	// DeprecatedSteps
 	// +listType=atomic
 	DeprecatedSteps []Step `json:"deprecatedSteps,omitempty"`
-	// DeprecatedStepTemplate contains stepTemplate of a Task that with deprecated fields defined.
+	// DeprecatedStepTemplate
 	DeprecatedStepTemplate *StepTemplate `json:"deprecatedStepTemplate,omitempty"`
 }
 
-// taskDeprecations contains deprecated fields of Tasks that belong to the same Pipeline or PipelineRun
-// the key is Task name
+// taskDeprecations
 // +k8s:openapi-gen=false
 type taskDeprecations map[string]taskDeprecation
 

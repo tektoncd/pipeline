@@ -260,6 +260,10 @@
         }
       }
     },
+    "v1.ComputeResourceRequirements": {
+      "description": "ComputeResourceRequirements is a Tekton-owned wrapper around corev1.ResourceRequirements that supports variable substitutions (e.g. $(params.MEM)) in resource quantity values.\n\nCRD schema uses x-kubernetes-preserve-unknown-fields: true so the apiserver won't prune unresolved $(…) variable references at storage time. Validation of these values is performed by the admission webhook via Validate(). A future enhancement could add x-kubernetes-validations (CEL) rules for richer server-side validation (requires K8s 1.29+).\n\nWhen a value contains a variable reference, it is stored in RawRequests/RawLimits as a string. When a value is a valid quantity, it is stored in Requests/Limits as a parsed resource.Quantity. After variable substitution via ApplyReplacements(), raw values become parsed quantities.",
+      "type": "object"
+    },
     "v1.EmbeddedTask": {
       "description": "EmbeddedTask is used to define a Task inline within a Pipeline's PipelineTasks.",
       "type": "object",
@@ -1088,7 +1092,7 @@
       "properties": {
         "computeResources": {
           "description": "Compute resources to use for this TaskRun",
-          "$ref": "#/definitions/v1.ResourceRequirements"
+          "$ref": "#/definitions/v1.ComputeResourceRequirements"
         },
         "metadata": {
           "$ref": "#/definitions/v1.PipelineTaskMetadata"
@@ -1286,8 +1290,7 @@
         },
         "computeResources": {
           "description": "ComputeResources required by this Sidecar. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
-          "default": {},
-          "$ref": "#/definitions/v1.ResourceRequirements"
+          "$ref": "#/definitions/v1.ComputeResourceRequirements"
         },
         "env": {
           "description": "List of environment variables to set in the Sidecar. Cannot be updated.",
@@ -1505,8 +1508,7 @@
         },
         "computeResources": {
           "description": "ComputeResources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
-          "default": {},
-          "$ref": "#/definitions/v1.ResourceRequirements"
+          "$ref": "#/definitions/v1.ComputeResourceRequirements"
         },
         "displayName": {
           "description": "DisplayName is a user-facing name of the step that may be used to populate a UI.",
@@ -1753,8 +1755,7 @@
         },
         "computeResources": {
           "description": "ComputeResources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
-          "default": {},
-          "$ref": "#/definitions/v1.ResourceRequirements"
+          "$ref": "#/definitions/v1.ComputeResourceRequirements"
         },
         "env": {
           "description": "List of environment variables to set in the Step. Cannot be updated.",
@@ -2047,8 +2048,7 @@
       "properties": {
         "computeResources": {
           "description": "The resource requirements to apply to the Sidecar.",
-          "default": {},
-          "$ref": "#/definitions/v1.ResourceRequirements"
+          "$ref": "#/definitions/v1.ComputeResourceRequirements"
         },
         "name": {
           "description": "The name of the Sidecar to override.",
@@ -2063,7 +2063,7 @@
       "properties": {
         "computeResources": {
           "description": "Compute resources to use for this TaskRun",
-          "$ref": "#/definitions/v1.ResourceRequirements"
+          "$ref": "#/definitions/v1.ComputeResourceRequirements"
         },
         "debug": {
           "$ref": "#/definitions/v1.TaskRunDebug"
@@ -2328,8 +2328,7 @@
       "properties": {
         "computeResources": {
           "description": "The resource requirements to apply to the Step.",
-          "default": {},
-          "$ref": "#/definitions/v1.ResourceRequirements"
+          "$ref": "#/definitions/v1.ComputeResourceRequirements"
         },
         "name": {
           "description": "The name of the Step to override.",

@@ -243,6 +243,10 @@ func (s *Step) Validate(ctx context.Context) (errs *apis.FieldError) {
 	// Validate usage of step artifacts output reference
 	// Referencing previous step's results are only allowed in `env`, `command` and `args`, `script`.
 	errs = errs.Also(validateStepArtifactsReference(s))
+
+	// Compute resource values that are not quantities must be well-formed variable
+	// references, otherwise they would be silently dropped when building the Pod.
+	errs = errs.Also(s.ComputeResources.Validate("computeResources"))
 	return errs
 }
 
@@ -387,5 +391,7 @@ func (sc *Sidecar) Validate(ctx context.Context) (errs *apis.FieldError) {
 			})
 		}
 	}
+
+	errs = errs.Also(sc.ComputeResources.Validate("computeResources"))
 	return errs
 }

@@ -84,7 +84,7 @@ type TaskRunSpec struct {
 	// +listType=atomic
 	SidecarSpecs []TaskRunSidecarSpec `json:"sidecarSpecs,omitempty"`
 	// Compute resources to use for this TaskRun
-	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
+	ComputeResources *ComputeResourceRequirements `json:"computeResources,omitempty"`
 	// ManagedBy indicates which controller is responsible for reconciling
 	// this resource. If unset or set to "tekton.dev/pipeline", the default
 	// Tekton controller will manage this resource.
@@ -366,7 +366,7 @@ type TaskRunStepSpec struct {
 	// The name of the Step to override.
 	Name string `json:"name"`
 	// The resource requirements to apply to the Step.
-	ComputeResources corev1.ResourceRequirements `json:"computeResources"`
+	ComputeResources ComputeResourceRequirements `json:"computeResources"`
 }
 
 // TaskRunSidecarSpec is used to override the values of a Sidecar in the corresponding Task.
@@ -374,7 +374,7 @@ type TaskRunSidecarSpec struct {
 	// The name of the Sidecar to override.
 	Name string `json:"name"`
 	// The resource requirements to apply to the Sidecar.
-	ComputeResources corev1.ResourceRequirements `json:"computeResources"`
+	ComputeResources ComputeResourceRequirements `json:"computeResources"`
 }
 
 // GetGroupVersionKind implements kmeta.OwnerRefable.

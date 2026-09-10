@@ -266,6 +266,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
 Package v1 contains API Schema definitions for the pipeline v1 API group
 
 ### Resource Types
@@ -377,6 +390,35 @@ _Appears in:_
 - [Combinations](#combinations)
 
 
+
+
+
+#### ComputeResourceRequirements
+
+
+
+ComputeResourceRequirements is a Tekton-owned wrapper around corev1.ResourceRequirements
+that supports variable substitutions (e.g. $(params.MEM)) in resource quantity values.
+
+CRD schema uses x-kubernetes-preserve-unknown-fields: true so the apiserver won't
+prune unresolved $(…) variable references at storage time. Validation of these values
+is performed by the admission webhook via Validate(). A future enhancement could add
+x-kubernetes-validations (CEL) rules for richer server-side validation (requires K8s 1.29+).
+
+When a value contains a variable reference, it is stored in RawRequests/RawLimits as a string.
+When a value is a valid quantity, it is stored in Requests/Limits as a parsed resource.Quantity.
+After variable substitution via ApplyReplacements(), raw values become parsed quantities.
+
+
+
+_Appears in:_
+- [PipelineTaskRunSpec](#pipelinetaskrunspec)
+- [Sidecar](#sidecar)
+- [Step](#step)
+- [StepTemplate](#steptemplate)
+- [TaskRunSidecarSpec](#taskrunsidecarspec)
+- [TaskRunSpec](#taskrunspec)
+- [TaskRunStepSpec](#taskrunstepspec)
 
 
 
@@ -878,7 +920,7 @@ _Appears in:_
 | `stepSpecs` _[TaskRunStepSpec](#taskrunstepspec) array_ |  |  |  |
 | `sidecarSpecs` _[TaskRunSidecarSpec](#taskrunsidecarspec) array_ |  |  |  |
 | `metadata` _[PipelineTaskMetadata](#pipelinetaskmetadata)_ | Refer to Kubernetes API documentation for fields of `metadata`. |  | Optional: \{\} <br /> |
-| `computeResources` _[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#resourcerequirements-v1-core)_ | Compute resources to use for this TaskRun |  |  |
+| `computeResources` _[ComputeResourceRequirements](#computeresourcerequirements)_ | Compute resources to use for this TaskRun |  |  |
 | `timeout` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#duration-v1-meta)_ | Duration after which the TaskRun times out. Overrides the timeout specified<br />on the Task's spec if specified. Takes lower precedence to PipelineRun's<br />`spec.timeouts.tasks`<br />Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration |  | Optional: \{\} <br /> |
 
 
@@ -1099,7 +1141,7 @@ _Appears in:_
 | `ports` _[ContainerPort](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#containerport-v1-core) array_ | List of ports to expose from the Sidecar. Exposing a port here gives<br />the system additional information about the network connections a<br />container uses, but is primarily informational. Not specifying a port here<br />DOES NOT prevent that port from being exposed. Any port which is<br />listening on the default "0.0.0.0" address inside a container will be<br />accessible from the network.<br />Cannot be updated. |  | Optional: \{\} <br /> |
 | `envFrom` _[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#envfromsource-v1-core) array_ | List of sources to populate environment variables in the Sidecar.<br />The keys defined within a source must be a C_IDENTIFIER. All invalid keys<br />will be reported as an event when the container is starting. When a key exists in multiple<br />sources, the value associated with the last source will take precedence.<br />Values defined by an Env with a duplicate key will take precedence.<br />Cannot be updated. |  | Optional: \{\} <br /> |
 | `env` _[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#envvar-v1-core) array_ | List of environment variables to set in the Sidecar.<br />Cannot be updated. |  | Optional: \{\} <br /> |
-| `computeResources` _[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#resourcerequirements-v1-core)_ | ComputeResources required by this Sidecar.<br />Cannot be updated.<br />More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ |  | Optional: \{\} <br /> |
+| `computeResources` _[ComputeResourceRequirements](#computeresourcerequirements)_ | ComputeResources required by this Sidecar.<br />Cannot be updated.<br />More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ |  | Optional: \{\} <br /> |
 | `volumeMounts` _[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volumemount-v1-core) array_ | Volumes to mount into the Sidecar's filesystem.<br />Cannot be updated. |  | Optional: \{\} <br /> |
 | `volumeDevices` _[VolumeDevice](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volumedevice-v1-core) array_ | volumeDevices is the list of block devices to be used by the Sidecar. |  | Optional: \{\} <br /> |
 | `livenessProbe` _[Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#probe-v1-core)_ | Periodic probe of Sidecar liveness.<br />Container will be restarted if the probe fails.<br />Cannot be updated.<br />More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes |  | Optional: \{\} <br /> |
@@ -1209,7 +1251,7 @@ _Appears in:_
 | `workingDir` _string_ | Step's working directory.<br />If not specified, the container runtime's default will be used, which<br />might be configured in the container image.<br />Cannot be updated. |  | Optional: \{\} <br /> |
 | `envFrom` _[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#envfromsource-v1-core) array_ | List of sources to populate environment variables in the Step.<br />The keys defined within a source must be a C_IDENTIFIER. All invalid keys<br />will be reported as an event when the Step is starting. When a key exists in multiple<br />sources, the value associated with the last source will take precedence.<br />Values defined by an Env with a duplicate key will take precedence.<br />Cannot be updated. |  | Optional: \{\} <br /> |
 | `env` _[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#envvar-v1-core) array_ | List of environment variables to set in the Step.<br />Cannot be updated. |  | Optional: \{\} <br /> |
-| `computeResources` _[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#resourcerequirements-v1-core)_ | ComputeResources required by this Step.<br />Cannot be updated.<br />More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ |  | Optional: \{\} <br /> |
+| `computeResources` _[ComputeResourceRequirements](#computeresourcerequirements)_ | ComputeResources required by this Step.<br />Cannot be updated.<br />More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ |  | Optional: \{\} <br /> |
 | `volumeMounts` _[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volumemount-v1-core) array_ | Volumes to mount into the Step's filesystem.<br />Cannot be updated. |  | Optional: \{\} <br /> |
 | `volumeDevices` _[VolumeDevice](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volumedevice-v1-core) array_ | volumeDevices is the list of block devices to be used by the Step. |  | Optional: \{\} <br /> |
 | `imagePullPolicy` _[PullPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#pullpolicy-v1-core)_ | Image pull policy.<br />One of Always, Never, IfNotPresent.<br />Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.<br />Cannot be updated.<br />More info: https://kubernetes.io/docs/concepts/containers/images#updating-images |  | Optional: \{\} <br /> |
@@ -1311,7 +1353,7 @@ _Appears in:_
 | `workingDir` _string_ | Step's working directory.<br />If not specified, the container runtime's default will be used, which<br />might be configured in the container image.<br />Cannot be updated. |  | Optional: \{\} <br /> |
 | `envFrom` _[EnvFromSource](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#envfromsource-v1-core) array_ | List of sources to populate environment variables in the Step.<br />The keys defined within a source must be a C_IDENTIFIER. All invalid keys<br />will be reported as an event when the Step is starting. When a key exists in multiple<br />sources, the value associated with the last source will take precedence.<br />Values defined by an Env with a duplicate key will take precedence.<br />Cannot be updated. |  | Optional: \{\} <br /> |
 | `env` _[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#envvar-v1-core) array_ | List of environment variables to set in the Step.<br />Cannot be updated. |  | Optional: \{\} <br /> |
-| `computeResources` _[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#resourcerequirements-v1-core)_ | ComputeResources required by this Step.<br />Cannot be updated.<br />More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ |  | Optional: \{\} <br /> |
+| `computeResources` _[ComputeResourceRequirements](#computeresourcerequirements)_ | ComputeResources required by this Step.<br />Cannot be updated.<br />More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ |  | Optional: \{\} <br /> |
 | `volumeMounts` _[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volumemount-v1-core) array_ | Volumes to mount into the Step's filesystem.<br />Cannot be updated. |  | Optional: \{\} <br /> |
 | `volumeDevices` _[VolumeDevice](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volumedevice-v1-core) array_ | volumeDevices is the list of block devices to be used by the Step. |  | Optional: \{\} <br /> |
 | `imagePullPolicy` _[PullPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#pullpolicy-v1-core)_ | Image pull policy.<br />One of Always, Never, IfNotPresent.<br />Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.<br />Cannot be updated.<br />More info: https://kubernetes.io/docs/concepts/containers/images#updating-images |  | Optional: \{\} <br /> |
@@ -1490,7 +1532,7 @@ _Appears in:_
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `name` _string_ | The name of the Sidecar to override. |  |  |
-| `computeResources` _[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#resourcerequirements-v1-core)_ | The resource requirements to apply to the Sidecar. |  |  |
+| `computeResources` _[ComputeResourceRequirements](#computeresourcerequirements)_ | The resource requirements to apply to the Sidecar. |  |  |
 
 
 #### TaskRunSpec
@@ -1519,7 +1561,7 @@ _Appears in:_
 | `workspaces` _[WorkspaceBinding](#workspacebinding) array_ | Workspaces is a list of WorkspaceBindings from volumes to workspaces. |  | Optional: \{\} <br /> |
 | `stepSpecs` _[TaskRunStepSpec](#taskrunstepspec) array_ | Specs to apply to Steps in this TaskRun.<br />If a field is specified in both a Step and a StepSpec,<br />the value from the StepSpec will be used.<br />This field is only supported when the alpha feature gate is enabled. |  | Optional: \{\} <br /> |
 | `sidecarSpecs` _[TaskRunSidecarSpec](#taskrunsidecarspec) array_ | Specs to apply to Sidecars in this TaskRun.<br />If a field is specified in both a Sidecar and a SidecarSpec,<br />the value from the SidecarSpec will be used.<br />This field is only supported when the alpha feature gate is enabled. |  | Optional: \{\} <br /> |
-| `computeResources` _[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#resourcerequirements-v1-core)_ | Compute resources to use for this TaskRun |  |  |
+| `computeResources` _[ComputeResourceRequirements](#computeresourcerequirements)_ | Compute resources to use for this TaskRun |  |  |
 | `managedBy` _string_ | ManagedBy indicates which controller is responsible for reconciling<br />this resource. If unset or set to "tekton.dev/pipeline", the default<br />Tekton controller will manage this resource.<br />This field is immutable. |  | Optional: \{\} <br /> |
 
 
@@ -1631,7 +1673,7 @@ _Appears in:_
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `name` _string_ | The name of the Step to override. |  |  |
-| `computeResources` _[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#resourcerequirements-v1-core)_ | The resource requirements to apply to the Step. |  |  |
+| `computeResources` _[ComputeResourceRequirements](#computeresourcerequirements)_ | The resource requirements to apply to the Step. |  |  |
 
 
 #### TaskSpec
