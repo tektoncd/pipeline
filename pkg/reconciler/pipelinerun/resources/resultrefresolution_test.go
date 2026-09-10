@@ -805,14 +805,14 @@ func TestCheckMissingResultReferences(t *testing.T) {
 		targets: PipelineRunState{
 			pipelineRunState[18],
 		},
-		wantErr: "Result reference error: Could not find ref \"does-not-exist\" in internal pipelineRunState",
+		wantErr: "result reference error: could not find ref \"does-not-exist\" in internal pipelineRunState",
 	}, {
 		name:             "Invalid: Test result references where referencedPipelineTask has no TaskRuns",
 		pipelineRunState: pipelineRunState,
 		targets: PipelineRunState{
 			pipelineRunState[19],
 		},
-		wantErr: "Result reference error: Internal result ref \"lTask\" has zero-length TaskRuns",
+		wantErr: "result reference error: internal result ref \"lTask\" has zero-length TaskRuns",
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
