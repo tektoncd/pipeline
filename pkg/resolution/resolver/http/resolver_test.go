@@ -411,7 +411,9 @@ func TestResolverReconcileBasicAuth(t *testing.T) {
 				p.url = svr.URL
 			}
 			request := createRequest(p)
-			cfg := make(map[string]string)
+			cfg := map[string]string{
+				framework.BlockPrivateIPsConfigKey: "false",
+			}
 			d := test.Data{
 				ConfigMaps: []*corev1.ConfigMap{{
 					ObjectMeta: metav1.ObjectMeta{
@@ -515,6 +517,14 @@ func toParams(m map[string]string) []pipelinev1.Param {
 
 func contextWithConfig(timeout string) context.Context {
 	config := map[string]string{
+		TimeoutKey:                         timeout,
+		framework.BlockPrivateIPsConfigKey: "false",
+	}
+	return framework.InjectResolverConfigToContext(context.Background(), config)
+}
+
+func contextWithBlockingConfig(timeout string) context.Context {
+	config := map[string]string{
 		TimeoutKey: timeout,
 	}
 	return framework.InjectResolverConfigToContext(context.Background(), config)
@@ -528,6 +538,118 @@ func checkExpectedErr(t *testing.T, expectedErr, actualErr error) {
 	if d := cmp.Diff(expectedErr.Error(), actualErr.Error()); d != "" {
 		t.Fatalf("expected err '%v' but got '%v'", expectedErr, actualErr)
 	}
+}
+
+func TestMakeHTTPClientBlockPrivateIPs(t *testing.T) {
+	tests := []struct {
+		name           string
+		config         map[string]string
+		expectBlocking bool
+	}{
+		{
+			name:           "default (key absent) blocks private IPs",
+			config:         map[string]string{TimeoutKey: "1m"},
+			expectBlocking: true,
+		},
+		{
+			name:           "explicit true blocks private IPs",
+			config:         map[string]string{TimeoutKey: "1m", framework.BlockPrivateIPsConfigKey: "true"},
+			expectBlocking: true,
+		},
+		{
+			name:           "false disables blocking",
+			config:         map[string]string{TimeoutKey: "1m", framework.BlockPrivateIPsConfigKey: "false"},
+			expectBlocking: false,
+		},
+		{
+			name:           "invalid value treated as true",
+			config:         map[string]string{TimeoutKey: "1m", framework.BlockPrivateIPsConfigKey: "yes"},
+			expectBlocking: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := framework.InjectResolverConfigToContext(context.Background(), tc.config)
+			client, err := makeHttpClient(ctx)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			hasCustomTransport := client.Transport != http.DefaultTransport && client.Transport != nil
+			if hasCustomTransport != tc.expectBlocking {
+				t.Errorf("custom Transport set = %v, want %v", hasCustomTransport, tc.expectBlocking)
+			}
+		})
+	}
+}
+
+func TestFetchHttpResourceBlockedIP(t *testing.T) {
+	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "ok")
+	}))
+	defer svr.Close()
+
+	params := map[string]string{UrlParam: svr.URL}
+	logger, _ := zap.NewDevelopment()
+
+	t.Run("blocking enabled rejects loopback", func(t *testing.T) {
+		ctx := contextWithBlockingConfig(defaultHttpTimeoutValue)
+		_, err := FetchHttpResource(ctx, params, nil, logger.Sugar())
+		if err == nil {
+			t.Fatal("expected error when fetching from loopback with blocking enabled")
+		}
+		if !strings.Contains(err.Error(), "is blocked") {
+			t.Fatalf("expected SSRF error but got: %v", err)
+		}
+	})
+
+	t.Run("blocking disabled allows loopback", func(t *testing.T) {
+		ctx := contextWithConfig(defaultHttpTimeoutValue)
+		result, err := FetchHttpResource(ctx, params, nil, logger.Sugar())
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(result.Data()) != "ok" {
+			t.Fatalf("expected 'ok' but got %q", string(result.Data()))
+		}
+	})
+}
+
+func TestFetchHttpResourceRedirectToBlocked(t *testing.T) {
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "redirected")
+	}))
+	defer target.Close()
+
+	redirector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL, http.StatusFound)
+	}))
+	defer redirector.Close()
+
+	params := map[string]string{UrlParam: redirector.URL}
+	logger, _ := zap.NewDevelopment()
+
+	t.Run("redirect to loopback blocked", func(t *testing.T) {
+		ctx := contextWithBlockingConfig(defaultHttpTimeoutValue)
+		_, err := FetchHttpResource(ctx, params, nil, logger.Sugar())
+		if err == nil {
+			t.Fatal("expected error when redirect targets loopback with blocking enabled")
+		}
+		if !strings.Contains(err.Error(), "is blocked") {
+			t.Fatalf("expected SSRF error but got: %v", err)
+		}
+	})
+
+	t.Run("redirect to loopback allowed when disabled", func(t *testing.T) {
+		ctx := contextWithConfig(defaultHttpTimeoutValue)
+		result, err := FetchHttpResource(ctx, params, nil, logger.Sugar())
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(result.Data()) != "redirected" {
+			t.Fatalf("expected 'redirected' but got %q", string(result.Data()))
+		}
+	})
 }
 
 func TestCompareSHA(t *testing.T) {
