@@ -39,3 +39,4 @@ data:
   enable-concise-resolver-syntax: "true"
   enable-kubernetes-sidecar: "true"
   enable-termination-message-compression: "true"
+  enable-pod-rescheduling: "true"
