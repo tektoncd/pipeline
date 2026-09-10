@@ -15,6 +15,11 @@
 # NOTE: Exported traces may include Kubernetes resource identifiers (e.g. TaskRun/PipelineRun
 # names and namespaces) as span attributes. Treat the trace backend as a trusted observability
 # system. See docs/developers/tracing.md for details.
+#
+# NOTE: This only configures tracing for the TaskRun and PipelineRun reconcilers. It is
+# independent of the tracing-protocol/tracing-endpoint/tracing-sampling-rate keys in
+# config-observability, which configure a separate tracer used by the notification and
+# cloud event reconcilers. Enabling one does not enable the other.
 apiVersion: v1
 kind: ConfigMap
 metadata:
