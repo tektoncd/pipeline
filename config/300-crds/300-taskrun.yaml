@@ -4098,6 +4098,11 @@ spec:
                             URI indicates the identity of the source of the build definition.
                             Example: "https://github.com/tektoncd/catalog"
                           type: string
+                resolvedTaskNamespace:
+                  description: |-
+                    ResolvedTaskNamespace is the namespace of the resolved Task, used for
+                    cross-namespace StepAction resolution. Set by the controller, not user-modifiable.
+                  type: string
                 results:
                   description: Results are the list of results written out by the task's containers
                   type: array

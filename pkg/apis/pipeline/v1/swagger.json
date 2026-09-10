@@ -2188,6 +2188,10 @@
           "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
           "$ref": "#/definitions/v1.Provenance"
         },
+        "resolvedTaskNamespace": {
+          "description": "ResolvedTaskNamespace is the namespace of the resolved Task, used for cross-namespace StepAction resolution. Set by the controller, not user-modifiable.",
+          "type": "string"
+        },
         "results": {
           "description": "Results are the list of results written out by the task's containers",
           "type": "array",
@@ -2264,6 +2268,10 @@
         "provenance": {
           "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
           "$ref": "#/definitions/v1.Provenance"
+        },
+        "resolvedTaskNamespace": {
+          "description": "ResolvedTaskNamespace is the namespace of the resolved Task, used for cross-namespace StepAction resolution. Set by the controller, not user-modifiable.",
+          "type": "string"
         },
         "results": {
           "description": "Results are the list of results written out by the task's containers",
