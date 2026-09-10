@@ -404,6 +404,7 @@ func (c *Reconciler) resolvePipelineState(
 	}
 
 	// Resolve each pipeline task individually because they each could have a different reference context (remote or local).
+	requestInProgress := false
 	for _, pipelineTask := range pipelineTasks {
 		// We need the TaskRun name to ensure that we don't perform an additional remote resolution request for a PipelineTask
 		// in the TaskRun reconciler.
@@ -500,7 +501,8 @@ func (c *Reconciler) resolvePipelineState(
 				return nil, err
 			}
 			if errors.Is(err, remote.ErrRequestInProgress) {
-				return nil, err
+				requestInProgress = true
+				continue
 			}
 			var nfErr *resources.TaskNotFoundError
 			var pnfErr *resources.PipelineNotFoundError
@@ -539,6 +541,9 @@ func (c *Reconciler) resolvePipelineState(
 		pst = append(pst, resolvedTask)
 	}
 
+	if requestInProgress {
+		return pst, remote.ErrRequestInProgress
+	}
 	return pst, nil
 }
 
@@ -749,26 +754,24 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 
 	// First iteration
 	pipelineRunState, err := c.resolvePipelineState(ctx, ranOrRunningTasks, pipelineMeta.ObjectMeta, pr, resources.PipelineRunState{})
-	switch {
-	case errors.Is(err, remote.ErrRequestInProgress):
-		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
-		pr.Status.MarkRunning(v1.TaskRunReasonResolvingTaskRef, message)
-		return controller.NewRequeueAfter(remoteResolutionRequeueAfter)
-	case err != nil:
+	requestInProgress := errors.Is(err, remote.ErrRequestInProgress)
+	if err != nil && !requestInProgress {
 		return err
-	default:
 	}
 
 	// Second iteration
 	pipelineRunState, err = c.resolvePipelineState(ctx, notStartedTasks, pipelineMeta.ObjectMeta, pr, pipelineRunState)
 	switch {
 	case errors.Is(err, remote.ErrRequestInProgress):
+		requestInProgress = true
+	case err != nil:
+		return err
+	}
+
+	if requestInProgress {
 		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
 		pr.Status.MarkRunning(v1.TaskRunReasonResolvingTaskRef, message)
 		return controller.NewRequeueAfter(remoteResolutionRequeueAfter)
-	case err != nil:
-		return err
-	default:
 	}
 
 	// Build PipelineRunFacts with a list of resolved pipeline tasks,
