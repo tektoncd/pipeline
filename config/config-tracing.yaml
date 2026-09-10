@@ -47,3 +47,14 @@ data:
     endpoint: "http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces"
     # (optional) Name of the k8s secret which contains basic auth credentials
     credentialsSecret: "jaeger-creds"
+    #
+    # (optional) CA certificate for verifying the tracing endpoint over HTTPS.
+    # Can be a path to a mounted PEM bundle or inline PEM.
+    # When cacert is a file path, the file is read at tracing provider startup or
+    # when this ConfigMap changes. Rotated CA bundles at the same path are not
+    # picked up until config-tracing is updated or the controller is restarted.
+    # cacert: "/var/run/secrets/.../service-ca.crt"
+    # cacert: |
+    #   -----BEGIN CERTIFICATE-----
+    #   ...
+    #   -----END CERTIFICATE-----

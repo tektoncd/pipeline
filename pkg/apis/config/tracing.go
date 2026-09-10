@@ -35,6 +35,9 @@ const (
 
 	// DefaultEndpoint is the default destination for sending traces
 	DefaultEndpoint = "http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces"
+
+	// tracingCACertKey is the configmap key for tracing CA certificate
+	tracingCACertKey = "cacert"
 )
 
 // DefaultTracing holds all the default configurations for tracing
@@ -46,6 +49,7 @@ type Tracing struct {
 	Enabled           bool
 	Endpoint          string
 	CredentialsSecret string
+	CACert            string
 }
 
 // Equals returns true if two Configs are identical
@@ -60,7 +64,8 @@ func (cfg *Tracing) Equals(other *Tracing) bool {
 
 	return other.Enabled == cfg.Enabled &&
 		other.Endpoint == cfg.Endpoint &&
-		other.CredentialsSecret == cfg.CredentialsSecret
+		other.CredentialsSecret == cfg.CredentialsSecret &&
+		other.CACert == cfg.CACert
 }
 
 // GetTracingConfigName returns the name of the configmap containing all
@@ -85,6 +90,10 @@ func newTracingFromMap(config map[string]string) (*Tracing, error) {
 
 	if secret, ok := config[tracingCredentialsSecretKey]; ok {
 		t.CredentialsSecret = secret
+	}
+
+	if ca, ok := config[tracingCACertKey]; ok {
+		t.CACert = ca
 	}
 
 	if enabled, ok := config[tracingEnabledKey]; ok {

@@ -47,6 +47,15 @@ func TestNewTracingFromConfigMap(t *testing.T) {
 			},
 			fileName: "config-tracing-enabled",
 		},
+		{
+			name: "enabled with cacert",
+			want: &config.Tracing{
+				Enabled:  true,
+				Endpoint: "https://collector.example.svc:4318/v1/traces",
+				CACert:   "/etc/ssl/certs/service-ca.crt",
+			},
+			fileName: "config-tracing-cacert",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cm := test.ConfigMapFromTestFile(t, tc.fileName)
@@ -128,11 +137,39 @@ func TestTracingEquals(t *testing.T) {
 				Enabled:           true,
 				Endpoint:          "a",
 				CredentialsSecret: "b",
+				CACert:            "c",
 			},
 			right: &config.Tracing{
 				Enabled:           true,
 				Endpoint:          "a",
 				CredentialsSecret: "b",
+				CACert:            "c",
+			},
+			expected: true,
+		},
+		{
+			name: "different CACert",
+			left: &config.Tracing{
+				CACert: "a",
+			},
+			right: &config.Tracing{
+				CACert: "b",
+			},
+			expected: false,
+		},
+		{
+			name: "same all fields including CACert",
+			left: &config.Tracing{
+				Enabled:           true,
+				Endpoint:          "a",
+				CredentialsSecret: "b",
+				CACert:            "c",
+			},
+			right: &config.Tracing{
+				Enabled:           true,
+				Endpoint:          "a",
+				CredentialsSecret: "b",
+				CACert:            "c",
 			},
 			expected: true,
 		},

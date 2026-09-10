@@ -18,6 +18,7 @@ package tracing
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"net/url"
@@ -161,6 +162,16 @@ func createTracerProvider(service string, cfg *config.Tracing, user, pass string
 	opts := []otlptracehttp.Option{
 		otlptracehttp.WithEndpoint(u.Host),
 		otlptracehttp.WithURLPath(u.Path),
+	}
+
+	if u.Scheme == "https" && cfg.CACert != "" {
+		pool, err := certPoolFromCACert(cfg.CACert)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load tracing CA cert: %w", err)
+		}
+		opts = append(opts, otlptracehttp.WithTLSClientConfig(&tls.Config{
+			RootCAs: pool,
+		}))
 	}
 
 	if u.Scheme == "http" {
