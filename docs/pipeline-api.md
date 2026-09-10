@@ -424,6 +424,44 @@ _Appears in:_
 | `params` _[Params](#params)_ | Params is a list of parameters used to fan out the pipelineTask<br />Params takes only `Parameters` of type `"array"`<br />Each array element is supplied to the `PipelineTask` by substituting `params` of type `"string"` in the underlying `Task`.<br />The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting. |  |  |
 
 
+#### Notice
+
+
+
+Notice represents a structured message emitted by a controller that does not affect the run's success/failure status.
+
+
+
+_Appears in:_
+- [TaskRunStatus](#taskrunstatus)
+- [TaskRunStatusFields](#taskrunstatusfields)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `level` _[NoticeLevel](#noticelevel)_ | Level indicates the severity of the notice.<br />Valid values: "info", "warning". |  | Enum: [info warning] <br /> |
+| `message` _string_ | Message is the human-readable notice text.<br />Maximum length: 1024 characters. |  | MaxLength: 1024 <br /> |
+| `step` _string_ | Step is the name of the step that emitted this notice.<br />Empty for controller-emitted notices. |  | Optional: \{\} <br /> |
+| `file` _string_ | File is the source file path related to this notice.<br />Used by VCS integrations to create inline annotations.<br />Maximum length: 256 characters. |  | MaxLength: 256 <br />Optional: \{\} <br /> |
+| `startLine` _integer_ | StartLine is the starting line number in the source file (1-based).<br />Pointer type so that absence (nil) is distinguishable from line 0. |  | Optional: \{\} <br /> |
+
+
+#### NoticeLevel
+
+_Underlying type:_ _string_
+
+NoticeLevel indicates the severity of a notice.
+
+
+
+_Appears in:_
+- [Notice](#notice)
+
+| Field | Description |
+| --- | --- |
+| `info` | NoticeLevelInfo represents an informational message, no action needed.<br /> |
+| `warning` | NoticeLevelWarning represents something to address, but not blocking.<br /> |
+
+
 #### OnErrorType
 
 _Underlying type:_ _string_
@@ -1578,6 +1616,7 @@ _Appears in:_
 | `retriesStatus` _[RetriesStatus](#retriesstatus)_ | RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.<br />All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant. |  | Schemaless: \{\} <br />Optional: \{\} <br /> |
 | `results` _[TaskRunResult](#taskrunresult) array_ | Results are the list of results written out by the task's containers |  | Optional: \{\} <br /> |
 | `artifacts` _[Artifacts](#artifacts)_ | Artifacts are the list of artifacts written out by the task's containers |  | Optional: \{\} <br /> |
+| `notices` _[Notice](#notice) array_ | Notices are structured messages emitted by controllers that do not affect the task's success/failure status. |  | Optional: \{\} <br /> |
 | `sidecars` _[SidecarState](#sidecarstate) array_ | The list has one entry per sidecar in the manifest. Each entry is<br />represents the imageid of the corresponding sidecar. |  |  |
 | `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. |  |  |
 | `provenance` _[Provenance](#provenance)_ | Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.). |  | Optional: \{\} <br /> |
@@ -1606,6 +1645,7 @@ _Appears in:_
 | `retriesStatus` _[RetriesStatus](#retriesstatus)_ | RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.<br />All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant. |  | Schemaless: \{\} <br />Optional: \{\} <br /> |
 | `results` _[TaskRunResult](#taskrunresult) array_ | Results are the list of results written out by the task's containers |  | Optional: \{\} <br /> |
 | `artifacts` _[Artifacts](#artifacts)_ | Artifacts are the list of artifacts written out by the task's containers |  | Optional: \{\} <br /> |
+| `notices` _[Notice](#notice) array_ | Notices are structured messages emitted by controllers that do not affect the task's success/failure status. |  | Optional: \{\} <br /> |
 | `sidecars` _[SidecarState](#sidecarstate) array_ | The list has one entry per sidecar in the manifest. Each entry is<br />represents the imageid of the corresponding sidecar. |  |  |
 | `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. |  |  |
 | `provenance` _[Provenance](#provenance)_ | Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.). |  | Optional: \{\} <br /> |
