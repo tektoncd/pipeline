@@ -817,6 +817,9 @@ _Appears in:_
 | `pipelineRef` _[PipelineRef](#pipelineref)_ | PipelineRef is a reference to a pipeline definition.<br />This is an alpha field. You must set the "enable-api-fields" feature flag<br />to "alpha" for this field to be supported. When enabled, the referenced<br />Pipeline is executed as a child PipelineRun owned by the parent PipelineRun. |  | Optional: \{\} <br /> |
 | `pipelineSpec` _[PipelineSpec](#pipelinespec)_ | PipelineSpec is a specification of a pipeline.<br />This is an alpha field. You must set the "enable-api-fields" feature flag<br />to "alpha" for this field to be supported. When enabled, the embedded<br />Pipeline is executed as a child PipelineRun owned by the parent PipelineRun.<br />Specifying PipelineSpec can be disabled by setting<br />`disable-inline-spec` feature flag.<br />See Pipeline.spec (API version: tekton.dev/v1) |  | Schemaless: \{\} <br />Optional: \{\} <br /> |
 | `onError` _[PipelineTaskOnErrorType](#pipelinetaskonerrortype)_ | OnError defines the exiting behavior of a PipelineRun on error<br />can be set to [ continue \| stopAndFail ] |  | Optional: \{\} <br /> |
+| `stepSpecs` _[TaskRunStepSpec](#taskrunstepspec) array_ | StepSpecs is used to override the compute resources of steps in the<br />referenced Task at the Pipeline level. These values take precedence over<br />the Task's step resources but can be overridden by PipelineRun's<br />taskRunSpecs[].stepSpecs. When PipelineRun specifies stepSpecs for this<br />task, it replaces the entire Pipeline-level list (not a per-step merge).<br />For matrixed PipelineTasks, the same overrides apply to all fan-out TaskRuns.<br />These fields are only meaningful for regular tasks, not custom tasks. |  | Optional: \{\} <br /> |
+| `sidecarSpecs` _[TaskRunSidecarSpec](#taskrunsidecarspec) array_ | SidecarSpecs is used to override the compute resources of sidecars in the<br />referenced Task at the Pipeline level. These values take precedence over<br />the Task's sidecar resources but can be overridden by PipelineRun's<br />taskRunSpecs[].sidecarSpecs. When PipelineRun specifies sidecarSpecs for<br />this task, it replaces the entire Pipeline-level list (not a per-sidecar merge).<br />These fields are only meaningful for regular tasks, not custom tasks. |  | Optional: \{\} <br /> |
+| `computeResources` _[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#resourcerequirements-v1-core)_ | Compute resources to use for this PipelineTask. These values take<br />precedence over the Task's compute resources but can be overridden by<br />PipelineRun's taskRunSpecs[].computeResources. Cannot be used together<br />with stepSpecs that set per-step resources (mutually exclusive).<br />These fields are only meaningful for regular tasks, not custom tasks. |  | Optional: \{\} <br /> |
 
 
 #### PipelineTaskMetadata
@@ -1484,6 +1487,7 @@ TaskRunSidecarSpec is used to override the values of a Sidecar in the correspond
 
 
 _Appears in:_
+- [PipelineTask](#pipelinetask)
 - [PipelineTaskRunSpec](#pipelinetaskrunspec)
 - [TaskRunSpec](#taskrunspec)
 
@@ -1625,6 +1629,7 @@ TaskRunStepSpec is used to override the values of a Step in the corresponding Ta
 
 
 _Appears in:_
+- [PipelineTask](#pipelinetask)
 - [PipelineTaskRunSpec](#pipelinetaskrunspec)
 - [TaskRunSpec](#taskrunspec)
 
