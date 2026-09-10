@@ -88,3 +88,27 @@ func TestStoreLoadWithContext_Empty(t *testing.T) {
 		t.Errorf("Unexpected config %s", diff.PrintWantGot(d))
 	}
 }
+
+func TestConfigDeepCopy(t *testing.T) {
+	if got := (*config.Config)(nil).DeepCopy(); got != nil {
+		t.Fatalf("nil.DeepCopy() = %#v, want nil", got)
+	}
+	if d := cmp.Diff(&config.Config{}, (&config.Config{}).DeepCopy()); d != "" {
+		t.Errorf("empty DeepCopy() mismatch (-want +got):\n%s", d)
+	}
+
+	original := config.FromContextOrDefaults(t.Context())
+	got := original.DeepCopy()
+	if d := cmp.Diff(original, got); d != "" {
+		t.Errorf("DeepCopy() mismatch (-want +got):\n%s", d)
+	}
+	if original.Defaults == got.Defaults ||
+		original.FeatureFlags == got.FeatureFlags ||
+		original.Metrics == got.Metrics ||
+		original.SpireConfig == got.SpireConfig ||
+		original.Events == got.Events ||
+		original.Tracing == got.Tracing ||
+		original.WaitExponentialBackoff == got.WaitExponentialBackoff {
+		t.Error("DeepCopy() retained a nested config pointer")
+	}
+}

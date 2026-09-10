@@ -21,6 +21,7 @@ import (
 
 	"github.com/tektoncd/pipeline/internal/reconciler/cachetransform"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	nsconfig "github.com/tektoncd/pipeline/pkg/apis/config/namespace"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
@@ -98,6 +99,8 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			logger.Fatalf("Error creating entrypoint cache: %v", err)
 		}
 
+		perNamespaceConfig := nsconfig.NewPerNamespaceConfig(ctx, kubeclientset)
+
 		c := &Reconciler{
 			KubeClientSet:            kubeclientset,
 			PipelineClientSet:        pipelineclientset,
@@ -113,6 +116,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			pvcHandler:               volumeclaim.NewPVCHandler(kubeclientset, logger),
 			resolutionRequester:      resolution.NewCRDRequester(resolutionclient.Get(ctx), resolutionInformer.Lister()),
 			tracerProvider:           tracerProvider,
+			perNamespaceConfig:       perNamespaceConfig,
 		}
 		impl := taskrunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
 			return controller.Options{

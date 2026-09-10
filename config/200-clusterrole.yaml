@@ -84,6 +84,10 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 rules:
+  # Read namespace-scoped ConfigMaps for per-namespace configuration.
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
   # The webhook needs to be able to get and update customresourcedefinitions,
   # mainly to update the webhook certificates.
   - apiGroups: ["apiextensions.k8s.io"]

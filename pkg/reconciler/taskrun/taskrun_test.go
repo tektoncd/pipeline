@@ -391,6 +391,22 @@ func getRunName(tr *v1.TaskRun) string {
 	return strings.Join([]string{tr.Namespace, tr.Name}, "/")
 }
 
+func assertClientActions(t *testing.T, actions []ktesting.Action, expected [][2]string) {
+	t.Helper()
+	for _, want := range expected {
+		found := false
+		for _, action := range actions {
+			if action.Matches(want[0], want[1]) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("missing %s %s action; got %#v", want[0], want[1], actions)
+		}
+	}
+}
+
 // getTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
@@ -449,19 +465,34 @@ spec:
 `)
 	taskruns := []*v1.TaskRun{taskRunSuccess, taskRunWithSaSuccess}
 	defaultSAName := "pipelines"
-	d := test.Data{
-		TaskRuns: taskruns,
-		Tasks:    []*v1.Task{simpleTask, saTask},
-		ConfigMaps: []*corev1.ConfigMap{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-				Data: map[string]string{
-					"default-service-account":        defaultSAName,
-					"default-timeout-minutes":        "60",
-					"default-managed-by-label-value": "tekton-pipelines",
-				},
+	configMaps := ttesting.NewFeatureFlagsConfigMapInSlice()
+	configMaps[0].Data["per-namespace-configuration"] = "true"
+	configMaps = append(configMaps,
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"default-service-account":        defaultSAName,
+				"default-timeout-minutes":        "60",
+				"default-managed-by-label-value": "tekton-pipelines",
 			},
 		},
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tekton-config-defaults",
+				Namespace: "foo",
+				Labels: map[string]string{
+					"app.kubernetes.io/part-of":  "tekton-pipelines",
+					"tekton.dev/pipeline-config": "true",
+				},
+			},
+			Data: map[string]string{"default-timeout-minutes": "invalid"},
+		},
+	)
+	// An invalid namespace override must fall back to the global service account.
+	d := test.Data{
+		TaskRuns:   taskruns,
+		Tasks:      []*v1.Task{simpleTask, saTask},
+		ConfigMaps: configMaps,
 	}
 	for _, tc := range []struct {
 		name    string
@@ -1586,11 +1617,7 @@ spec:
 				t.Fatalf("Expected to see a permanent error when reconciling invalid TaskRun, got %s instead", reconcileErr)
 			}
 
-			// Check actions and events
-			actions := clients.Kube.Actions()
-			if len(actions) != 2 {
-				t.Errorf("expected 2 actions, got %d. Actions: %#v", len(actions), actions)
-			}
+			assertClientActions(t, clients.Kube.Actions(), [][2]string{{"list", "configmaps"}, {"watch", "configmaps"}})
 
 			err := k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
 			if !(err == nil) {
@@ -2447,12 +2474,7 @@ status:
 		t.Fatalf("Expected to see no error when reconciling TaskRun with Permanent Error but was not none")
 	}
 
-	// Check actions
-	actions := clients.Kube.Actions()
-	if len(actions) != 2 || !actions[0].Matches("list", "configmaps") || !actions[1].Matches("watch", "configmaps") {
-		t.Errorf("expected 3 actions (list configmaps, and watch configmaps) created by the reconciler,"+
-			" got %d. Actions: %#v", len(actions), actions)
-	}
+	assertClientActions(t, clients.Kube.Actions(), [][2]string{{"list", "configmaps"}, {"watch", "configmaps"}})
 
 	newTr, err := clients.Pipeline.TektonV1().TaskRuns(noTaskRun.Namespace).Get(t.Context(), noTaskRun.Name, metav1.GetOptions{})
 	if err != nil {
