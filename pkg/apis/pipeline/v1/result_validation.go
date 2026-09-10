@@ -22,6 +22,9 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+// stepResultNameRegex matches the format $(steps.<stepName>.results.<resultName>).
+var stepResultNameRegex = regexp.MustCompile(`\$\(steps\.(.*?)\.results\.(.*?)\)`)
+
 // Validate implements apis.Validatable
 func (tr TaskResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if !resultNameFormatRegex.MatchString(tr.Name) {
@@ -153,11 +156,10 @@ func validateObjectStepResult(sr StepResult) (errs *apis.FieldError) {
 }
 
 // ExtractStepResultName extracts the step name and result name from a string matching
-// formtat $(steps.<stepName>.results.<resultName>).
+// format $(steps.<stepName>.results.<resultName>).
 // If a match is not found, an error is retured.
 func ExtractStepResultName(value string) (string, string, error) {
-	re := regexp.MustCompile(`\$\(steps\.(.*?)\.results\.(.*?)\)`)
-	rs := re.FindStringSubmatch(value)
+	rs := stepResultNameRegex.FindStringSubmatch(value)
 	if len(rs) != 3 {
 		return "", "", fmt.Errorf("Could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got \"%v\"", value)
 	}
