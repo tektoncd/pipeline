@@ -3399,6 +3399,10 @@
           "description": "EmptyDir represents a temporary directory that shares a Task's lifetime. More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir Either this OR PersistentVolumeClaim can be used.",
           "$ref": "#/definitions/v1.EmptyDirVolumeSource"
         },
+        "image": {
+          "description": "Image represents a volume populated from a container image's filesystem. The image is pulled at pod startup. Contents are mounted read-only. Requires Kubernetes 1.31+ with the ImageVolume feature gate enabled.",
+          "$ref": "#/definitions/v1.ImageVolumeSource"
+        },
         "name": {
           "description": "Name is the name of the workspace populated by the volume.",
           "type": "string",

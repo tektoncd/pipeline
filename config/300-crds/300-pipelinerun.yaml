@@ -1669,6 +1669,27 @@ spec:
                               - type: integer
                               - type: string
                             x-kubernetes-int-or-string: true
+                      image:
+                        description: Image
+                        type: object
+                        properties:
+                          pullPolicy:
+                            description: |-
+                              Policy for pulling OCI objects. Possible values are:
+                              Always: the kubelet always attempts to pull the reference. Container creation will fail If the pull fails.
+                              Never: the kubelet never pulls the reference and only uses a local image or artifact. Container creation will fail if the reference isn't present.
+                              IfNotPresent: the kubelet pulls if the reference isn't already present on disk. Container creation will fail if the reference isn't present and the pull fails.
+                              Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
+                            type: string
+                          reference:
+                            description: |-
+                              Required: Image or artifact reference to be used.
+                              Behaves in the same way as pod.spec.containers[*].image.
+                              Pull secrets will be assembled in the same way as for the container image by looking up node credentials, SA image pull secrets, and pod spec image pull secrets.
+                              More info: https://kubernetes.io/docs/concepts/containers/images
+                              This field is optional to allow higher level config management to default or override
+                              container images in workload controllers like Deployments and StatefulSets.
+                            type: string
                       name:
                         description: Name
                         type: string
@@ -2360,6 +2381,8 @@ spec:
                           type: boolean
                         enableConciseResolverSyntax:
                           type: boolean
+                        enableImageWorkspace:
+                          type: boolean
                         enableKeepPodOnCancel:
                           type: boolean
                         enableKubernetesSidecar:
@@ -2740,6 +2763,8 @@ spec:
                                     type: boolean
                                   enableConciseResolverSyntax:
                                     type: boolean
+                                  enableImageWorkspace:
+                                    type: boolean
                                   enableKeepPodOnCancel:
                                     type: boolean
                                   enableKubernetesSidecar:
@@ -3012,6 +3037,8 @@ spec:
                                         enableCELInWhenExpression:
                                           type: boolean
                                         enableConciseResolverSyntax:
+                                          type: boolean
+                                        enableImageWorkspace:
                                           type: boolean
                                         enableKeepPodOnCancel:
                                           type: boolean
@@ -4784,6 +4811,30 @@ spec:
                               - type: integer
                               - type: string
                             x-kubernetes-int-or-string: true
+                      image:
+                        description: |-
+                          Image represents a volume populated from a container image's filesystem.
+                          The image is pulled at pod startup. Contents are mounted read-only.
+                          Requires Kubernetes 1.31+ with the ImageVolume feature gate enabled.
+                        type: object
+                        properties:
+                          pullPolicy:
+                            description: |-
+                              Policy for pulling OCI objects. Possible values are:
+                              Always: the kubelet always attempts to pull the reference. Container creation will fail If the pull fails.
+                              Never: the kubelet never pulls the reference and only uses a local image or artifact. Container creation will fail if the reference isn't present.
+                              IfNotPresent: the kubelet pulls if the reference isn't already present on disk. Container creation will fail if the reference isn't present and the pull fails.
+                              Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
+                            type: string
+                          reference:
+                            description: |-
+                              Required: Image or artifact reference to be used.
+                              Behaves in the same way as pod.spec.containers[*].image.
+                              Pull secrets will be assembled in the same way as for the container image by looking up node credentials, SA image pull secrets, and pod spec image pull secrets.
+                              More info: https://kubernetes.io/docs/concepts/containers/images
+                              This field is optional to allow higher level config management to default or override
+                              container images in workload controllers like Deployments and StatefulSets.
+                            type: string
                       name:
                         description: Name is the name of the workspace populated by the volume.
                         type: string
@@ -5458,6 +5509,8 @@ spec:
                         enableCELInWhenExpression:
                           type: boolean
                         enableConciseResolverSyntax:
+                          type: boolean
+                        enableImageWorkspace:
                           type: boolean
                         enableKeepPodOnCancel:
                           type: boolean

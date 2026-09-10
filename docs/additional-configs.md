@@ -441,6 +441,10 @@ Defaults to "ignore".
   source from where a remote Task/Pipeline definition was fetched. By default, this is set to `true`.
   To disable populating this field, set this flag to `"false"`.
 
+- `enable-image-workspace`: Set this flag to `"true"` to enable image volume sources in workspace bindings.
+  This allows using container images as read-only workspace content. Requires Kubernetes 1.31+ with the
+  `ImageVolume` feature gate enabled (beta since Kubernetes 1.33). Defaults to `"false"`.
+
 - `enable-termination-message-compression`: Set this flag to `"true"` to enable zlib compression of
   termination messages written by the entrypoint. This increases the effective capacity for results
   from ~33 to ~187 in typical scenarios (5.7x improvement). Has no effect when `results-from` is
@@ -483,6 +487,7 @@ Features currently in "alpha" are:
 | [CEL in WhenExpression](./pipelines.md#use-cel-expression-in-whenexpression)                                                  | [TEP-0145](https://github.com/tektoncd/community/blob/main/teps/0145-cel-in-whenexpression.md)                       | [v0.53.0](https://github.com/tektoncd/pipeline/releases/tag/v0.53.0) | `enable-cel-in-whenexpression`                   |
 | [Param Enum](./taskruns.md#parameter-enums)                                                                  | [TEP-0144](https://github.com/tektoncd/community/blob/main/teps/0144-param-enum.md)                                  | [v0.54.0](https://github.com/tektoncd/pipeline/releases/tag/v0.54.0) | `enable-param-enum`                              |
 | Termination Message Compression                                                                             | N/A                                                                                                                  | N/A                                                                  | `enable-termination-message-compression`         |
+| [Image Workspace](./workspaces.md#image)                                                                    | N/A                                                                                                                  | N/A                                                                  | `enable-image-workspace`                         |
 
 ### Beta Features
 
