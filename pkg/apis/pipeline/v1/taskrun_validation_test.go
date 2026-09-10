@@ -750,20 +750,6 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		wantErr: apis.ErrGeneric("before step must be unique, the same step: step-1 is defined multiple times at", "debug.breakpoints.beforeSteps[1]"),
 		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
-		name: "empty onFailure breakpoint",
-		spec: v1.TaskRunSpec{
-			TaskRef: &v1.TaskRef{
-				Name: "my-task",
-			},
-			Debug: &v1.TaskRunDebug{
-				Breakpoints: &v1.TaskBreakpoints{
-					OnFailure: "",
-				},
-			},
-		},
-		wantErr: apis.ErrInvalidValue("onFailure breakpoint is empty, it is only allowed to be set as enabled", "debug.breakpoints.onFailure"),
-		wc:      cfgtesting.EnableAlphaAPIFields,
-	}, {
 		name: "stepSpecs disallowed without beta feature gate",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{
@@ -970,6 +956,30 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "beforeSteps breakpoint without onFailure",
+		spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
+				Name: "my-task",
+			},
+			Debug: &v1.TaskRunDebug{
+				Breakpoints: &v1.TaskBreakpoints{
+					BeforeSteps: []string{"my-step"},
+				},
+			},
+		},
+		wc: cfgtesting.EnableAlphaAPIFields,
+	}, {
+		name: "empty breakpoints is a no-op",
+		spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
+				Name: "my-task",
+			},
+			Debug: &v1.TaskRunDebug{
+				Breakpoints: &v1.TaskBreakpoints{},
+			},
+		},
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "valid task-level (spec.resources) resource requirements",
 		spec: v1.TaskRunSpec{

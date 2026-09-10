@@ -273,14 +273,11 @@ func combineParamSpec(p ParamSpec, paramSpecForValidation map[string]ParamSpec) 
 }
 
 // validateDebug validates the debug section of the TaskRun.
-// if set, onFailure breakpoint must be "enabled"
+// onFailure and beforeSteps breakpoints are independent and may be set separately;
+// if onFailure is set, its value must be "enabled"
 func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
 	if db == nil || db.Breakpoints == nil {
 		return errs
-	}
-
-	if db.Breakpoints.OnFailure == "" {
-		errs = errs.Also(apis.ErrInvalidValue("onFailure breakpoint is empty, it is only allowed to be set as enabled", "breakpoints.onFailure"))
 	}
 
 	if db.Breakpoints.OnFailure != "" && db.Breakpoints.OnFailure != EnabledOnFailureBreakpoint {
