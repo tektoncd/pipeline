@@ -128,6 +128,33 @@ func TestOCIResolver(t *testing.T) {
 			},
 		},
 		{
+			// A task whose serialized form is larger than a single chunk of the
+			// registry's gzip stream. readTarLayer must keep reading until the
+			// buffer is full (io.ReadFull); a single tar.Reader.Read short-reads
+			// here and silently truncates the object, breaking deserialization.
+			name: "large-task",
+			objs: []runtime.Object{
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "large-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "Task",
+					},
+					Spec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Name:   "step",
+							Image:  "busybox",
+							Script: strings.Repeat("x", 128*1024),
+						}},
+					},
+				},
+			},
+			mapper:       test.DefaultObjectAnnotationMapper,
+			listExpected: []remote.ResolvedObject{{Kind: "task", APIVersion: "v1beta1", Name: "large-task"}},
+		},
+		{
 			name:         "too-many-objects",
 			objs:         toManyObj,
 			mapper:       test.DefaultObjectAnnotationMapper,
