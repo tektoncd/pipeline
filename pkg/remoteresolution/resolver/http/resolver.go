@@ -78,14 +78,26 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
+	ctx, span := framework.StartResolverSpan(ctx, httpResolverName)
+	defer span.End()
+
 	if http.IsDisabled(ctx) {
-		return nil, errors.New(disabledError)
+		err := errors.New(disabledError)
+		framework.RecordSpanError(span, err)
+		return nil, err
 	}
 
 	params, err := http.PopulateDefaultParams(ctx, req.Params)
 	if err != nil {
+		framework.RecordSpanError(span, err)
 		return nil, err
 	}
 
-	return http.FetchHttpResource(ctx, params, r.kubeClient, r.logger)
+	if rawURL := params[http.UrlParam]; rawURL != "" {
+		span.SetAttributes(framework.SanitizedURLAttribute("resolver.http.url", rawURL))
+	}
+
+	resource, err := http.FetchHttpResource(ctx, params, r.kubeClient, r.logger)
+	framework.RecordSpanError(span, err)
+	return resource, err
 }

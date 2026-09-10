@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	hub "github.com/tektoncd/pipeline/pkg/resolution/resolver/hub"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -96,17 +97,34 @@ func (r *Resolver) Validate(ctx context.Context, req *v1beta1.ResolutionRequestS
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
+	ctx, span := framework.StartResolverSpan(ctx, hubResolverName)
+	defer span.End()
+
 	if isDisabled(ctx) {
-		return nil, errors.New(disabledError)
+		err := errors.New(disabledError)
+		framework.RecordSpanError(span, err)
+		return nil, err
 	}
 
 	paramsMap, err := populateDefaultParams(ctx, req.Params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to populate default params: %w", err)
+		err = fmt.Errorf("failed to populate default params: %w", err)
+		framework.RecordSpanError(span, err)
+		return nil, err
 	}
 	if err := r.validateParamsForResolve(ctx, paramsMap); err != nil {
-		return nil, fmt.Errorf("failed to validate params: %w", err)
+		err = fmt.Errorf("failed to validate params: %w", err)
+		framework.RecordSpanError(span, err)
+		return nil, err
 	}
+
+	span.SetAttributes(
+		attribute.String("resolver.hub.type", paramsMap[hub.ParamType]),
+		attribute.String("resolver.hub.name", paramsMap[hub.ParamName]),
+		attribute.String("resolver.hub.version", paramsMap[hub.ParamVersion]),
+		attribute.String("resolver.hub.kind", paramsMap[hub.ParamKind]),
+		attribute.String("resolver.hub.catalog", paramsMap[hub.ParamCatalog]),
+	)
 
 	// Determine ordered list of hub URLs to try.
 	// Precedence: url param > ConfigMap YAML list > env var URL.
@@ -124,12 +142,15 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	}
 
 	if len(urls) == 0 {
-		return nil, fmt.Errorf("no hub URL configured for type %s", paramsMap[hub.ParamType])
+		err := fmt.Errorf("no hub URL configured for type %s", paramsMap[hub.ParamType])
+		framework.RecordSpanError(span, err)
+		return nil, err
 	}
 
 	if constraint, err := goversion.NewConstraint(paramsMap[hub.ParamVersion]); err == nil {
 		chosen, constraintURL, err := resolveVersionConstraintWithFallback(ctx, paramsMap, constraint, urls)
 		if err != nil {
+			framework.RecordSpanError(span, err)
 			return nil, err
 		}
 		paramsMap[hub.ParamVersion] = chosen.String()
@@ -140,7 +161,9 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 	resVer := resolveVersion(paramsMap[hub.ParamVersion], paramsMap[hub.ParamType])
 	paramsMap[hub.ParamVersion] = resVer
 
-	return fetchResourceWithFallback(ctx, paramsMap, urls)
+	resource, err := fetchResourceWithFallback(ctx, paramsMap, urls)
+	framework.RecordSpanError(span, err)
+	return resource, err
 }
 
 // isDisabled checks if the hub resolver feature flag is disabled.
