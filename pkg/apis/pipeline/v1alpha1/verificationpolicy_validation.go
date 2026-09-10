@@ -90,13 +90,32 @@ func (key *KeyRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 	return errs
 }
 
-// Validate ResourcePattern and make sure the Pattern is valid regex expression
+// Validate ResourcePattern and make sure the Pattern is valid regex expression.
+// Patterns that are not anchored with ^ and $ are flagged with a warning, since an
+// unanchored pattern matches anywhere in a resource URI and so is usually broader
+// than its author intended. This is a usability guardrail rather than a security
+// control: substring matching is already prevented at evaluation time by
+// getMatchedPolicies, which strips the resolver prefix and anchors the pattern.
 func (r *ResourcePattern) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if _, err := regexp.Compile(r.Pattern); err != nil {
 		errs = errs.Also(apis.ErrInvalidValue(r.Pattern, "ResourcePattern", fmt.Sprintf("%v: %v", InvalidResourcePatternErr, err)))
 		return errs
 	}
-	return nil
+
+	// Heuristic check: a pattern like `^a$|b` passes the prefix/suffix test
+	// without being fully anchored. That is acceptable for a warning-level
+	// diagnostic. Note this is a UX guardrail only: the substring-matching
+	// bypass is already prevented at evaluation time by getMatchedPolicies,
+	// which strips the resolver prefix and anchors the pattern.
+	if !strings.HasPrefix(r.Pattern, "^") || !strings.HasSuffix(r.Pattern, "$") {
+		errs = errs.Also(apis.ErrGeneric(
+			fmt.Sprintf("resource pattern %q is not anchored with ^ and $ and may match unintended resource URIs; "+
+				"see https://tekton.dev/docs/pipelines/trusted-resources/ for guidance on writing anchored patterns", r.Pattern),
+			"pattern",
+		).At(apis.WarningLevel))
+	}
+
+	return errs
 }
 
 // validateHashAlgorithm checks if the algorithm is supported
