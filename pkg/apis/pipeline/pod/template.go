@@ -149,6 +149,13 @@ type Template struct {
 	// +optional
 	// +listType=atomic
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+
+	// Resources are the compute resource requirements for the affinity assistant container.
+	// When specified on a PipelineRun's podTemplate, these resources are applied to the
+	// affinity assistant StatefulSet. If not specified, default values of 50m CPU and
+	// 100Mi memory (requests and limits) are used.
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // Equals checks if this Template is identical to the given Template.
@@ -176,6 +183,7 @@ func (tpl *Template) ToAffinityAssistantTemplate() *AffinityAssistantTemplate {
 		ImagePullSecrets:  tpl.ImagePullSecrets,
 		SecurityContext:   tpl.SecurityContext,
 		PriorityClassName: tpl.PriorityClassName,
+		Resources:         tpl.Resources,
 	}
 }
 
@@ -247,6 +255,9 @@ func MergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
 		if tpl.TopologySpreadConstraints == nil {
 			tpl.TopologySpreadConstraints = defaultTpl.TopologySpreadConstraints
 		}
+		if tpl.Resources == nil {
+			tpl.Resources = defaultTpl.Resources
+		}
 		return tpl
 	}
 }
@@ -283,6 +294,9 @@ func MergeAAPodTemplateWithDefault(tpl, defaultTpl *AAPodTemplate) *AAPodTemplat
 		}
 		if tpl.ServiceAccountName == "" {
 			tpl.ServiceAccountName = defaultTpl.ServiceAccountName
+		}
+		if tpl.Resources == nil {
+			tpl.Resources = defaultTpl.Resources
 		}
 
 		return tpl

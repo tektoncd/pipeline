@@ -56,6 +56,8 @@ const (
 
 	// volumeNameMaxLength is the maximum length for a Kubernetes volume name.
 	volumeNameMaxLength = 63
+
+	affinityAssistantContainerName = "affinity-assistant"
 )
 
 var (
@@ -372,24 +374,25 @@ func affinityAssistantStatefulSet(aaBehavior aa.AffinityAssistantBehavior, name 
 		serviceAccountName = pr.Spec.TaskRunTemplate.ServiceAccountName
 	}
 
-	containers := []corev1.Container{{
-		Name:  "affinity-assistant",
-		Image: containerConfig.Image,
-		Args:  []string{"tekton_run_indefinitely"},
-
-		// Set requests == limits to get QoS class _Guaranteed_.
-		// See https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#create-a-pod-that-gets-assigned-a-qos-class-of-guaranteed
-		// Affinity Assistant pod is a placeholder; request minimal resources
-		Resources: corev1.ResourceRequirements{
-			Limits: corev1.ResourceList{
-				"cpu":    resource.MustParse("50m"),
-				"memory": resource.MustParse("100Mi"),
-			},
-			Requests: corev1.ResourceList{
-				"cpu":    resource.MustParse("50m"),
-				"memory": resource.MustParse("100Mi"),
-			},
+	resources := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("50m"),
+			corev1.ResourceMemory: resource.MustParse("100Mi"),
 		},
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("50m"),
+			corev1.ResourceMemory: resource.MustParse("100Mi"),
+		},
+	}
+	if tpl.Resources != nil {
+		resources = *tpl.Resources
+	}
+
+	containers := []corev1.Container{{
+		Name:            affinityAssistantContainerName,
+		Image:           containerConfig.Image,
+		Args:            []string{"tekton_run_indefinitely"},
+		Resources:       resources,
 		VolumeMounts:    mounts,
 		SecurityContext: securityContext,
 	}}
