@@ -83,6 +83,14 @@ const (
 
 	// timeFormat is RFC3339 with millisecond
 	timeFormat = "2006-01-02T15:04:05.000Z07:00"
+
+	// internalResultKeyStartedAt is the RunResult key entrypointer uses for the
+	// internal bookkeeping entry that records a Step's start time.
+	internalResultKeyStartedAt = "StartedAt"
+
+	// internalResultKeyExitCode is the RunResult key entrypointer uses for the
+	// internal bookkeeping entry that records a Step's exit code.
+	internalResultKeyExitCode = "ExitCode"
 )
 
 const (
@@ -556,11 +564,11 @@ func removeDuplicateResults(taskRunResult []v1.TaskRunResult) []v1.TaskRunResult
 }
 
 func extractStartedAtTimeFromResults(results []result.RunResult) (*metav1.Time, error) {
-	for _, result := range results {
-		if result.Key == "StartedAt" {
-			t, err := time.Parse(timeFormat, result.Value)
+	for _, r := range results {
+		if r.ResultType == result.InternalTektonResultType && r.Key == internalResultKeyStartedAt {
+			t, err := time.Parse(timeFormat, r.Value)
 			if err != nil {
-				return nil, fmt.Errorf("could not parse time value %q in StartedAt field: %w", result.Value, err)
+				return nil, fmt.Errorf("could not parse time value %q in StartedAt field: %w", r.Value, err)
 			}
 			startedAt := metav1.NewTime(t)
 			return &startedAt, nil
@@ -570,12 +578,12 @@ func extractStartedAtTimeFromResults(results []result.RunResult) (*metav1.Time, 
 }
 
 func extractExitCodeFromResults(results []result.RunResult) (*int32, error) {
-	for _, result := range results {
-		if result.Key == "ExitCode" {
+	for _, r := range results {
+		if r.ResultType == result.InternalTektonResultType && r.Key == internalResultKeyExitCode {
 			// We could just pass the string through but this provides extra validation
-			i, err := strconv.ParseInt(result.Value, 10, 32)
+			i, err := strconv.ParseInt(r.Value, 10, 32)
 			if err != nil {
-				return nil, fmt.Errorf("could not parse int value %q in ExitCode field: %w", result.Value, err)
+				return nil, fmt.Errorf("could not parse int value %q in ExitCode field: %w", r.Value, err)
 			}
 			exitCode := int32(i) // #nosec G115: ParseInt was called with bit size 32, so this is safe
 			return &exitCode, nil
