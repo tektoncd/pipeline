@@ -1,13 +1,16 @@
 package testing
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
@@ -34,6 +37,58 @@ func CheckPipelineRunConditionStatusAndReason(
 	}
 	if actualCondition.Reason != expectedReason {
 		t.Errorf("want reason %s, got %s", expectedReason, actualCondition.Reason)
+	}
+}
+
+// CheckPipelineRunConditionStatus checks that the PipelineRun's Succeeded condition
+// has the expected status, without asserting on the reason.
+func CheckPipelineRunConditionStatus(
+	t *testing.T,
+	prStatus v1.PipelineRunStatus,
+	expectedStatus corev1.ConditionStatus,
+) {
+	t.Helper()
+
+	actualCondition := prStatus.GetCondition(apis.ConditionSucceeded)
+	if actualCondition == nil {
+		t.Fatalf("want condition, got nil")
+	}
+	if actualCondition.Status != expectedStatus {
+		t.Errorf("want status %v, got %v (reason %q)", expectedStatus, actualCondition.Status, actualCondition.Reason)
+	}
+}
+
+// CheckTaskRunStatusFromChildRefs checks the status of TaskRuns from ChildReferences to be expected.
+func CheckTaskRunStatusFromChildRefs(ctx context.Context, t *testing.T, namespace string, clients clientset.Interface,
+	childRefs []v1.ChildStatusReference, expectedTaskRuns map[string]*v1.PipelineRunTaskRunStatus,
+) {
+	t.Helper()
+	taskrunsToCheck := len(expectedTaskRuns)
+	if taskrunsToCheck == 0 {
+		return
+	}
+
+	for _, childRef := range childRefs {
+		if childRef.Kind != taskRun {
+			continue
+		}
+		trName := childRef.Name
+
+		trFromChildRef, err := clients.TektonV1().TaskRuns(namespace).Get(ctx, trName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Failure to get TaskRun from ChildReference %s: %s", childRef.Name, err)
+		}
+
+		if expectedTaskRunStatus, ok := expectedTaskRuns[trName]; !ok {
+			t.Fatalf("Expected not to have TaskRun status from ChildReferences %s", trName)
+		} else if d := cmp.Diff(*expectedTaskRunStatus.Status, trFromChildRef.Status); d != "" {
+			t.Fatalf("Expected TaskRun Status to match ChildReferences TaskRun Status, but got a mismatch %s", diff.PrintWantGot(d))
+		}
+		taskrunsToCheck--
+	}
+
+	if taskrunsToCheck != 0 {
+		t.Fatalf("Expected ChildReferences to match all the TaskRun Status, but there are TaskRuns that did not: %v", expectedTaskRuns)
 	}
 }
 
