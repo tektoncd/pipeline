@@ -62,10 +62,10 @@ rules:
   - apiGroups: [""]
     resources: ["pods", "persistentvolumeclaims"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
-  # Write permissions to publish events.
+  # Write permissions to publish events, read to surface error details.
   - apiGroups: [""]
     resources: ["events"]
-    verbs: ["create", "update", "patch"]
+    verbs: ["create", "update", "patch", "list"]
   # Read-only access to these.
   - apiGroups: [""]
     resources: ["configmaps", "limitranges", "secrets", "serviceaccounts"]
