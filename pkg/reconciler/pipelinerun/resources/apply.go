@@ -233,7 +233,14 @@ func buildUnresolvedArrayParamDefaults(params []v1.ParamSpec, resolvedArrayParam
 }
 
 // buildUnresolvedObjectParamDefaults builds a map of parameter defaults that haven't been provided by the PipelineRun.
-// It filters for object-type parameters only and excludes those already present in resolvedObjectParams.
+// It filters for object-type parameters only and excludes the individual keys already present in
+// resolvedObjectParams.
+//
+// Object params differ from string and array params here: a PipelineRun may supply only some of the
+// keys, and the remaining ones are expected to fall back to the ParamSpec default. Validation already
+// works that way -- MissingKeysObjectParamNames counts a key as provided when the default carries it --
+// so skipping the whole default as soon as the run mentions the param would leave the keys it omitted
+// with no value at all, and $(params.<name>.<key>) would reach the TaskRun unresolved.
 func buildUnresolvedObjectParamDefaults(params []v1.ParamSpec, resolvedObjectParams map[string]map[string]string) map[string]map[string]string {
 	result := map[string]map[string]string{}
 
@@ -246,14 +253,34 @@ func buildUnresolvedObjectParamDefaults(params []v1.ParamSpec, resolvedObjectPar
 			continue
 		}
 
-		if paramExists(param.Name, resolvedObjectParams) {
+		provided := resolvedObjectParamValue(param.Name, resolvedObjectParams)
+		unresolved := map[string]string{}
+		for key, value := range param.Default.ObjectVal {
+			if _, ok := provided[key]; ok {
+				continue
+			}
+			unresolved[key] = value
+		}
+
+		if len(unresolved) == 0 {
 			continue
 		}
 
-		addPatternEntry(param.Name, param.Default.ObjectVal, result)
+		addPatternEntry(param.Name, unresolved, result)
 	}
 
 	return result
+}
+
+// resolvedObjectParamValue returns the value a PipelineRun supplied for an object param, looked up
+// under any of the supported reference patterns. It returns nil when the run did not supply the param.
+func resolvedObjectParamValue(paramName string, bucket map[string]map[string]string) map[string]string {
+	for _, pattern := range paramPatterns {
+		if value, exists := bucket[fmt.Sprintf(pattern, paramName)]; exists {
+			return value
+		}
+	}
+	return nil
 }
 
 // resolveStringParamRecursively resolves a string parameter by recursively resolving any $(params.*) references.
@@ -375,6 +402,14 @@ func resolveObjectParam(paramKey string, paramValue map[string]string, resolvedS
 	resolvedValues := make(map[string]string, len(paramValue))
 	for key, value := range paramValue {
 		resolvedValues[key] = substitution.ApplyReplacements(value, resolvedStringParams)
+	}
+	// paramValue holds only the keys the run left out, so the entry is merged rather than replaced:
+	// the value of a partially supplied object param is the default with the run's keys layered on
+	// top, which is what $(params.<name>[*]) has to hand on. The TaskRun side already resolves the
+	// whole-object form that way (getTaskParameters merges run values key by key into the
+	// default's), so merging here makes the same expression mean the same thing at both levels.
+	for key, value := range resolvedObjectParams[paramKey] {
+		resolvedValues[key] = value
 	}
 	resolvedObjectParams[paramKey] = resolvedValues
 
