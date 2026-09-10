@@ -89,6 +89,66 @@ any `Steps` in the `Run`. During credential initialization, Tekton accesses each
 aggregates them into a `/tekton/creds` directory. Tekton then copies or symlinks files from this directory into the user's
 `$HOME` directory.
 
+## Quick Start: SSH authentication for Git
+
+If you only need SSH access to a private Git repository, follow these steps.
+
+1. Generate an SSH key and add the public key to your Git host (for example GitHub under Settings > SSH and GPG Keys):
+
+   ```shell
+   ssh-keygen -t ed25519 -f ~/.ssh/tekton-git -N ""
+   cat ~/.ssh/tekton-git.pub
+   ```
+
+2. Create a `known_hosts` file for your Git host:
+
+   ```shell
+   ssh-keyscan github.com > ssh_known_hosts
+   ```
+
+3. Create a Kubernetes `Secret` with your private key and known hosts:
+
+   ```yaml
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: git-ssh
+     annotations:
+       tekton.dev/git-0: github.com
+   type: kubernetes.io/ssh-auth
+   stringData:
+     ssh-privatekey: |
+       <paste contents of ~/.ssh/tekton-git>
+     known_hosts: |
+       <paste contents of ssh_known_hosts>
+   ```
+
+4. Attach the `Secret` to a `ServiceAccount`:
+
+   ```yaml
+   apiVersion: v1
+   kind: ServiceAccount
+   metadata:
+     name: git-clone-sa
+   secrets:
+     - name: git-ssh
+   ```
+
+5. Reference the `ServiceAccount` in your `TaskRun` or `PipelineRun`:
+
+   ```yaml
+   spec:
+     serviceAccountName: git-clone-sa
+   ```
+
+6. Apply the manifests:
+
+   ```shell
+   kubectl apply -f secret.yaml -f serviceaccount.yaml -f run.yaml
+   ```
+
+For more detail, see [Configuring `ssh-auth` authentication for Git](#configuring-ssh-auth-authentication-for-git).
+
 ## Understanding credential selection
 
 A `Run` might require multiple types of authentication. For example, a `Run` might require access to
