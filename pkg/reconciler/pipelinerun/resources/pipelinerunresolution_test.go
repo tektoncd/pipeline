@@ -1345,6 +1345,73 @@ func TestIsSkipped(t *testing.T) {
 			"mytask2": true,
 		},
 	}, {
+		name: "matrix-include-when-expressions-all-false",
+		state: PipelineRunState{{
+			// not skipped: one include when expression evaluates to true
+			PipelineTask: &v1.PipelineTask{
+				Name:    "mytask1",
+				TaskRef: &v1.TaskRef{Name: "matrix-1"},
+				Matrix: &v1.Matrix{
+					Include: v1.IncludeParamsList{{
+						Name: "build-1",
+						Params: v1.Params{{
+							Name: "a-param", Value: *v1.NewStructuredValues("foo"),
+						}},
+						When: v1.WhenExpressions{{
+							Input: "foo", Operator: selection.In, Values: []string{"foo"},
+						}},
+					}, {
+						Name: "build-2",
+						Params: v1.Params{{
+							Name: "a-param", Value: *v1.NewStructuredValues("bar"),
+						}},
+						When: v1.WhenExpressions{{
+							Input: "foo", Operator: selection.In, Values: []string{"bar"},
+						}},
+					}},
+				},
+			},
+			TaskRunNames: []string{"pipelinerun-matrix-include-when"},
+			TaskRuns:     nil,
+			ResolvedTask: &resources.ResolvedTask{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			// skipped: all include when expressions evaluate to false, no combinations
+			PipelineTask: &v1.PipelineTask{
+				Name:    "mytask2",
+				TaskRef: &v1.TaskRef{Name: "matrix-2"},
+				Matrix: &v1.Matrix{
+					Include: v1.IncludeParamsList{{
+						Name: "build-1",
+						Params: v1.Params{{
+							Name: "a-param", Value: *v1.NewStructuredValues("foo"),
+						}},
+						When: v1.WhenExpressions{{
+							Input: "foo", Operator: selection.In, Values: []string{"bar"},
+						}},
+					}, {
+						Name: "build-2",
+						Params: v1.Params{{
+							Name: "a-param", Value: *v1.NewStructuredValues("bar"),
+						}},
+						When: v1.WhenExpressions{{
+							Input: "foo", Operator: selection.NotIn, Values: []string{"foo"},
+						}},
+					}},
+				},
+			},
+			TaskRunNames: []string{"pipelinerun-matrix-include-when"},
+			TaskRuns:     nil,
+			ResolvedTask: &resources.ResolvedTask{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		expected: map[string]bool{
+			"mytask1": false,
+			"mytask2": true,
+		},
+	}, {
 		name: "matrix-params-contain-empty-arr",
 		state: PipelineRunState{{
 			// not skipped no empty arrs
