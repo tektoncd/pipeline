@@ -43,3 +43,9 @@ data:
   # URLs must use http or https scheme.
   # tekton-hub-urls: |
   #   - https://api.hub.tekton.dev/
+  # Refuse to dial private network address classes (loopback, RFC1918/
+  # RFC4193, link-local, multicast, CGNAT, unspecified) when fetching
+  # from the Tekton Hub or Artifact Hub. Defaults to "true". Set to
+  # "false" if you need the hub resolver to reach an in-cluster hub
+  # mirror or another intentionally-private endpoint.
+  # block-private-ips: "true"
