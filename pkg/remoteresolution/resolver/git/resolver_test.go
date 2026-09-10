@@ -52,6 +52,28 @@ import (
 	_ "knative.dev/pkg/system/testing"
 )
 
+func TestInitialize_ResetsCache(t *testing.T) {
+	ctx, _ := ttesting.SetupFakeContext(t)
+
+	resolver := Resolver{}
+	if err := resolver.Initialize(ctx); err != nil {
+		t.Fatalf("first Initialize failed: %v", err)
+	}
+
+	resolver.cache.Add("some-key", "some-value", time.Minute)
+	if _, ok := resolver.cache.Get("some-key"); !ok {
+		t.Fatalf("expected key to be present in cache before re-initializing")
+	}
+
+	if err := resolver.Initialize(ctx); err != nil {
+		t.Fatalf("second Initialize failed: %v", err)
+	}
+
+	if _, ok := resolver.cache.Get("some-key"); ok {
+		t.Fatalf("expected cache to be reset on re-initialize, but stale entry was still present")
+	}
+}
+
 func TestGetSelector(t *testing.T) {
 	resolver := Resolver{}
 	sel := resolver.GetSelector(t.Context())
