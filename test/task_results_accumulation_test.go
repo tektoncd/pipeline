@@ -33,6 +33,8 @@ import (
 // @test:execution=parallel
 func TestTaskResultsDoNotAccumulateAcrossSteps(t *testing.T) {
 	ctx := t.Context()
+	// Keep compression disabled so this remains a regression test for #10334:
+	// these repetitive values compress enough to hide the original 4 KiB overflow.
 	c, namespace := setup(ctx, t, requireAllGates(map[string]string{
 		"results-from":                           "termination-message",
 		"enable-termination-message-compression": "false",
