@@ -362,7 +362,7 @@ func (g *GitResolver) ResolveAPIGit(ctx context.Context, clientFunc func(string,
 		return nil, err
 	}
 	var clientOptions []factory.ClientOptionFunc
-	if string(credentials.username) != "" {
+	if len(credentials.username) > 0 {
 		clientOptions = append(clientOptions, factory.SetUsername(string(credentials.username)))
 	}
 	scmClient, err := clientFunc(scmType, serverURL, string(credentials.token), clientOptions...)
