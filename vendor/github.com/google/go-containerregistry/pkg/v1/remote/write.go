@@ -21,13 +21,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"sort"
 	"strings"
 	"sync"
 
+	"github.com/google/go-containerregistry/internal/ipaddr"
 	"github.com/google/go-containerregistry/internal/redact"
 	"github.com/google/go-containerregistry/internal/retry"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -92,7 +92,7 @@ func makeDeleteClient(ctx context.Context, repo name.Repository, o *options) (*h
 	if err != nil {
 		return nil, err
 	}
-	return &http.Client{Transport: tr}, nil
+	return &http.Client{Transport: tr, CheckRedirect: checkRedirectSSRF}, nil
 }
 
 func makeWriter(ctx context.Context, repo name.Repository, ls []v1.Layer, o *options) (*writer, error) {
@@ -116,7 +116,7 @@ func makeWriter(ctx context.Context, repo name.Repository, ls []v1.Layer, o *opt
 	}
 	return &writer{
 		repo:                 repo,
-		client:               &http.Client{Transport: tr},
+		client:               &http.Client{Transport: tr, CheckRedirect: checkRedirectSSRF},
 		auth:                 auth,
 		transport:            o.transport,
 		progress:             o.progress,
@@ -159,7 +159,7 @@ func (w *writer) maybeUpdateScopes(ctx context.Context, ml *MountableLayer) erro
 		if err != nil {
 			return err
 		}
-		w.client = &http.Client{Transport: wt}
+		w.client = &http.Client{Transport: wt, CheckRedirect: checkRedirectSSRF}
 	}
 
 	return nil
@@ -193,10 +193,8 @@ func (w *writer) nextLocation(resp *http.Response) (string, error) {
 	// always allowed regardless of whether the registry IP is private.
 	origHost := resp.Request.URL.Hostname()
 	if destHost := resolved.Hostname(); destHost != origHost {
-		if ip := net.ParseIP(destHost); ip != nil {
-			if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() || ip.IsUnspecified() {
-				return "", fmt.Errorf("SSRF protection: Location header redirects to private/link-local host %q", destHost)
-			}
+		if ipaddr.IsPrivateOrLinkLocal(destHost) {
+			return "", fmt.Errorf("SSRF protection: Location header redirects to private/link-local host %q", destHost)
 		}
 	}
 
@@ -610,9 +608,10 @@ func (w *writer) commitManifest(ctx context.Context, t Taggable, ref name.Refere
 		return err
 	}
 	var mf struct {
-		MediaType    types.MediaType `json:"mediaType"`
-		Subject      *v1.Descriptor  `json:"subject,omitempty"`
-		ArtifactType string          `json:"artifactType,omitempty"`
+		MediaType    types.MediaType   `json:"mediaType"`
+		Subject      *v1.Descriptor    `json:"subject,omitempty"`
+		ArtifactType string            `json:"artifactType,omitempty"`
+		Annotations  map[string]string `json:"annotations,omitempty"`
 		Config       struct {
 			MediaType types.MediaType `json:"mediaType"`
 		} `json:"config"`
@@ -655,9 +654,10 @@ func (w *writer) commitManifest(ctx context.Context, t Taggable, ref name.Refere
 				return err
 			}
 			desc := v1.Descriptor{
-				MediaType: mf.MediaType,
-				Digest:    h,
-				Size:      size,
+				MediaType:   mf.MediaType,
+				Digest:      h,
+				Size:        size,
+				Annotations: mf.Annotations,
 			}
 			if mf.ArtifactType != "" {
 				desc.ArtifactType = mf.ArtifactType
