@@ -181,7 +181,7 @@ spec:
     #   value: "token"
     # Depending on the git provider you need to specify a username.
     # The default username used to clone a repository is "git"
-    # For example cloning a repository from Bitbucket Cloud requires the username to be "x-token-auth" 
+    # For example cloning a repository from Bitbucket Cloud requires the username to be "x-token-auth" for an Access Token and a username or "x-bitbucket-api-token-auth" for an API Token
     # - name: usernameKey (optional, defaults to "username")
     #   value: "username"
   params:
