@@ -36,6 +36,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/cache"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/logging"
@@ -131,11 +132,37 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1.Param) (
 		KubeClient: r.kubeClient,
 	}
 
-	if params[UrlParam] != "" {
-		return g.ResolveGitClone(ctx)
-	}
+	return ResolveWithRetry(ctx, func() (framework.ResolvedResource, error) {
+		if params[UrlParam] != "" {
+			return g.ResolveGitClone(ctx)
+		}
+		return g.ResolveAPIGit(ctx, r.clientFunc)
+	})
+}
 
-	return g.ResolveAPIGit(ctx, r.clientFunc)
+// ResolveWithRetry wraps a resolution function with exponential backoff retry
+// logic. The backoff parameters are read from the git-resolver-config ConfigMap.
+// Invalid configuration values are logged and replaced with defaults so that
+// retry behavior is always preserved.
+func ResolveWithRetry(ctx context.Context, fn func() (framework.ResolvedResource, error)) (framework.ResolvedResource, error) {
+	backoff := GetGitResolverBackoff(ctx)
+
+	var result framework.ResolvedResource
+	var lastErr error
+	retryErr := wait.ExponentialBackoffWithContext(ctx, backoff, func(_ context.Context) (bool, error) {
+		result, lastErr = fn()
+		return lastErr == nil, nil
+	})
+	if retryErr != nil {
+		if errors.Is(retryErr, context.Canceled) || errors.Is(retryErr, context.DeadlineExceeded) {
+			return nil, retryErr
+		}
+		if lastErr != nil {
+			return nil, lastErr
+		}
+		return nil, retryErr
+	}
+	return result, nil
 }
 
 func ValidateParams(ctx context.Context, params []pipelinev1.Param) error {

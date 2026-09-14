@@ -48,6 +48,15 @@ func (rr *ResolutionRequest) IsDone() bool {
 	return !finalStateIsUnknown
 }
 
+// IsResolved returns true if the resolver has written data to the
+// ResolutionRequest's status. This is distinct from IsDone(), which
+// checks whether the pipeline controller has set the terminal
+// condition. Under load, the pipeline controller's queue may back up,
+// creating a window where IsResolved() is true but IsDone() is not.
+func (rr *ResolutionRequest) IsResolved() bool {
+	return rr.Status.Data != ""
+}
+
 // InitializeConditions set ths initial values of the conditions.
 func (s *ResolutionRequestStatus) InitializeConditions() {
 	resolutionRequestCondSet.Manage(s).InitializeConditions()

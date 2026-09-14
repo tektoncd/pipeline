@@ -19,6 +19,7 @@ package taskrun
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/internal/reconciler/cachetransform"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -70,6 +71,13 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		pipelineclientset := pipelineclient.Get(ctx)
 		taskRunInformer := taskruninformer.Get(ctx)
 		podInformer := filteredpodinformer.Get(ctx, v1.ManagedByLabelKey)
+
+		// NOTE: a cache transform strips non-mandatory fields from the cached
+		// TaskRuns and Pods to reduce controller memory usage. If you add logic
+		// that reads a field from these listers, verify it is not stripped.
+		// See internal/reconciler/cachetransform.
+		cachetransform.Setup(ctx, taskRunInformer.Informer(), cachetransform.ForTektonResource)
+		cachetransform.Setup(ctx, podInformer.Informer(), cachetransform.ForPod)
 		limitrangeInformer := limitrangeinformer.Get(ctx)
 		verificationpolicyInformer := verificationpolicyinformer.Get(ctx)
 		resolutionInformer := resolutioninformer.Get(ctx)

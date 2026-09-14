@@ -93,13 +93,22 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return controller.NewPermanentError(err)
 	}
 
+	// Resolver controllers use controller.NewContext directly rather than a
+	// generated reconciler, so they must enforce bucket ownership here.
+	if !r.IsLeaderFor(types.NamespacedName{Namespace: namespace, Name: name}) {
+		return controller.NewSkipKey(key)
+	}
+
 	rr, err := r.resolutionRequestLister.ResolutionRequests(namespace).Get(name)
 	if err != nil {
 		err := &resolutioncommon.GetResourceError{ResolverName: "resolutionrequest", Key: key, Original: err}
 		return controller.NewPermanentError(err)
 	}
 
-	if rr.IsDone() {
+	// If the pipelines controller has a deep queue, resolvers may reprocess
+	// a ResolutionRequest before the pipelines controller marks the resolved
+	// request as Done.
+	if rr.IsResolved() || rr.IsDone() {
 		return nil
 	}
 
@@ -116,8 +125,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.ResolutionRequest) error {
-	errChan := make(chan error)
-	resourceChan := make(chan framework.ResolvedResource)
+	errChan := make(chan error, 1)
+	resourceChan := make(chan framework.ResolvedResource, 1)
 
 	paramsMap := make(map[string]string)
 	for _, p := range rr.Spec.Params {
@@ -164,6 +173,14 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 				ResolverName: r.resolver.GetName(resolutionCtx),
 				Key:          key,
 				Original:     resolveErr,
+			}
+			return
+		}
+		if err := framework.ValidateResolvedResource(resource); err != nil {
+			errChan <- &resolutioncommon.GetResourceError{
+				ResolverName: r.resolver.GetName(resolutionCtx),
+				Key:          key,
+				Original:     fmt.Errorf("resolved resource validation error: %w", err),
 			}
 			return
 		}

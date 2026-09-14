@@ -15,7 +15,7 @@ kind: StepAction
 metadata:
   name: step-action-when
 spec:
-  image: mirror.gcr.io/alpine
+  image: mirror.gcr.io/alpine@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
   script: |
     echo "I am a Step Action!!!"
 ---
@@ -40,7 +40,7 @@ spec:
             operator: in
             values: ["true"]
       - name: should-skip
-        image: mirror.gcr.io/bash
+        image: mirror.gcr.io/bash@sha256:e320b40b14abc61f053286705070342c46034a549a276b798e64541457c4af92
         script: |
           #!/usr/bin/env bash
           echo skipskipskip
@@ -49,19 +49,19 @@ spec:
             operator: in
             values: ["true"]
       - name: should-continue
-        image: mirror.gcr.io/bash
+        image: mirror.gcr.io/bash@sha256:e320b40b14abc61f053286705070342c46034a549a276b798e64541457c4af92
         script: |
           #!/usr/bin/env bash
           echo blabalbaba
       - name: produce-step
-        image: mirror.gcr.io/alpine
+        image: mirror.gcr.io/alpine@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
         results:
           - name: result2
             type: string
         script: |
           echo -n "foo" | tee $(step.results.result2.path)
       - name: run-based-on-step-results
-        image: mirror.gcr.io/alpine
+        image: mirror.gcr.io/alpine@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
         script: |
           echo "wooooooo"
         when:

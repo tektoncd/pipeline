@@ -1,0 +1,171 @@
+# Dependabot configuration
+# This file defines the base configuration and branches for dependabot updates.
+# The actual .github/dependabot.yml is generated from this file.
+#
+# Automated regeneration:
+# - A GitHub Actions workflow runs weekly to regenerate dependabot.yml
+# - If changes are detected, it automatically creates a PR
+# - See: .github/workflows/dependabot-regen.yml
+#
+# Manual regeneration:
+# 1. Edit the 'ecosystems' section to change what packages to monitor
+# 2. Edit the 'release-branches' section to add/remove branches
+# 3. Run: ./hack/generate-dependabot.sh
+
+# List of release branches to monitor (in addition to main branch)
+# These should be active LTS release branches
+# Check releases.md for the current list of supported releases
+release-branches:
+  - release-v1.15.x
+  - release-v1.12.x
+  - release-v1.9.x
+  - release-v1.6.x
+# Package ecosystems to monitor
+# Each ecosystem will be configured for:
+# - main branch: all updates (major, minor, patch)
+# - release branches: patch updates only
+ecosystems:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: daily
+    labels:
+      - ok-to-test
+      - dependencies
+      - release-note-none
+      - kind/misc
+    ignore:
+      - dependency-name: "k8s.io/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      - dependency-name: "go.opentelemetry.io/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+    groups:
+      kubernetes:
+        patterns:
+          - k8s.io/*
+      opentelemetry:
+        patterns:
+          - go.opentelemetry.io/*
+          - go.opentelemetry.io/contrib/*
+          - knative.dev/pkg
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
+  - package-ecosystem: gomod
+    directory: /tools
+    schedule:
+      interval: daily
+    labels:
+      - ok-to-test
+      - dependencies
+      - release-note-none
+      - kind/misc
+    ignore:
+      - dependency-name: "k8s.io/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      - dependency-name: "go.opentelemetry.io/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+    groups:
+      kubernetes:
+        patterns:
+          - k8s.io/*
+      opentelemetry:
+        patterns:
+          - go.opentelemetry.io/*
+          - go.opentelemetry.io/contrib/*
+          - knative.dev/pkg
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
+  - package-ecosystem: gomod
+    directory: /test/custom-task-ctrls/wait-task-beta
+    schedule:
+      interval: daily
+    labels:
+      - ok-to-test
+      - dependencies
+      - release-note-none
+      - kind/misc
+    ignore:
+      - dependency-name: "k8s.io/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      - dependency-name: "go.opentelemetry.io/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+    groups:
+      kubernetes:
+        patterns:
+          - k8s.io/*
+      opentelemetry:
+        patterns:
+          - go.opentelemetry.io/*
+          - go.opentelemetry.io/contrib/*
+          - knative.dev/pkg
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - ok-to-test
+      - dependencies
+      - release-note-none
+      - kind/misc
+    # All github/codeql-action/* sub-actions must be bumped together: the CodeQL
+    # bundle refuses to run when init and analyze come from different versions.
+    groups:
+      codeql-action:
+        patterns:
+          - github/codeql-action
+          - github/codeql-action/*
+    cooldown:
+      default-days: 7
+  - package-ecosystem: docker
+    directory: /tekton
+    schedule:
+      interval: weekly
+    labels:
+      - ok-to-test
+      - dependencies
+      - release-note-none
+      - kind/misc
+    groups:
+      all:
+        patterns:
+          - "*"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - ok-to-test
+      - dependencies
+      - release-note-none
+      - kind/misc
+    groups:
+      all:
+        patterns:
+          - "*"
+    cooldown:
+      default-days: 7

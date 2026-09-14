@@ -149,6 +149,12 @@ Environment variables used by end to end tests:
   is used to create/delete a bucket which will be used for output to input
   linking by the `PipelineRun` controller.
 
+Please note that in order to run the e2e tests in local machine, apply below optional RBAC config that grants controller access to Pod logs:
+
+```shell
+kubectl apply -f optional_config/enable-log-access-to-controller/
+```
+
 To create a service account usable in the e2e tests:
 
 ```bash
@@ -174,8 +180,41 @@ export SYSTEM_NAMESPACE=tekton-pipelines
 
 ### Running
 
+Before running e2e tests, make sure you have:
+
+1. A running Kubernetes cluster (e.g. `kind`) with Tekton installed:
+
+```shell
+  ko apply -R -f config/
+```
+
+2. Apply the optional RBAC required by the controller to access pod logs:
+
+```shell
+  kubectl apply -f optional_config/enable-log-access-to-controller/
+```
+
+3. The required environment variables should be set:
+
+```shell
+  export KO_DOCKER_REPO=kind.local          # or your custom registry
+  export SYSTEM_NAMESPACE=tekton-pipelines
+```
+
 End to end tests live in this directory. To run these tests, you must provide
-`go` with `-tags=e2e`. By default the tests run against your current kubeconfig
+`go` with `-tags=e2e`. To run the full e2e test suite against your current cluster locally, deactivate the tests that require root access:
+
+```shell
+go test -v -count=1 -tags=e2e -timeout=20m ./test -skipRootUserTests=true
+```
+
+To run a specific e2e test:
+
+```shell
+go test -v -count=1 -tags=e2e -timeout=20m ./test -run ^TestPipelineRun
+```
+
+By default the tests run against your current kubeconfig
 context, but you can change that and other settings with [the flags](#flags):
 
 ```shell

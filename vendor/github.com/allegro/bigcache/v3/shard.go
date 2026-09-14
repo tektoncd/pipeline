@@ -1,7 +1,7 @@
 package bigcache
 
 import (
-	"fmt"
+	"errors"
 	"sync"
 	"sync/atomic"
 
@@ -16,7 +16,7 @@ type Metadata struct {
 }
 
 type cacheShard struct {
-	hashmap     map[uint64]uint32
+	hashmap     map[uint64]uint64
 	entries     queue.BytesQueue
 	lock        sync.RWMutex
 	entryBuffer []byte
@@ -124,7 +124,7 @@ func (s *cacheShard) set(key string, hashedKey uint64, entry []byte) error {
 
 	if previousIndex := s.hashmap[hashedKey]; previousIndex != 0 {
 		if previousEntry, err := s.entries.Get(int(previousIndex)); err == nil {
-			resetKeyFromEntry(previousEntry)
+			resetHashFromEntry(previousEntry)
 			//remove hashkey
 			delete(s.hashmap, hashedKey)
 		}
@@ -140,13 +140,13 @@ func (s *cacheShard) set(key string, hashedKey uint64, entry []byte) error {
 
 	for {
 		if index, err := s.entries.Push(w); err == nil {
-			s.hashmap[hashedKey] = uint32(index)
+			s.hashmap[hashedKey] = uint64(index)
 			s.lock.Unlock()
 			return nil
 		}
 		if s.removeOldestEntry(NoSpace) != nil {
 			s.lock.Unlock()
-			return fmt.Errorf("entry is bigger than max shard size")
+			return errors.New("entry is bigger than max shard size")
 		}
 	}
 }
@@ -164,11 +164,11 @@ func (s *cacheShard) addNewWithoutLock(key string, hashedKey uint64, entry []byt
 
 	for {
 		if index, err := s.entries.Push(w); err == nil {
-			s.hashmap[hashedKey] = uint32(index)
+			s.hashmap[hashedKey] = uint64(index)
 			return nil
 		}
 		if s.removeOldestEntry(NoSpace) != nil {
-			return fmt.Errorf("entry is bigger than max shard size")
+			return errors.New("entry is bigger than max shard size")
 		}
 	}
 }
@@ -176,7 +176,7 @@ func (s *cacheShard) addNewWithoutLock(key string, hashedKey uint64, entry []byt
 func (s *cacheShard) setWrappedEntryWithoutLock(currentTimestamp uint64, w []byte, hashedKey uint64) error {
 	if previousIndex := s.hashmap[hashedKey]; previousIndex != 0 {
 		if previousEntry, err := s.entries.Get(int(previousIndex)); err == nil {
-			resetKeyFromEntry(previousEntry)
+			resetHashFromEntry(previousEntry)
 		}
 	}
 
@@ -188,11 +188,11 @@ func (s *cacheShard) setWrappedEntryWithoutLock(currentTimestamp uint64, w []byt
 
 	for {
 		if index, err := s.entries.Push(w); err == nil {
-			s.hashmap[hashedKey] = uint32(index)
+			s.hashmap[hashedKey] = uint64(index)
 			return nil
 		}
 		if s.removeOldestEntry(NoSpace) != nil {
-			return fmt.Errorf("entry is bigger than max shard size")
+			return errors.New("entry is bigger than max shard size")
 		}
 	}
 }
@@ -265,7 +265,7 @@ func (s *cacheShard) del(hashedKey uint64) error {
 		if s.statsEnabled {
 			delete(s.hashmapStats, hashedKey)
 		}
-		resetKeyFromEntry(wrappedEntry)
+		resetHashFromEntry(wrappedEntry)
 	}
 	s.lock.Unlock()
 
@@ -286,7 +286,7 @@ func (s *cacheShard) isExpired(oldestEntry []byte, currentTimestamp uint64) bool
 	if currentTimestamp <= oldestTimestamp { // if currentTimestamp < oldestTimestamp, the result will out of uint64 limits;
 		return false
 	}
-	return currentTimestamp-oldestTimestamp > s.lifeWindow
+	return currentTimestamp-oldestTimestamp >= s.lifeWindow
 }
 
 func (s *cacheShard) cleanUp(currentTimestamp uint64) {
@@ -332,7 +332,7 @@ func (s *cacheShard) removeOldestEntry(reason RemoveReason) error {
 	if err == nil {
 		hash := readHashFromEntry(oldest)
 		if hash == 0 {
-			// entry has been explicitly deleted with resetKeyFromEntry, ignore
+			// entry has been explicitly deleted with resetHashFromEntry, ignore
 			return nil
 		}
 		delete(s.hashmap, hash)
@@ -347,7 +347,7 @@ func (s *cacheShard) removeOldestEntry(reason RemoveReason) error {
 
 func (s *cacheShard) reset(config Config) {
 	s.lock.Lock()
-	s.hashmap = make(map[uint64]uint32, config.initialShardSize())
+	s.hashmap = make(map[uint64]uint64, config.initialShardSize())
 	s.entryBuffer = make([]byte, config.MaxEntrySize+headersSizeInBytes)
 	s.entries.Reset()
 	s.lock.Unlock()
@@ -437,9 +437,13 @@ func initNewShard(config Config, callback onRemoveCallback, clock clock) *cacheS
 	if maximumShardSizeInBytes > 0 && bytesQueueInitialCapacity > maximumShardSizeInBytes {
 		bytesQueueInitialCapacity = maximumShardSizeInBytes
 	}
+	var hashmapStatsCapacity int
+	if config.StatsEnabled {
+		hashmapStatsCapacity = config.initialShardSize()
+	}
 	return &cacheShard{
-		hashmap:      make(map[uint64]uint32, config.initialShardSize()),
-		hashmapStats: make(map[uint64]uint32, config.initialShardSize()),
+		hashmap:      make(map[uint64]uint64, config.initialShardSize()),
+		hashmapStats: make(map[uint64]uint32, hashmapStatsCapacity),
 		entries:      *queue.NewBytesQueue(bytesQueueInitialCapacity, maximumShardSizeInBytes, config.Verbose),
 		entryBuffer:  make([]byte, config.MaxEntrySize+headersSizeInBytes),
 		onRemove:     callback,

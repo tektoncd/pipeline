@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -570,6 +571,119 @@ func TestStepActionResolverParamReplacements(t *testing.T) {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+// TestApplyParameterSubstitutionInResolverParamsConcurrent is a regression test for a
+// data race. GetStepActionsData resolves StepAction refs concurrently (one goroutine per
+// step), and every goroutine calls ApplyParameterSubstitutionInResolverParams on the same
+// TaskRun/TaskSpec. extendObjectReplacements used to alias and then write into the param's
+// shared ObjectVal map, so concurrent resolution crashed the controller with
+// "fatal error: concurrent map writes". This must stay race-free; run under -race to guard.
+func TestApplyParameterSubstitutionInResolverParamsConcurrent(t *testing.T) {
+	const numSteps = 16
+	steps := make([]v1.Step, numSteps)
+	for i := range steps {
+		steps[i] = v1.Step{
+			Ref: &v1.Ref{
+				ResolverRef: v1.ResolverRef{
+					Resolver: "git",
+					Params: []v1.Param{{
+						Name:  "pathInRepo",
+						Value: *v1.NewStructuredValues("$(params.obj.path)"),
+					}},
+				},
+			},
+		}
+	}
+	// Object param that has BOTH a default and a TaskRun-provided value: that is what
+	// drives extendObjectReplacements into the (previously shared-map mutating) write path.
+	taskSpec := v1.TaskSpec{
+		Params: v1.ParamSpecs{{
+			Name:       "obj",
+			Type:       v1.ParamTypeObject,
+			Properties: map[string]v1.PropertySpec{"path": {Type: v1.ParamTypeString}},
+			Default: &v1.ParamValue{
+				Type:      v1.ParamTypeObject,
+				ObjectVal: map[string]string{"path": "from-default"},
+			},
+		}},
+		Steps: steps,
+	}
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "some-tr"},
+		Spec: v1.TaskRunSpec{
+			Params: v1.Params{{
+				Name:  "obj",
+				Value: *v1.NewObject(map[string]string{"path": "from-taskrun"}),
+			}},
+		},
+	}
+
+	var wg sync.WaitGroup
+	for i := range taskSpec.Steps {
+		wg.Add(1)
+		go func(step *v1.Step) {
+			defer wg.Done()
+			resources.ApplyParameterSubstitutionInResolverParams(tr, taskSpec, step)
+		}(&taskSpec.Steps[i])
+	}
+	wg.Wait()
+
+	// Each step's resolver param must resolve to the TaskRun-provided value.
+	for i := range taskSpec.Steps {
+		if got := taskSpec.Steps[i].Ref.Params[0].Value.StringVal; got != "from-taskrun" {
+			t.Errorf("step %d resolver param = %q, want %q", i, got, "from-taskrun")
+		}
+	}
+}
+
+// TestApplyParameterSubstitutionInResolverParamsDoesNotMutateDefault is a deterministic
+// (non -race) regression test: substituting resolver params must not mutate the TaskSpec's
+// object-param default in place. Before the fix, merging the TaskRun value aliased and then
+// wrote into the shared Default.ObjectVal map, corrupting the Task's default.
+func TestApplyParameterSubstitutionInResolverParamsDoesNotMutateDefault(t *testing.T) {
+	taskSpec := v1.TaskSpec{
+		Params: v1.ParamSpecs{{
+			Name:       "obj",
+			Type:       v1.ParamTypeObject,
+			Properties: map[string]v1.PropertySpec{"path": {Type: v1.ParamTypeString}},
+			Default: &v1.ParamValue{
+				Type:      v1.ParamTypeObject,
+				ObjectVal: map[string]string{"path": "from-default"},
+			},
+		}},
+		Steps: []v1.Step{{
+			Ref: &v1.Ref{
+				ResolverRef: v1.ResolverRef{
+					Resolver: "git",
+					Params: []v1.Param{{
+						Name:  "pathInRepo",
+						Value: *v1.NewStructuredValues("$(params.obj.path)"),
+					}},
+				},
+			},
+		}},
+	}
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "some-tr"},
+		Spec: v1.TaskRunSpec{
+			Params: v1.Params{{
+				Name:  "obj",
+				Value: *v1.NewObject(map[string]string{"path": "from-taskrun"}),
+			}},
+		},
+	}
+
+	resources.ApplyParameterSubstitutionInResolverParams(tr, taskSpec, &taskSpec.Steps[0])
+
+	// The resolver param resolves to the TaskRun-provided value...
+	if got := taskSpec.Steps[0].Ref.Params[0].Value.StringVal; got != "from-taskrun" {
+		t.Errorf("resolver param = %q, want %q", got, "from-taskrun")
+	}
+	// ...but the Task's object-param default must be left untouched.
+	if got := taskSpec.Params[0].Default.ObjectVal["path"]; got != "from-default" {
+		t.Errorf("taskSpec param default was mutated: path = %q, want %q", got, "from-default")
 	}
 }
 

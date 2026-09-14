@@ -32,6 +32,7 @@ installation.
   - [Verify Tekton Resources](#verify-tekton-resources)
   - [Pipelinerun with Affinity Assistant](#pipelineruns-with-affinity-assistant)
   - [TaskRuns with `imagePullBackOff` Timeout](#taskruns-with-imagepullbackoff-timeout)
+  - [TaskRuns with `CreateContainerError` Timeout](#taskruns-with-createcontainererror-timeout)
   - [Disabling Inline Spec in TaskRun and PipelineRun](#disabling-inline-spec-in-taskrun-and-pipelinerun)
   - [Exponential Backoff for TaskRun and CustomRun Creation](#exponential-backoff-for-taskrun-and-customrun-creation)
   - [Limiting Step reference concurrency resolution](#limiting-step-reference-concurrency-resolution)
@@ -74,6 +75,9 @@ data:
   sink: https://my-sink-url
 ```
 
+The `formats` field specifies which event format to use; currently `tektonv1` is the
+only supported format and is the default when the field is omitted.
+
 The sink used to be configured in the `config-defaults` config map.
 This option is still available, but deprecated, and will be removed.
 
@@ -90,9 +94,14 @@ data:
   default-cloud-events-sink: https://my-sink-url
 ```
 
-Additionally, CloudEvents for `CustomRuns` require an extra configuration to be
-enabled. This setting exists to avoid collisions with CloudEvents that might
-be sent by custom task controllers:
+CloudEvents for `CustomRuns` are enabled by default when a sink is configured in the `config-events` ConfigMap. The `send-cloudevents-for-runs`
+feature flag can be used to disable them for `CustomRuns` only — for example, to avoid
+duplicate events when a custom task controller already sends its own CloudEvents.
+
+> **Deprecated:** `send-cloudevents-for-runs` is deprecated and will be removed in a
+> future release. It now defaults to `true`.
+
+To disable cloudevents for `CustomRuns`, use the following configuration:
 
 ```yaml
 apiVersion: v1
@@ -104,7 +113,8 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 data:
-  send-cloudevents-for-runs: true
+  send-cloudevents-for-runs: "false"
+  # Other feature-flags (...)
 ```
 
 ## Configuring self-signed cert for private registry
@@ -169,7 +179,7 @@ _In the above example the environment variable `TEST_TEKTON` will not be overrid
 
 ## Configuring default resources requirements
 
-Resource requirements of containers created by the controller can be assigned default values. This allows to fully control the resources requirement of `TaskRun`.
+Resource requirements of containers created by the controller can be assigned default values. This allows you to fully control the resource requirements of `TaskRun` pods. Tekton does not apply resource requirements to its internal containers by default; configure this setting when your cluster policy requires requests or limits, for example in namespaces that enforce `ResourceQuota`.
 
 ```yaml
 apiVersion: v1
@@ -228,7 +238,75 @@ data:
         cpu: "500m"
 ```
 
-Any resource requirements set at the `Task` and `TaskRun` levels will overidde the default one specified in the `config-defaults` configmap.
+Any resource requirements set at the `Task` and `TaskRun` levels will override the default one specified in the `config-defaults` configmap.
+
+To make Tekton internal containers compatible with namespaces that require explicit requests and limits, configure named entries for `prepare`, `place-scripts`, `working-dir-initializer`, and `sidecar-tekton-log-results`, as in the following example:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-container-resource-requirements: |
+    prepare:
+      requests:
+        cpu: "100m"
+        memory: "64Mi"
+      limits:
+        cpu: "100m"
+        memory: "64Mi"
+    place-scripts:
+      requests:
+        cpu: "100m"
+        memory: "32Mi"
+      limits:
+        cpu: "100m"
+        memory: "32Mi"
+    working-dir-initializer:
+      requests:
+        cpu: "100m"
+        memory: "16Mi"
+      limits:
+        cpu: "100m"
+        memory: "16Mi"
+    sidecar-tekton-log-results:
+      requests:
+        cpu: "50m"
+        memory: "32Mi"
+      limits:
+        cpu: "50m"
+        memory: "32Mi"
+```
+
+### Performance tuning
+
+CPU **limits** on init containers cause [CFS throttling](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#how-pods-with-resource-limits-are-run), which can significantly slow down TaskRun execution — especially for the `prepare` init container that copies the entrypoint binary into every pod.
+
+If your namespace does **not** require CPU limits, you can specify only `requests`. This lets init containers burst to use available CPU while still giving the scheduler a request signal:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-container-resource-requirements: |
+    prepare:
+      requests:
+        cpu: "100m"
+        memory: "64Mi"
+    place-scripts:
+      requests:
+        cpu: "100m"
+        memory: "32Mi"
+    working-dir-initializer:
+      requests:
+        cpu: "100m"
+        memory: "16Mi"
+```
 
 ## Customizing basic execution parameters
 
@@ -363,8 +441,17 @@ Defaults to "ignore".
   source from where a remote Task/Pipeline definition was fetched. By default, this is set to `true`.
   To disable populating this field, set this flag to `"false"`.
 
-- `set-security-context`: Set this flag to `true` to set a security context for containers injected by Tekton that will allow TaskRun pods
-to run in namespaces with `restricted` pod security admission. By default, this is set to `false`.
+- `enable-termination-message-compression`: Set this flag to `"true"` to enable zlib compression of
+  termination messages written by the entrypoint. This increases the effective capacity for results
+  from ~33 to ~187 in typical scenarios (5.7x improvement). Has no effect when `results-from` is
+  set to `"sidecar-logs"` since sidecar logs bypass the termination message entirely. This is an
+  alpha feature gated behind `enable-api-fields: "alpha"` or the per-feature flag. Defaults to `"false"`.
+
+- `set-security-context`: By default, Tekton applies a security context intended to satisfy
+  `restricted` pod security admission to containers it injects into TaskRuns and to Affinity
+  Assistant containers. It does not modify the security contexts of user-defined Steps or
+  Sidecars; those containers must independently satisfy the namespace's pod security requirements. Set this flag to
+  `false` to disable the generated security contexts.
 
 - `set-security-context-read-only-root-filesystem`: Set this flag to `true` to enable `readOnlyRootFilesystem` in the
   security context for containers injected by Tekton. This makes the root filesystem of the container read-only,
@@ -395,6 +482,7 @@ Features currently in "alpha" are:
 | [keep pod on cancel](./taskruns.md#cancelling-a-taskrun)                                                     | N/A                                                                                                                  | [v0.52.0](https://github.com/tektoncd/pipeline/releases/tag/v0.52.0) | `keep-pod-on-cancel`                             |
 | [CEL in WhenExpression](./pipelines.md#use-cel-expression-in-whenexpression)                                                  | [TEP-0145](https://github.com/tektoncd/community/blob/main/teps/0145-cel-in-whenexpression.md)                       | [v0.53.0](https://github.com/tektoncd/pipeline/releases/tag/v0.53.0) | `enable-cel-in-whenexpression`                   |
 | [Param Enum](./taskruns.md#parameter-enums)                                                                  | [TEP-0144](https://github.com/tektoncd/community/blob/main/teps/0144-param-enum.md)                                  | [v0.54.0](https://github.com/tektoncd/pipeline/releases/tag/v0.54.0) | `enable-param-enum`                              |
+| Termination Message Compression                                                                             | N/A                                                                                                                  | N/A                                                                  | `enable-termination-message-compression`         |
 
 ### Beta Features
 
@@ -469,10 +557,20 @@ Out-of-the-box, Tekton Pipelines Controller is configured for relatively small-s
 
 ## Running TaskRuns and PipelineRuns with restricted pod security standards
 
-To allow TaskRuns and PipelineRuns to run in namespaces with [restricted pod security standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/),
-set the "set-security-context" feature flag to "true" in the [feature-flags configMap](#customizing-the-pipelines-controller-behavior). This configuration option applies a [SecurityContext](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/)
-to any containers injected into TaskRuns by the Pipelines controller. If the [Affinity Assistants](affinityassistants.md) feature is enabled, the SecurityContext is also applied to those containers.
-This SecurityContext may not be supported in all Kubernetes implementations (for example, OpenShift).
+The `set-security-context` feature flag defaults to `"true"`. It applies a
+[SecurityContext](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/)
+to containers injected into TaskRuns by the Pipelines controller and to
+[Affinity Assistant](affinityassistants.md) containers. It does not modify security contexts on
+user-defined Steps or Sidecars; those containers must independently meet the namespace's
+[restricted pod security standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/).
+
+Some injected images and Kubernetes implementations (for example, OpenShift) may not
+support the generated security context. Disable it with:
+
+```shell
+kubectl patch configmap feature-flags -n tekton-pipelines --type merge \
+  -p '{"data":{"set-security-context":"false"}}'
+```
 
 **Note**: running TaskRuns and PipelineRuns in the "tekton-pipelines" namespace is discouraged.
 
@@ -705,6 +803,27 @@ metadata:
   namespace: tekton-pipelines
 data:
   default-imagepullbackoff-timeout: "5m"
+```
+
+## TaskRuns with `CreateContainerError` Timeout
+
+When the container runtime (e.g. CRI-O) is under heavy load, it may fail to create a container within the kubelet's
+`RuntimeRequestTimeout` (default 2 minutes), resulting in `CreateContainerError` or `CreateContainerConfigError` with the
+message `"context deadline exceeded"`. This is a transient error — the container runtime will typically succeed once its
+queue clears.
+
+The default value of `default-create-container-error-timeout` is `0`, which means the TaskRun fails immediately
+(fail fast) — preserving the existing behavior. To allow the controller to wait for the container runtime to recover,
+set a non-zero duration such as "1m", "5m", "10s", "1h", etc.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-create-container-error-timeout: "5m"
 ```
 
 ## Disabling Inline Spec in Pipeline, TaskRun and PipelineRun

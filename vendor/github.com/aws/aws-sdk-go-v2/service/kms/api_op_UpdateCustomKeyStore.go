@@ -4,8 +4,6 @@ package kms
 
 import (
 	"context"
-	"fmt"
-	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -47,8 +45,10 @@ import (
 // store friendly name ( NewCustomKeyStoreName ), to tell KMS about a change to the
 // kmsuser crypto user password ( KeyStorePassword ), or to associate the custom
 // key store with a different, but related, CloudHSM cluster ( CloudHsmClusterId ).
-// To update any property of an CloudHSM key store, the ConnectionState of the
-// CloudHSM key store must be DISCONNECTED .
+// To update most properties of an CloudHSM key store, the ConnectionState of the
+// CloudHSM key store must be DISCONNECTED . However, you can update the
+// CustomKeyStoreName of an AWS CloudHSM key store when it is in the CONNECTED or
+// DISCONNECTED state.
 //
 // For an external key store, you can use this operation to change the custom key
 // store friendly name ( NewCustomKeyStoreName ), or to tell KMS about a change to
@@ -153,8 +153,7 @@ type UpdateCustomKeyStoreInput struct {
 	// Do not include confidential or sensitive information in this field. This field
 	// may be displayed in plaintext in CloudTrail logs and other output.
 	//
-	// To change this value, an CloudHSM key store must be disconnected. An external
-	// key store can be connected or disconnected.
+	// To change this value, the custom key store can be connected or disconnected.
 	NewCustomKeyStoreName *string
 
 	// Changes the credentials that KMS uses to sign requests to the external key
@@ -249,9 +248,6 @@ type UpdateCustomKeyStoreOutput struct {
 }
 
 func (c *Client) addOperationUpdateCustomKeyStoreMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpUpdateCustomKeyStore{}, middleware.After)
 	if err != nil {
 		return err
@@ -260,17 +256,8 @@ func (c *Client) addOperationUpdateCustomKeyStoreMiddlewares(stack *middleware.S
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "UpdateCustomKeyStore"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
 
 	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addSetLoggerMiddleware(stack, options); err != nil {
-		return err
-	}
-	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
 	if err = addComputeContentLength(stack); err != nil {
@@ -282,19 +269,7 @@ func (c *Client) addOperationUpdateCustomKeyStoreMiddlewares(stack *middleware.S
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
-		return err
-	}
-	if err = addRawResponseToMetadata(stack); err != nil {
-		return err
-	}
 	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = addSpanRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -303,25 +278,13 @@ func (c *Client) addOperationUpdateCustomKeyStoreMiddlewares(stack *middleware.S
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
-		return err
-	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
-		return err
-	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateCustomKeyStoreValidationMiddleware(stack); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opUpdateCustomKeyStore(options.Region), middleware.Before); err != nil {
-		return err
-	}
-	if err = addRecursionDetection(stack); err != nil {
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "UpdateCustomKeyStore"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -336,22 +299,8 @@ func (c *Client) addOperationUpdateCustomKeyStoreMiddlewares(stack *middleware.S
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAttempt(stack, options); err != nil {
-		return err
-	}
 	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
-}
-
-func newServiceMetadataMiddleware_opUpdateCustomKeyStore(region string) *awsmiddleware.RegisterServiceMetadata {
-	return &awsmiddleware.RegisterServiceMetadata{
-		Region:        region,
-		ServiceID:     ServiceID,
-		OperationName: "UpdateCustomKeyStore",
-	}
 }

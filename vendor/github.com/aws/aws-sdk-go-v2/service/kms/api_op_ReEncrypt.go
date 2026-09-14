@@ -4,8 +4,6 @@ package kms
 
 import (
 	"context"
-	"fmt"
-	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -65,10 +63,16 @@ import (
 // The KMS key that you use for this operation must be in a compatible key state.
 // For details, see [Key states of KMS keys]in the Key Management Service Developer Guide.
 //
+// When using grants with SourceArn constraints for ReEncrypt operations, the
+// grants on both the source KMS key (for ReEncryptFrom ) and the destination KMS
+// key (for ReEncryptTo ) must specify the same SourceArn value.
+//
 // Cross-account use: Yes. The source KMS key and destination KMS key can be in
 // different Amazon Web Services accounts. Either or both KMS keys can be in a
 // different account than the caller. To specify a KMS key in a different account,
-// you must use its key ARN or alias ARN.
+// use the [key ARN]or [alias ARN]. A short [key ID] is also acceptable for the source key when decrypting
+// symmetric ciphertexts, though using a full key ARN is recommended to be more
+// explicit about the intended KMS key.
 //
 // Required permissions:
 //
@@ -97,16 +101,19 @@ import (
 // Eventual consistency: The KMS API follows an eventual consistency model. For
 // more information, see [KMS eventual consistency].
 //
-// [Amazon Web Services Encryption SDK]: https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/
-// [Key states of KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html
+// [key ID]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#key-id-key-id
 // [asymmetric KMS key]: https://docs.aws.amazon.com/kms/latest/developerguide/symmetric-asymmetric.html
 // [key policy]: https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html
 // [Amazon S3 client-side encryption]: https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingClientSideEncryption.html
-// [kms:ReEncryptTo]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
+// [alias ARN]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#key-id-alias-ARN
 // [encryption context]: https://docs.aws.amazon.com/kms/latest/developerguide/encrypt_context.html
 // [manually rotate]: https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys-manually.html
 // [kms:ReEncryptFrom]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
 // [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/accessing-kms.html#programming-eventual-consistency
+// [Amazon Web Services Encryption SDK]: https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/
+// [key ARN]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#key-id-key-ARN
+// [Key states of KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html
+// [kms:ReEncryptTo]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
 func (c *Client) ReEncrypt(ctx context.Context, params *ReEncryptInput, optFns ...func(*Options)) (*ReEncryptOutput, error) {
 	if params == nil {
 		params = &ReEncryptInput{}
@@ -260,7 +267,7 @@ type ReEncryptInput struct {
 	//
 	// To specify a KMS key, use its key ID, key ARN, alias name, or alias ARN. When
 	// using an alias name, prefix it with "alias/" . To specify a KMS key in a
-	// different Amazon Web Services account, you must use the key ARN or alias ARN.
+	// different Amazon Web Services account, you should use the key ARN or alias ARN.
 	//
 	// For example:
 	//
@@ -317,9 +324,6 @@ type ReEncryptOutput struct {
 }
 
 func (c *Client) addOperationReEncryptMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpReEncrypt{}, middleware.After)
 	if err != nil {
 		return err
@@ -328,17 +332,8 @@ func (c *Client) addOperationReEncryptMiddlewares(stack *middleware.Stack, optio
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "ReEncrypt"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
 
 	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addSetLoggerMiddleware(stack, options); err != nil {
-		return err
-	}
-	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
 	if err = addComputeContentLength(stack); err != nil {
@@ -350,19 +345,7 @@ func (c *Client) addOperationReEncryptMiddlewares(stack *middleware.Stack, optio
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
-		return err
-	}
-	if err = addRawResponseToMetadata(stack); err != nil {
-		return err
-	}
 	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = addSpanRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -371,25 +354,13 @@ func (c *Client) addOperationReEncryptMiddlewares(stack *middleware.Stack, optio
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
-		return err
-	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
-		return err
-	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpReEncryptValidationMiddleware(stack); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opReEncrypt(options.Region), middleware.Before); err != nil {
-		return err
-	}
-	if err = addRecursionDetection(stack); err != nil {
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ReEncrypt"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -404,22 +375,8 @@ func (c *Client) addOperationReEncryptMiddlewares(stack *middleware.Stack, optio
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAttempt(stack, options); err != nil {
-		return err
-	}
 	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
-}
-
-func newServiceMetadataMiddleware_opReEncrypt(region string) *awsmiddleware.RegisterServiceMetadata {
-	return &awsmiddleware.RegisterServiceMetadata{
-		Region:        region,
-		ServiceID:     ServiceID,
-		OperationName: "ReEncrypt",
-	}
 }

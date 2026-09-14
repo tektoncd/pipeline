@@ -4,8 +4,6 @@ package kms
 
 import (
 	"context"
-	"fmt"
-	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -19,6 +17,11 @@ import (
 // grants are considered along with key policies and IAM policies. Grants are often
 // used for temporary permissions because you can create one, use its permissions,
 // and delete it without changing your key policies or IAM policies.
+//
+// You can create a grant for an Amazon Web Services principal (IAM user, IAM
+// role, or Amazon Web Services account) by specifying the GranteePrincipal
+// parameter. You can also create a grant for an Amazon Web Services service
+// principal by specifying the GranteeServicePrincipal parameter.
 //
 // For detailed information about grants, including grant terminology, see [Grants in KMS] in the
 // Key Management Service Developer Guide . For examples of creating grants in
@@ -87,19 +90,6 @@ func (c *Client) CreateGrant(ctx context.Context, params *CreateGrantInput, optF
 
 type CreateGrantInput struct {
 
-	// The identity that gets the permissions specified in the grant.
-	//
-	// To specify the grantee principal, use the Amazon Resource Name (ARN) of an
-	// Amazon Web Services principal. Valid principals include Amazon Web Services
-	// accounts, IAM users, IAM roles, federated users, and assumed role users. For
-	// help with the ARN syntax for a principal, see [IAM ARNs]in the Identity and Access
-	// Management User Guide .
-	//
-	// [IAM ARNs]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-arns
-	//
-	// This member is required.
-	GranteePrincipal *string
-
 	// Identifies the KMS key for the grant. The grant gives principals permission to
 	// use this KMS key.
 	//
@@ -137,31 +127,44 @@ type CreateGrantInput struct {
 	// Do not include confidential or sensitive information in this field. This field
 	// may be displayed in plaintext in CloudTrail logs and other output.
 	//
-	// KMS supports the EncryptionContextEquals and EncryptionContextSubset grant
-	// constraints, which allow the permissions in the grant only when the encryption
-	// context in the request matches ( EncryptionContextEquals ) or includes (
-	// EncryptionContextSubset ) the encryption context specified in the constraint.
+	// KMS supports the following grant constraints.
 	//
-	// The encryption context grant constraints are supported only on [grant operations] that include an
-	// EncryptionContext parameter, such as cryptographic operations on symmetric
-	// encryption KMS keys. Grants with grant constraints can include the DescribeKeyand RetireGrant
-	// operations, but the constraint doesn't apply to these operations. If a grant
-	// with a grant constraint includes the CreateGrant operation, the constraint
-	// requires that any grants created with the CreateGrant permission have an
-	// equally strict or stricter encryption context constraint.
+	//   - EncryptionContextEquals and EncryptionContextSubset — These encryption
+	//   context grant constraints allow the permissions in the grant only when the
+	//   encryption context in the request matches ( EncryptionContextEquals ) or
+	//   includes ( EncryptionContextSubset ) the encryption context specified in the
+	//   constraint.
 	//
-	// You cannot use an encryption context grant constraint for cryptographic
-	// operations with asymmetric KMS keys or HMAC KMS keys. Operations with these keys
-	// don't support an encryption context.
+	// Encryption context grant constraints are supported only on [grant operations]that include an
+	//   EncryptionContext parameter, such as cryptographic operations on symmetric
+	//   encryption KMS keys. You cannot use an encryption context grant constraint for
+	//   cryptographic operations with asymmetric KMS keys or HMAC KMS keys. Operations
+	//   with these keys don't support an encryption context. Grants with encryption
+	//   context grant constraints can include the DescribeKeyand RetireGrantoperations, but the constraint
+	//   doesn't apply to these operations. If a grant with an encryption context grant
+	//   constraint includes the CreateGrant operation, the constraint requires that
+	//   any grants created with the CreateGrant permission have an equally strict or
+	//   stricter encryption context constraint.
 	//
 	// Each constraint value can include up to 8 encryption context pairs. The
-	// encryption context value in each constraint cannot exceed 384 characters. For
-	// information about grant constraints, see [Using grant constraints]in the Key Management Service
-	// Developer Guide. For more information about encryption context, see [Encryption context]in the Key
-	// Management Service Developer Guide .
+	//   encryption context value in each constraint cannot exceed 384 characters. For
+	//   more information about encryption context, see [Encryption context]in the Key Management Service
+	//   Developer Guide .
+	//
+	//   - SourceArn — This grant constraint allows the permissions in the grant only
+	//   when the request is made on behalf of a specific Amazon Web Services resource,
+	//   identified by its [Amazon Resource Name (ARN)]. This is effectively the same as having the [aws:SourceArn]global
+	//   condition key in the grant. The SourceArn constraint is supported on grants for
+	//   all types of KMS keys and can also be applied to the DescribeKeyoperation when specified
+	//   in the request. However, it does not apply to RetireGrantoperation.
+	//
+	// For information about grant constraints, see [Using grant constraints] in the Key Management Service
+	// Developer Guide.
 	//
 	// [grant operations]: https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#terms-grant-operations
 	// [Using grant constraints]: https://docs.aws.amazon.com/kms/latest/developerguide/create-grant-overview.html#grant-constraints
+	// [Amazon Resource Name (ARN)]: https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
+	// [aws:SourceArn]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html#condition-keys-sourcearn
 	// [Encryption context]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#encrypt_context
 	Constraints *types.GrantConstraints
 
@@ -182,6 +185,32 @@ type CreateGrantInput struct {
 	// [Grant token]: https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#grant_token
 	// [Using a grant token]: https://docs.aws.amazon.com/kms/latest/developerguide/using-grant-token.html
 	GrantTokens []string
+
+	// The identity that gets the permissions specified in the grant.
+	//
+	// To specify the grantee principal, use the Amazon Resource Name (ARN) of an
+	// Amazon Web Services principal. Valid principals include Amazon Web Services
+	// accounts, IAM users, IAM roles, federated users, and assumed role users. For
+	// help with the ARN syntax for a principal, see [IAM ARNs]in the Identity and Access
+	// Management User Guide .
+	//
+	// You must specify either GranteePrincipal or GranteeServicePrincipal , but not
+	// both.
+	//
+	// [IAM ARNs]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-arns
+	GranteePrincipal *string
+
+	// The Amazon Web Services [service principal] that gets the permissions specified in the grant.
+	//
+	// When you specify a GranteeServicePrincipal , you must also specify a SourceArn
+	// grant constraint. In addition, you must specify either a RetiringPrincipal or a
+	// RetiringServicePrincipal .
+	//
+	// You must specify either GranteePrincipal or GranteeServicePrincipal , but not
+	// both.
+	//
+	// [service principal]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html#principal-services
+	GranteeServicePrincipal *string
 
 	// A friendly name for the grant. Use this value to prevent the unintended
 	// creation of duplicate grants when retrying this request.
@@ -211,10 +240,22 @@ type CreateGrantInput struct {
 	// permission to retire the grant or revoke the grant. For details, see RevokeGrantand [Retiring and revoking grants] in
 	// the Key Management Service Developer Guide.
 	//
+	// You can specify either RetiringPrincipal or RetiringServicePrincipal , but not
+	// both.
+	//
 	// [IAM ARNs]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-arns
 	// [Amazon Resource Name (ARN)]: https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
 	// [Retiring and revoking grants]: https://docs.aws.amazon.com/kms/latest/developerguide/grant-delete.html
 	RetiringPrincipal *string
+
+	// The Amazon Web Services [service principal] that has permission to use the RetireGrant operation to retire
+	// the grant.
+	//
+	// You can specify either RetiringPrincipal or RetiringServicePrincipal , but not
+	// both.
+	//
+	// [service principal]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html#principal-services
+	RetiringServicePrincipal *string
 
 	noSmithyDocumentSerde
 }
@@ -243,9 +284,6 @@ type CreateGrantOutput struct {
 }
 
 func (c *Client) addOperationCreateGrantMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateGrant{}, middleware.After)
 	if err != nil {
 		return err
@@ -254,17 +292,8 @@ func (c *Client) addOperationCreateGrantMiddlewares(stack *middleware.Stack, opt
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateGrant"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
 
 	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addSetLoggerMiddleware(stack, options); err != nil {
-		return err
-	}
-	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
 	if err = addComputeContentLength(stack); err != nil {
@@ -276,19 +305,7 @@ func (c *Client) addOperationCreateGrantMiddlewares(stack *middleware.Stack, opt
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
-		return err
-	}
-	if err = addRawResponseToMetadata(stack); err != nil {
-		return err
-	}
 	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = addSpanRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -297,25 +314,13 @@ func (c *Client) addOperationCreateGrantMiddlewares(stack *middleware.Stack, opt
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
-		return err
-	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
-		return err
-	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateGrantValidationMiddleware(stack); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateGrant(options.Region), middleware.Before); err != nil {
-		return err
-	}
-	if err = addRecursionDetection(stack); err != nil {
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "CreateGrant"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -330,22 +335,8 @@ func (c *Client) addOperationCreateGrantMiddlewares(stack *middleware.Stack, opt
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAttempt(stack, options); err != nil {
-		return err
-	}
 	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
-}
-
-func newServiceMetadataMiddleware_opCreateGrant(region string) *awsmiddleware.RegisterServiceMetadata {
-	return &awsmiddleware.RegisterServiceMetadata{
-		Region:        region,
-		ServiceID:     ServiceID,
-		OperationName: "CreateGrant",
-	}
 }

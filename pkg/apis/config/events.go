@@ -37,7 +37,7 @@ const (
 )
 
 var (
-	// TODO(afrittoli): only one valid format for now, more to come
+	// validFormats is the set of supported event formats.
 	// See TEP-0137 https://github.com/tektoncd/community/pull/1028
 	validFormats = EventFormats{FormatTektonV1: struct{}{}}
 

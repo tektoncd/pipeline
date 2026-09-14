@@ -62,7 +62,7 @@ func workingDirInit(workingdirinitImage string, stepContainers []corev1.Containe
 	}
 
 	c := &corev1.Container{
-		Name:         "working-dir-initializer",
+		Name:         ContainerNameWorkingDirInitializer,
 		Image:        workingdirinitImage,
 		Command:      []string{"/ko-app/workingdirinit"},
 		Args:         relativeDirs,

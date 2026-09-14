@@ -72,7 +72,7 @@ func (r Repository) Scope(action string) string {
 }
 
 func checkRepository(repository string) error {
-	return checkElement("repository", repository, repositoryChars, 2, 255)
+	return checkElement("repository", repository, repositoryChars, 1, 255)
 }
 
 // NewRepository returns a new Repository representing the given name, according to the given strictness.
@@ -85,11 +85,12 @@ func NewRepository(name string, opts ...Option) (Repository, error) {
 	var registry string
 	repo := name
 	parts := strings.SplitN(name, regRepoDelimiter, 2)
-	if len(parts) == 2 && (strings.ContainsRune(parts[0], '.') || strings.ContainsRune(parts[0], ':')) {
+	maybeRegistry := parts[0]
+	if len(parts) == 2 && (maybeRegistry == "localhost" || strings.ContainsAny(maybeRegistry, ".:")) {
 		// The first part of the repository is treated as the registry domain
-		// iff it contains a '.' or ':' character, otherwise it is all repository
-		// and the domain defaults to Docker Hub.
-		registry = parts[0]
+		// if it is localhost or contains a '.' or ':' character, otherwise it
+		// is all repository and the domain defaults to Docker Hub.
+		registry = maybeRegistry
 		repo = parts[1]
 	}
 

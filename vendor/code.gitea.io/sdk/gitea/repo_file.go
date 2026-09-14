@@ -126,7 +126,11 @@ func (c *Client) GetFile(owner, repo, ref, filepath string, resolveLFS ...bool) 
 	if reader == nil {
 		return nil, resp, err
 	}
-	defer reader.Close()
+	defer func() {
+		if closeErr := reader.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
 
 	data, err2 := io.ReadAll(reader)
 	if err2 != nil {

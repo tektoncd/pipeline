@@ -5,7 +5,6 @@ package kms
 import (
 	"context"
 	"fmt"
-	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -14,17 +13,22 @@ import (
 // Gets a list of all grants for the specified KMS key.
 //
 // You must specify the KMS key in all requests. You can filter the grant list by
-// grant ID or grantee principal.
+// grant ID, grantee principal, or grantee service principal.
 //
 // For detailed information about grants, including grant terminology, see [Grants in KMS] in the
 // Key Management Service Developer Guide . For examples of creating grants in
 // several programming languages, see [Use CreateGrant with an Amazon Web Services SDK or CLI].
 //
-// The GranteePrincipal field in the ListGrants response usually contains the user
-// or role designated as the grantee principal in the grant. However, when the
-// grantee principal in the grant is an Amazon Web Services service, the
-// GranteePrincipal field contains the [service principal], which might represent several different
-// grantee principals.
+// When a grant is created with the GranteePrincipal field, the ListGrants
+// response usually contains the user or role designated as the grantee principal
+// in the grant. However, if the grantee principal is an Amazon Web Services
+// service, the GranteePrincipal field contains an Amazon Web Services [service principal], which
+// might correspond to several different grantee principals, such as an IAM user,
+// IAM role, or Amazon Web Services account.
+//
+// When a grant is created with the GranteeServicePrincipal field, the ListGrants
+// response always includes a GranteeServicePrincipal that indicates the grantee
+// is actually an Amazon Web Services [service principal].
 //
 // Cross-account use: Yes. To perform this operation on a KMS key in a different
 // Amazon Web Services account, specify the key ARN in the value of the KeyId
@@ -90,7 +94,18 @@ type ListGrantsInput struct {
 
 	// Returns only grants where the specified principal is the grantee principal for
 	// the grant.
+	//
+	// You can specify either GranteePrincipal or GranteeServicePrincipal , but not
+	// both.
 	GranteePrincipal *string
+
+	// Returns only grants where the specified Amazon Web Services service principal
+	// is the grantee service principal for the grant. This filter is only usable by
+	// callers in a service principal.
+	//
+	// You can specify either GranteePrincipal or GranteeServicePrincipal , but not
+	// both.
+	GranteeServicePrincipal *string
 
 	// Use this parameter to specify the maximum number of items to return. When this
 	// value is present, KMS does not return more than the specified number of items,
@@ -130,9 +145,6 @@ type ListGrantsOutput struct {
 }
 
 func (c *Client) addOperationListGrantsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpListGrants{}, middleware.After)
 	if err != nil {
 		return err
@@ -141,17 +153,8 @@ func (c *Client) addOperationListGrantsMiddlewares(stack *middleware.Stack, opti
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "ListGrants"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
 
 	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addSetLoggerMiddleware(stack, options); err != nil {
-		return err
-	}
-	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
 	if err = addComputeContentLength(stack); err != nil {
@@ -163,19 +166,7 @@ func (c *Client) addOperationListGrantsMiddlewares(stack *middleware.Stack, opti
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
-		return err
-	}
-	if err = addRawResponseToMetadata(stack); err != nil {
-		return err
-	}
 	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = addSpanRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -184,25 +175,13 @@ func (c *Client) addOperationListGrantsMiddlewares(stack *middleware.Stack, opti
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
-		return err
-	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
-		return err
-	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListGrantsValidationMiddleware(stack); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListGrants(options.Region), middleware.Before); err != nil {
-		return err
-	}
-	if err = addRecursionDetection(stack); err != nil {
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware(options.Region, "ListGrants"), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -215,12 +194,6 @@ func (c *Client) addOperationListGrantsMiddlewares(stack *middleware.Stack, opti
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
 	if err = addInterceptors(stack, options); err != nil {
@@ -325,11 +298,3 @@ type ListGrantsAPIClient interface {
 }
 
 var _ ListGrantsAPIClient = (*Client)(nil)
-
-func newServiceMetadataMiddleware_opListGrants(region string) *awsmiddleware.RegisterServiceMetadata {
-	return &awsmiddleware.RegisterServiceMetadata{
-		Region:        region,
-		ServiceID:     ServiceID,
-		OperationName: "ListGrants",
-	}
-}

@@ -26,15 +26,14 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	vault "github.com/hashicorp/vault/api"
 	config "github.com/hashicorp/vault/api/cliconfig"
 	"github.com/jellydator/ttlcache/v3"
-	"github.com/mitchellh/go-homedir"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature"
 	sigkms "github.com/sigstore/sigstore/pkg/signature/kms"
@@ -89,10 +88,10 @@ func parseReference(resourceID string) (keyPath string, err error) {
 	v := referenceRegex.FindStringSubmatch(resourceID)
 	if len(v) < i+1 {
 		err = fmt.Errorf("invalid vault format %q: %w", resourceID, err)
-		return
+		return keyPath, err
 	}
 	keyPath = v[i]
-	return
+	return keyPath, err
 }
 
 func newHashivaultClient(address, token, transitSecretEnginePath, keyResourceID string, keyVersion uint64) (*hashivaultClient, error) {
@@ -133,33 +132,28 @@ func newHashivaultClient(address, token, transitSecretEnginePath, keyResourceID 
 	}
 
 	if token == "" {
+		// token helper will use the configured token helper in ~/.vault
+		// if no token helper is defined the default token helper will look for the ~/.vault-token file
 		log.Printf("VAULT_TOKEN or BAO_TOKEN not set, trying to find token helper")
 
-		// try token helper
 		tokenHelper, err := config.DefaultTokenHelper()
+		if tokenHelper == nil {
+			return nil, fmt.Errorf("no token helper configured and VAULT_TOKEN not set")
+		}
+		if tokenHelper.Path() != "" {
+			log.Printf("Using custom token helper: %s", tokenHelper.Path())
+		}
 		if err == nil {
 			if t, err := tokenHelper.Get(); err == nil && t != "" {
 				token = t
 			} else {
-				log.Printf("no token found via helper, trying ~/.vault-token")
+				if strings.HasSuffix(tokenHelper.Path(), "/.vault-token") {
+					return nil, fmt.Errorf("no token helper configured and ~/.vault-token file not found or empty")
+				}
+				return nil, fmt.Errorf("token helper failed to get token")
 			}
 		} else {
-			log.Printf("no token helper configured, trying ~/.vault-token")
-		}
-
-		// read from ~/.vault-token
-		if token == "" {
-			homeDir, err := homedir.Dir()
-			if err != nil {
-				return nil, fmt.Errorf("get home directory: %w", err)
-			}
-
-			tokenFromFile, err := os.ReadFile(filepath.Join(homeDir, ".vault-token"))
-			if err != nil {
-				return nil, fmt.Errorf("read .vault-token file: %w", err)
-			}
-
-			token = string(tokenFromFile)
+			return nil, fmt.Errorf("token helper returned an error: %w", err)
 		}
 	}
 

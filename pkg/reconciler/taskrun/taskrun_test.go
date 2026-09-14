@@ -343,7 +343,7 @@ var (
 const fakeVersion string = "unknown"
 
 func placeToolsInitContainer(steps []string) corev1.Container {
-	return corev1.Container{
+	c := corev1.Container{
 		Command: append([]string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointLocation}, steps...),
 		VolumeMounts: []corev1.VolumeMount{{
 			MountPath: "/tekton/bin",
@@ -353,6 +353,8 @@ func placeToolsInitContainer(steps []string) corev1.Container {
 		Name:       "prepare",
 		Image:      "override-with-entrypoint:latest",
 	}
+	c.SecurityContext = podconvert.SecurityContextConfig{SetSecurityContext: true, SetReadOnlyRootFilesystem: false}.GetSecurityContext(false)
+	return c
 }
 
 var testClock = clock.NewFakePassiveClock(now)
@@ -1836,23 +1838,27 @@ status:
         runningInEnvWithInjectedSidecars: true
         enforceNonfalsifiability: "none"
         enableAPIFields: "alpha"
+        sendCloudEventsForRuns: true
         awaitSidecarReadiness: true
         verificationNoMatchPolicy: "ignore"
         enableProvenanceInStatus: true
         resultExtractionMethod: "termination-message"
         maxResultSize: 4096
+        setSecurityContext: true
         coschedule: "workspaces"
         disableInlineSpec: ""
   provenance:
     featureFlags:
       runningInEnvWithInjectedSidecars: true
       enableAPIFields: "alpha"
+      sendCloudEventsForRuns: true
       enforceNonfalsifiability: "none"
       awaitSidecarReadiness: true
       verificationNoMatchPolicy: "ignore"
       enableProvenanceInStatus: true
       resultExtractionMethod: "termination-message"
       maxResultSize: 4096
+      setSecurityContext: true
       coschedule: "workspaces"
       disableInlineSpec: ""
 `, pipelineErrors.UserErrorLabel, pipelineErrors.UserErrorLabel))
@@ -1901,12 +1907,14 @@ status:
     featureFlags:
       runningInEnvWithInjectedSidecars: true
       enableAPIFields: "beta"
+      sendCloudEventsForRuns: true
       enforceNonfalsifiability: "none"
       awaitSidecarReadiness: true
       verificationNoMatchPolicy: "ignore"
       enableProvenanceInStatus: true
       resultExtractionMethod: "termination-message"
       maxResultSize: 4096
+      setSecurityContext: true
       coschedule: "workspaces"
       disableInlineSpec: ""
 `)
@@ -2728,6 +2736,124 @@ status:
 	}
 }
 
+func TestReconcileOnCancelledTaskRunPreservesPreviousCondition(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-quota-then-cancelled
+  namespace: foo
+spec:
+  status: TaskRunCancelled
+  statusMessage: "TaskRun cancelled as the PipelineRun it belongs to has timed out."
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+    reason: ExceededResourceQuota
+    message: 'TaskRun Pod exceeded available resources: pods "test-pod" is forbidden: exceeded quota'
+  podName: test-taskrun-quota-then-cancelled-pod
+`)
+	pod, err := makePod(taskRun, simpleTask)
+	if err != nil {
+		t.Fatalf("MakePod: %v", err)
+	}
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Tasks:    []*v1.Task{simpleTask},
+		Pods:     []*corev1.Pod{pod},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+	}
+	newTr, err := clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	cond := newTr.Status.GetCondition(apis.ConditionSucceeded)
+	if cond == nil {
+		t.Fatal("Expected Succeeded condition to be set")
+	}
+	if cond.Status != corev1.ConditionFalse {
+		t.Errorf("Expected condition status False, got %s", cond.Status)
+	}
+	if cond.Reason != v1.TaskRunReasonCancelled.String() {
+		t.Errorf("Expected reason %s, got %s", v1.TaskRunReasonCancelled.String(), cond.Reason)
+	}
+	if !strings.Contains(cond.Message, "ExceededResourceQuota") {
+		t.Errorf("Expected condition message to contain previous reason ExceededResourceQuota, got: %s", cond.Message)
+	}
+	if !strings.Contains(cond.Message, "exceeded quota") {
+		t.Errorf("Expected condition message to contain previous message about exceeded quota, got: %s", cond.Message)
+	}
+	if !strings.Contains(cond.Message, "TaskRun cancelled as the PipelineRun it belongs to has timed out.") {
+		t.Errorf("Expected condition message to contain the cancellation reason, got: %s", cond.Message)
+	}
+}
+
+func TestReconcileOnTimedOutTaskRunPreservesPreviousCondition(t *testing.T) {
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-quota-then-timedout
+  namespace: foo
+spec:
+  taskRef:
+    name: test-task
+  timeout: 10s
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+    reason: ExceededResourceQuota
+    message: 'TaskRun Pod exceeded available resources: pods "test-pod" is forbidden: exceeded quota'
+  startTime: "2021-12-31T23:59:45Z"
+`)
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Tasks:    []*v1.Task{simpleTask},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+		t.Fatalf("Unexpected error when reconciling timed out TaskRun : %v", err)
+	}
+	newTr, err := clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected timed out TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	cond := newTr.Status.GetCondition(apis.ConditionSucceeded)
+	if cond == nil {
+		t.Fatal("Expected Succeeded condition to be set")
+	}
+	if cond.Status != corev1.ConditionFalse {
+		t.Errorf("Expected condition status False, got %s", cond.Status)
+	}
+	if cond.Reason != v1.TaskRunReasonTimedOut.String() {
+		t.Errorf("Expected reason %s, got %s", v1.TaskRunReasonTimedOut.String(), cond.Reason)
+	}
+	if !strings.Contains(cond.Message, "failed to finish within") {
+		t.Errorf("Expected condition message to contain timeout message, got: %s", cond.Message)
+	}
+	if !strings.Contains(cond.Message, "ExceededResourceQuota") {
+		t.Errorf("Expected condition message to contain previous reason ExceededResourceQuota, got: %s", cond.Message)
+	}
+	if !strings.Contains(cond.Message, "exceeded quota") {
+		t.Errorf("Expected condition message to contain previous message about exceeded quota, got: %s", cond.Message)
+	}
+}
+
 func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 	taskRun := parse.MustParseV1TaskRun(t, `
 metadata:
@@ -3144,6 +3270,158 @@ status:
 
 			if !strings.Contains(condition.Message, tc.containerType) {
 				t.Errorf("Expected message to mention container type %q, got: %q", tc.containerType, condition.Message)
+			}
+		})
+	}
+}
+
+func TestReconcileCreateContainerErrorTimeout(t *testing.T) {
+	testCases := []struct {
+		name           string
+		reason         string
+		message        string
+		timeout        string
+		podAge         time.Duration
+		expectFailure  bool
+		expectedReason v1.TaskRunReason
+	}{{
+		name:          "CreateContainerConfigError context deadline exceeded within timeout",
+		reason:        "CreateContainerConfigError",
+		message:       "context deadline exceeded",
+		timeout:       "5m",
+		podAge:        1 * time.Minute,
+		expectFailure: false,
+	}, {
+		name:           "CreateContainerConfigError context deadline exceeded timeout exceeded",
+		reason:         "CreateContainerConfigError",
+		message:        "context deadline exceeded",
+		timeout:        "5m",
+		podAge:         10 * time.Minute,
+		expectFailure:  true,
+		expectedReason: "CreateContainerConfigError",
+	}, {
+		name:          "CreateContainerError context deadline exceeded within timeout",
+		reason:        "CreateContainerError",
+		message:       "context deadline exceeded",
+		timeout:       "5m",
+		podAge:        1 * time.Minute,
+		expectFailure: false,
+	}, {
+		name:           "CreateContainerError context deadline exceeded timeout exceeded",
+		reason:         "CreateContainerError",
+		message:        "context deadline exceeded",
+		timeout:        "5m",
+		podAge:         10 * time.Minute,
+		expectFailure:  true,
+		expectedReason: "PodCreationFailed",
+	}, {
+		name:           "CreateContainerConfigError context deadline exceeded timeout disabled",
+		reason:         "CreateContainerConfigError",
+		message:        "context deadline exceeded",
+		timeout:        "",
+		expectFailure:  true,
+		expectedReason: "CreateContainerConfigError",
+	}, {
+		name:           "CreateContainerConfigError non-timeout message with timeout configured",
+		reason:         "CreateContainerConfigError",
+		message:        "configmap \"config-for-testing\" not found",
+		timeout:        "5m",
+		podAge:         1 * time.Minute,
+		expectFailure:  true,
+		expectedReason: "CreateContainerConfigError",
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-create-container-error
+  namespace: foo
+spec:
+  taskSpec:
+    steps:
+    - image: alpine
+status:
+  podName: "test-pod"
+  steps:
+  - container: step-alpine
+    name: alpine
+    imageID: docker.io/library/alpine:latest
+`)
+			taskRun.Status.Steps[0].Waiting = &corev1.ContainerStateWaiting{
+				Reason:  tc.reason,
+				Message: tc.message,
+			}
+
+			d := test.Data{
+				TaskRuns: []*v1.TaskRun{taskRun},
+			}
+
+			if tc.timeout != "" {
+				d.ConfigMaps = []*corev1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+						Data: map[string]string{
+							"default-create-container-error-timeout": tc.timeout,
+						},
+					},
+				}
+			}
+
+			d.Pods = []*corev1.Pod{{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-pod", Namespace: "foo"},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{{
+						Type:               corev1.PodInitialized,
+						LastTransitionTime: metav1.Time{Time: now.Add(-tc.podAge)},
+					}},
+				},
+			}}
+
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+
+			if tc.expectFailure {
+				if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+					t.Fatalf("Unexpected error reconciling TaskRun: %v", err)
+				}
+
+				reconciledTr, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(
+					testAssets.Ctx, taskRun.Name, metav1.GetOptions{},
+				)
+				if err != nil {
+					t.Fatalf("Failed to get reconciled TaskRun: %v", err)
+				}
+
+				condition := reconciledTr.Status.GetCondition(apis.ConditionSucceeded)
+				if condition == nil {
+					t.Fatal("TaskRun should have a Succeeded condition")
+				}
+				if condition.Status != corev1.ConditionFalse {
+					t.Errorf("Expected TaskRun to fail, but status is: %v", condition.Status)
+				}
+				if condition.Reason != string(tc.expectedReason) {
+					t.Errorf("Expected reason %q, got %q", tc.expectedReason, condition.Reason)
+				}
+			} else {
+				err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun))
+				if err == nil {
+					t.Errorf("expected requeue error when reconciling TaskRun with transient container error")
+				} else if isRequeueError, requeueDuration := controller.IsRequeueKey(err); !isRequeueError {
+					t.Errorf("Expected requeue error, but got: %s", err.Error())
+				} else if requeueDuration < 0 {
+					t.Errorf("Expected a positive requeue duration but got %s", requeueDuration.String())
+				}
+				reconciledTr, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(
+					testAssets.Ctx, taskRun.Name, metav1.GetOptions{},
+				)
+				if err != nil {
+					t.Fatalf("Failed to get reconciled TaskRun: %v", err)
+				}
+				condition := reconciledTr.Status.GetCondition(apis.ConditionSucceeded)
+				if condition != nil && condition.Status == corev1.ConditionFalse {
+					t.Errorf("Expected TaskRun to NOT be failed during grace period, but got: %v (reason: %s)", condition.Status, condition.Reason)
+				}
 			}
 		})
 	}
@@ -4285,7 +4563,7 @@ spec:
 	}
 	ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
 	workspaceVolumes := workspace.CreateVolumes(taskRun.Spec.Workspaces)
-	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, taskRun, rtr, workspaceVolumes)
+	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, r.tracerProvider.Tracer(TracerName), taskRun, rtr, workspaceVolumes)
 	if err != nil {
 		t.Fatalf("update task spec threw error %v", err)
 	}
@@ -4393,7 +4671,7 @@ spec:
 
 	workspaceVolumes := workspace.CreateVolumes(taskRun.Spec.Workspaces)
 	ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
-	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, taskRun, rtr, workspaceVolumes)
+	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, r.tracerProvider.Tracer(TracerName), taskRun, rtr, workspaceVolumes)
 	if err != nil {
 		t.Errorf("update task spec threw an error: %v", err)
 	}
@@ -4639,7 +4917,7 @@ spec:
 			}
 
 			workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
-			taskSpec, err := applyParamsContextsResultsAndWorkspaces(testAssets.Ctx, tr, rtr, workspaceVolumes)
+			taskSpec, err := applyParamsContextsResultsAndWorkspaces(testAssets.Ctx, r.tracerProvider.Tracer(TracerName), tr, rtr, workspaceVolumes)
 			if err != nil {
 				t.Fatalf("update task spec threw error %v", err)
 			}
@@ -6032,6 +6310,111 @@ status:
 	}
 	if !getPodFound {
 		t.Errorf("expected the pod to be retrieved to check if sidecars need to be stopped")
+	}
+}
+
+// TestStopSidecars_DeclaredSidecarTerminatedInStatusButInjectedStillRuns covers the case where
+// TaskRun.Status.Sidecars only reflects sidecar- prefixed containers; a non-prefixed injected
+// sidecar can still be running on the Pod and must be stopped via the live Pod (see #9760 review).
+func TestStopSidecars_DeclaredSidecarTerminatedInStatusButInjectedStillRuns(t *testing.T) {
+	sidecarTask := &v1.Task{
+		ObjectMeta: objectMeta("test-task-injected-terminated-status", "foo"),
+		Spec: v1.TaskSpec{
+			Steps: []v1.Step{simpleStep},
+			Sidecars: []v1.Sidecar{{
+				Name:  "sidecar1",
+				Image: "image-id",
+			}},
+		},
+	}
+
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-injected-terminated-status
+  namespace: foo
+spec:
+  taskRef:
+    name: test-task-injected-terminated-status
+status:
+  podName: test-taskrun-injected-terminated-status-pod
+  conditions:
+  - message: Build succeeded
+    reason: Build succeeded
+    status: "True"
+    type: Succeeded
+  sidecars:
+  - name: sidecar1
+    container: sidecar-sidecar1
+    terminated:
+      exitCode: 0
+      finishedAt: "2000-01-01T02:00:00Z"
+      reason: Completed
+      startedAt: "2000-01-01T01:01:01Z"
+`)
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-injected-terminated-status-pod",
+			Namespace: "foo",
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{Name: "step-do-something", Image: "my-step-image"},
+				{Name: "sidecar1", Image: "image-id"},
+				{Name: "injected-sidecar", Image: "some-image"},
+			},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:  "step-do-something",
+					State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{}},
+				},
+				{
+					Name:  "sidecar-sidecar1",
+					State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 0}},
+				},
+				{
+					Name:  "injected-sidecar",
+					State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}},
+				},
+			},
+		},
+	}
+
+	d := test.Data{
+		Pods:     []*corev1.Pod{pod},
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Tasks:    []*v1.Task{sidecarTask},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+		t.Fatalf("Reconcile: %v", err)
+	}
+
+	getPodFound := false
+	for _, action := range clients.Kube.Actions() {
+		if action.Matches("get", "pods") {
+			getPodFound = true
+			break
+		}
+	}
+	if !getPodFound {
+		t.Fatalf("expected Pods().Get to stop a still-running injected sidecar not listed in TaskRun status")
+	}
+
+	retrievedPod, err := clients.Kube.CoreV1().Pods(pod.Namespace).Get(testAssets.Ctx, pod.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Get pod: %v", err)
+	}
+	if d := cmp.Diff(images.NopImage, retrievedPod.Spec.Containers[2].Image); d != "" {
+		t.Errorf("expected injected sidecar image replaced with nop %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -7617,15 +8000,16 @@ status:
 		name:    "completed",
 		taskRun: taskRunCompleted,
 		wantAnnotations: map[string]string{
-			// annotation not updated
+			// annotation not updated: the run is already terminal on entry, so the
+			// release annotation is left frozen at its existing value
 			"pipeline.tekton.dev/release": "release-sha",
 		},
 	}, {
 		name:    "cancelled",
 		taskRun: taskRunCancelled,
 		wantAnnotations: map[string]string{
-			// annotation updated
-			"pipeline.tekton.dev/release": "unknown",
+			// annotation always reflects the controller version that processed the run
+			"pipeline.tekton.dev/release": fakeVersion,
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -7648,6 +8032,69 @@ status:
 				t.Errorf("TaskRun annotations doesn't match %s", diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+// TestReconcile_SyncMetadataFailure verifies that when the deferred syncMetadata
+// call fails (metadata Update returns an error), the error is propagated back
+// from ReconcileKind and an error event is emitted.
+func TestReconcile_SyncMetadataFailure(t *testing.T) {
+	// Use a cancelled TaskRun so reconciliation is short but still mutates
+	// metadata (release annotation is set for non-done runs).
+	taskRun := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: test-taskrun-sync-fail
+  namespace: foo
+spec:
+  status: TaskRunCancelled
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - reason: Pending
+    status: Unknown
+    type: Succeeded
+`)
+	d := test.Data{
+		TaskRuns: []*v1.TaskRun{taskRun},
+		Tasks:    []*v1.Task{simpleTask},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+
+	// Make metadata Update fail.
+	updateErr := errors.New("injected metadata update failure")
+	testAssets.Clients.Pipeline.PrependReactor("update", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+		ua := action.(ktesting.UpdateAction)
+		obj := ua.GetObject()
+		// Only fail the metadata update (not status updates).
+		if action.GetSubresource() == "" {
+			return true, obj, updateErr
+		}
+		return false, nil, nil
+	})
+
+	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun))
+	if err == nil {
+		t.Fatal("Expected error from Reconcile when syncMetadata fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "injected metadata update failure") {
+		t.Errorf("Expected error to contain syncMetadata failure, got: %v", err)
+	}
+
+	// Verify an error event was emitted by draining the recorder channel.
+	foundErrorEvent := false
+	for range 10 {
+		select {
+		case event := <-testAssets.Recorder.Events:
+			if strings.Contains(event, "Warning") && strings.Contains(event, "injected metadata update failure") {
+				foundErrorEvent = true
+			}
+		default:
+		}
+	}
+	if !foundErrorEvent {
+		t.Error("Expected a Warning error event from syncMetadata failure, but none was found")
 	}
 }
 
@@ -8198,5 +8645,100 @@ spec:
 	}
 	if !reconciledTekton.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
 		t.Errorf("Expected Tekton-managed TaskRun to be running, but it was not")
+	}
+}
+
+func TestAppendPreviousConditionContext(t *testing.T) {
+	tests := []struct {
+		name             string
+		prevReason       string
+		prevMessage      string
+		newMessage       string
+		expectAppend     bool
+		expectedContains []string
+	}{
+		{
+			name:         "no previous condition",
+			newMessage:   "TaskRun was cancelled",
+			expectAppend: false,
+		},
+		{
+			name:         "previous reason is Started - skip",
+			prevReason:   v1.TaskRunReasonStarted.String(),
+			prevMessage:  "some message",
+			newMessage:   "TaskRun was cancelled",
+			expectAppend: false,
+		},
+		{
+			name:         "previous reason is Running - skip",
+			prevReason:   v1.TaskRunReasonRunning.String(),
+			prevMessage:  "Not all Steps in the Task have finished executing",
+			newMessage:   "TaskRun was cancelled",
+			expectAppend: false,
+		},
+		{
+			name:         "previous reason is Pending - skip",
+			prevReason:   v1.TaskRunReasonPending.String(),
+			prevMessage:  "TaskRun is pending",
+			newMessage:   "TaskRun was cancelled",
+			expectAppend: false,
+		},
+		{
+			name:         "previous reason is ExceededResourceQuota - preserve",
+			prevReason:   "ExceededResourceQuota",
+			prevMessage:  `TaskRun Pod exceeded available resources: pods "test-pod" is forbidden: exceeded quota`,
+			newMessage:   "TaskRun was cancelled. TaskRun cancelled as the PipelineRun it belongs to has timed out.",
+			expectAppend: true,
+			expectedContains: []string{
+				"TaskRun was cancelled",
+				"ExceededResourceQuota",
+				"exceeded quota",
+			},
+		},
+		{
+			name:         "previous reason is ImagePullBackOff - preserve",
+			prevReason:   "TaskRunImagePullFailed",
+			prevMessage:  "The step image failed to pull",
+			newMessage:   "TaskRun was cancelled",
+			expectAppend: true,
+			expectedContains: []string{
+				"TaskRun was cancelled",
+				"TaskRunImagePullFailed",
+				"failed to pull",
+			},
+		},
+		{
+			name:         "previous condition has empty message - skip",
+			prevReason:   "SomeReason",
+			prevMessage:  "",
+			newMessage:   "TaskRun was cancelled",
+			expectAppend: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var prevCondition *apis.Condition
+			if tc.prevReason != "" {
+				prevCondition = &apis.Condition{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionUnknown,
+					Reason:  tc.prevReason,
+					Message: tc.prevMessage,
+				}
+			}
+
+			result := appendPreviousConditionContext(prevCondition, tc.newMessage)
+
+			if tc.expectAppend {
+				for _, expected := range tc.expectedContains {
+					if !strings.Contains(result, expected) {
+						t.Errorf("Expected result to contain %q, got: %s", expected, result)
+					}
+				}
+			} else if result != tc.newMessage {
+				t.Errorf("Expected message to be unchanged %q, got: %s", tc.newMessage, result)
+			}
+		})
 	}
 }

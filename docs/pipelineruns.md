@@ -1075,7 +1075,7 @@ spec:
 
 In this example, the matrix will create two `TaskRuns` - one for `amd64` and one for `arm64`. Each will have its pod scheduled on the appropriate node architecture using the nodeSelector with the substituted parameter value.
 
-For a complete example, see [`pipelinerun-with-taskrunspecs-matrix-param-substitution.yaml`](../examples/v1/pipelineruns/pipelinerun-with-taskrunspecs-matrix-param-substitution.yaml).
+For a complete example, see [`pipelinerun-with-matrix-and-taskrunspecs-param-substitution.yaml`](../examples/v1/pipelineruns/beta/pipelinerun-with-matrix-and-taskrunspecs-param-substitution.yaml).
 
 ### Specifying `Workspaces`
 

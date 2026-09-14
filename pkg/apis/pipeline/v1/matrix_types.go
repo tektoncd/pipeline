@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"math"
 	"sort"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -221,7 +222,11 @@ func (m *Matrix) CountCombinations() int {
 	count := m.countGeneratedCombinationsFromParams()
 
 	// Add any additional Combinations generated from Matrix Include Parameters
-	count += m.countNewCombinationsFromInclude()
+	includeCount := m.countNewCombinationsFromInclude()
+	if count > math.MaxInt-includeCount {
+		return math.MaxInt
+	}
+	count += includeCount
 
 	return count
 }
@@ -234,8 +239,13 @@ func (m *Matrix) countGeneratedCombinationsFromParams() int {
 	}
 	count := 1
 	for _, param := range m.Params {
-		if len(param.Value.ArrayVal) > 0 {
-			count *= len(param.Value.ArrayVal)
+		if l := len(param.Value.ArrayVal); l > 0 {
+			// Cap at math.MaxInt on overflow so validateCombinationsCount
+			// still rejects the matrix instead of accepting a wrapped count.
+			if count > math.MaxInt/l {
+				return math.MaxInt
+			}
+			count *= l
 		}
 	}
 	return count
@@ -257,6 +267,9 @@ func (m *Matrix) countNewCombinationsFromInclude() int {
 			if val, exist := matrixParamMap[param.Name]; exist {
 				// If the Matrix Include param values does not exist, a new Combination will be generated
 				if !slices.Contains(val, param.Value.StringVal) {
+					if count == math.MaxInt {
+						return math.MaxInt
+					}
 					count++
 				} else {
 					break

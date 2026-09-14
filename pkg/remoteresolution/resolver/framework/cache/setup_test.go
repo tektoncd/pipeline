@@ -78,10 +78,10 @@ func TestCacheSharing(t *testing.T) {
 	}
 
 	// Add to cache1
-	cache1.GetCachedOrResolveFromRemote(testParams, resolverType, resolveFn)
+	cache1.GetCachedOrResolveFromRemote(ctx1, testParams, resolverType, resolveFn)
 
 	// Verify it exists in cache2 (proving they share the same underlying storage)
-	retrieved, err := cache2.GetCachedOrResolveFromRemote(testParams, resolverType, resolveFnErr)
+	retrieved, err := cache2.GetCachedOrResolveFromRemote(ctx2, testParams, resolverType, resolveFnErr)
 	if err != nil {
 		t.Fatalf("Expected to find resource in cache2 that was added to cache1 - caches are not shared: %v", err)
 	}

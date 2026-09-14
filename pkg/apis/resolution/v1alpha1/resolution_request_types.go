@@ -28,6 +28,7 @@ import (
 // a Tekton resource like a pipeline.yaml.
 //
 // +genclient
+// +kubebuilder:object:root=true
 // +genreconciler
 type ResolutionRequest struct {
 	metav1.TypeMeta `json:",inline"`

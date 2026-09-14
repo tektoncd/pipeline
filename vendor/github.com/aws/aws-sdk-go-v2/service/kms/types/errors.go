@@ -301,8 +301,9 @@ func (e *CustomKeyStoreHasCMKsException) ErrorFault() smithy.ErrorFault { return
 //     ConnectionState values.
 //
 //   - You requested the UpdateCustomKeyStoreor DeleteCustomKeyStoreoperation on a custom key store that is not
-//     disconnected. This operation is valid only when the custom key store
-//     ConnectionState is DISCONNECTED .
+//     disconnected. UpdateCustomKeyStore can be called on a custom key store in the
+//     CONNECTED state only to update NewCustomKeyStoreName . For all other
+//     properties, the custom key store ConnectionState must be DISCONNECTED .
 //
 //   - You requested the GenerateRandomoperation in an CloudHSM key store that is not connected.
 //     This operation is valid only when the CloudHSM key store ConnectionState is

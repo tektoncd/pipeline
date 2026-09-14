@@ -60,7 +60,7 @@ func (c *Client) IsFollowing(target string) (bool, *Response) {
 		// ToDo return err
 		return false, nil
 	}
-	_, resp, err := c.getResponse("GET", fmt.Sprintf("/user/following/%s", target), nil, nil)
+	resp, err := c.doRequestWithStatusHandle("GET", fmt.Sprintf("/user/following/%s", target), nil, nil)
 	return err == nil, resp
 }
 
@@ -70,7 +70,7 @@ func (c *Client) IsUserFollowing(user, target string) (bool, *Response) {
 		// ToDo return err
 		return false, nil
 	}
-	_, resp, err := c.getResponse("GET", fmt.Sprintf("/users/%s/following/%s", user, target), nil, nil)
+	resp, err := c.doRequestWithStatusHandle("GET", fmt.Sprintf("/users/%s/following/%s", user, target), nil, nil)
 	return err == nil, resp
 }
 
@@ -79,7 +79,7 @@ func (c *Client) Follow(target string) (*Response, error) {
 	if err := escapeValidatePathSegments(&target); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("PUT", fmt.Sprintf("/user/following/%s", target), nil, nil)
+	resp, err := c.doRequestWithStatusHandle("PUT", fmt.Sprintf("/user/following/%s", target), nil, nil)
 	return resp, err
 }
 
@@ -88,6 +88,6 @@ func (c *Client) Unfollow(target string) (*Response, error) {
 	if err := escapeValidatePathSegments(&target); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/user/following/%s", target), nil, nil)
+	resp, err := c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/user/following/%s", target), nil, nil)
 	return resp, err
 }

@@ -1,0 +1,87 @@
+processor:
+  maxDepth: 15
+  ignoreTypes:
+    - "ParseError$"
+    - "List$"
+  ignoreFields:
+    - "TypeMeta"
+
+render:
+  kubernetesVersion: "1.28"
+  knownTypes:
+    - name: Duration
+      package: k8s.io/apimachinery/pkg/apis/meta/v1
+      link: https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Duration
+    - name: ObjectMeta
+      package: k8s.io/apimachinery/pkg/apis/meta/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta
+    - name: Condition
+      package: k8s.io/apimachinery/pkg/apis/meta/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#condition-v1-meta
+    - name: LabelSelector
+      package: k8s.io/apimachinery/pkg/apis/meta/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#labelselector-v1-meta
+    - name: RawExtension
+      package: k8s.io/apimachinery/pkg/runtime
+      link: https://pkg.go.dev/k8s.io/apimachinery/pkg/runtime#RawExtension
+    - name: Operator
+      package: k8s.io/apimachinery/pkg/selection
+      link: https://pkg.go.dev/k8s.io/apimachinery/pkg/selection#Operator
+    - name: URL
+      package: knative.dev/pkg/apis
+      link: https://pkg.go.dev/knative.dev/pkg/apis#URL
+    - name: Addressable
+      package: knative.dev/pkg/apis/duck/v1
+      link: https://pkg.go.dev/knative.dev/pkg/apis/duck/v1#Addressable
+    - name: Condition
+      package: knative.dev/pkg/apis/duck/v1
+      link: https://pkg.go.dev/knative.dev/pkg/apis/duck/v1#Condition
+    - name: Status
+      package: knative.dev/pkg/apis/duck/v1
+      link: https://pkg.go.dev/knative.dev/pkg/apis/duck/v1#Status
+    # Kubernetes core types
+    - name: Volume
+      package: k8s.io/api/core/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volume-v1-core
+    - name: Container
+      package: k8s.io/api/core/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#container-v1-core
+    - name: ResourceRequirements
+      package: k8s.io/api/core/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#resourcerequirements-v1-core
+    - name: PersistentVolumeClaim
+      package: k8s.io/api/core/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#persistentvolumeclaim-v1-core
+    - name: VolumeMount
+      package: k8s.io/api/core/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volumemount-v1-core
+    - name: EnvVar
+      package: k8s.io/api/core/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#envvar-v1-core
+    - name: SecretKeySelector
+      package: k8s.io/api/core/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#secretkeyselector-v1-core
+    - name: ConfigMapKeySelector
+      package: k8s.io/api/core/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#configmapkeyselector-v1-core
+    - name: SecurityContext
+      package: k8s.io/api/core/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core
+    - name: Toleration
+      package: k8s.io/api/core/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#toleration-v1-core
+    - name: Affinity
+      package: k8s.io/api/core/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#affinity-v1-core
+    - name: TopologySpreadConstraint
+      package: k8s.io/api/core/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#topologyspreadconstraint-v1-core
+    - name: ObjectReference
+      package: k8s.io/api/core/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectreference-v1-core
+    - name: PodDNSConfig
+      package: k8s.io/api/core/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#poddnsconfig-v1-core
+    - name: HostAlias
+      package: k8s.io/api/core/v1
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#hostalias-v1-core

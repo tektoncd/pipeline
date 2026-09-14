@@ -84,7 +84,7 @@ func TestBundleResolverCache(t *testing.T) {
 }
 
 // @test:execution=serial
-// @test:reason=scales the shared resolver deployment to 4 replicas, causing concurrent cache tests to see 4 registry fetches instead of the expected 1
+// @test:reason=scales the shared resolver deployment to 4 replicas to verify leader election prevents duplicate registry fetches
 // @test:tags=resolver,cache,replicas
 func TestBundleResolverCacheWithFourResolverReplicas(t *testing.T) {
 	ctx := t.Context()
@@ -95,7 +95,8 @@ func TestBundleResolverCacheWithFourResolverReplicas(t *testing.T) {
 	// GIVEN
 	replicas := 4
 	taskRunCount := 80
-	expectedRequests := replicas
+	// Only the replica that owns the ResolutionRequest bucket should populate its cache.
+	expectedRequests := 1
 	task := newHelloWorldTask(t, helpers.ObjectNameForTest(t), namespace)
 	repoName := "test-" + task.Name
 	repo := getRegistryServiceIP(ctx, t, c, namespace) + ":5000/" + repoName

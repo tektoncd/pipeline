@@ -20,13 +20,20 @@ import (
 	"context"
 
 	bc "github.com/allegro/bigcache/v3"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/events"
-	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
-	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
+
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
+)
+
+const (
+	// TracerName is the name of the tracer for the notifications reconciler.
+	TracerName = "Notifications"
 )
 
 // EventClientsProvider provides read access to cloud event dependencies
@@ -37,15 +44,22 @@ type EventClientsProvider interface {
 
 // ReconcileRunObject observes a v1beta1.RunObject and triggers notifications.
 func ReconcileRunObject(ctx context.Context, e EventClientsProvider, readOnlyRun v1beta1.RunObject) pkgreconciler.Event {
+	ctx, span := otel.GetTracerProvider().Tracer(TracerName).Start(ctx, "ReconcileRunObject")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("run", readOnlyRun.GetObjectMeta().GetName()),
+		attribute.String("namespace", readOnlyRun.GetObjectMeta().GetNamespace()),
+		attribute.String("kind", readOnlyRun.GetObjectKind().GroupVersionKind().Kind),
+	)
 	logger := logging.FromContext(ctx)
 	ctx = cloudevent.ToContext(ctx, e.GetCloudEventsClient())
 	ctx = cache.ToContext(ctx, e.GetCacheClient())
 
-	logger.Infof("reconciling %s", readOnlyRun.GetObjectMeta().GetName())
+	logger.Debugf("reconciling %s", readOnlyRun.GetObjectMeta().GetName())
 
 	condition := readOnlyRun.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 	logger.Debugf("%s %s, condition: %s", readOnlyRun.GetObjectKind().GroupVersionKind().Kind, readOnlyRun.GetObjectMeta().GetName(), condition)
 
-	events.EmitCloudEvents(ctx, readOnlyRun)
+	cloudevent.EmitCloudEvents(ctx, readOnlyRun)
 	return nil
 }

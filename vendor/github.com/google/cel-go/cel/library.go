@@ -43,6 +43,7 @@ const (
 	optionalUnwrapFunc         = "optional.unwrap"
 	valueFunc                  = "value"
 	unusedIterVar              = "#unused"
+	targetVar                  = "@target"
 )
 
 // Library provides a collection of EnvOption and ProgramOption values used to configure a CEL
@@ -97,6 +98,7 @@ func Lib(l Library) EnvOption {
 			if e.HasLibrary(singleton.LibraryName()) {
 				return e, nil
 			}
+			e.ensureMutableLibraries()
 			e.libraries[singleton.LibraryName()] = singleton
 		}
 		var err error
@@ -181,6 +183,9 @@ func (lib *stdLibrary) CompileOptions() []EnvOption {
 			var err error
 			if err = lib.subset.Validate(); err != nil {
 				return nil, err
+			}
+			if len(funcs) > 0 {
+				e.ensureMutableFunctions()
 			}
 			for _, fn := range funcs {
 				existing, found := e.functions[fn.Name()]
@@ -590,7 +595,7 @@ func (lib *optionalLib) CompileOptions() []EnvOption {
 // ProgramOptions implements the Library interface method.
 func (lib *optionalLib) ProgramOptions() []ProgramOption {
 	return []ProgramOption{
-		CustomDecorator(decorateOptionalOr),
+		CustomDecoratorV2(decorateOptionalOr),
 	}
 }
 
@@ -609,22 +614,38 @@ func optMap(meh MacroExprFactory, target ast.Expr, args []ast.Expr) (ast.Expr, *
 		return nil, meh.NewError(varIdent.ID(), "optMap() variable name must be a simple identifier")
 	}
 	mapExpr := args[1]
-	return meh.NewCall(
+	targetIdent := target
+	if target.Kind() != ast.IdentKind {
+		targetIdent = meh.NewIdent(targetVar)
+	}
+	res := meh.NewCall(
 		operators.Conditional,
-		meh.NewMemberCall(hasValueFunc, target),
+		meh.NewMemberCall(hasValueFunc, targetIdent),
 		meh.NewCall(optionalOfFunc,
 			meh.NewComprehension(
 				meh.NewList(),
 				unusedIterVar,
 				varName,
-				meh.NewMemberCall(valueFunc, meh.Copy(target)),
+				meh.NewMemberCall(valueFunc, meh.Copy(targetIdent)),
 				meh.NewLiteral(types.False),
 				meh.NewIdent(varName),
 				mapExpr,
 			),
 		),
 		meh.NewCall(optionalNoneFunc),
-	), nil
+	)
+	if target.Kind() != ast.IdentKind {
+		return meh.NewComprehension(
+			meh.NewList(),
+			unusedIterVar,
+			targetVar,
+			target,
+			meh.NewLiteral(types.False),
+			meh.NewIdent(targetVar),
+			res,
+		), nil
+	}
+	return res, nil
 }
 
 func optFlatMap(meh MacroExprFactory, target ast.Expr, args []ast.Expr) (ast.Expr, *Error) {
@@ -637,20 +658,36 @@ func optFlatMap(meh MacroExprFactory, target ast.Expr, args []ast.Expr) (ast.Exp
 		return nil, meh.NewError(varIdent.ID(), "optFlatMap() variable name must be a simple identifier")
 	}
 	mapExpr := args[1]
-	return meh.NewCall(
+	targetIdent := target
+	if target.Kind() != ast.IdentKind {
+		targetIdent = meh.NewIdent(targetVar)
+	}
+	res := meh.NewCall(
 		operators.Conditional,
-		meh.NewMemberCall(hasValueFunc, target),
+		meh.NewMemberCall(hasValueFunc, targetIdent),
 		meh.NewComprehension(
 			meh.NewList(),
 			unusedIterVar,
 			varName,
-			meh.NewMemberCall(valueFunc, meh.Copy(target)),
+			meh.NewMemberCall(valueFunc, meh.Copy(targetIdent)),
 			meh.NewLiteral(types.False),
 			meh.NewIdent(varName),
 			mapExpr,
 		),
 		meh.NewCall(optionalNoneFunc),
-	), nil
+	)
+	if target.Kind() != ast.IdentKind {
+		return meh.NewComprehension(
+			meh.NewList(),
+			unusedIterVar,
+			targetVar,
+			target,
+			meh.NewLiteral(types.False),
+			meh.NewIdent(targetVar),
+			res,
+		), nil
+	}
+	return res, nil
 }
 
 func optUnwrap(value ref.Val) ref.Val {
@@ -683,7 +720,7 @@ func EnableErrorOnBadPresenceTest(value bool) EnvOption {
 	return features(featureEnableErrorOnBadPresenceTest, value)
 }
 
-func decorateOptionalOr(i interpreter.Interpretable) (interpreter.Interpretable, error) {
+func decorateOptionalOr(i interpreter.InterpretableV2) (interpreter.InterpretableV2, error) {
 	call, ok := i.(interpreter.InterpretableCall)
 	if !ok {
 		return i, nil
@@ -720,8 +757,8 @@ func decorateOptionalOr(i interpreter.Interpretable) (interpreter.Interpretable,
 // the second optional expression is evaluated and returned.
 type evalOptionalOr struct {
 	id  int64
-	lhs interpreter.Interpretable
-	rhs interpreter.Interpretable
+	lhs interpreter.InterpretableV2
+	rhs interpreter.InterpretableV2
 }
 
 // ID implements the Interpretable interface method.
@@ -729,11 +766,9 @@ func (opt *evalOptionalOr) ID() int64 {
 	return opt.id
 }
 
-// Eval evaluates the left-hand side optional to determine whether it contains a value, else
-// proceeds with the right-hand side evaluation.
-func (opt *evalOptionalOr) Eval(ctx interpreter.Activation) ref.Val {
+func (opt *evalOptionalOr) Exec(frame *interpreter.ExecutionFrame) ref.Val {
 	// short-circuit lhs.
-	optLHS := opt.lhs.Eval(ctx)
+	optLHS := opt.lhs.Exec(frame)
 	switch val := optLHS.(type) {
 	case *types.Err, *types.Unknown:
 		return optLHS
@@ -741,18 +776,24 @@ func (opt *evalOptionalOr) Eval(ctx interpreter.Activation) ref.Val {
 		if val.HasValue() {
 			return optLHS
 		}
-		return opt.rhs.Eval(ctx)
+		return opt.rhs.Exec(frame)
 	default:
 		return types.NoSuchOverloadErr()
 	}
+}
+
+// Eval evaluates the left-hand side optional to determine whether it contains a value, else
+// proceeds with the right-hand side evaluation.
+func (opt *evalOptionalOr) Eval(ctx interpreter.Activation) ref.Val {
+	return opt.Exec(interpreter.AsFrame(ctx))
 }
 
 // evalOptionalOrValue selects between an optional or a concrete value. If the optional has a value,
 // its value is returned, otherwise the alternative value expression is evaluated and returned.
 type evalOptionalOrValue struct {
 	id  int64
-	lhs interpreter.Interpretable
-	rhs interpreter.Interpretable
+	lhs interpreter.InterpretableV2
+	rhs interpreter.InterpretableV2
 }
 
 // ID implements the Interpretable interface method.
@@ -760,11 +801,9 @@ func (opt *evalOptionalOrValue) ID() int64 {
 	return opt.id
 }
 
-// Eval evaluates the left-hand side optional to determine whether it contains a value, else
-// proceeds with the right-hand side evaluation.
-func (opt *evalOptionalOrValue) Eval(ctx interpreter.Activation) ref.Val {
+func (opt *evalOptionalOrValue) Exec(frame *interpreter.ExecutionFrame) ref.Val {
 	// short-circuit lhs.
-	optLHS := opt.lhs.Eval(ctx)
+	optLHS := opt.lhs.Exec(frame)
 
 	switch val := optLHS.(type) {
 	case *types.Err, *types.Unknown:
@@ -773,10 +812,16 @@ func (opt *evalOptionalOrValue) Eval(ctx interpreter.Activation) ref.Val {
 		if val.HasValue() {
 			return val.GetValue()
 		}
-		return opt.rhs.Eval(ctx)
+		return opt.rhs.Exec(frame)
 	default:
 		return types.NoSuchOverloadErr()
 	}
+}
+
+// Eval evaluates the left-hand side optional to determine whether it contains a value, else
+// proceeds with the right-hand side evaluation.
+func (opt *evalOptionalOrValue) Eval(ctx interpreter.Activation) ref.Val {
+	return opt.Exec(interpreter.AsFrame(ctx))
 }
 
 type timeLegacyLibrary struct{}

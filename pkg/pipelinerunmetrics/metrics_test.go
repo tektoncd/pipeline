@@ -1233,6 +1233,22 @@ func TestGetPipelineTagName(t *testing.T) {
 			expected: "anonymous",
 		},
 		{
+			name: "with pipeline spec and generateName",
+			pr: &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						pipeline.PipelineLabelKey: "some-pipeline",
+					},
+					Name:         "some-pipeline-abc123",
+					GenerateName: "some-pipeline-",
+				},
+				Spec: v1.PipelineRunSpec{
+					PipelineSpec: &v1.PipelineSpec{},
+				},
+			},
+			expected: "some-pipeline",
+		},
+		{
 			name: "with pipeline label",
 			pr: &v1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{

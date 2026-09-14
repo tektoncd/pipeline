@@ -235,30 +235,45 @@ type CustomKeyStoresListEntry struct {
 	noSmithyDocumentSerde
 }
 
-// Use this structure to allow [cryptographic operations] in the grant only when the operation request
-// includes the specified [encryption context].
+// Use this structure to allow [cryptographic operations] in the grant only when the operation request meets
+// the specified constraints.
 //
-// KMS applies the grant constraints only to cryptographic operations that support
-// an encryption context, that is, all cryptographic operations with a symmetric
-// KMS key. Grant constraints are not applied to operations that do not support an
-// encryption context, such as cryptographic operations with asymmetric KMS keys
-// and management operations, such as DescribeKeyor RetireGrant.
+// KMS supports the following grant constraints:
+//
+//   - EncryptionContextEquals and EncryptionContextSubset — These encryption
+//     context constraints apply only to cryptographic operations that support an
+//     encryption context, that is, all cryptographic operations with a symmetric KMS
+//     key. Encryption context grant constraints are not applied to operations that do
+//     not support an encryption context, such as cryptographic operations with
+//     asymmetric KMS keys and management operations, such as DescribeKeyor RetireGrant.
 //
 // In a cryptographic operation, the encryption context in the decryption
-// operation must be an exact, case-sensitive match for the keys and values in the
-// encryption context of the encryption operation. Only the order of the pairs can
-// vary.
+//
+//	operation must be an exact, case-sensitive match for the keys and values in the
+//	encryption context of the encryption operation. Only the order of the pairs can
+//	vary.
 //
 // However, in a grant constraint, the key in each key-value pair is not case
-// sensitive, but the value is case sensitive.
+//
+//	sensitive, but the value is case sensitive.
 //
 // To avoid confusion, do not use multiple encryption context pairs that differ
-// only by case. To require a fully case-sensitive encryption context, use the
-// kms:EncryptionContext: and kms:EncryptionContextKeys conditions in an IAM or
-// key policy. For details, see [kms:EncryptionContext:context-key]in the Key Management Service Developer Guide .
+//
+//	only by case. To require a fully case-sensitive encryption context, use the
+//	kms:EncryptionContext: and kms:EncryptionContextKeys conditions in an IAM or
+//	key policy. For details, see [kms:EncryptionContext:context-key]in the Key Management Service Developer Guide .
+//
+//	- SourceArn — This grant constraint allows the permissions in the grant only
+//	when the request is made on behalf of a specific Amazon Web Services resource,
+//	identified by its [Amazon Resource Name (ARN)]. This is effectively the same as having the [aws:SourceArn]global
+//	condition key in the grant. The SourceArn constraint is supported on grants for
+//	all types of KMS keys and can also be applied to the DescribeKeyoperation when specified
+//	in the request. However, it does not apply to RetireGrantoperation.
 //
 // [cryptographic operations]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-cryptography.html#cryptographic-operations
-// [encryption context]: https://docs.aws.amazon.com/kms/latest/developerguide/encrypt_context.html
+//
+// [Amazon Resource Name (ARN)]: https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
+// [aws:SourceArn]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html#condition-keys-sourcearn
 // [kms:EncryptionContext:context-key]: https://docs.aws.amazon.com/kms/latest/developerguide/conditions-kms.html#conditions-kms-encryption-context
 type GrantConstraints struct {
 
@@ -277,14 +292,23 @@ type GrantConstraints struct {
 	// [cryptographic operation]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-cryptography.html#cryptographic-operations
 	EncryptionContextSubset map[string]string
 
+	// The [Amazon Resource Name (ARN)] of an Amazon Web Services resource on behalf of which the request is made.
+	// This is effectively the same as having the [aws:SourceArn]global condition key in the grant.
+	// The SourceArn constraint ensures that the principal can use the KMS key only
+	// when the request is made on behalf of the specified resource.
+	//
+	// [Amazon Resource Name (ARN)]: https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
+	// [aws:SourceArn]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html#condition-keys-sourcearn
+	SourceArn *string
+
 	noSmithyDocumentSerde
 }
 
 // Contains information about a grant.
 type GrantListEntry struct {
 
-	// A list of key-value pairs that must be present in the encryption context of
-	// certain subsequent operations that the grant allows.
+	// The constraints on the grant, such as encryption context pairs or a SourceArn,
+	// that restrict the subsequent operations the grant allows.
 	Constraints *GrantConstraints
 
 	// The date and time when the grant was created.
@@ -295,14 +319,20 @@ type GrantListEntry struct {
 
 	// The identity that gets the permissions in the grant.
 	//
-	// The GranteePrincipal field in the ListGrants response usually contains the user
-	// or role designated as the grantee principal in the grant. However, when the
-	// grantee principal in the grant is an Amazon Web Services service, the
-	// GranteePrincipal field contains the [service principal], which might represent several different
-	// grantee principals.
+	// When a grant is created with the GranteePrincipal field, the ListGrants
+	// response usually contains the user or role designated as the grantee principal
+	// in the grant. However, if the grantee principal is an Amazon Web Services
+	// service, the GranteePrincipal field contains an Amazon Web Services [service principal], which
+	// might correspond to several different grantee principals, such as an IAM user,
+	// IAM role, or Amazon Web Services account.
 	//
 	// [service principal]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html#principal-services
 	GranteePrincipal *string
+
+	// The Amazon Web Services [service principal] that gets the permissions in the grant.
+	//
+	// [service principal]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html#principal-services
+	GranteeServicePrincipal *string
 
 	// The Amazon Web Services account under which the grant was issued.
 	IssuingAccount *string
@@ -319,6 +349,35 @@ type GrantListEntry struct {
 
 	// The principal that can retire the grant.
 	RetiringPrincipal *string
+
+	// The Amazon Web Services [service principal] that can retire the grant.
+	//
+	// [service principal]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html#principal-services
+	RetiringServicePrincipal *string
+
+	noSmithyDocumentSerde
+}
+
+// Contains usage information about the last time the KMS key was used for a
+// successful cryptographic operation.
+type KeyLastUsageData struct {
+
+	// The CloudTrail eventId associated with the last successful cryptographic
+	// operation. Absent if the key has not been used since KMS began tracking.
+	CloudTrailEventId *string
+
+	// The KMS request ID associated with the last successful cryptographic operation.
+	// Absent if the key has not been used since KMS began tracking.
+	KmsRequestId *string
+
+	// The last successful cryptographic operation the KMS key was used for. Absent if
+	// the key has not been used since KMS began tracking.
+	Operation KeyLastUsageTrackingOperation
+
+	// The date and time when the KMS key was most recently used for a successful
+	// cryptographic operation. Absent if the key has not been used since KMS began
+	// tracking.
+	Timestamp *time.Time
 
 	noSmithyDocumentSerde
 }

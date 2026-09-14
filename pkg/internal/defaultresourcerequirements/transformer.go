@@ -18,15 +18,16 @@ package defaultresourcerequirements
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/pod"
+	podpkg "github.com/tektoncd/pipeline/pkg/pod"
 	corev1 "k8s.io/api/core/v1"
 )
 
-// NewTransformer returns a pod.Transformer that will modify container resources if needed
-func NewTransformer(ctx context.Context) pod.Transformer {
+// NewTransformer returns a podpkg.Transformer that will modify container resources if needed
+func NewTransformer(ctx context.Context) podpkg.Transformer {
 	// update init container and containers resource requirements
 	// resource limits and requests values are taken from a config map
 	configDefaults := config.FromContextOrDefaults(ctx).Defaults
@@ -59,6 +60,11 @@ func updateResourceRequirements(resourceRequirementsMap map[string]corev1.Resour
 		}
 	}
 
+	// Track internal containers that get a specific (named or prefix) match,
+	// so the "default" fallback does not overwrite a more specific entry.
+	// Key format: "init:<index>" or "container:<index>".
+	matchedBySpecificEntry := map[string]bool{}
+
 	// update the containers resource requirements which does not have resource requirements
 	for _, containerName := range containerNames {
 		resourceRequirements := resourceRequirementsMap[containerName]
@@ -69,15 +75,21 @@ func updateResourceRequirements(resourceRequirementsMap map[string]corev1.Resour
 		// update init containers
 		for index := range pod.Spec.InitContainers {
 			targetContainer := pod.Spec.InitContainers[index]
-			if containerName == targetContainer.Name && targetContainer.Resources.Size() == 0 {
+			if containerName == targetContainer.Name && (targetContainer.Resources.Size() == 0 || podpkg.IsInternalContainer(targetContainer.Name)) {
 				pod.Spec.InitContainers[index].Resources = resourceRequirements
+				if podpkg.IsInternalContainer(targetContainer.Name) {
+					matchedBySpecificEntry[fmt.Sprintf("init:%d", index)] = true
+				}
 			}
 		}
 		// update containers
 		for index := range pod.Spec.Containers {
 			targetContainer := pod.Spec.Containers[index]
-			if containerName == targetContainer.Name && targetContainer.Resources.Size() == 0 {
+			if containerName == targetContainer.Name && (targetContainer.Resources.Size() == 0 || podpkg.IsInternalContainer(targetContainer.Name)) {
 				pod.Spec.Containers[index].Resources = resourceRequirements
+				if podpkg.IsInternalContainer(targetContainer.Name) {
+					matchedBySpecificEntry[fmt.Sprintf("container:%d", index)] = true
+				}
 			}
 		}
 	}
@@ -97,15 +109,25 @@ func updateResourceRequirements(resourceRequirementsMap map[string]corev1.Resour
 		// update init containers
 		for index := range pod.Spec.InitContainers {
 			targetContainer := pod.Spec.InitContainers[index]
-			if strings.HasPrefix(targetContainer.Name, containerPrefix) && targetContainer.Resources.Size() == 0 {
+			key := fmt.Sprintf("init:%d", index)
+			// Skip internal containers that already got a more specific named match
+			if strings.HasPrefix(targetContainer.Name, containerPrefix) && (targetContainer.Resources.Size() == 0 || (podpkg.IsInternalContainer(targetContainer.Name) && !matchedBySpecificEntry[key])) {
 				pod.Spec.InitContainers[index].Resources = resourceRequirements
+				if podpkg.IsInternalContainer(targetContainer.Name) {
+					matchedBySpecificEntry[key] = true
+				}
 			}
 		}
 		// update containers
 		for index := range pod.Spec.Containers {
 			targetContainer := pod.Spec.Containers[index]
-			if strings.HasPrefix(targetContainer.Name, containerPrefix) && targetContainer.Resources.Size() == 0 {
+			key := fmt.Sprintf("container:%d", index)
+			// Skip internal containers that already got a more specific named match
+			if strings.HasPrefix(targetContainer.Name, containerPrefix) && (targetContainer.Resources.Size() == 0 || (podpkg.IsInternalContainer(targetContainer.Name) && !matchedBySpecificEntry[key])) {
 				pod.Spec.Containers[index].Resources = resourceRequirements
+				if podpkg.IsInternalContainer(targetContainer.Name) {
+					matchedBySpecificEntry[key] = true
+				}
 			}
 		}
 	}
@@ -114,13 +136,18 @@ func updateResourceRequirements(resourceRequirementsMap map[string]corev1.Resour
 	if resourceRequirements, found := resourceRequirementsMap[config.ResourceRequirementDefaultContainerKey]; found && resourceRequirements.Size() != 0 {
 		// update init containers
 		for index := range pod.Spec.InitContainers {
-			if pod.Spec.InitContainers[index].Resources.Size() == 0 {
+			// For internal containers, only apply the default if no specific (named/prefix) entry already matched.
+			internal := podpkg.IsInternalContainer(pod.Spec.InitContainers[index].Name)
+			alreadyMatched := matchedBySpecificEntry[fmt.Sprintf("init:%d", index)]
+			if pod.Spec.InitContainers[index].Resources.Size() == 0 || (internal && !alreadyMatched) {
 				pod.Spec.InitContainers[index].Resources = resourceRequirements
 			}
 		}
 		// update containers
 		for index := range pod.Spec.Containers {
-			if pod.Spec.Containers[index].Resources.Size() == 0 {
+			internal := podpkg.IsInternalContainer(pod.Spec.Containers[index].Name)
+			alreadyMatched := matchedBySpecificEntry[fmt.Sprintf("container:%d", index)]
+			if pod.Spec.Containers[index].Resources.Size() == 0 || (internal && !alreadyMatched) {
 				pod.Spec.Containers[index].Resources = resourceRequirements
 			}
 		}

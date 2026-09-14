@@ -19,19 +19,24 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 
+	"github.com/google/go-containerregistry/internal/ipaddr"
+	"github.com/google/go-containerregistry/internal/limit"
 	"github.com/google/go-containerregistry/internal/redact"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/logs"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote/internal/authchallenge"
 )
+
+// maxTokenBodySize limits bearer token response body reads to prevent OOM
+// when a token endpoint returns an unexpectedly large body.
+const maxTokenBodySize = 64 * 1024 // 64 KiB
 
 type Token struct {
 	Token        string `json:"token"`
@@ -86,7 +91,7 @@ func fromChallenge(reg name.Registry, auth authn.Authenticator, t http.RoundTrip
 	// registry can supply a realm pointing at an internal service or cloud
 	// metadata endpoint (e.g. 169.254.169.254), causing SSRF when the client
 	// subsequently fetches a token.
-	if err := validateRealmURL(realm, pr.Insecure); err != nil {
+	if err := validateRealmURL(realm, reg.RegistryStr(), pr.Insecure); err != nil {
 		return nil, fmt.Errorf("invalid realm in www-authenticate: %w", err)
 	}
 	service := pr.Parameters["service"]
@@ -105,10 +110,24 @@ func fromChallenge(reg name.Registry, auth authn.Authenticator, t http.RoundTrip
 	}, nil
 }
 
+// realmRedirectCheck mimics the default http.Client redirect policy but also
+// validates each redirect URL with validateRealmURL.
+func realmRedirectCheck(registryHost string, insecure bool) func(*http.Request, []*http.Request) error {
+	return func(req *http.Request, via []*http.Request) error {
+		if len(via) >= 10 {
+			return fmt.Errorf("stopped after 10 redirects")
+		}
+		if err := validateRealmURL(req.URL.String(), registryHost, insecure); err != nil {
+			return fmt.Errorf("refusing token-server redirect to %q: %w", req.URL, err)
+		}
+		return nil
+	}
+}
+
 // validateRealmURL returns an error if the realm URL uses a disallowed scheme
-// or resolves to a private / link-local IP address. This prevents a crafted
-// WWW-Authenticate header from redirecting token fetches to internal services.
-func validateRealmURL(realm string, insecure bool) error {
+// or resolves to a private / link-local IP address. Realm URLs matching the
+// registry host:port are always allowed. See #2258.
+func validateRealmURL(realm, registryHost string, insecure bool) error {
 	u, err := url.Parse(realm)
 	if err != nil {
 		return fmt.Errorf("parsing realm %q: %w", realm, err)
@@ -123,16 +142,18 @@ func validateRealmURL(realm string, insecure bool) error {
 	default:
 		return fmt.Errorf("realm scheme %q not allowed; must be https (or http for insecure registries)", u.Scheme)
 	}
+	// Always allow realms matching the registry host:port.
+	if registryHost != "" && u.Host == registryHost {
+		return nil
+	}
 	// Reject IP literals that resolve to private or link-local ranges.
 	// This blocks direct references to RFC 1918 addresses, loopback, and
 	// link-local ranges including the cloud instance metadata service
 	// (169.254.169.254 / fd00:ec2::254).  DNS-based SSRF is out of scope
 	// here; callers should apply network-level controls if needed.
 	host := u.Hostname()
-	if ip := net.ParseIP(host); ip != nil {
-		if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() {
-			return fmt.Errorf("realm host %q is a private or link-local address", host)
-		}
+	if ipaddr.IsPrivateOrLinkLocal(host) {
+		return fmt.Errorf("realm host %q is a private or link-local address", host)
 	}
 	return nil
 }
@@ -199,6 +220,16 @@ func (bt *bearerTransport) RoundTrip(in *http.Request) (*http.Response, error) {
 		// close out old response, since we will not return it.
 		res.Body.Close()
 
+		// For cross-host challenges (the request was redirected to another host),
+		// never mutate bt's shared state: accumulating this host's scope into
+		// bt.scopes or refreshing bt's token from bt.realm would pollute future
+		// same-host requests with a scope/token that belongs to a request we
+		// only ever intended to send to the redirected host. Instead, attempt a
+		// fresh per-host token exchange scoped entirely to this one request.
+		if !matchesHost(bt.registry.RegistryStr(), in, bt.scheme) {
+			return bt.handleCrossHostChallenge(in, challenges)
+		}
+
 		newScopes := []string{}
 		bt.mx.Lock()
 		got := stringSet(bt.scopes)
@@ -225,10 +256,74 @@ func (bt *bearerTransport) RoundTrip(in *http.Request) (*http.Response, error) {
 		if err = bt.refresh(in.Context()); err != nil {
 			return nil, err
 		}
-		return sendRequest()
+
+		bt.mx.RLock()
+		tok := bt.bearer.RegistryToken
+		bt.mx.RUnlock()
+		in.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tok))
+		return bt.inner.RoundTrip(in)
 	}
 
 	return res, err
+}
+
+// handleCrossHostChallenge performs a per-host bearer token exchange when
+// the request has been redirected to a host different from bt.registry. It
+// parses the redirected host's own WWW-Authenticate Bearer challenge, fetches
+// a token from that host's realm using anonymous auth (the original registry's
+// credentials are never forwarded cross-host), and applies the token only to
+// this request.
+//
+// If no usable Bearer challenge is present, or the token exchange fails, the
+// request is retried without an Authorization header.
+func (bt *bearerTransport) handleCrossHostChallenge(in *http.Request, challenges []authchallenge.Challenge) (*http.Response, error) {
+	for _, wac := range challenges {
+		if strings.ToLower(wac.Scheme) != "bearer" {
+			continue
+		}
+		if _, ok := wac.Parameters["realm"]; !ok {
+			continue
+		}
+
+		redirectedReg, err := name.NewRegistry(in.URL.Host, name.WeakValidation)
+		if err != nil {
+			logs.Warn.Printf("cross-host redirect: invalid host %q: %v", in.URL.Host, err)
+			continue
+		}
+
+		// Build a transport.Challenge from the redirected host's WWW-Authenticate
+		// parameters. fromChallenge validates the realm URL (SSRF guard).
+		pr := &Challenge{
+			Scheme:     wac.Scheme,
+			Parameters: wac.Parameters,
+			Insecure:   in.URL.Scheme == "http",
+		}
+		scope := wac.Parameters["scope"]
+		// TODO: use a keychain to resolve credentials for the redirected host so
+		// that token endpoints requiring auth are also supported. For now, anonymous
+		// auth covers the common case where the redirected host's token endpoint is
+		// public. See https://github.com/google/go-containerregistry/issues/2359.
+		tmpBt, err := fromChallenge(redirectedReg, authn.Anonymous, bt.inner, pr, scope)
+		if err != nil {
+			logs.Warn.Printf("cross-host bearer challenge setup for %q failed: %v", in.URL.Host, err)
+			continue
+		}
+
+		if err := tmpBt.refresh(in.Context()); err != nil {
+			logs.Warn.Printf("cross-host bearer exchange for %q failed: %v", in.URL.Host, err)
+			continue
+		}
+
+		tmpBt.mx.RLock()
+		tok := tmpBt.bearer.RegistryToken
+		tmpBt.mx.RUnlock()
+
+		in.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tok))
+		return bt.inner.RoundTrip(in)
+	}
+
+	// No usable bearer challenge; retry without credentials.
+	return bt.inner.RoundTrip(in)
 }
 
 // It's unclear which authentication flow to use based purely on the protocol,
@@ -374,7 +469,8 @@ func (bt *bearerTransport) refreshOauth(ctx context.Context) ([]byte, error) {
 		v.Set("access_type", "offline")
 	}
 
-	client := http.Client{Transport: bt.inner}
+	allowInsecure := bt.scheme == "http"
+	client := http.Client{Transport: bt.inner, CheckRedirect: realmRedirectCheck(bt.registry.RegistryStr(), allowInsecure)}
 	req, err := http.NewRequest(http.MethodPost, u.String(), strings.NewReader(v.Encode()))
 	if err != nil {
 		return nil, err
@@ -397,7 +493,7 @@ func (bt *bearerTransport) refreshOauth(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 
-	return io.ReadAll(resp.Body)
+	return limit.ReadAll(resp.Body, maxTokenBodySize)
 }
 
 // https://docs.docker.com/registry/spec/auth/token/
@@ -411,7 +507,8 @@ func (bt *bearerTransport) refreshBasic(ctx context.Context) ([]byte, error) {
 		auth:   bt.basic,
 		target: u.Host,
 	}
-	client := http.Client{Transport: b}
+	allowInsecure := bt.scheme == "http"
+	client := http.Client{Transport: b, CheckRedirect: realmRedirectCheck(bt.registry.RegistryStr(), allowInsecure)}
 
 	v := u.Query()
 	bt.mx.RLock()
@@ -441,5 +538,5 @@ func (bt *bearerTransport) refreshBasic(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 
-	return io.ReadAll(resp.Body)
+	return limit.ReadAll(resp.Body, maxTokenBodySize)
 }

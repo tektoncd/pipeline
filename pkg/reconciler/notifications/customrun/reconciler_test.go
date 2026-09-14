@@ -153,6 +153,60 @@ func TestReconcileKind_CloudEvents(t *testing.T) {
 	}
 }
 
+// TestReconcileKind_DefaultEnabled verifies that with send-cloudevents-for-runs absent
+// from the configmap (defaulting to true) and a sink configured, events are sent.
+// This tests the new default=true behaviour introduced when the flag was deprecated.
+func TestReconcileKind_DefaultEnabled(t *testing.T) {
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetEventsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"sink": "http://synk:8080",
+			},
+		},
+		// No send-cloudevents-for-runs key — defaults to true
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data:       map[string]string{},
+		},
+	}
+
+	customRun := v1beta1.CustomRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-customRun",
+			Namespace: "foo",
+		},
+		Spec: v1beta1.CustomRunSpec{},
+		Status: v1beta1.CustomRunStatus{
+			Status: duckv1.Status{
+				Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+					Reason: v1beta1.CustomRunReasonSuccessful.String(),
+				}},
+			},
+		},
+	}
+
+	d := test.Data{
+		CustomRuns:              []*v1beta1.CustomRun{&customRun},
+		ConfigMaps:              cms,
+		ExpectedCloudEventCount: 1,
+	}
+	testAssets, cancel := ntesting.InitializeTestAssets(t, &d)
+	defer cancel()
+	ceClient, cacheClient := notifications.EventClientsFromContext(testAssets.Ctx)
+	reconciler := customrun.NewReconciler(ceClient, cacheClient)
+
+	if err := reconciler.ReconcileKind(testAssets.Ctx, &customRun); err != nil {
+		t.Errorf("didn't expect an error, but got one: %v", err)
+	}
+
+	ceClientFake := ceClient.(cloudevent.FakeClient)
+	ceClientFake.CheckCloudEventsUnordered(t, "default enabled",
+		[]string{`(?s)dev.tekton.event.customrun.successful.v1.*test-customRun`})
+}
+
 func TestReconcile_CloudEvents_Disabled(t *testing.T) {
 	cmSinkOn := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: config.GetEventsConfigName(), Namespace: system.Namespace()},

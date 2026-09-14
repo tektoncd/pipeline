@@ -63,7 +63,7 @@ metadata:
 spec:
   steps:
   - name: foo
-    image: busybox
+    image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'echo hello']
     when:
@@ -92,7 +92,7 @@ metadata:
 spec:
   steps:
   - name: foo
-    image: busybox
+    image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'echo hello']
     when:
@@ -131,7 +131,7 @@ metadata:
 spec:
   steps:
   - name: foo
-    image: busybox
+    image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'echo hello']
     when:
@@ -139,7 +139,7 @@ spec:
       operator: in
       values: [ "bar" ]
   - name: bar
-    image: busybox
+    image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'echo hello']
 `,
@@ -181,13 +181,13 @@ metadata:
 spec:
   steps:
   - name: foo
-    image: busybox
+    image: mirror.gcr.io/busybox
     results:
       - name: result1
     command: ['/bin/sh']
     args: ['-c', 'echo -n bar >> $(step.results.result1.path)']
   - name: bar
-    image: busybox
+    image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'echo hello']
     when:
@@ -275,7 +275,7 @@ metadata:
 spec:
   steps:
   - name: foo
-    image: busybox
+    image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'echo hello']
     when:
@@ -302,7 +302,7 @@ metadata:
 spec:
   steps:
   - name: foo
-    image: busybox
+    image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'echo hello']
     when:
@@ -339,13 +339,13 @@ metadata:
 spec:
   steps:
   - name: foo
-    image: busybox
+    image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'echo hello']
     when:
     - cel: "'foo'=='bar'"
   - name: bar
-    image: busybox
+    image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'echo hello']
 `,
@@ -387,13 +387,13 @@ metadata:
 spec:
   steps:
   - name: foo
-    image: busybox
+    image: mirror.gcr.io/busybox
     results:
       - name: result1
     command: ['/bin/sh']
     args: ['-c', 'echo -n bar >> $(step.results.result1.path)']
   - name: bar
-    image: busybox
+    image: mirror.gcr.io/busybox
     command: ['/bin/sh']
     args: ['-c', 'echo hello']
     when:

@@ -83,6 +83,12 @@ const (
 
 	// K8s version to determine if to use native k8s sidecar or Tekton sidecar
 	SidecarK8sMinorVersionCheck = 29
+
+	// Internal container name constants. These containers are created by Tekton
+	// and are not user-defined steps or sidecars.
+	ContainerNamePrepare               = "prepare"
+	ContainerNamePlaceScripts          = "place-scripts"
+	ContainerNameWorkingDirInitializer = "working-dir-initializer"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -132,6 +138,16 @@ var (
 	// MaxActiveDeadlineSeconds is a maximum permitted value to be used for a task with no timeout
 	MaxActiveDeadlineSeconds = int64(math.MaxInt32)
 )
+
+// IsInternalContainer returns true if the container name is one of Tekton's
+// internal containers (prepare, place-scripts, working-dir-initializer, or
+// the results sidecar).
+func IsInternalContainer(name string) bool {
+	return name == ContainerNamePrepare ||
+		name == ContainerNamePlaceScripts ||
+		name == ContainerNameWorkingDirInitializer ||
+		name == pipeline.ReservedResultsSidecarContainerName
+}
 
 // Builder exposes options to configure Pod construction from TaskSpecs/Runs.
 type Builder struct {
@@ -215,6 +231,13 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 			taskSpec.Sidecars = append(taskSpec.Sidecars, resultsSidecar)
 			commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-result_from", config.ResultExtractionMethodSidecarLogs)
 		}
+	}
+
+	if featureFlags.EnableTerminationMessageCompression && !sidecarLogsResultsEnabled {
+		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-compress_termination_message=true")
+	}
+	if featureFlags.EnableTerminationMessageCompression && sidecarLogsResultsEnabled {
+		log.Printf("warning: enable-termination-message-compression has no effect when results-from is set to sidecar-logs")
 	}
 
 	sidecars, err := v1.MergeSidecarsWithSpecs(taskSpec.Sidecars, taskRun.Spec.SidecarSpecs)
@@ -617,7 +640,7 @@ func entrypointInitContainer(image string, steps []v1.Step, securityContext Secu
 	// container to place the entrypoint binary. Also add timeout flags
 	// to entrypoint binary.
 	prepareInitContainer := corev1.Container{
-		Name:  "prepare",
+		Name:  ContainerNamePrepare,
 		Image: image,
 		// Rewrite default WorkingDir from "/home/nonroot" to "/"
 		// as suggested at https://github.com/GoogleContainerTools/distroless/issues/718

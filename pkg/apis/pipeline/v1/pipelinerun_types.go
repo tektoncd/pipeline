@@ -37,6 +37,7 @@ import (
 )
 
 // +genclient
+// +kubebuilder:object:root=true
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -366,6 +367,9 @@ const (
 	// PipelineRunReasonStopping indicates that no new Tasks will be scheduled by the controller, and the
 	// pipeline will stop once all running tasks complete their work
 	PipelineRunReasonStopping PipelineRunReason = "PipelineRunStopping"
+	// PipelineRunReasonTimedOutRunningFinally indicates that the tasks timeout has been exceeded
+	// and no new DAG tasks will be scheduled, but final tasks are now running
+	PipelineRunReasonTimedOutRunningFinally PipelineRunReason = "PipelineRunTimeoutRunningFinally"
 	// PipelineRunReasonCancelledRunningFinally indicates that pipeline has been gracefully cancelled
 	// and no new Tasks will be scheduled by the controller, but final tasks are now running
 	PipelineRunReasonCancelledRunningFinally PipelineRunReason = "CancelledRunningFinally"

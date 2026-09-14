@@ -416,6 +416,46 @@ func (KeyEncryptionMechanism) Values() []KeyEncryptionMechanism {
 	}
 }
 
+type KeyLastUsageTrackingOperation string
+
+// Enum values for KeyLastUsageTrackingOperation
+const (
+	KeyLastUsageTrackingOperationDecrypt                             KeyLastUsageTrackingOperation = "Decrypt"
+	KeyLastUsageTrackingOperationDeriveSharedSecret                  KeyLastUsageTrackingOperation = "DeriveSharedSecret"
+	KeyLastUsageTrackingOperationEncrypt                             KeyLastUsageTrackingOperation = "Encrypt"
+	KeyLastUsageTrackingOperationGenerateDataKey                     KeyLastUsageTrackingOperation = "GenerateDataKey"
+	KeyLastUsageTrackingOperationGenerateDataKeyPair                 KeyLastUsageTrackingOperation = "GenerateDataKeyPair"
+	KeyLastUsageTrackingOperationGenerateDataKeyPairWithoutPlaintext KeyLastUsageTrackingOperation = "GenerateDataKeyPairWithoutPlaintext"
+	KeyLastUsageTrackingOperationGenerateDataKeyWithoutPlaintext     KeyLastUsageTrackingOperation = "GenerateDataKeyWithoutPlaintext"
+	KeyLastUsageTrackingOperationGenerateMac                         KeyLastUsageTrackingOperation = "GenerateMac"
+	KeyLastUsageTrackingOperationReEncrypt                           KeyLastUsageTrackingOperation = "ReEncrypt"
+	KeyLastUsageTrackingOperationSign                                KeyLastUsageTrackingOperation = "Sign"
+	KeyLastUsageTrackingOperationVerify                              KeyLastUsageTrackingOperation = "Verify"
+	KeyLastUsageTrackingOperationVerifyMac                           KeyLastUsageTrackingOperation = "VerifyMac"
+)
+
+// Values returns all known values for KeyLastUsageTrackingOperation. Note that
+// this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (KeyLastUsageTrackingOperation) Values() []KeyLastUsageTrackingOperation {
+	return []KeyLastUsageTrackingOperation{
+		"Decrypt",
+		"DeriveSharedSecret",
+		"Encrypt",
+		"GenerateDataKey",
+		"GenerateDataKeyPair",
+		"GenerateDataKeyPairWithoutPlaintext",
+		"GenerateDataKeyWithoutPlaintext",
+		"GenerateMac",
+		"ReEncrypt",
+		"Sign",
+		"Verify",
+		"VerifyMac",
+	}
+}
+
 type KeyManagerType string
 
 // Enum values for KeyManagerType
