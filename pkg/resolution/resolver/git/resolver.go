@@ -646,15 +646,19 @@ func (g *GitResolver) getAuthenticationCredentials(ctx context.Context, apiSecre
 		token: token,
 	}
 
-	if apiSecret.usernameKey == "" {
-		apiSecret.usernameKey = conf.APIUsernameSecretKey
+	usernameKey := apiSecret.usernameKey
+	if usernameKey == "" {
+		usernameKey = conf.APIUsernameSecretKey
 	}
 
-	username, ok := secret.Data[apiSecret.usernameKey]
+	username, ok := secret.Data[usernameKey]
 	if ok {
 		credentials.username = username
-	} else {
-		g.Logger.Debugf("Cannot get username, key %s not found in secret %s in namespace %s", apiSecret.usernameKey, apiSecret.name, apiSecret.ns)
+	} else if apiSecret.usernameKey != "" && apiSecret.usernameKey != DefaultUsernameKeyParam {
+	    // Missing username key is an error only if a usernameKey was specified
+		err := fmt.Errorf("cannot get API username, key %s not found in secret %s in namespace %s", apiSecret.usernameKey, apiSecret.name, apiSecret.ns)
+		g.Logger.Info(err)
+		return nil, err
 	}
 
 	g.Cache.Add(apiSecret, credentials, ttl)
