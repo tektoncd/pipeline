@@ -25,6 +25,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/go-containerregistry/internal/ipaddr"
 	"github.com/google/go-containerregistry/internal/limit"
 	"github.com/google/go-containerregistry/internal/redact"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -151,10 +152,8 @@ func validateRealmURL(realm, registryHost string, insecure bool) error {
 	// (169.254.169.254 / fd00:ec2::254).  DNS-based SSRF is out of scope
 	// here; callers should apply network-level controls if needed.
 	host := u.Hostname()
-	if ip := net.ParseIP(host); ip != nil {
-		if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() || ip.IsUnspecified() {
-			return fmt.Errorf("realm host %q is a private or link-local address", host)
-		}
+	if ipaddr.IsPrivateOrLinkLocal(host) {
+		return fmt.Errorf("realm host %q is a private or link-local address", host)
 	}
 	return nil
 }
