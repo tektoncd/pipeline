@@ -137,6 +137,6 @@ func (p *parser) Line(delta uint) string {
 }
 
 // Errorf generates an error and appends the current line information.
-func (p *parser) Errorf(delta int64, msg string, args ...interface{}) error {
+func (p *parser) Errorf(delta int64, msg string, args ...any) error {
 	return fmt.Errorf("gitdiff: line %d: %s", p.lineno+delta, fmt.Sprintf(msg, args...))
 }
