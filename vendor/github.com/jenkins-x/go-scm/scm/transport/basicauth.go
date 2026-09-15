@@ -9,6 +9,9 @@ import "net/http"
 // BasicAuth is an http.RoundTripper that makes HTTP
 // requests, wrapping a base RoundTripper and adding a
 // Basic Authorization header.
+//
+// Deprecated: use Auth with BasicAuthCredential(username), which resolves the
+// password from a scm.TokenSource per request rather than capturing it.
 type BasicAuth struct {
 	Base http.RoundTripper
 

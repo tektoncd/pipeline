@@ -2,7 +2,6 @@ package factory
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -21,7 +20,6 @@ import (
 	"github.com/jenkins-x/go-scm/scm/driver/gogs"
 	"github.com/jenkins-x/go-scm/scm/driver/stash"
 	"github.com/jenkins-x/go-scm/scm/transport"
-	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
 )
 
@@ -35,7 +33,7 @@ var DefaultIdentifier = NewDriverIdentifier()
 type ClientOptionFunc func(*scm.Client)
 
 type AuthOptions struct {
-	oauthToken   string
+	tokenSource  scm.TokenSource
 	clientID     string
 	clientSecret string
 }
@@ -77,14 +75,25 @@ func NewClientWithBasicAuth(driver, serverURL, user, password string, opts ...Cl
 
 // NewClient creates a new client for a given driver, serverURL and OAuth token
 func NewClient(driver, serverURL, oauthToken string, opts ...ClientOptionFunc) (*scm.Client, error) {
+	authOptions := &AuthOptions{}
+	if oauthToken != "" {
+		authOptions.tokenSource = scm.StaticTokenSource(oauthToken)
+	}
+	return newClient(driver, serverURL, authOptions, opts...)
+}
+
+// NewClientWithTokenSource creates a new client for a given driver and serverURL that
+// resolves its credential from source on every request, for tokens that expire during
+// the life of the client such as GitHub App installation tokens.
+func NewClientWithTokenSource(driver, serverURL string, source scm.TokenSource, opts ...ClientOptionFunc) (*scm.Client, error) {
 	authOptions := &AuthOptions{
-		oauthToken: oauthToken,
+		tokenSource: source,
 	}
 	return newClient(driver, serverURL, authOptions, opts...)
 }
 
 func newClient(driver, serverURL string, authOptions *AuthOptions, opts ...ClientOptionFunc) (*scm.Client, error) {
-	oauthToken := authOptions.oauthToken
+	source := authOptions.tokenSource
 	if driver == "" {
 		driver = "github"
 	}
@@ -110,7 +119,11 @@ func newClient(driver, serverURL string, authOptions *AuthOptions, opts ...Clien
 		if serverURL == "" {
 			return nil, ErrMissingGitServerURL
 		}
-		client, err = gitea.NewWithToken(serverURL, oauthToken)
+		if source == nil {
+			client, err = gitea.New(serverURL)
+		} else {
+			client, err = gitea.NewWithTokenSource(serverURL, source)
+		}
 	case "github":
 		if serverURL != "" {
 			client, err = github.New(ensureGHEEndpoint(serverURL))
@@ -139,30 +152,11 @@ func newClient(driver, serverURL string, authOptions *AuthOptions, opts ...Clien
 	if err != nil {
 		return client, err
 	}
-	if oauthToken != "" {
+	if source != nil {
 		switch driver {
-		case "azure":
-			client.Client = &http.Client{
-				Transport: &transport.Custom{
-					Before: func(r *http.Request) {
-						encoded := base64.StdEncoding.EncodeToString([]byte(":" + oauthToken))
-						r.Header.Set("Authorization", fmt.Sprintf("Basic %s", encoded))
-					},
-				},
-			}
 		case "gitea":
-			client.Client = &http.Client{
-				Transport: &transport.Authorization{
-					Scheme:      "token",
-					Credentials: oauthToken,
-				},
-			}
-		case "gitlab":
-			client.Client = &http.Client{
-				Transport: &transport.PrivateToken{
-					Token: oauthToken,
-				},
-			}
+			// Authenticated when the client is constructed, because the Gitea
+			// SDK holds an http.Client of its own that also needs the token.
 		case "bitbucketcloud":
 			// lets process any options now so that we can populate the username
 			for _, o := range opts {
@@ -182,23 +176,38 @@ func newClient(driver, serverURL string, authOptions *AuthOptions, opts ...Clien
 			}
 			// BB App Password / PAT
 			client.Client = &http.Client{
-				Transport: &transport.BasicAuth{
-					Username: client.Username,
-					Password: oauthToken,
+				Transport: &transport.Auth{
+					Source:     source,
+					Credential: transport.BasicAuthCredential(client.Username),
 				},
 			}
 			return client, nil
 		default:
-			ts := oauth2.StaticTokenSource(
-				&oauth2.Token{AccessToken: oauthToken},
-			)
-			client.Client = oauth2.NewClient(context.Background(), ts)
+			client.Client = &http.Client{
+				Transport: &transport.Auth{
+					Source:     source,
+					Credential: credentialFor(driver),
+				},
+			}
 		}
 	}
 	for _, o := range opts {
 		o(client)
 	}
 	return client, err
+}
+
+// credentialFor returns how driver expects a token to be attached to a request.
+// A driver missing here falls through to a bearer token, which most accept.
+func credentialFor(driver string) transport.Credential {
+	switch driver {
+	case "azure":
+		return transport.BasicAuthCredential("")
+	case "gitlab":
+		return transport.PrivateTokenCredential
+	default:
+		return transport.SchemeCredential("Bearer")
+	}
 }
 
 // NewClientFromEnvironment creates a new client using environment variables $GIT_KIND, $GIT_SERVER, $GIT_TOKEN
@@ -220,7 +229,7 @@ func NewClientFromEnvironment() (*scm.Client, error) {
 	}
 
 	authOptions := &AuthOptions{
-		oauthToken: oauthToken,
+		tokenSource: scm.StaticTokenSource(oauthToken),
 	}
 
 	clientID := os.Getenv("BB_OAUTH_CLIENT_ID")

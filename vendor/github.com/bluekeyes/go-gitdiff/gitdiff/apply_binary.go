@@ -9,8 +9,9 @@ import (
 // BinaryApplier applies binary changes described in a fragment to source data.
 // The applier must be closed after use.
 type BinaryApplier struct {
-	dst io.Writer
-	src io.ReaderAt
+	dst  io.Writer
+	src  io.ReaderAt
+	opts applyOptions
 
 	closed bool
 	dirty  bool
@@ -18,10 +19,11 @@ type BinaryApplier struct {
 
 // NewBinaryApplier creates an BinaryApplier that reads data from src and
 // writes modified data to dst.
-func NewBinaryApplier(dst io.Writer, src io.ReaderAt) *BinaryApplier {
+func NewBinaryApplier(dst io.Writer, src io.ReaderAt, opts ...ApplyOption) *BinaryApplier {
 	a := BinaryApplier{
-		dst: dst,
-		src: src,
+		dst:  dst,
+		src:  src,
+		opts: collectApplyOptions(opts),
 	}
 	return &a
 }
@@ -44,16 +46,28 @@ func (a *BinaryApplier) ApplyFragment(f *BinaryFragment) error {
 		return applyError(errApplyInProgress)
 	}
 
-	// mark an apply as in progress, even if it fails before making changes
+	// Mark an apply as in progress, even if it fails before making changes
 	a.dirty = true
+
+	// Verify the binary data does not exceed the limit before decompressing
+	// it. The reader from Data() will not read more that f.Size+1 bytes, so we
+	// only need to check the expected size against the limit.
+	limit := a.opts.maxBinaryFragmentBytes
+	if limit >= 0 && f.Size > limit {
+		return applyError(fmt.Errorf("binary fragment size of %d exceeds %d byte limit", f.Size, limit))
+	}
 
 	switch f.Method {
 	case BinaryPatchLiteral:
-		if _, err := a.dst.Write(f.Data); err != nil {
+		if _, err := io.Copy(a.dst, f.Data()); err != nil {
 			return applyError(err)
 		}
 	case BinaryPatchDelta:
-		if err := applyBinaryDeltaFragment(a.dst, a.src, f.Data); err != nil {
+		data, err := io.ReadAll(f.Data())
+		if err != nil {
+			return applyError(err)
+		}
+		if err := applyBinaryDeltaFragment(a.dst, a.src, data, limit); err != nil {
 			return applyError(err)
 		}
 	default:
@@ -78,13 +92,26 @@ func (a *BinaryApplier) Close() (err error) {
 	return err
 }
 
-func applyBinaryDeltaFragment(dst io.Writer, src io.ReaderAt, frag []byte) error {
+func applyBinaryDeltaFragment(dst io.Writer, src io.ReaderAt, frag []byte, limit int64) error {
 	srcSize, delta := readBinaryDeltaSize(frag)
 	if err := checkBinarySrcSize(src, srcSize); err != nil {
 		return err
 	}
 
+	// As a form of compression, delta instructions can create a lot of data in
+	// the destination from a small instruction set. First, check the expected
+	// size against the limit. Then, while executing instructions, stop as soon
+	// as a write exceeds the expected limit.
 	dstSize, delta := readBinaryDeltaSize(delta)
+	if limit >= 0 && dstSize > limit {
+		return fmt.Errorf("binary delta size of %d exceeds %d byte limit", dstSize, limit)
+	}
+
+	dstLimit := &limitWriter{
+		w:        dst,
+		limit:    dstSize,
+		limitErr: errors.New("corrupt binary delta: extra data"),
+	}
 
 	for len(delta) > 0 {
 		op := delta[0]
@@ -92,22 +119,20 @@ func applyBinaryDeltaFragment(dst io.Writer, src io.ReaderAt, frag []byte) error
 			return errors.New("invalid delta opcode 0")
 		}
 
-		var n int64
 		var err error
 		switch op & 0x80 {
 		case 0x80:
-			n, delta, err = applyBinaryDeltaCopy(dst, op, delta[1:], src)
+			_, delta, err = applyBinaryDeltaCopy(dstLimit, op, delta[1:], src)
 		case 0x00:
-			n, delta, err = applyBinaryDeltaAdd(dst, op, delta[1:])
+			_, delta, err = applyBinaryDeltaAdd(dstLimit, op, delta[1:])
 		}
 		if err != nil {
 			return err
 		}
-		dstSize -= n
 	}
 
-	if dstSize != 0 {
-		return errors.New("corrupt binary delta: insufficient or extra data")
+	if dstLimit.limit > 0 {
+		return errors.New("corrupt binary delta: insufficient data")
 	}
 	return nil
 }
@@ -203,4 +228,21 @@ func checkBinarySrcSize(r io.ReaderAt, size int64) error {
 		return &Conflict{"fragment src size does not match actual src size"}
 	}
 	return nil
+}
+
+// limitWriter is an io.Writer that writes at most limit bytes to the wrapped
+// io.Writer, then returns limitErr for any Write calls that exceed the limit.
+type limitWriter struct {
+	w        io.Writer
+	limit    int64
+	limitErr error
+}
+
+func (w *limitWriter) Write(p []byte) (n int, err error) {
+	if int64(len(p)) > w.limit {
+		return 0, w.limitErr
+	}
+	n, err = w.w.Write(p)
+	w.limit -= int64(n)
+	return
 }
