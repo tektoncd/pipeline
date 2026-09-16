@@ -52,6 +52,10 @@ ecosystems:
           - go.opentelemetry.io/*
           - go.opentelemetry.io/contrib/*
           - knative.dev/pkg
+      sigstore:
+        patterns:
+          - github.com/sigstore/sigstore
+          - github.com/sigstore/sigstore/*
     cooldown:
       default-days: 7
       semver-major-days: 30
