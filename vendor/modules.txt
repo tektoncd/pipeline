@@ -755,8 +755,8 @@ github.com/sigstore/sigstore/pkg/signature/kms/azure
 # github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.10.10
 ## explicit; go 1.27.0
 github.com/sigstore/sigstore/pkg/signature/kms/gcp
-# github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.10.9
-## explicit; go 1.25.0
+# github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.10.10
+## explicit; go 1.27.0
 github.com/sigstore/sigstore/pkg/signature/kms/hashivault
 # github.com/sirupsen/logrus v1.9.4
 ## explicit; go 1.17
