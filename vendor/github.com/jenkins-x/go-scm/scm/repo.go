@@ -120,6 +120,7 @@ type (
 		Desc   string
 		Target string
 		Link   string
+		Parent string
 	}
 
 	// DeployStatus represents a deployment status.

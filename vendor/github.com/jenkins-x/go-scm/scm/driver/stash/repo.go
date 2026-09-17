@@ -78,11 +78,12 @@ type hookInput struct {
 }
 
 type status struct {
-	State string `json:"state"`
-	Key   string `json:"key"`
-	Name  string `json:"name"`
-	URL   string `json:"url"`
-	Desc  string `json:"description"`
+	State  string `json:"state"`
+	Key    string `json:"key"`
+	Name   string `json:"name"`
+	URL    string `json:"url"`
+	Parent string `json:"parent,omitempty"`
+	Desc   string `json:"description"`
 }
 
 type statuses struct {
@@ -469,15 +470,29 @@ func (s *repositoryService) UpdateHook(ctx context.Context, repo string, input *
 }
 
 // CreateStatus creates a new commit status.
-// reference: https://developer.atlassian.com/server/bitbucket/how-tos/updating-build-status-for-commits/
+// reference (EOL Server): https://developer.atlassian.com/server/bitbucket/how-tos/updating-build-status-for-commits/
+// reference (Data Center): https://developer.atlassian.com/server/bitbucket/rest/v1004/api-group-builds-and-deployments/#api-api-latest-projects-projectkey-repos-repositoryslug-commits-commitid-builds-post
 func (s *repositoryService) CreateStatus(ctx context.Context, repo, ref string, input *scm.StatusInput) (*scm.Status, *scm.Response, error) {
 	path := fmt.Sprintf("rest/build-status/1.0/commits/%s", url.PathEscape(ref))
+	key := input.Label
+	if input.Parent != "" {
+		// bitbucket dc required builds only works if key format is: <parent>/<label>
+		key = fmt.Sprintf("%s/%s", input.Parent, input.Label)
+		projectKey, repositorySlug := scm.Split(repo)
+		path = fmt.Sprintf(
+			"rest/api/latest/projects/%s/repos/%s/commits/%s/builds",
+			url.PathEscape(projectKey),
+			url.PathEscape(repositorySlug),
+			url.PathEscape(ref),
+		)
+	}
 	in := status{
-		State: convertFromState(input.State),
-		Key:   input.Label,
-		Name:  input.Label,
-		URL:   input.Link,
-		Desc:  input.Desc,
+		State:  convertFromState(input.State),
+		Key:    key,
+		Name:   input.Label,
+		URL:    input.Link,
+		Parent: input.Parent,
+		Desc:   input.Desc,
 	}
 	res, err := s.client.do(ctx, "POST", path, in, nil)
 	return &scm.Status{
