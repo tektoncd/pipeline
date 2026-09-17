@@ -64,10 +64,7 @@ type TypeRef struct {
 	ElementRelationship *ElementRelationship `yaml:"elementRelationship,omitempty"`
 
 	// Nullable indicates that an explicit null is a valid value,
-	// corresponding to OpenAPI's `nullable: true`. During removal,
-	// empty map/list values are handled differently if this is true.
-	// When true, an empty map or slice becomes null.
-	// When false, an empty map or slice is preserved as an empty container (`{}`/`[]`).
+	// corresponding to OpenAPI's `nullable: true`.
 	Nullable bool `yaml:"nullable,omitempty"`
 }
 

@@ -21,20 +21,23 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/operation"
+	"k8s.io/apimachinery/pkg/api/validate/constraints"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-// IfOption conditionally evaluates a validation function. If the option and enabled are both true the validator
-// is called. If the option and enabled are both false the validator is called. Otherwise, the validator is not called.
-func IfOption[T any](ctx context.Context, op operation.Operation, fldPath *field.Path, value, oldValue T,
-	optionName string, enabled bool, validator func(context.Context, operation.Operation, *field.Path, T, T) field.ErrorList,
-) field.ErrorList {
-	on, defined := op.HasOption(optionName)
-	if !defined {
-		return field.ErrorList{field.InternalError(fldPath, fmt.Errorf("undefined validation option %q", optionName))}
+// Monotonic validates that an integer value has not decreased on update.
+func Monotonic[T constraints.Integer](_ context.Context, op operation.Operation, fldPath *field.Path, value, oldValue *T) field.ErrorList {
+	if op.Type != operation.Update {
+		return nil
 	}
-	if on == enabled {
-		return validator(ctx, op, fldPath, value, oldValue)
+
+	if value == nil || oldValue == nil {
+		return nil
 	}
+
+	if *value < *oldValue {
+		return field.ErrorList{field.Invalid(fldPath, *value, fmt.Sprintf("may not be decreased from %v", *oldValue)).WithOrigin("monotonic")}
+	}
+
 	return nil
 }
