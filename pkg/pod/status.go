@@ -142,7 +142,7 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 			updateCompletedTaskRunStatus(logger, trs, pod, "")
 		}
 	} else {
-		updateIncompleteTaskRunStatus(trs, pod)
+		updateIncompleteTaskRunStatus(ctx, trs, pod, kubeclient)
 	}
 
 	trs.PodName = pod.Name
@@ -622,7 +622,7 @@ func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1.TaskRunStat
 	trs.CompletionTime = &metav1.Time{Time: time.Now()}
 }
 
-func updateIncompleteTaskRunStatus(trs *v1.TaskRunStatus, pod *corev1.Pod) {
+func updateIncompleteTaskRunStatus(ctx context.Context, trs *v1.TaskRunStatus, pod *corev1.Pod, kubeclient kubernetes.Interface) {
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		markStatusRunning(trs, v1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
@@ -631,14 +631,32 @@ func updateIncompleteTaskRunStatus(trs *v1.TaskRunStatus, pod *corev1.Pod) {
 		case IsPodExceedingNodeResources(pod):
 			markStatusRunning(trs, ReasonExceededNodeResources, "TaskRun Pod exceeded available resources")
 		case isSubPathDirectoryError(pod):
-			// if subPath directory creation errors, mark as running and wait for recovery
 			markStatusRunning(trs, ReasonPodPending, "Waiting for subPath directory creation to complete")
 		case isPodHitConfigError(pod):
 			markStatusFailure(trs, ReasonCreateContainerConfigError, "Failed to create pod due to config error")
 		case isPullImageError(pod):
 			markStatusRunning(trs, ReasonPullImageFailed, getWaitingMessage(pod))
 		default:
-			markStatusRunning(trs, ReasonPodPending, getWaitingMessage(pod))
+			msg := getWaitingMessage(pod)
+			if config.FromContextOrDefaults(ctx).FeatureFlags.EnableSurfacePodEvents {
+				if diagnostic, useful := currentPodDiagnostic(pod); useful {
+					msg = diagnostic
+				} else if isGenericPending(pod) {
+					if podEventLookupEnabled(ctx) {
+						eventReason, eventMsg := latestWarningEvent(ctx, kubeclient, pod)
+						if eventReason != "" || eventMsg != "" {
+							msg = lastObservedPodWarningPrefix + eventReason
+							if eventMsg != "" {
+								msg += ": " + eventMsg
+							}
+						}
+					}
+					if previous := trs.GetCondition(apis.ConditionSucceeded); msg == ReasonPodPending && previous != nil && IsLastObservedPodWarning(previous.Message) {
+						msg = previous.Message
+					}
+				}
+			}
+			markStatusRunning(trs, ReasonPodPending, msg)
 		}
 	case corev1.PodSucceeded, corev1.PodFailed, corev1.PodUnknown:
 		// Do nothing; pod has completed or is in an unknown state.
@@ -1021,8 +1039,7 @@ func getWaitingMessage(pod *corev1.Pod) string {
 	for _, status := range pod.Status.ContainerStatuses {
 		wait := status.State.Waiting
 		if wait != nil && wait.Message != "" {
-			return fmt.Sprintf("build step %q is pending with reason %q",
-				status.Name, wait.Message)
+			return fmt.Sprintf("build step %q is pending with reason %q", status.Name, wait.Message)
 		}
 	}
 	// Try to surface underlying reason by inspecting pod's recent status if condition is not true
