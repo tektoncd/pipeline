@@ -1879,6 +1879,8 @@ spec:
                           type: boolean
                         enableKubernetesSidecar:
                           type: boolean
+                        enableNotices:
+                          type: boolean
                         enableParamEnum:
                           type: boolean
                         enableProvenanceInStatus:
@@ -2151,6 +2153,8 @@ spec:
                               enableKeepPodOnCancel:
                                 type: boolean
                               enableKubernetesSidecar:
+                                type: boolean
+                              enableNotices:
                                 type: boolean
                               enableParamEnum:
                                 type: boolean
@@ -3996,6 +4000,48 @@ spec:
                       type:
                         description: Type of condition.
                         type: string
+                notices:
+                  description: Notices are structured messages emitted by controllers that do not affect the task's success/failure status.
+                  type: array
+                  items:
+                    description: Notice represents a structured message emitted by a controller that does not affect the run's success/failure status.
+                    type: object
+                    required:
+                      - level
+                      - message
+                    properties:
+                      file:
+                        description: |-
+                          File is the source file path related to this notice.
+                          Used by VCS integrations to create inline annotations.
+                          Maximum length: 256 characters.
+                        type: string
+                        maxLength: 256
+                      level:
+                        description: |-
+                          Level indicates the severity of the notice.
+                          Valid values: "info", "warning".
+                        type: string
+                        enum:
+                          - info
+                          - warning
+                      message:
+                        description: |-
+                          Message is the human-readable notice text.
+                          Maximum length: 1024 characters.
+                        type: string
+                        maxLength: 1024
+                      startLine:
+                        description: |-
+                          StartLine is the starting line number in the source file (1-based).
+                          Pointer type so that absence (nil) is distinguishable from line 0.
+                        type: integer
+                      step:
+                        description: |-
+                          Step is the name of the step that emitted this notice.
+                          Empty for controller-emitted notices.
+                        type: string
+                  x-kubernetes-list-type: atomic
                 observedGeneration:
                   description: |-
                     ObservedGeneration is the 'Generation' of the Service that
@@ -4032,6 +4078,8 @@ spec:
                         enableKeepPodOnCancel:
                           type: boolean
                         enableKubernetesSidecar:
+                          type: boolean
+                        enableNotices:
                           type: boolean
                         enableParamEnum:
                           type: boolean
@@ -4297,6 +4345,8 @@ spec:
                               enableKeepPodOnCancel:
                                 type: boolean
                               enableKubernetesSidecar:
+                                type: boolean
+                              enableNotices:
                                 type: boolean
                               enableParamEnum:
                                 type: boolean

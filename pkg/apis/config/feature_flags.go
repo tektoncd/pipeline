@@ -101,6 +101,8 @@ const (
 	EnableCELInWhenExpression = "enable-cel-in-whenexpression"
 	// EnableArtifacts is the flag to enable the use of Artifacts in Steps
 	EnableArtifacts = "enable-artifacts"
+	// EnableNotices is the flag to enable controller notices in TaskRun status
+	EnableNotices = "enable-notices"
 	// EnableParamEnum is the flag to enabled enum in params
 	EnableParamEnum = "enable-param-enum"
 	// EnableConciseResolverSyntax is the flag to enable concise resolver syntax
@@ -172,6 +174,13 @@ var (
 		Enabled:   DefaultAlphaFeatureEnabled,
 	}
 
+	// DefaultEnableNotices is the default PerFeatureFlag value for EnableNotices
+	DefaultEnableNotices = PerFeatureFlag{
+		Name:      EnableNotices,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
 	// DefaultEnableParamEnum is the default PerFeatureFlag value for EnableParamEnum
 	DefaultEnableParamEnum = PerFeatureFlag{
 		Name:      EnableParamEnum,
@@ -230,6 +239,7 @@ type FeatureFlags struct {
 	EnableStepActions                   bool   `json:"enableStepActions,omitempty"`
 	EnableParamEnum                     bool   `json:"enableParamEnum,omitempty"`
 	EnableArtifacts                     bool   `json:"enableArtifacts,omitempty"`
+	EnableNotices                       bool   `json:"enableNotices,omitempty"`
 	DisableInlineSpec                   string `json:"disableInlineSpec,omitempty"`
 	EnableConciseResolverSyntax         bool   `json:"enableConciseResolverSyntax,omitempty"`
 	EnableKubernetesSidecar             bool   `json:"enableKubernetesSidecar,omitempty"`
@@ -333,6 +343,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setPerFeatureFlag(EnableArtifacts, DefaultEnableArtifacts, &tc.EnableArtifacts); err != nil {
+		return nil, err
+	}
+	if err := setPerFeatureFlag(EnableNotices, DefaultEnableNotices, &tc.EnableNotices); err != nil {
 		return nil, err
 	}
 
