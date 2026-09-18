@@ -144,9 +144,10 @@ func TestOCIResolver(t *testing.T) {
 					},
 					Spec: v1beta1.TaskSpec{
 						Steps: []v1beta1.Step{{
-							Name:   "step",
-							Image:  "busybox",
-							Script: strings.Repeat("x", 128*1024),
+							Name:  "step",
+							Image: "busybox",
+							// gzip's uncompressed reads are chunked into 32KiB blocks due to DEFLATE's sliding windows
+							Script: strings.Repeat("x", (1<<15)+1),
 						}},
 					},
 				},
