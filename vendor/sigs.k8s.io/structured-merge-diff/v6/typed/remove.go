@@ -26,7 +26,6 @@ type removingWalker struct {
 	toRemove      *fieldpath.Set
 	allocator     value.Allocator
 	shouldExtract bool
-	nullable      bool
 }
 
 // removeItemsWithSchema will walk the given value and look for items from the toRemove set.
@@ -41,7 +40,6 @@ func removeItemsWithSchema(val value.Value, toRemove *fieldpath.Set, schema *sch
 		toRemove:      toRemove,
 		allocator:     value.NewFreelistAllocator(),
 		shouldExtract: shouldExtract,
-		nullable:      typeRef.Nullable,
 	}
 	resolveSchema(schema, typeRef, val, w)
 	return value.NewValueInterface(w.out)
@@ -77,7 +75,6 @@ func (w *removingWalker) doList(t *schema.List) (errs ValidationErrors) {
 	}
 
 	var newItems []interface{}
-	hadMatches := false
 	iter := l.RangeUsing(w.allocator)
 	defer w.allocator.Free(iter)
 	for iter.Next() {
@@ -101,27 +98,12 @@ func (w *removingWalker) doList(t *schema.List) (errs ValidationErrors) {
 				continue
 			}
 			if isPrefixMatch {
-				// Removing nested items within this list item and preserve if it becomes empty
-				hadMatches = true
-				wasMap := item.IsMap()
-				wasList := item.IsList()
 				item = removeItemsWithSchema(item, w.toRemove.WithPrefix(pe), w.schema, t.ElementType, w.shouldExtract)
-				// If item returned null but we're removing items within the structure(not the item itself),
-				// preserve the empty container structure unless the type is nullable.
-				if item.IsNull() && !w.shouldExtract && !t.ElementType.Nullable {
-					if wasMap {
-						item = value.NewValueInterface(map[string]interface{}{})
-					} else if wasList {
-						item = value.NewValueInterface([]interface{}{})
-					}
-				}
 			}
 			newItems = append(newItems, item.Unstructured())
 		}
 	}
-	// Preserve empty lists (non-nil) instead of converting to null when items were matched and removed,
-	// unless the type is nullable.
-	if len(newItems) > 0 || (hadMatches && !w.shouldExtract && !w.nullable) {
+	if len(newItems) > 0 {
 		w.out = newItems
 	}
 	return nil
@@ -159,7 +141,6 @@ func (w *removingWalker) doMap(t *schema.Map) ValidationErrors {
 	}
 
 	newMap := map[string]interface{}{}
-	hadMatches := false
 	m.Iterate(func(k string, val value.Value) bool {
 		pe := fieldpath.PathElement{FieldName: &k}
 		path, _ := fieldpath.MakePath(pe)
@@ -177,19 +158,7 @@ func (w *removingWalker) doMap(t *schema.Map) ValidationErrors {
 			return true
 		}
 		if subset := w.toRemove.WithPrefix(pe); !subset.Empty() {
-			hadMatches = true
-			wasMap := val.IsMap()
-			wasList := val.IsList()
 			val = removeItemsWithSchema(val, subset, w.schema, fieldType, w.shouldExtract)
-			// If val returned null but we're removing items within the structure (not the field itself),
-			// preserve the empty container structure unless the type is nullable.
-			if val.IsNull() && !w.shouldExtract && !fieldType.Nullable {
-				if wasMap {
-					val = value.NewValueInterface(map[string]interface{}{})
-				} else if wasList {
-					val = value.NewValueInterface([]interface{}{})
-				}
-			}
 		} else {
 			// don't save values not on the path when we shouldExtract.
 			if w.shouldExtract {
@@ -199,9 +168,7 @@ func (w *removingWalker) doMap(t *schema.Map) ValidationErrors {
 		newMap[k] = val.Unstructured()
 		return true
 	})
-	// Preserve empty maps (non-nil) instead of converting to null when items were matched and removed,
-	// unless the type is nullable.
-	if len(newMap) > 0 || (hadMatches && !w.shouldExtract && !w.nullable) {
+	if len(newMap) > 0 {
 		w.out = newMap
 	}
 	return nil
