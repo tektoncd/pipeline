@@ -157,3 +157,12 @@ data:
   #
   # See https://github.com/tektoncd/pipeline/issues/7691 for more info.
   enable-informer-cache-transforms: "true"
+  # Setting this flag to "true" enables namespace-scoped ConfigMap overrides for a
+  # limited set of TaskRun/PipelineRun defaulting and validation fields from
+  # config-defaults and feature-flags.
+  # Default: "false" (namespace overrides are ignored).
+  per-namespace-configuration: "false"
+  # Comma-separated list of additional supported fields that operators can lock from
+  # being overridden per namespace (beyond the built-in non-overridable set).
+  # Example: "coschedule,max-result-size"
+  # non-overridable-fields: ""
