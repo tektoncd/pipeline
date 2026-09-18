@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
@@ -156,32 +157,30 @@ func setClockOnReconciler(r *framework.Reconciler) {
 }
 
 func ensureConfigurationConfigMapsExist(d *test.Data) {
-	var featureFlagsExists bool
-	var resolverCacheConfigExists bool
+	ns := resolverconfig.ResolversNamespace(system.Namespace())
+	existing := make(map[string]bool)
 	for _, cm := range d.ConfigMaps {
-		if cm.Name == resolverconfig.GetFeatureFlagsConfigName() {
-			featureFlagsExists = true
-		}
-		if cm.Name == "resolver-cache-config" {
-			resolverCacheConfigExists = true
-		}
+		existing[cm.Name] = true
 	}
-	if !featureFlagsExists {
-		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      resolverconfig.GetFeatureFlagsConfigName(),
-				Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
-			},
-			Data: map[string]string{},
-		})
-	}
-	if !resolverCacheConfigExists {
-		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "resolver-cache-config",
-				Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
-			},
-			Data: map[string]string{},
-		})
+	for _, name := range []string{
+		resolverconfig.GetFeatureFlagsConfigName(),
+		"resolver-cache-config",
+		config.GetDefaultsConfigName(),
+		config.GetFeatureFlagsConfigName(),
+		config.GetMetricsConfigName(),
+		config.GetSpireConfigName(),
+		config.GetEventsConfigName(),
+		config.GetTracingConfigName(),
+		config.GetWaitExponentialBackoffConfigName(),
+	} {
+		if !existing[name] {
+			d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: ns,
+				},
+				Data: map[string]string{},
+			})
+		}
 	}
 }
