@@ -850,6 +850,205 @@ func TestTaskValidateError(t *testing.T) {
 	}
 }
 
+func TestTaskValidateWorkspaceVariableReferences(t *testing.T) {
+	tests := []struct {
+		name       string
+		workspaces []v1beta1.WorkspaceDeclaration
+		steps      []v1beta1.Step
+	}{{
+		name: "valid workspace variable in script",
+		workspaces: []v1beta1.WorkspaceDeclaration{{
+			Name: "myws",
+		}},
+		steps: []v1beta1.Step{{
+			Name:   "step1",
+			Image:  "my-image",
+			Script: "echo $(workspaces.myws.path)",
+		}},
+	}, {
+		name: "valid multiple workspace properties",
+		workspaces: []v1beta1.WorkspaceDeclaration{{
+			Name: "myws",
+		}},
+		steps: []v1beta1.Step{{
+			Name:   "step1",
+			Image:  "my-image",
+			Script: "echo $(workspaces.myws.path) $(workspaces.myws.bound) $(workspaces.myws.claim) $(workspaces.myws.volume)",
+		}},
+	}, {
+		name: "no workspace references is valid",
+		steps: []v1beta1.Step{{
+			Name:  "step1",
+			Image: "my-image",
+			Args:  []string{"hello"},
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task := &v1beta1.Task{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: v1beta1.TaskSpec{
+					Workspaces: tt.workspaces,
+					Steps:      tt.steps,
+				},
+			}
+			ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
+			task.SetDefaults(ctx)
+			err := task.Validate(ctx)
+			if err != nil {
+				t.Errorf("Task.Validate() returned error for valid Task: %v", err)
+			}
+		})
+	}
+}
+
+func TestTaskValidateWorkspaceVariableReferencesError(t *testing.T) {
+	tests := []struct {
+		name          string
+		workspaces    []v1beta1.WorkspaceDeclaration
+		steps         []v1beta1.Step
+		sidecars      []v1beta1.Sidecar
+		expectedError apis.FieldError
+	}{{
+		name: "undeclared workspace in script",
+		steps: []v1beta1.Step{{
+			Name:   "step1",
+			Image:  "my-image",
+			Script: "echo $(workspaces.undeclared.path)",
+		}},
+		expectedError: apis.FieldError{
+			Message: "non-existent variable `undeclared` in \"echo $(workspaces.undeclared.path)\"",
+			Paths:   []string{"spec.steps[0].script"},
+		},
+	}, {
+		name: "undeclared workspace in args",
+		steps: []v1beta1.Step{{
+			Name:  "step1",
+			Image: "my-image",
+			Args:  []string{"--path=$(workspaces.missing.path)"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "--path=$(workspaces.missing.path)"`,
+			Paths:   []string{"spec.steps[0].args[0]"},
+		},
+	}, {
+		name: "invalid workspace property",
+		workspaces: []v1beta1.WorkspaceDeclaration{{
+			Name: "myws",
+		}},
+		steps: []v1beta1.Step{{
+			Name:   "step1",
+			Image:  "my-image",
+			Script: "echo $(workspaces.myws.invalid)",
+		}},
+		expectedError: apis.FieldError{
+			Message: "non-existent variable `invalid` in \"echo $(workspaces.myws.invalid)\"",
+			Paths:   []string{"spec.steps[0].script"},
+		},
+	}, {
+		name: "workspace reference in working dir",
+		steps: []v1beta1.Step{{
+			Name:       "step1",
+			Image:      "my-image",
+			WorkingDir: "$(workspaces.nonexistent.path)",
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(workspaces.nonexistent.path)"`,
+			Paths:   []string{"spec.steps[0].workingDir"},
+		},
+	}, {
+		name: "bare workspace reference without property",
+		workspaces: []v1beta1.WorkspaceDeclaration{{
+			Name: "myws",
+		}},
+		steps: []v1beta1.Step{{
+			Name:   "step1",
+			Image:  "my-image",
+			Script: "echo $(workspaces.myws)",
+		}},
+		expectedError: apis.FieldError{
+			Message: "non-existent variable `$(workspaces.myws)` in \"echo $(workspaces.myws)\"",
+			Paths:   []string{"spec.steps[0].script"},
+		},
+	}, {
+		name: "undeclared workspace in sidecar script",
+		steps: []v1beta1.Step{{
+			Name:  "step1",
+			Image: "my-image",
+		}},
+		sidecars: []v1beta1.Sidecar{{
+			Name:   "sidecar1",
+			Image:  "my-image",
+			Script: "echo $(workspaces.undeclared.path)",
+		}},
+		expectedError: apis.FieldError{
+			Message: "non-existent variable `undeclared` in \"echo $(workspaces.undeclared.path)\"",
+			Paths:   []string{"spec.sidecars[0].script"},
+		},
+	}, {
+		name: "invalid workspace property in sidecar args",
+		workspaces: []v1beta1.WorkspaceDeclaration{{
+			Name: "myws",
+		}},
+		steps: []v1beta1.Step{{
+			Name:  "step1",
+			Image: "my-image",
+		}},
+		sidecars: []v1beta1.Sidecar{{
+			Name:  "sidecar1",
+			Image: "my-image",
+			Args:  []string{"$(workspaces.myws.invalid)"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(workspaces.myws.invalid)"`,
+			Paths:   []string{"spec.sidecars[0].args[0]"},
+		},
+	}, {
+		name: "undeclared workspace in stdoutConfig path",
+		steps: []v1beta1.Step{{
+			Name:         "step1",
+			Image:        "my-image",
+			StdoutConfig: &v1beta1.StepOutputConfig{Path: "$(workspaces.missing.path)/stdout.txt"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(workspaces.missing.path)/stdout.txt"`,
+			Paths:   []string{"spec.steps[0].stdoutConfig.path"},
+		},
+	}, {
+		name: "undeclared workspace in stderrConfig path",
+		steps: []v1beta1.Step{{
+			Name:         "step1",
+			Image:        "my-image",
+			StderrConfig: &v1beta1.StepOutputConfig{Path: "$(workspaces.missing.path)/stderr.txt"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(workspaces.missing.path)/stderr.txt"`,
+			Paths:   []string{"spec.steps[0].stderrConfig.path"},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task := &v1beta1.Task{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: v1beta1.TaskSpec{
+					Workspaces: tt.workspaces,
+					Steps:      tt.steps,
+					Sidecars:   tt.sidecars,
+				},
+			}
+			ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
+			task.SetDefaults(ctx)
+			err := task.Validate(ctx)
+			if err == nil {
+				t.Fatalf("Expected an error, got nothing for %v", task)
+			}
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("Task.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestTaskSpecValidateError(t *testing.T) {
 	type fields struct {
 		Params       []v1beta1.ParamSpec
