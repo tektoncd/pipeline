@@ -127,9 +127,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 	return r.resolve(ctx, key, rr)
 }
 
+// resolveResult carries the single terminal outcome of a resolver worker
+// goroutine: either err is set or resource is set, never both.
+type resolveResult struct {
+	resource ResolvedResource
+	err      error
+}
+
 func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.ResolutionRequest) error {
-	errChan := make(chan error, 1)
-	resourceChan := make(chan ResolvedResource, 1)
+	resultChan := make(chan resolveResult, 1)
 
 	paramsMap := make(map[string]string)
 	for _, p := range rr.Spec.Params {
@@ -152,48 +158,50 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 	defer cancelFn()
 
 	go func() {
-		validationError := r.resolver.ValidateParams(resolutionCtx, rr.Spec.Params)
-		if validationError != nil {
-			errChan <- &resolutioncommon.InvalidRequestError{
-				ResolutionRequestKey: key,
-				Message:              validationError.Error(),
-			}
-			return
-		}
-		resource, resolveErr := r.resolver.Resolve(resolutionCtx, rr.Spec.Params)
-		if resolveErr != nil {
-			errChan <- &resolutioncommon.GetResourceError{
-				ResolverName: r.resolver.GetName(resolutionCtx),
-				Key:          key,
-				Original:     resolveErr,
-			}
-			return
-		}
-		if err := ValidateResolvedResource(resource); err != nil {
-			errChan <- &resolutioncommon.GetResourceError{
-				ResolverName: r.resolver.GetName(resolutionCtx),
-				Key:          key,
-				Original:     fmt.Errorf("resolved resource validation error: %w", err),
-			}
-			return
-		}
-		resourceChan <- resource
+		resultChan <- r.asyncResolve(resolutionCtx, key, rr.Spec.Params)
 	}()
 
 	select {
-	case err := <-errChan:
-		if err != nil {
-			return r.OnError(ctx, rr, err)
+	case res := <-resultChan:
+		if res.err != nil {
+			return r.OnError(ctx, rr, res.err)
 		}
+		return r.writeResolvedData(ctx, rr, res.resource)
 	case <-resolutionCtx.Done():
 		if err := resolutionCtx.Err(); err != nil {
 			return r.OnError(ctx, rr, err)
 		}
-	case resource := <-resourceChan:
-		return r.writeResolvedData(ctx, rr, resource)
 	}
 
 	return errors.New("unknown error")
+}
+
+// asyncResolve validates and resolves off the reconcile path and returns
+// exactly one result so the worker goroutine cannot send twice.
+func (r *Reconciler) asyncResolve(ctx context.Context, key string, params []pipelinev1.Param) resolveResult {
+	validationError := r.resolver.ValidateParams(ctx, params)
+	if validationError != nil {
+		return resolveResult{err: &resolutioncommon.InvalidRequestError{
+			ResolutionRequestKey: key,
+			Message:              validationError.Error(),
+		}}
+	}
+	resource, resolveErr := r.resolver.Resolve(ctx, params)
+	if resolveErr != nil {
+		return resolveResult{err: &resolutioncommon.GetResourceError{
+			ResolverName: r.resolver.GetName(ctx),
+			Key:          key,
+			Original:     resolveErr,
+		}}
+	}
+	if err := ValidateResolvedResource(resource); err != nil {
+		return resolveResult{err: &resolutioncommon.GetResourceError{
+			ResolverName: r.resolver.GetName(ctx),
+			Key:          key,
+			Original:     fmt.Errorf("resolved resource validation error: %w", err),
+		}}
+	}
+	return resolveResult{resource: resource}
 }
 
 // OnError is used to handle any situation where a ResolutionRequest has
