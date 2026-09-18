@@ -133,6 +133,14 @@ func PipelineTaskResultRefs(pt *PipelineTask) []*ResultRef {
 		expressions, _ := whenExpression.GetVarSubstitutionExpressions()
 		refs = append(refs, NewResultRefs(expressions)...)
 	}
+	if pt.Matrix.HasInclude() {
+		for _, include := range pt.Matrix.Include {
+			for _, whenExpression := range include.When {
+				expressions, _ := whenExpression.GetVarSubstitutionExpressions()
+				refs = append(refs, NewResultRefs(expressions)...)
+			}
+		}
+	}
 	taskSubExpressions := pt.GetVarSubstitutionExpressions()
 	refs = append(refs, NewResultRefs(taskSubExpressions)...)
 	return refs
