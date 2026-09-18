@@ -55,11 +55,6 @@ for the name, namespace and defaults that the resolver ships with.
 | `api-token-secret-key`       | The key within the token secret containing the actual secret. Required if using the authenticated API with `org` and `repo`.                                  | `oauth`, `token`                                                 |
 | `api-token-secret-namespace` | The namespace containing the token secret, if not `default`.                                                                                                  | `other-namespace`                                                |
 | `default-org`                | The default organization to look for repositories under when using the authenticated API, if not specified in the resolver parameters. Optional.              | `tektoncd`, `kubernetes`                                         |
-| `backoff-duration`           | The initial duration for a backoff when a resolution request fails. Default: `2s`.                                                                            | `500ms`, `2s`                                                    |
-| `backoff-factor`             | The factor by which the sleep duration increases every step. Default: `2.0`.                                                                                  | `2.5`, `4.0`                                                     |
-| `backoff-jitter`             | A random amount of additional sleep between 0 and duration * jitter. Default: `0.1`.                                                                          | `0.1`, `0.5`                                                     |
-| `backoff-steps`              | The total number of resolution attempts. Set to `1` to disable retries. Default: `2`.                                                                         | `3`, `7`                                                         |
-| `backoff-cap`                | The maximum backoff duration. If reached, remaining steps are zeroed. Default: `10s`.                                                                         | `10s`, `20s`                                                     |
 
 ### Caching Options
 
@@ -70,6 +65,8 @@ The git resolver supports caching of resolved resources to improve performance. 
 | `always` | Always cache resolved resources. This is the most aggressive caching strategy and will cache all resolved resources regardless of their source. |
 | `never` | Never cache resolved resources. This disables caching completely. |
 | `auto` | Caching will only occur when revision is a commit hash. (default) |
+
+**Note** : The cache parameter must be under `pipelineRef.params` or `taskRef.params`, not `spec.params`.
 
 ### Cache Configuration
 
@@ -154,6 +151,58 @@ spec:
     #   value: "token"
 ```
 
+#### Task Resolution with Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: git-clone-demo-tr
+spec:
+  taskRef:
+    resolver: git
+    params:
+    - name: url
+      value: https://github.com/tektoncd/catalog.git
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: task/git-clone/0.6/git-clone.yaml
+    - name: cache   # cache param under spec.taskRef.params
+      value: always
+    # Uncomment the following lines to use a secret with a token
+    # - name: gitToken
+    #   value: "secret-with-token"
+    # - name: gitTokenKey (optional, defaults to "token")
+    #   value: "token"
+```
+
+#### Task Resolution without Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: git-clone-demo-tr
+spec:
+  taskRef:
+    resolver: git
+    params:
+    - name: url
+      value: https://github.com/tektoncd/catalog.git
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: task/git-clone/0.6/git-clone.yaml
+    - name: cache   # cache param under spec.taskRef.params
+      value: never
+    # Uncomment the following lines to use a secret with a token
+    # - name: gitToken
+    #   value: "secret-with-token"
+    # - name: gitTokenKey (optional, defaults to "token")
+    #   value: "token"
+```
+
 #### Pipeline resolution
 
 ```yaml
@@ -179,6 +228,58 @@ spec:
   params:
   - name: name
     value: Ranni
+```
+
+#### Pipeline Resolution with Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: git-clone-demo-pr
+spec:
+  pipelineRef:
+    resolver: git
+    params:
+    - name: url
+      value: https://github.com/tektoncd/catalog.git
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: pipeline/simple/0.1/simple.yaml
+    - name: cache   # cache param under spec.pipelineRef.params
+      value: always
+    # Uncomment the following lines to use a secret with a token
+    # - name: gitToken
+    #   value: "secret-with-token"
+    # - name: gitTokenKey (optional, defaults to "token")
+    #   value: "token"
+```
+
+#### Pipeline Resolution without Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: git-clone-demo-pr
+spec:
+  pipelineRef:
+    resolver: git
+    params:
+    - name: url
+      value: https://github.com/tektoncd/catalog.git
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: pipeline/simple/0.1/simple.yaml
+    - name: cache   # cache param under spec.pipelineRef.params
+      value: never
+    # Uncomment the following lines to use a secret with a token
+    # - name: gitToken
+    #   value: "secret-with-token"
+    # - name: gitTokenKey (optional, defaults to "token")
+    #   value: "token"
 ```
 
 ### Authenticated API
