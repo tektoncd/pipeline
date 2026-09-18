@@ -54,6 +54,7 @@ var (
 	debugBeforeStep     = flag.Bool("debug_before_step", false, "If specified, wait for a debugger to attach before executing the step")
 	onError             = flag.String("on_error", "", "Set to \"continue\" to ignore an error and continue when a container terminates with a non-zero exit code."+
 		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps.")
+	previousStepMetadataDir    = flag.String("previous_step_metadata_dir", "", "Previous step metadata directory containing reported task result fingerprints")
 	stepMetadataDir            = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
 	resultExtractionMethod     = flag.String("result_from", entrypoint.ResultExtractionMethodTerminationMessage, "The method using which to extract results from tasks. Default is using the termination message.")
 	compressTerminationMessage = flag.Bool("compress_termination_message", false, "If true, compress termination messages with flate to fit more results in the 4KB Kubernetes limit.")
@@ -148,6 +149,7 @@ func main() {
 		DebugBeforeStep:            *debugBeforeStep,
 		OnError:                    *onError,
 		StepMetadataDir:            *stepMetadataDir,
+		PreviousStepMetadataDir:    *previousStepMetadataDir,
 		SpireWorkloadAPI:           spireWorkloadAPI,
 		ResultExtractionMethod:     *resultExtractionMethod,
 		CompressTerminationMessage: *compressTerminationMessage,

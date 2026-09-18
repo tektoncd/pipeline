@@ -18,6 +18,7 @@ package entrypoint
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -164,6 +165,9 @@ type Entrypointer struct {
 	StepMetadataDir string
 	// SpireWorkloadAPI connects to spire and does obtains SVID based on taskrun
 	SpireWorkloadAPI EntrypointerAPIClient
+	// PreviousStepMetadataDir is the previous step's read-only metadata directory.
+	// It carries fingerprints of task results already reported by earlier steps.
+	PreviousStepMetadataDir string
 	// ResultsDirectory is the directory to find results, defaults to pipeline.DefaultResultPath
 	ResultsDirectory string
 	// ResultExtractionMethod is the method using which the controller extracts the results from the task pod.
@@ -198,13 +202,15 @@ type PostWriter interface {
 
 // Go optionally waits for a file, runs the command, and writes a
 // post file.
-func (e Entrypointer) Go() error {
+func (e Entrypointer) Go() (runErr error) {
 	output := []result.RunResult{}
-	defer func() {
-		if wErr := e.writeTerminationMessage(e.TerminationPath, output); wErr != nil {
-			log.Fatalf("Error while writing message: %s", wErr)
-		}
-	}()
+	var postErr error
+	postPending := false
+	post := func(err error) { postErr, postPending = err, true }
+	// Do not release the next step until results have been collected and saved.
+	// Otherwise that step can overwrite the shared result files while we read them.
+	var hashes taskResultHashes
+	defer func() { runErr = e.finish(output, hashes, postPending, postErr, runErr) }()
 
 	if err := os.MkdirAll(filepath.Join(e.StepMetadataDir, "results"), os.ModePerm); err != nil {
 		return err
@@ -218,7 +224,7 @@ func (e Entrypointer) Go() error {
 			// *but* we write postfile to make next steps bail too.
 			// In case of breakpoint on failure do not write post file.
 			if !e.BreakpointOnFailure {
-				e.WritePostFile(e.PostFile, err)
+				post(err)
 			}
 			output = append(output, result.RunResult{
 				Key:        "StartedAt",
@@ -235,6 +241,13 @@ func (e Entrypointer) Go() error {
 	}
 
 	var err error
+	if e.tracksTaskResults() {
+		hashes, err = readTaskResultHashes(e.PreviousStepMetadataDir)
+		if err != nil {
+			post(err)
+			return err
+		}
+	}
 	if e.DebugBeforeStep {
 		err = e.waitBeforeStepDebug()
 	}
@@ -279,7 +292,7 @@ func (e Entrypointer) Go() error {
 		default:
 			slog.Info("Step was skipped due to when expressions were evaluated to false.")
 			output = append(output, e.outputRunResult(TerminationReasonSkipped))
-			e.WritePostFile(e.PostFile, nil)
+			post(nil)
 			e.WriteExitCodeFile(e.StepMetadataDir, "0")
 			return nil
 		}
@@ -288,14 +301,14 @@ func (e Entrypointer) Go() error {
 	var ee *exec.ExitError
 	switch {
 	case err != nil && errors.Is(err, errDebugBeforeStep):
-		e.WritePostFile(e.PostFile, err)
+		post(err)
 	case err != nil && errors.Is(err, ErrContextCanceled):
 		slog.Info("Step was canceling")
 		output = append(output, e.outputRunResult(TerminationReasonCancelled))
-		e.WritePostFile(e.PostFile, ErrContextCanceled)
+		post(ErrContextCanceled)
 		e.WriteExitCodeFile(e.StepMetadataDir, syscall.SIGKILL.String())
 	case errors.Is(err, ErrContextDeadlineExceeded):
-		e.WritePostFile(e.PostFile, err)
+		post(err)
 		output = append(output, e.outputRunResult(TerminationReasonTimeoutExceeded))
 	case err != nil && e.BreakpointOnFailure:
 		slog.Info("Skipping writing to PostFile")
@@ -307,15 +320,15 @@ func (e Entrypointer) Go() error {
 			Value:      exitCode,
 			ResultType: result.InternalTektonResultType,
 		})
-		e.WritePostFile(e.PostFile, nil)
+		post(nil)
 		e.WriteExitCodeFile(e.StepMetadataDir, exitCode)
 	case err == nil:
 		// if err is nil, write zero exit code and a post file
-		e.WritePostFile(e.PostFile, nil)
+		post(nil)
 		e.WriteExitCodeFile(e.StepMetadataDir, "0")
 	default:
 		// for a step without continue on error and any error, write a post file with .err
-		e.WritePostFile(e.PostFile, err)
+		post(err)
 	}
 
 	// strings.Split(..) with an empty string returns an array that contains one element, an empty string.
@@ -325,7 +338,7 @@ func (e Entrypointer) Go() error {
 		if e.ResultsDirectory != "" {
 			resultPath = e.ResultsDirectory
 		}
-		if err := e.readResultsFromDisk(ctx, resultPath, result.TaskRunResultType); err != nil {
+		if err := e.readResultsFromDisk(ctx, resultPath, result.TaskRunResultType, hashes); err != nil {
 			slog.Error("Error while substituting step artifacts:", slog.Any("error", err))
 			return err
 		}
@@ -335,7 +348,7 @@ func (e Entrypointer) Go() error {
 		if e.ResultsDirectory != "" {
 			stepResultPath = e.ResultsDirectory
 		}
-		if err := e.readResultsFromDisk(ctx, stepResultPath, result.StepResultType); err != nil {
+		if err := e.readResultsFromDisk(ctx, stepResultPath, result.StepResultType, nil); err != nil {
 			slog.Error("Error while substituting step artifacts:", slog.Any("error", err))
 			return err
 		}
@@ -346,6 +359,27 @@ func (e Entrypointer) Go() error {
 	}
 
 	return err
+}
+
+// finish publishes results before releasing the next step. Collection errors
+// must stop the task even when the user's command has onError: continue.
+func (e Entrypointer) finish(output []result.RunResult, hashes taskResultHashes, postPending bool, postErr, runErr error) error {
+	if err := e.writeTerminationMessage(e.TerminationPath, output); err != nil {
+		runErr = err
+	}
+	if hashes != nil {
+		if err := hashes.write(e.StepMetadataDir); err != nil {
+			runErr = err
+		}
+	}
+	if postPending {
+		var exitErr *exec.ExitError
+		if runErr != nil && !errors.As(runErr, &exitErr) {
+			postErr = runErr
+		}
+		e.WritePostFile(e.PostFile, postErr)
+	}
+	return runErr
 }
 
 func readArtifacts(fp string, resultType result.ResultType) ([]result.RunResult, error) {
@@ -437,8 +471,9 @@ func (e Entrypointer) waitBeforeStepDebug() error {
 	return nil
 }
 
-func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string, resultType result.ResultType) error {
+func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string, resultType result.ResultType, hashes taskResultHashes) error {
 	output := []result.RunResult{}
+	updatedHashes := taskResultHashes{}
 	results := e.Results
 	if resultType == result.StepResultType {
 		results = e.StepResults
@@ -453,7 +488,13 @@ func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string,
 		} else if err != nil {
 			return err
 		}
-		// if the file doesn't exist, ignore it
+		if resultType == result.TaskRunResultType && e.ResultExtractionMethod == ResultExtractionMethodTerminationMessage {
+			digest := fmt.Sprintf("%x", sha256.Sum256(fileContents))
+			if previous, ok := hashes[resultFile]; ok && previous == digest {
+				continue
+			}
+			updatedHashes[resultFile] = digest
+		}
 		output = append(output, result.RunResult{
 			Key:        resultFile,
 			Value:      string(fileContents),
@@ -471,6 +512,11 @@ func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string,
 	if e.ResultExtractionMethod == ResultExtractionMethodTerminationMessage && len(output) != 0 {
 		if err := e.writeTerminationMessage(e.TerminationPath, output); err != nil {
 			return err
+		}
+	}
+	if hashes != nil {
+		for key, digest := range updatedHashes {
+			hashes[key] = digest
 		}
 	}
 	return nil

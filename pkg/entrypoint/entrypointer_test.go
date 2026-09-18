@@ -440,7 +440,7 @@ func TestReadResultsFromDisk(t *testing.T) {
 				TerminationPath:        terminationPath,
 				ResultExtractionMethod: config.ResultExtractionMethodTerminationMessage,
 			}
-			if err := e.readResultsFromDisk(ctx, "", c.resultType); err != nil {
+			if err := e.readResultsFromDisk(ctx, "", c.resultType, nil); err != nil {
 				t.Fatal(err)
 			}
 			msg, err := os.ReadFile(terminationPath)

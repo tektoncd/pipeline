@@ -61,6 +61,35 @@ After the execution of the script in the step, the entrypointer `jsonifies` and 
 Here are the important functions that come into play:
 1. [Entrypointer copies results to termination path and enforces 4K limit](https://github.com/tektoncd/pipeline/blob/59458291bdbe67300a989f190d8d51c3bbac1064/pkg/entrypoint/entrypointer.go#L104-L221)
 
+### Avoiding duplicate task results across steps
+
+With termination-message extraction, each step compares task result contents
+against SHA-256 fingerprints of the values already reported by earlier steps.
+Only new or changed values are added to its termination message. This keeps
+results from accumulating in every later container's termination message.
+
+The cumulative fingerprints are stored in `task-results.json` under the
+step's metadata directory. The controller passes the previous step's metadata
+directory through `-previous_step_metadata_dir`. Existing per-step runtime
+volumes provide a writable directory for the current step and read-only access
+for subsequent steps; no new volumes are needed. Skipped steps carry the
+fingerprints forward without reporting results.
+
+Fingerprints are compared to reported values, rather than a snapshot taken
+before the command runs. This preserves pre-populated results and lets steps
+read, append to, remove, or overwrite files in the shared `/tekton/results`
+directory. Content comparison detects same-size changes even if file
+modification times are identical. An identical rewrite needs no new report
+because the controller already has that value.
+
+The entrypoint collects and signs results, writes the termination message and
+fingerprints, and only then signals the next step. This prevents a subsequent
+step from changing shared result files during collection. A collection or
+metadata-write failure signals failure to subsequent steps.
+
+Step results retain their per-step collection behavior. Sidecar-log extraction
+continues to read the shared results directory and does not use fingerprints.
+
 ### The taskrun reconciler
 The taskrun reconciler executes a periodic loop performing multiple actions depending on the status of the taskrun. Once such action is `reconcile`. In this action, the reconciler extracts the termination message from the state of the pods (`State.Terminated.Message`). The message string is then parsed and the results are extracted and attached to the taskrun's `status` from where it can used by future tasks or accessed by the user.
 
