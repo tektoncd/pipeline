@@ -183,6 +183,79 @@ func TestGetImageWithImagePullSecrets(t *testing.T) {
 	}
 }
 
+func TestGetImageCacheScopedByNamespace(t *testing.T) {
+	// Regression test for https://github.com/tektoncd/pipeline/issues/10633
+	//
+	// The entrypoint cache must not serve a cache hit populated using one
+	// namespace's credentials to a TaskRun in a different namespace, even
+	// when both reference the same image digest. Otherwise a tenant without
+	// pull credentials for an image could learn its Entrypoint/Cmd by
+	// piggybacking on another tenant's earlier, authenticated lookup.
+	ctx := t.Context()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	ftp := newfakeHTTP()
+	s := httptest.NewServer(&ftp)
+	defer s.Close()
+
+	u, err := url.Parse(s.URL)
+	if err != nil {
+		t.Fatalf("parsing url: %v", err)
+	}
+
+	task := &pipelinev1.Task{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1",
+			Kind:       "Task",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-create-image",
+		},
+	}
+
+	ref, err := remotetest.CreateImageWithAnnotations(u.Host+"/task/test-cross-namespace-image", remotetest.DefaultObjectAnnotationMapper, task)
+	if err != nil {
+		t.Fatalf("uploading image failed unexpectedly with an error: %v", err)
+	}
+
+	imgRef, err := name.ParseReference(ref)
+	if err != nil {
+		t.Fatalf("digest %s is not a valid reference: %v", ref, err)
+	}
+
+	const (
+		tenantA = "tenant-a"
+		tenantB = "tenant-b"
+	)
+
+	tenantASecret := generateSecret(u.Host, username, password)
+	tenantASecret.Namespace = tenantA
+
+	client := fakeclient.NewSimpleClientset(
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: tenantA}},
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: tenantB}},
+		tenantASecret,
+	)
+
+	entrypointCache, err := NewEntrypointCache(client)
+	if err != nil {
+		t.Fatalf("creating entrypointCache: %v", err)
+	}
+
+	// tenant-a has valid pull credentials for the image and should succeed,
+	// populating the cache.
+	if _, err := entrypointCache.get(ctx, imgRef, tenantA, "", []corev1.LocalObjectReference{{Name: imagePullSecretsName}}, true); err != nil {
+		t.Fatalf("get() for tenant-a: unexpected error: %v", err)
+	}
+
+	// tenant-b has no pull credentials for the same digest. It must not be
+	// served tenant-a's cached result.
+	if _, err := entrypointCache.get(ctx, imgRef, tenantB, "", nil, true); err == nil {
+		t.Fatalf("get() for tenant-b: expected error due to missing credentials, but the lookup succeeded (cache leaked across namespaces)")
+	}
+}
+
 func mustRandomImage(t *testing.T) v1.Image {
 	t.Helper()
 	img, err := random.Image(10, 10)
