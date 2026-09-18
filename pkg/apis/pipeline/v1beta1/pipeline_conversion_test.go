@@ -21,6 +21,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/google/go-cmp/cmp"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -248,6 +249,51 @@ func TestPipelineConversion(t *testing.T) {
 				})
 			}
 		})
+	}
+}
+
+func TestPipelineTaskResourceOverridesConversion(t *testing.T) {
+	in := &v1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipeline", Namespace: "default"},
+		Spec: v1.PipelineSpec{
+			Tasks: []v1.PipelineTask{{
+				Name:    "task",
+				TaskRef: &v1.TaskRef{Name: "task"},
+				StepSpecs: []v1.TaskRunStepSpec{{
+					Name: "step",
+					ComputeResources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+					},
+				}},
+				SidecarSpecs: []v1.TaskRunSidecarSpec{{
+					Name: "sidecar",
+					ComputeResources: corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
+					},
+				}},
+			}, {
+				Name:             "task-level",
+				TaskRef:          &v1.TaskRef{Name: "task-level"},
+				ComputeResources: &corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("500m")}},
+			}},
+			Finally: []v1.PipelineTask{{
+				Name:             "finally",
+				TaskRef:          &v1.TaskRef{Name: "finally"},
+				ComputeResources: &corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")}},
+			}},
+		},
+	}
+
+	intermediate := &v1beta1.Pipeline{}
+	if err := intermediate.ConvertFrom(t.Context(), in); err != nil {
+		t.Fatalf("ConvertFrom() = %v", err)
+	}
+	got := &v1.Pipeline{}
+	if err := intermediate.ConvertTo(t.Context(), got); err != nil {
+		t.Fatalf("ConvertTo() = %v", err)
+	}
+	if d := cmp.Diff(in, got); d != "" {
+		t.Errorf("roundtrip %s", diff.PrintWantGot(d))
 	}
 }
 
