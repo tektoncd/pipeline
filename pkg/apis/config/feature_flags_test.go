@@ -81,6 +81,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableConciseResolverSyntax:              true,
 				EnableKubernetesSidecar:                  true,
 				EnableTerminationMessageCompression:      true,
+				EnableImageWorkspace:                     true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
