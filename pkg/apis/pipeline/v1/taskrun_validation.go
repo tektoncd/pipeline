@@ -25,7 +25,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/strings/slices"
@@ -99,6 +98,14 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if ts.ComputeResources != nil {
 		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "computeResources", config.BetaAPIFields).ViaField("computeResources"))
 		errs = errs.Also(validateTaskRunComputeResources(ts.ComputeResources, ts.StepSpecs))
+		// Variable substitution is not applied to TaskRun-level computeResources,
+		// so reject unresolved variable references.
+		if ts.ComputeResources.HasUnresolvedReferences() {
+			errs = errs.Also(apis.ErrInvalidValue(
+				"variable substitution is not supported in TaskRun-level computeResources",
+				"computeResources",
+			))
+		}
 	}
 
 	if ts.Status != "" {
@@ -324,15 +331,22 @@ func validateStepSpecs(specs []TaskRunStepSpec) (errs *apis.FieldError) {
 		} else {
 			names = append(names, o.Name)
 		}
+		// Variable substitution is not applied to stepSpecs computeResources.
+		if o.ComputeResources.HasUnresolvedReferences() {
+			errs = errs.Also(apis.ErrInvalidValue(
+				"variable substitution is not supported in stepSpecs computeResources",
+				"computeResources",
+			).ViaIndex(i))
+		}
 	}
 	errs = errs.Also(validateNoDuplicateNames(names, true))
 	return errs
 }
 
 // validateTaskRunComputeResources ensures that compute resources are not configured at both the step level and the task level
-func validateTaskRunComputeResources(computeResources *corev1.ResourceRequirements, specs []TaskRunStepSpec) (errs *apis.FieldError) {
+func validateTaskRunComputeResources(computeResources *ComputeResourceRequirements, specs []TaskRunStepSpec) (errs *apis.FieldError) {
 	for _, spec := range specs {
-		if spec.ComputeResources.Size() != 0 && computeResources != nil {
+		if !spec.ComputeResources.IsZero() && computeResources != nil {
 			return apis.ErrMultipleOneOf(
 				"stepSpecs.resources",
 				"computeResources",
@@ -349,6 +363,13 @@ func validateSidecarSpecs(specs []TaskRunSidecarSpec) (errs *apis.FieldError) {
 			errs = errs.Also(apis.ErrMissingField("name").ViaIndex(i))
 		} else {
 			names = append(names, o.Name)
+		}
+		// Variable substitution is not applied to sidecarSpecs computeResources.
+		if o.ComputeResources.HasUnresolvedReferences() {
+			errs = errs.Also(apis.ErrInvalidValue(
+				"variable substitution is not supported in sidecarSpecs computeResources",
+				"computeResources",
+			).ViaIndex(i))
 		}
 	}
 	errs = errs.Also(validateNoDuplicateNames(names, true))
