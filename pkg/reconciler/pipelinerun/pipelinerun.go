@@ -450,8 +450,11 @@ func (c *Reconciler) resolvePipelineState(
 			// premature PipelineRun failure. Pod eviction is the only transient failure
 			// that can recover (pod gets rescheduled); all other failure reasons
 			// (Failed, Cancelled, TimedOut, etc.) are deterministic and cannot recover.
+			// A failed TaskRun only moves back to a non-terminal state on retry, so the
+			// live GET is skipped when the TaskRun has no retries left — it cannot
+			// change the recovery decision and would only add API server load.
 			if cond := tr.Status.GetCondition(apis.ConditionSucceeded); cond != nil && cond.IsFalse() &&
-				cond.Reason == v1.TaskRunReasonPodEvicted.String() {
+				cond.Reason == v1.TaskRunReasonPodEvicted.String() && tr.IsRetriable() {
 				freshTR, freshErr := c.PipelineClientSet.TektonV1().TaskRuns(pr.Namespace).Get(ctx, name, metav1.GetOptions{})
 				if freshErr != nil {
 					// Eviction recovery never deletes the TaskRun — the controller
