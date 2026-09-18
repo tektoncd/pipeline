@@ -118,6 +118,26 @@ func TestOnStoreWithEnabled(t *testing.T) {
 	}
 }
 
+func TestOnSecretBeforeConfig(t *testing.T) {
+	tp := New("test-service", zap.NewNop().Sugar())
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "jaeger",
+		},
+		Data: map[string][]byte{
+			"username": []byte("user"),
+			"password": []byte("pass"),
+		},
+	}
+
+	tp.OnSecret(secret)
+
+	if tp.username == "user" || tp.password == "pass" {
+		t.Errorf("Tracing provider is updated before config is initialized")
+	}
+}
+
 func TestOnSecretWithSecretName(t *testing.T) {
 	tp := New("test-service", zap.NewNop().Sugar())
 
