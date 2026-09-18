@@ -23,8 +23,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
+
+	"knative.dev/pkg/logging"
 )
 
 type cmdExecutor = func(context.Context, string, ...string) *exec.Cmd
@@ -33,6 +36,7 @@ type remote struct {
 	url         string
 	username    string
 	password    string
+	pathInRepo  string
 	cmdExecutor cmdExecutor
 }
 
@@ -48,31 +52,124 @@ func (r remote) clone(ctx context.Context) (*repository, func(), error) {
 	}
 
 	repo := &repository{
-		url:       r.url,
-		username:  r.username,
-		password:  r.password,
-		directory: tmpDir,
-		executor:  r.cmdExecutor,
+		url:        r.url,
+		username:   r.username,
+		password:   r.password,
+		pathInRepo: r.pathInRepo,
+		directory:  tmpDir,
+		executor:   r.cmdExecutor,
 	}
 
-	// The "--" separator ensures that repo.url is always interpreted as
-	// a repository path, never as a flag — even if it starts with "-".
-	_, err = repo.execGit(ctx, "clone", "--depth=1", "--no-checkout", "--", repo.url, tmpDir)
-	if err != nil {
-		if strings.Contains(err.Error(), "could not read Username") {
-			err = errors.New("clone error: authentication required")
-		}
+	err = repo.clonePartialWithRetry(ctx)
+	if err == nil {
+		logging.FromContext(ctx).Debugf("git resolver: used partial, sparse clone for %q", r.url)
+		return repo, cleanupFunc, nil
+	}
+	logging.FromContext(ctx).Debugf("git resolver: partial clone failed after retry (%v), falling back to a full clone", err)
+
+	if err := repo.cloneFull(ctx); err != nil {
 		return nil, cleanupFunc, err
 	}
 	return repo, cleanupFunc, nil
 }
 
+// filteredOperationAttempts bounds the retries in clonePartialWithRetry and
+// fetchAndCheckoutWithRetry. A single transient network failure — as
+// distinct from a genuine capability rejection by the server — should not
+// immediately escalate to a full, unfiltered clone of what may be a very
+// large repository: retrying the same cheap filtered operation once is
+// strictly better for that case, and no worse for the "server doesn't
+// support this at all" case, which fails the same way on both attempts.
+// Deliberately not configurable yet — see local-validation.md and TODO.md
+// for the open question of whether upstream wants this tunable.
+const filteredOperationAttempts = 2
+
+// clonePartialWithRetry attempts a partial, sparse clone that fetches only
+// the directory containing pathInRepo instead of the whole commit, retrying
+// once (see filteredOperationAttempts) before giving up. This requires the
+// server to support uploadpack.allowFilter; any failure here — which is not
+// limited to that case — is left for the caller to fall back from. git's
+// error text is not a stable interface, so it is never pattern-matched to
+// decide whether to retry or fall back.
+func (repo *repository) clonePartialWithRetry(ctx context.Context) error {
+	var err error
+	for attempt := 1; attempt <= filteredOperationAttempts; attempt++ {
+		if err = repo.clonePartial(ctx); err == nil {
+			return nil
+		}
+		if attempt < filteredOperationAttempts {
+			logging.FromContext(ctx).Debugf("git resolver: partial clone attempt %d/%d failed (%v), retrying", attempt, filteredOperationAttempts, err)
+			if resetErr := repo.resetDirectory(); resetErr != nil {
+				return resetErr
+			}
+		}
+	}
+	return err
+}
+
+// resetDirectory removes and recreates repo.directory so a fresh clone
+// attempt has the empty target directory "git clone" requires, and marks
+// repo.partial false as soon as the previous clone's content is gone —
+// even if the subsequent MkdirAll fails, repo.partial must not claim a
+// partial clone that no longer exists on disk.
+func (repo *repository) resetDirectory() error {
+	if err := os.RemoveAll(repo.directory); err != nil {
+		return err
+	}
+	repo.partial = false
+	return os.MkdirAll(repo.directory, 0o755)
+}
+
+// cloneFull resets repo.directory and performs the original, unfiltered
+// clone sequence. It is the fallback target both when the initial partial
+// clone fails and — via checkout() — when a filtered fetch fails after an
+// otherwise-successful partial clone: the two are separate git invocations
+// against separate connections, so a server (or network) that tolerates
+// --filter at clone time is not guaranteed to at fetch time either.
+func (repo *repository) cloneFull(ctx context.Context) error {
+	if err := repo.resetDirectory(); err != nil {
+		return err
+	}
+
+	// The "--" separator ensures that repo.url is always interpreted as
+	// a repository path, never as a flag — even if it starts with "-".
+	_, err := repo.execGit(ctx, "clone", "--depth=1", "--no-checkout", "--", repo.url, repo.directory)
+	if err != nil {
+		if strings.Contains(err.Error(), "could not read Username") {
+			err = errors.New("clone error: authentication required")
+		}
+		return err
+	}
+	return nil
+}
+
+// clonePartial performs one attempt of the filtered, sparse clone. See
+// clonePartialWithRetry, its only caller.
+func (repo *repository) clonePartial(ctx context.Context) error {
+	if _, err := repo.execGit(ctx, "clone", "--depth=1", "--no-checkout", "--filter=blob:none", "--sparse", "--", repo.url, repo.directory); err != nil {
+		return err
+	}
+
+	// A root-level pathInRepo needs no cone at all: "--sparse" alone
+	// already materialises root-level files in cone mode.
+	if dir := path.Dir(repo.pathInRepo); dir != "." {
+		if _, err := repo.execGit(ctx, "sparse-checkout", "set", "--", dir); err != nil {
+			return err
+		}
+	}
+
+	repo.partial = true
+	return nil
+}
+
 type repository struct {
-	url       string
-	username  string
-	password  string
-	directory string
-	executor  cmdExecutor
+	url        string
+	username   string
+	password   string
+	pathInRepo string
+	partial    bool
+	directory  string
+	executor   cmdExecutor
 }
 
 func (repo *repository) currentRevision(ctx context.Context) (string, error) {
@@ -84,11 +181,54 @@ func (repo *repository) currentRevision(ctx context.Context) (string, error) {
 }
 
 func (repo *repository) checkout(ctx context.Context, revision string) error {
+	err := repo.fetchAndCheckoutWithRetry(ctx, revision)
+	if err == nil {
+		return nil
+	}
+	if !repo.partial {
+		// Already on the unfiltered sequence — nothing left to fall back to.
+		return err
+	}
+	logging.FromContext(ctx).Debugf("git resolver: filtered fetch/checkout failed after retry (%v), falling back to a full clone", err)
+
+	if fallbackErr := repo.cloneFull(ctx); fallbackErr != nil {
+		return fallbackErr
+	}
+	return repo.fetchAndCheckoutWithRetry(ctx, revision)
+}
+
+// fetchAndCheckoutWithRetry retries a failed fetch/checkout once (see
+// filteredOperationAttempts) before returning control to checkout(), which
+// decides whether to escalate to a full unfiltered clone. Retrying applies
+// whether or not repo.partial is set, since a flaky connection can affect
+// the unfiltered fetch (after a fallback, or when the clone itself already
+// used the unfiltered path) just as much as the filtered one.
+func (repo *repository) fetchAndCheckoutWithRetry(ctx context.Context, revision string) error {
+	var err error
+	for attempt := 1; attempt <= filteredOperationAttempts; attempt++ {
+		if err = repo.fetchAndCheckout(ctx, revision); err == nil {
+			return nil
+		}
+		if attempt < filteredOperationAttempts {
+			logging.FromContext(ctx).Debugf("git resolver: fetch/checkout attempt %d/%d failed (%v), retrying", attempt, filteredOperationAttempts, err)
+		}
+	}
+	return err
+}
+
+// fetchAndCheckout performs one attempt of the fetch and checkout. See
+// fetchAndCheckoutWithRetry, its only caller.
+func (repo *repository) fetchAndCheckout(ctx context.Context, revision string) error {
+	fetchArgs := []string{"origin", "--depth=1"}
+	if repo.partial {
+		fetchArgs = append(fetchArgs, "--filter=blob:none")
+	}
 	// The "--" separator ensures that 'revision' is always interpreted as
 	// a refspec, never as a flag. Without it, a revision like
 	// "--upload-pack=/path/to/binary" would be parsed as the
 	// --upload-pack flag by git, enabling argument injection.
-	_, err := repo.execGit(ctx, "fetch", "origin", "--depth=1", "--", revision)
+	fetchArgs = append(fetchArgs, "--", revision)
+	_, err := repo.execGit(ctx, "fetch", fetchArgs...)
 	if err != nil {
 		return err
 	}
