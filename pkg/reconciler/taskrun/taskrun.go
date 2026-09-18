@@ -934,6 +934,12 @@ func (c *Reconciler) handlePodCreationError(tr *v1.TaskRun, err error) error {
 		tr.Status.MarkResourceOngoing(podconvert.ReasonPodPending, "tried to create pod, but it already exists")
 	case isPodAdmissionFailed(err):
 		tr.Status.MarkResourceFailed(podconvert.ReasonPodAdmissionFailed, err)
+	case k8serrors.IsForbidden(err) && strings.Contains(err.Error(), "blockOwnerDeletion"):
+		// Transient GC admission error when RESTMapper is temporarily unavailable.
+		// Requeue instead of marking permanent failure.
+		tr.Status.StartTime = nil
+		tr.Status.MarkResourceOngoing(podconvert.ReasonPodPending, fmt.Sprint("transient forbidden during pod creation, retrying: ", err))
+		return controller.NewRequeueAfter(time.Second)
 	default:
 		// The pod creation failed with unknown reason. The most likely
 		// reason is that something is wrong with the spec of the Task, that we could
