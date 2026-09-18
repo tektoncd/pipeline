@@ -66,7 +66,7 @@ The git resolver supports caching of resolved resources to improve performance. 
 | `never` | Never cache resolved resources. This disables caching completely. |
 | `auto` | Caching will only occur when revision is a commit hash. (default) |
 
-**Note** : The cache parameter must be under `pipelineRef.params` or `taskRef.params`, not `spec.params`.
+**Note**: The cache parameter must be under `pipelineRef.params` or `taskRef.params`, not `spec.params`.
 
 ### Cache Configuration
 
