@@ -197,7 +197,7 @@ func TestResultsValidateValueError(t *testing.T) {
 			},
 		},
 		expectedError: apis.FieldError{
-			Message: `Could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got "not a valid format"`,
+			Message: `could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got "not a valid format"`,
 			Paths:   []string{"MY-RESULT.value"},
 		},
 	}, {
