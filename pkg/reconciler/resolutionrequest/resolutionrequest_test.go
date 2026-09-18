@@ -176,7 +176,7 @@ func TestReconcile(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			d := test.Data{
 				ResolutionRequests: []*v1beta1.ResolutionRequest{tc.input},
-				ConfigMaps:         th.NewDefaultsCofigMapInSlice(),
+				ConfigMaps:         th.NewDefaultsConfigMapInSlice(),
 			}
 
 			testAssets, cancel := getResolutionRequestController(t, d)
@@ -209,7 +209,7 @@ func TestReconcileWrapsLifecycleStatusError(t *testing.T) {
 	}
 	d := test.Data{
 		ResolutionRequests: []*v1beta1.ResolutionRequest{input},
-		ConfigMaps:         th.NewDefaultsCofigMapInSlice(),
+		ConfigMaps:         th.NewDefaultsConfigMapInSlice(),
 	}
 	testAssets, cancel := getResolutionRequestController(t, d)
 	defer cancel()
@@ -276,7 +276,7 @@ func TestReconcilePreservesResolverStatusOnConflict(t *testing.T) {
 			}
 			d := test.Data{
 				ResolutionRequests: []*v1beta1.ResolutionRequest{input},
-				ConfigMaps:         th.NewDefaultsCofigMapInSlice(),
+				ConfigMaps:         th.NewDefaultsConfigMapInSlice(),
 			}
 			testAssets, cancel := getResolutionRequestController(t, d)
 			defer cancel()
