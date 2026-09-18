@@ -37,6 +37,10 @@ func (r TaskResult) convertTo(ctx context.Context, sink *v1.TaskResult) {
 		sink.Value = &v1.ParamValue{}
 		r.Value.convertTo(ctx, sink.Value)
 	}
+	if r.Default != nil {
+		sink.Default = &v1.ParamValue{}
+		r.Default.convertTo(ctx, sink.Default)
+	}
 }
 
 func (r *TaskResult) convertFrom(ctx context.Context, source v1.TaskResult) {
@@ -53,5 +57,9 @@ func (r *TaskResult) convertFrom(ctx context.Context, source v1.TaskResult) {
 	if source.Value != nil {
 		r.Value = &ParamValue{}
 		r.Value.convertFrom(ctx, *source.Value)
+	}
+	if source.Default != nil {
+		r.Default = &ParamValue{}
+		r.Default.convertFrom(ctx, *source.Default)
 	}
 }
