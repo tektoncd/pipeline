@@ -157,3 +157,7 @@ data:
   #
   # See https://github.com/tektoncd/pipeline/issues/7691 for more info.
   enable-informer-cache-transforms: "true"
+  # Documentation-only description fields are stripped from the
+  # status.taskSpec/status.pipelineSpec snapshots by default to reduce etcd usage.
+  # Set this flag to "true" to keep those descriptions during a migration window.
+  keep-status-spec-descriptions: "false"
