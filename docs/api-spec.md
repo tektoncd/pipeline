@@ -325,6 +325,11 @@ A `ParamValue` may be a string, a list of string, or a map of string to string.
 
 ### TaskRunStatus
 
+The `taskSpec` snapshot omits documentation-only `description` fields by default.
+This does not change support for descriptions in the original Task or inline
+TaskRun spec. See [Status spec descriptions](additional-configs.md#status-spec-descriptions)
+for the retention setting and its effect on new snapshots.
+
 | Field                | Type                                | Requirement | Notes                                                                                                                           |
 |----------------------|-------------------------------------|-------------|---------------------------------------------------------------------------------------------------------------------------------|
 | `conditions`         | [][`Condition`](#condition)         | REQUIRED    | Condition type `Succeeded` MUST be populated. See [Status Signalling](#status-signalling) for details. Other types are OPTIONAL |
@@ -423,6 +428,10 @@ A `ParamValue` may be a string, a list of string, or a map of string to string.
 | `params`   | [][Param](#param) | RECOMMENDED | A field of ResolverRef. |
 
 ### PipelineRunStatus
+
+The `pipelineSpec` snapshot omits documentation-only `description` fields by default,
+including those in embedded Task specs. The original Pipeline and inline PipelineRun
+spec remain unchanged. See [Status spec descriptions](additional-configs.md#status-spec-descriptions).
 
 | Field             | Type                                            | Requirement | Notes                                                                                                                           |
 |-------------------|-------------------------------------------------|-------------|---------------------------------------------------------------------------------------------------------------------------------|
