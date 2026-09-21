@@ -536,7 +536,8 @@ type PipelineRunStatusFields struct {
 	// +listType=atomic
 	Results []PipelineRunResult `json:"results,omitempty"`
 
-	// PipelineSpec contains the exact spec used to instantiate the run.
+	// PipelineSpec contains the Pipeline spec used to instantiate the run, without documentation-only descriptions by default.
+	// Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation.
 	// See Pipeline.spec (API version: tekton.dev/v1)
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
