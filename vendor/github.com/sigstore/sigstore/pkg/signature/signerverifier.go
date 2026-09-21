@@ -19,7 +19,6 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
-	"crypto/mldsa"
 	"crypto/rsa"
 	"errors"
 	"os"
@@ -69,8 +68,6 @@ func LoadSignerVerifierWithOpts(privateKey crypto.PrivateKey, opts ...LoadOption
 			return LoadED25519phSignerVerifier(pk)
 		}
 		return LoadED25519SignerVerifier(pk)
-	case *mldsa.PrivateKey:
-		return LoadMLDSASignerVerifier(pk)
 	}
 	return nil, errors.New("unsupported public key type")
 }

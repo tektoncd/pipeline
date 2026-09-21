@@ -20,9 +20,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
-	"crypto/mldsa"
 	"crypto/rsa"
-	"crypto/sha1" //nolint:gosec
+	"crypto/sha1" // nolint:gosec
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
@@ -65,8 +64,6 @@ func UnmarshalPEMToPublicKey(pemBytes []byte) (crypto.PublicKey, error) {
 }
 
 // MarshalPublicKeyToDER converts a crypto.PublicKey into a PKIX, ASN.1 DER byte slice
-//
-// Deprecated: Use x509.MarshalPKIXPublicKey directly
 func MarshalPublicKeyToDER(pub crypto.PublicKey) ([]byte, error) {
 	if pub == nil {
 		return nil, errors.New("empty key")
@@ -76,7 +73,7 @@ func MarshalPublicKeyToDER(pub crypto.PublicKey) ([]byte, error) {
 
 // MarshalPublicKeyToPEM converts a crypto.PublicKey into a PEM-encoded byte slice
 func MarshalPublicKeyToPEM(pub crypto.PublicKey) ([]byte, error) {
-	derBytes, err := x509.MarshalPKIXPublicKey(pub)
+	derBytes, err := MarshalPublicKeyToDER(pub)
 	if err != nil {
 		return nil, err
 	}
@@ -87,11 +84,6 @@ func MarshalPublicKeyToPEM(pub crypto.PublicKey) ([]byte, error) {
 // subjectPublicKey (excluding the tag, length, and number of unused bits).
 // https://tools.ietf.org/html/rfc5280#section-4.2.1.2
 func SKID(pub crypto.PublicKey) ([]byte, error) {
-	if mldsaKey, ok := pub.(*mldsa.PublicKey); ok {
-		if _, err := ValidateMLDSAPublicKey(mldsaKey); err != nil {
-			return nil, err
-		}
-	}
 	derPubBytes, err := x509.MarshalPKIXPublicKey(pub)
 	if err != nil {
 		return nil, err
@@ -100,11 +92,11 @@ func SKID(pub crypto.PublicKey) ([]byte, error) {
 	if _, err := asn1.Unmarshal(derPubBytes, &spki); err != nil {
 		return nil, err
 	}
-	skid := sha1.Sum(spki.SubjectPublicKey.Bytes) //nolint:gosec
+	skid := sha1.Sum(spki.SubjectPublicKey.Bytes) // nolint:gosec
 	return skid[:], nil
 }
 
-// EqualKeys compares two public keys. Supports RSA, ECDSA, ED25519, and ML-DSA.
+// EqualKeys compares two public keys. Supports RSA, ECDSA and ED25519.
 // If not equal, the error message contains hex-encoded SHA1 hashes of the DER-encoded keys
 func EqualKeys(first, second crypto.PublicKey) error {
 	switch pub := first.(type) {
@@ -120,35 +112,10 @@ func EqualKeys(first, second crypto.PublicKey) error {
 		if !pub.Equal(second) {
 			return errors.New(genErrMsg(first, second, "ed25519"))
 		}
-	case *mldsa.PublicKey:
-		if _, err := ValidateMLDSAPublicKey(pub); err != nil {
-			return err
-		}
-		if !pub.Equal(second) {
-			return errors.New(genErrMsg(first, second, "mldsa"))
-		}
 	default:
 		return errors.New("unsupported key type")
 	}
 	return nil
-}
-
-// ValidateMLDSAPublicKey checks that the ML-DSA public key is non-nil and properly initialized,
-// returning its parameters.
-// In the Go standard library, calling methods such as Parameters() on an uninitialized
-// &mldsa.PublicKey{} panics because its internal parameters are uninitialized. This function
-// performs a deliberate probe to catch such panics safely and return a descriptive error.
-func ValidateMLDSAPublicKey(pub *mldsa.PublicKey) (params mldsa.Parameters, err error) {
-	if pub == nil {
-		return mldsa.Parameters{}, errors.New("ML-DSA public key must not be nil")
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("invalid ML-DSA public key: %v", r)
-		}
-	}()
-	// Deliberate panic probe: calling Parameters() panics if pub is &mldsa.PublicKey{}
-	return pub.Parameters(), nil
 }
 
 // genErrMsg generates an error message for EqualKeys
@@ -166,10 +133,10 @@ func genErrMsg(first, second crypto.PublicKey, keyType string) string {
 	return fmt.Sprintf("%s (%s, %s)", msg, hex.EncodeToString(firstSKID), hex.EncodeToString(secondSKID))
 }
 
-// ValidatePubKey validates the parameters of an RSA, ECDSA, ED25519, or ML-DSA public key.
+// ValidatePubKey validates the parameters of an RSA, ECDSA, or ED25519 public key.
 //
-// Deprecated: This function only verifies the size of the key for RSA, the curve
-// for ECDSA, or initialization for ML-DSA. This is largely unnecessary, and this function will be removed
+// Deprecated: This function only verifies the size of the key for RSA or the curve
+// for ECDSA. This is largely unnecessary, and this function will be removed
 // in a future version.
 func ValidatePubKey(pub crypto.PublicKey) error {
 	switch pk := pub.(type) {
@@ -186,9 +153,6 @@ func ValidatePubKey(pub crypto.PublicKey) error {
 	case ed25519.PublicKey:
 		// Nothing to validate for Ed25519
 		return nil
-	case *mldsa.PublicKey:
-		_, err := ValidateMLDSAPublicKey(pk)
-		return err
 	}
 	return fmt.Errorf("unsupported public key type: %T", pub)
 }

@@ -20,7 +20,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_model v0.6.3
 	github.com/prometheus/common v0.70.1
-	github.com/sigstore/sigstore v1.10.10
+	github.com/sigstore/sigstore v1.10.11
 	github.com/sigstore/sigstore/pkg/signature/kms/aws v1.10.10
 	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.10
 	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.10.10
