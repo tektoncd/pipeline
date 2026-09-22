@@ -261,8 +261,7 @@ func (a *azureVaultClient) createKey(ctx context.Context) (crypto.PublicKey, err
 			Tags: map[string]*string{
 				"use": to.Ptr("sigstore"),
 			},
-		}, nil,
-	)
+		}, nil)
 	if err != nil {
 		return nil, err
 	}
