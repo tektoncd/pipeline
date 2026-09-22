@@ -854,7 +854,7 @@ func validateMatrix(ctx context.Context, tasks []PipelineTask) (errs *apis.Field
 }
 
 func validateVarSubstitutionExpressions(tasks []PipelineTask, fieldPath string) (errs *apis.FieldError) {
-	validPrefixes := sets.NewString("params", "tasks", "finally", "context", "workspaces", "results", ttParamsPrefix)
+	validPrefixes := sets.NewString("params", "tasks", "finally", "context", "workspaces", "results", "credentials", "steps", "step", "artifacts", ttParamsPrefix)
 	for idx, task := range tasks {
 		for _, param := range task.Params {
 			if expressions, ok := GetVarSubstitutionExpressionsForParam(param); ok {
@@ -915,7 +915,7 @@ func validateVarSubstitutionPrefix(expression string, validPrefixes sets.String)
 		return nil
 	}
 	return apis.ErrInvalidValue(
-		fmt.Sprintf("invalid variable reference %q, must start with a valid prefix: params, tasks, finally, context, workspaces, results, or tt.params; if you meant a shell variable, use ${VAR} instead", "$("+expression+")"),
+		fmt.Sprintf("invalid variable reference %q, must start with a valid prefix: params, tasks, finally, context, workspaces, results, credentials, steps, step, artifacts, or tt.params; if you meant a shell variable, use ${VAR} instead", "$("+expression+")"),
 		"",
 	)
 }
