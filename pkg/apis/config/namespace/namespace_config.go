@@ -374,6 +374,7 @@ func configToFeatureFlagsMap(flags *config.FeatureFlags) map[string]string {
 		enableKubernetesSidecarKey:                  strconv.FormatBool(flags.EnableKubernetesSidecar),
 		enableWaitExponentialBackoffKey:             strconv.FormatBool(flags.EnableWaitExponentialBackoff),
 		enableTerminationMessageCompressionKey:      strconv.FormatBool(flags.EnableTerminationMessageCompression),
+		config.KeepStatusSpecDescriptions:           strconv.FormatBool(flags.KeepStatusSpecDescriptions),
 		perNamespaceConfigurationKey:                strconv.FormatBool(flags.PerNamespaceConfiguration),
 		nonOverridableFieldsKey:                     flags.NonOverridableFields,
 	}
