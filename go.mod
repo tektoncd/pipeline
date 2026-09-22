@@ -25,7 +25,7 @@ require (
 	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.11.0
 	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.11.0
 	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.11.0
-	github.com/spiffe/go-spiffe/v2 v2.8.1
+	github.com/spiffe/go-spiffe/v2 v2.8.2
 	github.com/spiffe/spire-api-sdk v1.15.3
 	github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb
 	go.opentelemetry.io/otel v1.44.0
