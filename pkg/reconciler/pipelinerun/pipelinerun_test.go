@@ -2453,10 +2453,8 @@ spec:
 	}
 }
 
-func TestReconcileWithTimeouts_Pipeline(t *testing.T) {
-	// TestReconcileWithTimeouts_Pipeline runs "Reconcile" on a PipelineRun that has timed out.
-	// It verifies that reconcile is successful, no TaskRun is created, the PipelineTask is marked as skipped, and the
-	// pipeline status updated and events generated.
+func TestReconcileWithPerNamespaceDefaultTimeout(t *testing.T) {
+	// Verify that a namespace default timeout changes PipelineRun reconciliation and cancels an existing TaskRun.
 	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
 metadata:
   name: test-pipeline
@@ -2479,10 +2477,8 @@ spec:
     name: test-pipeline
   taskRunTemplate:
     serviceAccountName: test-sa
-  timeouts:
-    pipeline: 12h0m0s
 status:
-  startTime: "2021-12-31T11:00:00Z"
+  startTime: "2021-12-31T23:58:30Z"
   childReferences:
   - name: test-pipeline-run-with-timeout-hello-world-1
     pipelineTaskName: hello-world-1
@@ -2499,17 +2495,32 @@ spec:
     kind: Task
 `)}
 
+	configMaps := th.NewFeatureFlagsConfigMapInSlice()
+	configMaps[0].Data[config.PerNamespaceConfigurationKey] = "true"
+	configMaps = append(configMaps, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "tekton-config-defaults",
+			Namespace: "foo",
+			Labels: map[string]string{
+				"app.kubernetes.io/part-of":  "tekton-pipelines",
+				"tekton.dev/pipeline-config": "true",
+			},
+		},
+		Data: map[string]string{"default-timeout-minutes": "1"},
+	})
+
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
 		TaskRuns:     trs,
+		ConfigMaps:   configMaps,
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
-		"Warning Failed PipelineRun \"test-pipeline-run-with-timeout\" failed to finish within \"12h0m0s\"",
+		"Warning Failed PipelineRun \"test-pipeline-run-with-timeout\" failed to finish within \"1m0s\"",
 	}
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-with-timeout", wantEvents, false)
 
