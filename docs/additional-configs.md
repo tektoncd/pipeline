@@ -376,6 +376,18 @@ The flags in this ConfigMap are as follows:
 
 - `per-namespace-configuration`: set this flag to `"true"` to allow namespace-scoped overrides for a limited set of TaskRun/PipelineRun defaulting and validation settings. Namespace owners can create `tekton-config-defaults` or `tekton-feature-flags` ConfigMaps in their namespace with both labels `tekton.dev/pipeline-config: "true"` and `app.kubernetes.io/part-of: tekton-pipelines`. This first phase only applies to TaskRun/PipelineRun admission and reconciliation; resolver, notification, and CloudEvents settings remain cluster-scoped. Operators can prevent additional supported fields from being overridden with the comma-separated `non-overridable-fields` flag.
 
+  Phase 1 supports these namespace overrides:
+
+  - `tekton-config-defaults`: `default-service-account`, `default-timeout-minutes`, `default-managed-by-label-value`, `default-pod-template`, `default-task-run-workspace-binding`, `default-max-matrix-combinations-count`, `default-imagepullbackoff-timeout`, and `default-container-resource-requirements`.
+  - `tekton-feature-flags`: `running-in-environment-with-injected-sidecars`, `await-sidecar-readiness`, `max-result-size`, `coschedule`, `keep-pod-on-cancel`, `enable-cel-in-whenexpression`, `enable-artifacts`, `enable-param-enum`, `enable-kubernetes-sidecar`, and `enable-wait-exponential-backoff`.
+
+  These fields are always non-overridable:
+
+  - `tekton-config-defaults`: `default-forbidden-env`, `default-sidecar-log-polling-interval`, and `default-step-ref-concurrency-limit`.
+  - `tekton-feature-flags`: `enforce-nonfalsifiability`, `set-security-context`, `set-security-context-read-only-root-filesystem`, `trusted-resources-verification-no-match-policy`, `disable-creds-init`, `disable-inline-spec`, `enable-api-fields`, `results-from`, `per-namespace-configuration`, and `non-overridable-fields`.
+
+  All other keys are unsupported and ignored in namespace ConfigMaps during Phase 1.
+
   For example, an operator can enable namespace configuration and prevent namespaces from changing `coschedule`:
 
   ```yaml

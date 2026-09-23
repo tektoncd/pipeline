@@ -320,6 +320,8 @@ func main() {
 		log.Fatal(http.ListenAndServe(":"+port, mux)) // #nosec G114 -- see https://github.com/securego/gosec#available-rules
 	}()
 
+	ctx = nsconfig.WithSharedPerNamespaceConfig(ctx)
+
 	sharedmain.MainWithContext(ctx, serviceName,
 		certificates.NewController,
 		newDefaultingAdmissionController(webhookName),

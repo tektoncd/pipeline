@@ -465,6 +465,7 @@ spec:
 `)
 	taskruns := []*v1.TaskRun{taskRunSuccess, taskRunWithSaSuccess}
 	defaultSAName := "pipelines"
+	namespaceSAName := "namespace-pipelines"
 	configMaps := ttesting.NewFeatureFlagsConfigMapInSlice()
 	configMaps[0].Data["per-namespace-configuration"] = "true"
 	configMaps = append(configMaps,
@@ -485,10 +486,10 @@ spec:
 					"tekton.dev/pipeline-config": "true",
 				},
 			},
-			Data: map[string]string{"default-timeout-minutes": "invalid"},
+			Data: map[string]string{"default-service-account": namespaceSAName},
 		},
 	)
-	// An invalid namespace override must fall back to the global service account.
+	// The namespace default applies unless the TaskRun names a service account explicitly.
 	d := test.Data{
 		TaskRuns:   taskruns,
 		Tasks:      []*v1.Task{simpleTask, saTask},
@@ -501,7 +502,7 @@ spec:
 	}{{
 		name:    "success",
 		taskRun: taskRunSuccess,
-		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "bar", "foo", defaultSAName, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "bar", "foo", namespaceSAName, nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "simple-step",
 			cmd:   "/mycmd",
@@ -516,10 +517,7 @@ spec:
 		}}),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			saName := tc.taskRun.Spec.ServiceAccountName
-			if saName == "" {
-				saName = defaultSAName
-			}
+			saName := tc.wantPod.Spec.ServiceAccountName
 			d.ServiceAccounts = append(d.ServiceAccounts, &corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      saName,

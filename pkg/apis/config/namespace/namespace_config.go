@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -147,8 +148,30 @@ type PerNamespaceConfig struct {
 	configMapLister corev1listers.ConfigMapLister
 }
 
+type sharedPerNamespaceConfig struct {
+	once   sync.Once
+	config *PerNamespaceConfig
+}
+
+type sharedPerNamespaceConfigKey struct{}
+
+// WithSharedPerNamespaceConfig makes NewPerNamespaceConfig return one shared instance for the derived context.
+func WithSharedPerNamespaceConfig(ctx context.Context) context.Context {
+	return context.WithValue(ctx, sharedPerNamespaceConfigKey{}, &sharedPerNamespaceConfig{})
+}
+
 // NewPerNamespaceConfig starts and syncs a filtered ConfigMap informer.
 func NewPerNamespaceConfig(ctx context.Context, kubeClient kubernetes.Interface) *PerNamespaceConfig {
+	if shared, ok := ctx.Value(sharedPerNamespaceConfigKey{}).(*sharedPerNamespaceConfig); ok {
+		shared.once.Do(func() {
+			shared.config = newPerNamespaceConfig(ctx, kubeClient)
+		})
+		return shared.config
+	}
+	return newPerNamespaceConfig(ctx, kubeClient)
+}
+
+func newPerNamespaceConfig(ctx context.Context, kubeClient kubernetes.Interface) *PerNamespaceConfig {
 	selector := labels.Set{
 		namespaceConfigLabel: configValueTrue,
 		partOfLabel:          partOfValue,
@@ -196,7 +219,6 @@ func (p *PerNamespaceConfig) MergeGlobalConfigWithLocal(ctx context.Context, nam
 			return ctx, fmt.Errorf("parse namespace defaults for %q: %w", namespace, err)
 		}
 		merged.Defaults = mergedDefaults
-		logOverrides(logger, namespace, "config-defaults", local.defaults, defaultsAllowList, operatorBlockList)
 	}
 
 	if len(local.flags) > 0 {
@@ -209,6 +231,12 @@ func (p *PerNamespaceConfig) MergeGlobalConfigWithLocal(ctx context.Context, nam
 		mergedFlags.PerNamespaceConfiguration = cfg.FeatureFlags.PerNamespaceConfiguration
 		mergedFlags.NonOverridableFields = cfg.FeatureFlags.NonOverridableFields
 		merged.FeatureFlags = mergedFlags
+	}
+
+	if len(local.defaults) > 0 {
+		logOverrides(logger, namespace, "config-defaults", local.defaults, defaultsAllowList, operatorBlockList)
+	}
+	if len(local.flags) > 0 {
 		logOverrides(logger, namespace, "feature-flags", local.flags, featureFlagsAllowList, operatorBlockList)
 	}
 

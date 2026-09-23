@@ -18,6 +18,7 @@ package namespace_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -25,6 +26,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	namespaceconfig "github.com/tektoncd/pipeline/pkg/apis/config/namespace"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -69,6 +72,18 @@ func enabledConfigContext(ctx context.Context) (context.Context, *config.Config)
 	}
 	cfg.FeatureFlags.PerNamespaceConfiguration = true
 	return config.ToContext(ctx, cfg), cfg
+}
+
+func TestNewPerNamespaceConfigSharesContextInstance(t *testing.T) {
+	client := fakek8s.NewSimpleClientset()
+	ctx, cancel := context.WithCancel(logging.WithLogger(t.Context(), zaptest.NewLogger(t).Sugar()))
+	t.Cleanup(cancel)
+	ctx = namespaceconfig.WithSharedPerNamespaceConfig(ctx)
+
+	first := namespaceconfig.NewPerNamespaceConfig(ctx, client)
+	if second := namespaceconfig.NewPerNamespaceConfig(ctx, client); second != first {
+		t.Fatal("NewPerNamespaceConfig returned different instances for a shared context")
+	}
 }
 
 func TestMergeGlobalConfigWithLocal(t *testing.T) {
@@ -232,6 +247,28 @@ func TestMergeGlobalConfigWithLocalReturnsParseErrors(t *testing.T) {
 				t.Error("parse error returned a partially merged config")
 			}
 		})
+	}
+}
+
+func TestMergeGlobalConfigWithLocalLogsOnlyAfterSuccessfulMerge(t *testing.T) {
+	defaults := labeledConfigMap("team-a", "tekton-config-defaults", map[string]string{"default-timeout-minutes": "120"})
+	flags := labeledConfigMap("team-a", "tekton-feature-flags", map[string]string{"enable-cel-in-whenexpression": "not-a-bool"})
+	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, defaults, flags)
+
+	var messages []string
+	logger := zaptest.NewLogger(t, zaptest.WrapOptions(zap.Hooks(func(entry zapcore.Entry) error {
+		messages = append(messages, entry.Message)
+		return nil
+	}))).Sugar()
+	ctx, _ := enabledConfigContext(logging.WithLogger(baseCtx, logger))
+
+	if _, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, "team-a"); err == nil {
+		t.Fatal("expected parse error")
+	}
+	for _, message := range messages {
+		if strings.HasPrefix(message, "Applying namespace config") {
+			t.Fatalf("logged a partially applied namespace config: %q", message)
+		}
 	}
 }
 
