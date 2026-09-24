@@ -134,11 +134,6 @@ func testFanInFanOut(t *testing.T, configMapData map[string]string) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	ns := os.Getenv("SYSTEM_NAMESPACE")
-	if ns == "" {
-		ns = "tekton-pipelines"
-	}
-
 	if err := updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), configMapData); err != nil {
 		t.Fatal(err)
 	}
@@ -251,11 +246,6 @@ func testResultsAndFinally(t *testing.T, configMapData map[string]string) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	ns := os.Getenv("SYSTEM_NAMESPACE")
-	if ns == "" {
-		ns = "tekton-pipelines"
-	}
-
 	if err := updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), configMapData); err != nil {
 		t.Fatal(err)
 	}
@@ -335,11 +325,6 @@ func testParams(t *testing.T, configMapData map[string]string) {
 	c, namespace := setup(ctx, t)
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
-
-	ns := os.Getenv("SYSTEM_NAMESPACE")
-	if ns == "" {
-		ns = "tekton-pipelines"
-	}
 
 	if err := updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetFeatureFlagsConfigName(), configMapData); err != nil {
 		t.Fatal(err)
