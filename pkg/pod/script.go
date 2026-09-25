@@ -179,9 +179,9 @@ func placeScriptInContainer(script, scriptFile string, c *corev1.Container, init
 	// script file in a known location in the scripts volume.
 	if requiresWindows {
 		command, args, script, scriptFile := extractWindowsScriptComponents(script, scriptFile)
-		initContainer.Args[1] += fmt.Sprintf(`@"
+		initContainer.Args[1] += fmt.Sprintf(`@'
 %s
-"@ | Out-File -FilePath %s
+'@ | Out-File -FilePath %s
 `, script, scriptFile)
 
 		c.Command = command
