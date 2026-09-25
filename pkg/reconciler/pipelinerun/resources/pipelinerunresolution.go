@@ -874,6 +874,9 @@ func resolveTask(
 				name := pipelineTask.TaskRef.Name
 				if len(strings.TrimSpace(name)) == 0 {
 					name = resource.GenerateErrorLogString(string(pipelineTask.TaskRef.Resolver), pipelineTask.TaskRef.Params)
+					if pipelineTask.Name != "" {
+						name = fmt.Sprintf("'%s' %s", pipelineTask.Name, name)
+					}
 				}
 				return rt, &TaskNotFoundError{
 					Name: name,
