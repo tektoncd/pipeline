@@ -860,7 +860,10 @@ status in the `status.steps` field using the following command, where `<name>` i
 kubectl get taskrun <name> -o yaml
 ```
 
-The exact Task Spec used to instantiate the TaskRun is also included in the Status for full auditability.
+A snapshot of the Task spec used to instantiate the TaskRun is included in
+`status.taskSpec`. Documentation-only `description` fields are omitted by default.
+See [Status spec descriptions](additional-configs.md#status-spec-descriptions) for
+retention settings and how to find the original descriptions.
 
 ### Steps
 
