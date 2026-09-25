@@ -980,3 +980,42 @@ func TestPipelineRun_PinP_PipelineRefInFinally(t *testing.T) {
 	assertPinP(ctx, t, c, expectedChildPR)
 	assertEvents(ctx, t, expectedEventsAmount, expectedKinds, c, namespace)
 }
+
+// @test:execution=parallel
+// TestPipelineRun_PinP_ControllerManagedLabelIsImmutable verifies that once the
+// controller stamps a controller-managed label (tekton.dev/pipeline) on a
+// PipelineRun, a user cannot mutate it via an update: the validating webhook
+// rejects the change. This closes the label-tampering vector that could
+// otherwise be used to bypass PinP cycle detection.
+func TestPipelineRun_PinP_ControllerManagedLabelIsImmutable(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{
+		"enable-api-fields": "alpha",
+	}))
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	// GIVEN: a PinP parent PipelineRun that runs to success, so the controller
+	// stamps the tekton.dev/pipeline label on it.
+	parentPipeline, parentPipelineRun, _ := th.OnePipelineInPipeline(t, namespace, "pr-label-immutable")
+	createResourcesAndWaitForPipelineRunSuccess(ctx, t, c, namespace, []*v1.Pipeline{parentPipeline}, parentPipelineRun, nil)
+
+	// WHEN: a user tries to overwrite the controller-managed label.
+	pr, err := c.V1PipelineRunClient.Get(ctx, parentPipelineRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get PipelineRun %q: %s", parentPipelineRun.Name, err)
+	}
+	if pr.Labels[pipeline.PipelineLabelKey] == "" {
+		t.Fatalf("Expected controller to stamp %q label, but it was empty", pipeline.PipelineLabelKey)
+	}
+	pr.Labels[pipeline.PipelineLabelKey] = "user-edited"
+	_, err = c.V1PipelineRunClient.Update(ctx, pr, metav1.UpdateOptions{})
+
+	// THEN: the validating webhook rejects the mutation.
+	if err == nil || !strings.Contains(err.Error(), "is immutable once set") {
+		t.Fatalf("Expected webhook to reject mutation of %q label, but got: %v", pipeline.PipelineLabelKey, err)
+	}
+}
