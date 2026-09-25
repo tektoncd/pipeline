@@ -117,6 +117,7 @@ func getFeatureFlagsBaseOnAPIFlag(t *testing.T) *config.FeatureFlags {
 		"enable-cel-in-whenexpression":   "true",
 		"enable-param-enum":              "true",
 		"enable-artifacts":               "true",
+		"enable-notices":                 "true",
 		"enable-concise-resolver-syntax": "true",
 		"enable-kubernetes-sidecar":      "true",
 		"keep-pod-on-cancel":             "true",

@@ -2364,6 +2364,8 @@ spec:
                           type: boolean
                         enableKubernetesSidecar:
                           type: boolean
+                        enableNotices:
+                          type: boolean
                         enableParamEnum:
                           type: boolean
                         enableProvenanceInStatus:
@@ -2746,6 +2748,8 @@ spec:
                                     type: boolean
                                   enableKubernetesSidecar:
                                     type: boolean
+                                  enableNotices:
+                                    type: boolean
                                   enableParamEnum:
                                     type: boolean
                                   enableProvenanceInStatus:
@@ -3020,6 +3024,8 @@ spec:
                                         enableKeepPodOnCancel:
                                           type: boolean
                                         enableKubernetesSidecar:
+                                          type: boolean
+                                        enableNotices:
                                           type: boolean
                                         enableParamEnum:
                                           type: boolean
@@ -5468,6 +5474,8 @@ spec:
                         enableKeepPodOnCancel:
                           type: boolean
                         enableKubernetesSidecar:
+                          type: boolean
+                        enableNotices:
                           type: boolean
                         enableParamEnum:
                           type: boolean
