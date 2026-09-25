@@ -3,13 +3,13 @@ module github.com/tektoncd/pipeline
 go 1.27.0
 
 require (
+	cel.dev/cel-go v0.32.0
 	code.gitea.io/sdk/gitea v0.22.1
 	github.com/allegro/bigcache/v3 v3.2.0
 	github.com/cloudevents/sdk-go/v2 v2.16.2
 	github.com/elastic/crd-ref-docs v0.3.0
 	github.com/go-jose/go-jose/v3 v3.0.5
 	github.com/goccy/kpoward v0.1.0
-	github.com/google/cel-go v0.31.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.22.1
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20260414223304-7a662782a11f
@@ -133,6 +133,7 @@ require (
 	github.com/gobuffalo/flect v1.0.3 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
+	github.com/google/cel-go v0.31.0 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/go-containerregistry/pkg/authn/kubernetes v0.0.0-20250225234217-098045d5e61f // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
