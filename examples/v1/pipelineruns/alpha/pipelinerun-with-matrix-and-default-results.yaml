@@ -1,0 +1,145 @@
+# This example demonstrates how default result values interact with Matrix.
+# It requires the alpha feature flag "enable-default-results" to be set to "true".
+#
+# It covers both directions:
+#   1. A Matrix fans out over a default value declared by a producing Task that
+#      never emits the result (get-platforms -> test-platforms).
+#   2. A fanned out PipelineTask falls back to a declared default when none of its
+#      TaskRuns emit the result (matrix-emitting-defaults -> consume-report-urls).
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: matrix-with-default-results-
+spec:
+  pipelineSpec:
+    tasks:
+      # get-platforms declares an array result with a default value but never emits
+      # it, so the default ["linux","mac","windows"] is used by consumers.
+      - name: get-platforms
+        taskSpec:
+          results:
+            - name: platforms
+              type: array
+              description: Platforms to test; falls back to its default when not emitted
+              default:
+                - linux
+                - mac
+                - windows
+          steps:
+            - name: skip-emitting-platforms
+              image: mirror.gcr.io/bash
+              onError: continue
+              script: |
+                #!/usr/bin/env bash
+                echo "not emitting platforms, the default value is used instead"
+                exit 1
+                # This won't execute; the default ["linux","mac","windows"] is used.
+                echo -n "[\"freebsd\"]" | tee $(results.platforms.path)
+
+      # get-browser declares a string result with a default value but never emits it,
+      # so the default "chrome" is used by consumers.
+      - name: get-browser
+        taskSpec:
+          results:
+            - name: browser
+              description: Browser to test with; falls back to its default when not emitted
+              default: chrome
+          steps:
+            - name: skip-emitting-browser
+              image: mirror.gcr.io/bash
+              onError: continue
+              script: |
+                #!/usr/bin/env bash
+                echo "not emitting browser, the default value is used instead"
+                exit 1
+                # This won't execute; the default "chrome" is used.
+                echo -n "firefox" | tee $(results.browser.path)
+
+      # test-platforms fans out over the default array result of get-platforms,
+      # producing one TaskRun per element: linux, mac and windows. The browser param
+      # is a regular param, so the default string result of get-browser is passed to
+      # every combination.
+      - name: test-platforms
+        params:
+          - name: browser
+            value: $(tasks.get-browser.results.browser)
+        matrix:
+          params:
+            - name: platform
+              value: $(tasks.get-platforms.results.platforms[*])
+        taskSpec:
+          params:
+            - name: platform
+            - name: browser
+          steps:
+            - name: verify-defaults
+              image: mirror.gcr.io/bash
+              script: |
+                #!/usr/bin/env bash
+                echo "testing $(params.platform) with $(params.browser)"
+                case "$(params.platform)" in
+                  linux|mac|windows) ;;
+                  *)
+                    echo "expected a platform from the default result, got $(params.platform)"
+                    exit 1
+                    ;;
+                esac
+                if [ "$(params.browser)" != "chrome" ]; then
+                  echo "expected the default browser \"chrome\", got $(params.browser)"
+                  exit 1
+                fi
+
+      # matrix-emitting-defaults is itself fanned out over the default platforms. None
+      # of its TaskRuns emit report-url, so each TaskRun reports the declared default
+      # instead. Only string results can be consumed from a fanned out PipelineTask;
+      # they are aggregated into one array element per combination.
+      - name: matrix-emitting-defaults
+        matrix:
+          params:
+            - name: platform
+              value: $(tasks.get-platforms.results.platforms[*])
+        taskSpec:
+          params:
+            - name: platform
+          results:
+            - name: report-url
+              description: Report URL; falls back to its default when not emitted
+              default: https://example.com/default-report
+          steps:
+            - name: skip-emitting-report-url
+              image: mirror.gcr.io/bash
+              onError: continue
+              script: |
+                #!/usr/bin/env bash
+                echo "not emitting report-url for $(params.platform)"
+                exit 1
+                # This won't execute; the default report URL is used.
+                echo -n "https://example.com/$(params.platform)" | tee $(results.report-url.path)
+
+      # consume-report-urls receives one array element per fanned out combination,
+      # each holding the default report URL.
+      - name: consume-report-urls
+        params:
+          - name: urls
+            value: $(tasks.matrix-emitting-defaults.results.report-url[*])
+        taskSpec:
+          params:
+            - name: urls
+              type: array
+          steps:
+            - name: verify-default-report-url
+              image: mirror.gcr.io/bash
+              args: ["$(params.urls[*])"]
+              script: |
+                #!/usr/bin/env bash
+                echo "received $# report url(s): $@"
+                if [ "$#" != "3" ]; then
+                  echo "expected one element per combination (3), got $# element(s)"
+                  exit 1
+                fi
+                for url in "$@"; do
+                  if [ "${url}" != "https://example.com/default-report" ]; then
+                    echo "expected the default report url, got ${url}"
+                    exit 1
+                  fi
+                done
