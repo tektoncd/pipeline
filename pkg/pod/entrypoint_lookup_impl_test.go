@@ -254,6 +254,11 @@ func TestGetImageCacheScopedByNamespace(t *testing.T) {
 	if _, err := entrypointCache.get(ctx, imgRef, tenantB, "", nil, true); err == nil {
 		t.Fatalf("get() for tenant-b: expected error due to missing credentials, but the lookup succeeded (cache leaked across namespaces)")
 	}
+
+	// A second tenant-a lookup without pull secrets is served from the cache.
+	if _, err := entrypointCache.get(ctx, imgRef, tenantA, "", nil, true); err != nil {
+		t.Fatalf("get() for tenant-a from cache: unexpected error: %v", err)
+	}
 }
 
 func mustRandomImage(t *testing.T) v1.Image {
