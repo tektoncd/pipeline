@@ -573,6 +573,12 @@ func replaceVariablesInPipelineTasks(tasks []v1.PipelineTask, replacements map[s
 			tasks[i].TaskRef.Name = substitution.ApplyReplacements(tasks[i].TaskRef.Name, replacements)
 		}
 		tasks[i].OnError = v1.PipelineTaskOnErrorType(substitution.ApplyReplacements(string(tasks[i].OnError), replacements))
+		for j := range tasks[i].StepSpecs {
+			tasks[i].StepSpecs[j].Name = substitution.ApplyReplacements(tasks[i].StepSpecs[j].Name, replacements)
+		}
+		for j := range tasks[i].SidecarSpecs {
+			tasks[i].SidecarSpecs[j].Name = substitution.ApplyReplacements(tasks[i].SidecarSpecs[j].Name, replacements)
+		}
 		tasks[i] = propagateParams(tasks[i], replacements, arrayReplacements, objectReplacements)
 	}
 }
