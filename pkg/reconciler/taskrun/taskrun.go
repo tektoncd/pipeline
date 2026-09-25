@@ -164,7 +164,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) (reconci
 	defer func() {
 		if err := c.syncMetadata(ctx, tr); err != nil {
 			logger.Warn("Failed to sync TaskRun metadata", zap.Error(err))
-			events.EmitError(controller.GetEventRecorder(ctx), err, tr)
+			events.EmitErrorWithContext(ctx, controller.GetEventRecorder(ctx), err, tr)
 			reconcileErr = errors.Join(reconcileErr, err)
 		}
 	}()
