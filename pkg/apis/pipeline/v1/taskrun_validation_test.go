@@ -750,6 +750,25 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		wantErr: apis.ErrGeneric("before step must be unique, the same step: step-1 is defined multiple times at", "debug.breakpoints.beforeSteps[1]"),
 		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
+		name: "invalid breakpoint before step not in inline taskSpec",
+		spec: v1.TaskRunSpec{
+			TaskSpec: &v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name:    "step-1",
+					Image:   "ubuntu",
+					Command: []string{"echo"},
+				}},
+			},
+			Debug: &v1.TaskRunDebug{
+				Breakpoints: &v1.TaskBreakpoints{
+					BeforeSteps: []string{"nonexistent-step"},
+					OnFailure:   "enabled",
+				},
+			},
+		},
+		wantErr: apis.ErrInvalidValue("before step nonexistent-step does not exist in the task", "debug.breakpoints.beforeSteps[0]"),
+		wc:      cfgtesting.EnableAlphaAPIFields,
+	}, {
 		name: "empty onFailure breakpoint",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{
