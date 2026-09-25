@@ -20,16 +20,13 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"time"
 
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	rrclient "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	rrv1beta1 "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
-	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,14 +38,6 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/reconciler"
 )
-
-// defaultMaximumResolutionDuration is the maximum amount of time
-// resolution may take.
-
-// defaultMaximumResolutionDuration is the max time that a call to
-// Resolve() may take. It can be overridden by a resolver implementing
-// the framework.TimedResolution interface.
-const defaultMaximumResolutionDuration = time.Minute
 
 // statusDataPatch is the json structure that will be PATCHed into
 // a ResolutionRequest with its data and annotations once successfully
@@ -125,82 +114,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.ResolutionRequest) error {
-	errChan := make(chan error, 1)
-	resourceChan := make(chan framework.ResolvedResource, 1)
-
-	paramsMap := make(map[string]string)
-	for _, p := range rr.Spec.Params {
-		paramsMap[p.Name] = p.Value.StringVal
+	timeout, err := prepareResolution(ctx, r.resolver, key, &rr.Spec)
+	if err != nil {
+		return err
 	}
 
-	// Centralized cache parameter validation for all resolvers
-	if cacheMode, exists := paramsMap[rrcache.CacheParam]; exists && cacheMode != "" {
-		if err := rrcache.Validate(cacheMode); err != nil {
-			return &resolutioncommon.InvalidRequestError{
-				ResolutionRequestKey: key,
-				Message:              err.Error(),
-			}
-		}
+	resource, err := executeResolution(ctx, r.resolver, key, &rr.Spec, timeout)
+	if err != nil {
+		return r.OnError(ctx, rr, err)
 	}
-
-	timeoutDuration := defaultMaximumResolutionDuration
-	if timed, ok := r.resolver.(framework.TimedResolution); ok {
-		var err error
-		timeoutDuration, err = timed.GetResolutionTimeout(ctx, defaultMaximumResolutionDuration, paramsMap)
-		if err != nil {
-			return err
-		}
-	}
-
-	// A new context is created for resolution so that timeouts can
-	// be enforced without affecting other uses of ctx (e.g. sending
-	// Updates to ResolutionRequest objects).
-	resolutionCtx, cancelFn := context.WithTimeout(ctx, timeoutDuration)
-	defer cancelFn()
-
-	go func() {
-		validationError := r.resolver.Validate(resolutionCtx, &rr.Spec)
-		if validationError != nil {
-			errChan <- &resolutioncommon.InvalidRequestError{
-				ResolutionRequestKey: key,
-				Message:              validationError.Error(),
-			}
-			return
-		}
-		resource, resolveErr := r.resolver.Resolve(resolutionCtx, &rr.Spec)
-		if resolveErr != nil {
-			errChan <- &resolutioncommon.GetResourceError{
-				ResolverName: r.resolver.GetName(resolutionCtx),
-				Key:          key,
-				Original:     resolveErr,
-			}
-			return
-		}
-		if err := framework.ValidateResolvedResource(resource); err != nil {
-			errChan <- &resolutioncommon.GetResourceError{
-				ResolverName: r.resolver.GetName(resolutionCtx),
-				Key:          key,
-				Original:     fmt.Errorf("resolved resource validation error: %w", err),
-			}
-			return
-		}
-		resourceChan <- resource
-	}()
-
-	select {
-	case err := <-errChan:
-		if err != nil {
-			return r.OnError(ctx, rr, err)
-		}
-	case <-resolutionCtx.Done():
-		if err := resolutionCtx.Err(); err != nil {
-			return r.OnError(ctx, rr, err)
-		}
-	case resource := <-resourceChan:
-		return r.writeResolvedData(ctx, rr, resource)
-	}
-
-	return errors.New("unknown error")
+	return r.writeResolvedData(ctx, rr, resource)
 }
 
 // OnError is used to handle any situation where a ResolutionRequest has
