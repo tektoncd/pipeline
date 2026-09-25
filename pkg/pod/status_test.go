@@ -4520,3 +4520,48 @@ func Test_getFailureMessage_consistent_with_reason(t *testing.T) {
 		})
 	}
 }
+
+// TestExtractStartedAtTimeFromResults_IgnoresNonInternalResults verifies that a
+// user-declared Step result named "StartedAt" is not mistaken for the internal
+// bookkeeping entry entrypointer writes with the same key.
+func TestExtractStartedAtTimeFromResults_IgnoresNonInternalResults(t *testing.T) {
+	wantTime := "2022-01-01T00:00:00.000Z"
+	results := []result.RunResult{
+		{Key: internalResultKeyStartedAt, Value: "not-a-time", ResultType: result.StepResultType},
+		{Key: internalResultKeyStartedAt, Value: wantTime, ResultType: result.InternalTektonResultType},
+	}
+	got, err := extractStartedAtTimeFromResults(results)
+	if err != nil {
+		t.Fatalf("extractStartedAtTimeFromResults() returned unexpected error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("extractStartedAtTimeFromResults() = nil, want a parsed time")
+	}
+	wantParsed, err := time.Parse(timeFormat, wantTime)
+	if err != nil {
+		t.Fatalf("failed to parse want time: %v", err)
+	}
+	if !got.Time.Equal(wantParsed) {
+		t.Errorf("extractStartedAtTimeFromResults() = %v, want %v", got.Time, wantParsed)
+	}
+}
+
+// TestExtractExitCodeFromResults_IgnoresNonInternalResults verifies that a
+// user-declared Step result named "ExitCode" is not mistaken for the internal
+// bookkeeping entry entrypointer writes with the same key.
+func TestExtractExitCodeFromResults_IgnoresNonInternalResults(t *testing.T) {
+	results := []result.RunResult{
+		{Key: internalResultKeyExitCode, Value: "not-a-number", ResultType: result.StepResultType},
+		{Key: internalResultKeyExitCode, Value: "17", ResultType: result.InternalTektonResultType},
+	}
+	got, err := extractExitCodeFromResults(results)
+	if err != nil {
+		t.Fatalf("extractExitCodeFromResults() returned unexpected error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("extractExitCodeFromResults() = nil, want a parsed exit code")
+	}
+	if *got != 17 {
+		t.Errorf("extractExitCodeFromResults() = %d, want 17", *got)
+	}
+}
