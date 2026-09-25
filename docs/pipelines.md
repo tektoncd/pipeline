@@ -1702,6 +1702,28 @@ With `finally`:
 | single failure of `PipelineTask`                                                                       | all `finally` tasks successful         | `false`              | `failed`    |
 | single failure of `PipelineTask`                                                                       | one or more failure of `finally` tasks | `false`              | `failed`    |
 
+A `PipelineTask` whose child run is permanently rejected when it is created - by an admission
+webhook denying the request, for instance - counts as a failure of that task: the `PipelineTasks`
+depending on it are skipped, `finally` tasks still run, and the `PipelineRun` ends with the reason
+`CreateRunFailed`. The rejection message is reported in the `PipelineRun` condition, because no
+child resource was created to carry it. [`onError: continue`](#using-the-onerror-field)
+does not apply to it: that setting covers a task that ran and failed, while a task the API server
+refused never ran and cannot be retried into running. The `PipelineRun` instead fails immediately,
+without running `finally`, when the rejected task is a `finally` task itself or when only part of a
+[`matrix`](matrix.md) fan-out was rejected and the created runs are still executing.
+
+Such a task reports `Failed` to the [execution status](#guard-finally-task-execution-using-when-expressions)
+a `finally` task reads, both as `$(tasks.<taskName>.status)` and in the aggregate
+`$(tasks.status)`, with `$(tasks.<taskName>.reason)` set to `CreateRunFailed`. A `finally` task
+guarded on a failure of the `Pipeline` therefore still runs.
+
+Only a rejection of the creation request itself counts here: an invalid request, a bad request, or
+an admission webhook denying it. Errors that are expected to clear on their own, an RBAC denial or
+an exceeded quota among them, are still retried until the `PipelineRun` times out. Note that a
+retried creation only reaches its `finally` tasks when `timeouts.tasks` is set, on its own or
+through `timeouts.pipeline` together with `timeouts.finally`: reaching `timeouts.pipeline` skips
+the `finally` tasks along with everything else.
+
 Overall, `PipelineRun` state transitioning is explained below for respective scenarios:
 
 * All `PipelineTask` and `finally` tasks are successful: `Started` -> `Running` -> `Succeeded`
