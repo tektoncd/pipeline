@@ -38,6 +38,7 @@ weight: 201
     - [Substituting in `Script` blocks](#substituting-in-script-blocks)
 - [Code examples](#code-examples)
   - [Building and pushing a Docker image](#building-and-pushing-a-docker-image)
+    - [Recommended approaches for building images](#recommended-approaches-for-building-images)
     - [Mounting multiple `Volumes`](#mounting-multiple-volumes)
     - [Mounting a `ConfigMap` as a `Volume` source](#mounting-a-configmap-as-a-volume-source)
     - [Using a `Secret` as an environment source](#using-a-secret-as-an-environment-source)
@@ -1071,8 +1072,12 @@ For example, you can use `Volumes` to do the following:
 - Mount a [Kubernetes `ConfigMap`](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/)
   as `Volume` source.
 - Mount a host's Docker socket to use a `Dockerfile` for building container images.
-  **Note:** Building a container image on-cluster using `docker build` is **very
-  unsafe** and is mentioned only for the sake of the example. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
+  **Note:** Giving a `Step` access to the host's Docker socket is **very unsafe**
+  and is mentioned only for the sake of the example — see
+  [Building and pushing a Docker image](#building-and-pushing-a-docker-image) below
+  for the security implications and for daemonless alternatives such as
+  [kaniko](https://github.com/GoogleContainerTools/kaniko) and
+  [Buildah](https://github.com/containers/buildah).
 
 ### Specifying Step Template
 
@@ -1133,7 +1138,55 @@ For further information, see [`Sidecars` in `TaskRuns`](taskruns.md#specifying-s
 Refer to the detailed instructions listed in [additional config](additional-configs.md#enabling-larger-results-using-sidecar-logs)
 to learn how to enable this feature.
 
-In the example below, a `Step` uses a Docker-in-Docker `Sidecar` to build a Docker image:
+When a `Sidecar` provides a Docker daemon (commonly called "Docker-in-Docker", or
+"dind"), the client `Step` and the daemon `Sidecar` run in the same `Pod` and can
+share the daemon in one of two ways:
+
+- **A shared Unix socket.** Mount the same `emptyDir` `Volume` (for example at
+  `/var/run`) into both the client `Step` and the daemon `Sidecar`. Any container
+  that has the volume mounted can talk to the daemon over the socket. This is the
+  simplest option and is what the example below uses.
+- **The `Pod` network, with TLS.** Set `DOCKER_HOST` to `tcp://localhost:2376` in
+  the client `Step`, and let the daemon `Sidecar` generate certificates by
+  setting `DOCKER_TLS_CERTDIR`. Mount the generated client certificates into the
+  client `Step` and set `DOCKER_TLS_VERIFY` and `DOCKER_CERT_PATH` so the client
+  trusts the daemon. See
+  [`dind-sidecar.yaml`](../examples/v1/taskruns/dind-sidecar.yaml) for a
+  complete, runnable example of this approach, including the `startupProbe` and
+  `readinessProbe` needed to wait for the daemon to be ready.
+
+Either way, the daemon `Sidecar` almost always needs
+`securityContext.privileged: true`, since it manages nested containers and
+storage; the `TaskRun` must run under a service account, and in a namespace,
+that your cluster's admission policy allows to create privileged `Pods`.
+
+Because the daemon and any images or containers it creates live only inside that
+one `TaskRun`'s `Pod`, Docker commands that depend on each other's state — for
+example `docker build` followed by `docker run` on the image it just built, or a
+`docker-compose`-based integration test suite — must run in `Steps` that belong
+to the *same* `Task`. Splitting them across separate `Tasks` is a common mistake:
+each `TaskRun` gets its own `Pod`, and therefore its own daemon, so a later
+`Task` will not see images, containers, or networks created by an earlier one.
+If your project defines integration tests with `docker-compose`, either run
+`docker compose up`, the tests, and cleanup in `Steps` of a single `Task` against
+the shared sidecar daemon, or translate the Compose services into additional
+`Sidecars` and run the test client from a `Step` in that same `Pod`.
+
+If a client `Step` fails with an error such as `Cannot connect to the Docker
+daemon at tcp://localhost:2376. Is the docker daemon running?`, the root cause
+is often in the daemon `Sidecar`, not the `Step` that reported the error — for
+example, the daemon may still be starting, may have crashed, or may not have
+finished writing the TLS certificates the client is waiting on. Check the
+`Sidecar`'s own logs and status before assuming the client `Step` is
+misconfigured:
+
+```shell
+kubectl logs <taskrun-pod-name> -c <sidecar-container-name>
+kubectl describe pod <taskrun-pod-name>
+```
+
+In the example below, a `Step` uses a Docker-in-Docker `Sidecar` and a shared
+Unix socket to build a Docker image:
 
 ```yaml
 steps:
@@ -1231,6 +1284,7 @@ variable values as follows:
 Study the following code examples to better understand how to configure your `Tasks`:
 
 - [Building and pushing a Docker image](#building-and-pushing-a-docker-image)
+- [Recommended approaches for building images](#recommended-approaches-for-building-images)
 - [Mounting multiple `Volumes`](#mounting-multiple-volumes)
 - [Mounting a `ConfigMap` as a `Volume` source](#mounting-a-configmap-as-a-volume-source)
 - [Using a `Secret` as an environment source](#using-a-secret-as-an-environment-source)
@@ -1242,10 +1296,27 @@ more examples.
 
 ### Building and pushing a Docker image
 
-The following example `Task` builds and pushes a `Dockerfile`-built image.
+The following example `Task` builds and pushes a `Dockerfile`-built image by
+mounting the host's Docker socket directly into a `Step`, without a sidecar.
 
-**Note:** Building a container image using `docker build` on-cluster is **very
-unsafe** and is shown here only as a demonstration. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
+**Note:** Mounting the host's Docker socket into a `Step` is **very unsafe** and
+is shown here only as a demonstration. Access to the socket is generally
+equivalent to root access on the node: a `Step` can use it to read or write the
+host's filesystem, interfere with any other container using the same daemon
+(including, depending on cluster layout, control-plane workloads scheduled on
+the same host), and escape the isolation a `TaskRun`'s `Pod` is otherwise
+expected to provide. It is also not portable: `/var/run/docker.sock` may exist
+on a Docker-based node (for example on some `minikube` setups), but clusters
+whose nodes use `containerd` or CRI-O directly — common on managed Kubernetes
+services — do not expose a Docker socket at all. For most `Tasks`, prefer a
+daemonless builder such as [kaniko](https://github.com/GoogleContainerTools/kaniko)
+or [Buildah](https://github.com/containers/buildah), or a Docker-in-Docker
+`Sidecar` (see [Specifying `Sidecars`](#specifying-sidecars)) if you specifically
+need a Docker daemon — see
+[Recommended approaches for building images](#recommended-approaches-for-building-images)
+below. Cluster operators who must support host-socket access should restrict it
+to dedicated, trusted nodes and consider a sandboxed `RuntimeClass` (for example
+Kata Containers or gVisor) to limit the blast radius of a compromised build.
 
 ```yaml
 spec:
@@ -1292,6 +1363,54 @@ spec:
         path: /var/run/docker.sock
         type: Socket
 ```
+
+### Recommended approaches for building images
+
+Both on-cluster options above — a Docker-in-Docker `Sidecar` and mounting the
+host's Docker socket — require a privileged `Pod`. Most Tekton users instead
+build images with a daemonless tool that runs unprivileged, or with reduced
+privileges, inside a single `Step`:
+
+- **[kaniko](https://github.com/GoogleContainerTools/kaniko)** builds an image
+  from a `Dockerfile` without a Docker daemon and without requiring
+  `securityContext.privileged`. It is the tool most Tekton `Task` authors reach
+  for first. See the
+  [`kaniko` catalog `Task`](https://github.com/tektoncd/catalog/tree/main/task/kaniko/0.7).
+- **[Buildah](https://github.com/containers/buildah)** also builds
+  `Dockerfile`- or `Containerfile`-based images without a daemon and supports
+  fully rootless builds. See the
+  [`buildah` catalog `Task`](https://github.com/tektoncd/catalog/tree/main/task/buildah/0.9).
+
+Both tools produce standard OCI images and push them to a registry the same way
+`docker push` would; see [Authenticating `Tasks`](auth.md) for how to give a
+`Task` credentials for a registry.
+
+Reach for a Docker-in-Docker `Sidecar` (see [Specifying `Sidecars`](#specifying-sidecars))
+instead of kaniko or Buildah only when you specifically need a real Docker
+daemon — for example, to run `docker-compose`-based integration tests, or to use
+Docker-specific features that kaniko and Buildah do not support. Avoid mounting
+the host's Docker socket unless you also control the node pool and accept the
+security trade-offs described above; it does not port between clusters whose
+nodes use different container runtimes.
+
+Common pitfalls when moving a local `docker build` workflow onto Tekton:
+
+- **Privileged `Pods`.** A Docker-in-Docker `Sidecar` and host-socket mounts
+  both need `securityContext.privileged: true`, which many clusters block by
+  default through Pod Security Admission or a policy engine. kaniko and Buildah
+  avoid this requirement in the common case.
+- **Registry authentication.** Pushing an image requires registry credentials to
+  be available to the `Task`, independent of which build tool you use — see
+  [Authenticating `Tasks`](auth.md).
+- **Platform-specific socket paths.** Whether a Docker socket exists on a node,
+  and where, depends on how that node's container runtime is configured, so a
+  `Task` that hard-codes `/var/run/docker.sock` may work on one cluster (for
+  example some `minikube` configurations) and fail on another.
+- **State isolation between `Tasks`.** A Docker daemon `Sidecar` and any images
+  or containers it creates exist only for the lifetime of one `TaskRun`'s `Pod`;
+  they are not shared with other `Tasks` in the same `Pipeline`. Push and pull
+  through a registry (or use a shared `Workspace` for files) to pass build
+  output between `Tasks`.
 
 ### Mounting multiple `Volumes`
 
