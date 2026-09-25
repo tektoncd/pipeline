@@ -128,6 +128,11 @@ const (
 	KeepStatusSpecDescriptions = "keep-status-spec-descriptions"
 	// DefaultKeepStatusSpecDescriptions is the default value for KeepStatusSpecDescriptions
 	DefaultKeepStatusSpecDescriptions = false
+	// SurfacePodEvents is the flag to enable surfacing Pod Warning events
+	// onto TaskRun status when a Pod is stuck pending with no useful message.
+	SurfacePodEvents = "surface-pod-events"
+	// DefaultSurfacePodEvents is the default value for SurfacePodEvents
+	DefaultSurfacePodEvents = false
 
 	// EnableStepActions is the flag to enable step actions (no-op since it's stable)
 	EnableStepActions = "enable-step-actions"
@@ -200,6 +205,13 @@ var (
 		Enabled:   DefaultAlphaFeatureEnabled,
 	}
 
+	// DefaultSurfacePodEventsFlag is the default PerFeatureFlag value for SurfacePodEvents
+	DefaultSurfacePodEventsFlag = PerFeatureFlag{
+		Name:      SurfacePodEvents,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
 	DefaultEnableTektonOCIBundles = PerFeatureFlag{
 		Name:       EnableTektonOCIBundles,
 		Stability:  AlphaAPIFields,
@@ -243,6 +255,7 @@ type FeatureFlags struct {
 	EnableWaitExponentialBackoff        bool   `json:"enableWaitExponentialBackoff,omitempty"`
 	EnableTerminationMessageCompression bool   `json:"enableTerminationMessageCompression,omitempty"`
 	KeepStatusSpecDescriptions          bool   `json:"keepStatusSpecDescriptions,omitempty"`
+	EnableSurfacePodEvents              bool   `json:"enableSurfacePodEvents,omitempty"`
 	// DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
 	// to allow deletion of PipelineRuns created before v0.62.x.
 	// This field is not used and can be removed in a future release
@@ -360,6 +373,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setFeature(KeepStatusSpecDescriptions, DefaultKeepStatusSpecDescriptions, &tc.KeepStatusSpecDescriptions); err != nil {
+		return nil, err
+	}
+	if err := setPerFeatureFlag(SurfacePodEvents, DefaultSurfacePodEventsFlag, &tc.EnableSurfacePodEvents); err != nil {
 		return nil, err
 	}
 
