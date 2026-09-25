@@ -586,6 +586,11 @@
                 "Encrypt"
               ]
             },
+            "ExportTrustedKeyWrappedCryptoKeyVersion": {
+              "methods": [
+                "ExportTrustedKeyWrappedCryptoKeyVersion"
+              ]
+            },
             "GenerateRandomBytes": {
               "methods": [
                 "GenerateRandomBytes"
@@ -639,6 +644,11 @@
             "ImportCryptoKeyVersion": {
               "methods": [
                 "ImportCryptoKeyVersion"
+              ]
+            },
+            "ImportTrustedKeyWrappedCryptoKeyVersion": {
+              "methods": [
+                "ImportTrustedKeyWrappedCryptoKeyVersion"
               ]
             },
             "ListCryptoKeyVersions": {
@@ -786,6 +796,11 @@
                 "Encrypt"
               ]
             },
+            "ExportTrustedKeyWrappedCryptoKeyVersion": {
+              "methods": [
+                "ExportTrustedKeyWrappedCryptoKeyVersion"
+              ]
+            },
             "GenerateRandomBytes": {
               "methods": [
                 "GenerateRandomBytes"
@@ -839,6 +854,11 @@
             "ImportCryptoKeyVersion": {
               "methods": [
                 "ImportCryptoKeyVersion"
+              ]
+            },
+            "ImportTrustedKeyWrappedCryptoKeyVersion": {
+              "methods": [
+                "ImportTrustedKeyWrappedCryptoKeyVersion"
               ]
             },
             "ListCryptoKeyVersions": {
