@@ -17,6 +17,7 @@ limitations under the License.
 package pod
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -781,17 +782,17 @@ no-shebang`,
 		Name:    "place-scripts",
 		Image:   images.ShellImageWin,
 		Command: []string{"pwsh"},
-		Args: []string{"-Command", `@"
+		Args: []string{"-Command", `@'
 #!win pwsh -File
 script-1
-"@ | Out-File -FilePath /tekton/scripts/script-0-9l9zj
-@"
+'@ | Out-File -FilePath /tekton/scripts/script-0-9l9zj
+@'
 #!win powershell -File
 script-3
-"@ | Out-File -FilePath /tekton/scripts/script-2-mz4c7.ps1
-@"
+'@ | Out-File -FilePath /tekton/scripts/script-2-mz4c7.ps1
+@'
 no-shebang
-"@ | Out-File -FilePath /tekton/scripts/script-3-mssqb.cmd
+'@ | Out-File -FilePath /tekton/scripts/script-3-mssqb.cmd
 `},
 		VolumeMounts:    []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 		SecurityContext: WindowsSecurityContext,
@@ -830,6 +831,42 @@ no-shebang
 	}
 }
 
+// A script that contains a line of "@ must not be able to end the here-string
+// that carries it. With an expandable here-string the rest of the script would
+// have run as PowerShell in the place-scripts init container.
+func TestConvertScripts_Windows_ScriptCannotEndHereString(t *testing.T) {
+	names.TestingSeed()
+
+	script := `#!win pwsh -File
+"@
+Write-Output "injected"
+@"`
+
+	gotInit, _, _ := convertScripts(images.ShellImage, images.ShellImageWin, []v1.Step{{
+		Script: script,
+		Image:  "step-1",
+	}}, []v1.Sidecar{}, nil, SecurityContextConfig{SetSecurityContext: true, SetReadOnlyRootFilesystem: true})
+
+	got := gotInit.Args[1]
+
+	wantBody := `@'
+#!win pwsh -File
+"@
+Write-Output "injected"
+@"
+'@ | Out-File -FilePath /tekton/scripts/script-0-9l9zj
+`
+	if got != wantBody {
+		t.Errorf("Init container args %s", diff.PrintWantGot(cmp.Diff(wantBody, got)))
+	}
+
+	// The literal here-string is only ended by a line of '@, which appears once,
+	// after the script body.
+	if n := strings.Count(got, "\n'@"); n != 1 {
+		t.Errorf("expected the here-string to be terminated exactly once, got %d terminators in:\n%s", n, got)
+	}
+}
+
 func TestConvertScripts_Windows_WithSidecar(t *testing.T) {
 	names.TestingSeed()
 
@@ -863,18 +900,18 @@ sidecar-1`,
 		Name:    "place-scripts",
 		Image:   images.ShellImageWin,
 		Command: []string{"pwsh"},
-		Args: []string{"-Command", `@"
+		Args: []string{"-Command", `@'
 #!win pwsh -File
 script-1
-"@ | Out-File -FilePath /tekton/scripts/script-0-9l9zj
-@"
+'@ | Out-File -FilePath /tekton/scripts/script-0-9l9zj
+@'
 #!win powershell -File
 script-3
-"@ | Out-File -FilePath /tekton/scripts/script-2-mz4c7.ps1
-@"
+'@ | Out-File -FilePath /tekton/scripts/script-2-mz4c7.ps1
+@'
 #!win pwsh -File
 sidecar-1
-"@ | Out-File -FilePath /tekton/scripts/sidecar-script-0-mssqb
+'@ | Out-File -FilePath /tekton/scripts/sidecar-script-0-mssqb
 `},
 		VolumeMounts:    []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 		SecurityContext: WindowsSecurityContext,
@@ -933,10 +970,10 @@ sidecar-1`,
 		Name:    "place-scripts",
 		Image:   images.ShellImageWin,
 		Command: []string{"pwsh"},
-		Args: []string{"-Command", `@"
+		Args: []string{"-Command", `@'
 #!win python
 sidecar-1
-"@ | Out-File -FilePath /tekton/scripts/sidecar-script-0-9l9zj
+'@ | Out-File -FilePath /tekton/scripts/sidecar-script-0-9l9zj
 `},
 		VolumeMounts:    []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 		SecurityContext: WindowsSecurityContext,
