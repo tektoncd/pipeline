@@ -32,7 +32,7 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 	testcases := []struct {
 		desc                     string
 		Steps                    []v1.Step
-		ComputeResources         corev1.ResourceRequirements
+		ComputeResources         v1.ComputeResourceRequirements
 		expectedComputeResources []corev1.ResourceRequirements
 	}{{
 		desc: "only with requests",
@@ -45,7 +45,7 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 			Image:   "image",
 			Command: []string{"cmd"},
 		}},
-		ComputeResources: corev1.ResourceRequirements{
+		ComputeResources: v1.ComputeResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse("2"),
 				corev1.ResourceMemory: resource.MustParse("2Mi"),
@@ -73,7 +73,7 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 			Image:   "image",
 			Command: []string{"cmd"},
 		}},
-		ComputeResources: corev1.ResourceRequirements{
+		ComputeResources: v1.ComputeResourceRequirements{
 			Limits: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse("500m"),
 				corev1.ResourceMemory: resource.MustParse("256Mi"),
@@ -109,7 +109,7 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 			Image:   "image",
 			Command: []string{"cmd"},
 		}},
-		ComputeResources: corev1.ResourceRequirements{
+		ComputeResources: v1.ComputeResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse("1"),
 				corev1.ResourceMemory: resource.MustParse("2Mi"),
@@ -144,7 +144,7 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 			Name:    "1st-step",
 			Image:   "image",
 			Command: []string{"cmd"},
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")},
 				Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
 			},
@@ -152,12 +152,12 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 			Name:    "2nd-step",
 			Image:   "image",
 			Command: []string{"cmd"},
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")},
 				Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
 			},
 		}},
-		ComputeResources: corev1.ResourceRequirements{
+		ComputeResources: v1.ComputeResourceRequirements{
 			Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
 			Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("2")},
 		},
@@ -174,7 +174,7 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 			Name:    "1st-step",
 			Image:   "image",
 			Command: []string{"cmd"},
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")},
 				Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
 			},
@@ -183,7 +183,7 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 			Image:   "image",
 			Command: []string{"cmd"},
 		}},
-		ComputeResources: corev1.ResourceRequirements{
+		ComputeResources: v1.ComputeResourceRequirements{
 			Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
 			Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("2")},
 		},
@@ -200,7 +200,7 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 			Name:    "1st-step",
 			Image:   "image",
 			Command: []string{"cmd"},
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")},
 				Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
 			},
@@ -208,12 +208,12 @@ func TestApplyTaskLevelResourceRequirements(t *testing.T) {
 			Name:    "2nd-step",
 			Image:   "image",
 			Command: []string{"cmd"},
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")},
 				Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
 			},
 		}},
-		ComputeResources: corev1.ResourceRequirements{},
+		ComputeResources: v1.ComputeResourceRequirements{},
 		expectedComputeResources: []corev1.ResourceRequirements{{
 			Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")},
 			Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
@@ -240,7 +240,8 @@ func verifyTaskLevelComputeResources(steps []v1.Step, expectedComputeResources [
 		return fmt.Errorf("expected %d compute resource requirements, got %d", len(expectedComputeResources), len(steps))
 	}
 	for id, step := range steps {
-		if d := cmp.Diff(expectedComputeResources[id], step.ComputeResources); d != "" {
+		got := step.ComputeResources.MustToK8s()
+		if d := cmp.Diff(expectedComputeResources[id], got); d != "" {
 			return fmt.Errorf("container \"#%d\" resource requirements don't match %s", id, diff.PrintWantGot(d))
 		}
 	}

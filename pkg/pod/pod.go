@@ -200,6 +200,14 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	volumes = append(volumes, credVolumes...)
 	volumeMounts = append(volumeMounts, credVolumeMounts...)
 
+	// Compute resource values must all be valid quantities by now: substitution has
+	// already run. Anything left unresolved (an invalid literal, or a variable that
+	// resolved to a non-quantity) would be silently dropped when rendering the
+	// containers, producing a Pod with no resource requirements at all, so fail here.
+	if err := validateComputeResources(taskSpec, taskRun); err != nil {
+		return nil, err
+	}
+
 	// Merge step template with steps.
 	// TODO(#1605): Move MergeSteps to pkg/pod
 	steps, err := v1.MergeStepsWithStepTemplate(taskSpec.StepTemplate, taskSpec.Steps)
@@ -733,6 +741,50 @@ func usesWindows(tr *v1.TaskRun) bool {
 	}
 	osSelector := tr.Spec.PodTemplate.NodeSelector[OsSelectorLabel]
 	return osSelector == "windows"
+}
+
+// validateComputeResources ensures every compute resource value in the TaskSpec and
+// TaskRun spec is a valid quantity. It runs after variable substitution, so a value
+// still held as a raw string is either a literal that never was a quantity, or a
+// variable reference that resolved to something that is not a quantity. Both cases
+// are user errors that would otherwise be dropped silently when the containers are
+// rendered, so they are reported as a validation failure instead.
+func validateComputeResources(taskSpec v1.TaskSpec, taskRun *v1.TaskRun) error {
+	var messages []string
+	check := func(r v1.ComputeResourceRequirements, kind, name string) {
+		if _, err := r.ToK8s(); err != nil {
+			if name != "" {
+				kind = fmt.Sprintf("%s %q", kind, name)
+			}
+			messages = append(messages, fmt.Sprintf("%s: %v", kind, err))
+		}
+	}
+
+	if taskSpec.StepTemplate != nil {
+		check(taskSpec.StepTemplate.ComputeResources, "stepTemplate", "")
+	}
+	for _, s := range taskSpec.Steps {
+		check(s.ComputeResources, "step", s.Name)
+	}
+	for _, s := range taskSpec.Sidecars {
+		check(s.ComputeResources, "sidecar", s.Name)
+	}
+	if taskRun.Spec.ComputeResources != nil {
+		check(*taskRun.Spec.ComputeResources, "taskRun computeResources", "")
+	}
+	for _, s := range taskRun.Spec.StepSpecs {
+		check(s.ComputeResources, "stepSpec", s.Name)
+	}
+	for _, s := range taskRun.Spec.SidecarSpecs {
+		check(s.ComputeResources, "sidecarSpec", s.Name)
+	}
+
+	if len(messages) == 0 {
+		return nil
+	}
+	// The "TaskRun validation failed" prefix makes the reconciler mark the TaskRun as
+	// failed validation rather than retrying forever. See handlePodCreationError.
+	return fmt.Errorf("TaskRun validation failed: %s", strings.Join(messages, "; "))
 }
 
 func artifactsPathReferenced(steps []v1.Step) bool {

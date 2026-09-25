@@ -346,6 +346,14 @@ func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec, pipelineT
 	if trs.ComputeResources != nil {
 		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "computeResources", config.BetaAPIFields).ViaField("computeResources"))
 		errs = errs.Also(validateTaskRunComputeResources(trs.ComputeResources, trs.StepSpecs))
+		// Variable substitution is not applied to taskRunSpecs computeResources,
+		// so reject unresolved variable references.
+		if trs.ComputeResources.HasUnresolvedReferences() {
+			errs = errs.Also(apis.ErrInvalidValue(
+				"variable substitution is not supported in taskRunSpecs computeResources",
+				"computeResources",
+			))
+		}
 	}
 	if trs.PodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *trs.PodTemplate))
