@@ -307,7 +307,7 @@ func FindWorkspacesUsedByTask(ts v1.TaskSpec) (sets.String, error) {
 	for item := range locationsToCheck {
 		workspacesUsed, _, errString := substitution.ExtractVariablesFromString(item, "workspaces")
 		if errString != "" {
-			return workspacesUsedInSteps, fmt.Errorf("Error while extracting workspace: %s", errString)
+			return workspacesUsedInSteps, fmt.Errorf("error while extracting workspace: %s", errString)
 		}
 		workspacesUsedInSteps.Insert(workspacesUsed...)
 	}
