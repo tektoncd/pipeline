@@ -39,7 +39,7 @@ require (
 	golang.org/x/crypto v0.57.0
 	golang.org/x/sync v0.23.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
-	google.golang.org/grpc v1.83.2
+	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
 	k8s.io/api v0.35.8
 	k8s.io/apiextensions-apiserver v0.35.8
@@ -108,7 +108,7 @@ require (
 	github.com/docker/docker-credential-helpers v0.9.5 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
-	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
 	github.com/gaganhr94/docker-credential-acr v1.0.2 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
