@@ -23,6 +23,7 @@ import (
 	"os"
 	"strconv"
 
+	nsconfig "github.com/tektoncd/pipeline/pkg/apis/config/namespace"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
@@ -108,6 +109,7 @@ func main() {
 
 	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)
 	ctx = controller.WithResyncPeriod(ctx, opts.ResyncPeriod)
+	ctx = nsconfig.WithSharedPerNamespaceConfig(ctx)
 
 	sharedmain.MainWithConfig(ctx, ControllerLogKey, cfg,
 		taskrun.NewController(opts, clock.RealClock{}),
