@@ -1746,6 +1746,12 @@ This kind of variable can have any one of the values from the following table:
 
 For an end-to-end example, see [`status` in a `PipelineRun`](../examples/v1/pipelineruns/pipelinerun-task-execution-status.yaml).
 
+**`matrix` and `$(tasks.<pipelineTaskName>.status)`:** when the referenced `pipelineTask` has a
+[`matrix`](matrix.md), it fans out into one `TaskRun` per combination, but `$(tasks.<pipelineTaskName>.status)`
+still resolves to a single value for the whole `pipelineTask`: `Succeeded` only if every combination's
+`TaskRun` succeeded, `Failed` if any one of them failed, and `None` otherwise. There is no way to read the
+status of an individual matrix combination through this variable.
+
 ### Using Aggregate Execution `Status` of All `Tasks`
 
 A `pipeline` can check an aggregate status of all the `tasks` section in `finally` through the task parameters:
