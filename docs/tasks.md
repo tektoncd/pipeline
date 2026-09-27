@@ -1366,8 +1366,9 @@ spec:
 
 ### Recommended approaches for building images
 
-Both on-cluster options above — a Docker-in-Docker `Sidecar` and mounting the
-host's Docker socket — require a privileged `Pod`. Most Tekton users instead
+Both on-cluster options above carry elevated risk: a Docker-in-Docker `Sidecar`
+requires a privileged container, and mounting the host's Docker socket through
+a `hostPath` volume gives the `Step` control of the node's daemon. Most Tekton users instead
 build images with a daemonless tool that runs unprivileged, or with reduced
 privileges, inside a single `Step`:
 
@@ -1379,7 +1380,9 @@ privileges, inside a single `Step`:
 - **[Buildah](https://github.com/containers/buildah)** also builds
   `Dockerfile`- or `Containerfile`-based images without a daemon and supports
   fully rootless builds. See the
-  [`buildah` catalog `Task`](https://github.com/tektoncd/catalog/tree/main/task/buildah/0.9).
+  [`buildah` catalog `Task`](https://github.com/tektoncd/catalog/tree/main/task/buildah/0.9);
+  note that this catalog `Task` sets `securityContext.privileged: true` on its
+  build `Step`, so running Buildah rootless means adapting it.
 
 Both tools produce standard OCI images and push them to a registry the same way
 `docker push` would; see [Authenticating `Tasks`](auth.md) for how to give a
@@ -1395,10 +1398,11 @@ nodes use different container runtimes.
 
 Common pitfalls when moving a local `docker build` workflow onto Tekton:
 
-- **Privileged `Pods`.** A Docker-in-Docker `Sidecar` and host-socket mounts
-  both need `securityContext.privileged: true`, which many clusters block by
-  default through Pod Security Admission or a policy engine. kaniko and Buildah
-  avoid this requirement in the common case.
+- **Privileged `Pods` and `hostPath` volumes.** A Docker-in-Docker `Sidecar`
+  needs `securityContext.privileged: true`, and a host-socket mount needs a
+  `hostPath` volume. Many clusters block both by default through Pod Security
+  Admission or a policy engine. kaniko, and Buildah configured to run rootless,
+  avoid these requirements.
 - **Registry authentication.** Pushing an image requires registry credentials to
   be available to the `Task`, independent of which build tool you use — see
   [Authenticating `Tasks`](auth.md).
