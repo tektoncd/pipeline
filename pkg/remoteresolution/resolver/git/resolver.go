@@ -31,6 +31,7 @@ import (
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	resolutionframework "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
+	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/zap"
 	k8scache "k8s.io/apimachinery/pkg/util/cache"
 	"k8s.io/client-go/kubernetes"
@@ -155,21 +156,44 @@ func (r *Resolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time
 // Resolve performs the work of fetching a file from git given a map of
 // parameters.
 func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSpec) (resolutionframework.ResolvedResource, error) {
+	ctx, span := framework.StartResolverSpan(ctx, gitResolverName)
+	defer span.End()
+
 	if len(req.Params) == 0 {
-		return nil, errors.New("no params")
+		err := errors.New("no params")
+		framework.RecordSpanError(span, err)
+		return nil, err
 	}
 
 	if git.IsDisabled(ctx) {
-		return nil, errors.New(disabledError)
+		err := errors.New(disabledError)
+		framework.RecordSpanError(span, err)
+		return nil, err
 	}
 
 	params, err := git.PopulateDefaultParams(ctx, req.Params)
 	if err != nil {
+		framework.RecordSpanError(span, err)
 		return nil, err
 	}
 
+	span.SetAttributes(
+		attribute.String("resolver.git.revision", params[git.RevisionParam]),
+		attribute.String("resolver.git.path", params[git.PathParam]),
+	)
+	if rawURL := params[git.UrlParam]; rawURL != "" {
+		span.SetAttributes(framework.SanitizedURLAttribute("resolver.git.url", rawURL))
+	}
+	if org := params[git.OrgParam]; org != "" {
+		span.SetAttributes(attribute.String("resolver.git.org", org))
+	}
+	if repo := params[git.RepoParam]; repo != "" {
+		span.SetAttributes(attribute.String("resolver.git.repo", repo))
+	}
+
+	var resource resolutionframework.ResolvedResource
 	if cache.ShouldUse(ctx, r, req.Params) {
-		return cache.Get(ctx).GetCachedOrResolveFromRemote(
+		resource, err = cache.Get(ctx).GetCachedOrResolveFromRemote(
 			ctx,
 			req.Params,
 			labelValueGitResolverType,
@@ -177,8 +201,11 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 				return r.resolveViaGit(ctx, params)
 			},
 		)
+	} else {
+		resource, err = r.resolveViaGit(ctx, params)
 	}
-	return r.resolveViaGit(ctx, params)
+	framework.RecordSpanError(span, err)
+	return resource, err
 }
 
 func (r *Resolver) resolveViaGit(ctx context.Context, params map[string]string) (resolutionframework.ResolvedResource, error) {
