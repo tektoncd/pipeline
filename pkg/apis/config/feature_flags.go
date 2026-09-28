@@ -129,6 +129,13 @@ const (
 	// DefaultKeepStatusSpecDescriptions is the default value for KeepStatusSpecDescriptions
 	DefaultKeepStatusSpecDescriptions = false
 
+	// PerNamespaceConfigurationKey enables per-namespace configuration overrides.
+	PerNamespaceConfigurationKey = "per-namespace-configuration"
+	// DefaultPerNamespaceConfiguration is the default value for per-namespace-configuration.
+	DefaultPerNamespaceConfiguration = false
+	// NonOverridableFieldsKey is the flag for operator-locked fields.
+	NonOverridableFieldsKey = "non-overridable-fields"
+
 	// EnableStepActions is the flag to enable step actions (no-op since it's stable)
 	EnableStepActions = "enable-step-actions"
 
@@ -243,6 +250,12 @@ type FeatureFlags struct {
 	EnableWaitExponentialBackoff        bool   `json:"enableWaitExponentialBackoff,omitempty"`
 	EnableTerminationMessageCompression bool   `json:"enableTerminationMessageCompression,omitempty"`
 	KeepStatusSpecDescriptions          bool   `json:"keepStatusSpecDescriptions,omitempty"`
+	// PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
+	// are honored. Default: false.
+	PerNamespaceConfiguration bool `json:"perNamespaceConfiguration,omitempty"`
+	// NonOverridableFields is a comma-separated list of additional fields that operators
+	// can lock from being overridden per namespace.
+	NonOverridableFields string `json:"nonOverridableFields,omitempty"`
 	// DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
 	// to allow deletion of PipelineRuns created before v0.62.x.
 	// This field is not used and can be removed in a future release
@@ -361,6 +374,15 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	}
 	if err := setFeature(KeepStatusSpecDescriptions, DefaultKeepStatusSpecDescriptions, &tc.KeepStatusSpecDescriptions); err != nil {
 		return nil, err
+	}
+
+	// Per-namespace configuration fields
+	if err := setFeature(PerNamespaceConfigurationKey, DefaultPerNamespaceConfiguration, &tc.PerNamespaceConfiguration); err != nil {
+		return nil, err
+	}
+
+	if cfg, ok := cfgMap[NonOverridableFieldsKey]; ok {
+		tc.NonOverridableFields = cfg
 	}
 
 	return &tc, nil
