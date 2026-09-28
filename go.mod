@@ -27,6 +27,7 @@ require (
 	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.11.0
 	github.com/spiffe/go-spiffe/v2 v2.8.2
 	github.com/spiffe/spire-api-sdk v1.15.3
+	github.com/stretchr/testify v1.12.1
 	github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb
 	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.44.0
@@ -41,11 +42,11 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
-	k8s.io/api v0.35.8
-	k8s.io/apiextensions-apiserver v0.35.8
-	k8s.io/apimachinery v0.37.0
-	k8s.io/client-go v0.35.8
-	k8s.io/code-generator v0.35.8
+	k8s.io/api v0.35.9
+	k8s.io/apiextensions-apiserver v0.35.9
+	k8s.io/apimachinery v0.37.1
+	k8s.io/client-go v0.35.9
+	k8s.io/code-generator v0.35.9
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20260821135717-be32def86098
 	k8s.io/utils v0.0.0-20260626114624-be93311217bd
@@ -183,7 +184,6 @@ require (
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
-	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
@@ -218,7 +218,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
-	k8s.io/streaming v0.37.0 // indirect
+	k8s.io/streaming v0.37.1 // indirect
 	knative.dev/hack v0.0.0-20260421155212-aeb7b4a9bf96 // indirect
 	sigs.k8s.io/controller-tools v0.20.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
