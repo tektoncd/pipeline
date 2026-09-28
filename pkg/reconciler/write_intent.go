@@ -68,11 +68,9 @@ type metadataUpdateKey struct{}
 // and the flag itself.
 //
 // The intent is classified from that flag rather than from comparing the
-// object's metadata before and after, because the two are not the same
-// decision. The update compares against the informer lister's copy, so metadata
-// another actor changed during the reconcile makes it take the branch when
-// nothing local moved, and metadata that copy already agrees with makes it skip
-// the branch when something local did.
+// object's metadata before and after. syncMetadata merges the informer's copy
+// with the reconciled object, so only the branch that issues the request knows
+// whether the metadata update path was selected.
 func TrackMetadataUpdate(ctx context.Context) (context.Context, *atomic.Bool) {
 	attempted := &atomic.Bool{}
 	return context.WithValue(ctx, metadataUpdateKey{}, attempted), attempted
