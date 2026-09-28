@@ -48,6 +48,11 @@ import (
 
 var errNotFound = errors.New("key not found in etcd")
 
+const (
+	envCommand    = "env"
+	etcdctlAPIEnv = "ETCDCTL_API=3"
+)
+
 // listJSONPath prints one tab-separated name, UID, and controller owner kind
 // and UID per listed object. The owner is what establishes membership.
 const listJSONPath = "jsonpath={range .items[*]}{.metadata.name}{\"\\t\"}{.metadata.uid}" +
@@ -74,7 +79,7 @@ type objectLister interface {
 	// recheck confirms the API still serves the same generation of every
 	// profiled object, so a name reused mid-run cannot be counted as the
 	// object discovery found.
-	recheck(ctx context.Context, namespace, pipelineRun string, discovered, measured []profiledRef, storedUIDVerified bool) (recheckResult, error)
+	recheck(ctx context.Context, namespace, pipelineRun string, discovered, measured []profiledRef) (recheckResult, error)
 }
 
 // diagnostics separates what is worth knowing from what is missing. Only the
@@ -101,11 +106,10 @@ type etcdGetter interface {
 // incomplete. Any other getter error aborts so we never report a misleading
 // partial result.
 //
-// etcd keys are built from names, not UIDs, so an object deleted and recreated
-// under the same name between discovery and the read would otherwise be counted
-// as the object we set out to profile. verifyUID rejects those by checking the
-// stored value still carries the UID discovery saw.
-func buildProfile(ctx context.Context, l objectLister, g etcdGetter, prefix, namespace, pipelineRun string, verifyUID bool) (profile, diagnostics, error) {
+// etcd keys are built from names, not UIDs, so discovery is rechecked after the
+// reads. A name that disappears before its UID can be confirmed is omitted from
+// the totals rather than attributed to the wrong generation.
+func buildProfile(ctx context.Context, l objectLister, g etcdGetter, prefix, namespace, pipelineRun string) (profile, diagnostics, error) {
 	refs, info, err := l.list(ctx, namespace, pipelineRun)
 	d := diagnostics{Info: info}
 	if err != nil {
@@ -130,10 +134,6 @@ func buildProfile(ctx context.Context, l objectLister, g etcdGetter, prefix, nam
 	if err != nil {
 		return profile{}, d, fmt.Errorf("reading %s %s (%s): %w", root.Kind, root.Ref.Name, rootKey, err)
 	}
-	if verifyUID && root.UID != "" && !rootObj.holdsUID(root.UID) {
-		return profile{}, d, fmt.Errorf("%s %s no longer holds UID %s, so it was replaced during profiling; if values are encrypted at rest, pass -verify-uid=false",
-			root.Kind, rootKey, root.UID)
-	}
 	rev := rootObj.headerRevision
 
 	objs := []etcdObject{annotate(rootObj, root)}
@@ -152,20 +152,14 @@ func buildProfile(ctx context.Context, l objectLister, g etcdGetter, prefix, nam
 		case err != nil:
 			return profile{}, d, fmt.Errorf("reading %s %s (%s): %w", r.Kind, r.Ref.Name, key, err)
 		}
-		if verifyUID && r.UID != "" && !o.holdsUID(r.UID) {
-			d.Incomplete = append(d.Incomplete, fmt.Sprintf("skipped %s %s/%s: %s no longer holds UID %s, so it was replaced after discovery; if values are encrypted at rest, pass -verify-uid=false",
-				r.Kind, r.Ref.Namespace, r.Ref.Name, key, r.UID))
-			continue
-		}
 		objs = append(objs, annotate(o, r))
 		measured = append(measured, r)
 	}
 
-	// The stored-value check cannot see through encryption at rest, so confirm
-	// through the API that every name still resolves to the generation it was
-	// profiled as. Without this, -verify-uid=false would leave the whole report
-	// open to objects being replaced while they were being read.
-	res, err := l.recheck(ctx, namespace, pipelineRun, refs, measured, verifyUID)
+	// Confirm through the API that every name still resolves to the generation
+	// that discovery found. Stored values may be encrypted and a raw substring
+	// is not reliable proof of which metadata.uid field they contain.
+	res, err := l.recheck(ctx, namespace, pipelineRun, refs, measured)
 	if err != nil {
 		return profile{}, d, err
 	}
@@ -214,14 +208,12 @@ func buildProfile(ctx context.Context, l objectLister, g etcdGetter, prefix, nam
 	return p, d, nil
 }
 
-// annotate copies the identity discovery established onto the read object and
-// drops the raw value, which is only needed for the UID check.
+// annotate copies the identity discovery established onto the read object.
 func annotate(o etcdObject, r profiledRef) etcdObject {
 	o.Kind = r.Kind
 	o.Namespace = r.Ref.Namespace
 	o.Name = r.Ref.Name
 	o.UID = r.UID
-	o.value = nil
 	return o
 }
 
@@ -315,11 +307,10 @@ func parseListLines(out []byte) []objectID {
 }
 
 // recheck re-reads the identities the profile was built from and fails if any
-// name now resolves to a different UID. It is the only generation check that
-// survives encryption at rest, where the stored bytes carry no readable UID.
+// name now resolves to a different UID. A vanished name is unverified because
+// raw stored bytes cannot reliably identify metadata.uid across encodings and
+// encryption-at-rest configurations.
 //
-// A name that has disappeared is not an error: the object was read at the
-// pinned revision, so those figures still describe it.
 // recheckResult is what confirming the measured objects turned up. Neither
 // field is fatal on its own: they say the numbers are short, which is what
 // -allow-partial exists to accept.
@@ -335,7 +326,7 @@ type recheckResult struct {
 	Unverified []profiledRef
 }
 
-func (k kubectlLister) recheck(ctx context.Context, namespace, pipelineRun string, discovered, measured []profiledRef, storedUIDVerified bool) (recheckResult, error) {
+func (k kubectlLister) recheck(ctx context.Context, namespace, pipelineRun string, discovered, measured []profiledRef) (recheckResult, error) {
 	// Listed the same way discovery lists, and for the same reason: labels are
 	// mutable and prove nothing about identity, so membership is settled again
 	// from the UID and the controller owner.
@@ -374,15 +365,10 @@ func (k kubectlLister) recheck(ctx context.Context, namespace, pipelineRun strin
 		}
 		now, ok := byKind[r.Kind][r.Ref.Name]
 		if !ok {
-			if !storedUIDVerified {
-				// Nothing proved which generation was measured: the stored
-				// value check is off, and the name is gone before it could be
-				// confirmed here. Objects expire routinely, Events most of all,
-				// so this makes the profile short rather than unusable.
-				res.Unverified = append(res.Unverified, r)
-			}
-			// Deleted after it was read, but the stored value confirmed the
-			// generation at the pinned revision, so those figures stand.
+			// Nothing proved which generation was measured before the name
+			// disappeared. Objects expire routinely, Events most of all, so
+			// leave the row out and let -allow-partial accept the rest.
+			res.Unverified = append(res.Unverified, r)
 			continue
 		}
 		if now.UID != r.UID {
@@ -487,21 +473,6 @@ func (k kubectlLister) uid(ctx context.Context, namespace, resource, name string
 	return uid, nil
 }
 
-func (k kubectlLister) events(ctx context.Context, namespace, involvedUID string) ([]objectID, error) {
-	// An empty UID would select every Event whose involvedObject has none,
-	// which on a real cluster means unrelated Node and kubelet Events.
-	if involvedUID == "" {
-		return nil, errors.New("refusing to list events for an object with no UID")
-	}
-	out, err := k.run(ctx, k.bin, "get", resEvents, "-n", namespace,
-		"--field-selector", "involvedObject.uid="+involvedUID,
-		"-o", listJSONPath)
-	if err != nil {
-		return nil, fmt.Errorf("kubectl get events for uid %s: %w", involvedUID, err)
-	}
-	return parseListLines(out), nil
-}
-
 func (k kubectlLister) list(ctx context.Context, namespace, pipelineRun string) ([]profiledRef, []string, error) {
 	prUID, err := k.uid(ctx, namespace, resPipelineRuns+"."+groupTektonDev, pipelineRun)
 	if err != nil {
@@ -510,7 +481,6 @@ func (k kubectlLister) list(ctx context.Context, namespace, pipelineRun string) 
 
 	pr := profiledRef{Kind: kindPipelineRun, UID: prUID, Ref: objectRef{Group: groupTektonDev, Resource: resPipelineRuns, Namespace: namespace, Name: pipelineRun}}
 	refs := []profiledRef{pr}
-	involved := []profiledRef{pr}
 
 	taskRuns, pods, err := k.children(ctx, namespace, prUID)
 	if err != nil {
@@ -518,23 +488,26 @@ func (k kubectlLister) list(ctx context.Context, namespace, pipelineRun string) 
 	}
 	notes := k.unsupported(ctx, namespace, pipelineRun, prUID)
 	for _, tr := range taskRuns {
-		r := profiledRef{Kind: kindTaskRun, UID: tr.UID, OwnerKind: tr.OwnerKind, OwnerUID: tr.OwnerUID, Ref: objectRef{Group: groupTektonDev, Resource: resTaskRuns, Namespace: namespace, Name: tr.Name}}
-		refs = append(refs, r)
-		involved = append(involved, r)
+		refs = append(refs, profiledRef{Kind: kindTaskRun, UID: tr.UID, OwnerKind: tr.OwnerKind, OwnerUID: tr.OwnerUID, Ref: objectRef{Group: groupTektonDev, Resource: resTaskRuns, Namespace: namespace, Name: tr.Name}})
 	}
 	for _, p := range pods {
-		r := profiledRef{Kind: kindPod, UID: p.UID, OwnerKind: p.OwnerKind, OwnerUID: p.OwnerUID, Ref: objectRef{Resource: resPods, Namespace: namespace, Name: p.Name}}
-		refs = append(refs, r)
-		involved = append(involved, r)
+		refs = append(refs, profiledRef{Kind: kindPod, UID: p.UID, OwnerKind: p.OwnerKind, OwnerUID: p.OwnerUID, Ref: objectRef{Resource: resPods, Namespace: namespace, Name: p.Name}})
 	}
 
-	for _, obj := range involved {
-		events, err := k.events(ctx, namespace, obj.UID)
-		if err != nil {
-			return nil, notes, err
+	involvedUIDs := make(map[string]bool, len(refs))
+	for _, obj := range refs {
+		if obj.UID == "" {
+			return nil, notes, fmt.Errorf("%s %s/%s returned no UID", obj.Kind, namespace, obj.Ref.Name)
 		}
-		for _, e := range events {
-			refs = append(refs, profiledRef{Kind: kindEvent, UID: e.UID, InvolvedUID: obj.UID, Ref: objectRef{Resource: resEvents, Namespace: namespace, Name: e.Name}})
+		involvedUIDs[obj.UID] = true
+	}
+	events, err := k.objects(ctx, namespace, resEvents)
+	if err != nil {
+		return nil, notes, err
+	}
+	for _, e := range events {
+		if e.InvolvedUID != "" && involvedUIDs[e.InvolvedUID] {
+			refs = append(refs, profiledRef{Kind: kindEvent, UID: e.UID, InvolvedUID: e.InvolvedUID, Ref: objectRef{Resource: resEvents, Namespace: namespace, Name: e.Name}})
 		}
 	}
 	return refs, notes, nil
@@ -633,7 +606,7 @@ type etcdctlGetter struct {
 }
 
 func (e etcdctlGetter) get(ctx context.Context, key string, rev int64) (etcdObject, error) {
-	name, args := e.bin, []string{
+	etcdArgs := []string{
 		"--endpoints=" + e.endpoints,
 		"--cacert=" + e.cacert,
 		"--cert=" + e.cert,
@@ -641,11 +614,11 @@ func (e etcdctlGetter) get(ctx context.Context, key string, rev int64) (etcdObje
 		"get", key, "-w", "json",
 	}
 	if rev > 0 {
-		args = append(args, "--rev="+strconv.FormatInt(rev, 10))
+		etcdArgs = append(etcdArgs, "--rev="+strconv.FormatInt(rev, 10))
 	}
+	name, args := envCommand, append([]string{etcdctlAPIEnv, e.bin}, etcdArgs...)
 	if e.sudo {
-		args = append([]string{name}, args...)
-		name = "sudo"
+		name, args = "sudo", append([]string{envCommand, etcdctlAPIEnv, e.bin}, etcdArgs...)
 	}
 	out, err := e.run(ctx, name, args...)
 	if err != nil {
@@ -668,7 +641,6 @@ func run() error {
 		probeKey         = flag.String("etcd-key", "", "profile a single raw etcd key (e.g. /registry/minions/<node>) and exit; bypasses kubectl discovery")
 		etcdPrefix       = flag.String("etcd-prefix", defaultEtcdPrefix, "apiserver --etcd-prefix, the root under which Kubernetes objects are stored")
 		allowPartialFlag = flag.Bool("allow-partial", false, "exit successfully even when some objects could not be measured")
-		verifyUID        = flag.Bool("verify-uid", true, "skip objects whose stored value no longer carries the UID found during discovery; turn off when values are encrypted at rest")
 		kubectlBin       = flag.String("kubectl", "kubectl", "path to the kubectl binary")
 		etcdctlBin       = flag.String("etcdctl", "etcdctl", "path to the etcdctl binary")
 		sudo             = flag.Bool("sudo", true, "run etcdctl via sudo (etcd client keys are root-only)")
@@ -701,7 +673,7 @@ func run() error {
 
 	lister := kubectlLister{bin: *kubectlBin, run: execRunner}
 
-	p, diag, err := buildProfile(ctx, lister, getter, *etcdPrefix, *namespace, *pipelineRun, *verifyUID)
+	p, diag, err := buildProfile(ctx, lister, getter, *etcdPrefix, *namespace, *pipelineRun)
 	if err != nil {
 		// Discovery notes explain how the failed run was correlated, so print
 		// them rather than letting the error swallow them.

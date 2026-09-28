@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -43,10 +42,6 @@ type etcdObject struct {
 	Version    int64
 	ValueBytes int
 
-	// value is the raw stored bytes, kept only long enough to confirm the key
-	// still holds the object that discovery found. etcd keys carry no UID, so
-	// this is the only way to notice a delete and recreate under the same name.
-	value []byte
 	// headerRevision is the store-wide revision the read was served at.
 	headerRevision int64
 }
@@ -173,18 +168,8 @@ func parseEtcdGetJSON(raw []byte, wantKey string) (etcdObject, error) {
 		Key:            string(key),
 		Version:        kv.Version,
 		ValueBytes:     len(value),
-		value:          value,
 		headerRevision: resp.Header.Revision,
 	}, nil
-}
-
-// holdsUID reports whether the stored value still belongs to the object with
-// this UID. Every Kubernetes object serializes metadata.uid as a plain string,
-// in both the JSON used for CRDs and the protobuf used for core resources, so
-// a substring check works without decoding either encoding. It cannot see
-// through encryption at rest, where no plaintext UID is present.
-func (o etcdObject) holdsUID(uid string) bool {
-	return bytes.Contains(o.value, []byte(uid))
 }
 
 // kindProfile aggregates the etcd footprint of every object of one Kind.

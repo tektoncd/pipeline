@@ -39,14 +39,24 @@ func fakeKubectl(_ context.Context, _ string, args ...string) ([]byte, error) {
 	case strings.Contains(joined, "get pods"):
 		return []byte("demo-build-pod\tpod-uid-1\tTaskRun\ttr-uid-1\n"), nil
 	case strings.Contains(joined, "get events"):
-		return []byte("ev-1\tev-uid-1\n"), nil
+		return []byte("ev-pr\tev-uid-pr\t\t\t" + prUID + "\n" +
+			"ev-build\tev-uid-build\t\t\ttr-uid-1\n" +
+			"ev-test\tev-uid-test\t\t\ttr-uid-2\n" +
+			"ev-pod\tev-uid-pod\t\t\tpod-uid-1\n"), nil
 	default:
 		return nil, nil
 	}
 }
 
 func TestKubectlListerList(t *testing.T) {
-	lister := kubectlLister{bin: "kubectl", run: fakeKubectl}
+	eventLists := 0
+	run := func(ctx context.Context, name string, args ...string) ([]byte, error) {
+		if strings.Contains(strings.Join(args, " "), "get events") {
+			eventLists++
+		}
+		return fakeKubectl(ctx, name, args...)
+	}
+	lister := kubectlLister{bin: "kubectl", run: run}
 	refs, _, err := lister.list(context.Background(), "ci", "demo")
 	if err != nil {
 		t.Fatalf("list() error: %v", err)
@@ -70,6 +80,9 @@ func TestKubectlListerList(t *testing.T) {
 	}
 	if refs[0].UID != prUID {
 		t.Errorf("PipelineRun UID = %q, want %q", refs[0].UID, prUID)
+	}
+	if eventLists != 1 {
+		t.Errorf("listed Events %d times, want one namespace-wide call", eventLists)
 	}
 }
 
@@ -99,9 +112,9 @@ func TestEtcdctlGetterGet(t *testing.T) {
 		t.Errorf("ValueBytes = %d, want %d", obj.ValueBytes, len(value))
 	}
 
-	// with -sudo the etcdctl binary is shifted to be sudo's first argument
-	if gotName != "sudo" || len(gotArgs) == 0 || gotArgs[0] != "etcdctl" {
-		t.Errorf("got command %q %v, want sudo etcdctl ...", gotName, gotArgs)
+	// sudo receives an explicit API version before the etcdctl binary.
+	if gotName != "sudo" || len(gotArgs) < 3 || gotArgs[0] != "env" || gotArgs[1] != "ETCDCTL_API=3" || gotArgs[2] != "etcdctl" {
+		t.Errorf("got command %q %v, want sudo env ETCDCTL_API=3 etcdctl ...", gotName, gotArgs)
 	}
 	if !strings.Contains(strings.Join(gotArgs, " "), key) {
 		t.Errorf("get args do not mention key %q: %v", key, gotArgs)
@@ -128,20 +141,6 @@ func TestKubectlListerNoChildren(t *testing.T) {
 	}
 	if len(notes) != 0 {
 		t.Errorf("notes = %v, want none when the run simply has no children", notes)
-	}
-}
-
-func TestEventsRejectsEmptyUID(t *testing.T) {
-	called := false
-	run := func(context.Context, string, ...string) ([]byte, error) {
-		called = true
-		return nil, nil
-	}
-	if _, err := (kubectlLister{bin: "kubectl", run: run}).events(context.Background(), "ci", ""); err == nil {
-		t.Error("events() with an empty UID = nil error, want a refusal")
-	}
-	if called {
-		t.Error("events() ran kubectl with an empty involvedObject.uid selector")
 	}
 }
 
@@ -194,7 +193,7 @@ func TestKubectlListerRechecksWithoutLabelSelector(t *testing.T) {
 		{Kind: kindTaskRun, UID: "tr-uid-old", Ref: objectRef{Group: groupTektonDev, Resource: resTaskRuns, Namespace: "ci", Name: "build"}},
 	}
 	lister := kubectlLister{bin: "kubectl", run: run}
-	_, err := lister.recheck(context.Background(), "ci", "demo", refs, refs, true)
+	_, err := lister.recheck(context.Background(), "ci", "demo", refs, refs)
 	if err == nil {
 		t.Fatal("recheck() = nil error for a same-name replacement with no labels, want an error")
 	}
@@ -223,7 +222,7 @@ func TestKubectlListerRechecksOwnership(t *testing.T) {
 			Ref: objectRef{Group: groupTektonDev, Resource: resTaskRuns, Namespace: "ci", Name: "build"}},
 	}
 	lister := kubectlLister{bin: "kubectl", run: run}
-	if _, err := lister.recheck(context.Background(), "ci", "demo", refs, refs, true); err == nil {
+	if _, err := lister.recheck(context.Background(), "ci", "demo", refs, refs); err == nil {
 		t.Fatal("recheck() = nil error for a re-parented TaskRun, want an error")
 	}
 }
@@ -344,10 +343,7 @@ func TestKubectlListerNotesUnsupportedChildren(t *testing.T) {
 	}
 }
 
-// The rule that an unconfirmable disappearance is only reportable when the
-// stored value was never checked lives in the real lister, so it is tested
-// there rather than in a fake that would just restate it.
-func TestKubectlListerRecheckReportsUnconfirmableDisappearance(t *testing.T) {
+func TestKubectlListerRecheckReportsDisappearance(t *testing.T) {
 	// The namespace no longer holds the object under any kind.
 	run := func(context.Context, string, ...string) ([]byte, error) { return nil, nil }
 	refs := []profiledRef{
@@ -355,21 +351,12 @@ func TestKubectlListerRecheckReportsUnconfirmableDisappearance(t *testing.T) {
 	}
 	lister := kubectlLister{bin: "kubectl", run: run}
 
-	res, err := lister.recheck(context.Background(), "ci", "demo", refs, refs, false)
+	res, err := lister.recheck(context.Background(), "ci", "demo", refs, refs)
 	if err != nil {
 		t.Fatalf("recheck() error: %v", err)
 	}
 	if len(res.Unverified) != 1 {
-		t.Errorf("Unverified = %v, want the vanished object reported when its stored value was never checked", res.Unverified)
-	}
-
-	// With the stored value verified, the same disappearance is accounted for.
-	res, err = lister.recheck(context.Background(), "ci", "demo", refs, refs, true)
-	if err != nil {
-		t.Fatalf("recheck() error: %v", err)
-	}
-	if len(res.Unverified) != 0 {
-		t.Errorf("Unverified = %v, want none once the stored value confirmed the generation", res.Unverified)
+		t.Errorf("Unverified = %v, want the vanished object reported", res.Unverified)
 	}
 }
 

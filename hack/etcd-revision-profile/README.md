@@ -18,17 +18,19 @@ not included. Only objects the API server can still list are profiled, so run
 it soon after the PipelineRun finishes: Events expire after an hour by default.
 
 It is an operator tool, not part of the Tekton control plane. See
-[docs/developers/etcd-revision-profiling.md](../../docs/developers/etcd-revision-profiling.md)
-for the concepts and methodology.
+[#10322](https://github.com/tektoncd/pipeline/issues/10322) for the profiling
+motivation and methodology.
 
 ## Usage
 
-Run from a control-plane node (etcd client keys are root-only, so `etcdctl`
-runs via `sudo` by default):
+Build the helper, then run it from a control-plane node (etcd client keys are
+root-only, so `etcdctl` runs via `sudo` by default):
 
 ```bash
-# Whole PipelineRun (PipelineRun + TaskRuns + Pods + Events)
-go run ./hack/etcd-revision-profile -n <namespace> -pipelinerun <name>
+go build -o /tmp/etcd-revision-profile ./hack/etcd-revision-profile
+
+# PipelineRun + TaskRuns + Pods + Events
+/tmp/etcd-revision-profile -n <namespace> -pipelinerun <name>
 
 # A single raw etcd key
 go run ./hack/etcd-revision-profile -etcd-key /registry/minions/<node-name>
@@ -36,8 +38,7 @@ go run ./hack/etcd-revision-profile -etcd-key /registry/minions/<node-name>
 
 Flags: `-kubectl`, `-etcdctl` (binary paths), `-endpoints`, `-cacert`, `-cert`,
 `-key` (etcd client TLS), `-sudo` (default true), `-etcd-prefix` (the
-apiserver's `--etcd-prefix`, default `/registry`), `-verify-uid` (default true;
-turn off when values are encrypted at rest), `-allow-partial`.
+apiserver's `--etcd-prefix`, default `/registry`), and `-allow-partial`.
 
 Output on stderr is split by what it means. `note:` lines are things worth
 knowing that do not affect the numbers, such as CustomRuns or child PipelineRuns
