@@ -29,13 +29,11 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/jenkins-x/go-scm/scm"
-	"github.com/jenkins-x/go-scm/scm/driver/fake"
-	"github.com/jenkins-x/go-scm/scm/factory"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/internal/resolution"
+	"github.com/tektoncd/pipeline/pkg/internal/scmclient"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework"
 	frtesting "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/testing"
@@ -420,21 +418,22 @@ func TestResolve(t *testing.T) {
 
 	scmFakeRepoURL := fmt.Sprintf("https://fake/%s/%s.git", testOrg, testRepo)
 	resolver := &Resolver{
-		clientFunc: func(driver string, serverURL string, token string, opts ...factory.ClientOptionFunc) (*scm.Client, error) {
-			scmClient, scmData := fake.NewDefault()
-
-			// repository service
-			scmData.Repositories = []*scm.Repository{{
-				FullName: fmt.Sprintf("%s/%s", testOrg, testRepo),
-				Clone:    scmFakeRepoURL,
-			}}
-
-			// git service
-			scmData.Commits = map[string]*scm.Commit{
-				"main":  {Sha: commitSHAsInSCMRepo[0]},
-				"other": {Sha: commitSHAsInSCMRepo[1]},
-			}
-			return scmClient, nil
+		clientFunc: func(driver, serverURL, token string) (scmclient.SCMClient, error) {
+			return &scmclient.FakeSCMClient{
+				FileContent: map[string][]byte{
+					testOrg + "/" + testRepo + "/tasks/example-task.yaml/main":          mainTaskYAML,
+					testOrg + "/" + testRepo + "/tasks/example-task.yaml/other":         mainTaskYAML,
+					testOrg + "/" + testRepo + "/pipelines/example-pipeline.yaml/main":  mainPipelineYAML,
+					testOrg + "/" + testRepo + "/pipelines/example-pipeline.yaml/other": otherPipelineYAML,
+				},
+				CommitSHAs: map[string]string{
+					testOrg + "/" + testRepo + "/main":  commitSHAsInSCMRepo[0],
+					testOrg + "/" + testRepo + "/other": commitSHAsInSCMRepo[1],
+				},
+				CloneURLs: map[string]string{
+					testOrg + "/" + testRepo: scmFakeRepoURL,
+				},
+			}, nil
 		},
 	}
 
@@ -716,7 +715,7 @@ func TestResolve(t *testing.T) {
 		},
 		apiToken:       "some-token",
 		expectedStatus: resolution.CreateResolutionRequestFailureStatus(),
-		expectedErr:    createError("couldn't fetch resource content: file testdata/test-org/test-repo/refs/main/pipelines/other-pipeline.yaml does not exist: stat testdata/test-org/test-repo/refs/main/pipelines/other-pipeline.yaml: no such file or directory"),
+		expectedErr:    createError("couldn't fetch resource content: file pipelines/other-pipeline.yaml does not exist"),
 	}, {
 		name: "api: token not found",
 		args: &params{
