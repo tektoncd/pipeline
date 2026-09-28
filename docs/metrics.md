@@ -39,6 +39,19 @@ The Labels/Tags marked as "\*" are optional. There is a choice between Histogram
 > instrumentation package. This label is informational and transparent to
 > most PromQL queries.
 
+## Resolver Metrics
+
+The remote resolver pod exposes resolver framework metrics on port `9090` when
+`metrics-protocol` is `prometheus`.
+
+| Name | Type | Labels/Tags | Status |
+|---|---|---|---|
+| `tekton_pipelines_resolver_resolution_duration_seconds_[bucket, sum, count]` | Histogram | `resolver_type`=&lt;resolver&gt; <br> `status`=&lt;success\|error\|timeout\|invalid_request&gt; <br> `resource_kind`=&lt;Task\|Pipeline\|StepAction\|unknown&gt; | experimental |
+| `tekton_pipelines_resolver_resolution_total` | Counter | `resolver_type`=&lt;resolver&gt; <br> `status`=&lt;success\|error\|timeout\|invalid_request&gt; <br> `resource_kind`=&lt;Task\|Pipeline\|StepAction\|unknown&gt; | experimental |
+| `tekton_pipelines_resolver_cache_hit_total` | Counter | `resolver_type`=&lt;resolver&gt; | experimental |
+| `tekton_pipelines_resolver_cache_miss_total` | Counter | `resolver_type`=&lt;resolver&gt; | experimental |
+| `tekton_pipelines_resolver_singleflight_dedup_total` | Counter | `resolver_type`=&lt;resolver&gt; | experimental |
+
 ## Infrastructure Metrics
 
 These metrics are provided by the Knative and Go runtime infrastructure.
