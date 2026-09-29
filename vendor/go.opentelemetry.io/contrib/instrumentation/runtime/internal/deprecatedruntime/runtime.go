@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package deprecatedruntime // import "go.opentelemetry.io/contrib/instrumentation/runtime/internal/deprecatedruntime"
+package deprecatedruntime
 
 import (
 	"context"

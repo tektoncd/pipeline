@@ -165,6 +165,14 @@ func endpointFor[T any](cfg Config, opt func(string) T) (T, error) {
 	}
 	if u.Opaque != "" {
 		ep = "https://" + ep
+		u, err = url.Parse(ep)
+		if err != nil {
+			return epOption, err
+		}
+	}
+	if cfg.Protocol == ProtocolHTTPProtobuf && u.Path == "" {
+		u.Path = "/v1/metrics"
+		ep = u.String()
 	}
 
 	epOption = opt(ep)
