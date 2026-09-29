@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package runtime // import "go.opentelemetry.io/contrib/instrumentation/runtime"
+package runtime
 
 import (
 	"time"

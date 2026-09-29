@@ -1,0 +1,118 @@
+diff --git a/vendor/knative.dev/pkg/observability/tracing/provider.go b/vendor/knative.dev/pkg/observability/tracing/provider.go
+--- a/vendor/knative.dev/pkg/observability/tracing/provider.go
++++ b/vendor/knative.dev/pkg/observability/tracing/provider.go
+@@ -157,25 +157,33 @@
+ func endpointFor[T any](cfg Config, opt func(string) T) (T, error) {
+-	var epOption T
+-
+-	override := cmp.Or(
+-		os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+-		os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"),
+-	)
+-
+-	if override != "" {
+-		return epOption, nil
+-	}
+-
+-	ep := cfg.Endpoint
+-
+-	u, err := url.Parse(cfg.Endpoint)
+-	if err != nil {
+-		return epOption, err
+-	}
+-	if u.Opaque != "" {
+-		ep = "https://" + ep
+-	}
+-
+-	epOption = opt(ep)
+-	return epOption, nil
++	var epOption T
++
++	override := cmp.Or(
++		os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
++		os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"),
++	)
++
++	if override != "" {
++		return epOption, nil
++	}
++
++	ep := cfg.Endpoint
++
++	u, err := url.Parse(cfg.Endpoint)
++	if err != nil {
++		return epOption, err
++	}
++	if u.Opaque != "" {
++		ep = "https://" + ep
++		u, err = url.Parse(ep)
++		if err != nil {
++			return epOption, err
++		}
++	}
++	if cfg.Protocol == ProtocolHTTPProtobuf && u.Path == "" {
++		u.Path = "/v1/traces"
++		ep = u.String()
++	}
++
++	epOption = opt(ep)
++	return epOption, nil
+ }
+diff --git a/vendor/knative.dev/pkg/observability/metrics/provider.go b/vendor/knative.dev/pkg/observability/metrics/provider.go
+--- a/vendor/knative.dev/pkg/observability/metrics/provider.go
++++ b/vendor/knative.dev/pkg/observability/metrics/provider.go
+@@ -147,24 +147,32 @@
+ func endpointFor[T any](cfg Config, opt func(string) T) (T, error) {
+-	var epOption T
+-
+-	override := cmp.Or(
+-		os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+-		os.Getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"),
+-	)
+-	if override != "" {
+-		return epOption, nil
+-	}
+-
+-	ep := cfg.Endpoint
+-
+-	u, err := url.Parse(cfg.Endpoint)
+-	if err != nil {
+-		return epOption, err
+-	}
+-	if u.Opaque != "" {
+-		ep = "https://" + ep
+-	}
+-
+-	epOption = opt(ep)
+-	return epOption, nil
++	var epOption T
++
++	override := cmp.Or(
++		os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
++		os.Getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"),
++	)
++	if override != "" {
++		return epOption, nil
++	}
++
++	ep := cfg.Endpoint
++
++	u, err := url.Parse(cfg.Endpoint)
++	if err != nil {
++		return epOption, err
++	}
++	if u.Opaque != "" {
++		ep = "https://" + ep
++		u, err = url.Parse(ep)
++		if err != nil {
++			return epOption, err
++		}
++	}
++	if cfg.Protocol == ProtocolHTTPProtobuf && u.Path == "" {
++		u.Path = "/v1/metrics"
++		ep = u.String()
++	}
++
++	epOption = opt(ep)
++	return epOption, nil
+ }
