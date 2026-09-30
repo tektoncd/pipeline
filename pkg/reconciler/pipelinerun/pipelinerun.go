@@ -424,6 +424,7 @@ func (c *Reconciler) resolvePipelineState(
 	defer span.End()
 	span.SetAttributes(
 		attribute.String("pipelinerun", pr.Name),
+		attribute.String("pipeline", pipelineMeta.Name),
 		attribute.String("namespace", pr.Namespace),
 		attribute.Int("task.count", len(pipelineTasks)),
 	)
@@ -615,6 +616,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 			logger.Errorf("Failed to store PipelineSpec on PipelineRun.Status for pipelinerun %s: %v", pr.Name, err)
 		}
 	}
+
+	span.SetAttributes(attribute.String("pipeline", pipelineMeta.Name))
 
 	if pipelineMeta.VerificationResult != nil {
 		cond, err := conditionFromVerificationResult(pipelineMeta.VerificationResult, pr, pipelineMeta.Name)

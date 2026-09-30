@@ -209,47 +209,102 @@ func TestReconcilerApplyPathsEmitSpans(t *testing.T) {
 }
 
 func TestChildSpanAttributes(t *testing.T) {
-	sr := tracetest.NewSpanRecorder()
-	tp := tracesdk.NewTracerProvider(tracesdk.WithSpanProcessor(sr))
-	defer tp.Shutdown(t.Context())
+	t.Run("stopSidecars", func(t *testing.T) {
+		sr := tracetest.NewSpanRecorder()
+		tp := tracesdk.NewTracerProvider(tracesdk.WithSpanProcessor(sr))
+		defer tp.Shutdown(t.Context())
 
-	r := &Reconciler{tracerProvider: tp}
+		r := &Reconciler{tracerProvider: tp}
 
-	tr := &v1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-taskrun",
-			Namespace: "my-ns",
-		},
-	}
-
-	if err := r.stopSidecars(t.Context(), tr); err != nil {
-		t.Fatalf("stopSidecars() returned unexpected error: %v", err)
-	}
-
-	spans := sr.Ended()
-	if len(spans) != 1 {
-		t.Fatalf("expected 1 ended span, got %d", len(spans))
-	}
-
-	span := spans[0]
-	if span.Name() != "stopSidecars" {
-		t.Errorf("span name = %q, want %q", span.Name(), "stopSidecars")
-	}
-
-	wantAttrs := map[attribute.Key]string{
-		"taskrun":   "my-taskrun",
-		"namespace": "my-ns",
-		"pod":       "",
-	}
-	for _, kv := range span.Attributes() {
-		if want, ok := wantAttrs[kv.Key]; ok {
-			if kv.Value.AsString() != want {
-				t.Errorf("attribute %q = %q, want %q", kv.Key, kv.Value.AsString(), want)
-			}
-			delete(wantAttrs, kv.Key)
+		tr := &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "my-taskrun",
+				Namespace: "my-ns",
+			},
 		}
-	}
-	for key := range wantAttrs {
-		t.Errorf("missing expected attribute %q on stopSidecars span", key)
-	}
+
+		if err := r.stopSidecars(t.Context(), tr); err != nil {
+			t.Fatalf("stopSidecars() returned unexpected error: %v", err)
+		}
+
+		spans := sr.Ended()
+		if len(spans) != 1 {
+			t.Fatalf("expected 1 ended span, got %d", len(spans))
+		}
+
+		span := spans[0]
+		if span.Name() != "stopSidecars" {
+			t.Errorf("span name = %q, want %q", span.Name(), "stopSidecars")
+		}
+
+		wantAttrs := map[attribute.Key]string{
+			"taskrun":   "my-taskrun",
+			"namespace": "my-ns",
+			"pod":       "",
+		}
+		for _, kv := range span.Attributes() {
+			if want, ok := wantAttrs[kv.Key]; ok {
+				if kv.Value.AsString() != want {
+					t.Errorf("attribute %q = %q, want %q", kv.Key, kv.Value.AsString(), want)
+				}
+				delete(wantAttrs, kv.Key)
+			}
+		}
+		for key := range wantAttrs {
+			t.Errorf("missing expected attribute %q on stopSidecars span", key)
+		}
+	})
+
+	t.Run("applyParamsContextsResultsAndWorkspaces_task_attribute", func(t *testing.T) {
+		sr := tracetest.NewSpanRecorder()
+		tp := tracesdk.NewTracerProvider(tracesdk.WithSpanProcessor(sr))
+		defer tp.Shutdown(t.Context())
+
+		tr := &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "my-taskrun",
+				Namespace: "my-ns",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{},
+			},
+		}
+		rtr := &resources.ResolvedTask{
+			TaskName: "my-task",
+			TaskSpec: &v1.TaskSpec{},
+		}
+
+		if _, err := applyParamsContextsResultsAndWorkspaces(
+			t.Context(), tp.Tracer(TracerName), tr, rtr, map[string]corev1.Volume{},
+		); err != nil {
+			t.Fatalf("applyParamsContextsResultsAndWorkspaces() returned unexpected error: %v", err)
+		}
+
+		wantAttrs := map[attribute.Key]string{
+			"taskrun":   "my-taskrun",
+			"task":      "my-task",
+			"namespace": "my-ns",
+		}
+		var found bool
+		for _, s := range sr.Ended() {
+			if s.Name() != "applyParamsContextsResultsAndWorkspaces" {
+				continue
+			}
+			found = true
+			seen := make(map[attribute.Key]string)
+			for _, kv := range s.Attributes() {
+				seen[kv.Key] = kv.Value.AsString()
+			}
+			for key, want := range wantAttrs {
+				if got, ok := seen[key]; !ok {
+					t.Errorf("missing expected attribute %q on span", key)
+				} else if got != want {
+					t.Errorf("attribute %q = %q, want %q", key, got, want)
+				}
+			}
+		}
+		if !found {
+			t.Fatal("applyParamsContextsResultsAndWorkspaces span not found")
+		}
+	})
 }

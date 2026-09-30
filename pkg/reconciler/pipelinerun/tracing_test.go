@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	alpha1listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
@@ -24,6 +25,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
 func TestInitTracing(t *testing.T) {
@@ -146,45 +148,101 @@ func TestInitTracing(t *testing.T) {
 }
 
 func TestChildSpanAttributes(t *testing.T) {
-	sr := tracetest.NewSpanRecorder()
-	tp := tracesdk.NewTracerProvider(tracesdk.WithSpanProcessor(sr))
-	defer tp.Shutdown(t.Context())
+	t.Run("durationAndCountMetrics", func(t *testing.T) {
+		sr := tracetest.NewSpanRecorder()
+		tp := tracesdk.NewTracerProvider(tracesdk.WithSpanProcessor(sr))
+		defer tp.Shutdown(t.Context())
 
-	r := &Reconciler{tracerProvider: tp}
+		r := &Reconciler{tracerProvider: tp}
 
-	pr := &v1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-pipelinerun",
-			Namespace: "my-ns",
-		},
-	}
-
-	r.durationAndCountMetrics(t.Context(), pr, nil)
-
-	spans := sr.Ended()
-	if len(spans) != 1 {
-		t.Fatalf("expected 1 ended span, got %d", len(spans))
-	}
-
-	span := spans[0]
-	if span.Name() != "durationAndCountMetrics" {
-		t.Errorf("span name = %q, want %q", span.Name(), "durationAndCountMetrics")
-	}
-
-	wantAttrs := map[attribute.Key]attribute.Value{
-		"pipelinerun": attribute.StringValue("my-pipelinerun"),
-		"namespace":   attribute.StringValue("my-ns"),
-		"done":        attribute.BoolValue(false),
-	}
-	for _, kv := range span.Attributes() {
-		if want, ok := wantAttrs[kv.Key]; ok {
-			if kv.Value != want {
-				t.Errorf("attribute %q = %v, want %v", kv.Key, kv.Value, want)
-			}
-			delete(wantAttrs, kv.Key)
+		pr := &v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "my-pipelinerun",
+				Namespace: "my-ns",
+			},
 		}
-	}
-	for key := range wantAttrs {
-		t.Errorf("missing expected attribute %q on durationAndCountMetrics span", key)
-	}
+
+		r.durationAndCountMetrics(t.Context(), pr, nil)
+
+		spans := sr.Ended()
+		if len(spans) != 1 {
+			t.Fatalf("expected 1 ended span, got %d", len(spans))
+		}
+
+		span := spans[0]
+		if span.Name() != "durationAndCountMetrics" {
+			t.Errorf("span name = %q, want %q", span.Name(), "durationAndCountMetrics")
+		}
+
+		wantAttrs := map[attribute.Key]attribute.Value{
+			"pipelinerun": attribute.StringValue("my-pipelinerun"),
+			"namespace":   attribute.StringValue("my-ns"),
+			"done":        attribute.BoolValue(false),
+		}
+		for _, kv := range span.Attributes() {
+			if want, ok := wantAttrs[kv.Key]; ok {
+				if kv.Value != want {
+					t.Errorf("attribute %q = %v, want %v", kv.Key, kv.Value, want)
+				}
+				delete(wantAttrs, kv.Key)
+			}
+		}
+		for key := range wantAttrs {
+			t.Errorf("missing expected attribute %q on durationAndCountMetrics span", key)
+		}
+	})
+
+	t.Run("resolvePipelineState_pipeline_attribute", func(t *testing.T) {
+		sr := tracetest.NewSpanRecorder()
+		tp := tracesdk.NewTracerProvider(tracesdk.WithSpanProcessor(sr))
+		defer tp.Shutdown(t.Context())
+
+		indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+		r := &Reconciler{
+			tracerProvider:           tp,
+			verificationPolicyLister: alpha1listers.NewVerificationPolicyLister(indexer),
+		}
+
+		pr := &v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "my-pipelinerun",
+				Namespace: "my-ns",
+			},
+		}
+		pipelineMeta := &metav1.ObjectMeta{
+			Name:      "my-pipeline",
+			Namespace: "my-ns",
+		}
+
+		if _, err := r.resolvePipelineState(t.Context(), nil, pipelineMeta, pr, nil); err != nil {
+			t.Fatalf("resolvePipelineState() returned unexpected error: %v", err)
+		}
+
+		var found bool
+		for _, s := range sr.Ended() {
+			if s.Name() != "resolvePipelineState" {
+				continue
+			}
+			found = true
+			wantAttrs := map[attribute.Key]string{
+				"pipelinerun": "my-pipelinerun",
+				"pipeline":    "my-pipeline",
+				"namespace":   "my-ns",
+			}
+			for _, kv := range s.Attributes() {
+				if want, ok := wantAttrs[kv.Key]; ok {
+					if kv.Value.AsString() != want {
+						t.Errorf("attribute %q = %q, want %q", kv.Key, kv.Value.AsString(), want)
+					}
+					delete(wantAttrs, kv.Key)
+				}
+			}
+			for key := range wantAttrs {
+				t.Errorf("missing expected attribute %q on resolvePipelineState span", key)
+			}
+		}
+		if !found {
+			t.Fatal("resolvePipelineState span not found")
+		}
+	})
 }
