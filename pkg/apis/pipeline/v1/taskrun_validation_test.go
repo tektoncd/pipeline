@@ -750,20 +750,6 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		wantErr: apis.ErrGeneric("before step must be unique, the same step: step-1 is defined multiple times at", "debug.breakpoints.beforeSteps[1]"),
 		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
-		name: "empty onFailure breakpoint",
-		spec: v1.TaskRunSpec{
-			TaskRef: &v1.TaskRef{
-				Name: "my-task",
-			},
-			Debug: &v1.TaskRunDebug{
-				Breakpoints: &v1.TaskBreakpoints{
-					OnFailure: "",
-				},
-			},
-		},
-		wantErr: apis.ErrInvalidValue("onFailure breakpoint is empty, it is only allowed to be set as enabled", "debug.breakpoints.onFailure"),
-		wc:      cfgtesting.EnableAlphaAPIFields,
-	}, {
 		name: "stepSpecs disallowed without beta feature gate",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{
@@ -1314,6 +1300,58 @@ func TestTaskRunSpec_ValidateUpdate_FinalizerChanges(t *testing.T) {
 				} else if !strings.Contains(err.Error(), tt.expectedError) {
 					t.Errorf("Expected error containing %q, but got: %v", tt.expectedError, err)
 				}
+			}
+		})
+	}
+}
+
+func TestTaskRunSpec_ValidateDebugBreakpoints(t *testing.T) {
+	tests := []struct {
+		name    string
+		debug   *v1.TaskRunDebug
+		wantErr bool
+	}{{
+		name: "beforeSteps without onFailure is valid",
+		debug: &v1.TaskRunDebug{
+			Breakpoints: &v1.TaskBreakpoints{
+				BeforeSteps: []string{"my-step"},
+			},
+		},
+	}, {
+		name:  "empty breakpoints are valid",
+		debug: &v1.TaskRunDebug{Breakpoints: &v1.TaskBreakpoints{}},
+	}, {
+		name: "onFailure enabled is valid",
+		debug: &v1.TaskRunDebug{
+			Breakpoints: &v1.TaskBreakpoints{OnFailure: v1.EnabledOnFailureBreakpoint},
+		},
+	}, {
+		name: "invalid onFailure value is rejected",
+		debug: &v1.TaskRunDebug{
+			Breakpoints: &v1.TaskBreakpoints{OnFailure: "turnOn"},
+		},
+		wantErr: true,
+	}, {
+		name: "duplicate beforeSteps are rejected",
+		debug: &v1.TaskRunDebug{
+			Breakpoints: &v1.TaskBreakpoints{BeforeSteps: []string{"step-1", "step-1"}},
+		},
+		wantErr: true,
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := cfgtesting.EnableAlphaAPIFields(t.Context())
+			spec := v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{Name: "my-task"},
+				Debug:   tt.debug,
+			}
+			err := spec.Validate(ctx)
+			if tt.wantErr && err == nil {
+				t.Fatal("expected validation error, got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("expected no validation error, got %v", err)
 			}
 		})
 	}
