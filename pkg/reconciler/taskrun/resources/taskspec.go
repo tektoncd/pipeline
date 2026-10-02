@@ -144,7 +144,9 @@ func resolveStepRef(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.TaskR
 
 	// Merge fields from the resolved StepAction into the step
 	resolvedStep.Image = stepFromStepAction.Image
-	resolvedStep.SecurityContext = stepFromStepAction.SecurityContext
+	if stepFromStepAction.SecurityContext != nil {
+		resolvedStep.SecurityContext = stepFromStepAction.SecurityContext
+	}
 	if len(stepFromStepAction.Command) > 0 {
 		resolvedStep.Command = stepFromStepAction.Command
 	}
