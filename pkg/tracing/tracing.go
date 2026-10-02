@@ -18,6 +18,7 @@ package tracing
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"net/url"
@@ -79,12 +80,26 @@ func (t *tracerProvider) OnStore(lister listerv1.SecretLister) func(name string,
 			t.logger.Info("tracing config unchanged", cfg, t.cfg)
 			return
 		}
+
+		oldUser := t.username
+		oldPass := t.password
 		t.cfg = cfg
 
 		if lister != nil && cfg.CredentialsSecret != "" {
 			sec, err := lister.Secrets(system.Namespace()).Get(cfg.CredentialsSecret)
 			if err != nil {
-				t.logger.Errorf("unable to initialize tracing with error : %v", err.Error())
+				t.logger.Errorf("unable to fetch credentials secret %q: %v", cfg.CredentialsSecret, err.Error())
+				// Shut down the stale exporter so it does not keep sending
+				// to the old destination. Keep t.cfg set to the new config
+				// so that OnSecret can recover when the Secret is created.
+				if p, ok := t.provider.(*tracesdk.TracerProvider); ok {
+					if sErr := p.Shutdown(context.Background()); sErr != nil {
+						t.logger.Errorf("unable to shutdown tracingprovider with error : %v", sErr.Error())
+					}
+				}
+				t.provider = noop.NewTracerProvider()
+				t.username = ""
+				t.password = ""
 				return
 			}
 			creds := sec.Data
@@ -95,7 +110,11 @@ func (t *tracerProvider) OnStore(lister listerv1.SecretLister) func(name string,
 			t.password = ""
 		}
 
-		t.reinitialize()
+		if !t.reinitialize() {
+			t.cfg = nil
+			t.username = oldUser
+			t.password = oldPass
+		}
 	}
 }
 
@@ -114,7 +133,7 @@ func (t *tracerProvider) Handler(obj interface{}) {
 }
 
 func (t *tracerProvider) OnSecret(secret *corev1.Secret) {
-	if secret.Name != t.cfg.CredentialsSecret {
+	if t.cfg == nil || secret.Name != t.cfg.CredentialsSecret {
 		return
 	}
 
@@ -126,19 +145,32 @@ func (t *tracerProvider) OnSecret(secret *corev1.Secret) {
 		// No change in credentials, no need to reinitialize
 		return
 	}
+
+	oldUser := t.username
+	oldPass := t.password
 	t.username = username
 	t.password = password
 
 	t.logger.Debugf("tracing credentials updated, reinitializing tracingprovider with secret: %v", secret.Name)
 
-	t.reinitialize()
+	if !t.reinitialize() {
+		t.username = oldUser
+		t.password = oldPass
+	}
 }
 
-func (t *tracerProvider) reinitialize() {
+func (t *tracerProvider) reinitialize() bool {
 	tp, err := createTracerProvider(t.service, t.cfg, t.username, t.password)
 	if err != nil {
 		t.logger.Errorf("unable to initialize tracing with error : %v", err.Error())
-		return
+		// Shut down stale exporter so it does not keep sending to the old destination.
+		if p, ok := t.provider.(*tracesdk.TracerProvider); ok {
+			if sErr := p.Shutdown(context.Background()); sErr != nil {
+				t.logger.Errorf("unable to shutdown tracingprovider with error : %v", sErr.Error())
+			}
+		}
+		t.provider = noop.NewTracerProvider()
+		return false
 	}
 	t.logger.Info("initialized Tracer Provider")
 	if p, ok := t.provider.(*tracesdk.TracerProvider); ok {
@@ -147,6 +179,7 @@ func (t *tracerProvider) reinitialize() {
 		}
 	}
 	t.provider = tp
+	return true
 }
 
 func createTracerProvider(service string, cfg *config.Tracing, user, pass string) (trace.TracerProvider, error) {
@@ -161,6 +194,16 @@ func createTracerProvider(service string, cfg *config.Tracing, user, pass string
 	opts := []otlptracehttp.Option{
 		otlptracehttp.WithEndpoint(u.Host),
 		otlptracehttp.WithURLPath(u.Path),
+	}
+
+	if u.Scheme == "https" && cfg.CACert != "" {
+		pool, err := certPoolFromCACert(cfg.CACert)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load tracing CA cert: %w", err)
+		}
+		opts = append(opts, otlptracehttp.WithTLSClientConfig(&tls.Config{
+			RootCAs: pool,
+		}))
 	}
 
 	if u.Scheme == "http" {
