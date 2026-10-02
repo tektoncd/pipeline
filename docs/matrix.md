@@ -11,6 +11,7 @@ weight: 406
 - [Configuring a Matrix](#configuring-a-matrix)
   - [Generating Combinations](#generating-combinations)
   - [Explicit Combinations](#explicit-combinations)
+  - [Conditional Combinations](#conditional-combinations)
 - [Concurrency Control](#concurrency-control)
 - [Parameters](#parameters)
   - [Parameters in Matrix.Params](#parameters-in-matrixparams-1)
@@ -154,6 +155,49 @@ Combinations generated
 { "IMAGE": "image-2", "DOCKERFILE": "path/to/Dockerfile2"}
 { "IMAGE": "image-3", "DOCKERFILE": "path/to/Dockerfile3}
 ```
+
+### Conditional Combinations
+
+Each entry in `matrix.include` can specify a list of [`when` expressions](pipelines.md#guard-task-execution-using-when-expressions).
+When any of them evaluates to `false`, that combination is omitted: no `TaskRun` or `Run` is created for it. This lets
+pipeline authors enable or disable specific combinations from `PipelineRun` parameters, without changing the `Pipeline`.
+
+```yaml
+spec:
+  params:
+    - name: build-image-3
+      default: "false"
+  tasks:
+    - name: build
+      matrix:
+        include:
+          - name: build-1
+            params:
+              - name: IMAGE
+                value: "image-1"
+          - name: build-3
+            params:
+              - name: IMAGE
+                value: "image-3"
+            when:
+              - input: "$(params.build-image-3)"
+                operator: in
+                values: ["true"]
+```
+
+In the example above, `build-3` is only executed when the `build-image-3` `PipelineRun` parameter is `"true"`.
+
+`when` expressions in `matrix.include` support `PipelineRun` parameters and [results from previous
+`PipelineTasks`](pipelines.md#using-results-in-when-expressions) (`$(tasks.<task>.results.<result>)`), which create an
+ordering dependency on the producing `PipelineTask`. They do **not** support:
+
+- [CEL expressions](pipelines.md#use-cel-expression-in-whenexpression) (`cel`), and
+- [execution status references](pipelines.md#using-execution-status-of-pipelinetask) such as `$(tasks.<task>.status)`.
+
+Both are rejected at validation time.
+
+If all `matrix.include` combinations of a `PipelineTask` are filtered out, the `PipelineTask` is marked as skipped with
+the `Matrix Include When Expressions evaluated to false` reason.
 
 ## DisplayName
 

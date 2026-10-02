@@ -480,6 +480,8 @@ func (t *ResolvedPipelineTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
 		skippingReason = v1.TasksTimedOutSkip
 	case t.skipBecauseEmptyArrayInMatrixParams():
 		skippingReason = v1.EmptyArrayInMatrixParams
+	case t.skipBecauseAllMatrixIncludeWhensEvaluatedToFalse():
+		skippingReason = v1.MatrixIncludeWhenSkip
 	default:
 		skippingReason = v1.None
 	}
@@ -611,6 +613,15 @@ func (t *ResolvedPipelineTask) skipBecauseEmptyArrayInMatrixParams() bool {
 	return false
 }
 
+// skipBecauseAllMatrixIncludeWhensEvaluatedToFalse returns true if the task is matrixed with only
+// include parameters, and all include when expressions evaluated to false, resulting in 0 combinations.
+func (t *ResolvedPipelineTask) skipBecauseAllMatrixIncludeWhensEvaluatedToFalse() bool {
+	if t.PipelineTask.IsMatrixed() && t.PipelineTask.Matrix.HasInclude() {
+		return t.PipelineTask.Matrix.CountCombinations() == 0
+	}
+	return false
+}
+
 // IsFinalTask returns true if a task is a finally task
 func (t *ResolvedPipelineTask) IsFinalTask(facts *PipelineRunFacts) bool {
 	return facts.isFinalTask(t.PipelineTask.Name)
@@ -635,6 +646,8 @@ func (t *ResolvedPipelineTask) IsFinallySkipped(facts *PipelineRunFacts) TaskSki
 			skippingReason = v1.FinallyTimedOutSkip
 		case t.skipBecauseEmptyArrayInMatrixParams():
 			skippingReason = v1.EmptyArrayInMatrixParams
+		case t.skipBecauseAllMatrixIncludeWhensEvaluatedToFalse():
+			skippingReason = v1.MatrixIncludeWhenSkip
 		default:
 			skippingReason = v1.None
 		}
@@ -728,6 +741,7 @@ func ResolvePipelineTask(
 	ApplyTaskResults(PipelineRunState{&rpt}, resolvedResultRefs)
 
 	if rpt.PipelineTask.IsMatrixed() {
+		ApplyMatrixIncludeWhenExpressions(rpt.PipelineTask, &pipelineRun)
 		numCombinations = rpt.PipelineTask.Matrix.CountCombinations()
 	}
 

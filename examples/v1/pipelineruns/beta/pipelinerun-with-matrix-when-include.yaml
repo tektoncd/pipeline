@@ -1,0 +1,92 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: mytask
+  annotations:
+    description: |
+      A task that does something cool with GOARCH and version
+spec:
+  params:
+    - name: IMAGE
+      default: ''
+    - name: PLATFORM
+      default: ''
+  steps:
+    - name: echo
+      image: mirror.gcr.io/alpine
+      script: |
+        echo image: $(params.IMAGE) and platform: $(params.PLATFORM)
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: matrixed-include-when-pr
+spec:
+  taskRunTemplate:
+    serviceAccountName: default
+  params:
+    - name: enabled-platforms
+      value:
+        - arm64
+        - amd64
+    - name: platform-amd64
+      value: linux/amd64
+    - name: platform-arm64
+      value: linux/arm64
+    - name: platform-ppc64le
+      value: linux-m4.xl/ppc64le
+    - name: platform-s390x
+      value: linux/s390x
+    - name: output-image
+      value: my-image
+  pipelineSpec:
+    tasks:
+      - name: build-containers-multi-platform
+        matrix:
+          include:
+            - name: amd64
+              params:
+                - name: IMAGE
+                  value: $(params.output-image)-amd64
+                - name: PLATFORM
+                  value: $(params.platform-amd64)
+              when:
+                - input: "amd64"
+                  operator: in
+                  values:
+                    - "$(params.enabled-platforms[*])"
+            - name: arm64
+              params:
+                - name: IMAGE
+                  value: $(params.output-image)-arm64
+                - name: PLATFORM
+                  value: $(params.platform-arm64)
+              when:
+                - input: "arm64"
+                  operator: in
+                  values:
+                    - "$(params.enabled-platforms[*])"
+            - name: ppc64le
+              params:
+                - name: IMAGE
+                  value: $(params.output-image)-ppc64le
+                - name: PLATFORM
+                  value: $(params.platform-ppc64le)
+              when:
+                - input: "ppc64le"
+                  operator: in
+                  values:
+                    - "$(params.enabled-platforms[*])"
+            - name: s390x
+              params:
+                - name: IMAGE
+                  value: $(params.output-image)-s390x
+                - name: PLATFORM
+                  value: $(params.platform-s390x)
+              when:
+                - input: "s390x"
+                  operator: in
+                  values:
+                    - "$(params.enabled-platforms[*])"
+        taskRef:
+          name: mytask
