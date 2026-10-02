@@ -3,12 +3,15 @@ package testing
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/kmeta"
 )
 
@@ -1035,4 +1038,143 @@ spec:
 	}
 
 	return parentPipeline, resolvedChild, parentPipelineRun, expectedChildPipelineRun
+}
+
+// BaseObjectMeta returns an ObjectMeta with the given name and namespace and
+// empty (non-nil) labels and annotations.
+func BaseObjectMeta(name, ns string) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:        name,
+		Namespace:   ns,
+		Labels:      map[string]string{},
+		Annotations: map[string]string{},
+	}
+}
+
+// TaskRunObjectMeta returns the ObjectMeta for a TaskRun owned by a PipelineRun,
+// including the standard Tekton labels and owner reference.
+func TaskRunObjectMeta(trName, ns, prName, pipelineName, pipelineTaskName string, skipMemberOfLabel bool) metav1.ObjectMeta {
+	om := metav1.ObjectMeta{
+		Name:      trName,
+		Namespace: ns,
+		OwnerReferences: []metav1.OwnerReference{{
+			Kind:               "PipelineRun",
+			Name:               prName,
+			APIVersion:         "tekton.dev/v1",
+			Controller:         &trueb,
+			BlockOwnerDeletion: &trueb,
+			UID:                "",
+		}},
+		Labels: map[string]string{
+			pipeline.PipelineLabelKey:       pipelineName,
+			pipeline.PipelineRunLabelKey:    prName,
+			pipeline.PipelineTaskLabelKey:   pipelineTaskName,
+			pipeline.PipelineRunUIDLabelKey: "",
+		},
+		Annotations: map[string]string{},
+	}
+	if !skipMemberOfLabel {
+		om.Labels[pipeline.MemberOfLabelKey] = v1.PipelineTasks
+	}
+	return om
+}
+
+// TaskRunObjectMetaWithAnnotations is TaskRunObjectMeta with the given
+// annotations merged in.
+func TaskRunObjectMetaWithAnnotations(trName, ns, prName, pipelineName, pipelineTaskName string, skipMemberOfLabel bool, annotations map[string]string) metav1.ObjectMeta {
+	om := TaskRunObjectMeta(trName, ns, prName, pipelineName, pipelineTaskName, skipMemberOfLabel)
+	for k, v := range annotations {
+		om.Annotations[k] = v
+	}
+	return om
+}
+
+// CreateHelloWorldTaskRunWithStatus creates a hello-world TaskRun with the
+// given pod name and condition set on its status.
+func CreateHelloWorldTaskRunWithStatus(
+	t *testing.T,
+	trName, ns, prName, pName, podName string,
+	condition apis.Condition,
+) *v1.TaskRun {
+	t.Helper()
+	p := CreateHelloWorldTaskRun(t, trName, ns, prName, pName)
+	p.Status = v1.TaskRunStatus{
+		Status: duckv1.Status{
+			Conditions: duckv1.Conditions{condition},
+		},
+		TaskRunStatusFields: v1.TaskRunStatusFields{
+			PodName: podName,
+		},
+	}
+	return p
+}
+
+// CreateHelloWorldTaskRunWithStatusTaskLabel is CreateHelloWorldTaskRunWithStatus
+// with the pipeline task label set to taskLabel.
+func CreateHelloWorldTaskRunWithStatusTaskLabel(
+	t *testing.T,
+	trName, ns, prName, pName, podName, taskLabel string,
+	condition apis.Condition,
+) *v1.TaskRun {
+	t.Helper()
+	p := CreateHelloWorldTaskRunWithStatus(t, trName, ns, prName, pName, podName, condition)
+	p.Labels[pipeline.PipelineTaskLabelKey] = taskLabel
+
+	return p
+}
+
+// CreateHelloWorldTaskRun creates a TaskRun referencing the hello-world Task,
+// labeled with the given Pipeline and PipelineRun names.
+func CreateHelloWorldTaskRun(t *testing.T, trName, ns, prName, pName string) *v1.TaskRun {
+	t.Helper()
+	return parse.MustParseV1TaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+  labels:
+    %s: %s
+    %s: %s
+spec:
+  taskRef:
+    name: hello-world
+  serviceAccountName: test-sa
+`, trName, ns, pipeline.PipelineLabelKey, pName, pipeline.PipelineRunLabelKey, prName))
+}
+
+// CreateCancelledPipelineRun creates a PipelineRun in namespace foo with the
+// given spec status and the given start time set on its status.
+func CreateCancelledPipelineRun(t *testing.T, prName string, specStatus v1.PipelineRunSpecStatus, startTime time.Time) *v1.PipelineRun {
+	t.Helper()
+	return parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+  status: %s
+status:
+  startTime: %s`, prName, specStatus, startTime.Format(time.RFC3339)))
+}
+
+// HelloWorldPipelineWithRunAfter creates a two-task Pipeline where
+// hello-world-2 runs after hello-world-1.
+func HelloWorldPipelineWithRunAfter(t *testing.T) *v1.Pipeline {
+	t.Helper()
+	return parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: hello-world-1
+      taskRef:
+        name: hello-world
+    - name: hello-world-2
+      taskRef:
+        name: hello-world
+      runAfter:
+        - hello-world-1
+`)
 }
