@@ -726,7 +726,7 @@ _Appears in:_
 | `startTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | StartTime is the time the PipelineRun is actually started. |  |  |
 | `completionTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | CompletionTime is the time the PipelineRun completed. |  |  |
 | `results` _[PipelineRunResult](#pipelinerunresult) array_ | Results are the list of results written out by the pipeline task's containers |  | Optional: \{\} <br /> |
-| `pipelineSpec` _[PipelineSpec](#pipelinespec)_ | PipelineSpec contains the exact spec used to instantiate the run.<br />See Pipeline.spec (API version: tekton.dev/v1) |  | Schemaless: \{\} <br /> |
+| `pipelineSpec` _[PipelineSpec](#pipelinespec)_ | PipelineSpec contains the Pipeline spec used to instantiate the run, without documentation-only descriptions by default.<br />Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation.<br />See Pipeline.spec (API version: tekton.dev/v1) |  | Schemaless: \{\} <br /> |
 | `skippedTasks` _[SkippedTask](#skippedtask) array_ | list of tasks that were skipped due to when expressions evaluating to false |  | Optional: \{\} <br /> |
 | `childReferences` _[ChildStatusReference](#childstatusreference) array_ | list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun. |  | Optional: \{\} <br /> |
 | `finallyStartTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed. |  | Optional: \{\} <br /> |
@@ -752,7 +752,7 @@ _Appears in:_
 | `startTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | StartTime is the time the PipelineRun is actually started. |  |  |
 | `completionTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | CompletionTime is the time the PipelineRun completed. |  |  |
 | `results` _[PipelineRunResult](#pipelinerunresult) array_ | Results are the list of results written out by the pipeline task's containers |  | Optional: \{\} <br /> |
-| `pipelineSpec` _[PipelineSpec](#pipelinespec)_ | PipelineSpec contains the exact spec used to instantiate the run.<br />See Pipeline.spec (API version: tekton.dev/v1) |  | Schemaless: \{\} <br /> |
+| `pipelineSpec` _[PipelineSpec](#pipelinespec)_ | PipelineSpec contains the Pipeline spec used to instantiate the run, without documentation-only descriptions by default.<br />Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation.<br />See Pipeline.spec (API version: tekton.dev/v1) |  | Schemaless: \{\} <br /> |
 | `skippedTasks` _[SkippedTask](#skippedtask) array_ | list of tasks that were skipped due to when expressions evaluating to false |  | Optional: \{\} <br /> |
 | `childReferences` _[ChildStatusReference](#childstatusreference) array_ | list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun. |  | Optional: \{\} <br /> |
 | `finallyStartTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed. |  | Optional: \{\} <br /> |
@@ -1579,7 +1579,7 @@ _Appears in:_
 | `results` _[TaskRunResult](#taskrunresult) array_ | Results are the list of results written out by the task's containers |  | Optional: \{\} <br /> |
 | `artifacts` _[Artifacts](#artifacts)_ | Artifacts are the list of artifacts written out by the task's containers |  | Optional: \{\} <br /> |
 | `sidecars` _[SidecarState](#sidecarstate) array_ | The list has one entry per sidecar in the manifest. Each entry is<br />represents the imageid of the corresponding sidecar. |  |  |
-| `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. |  |  |
+| `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Task spec used to instantiate the run, without documentation-only descriptions by default.<br />Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation. |  |  |
 | `provenance` _[Provenance](#provenance)_ | Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.). |  | Optional: \{\} <br /> |
 | `spanContext` _object (keys:string, values:string)_ | SpanContext contains tracing span context fields |  |  |
 
@@ -1607,7 +1607,7 @@ _Appears in:_
 | `results` _[TaskRunResult](#taskrunresult) array_ | Results are the list of results written out by the task's containers |  | Optional: \{\} <br /> |
 | `artifacts` _[Artifacts](#artifacts)_ | Artifacts are the list of artifacts written out by the task's containers |  | Optional: \{\} <br /> |
 | `sidecars` _[SidecarState](#sidecarstate) array_ | The list has one entry per sidecar in the manifest. Each entry is<br />represents the imageid of the corresponding sidecar. |  |  |
-| `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. |  |  |
+| `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Task spec used to instantiate the run, without documentation-only descriptions by default.<br />Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation. |  |  |
 | `provenance` _[Provenance](#provenance)_ | Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.). |  | Optional: \{\} <br /> |
 | `spanContext` _object (keys:string, values:string)_ | SpanContext contains tracing span context fields |  |  |
 
@@ -2991,7 +2991,7 @@ _Appears in:_
 | `taskRuns` _object (keys:string, values:[PipelineRunTaskRunStatus](#pipelineruntaskrunstatus))_ | TaskRuns is a map of PipelineRunTaskRunStatus with the taskRun name as the key.<br />Deprecated: use ChildReferences instead. As of v0.45.0, this field is no<br />longer populated and is only included for backwards compatibility with<br />older server versions. |  | Optional: \{\} <br /> |
 | `runs` _object (keys:string, values:[PipelineRunRunStatus](#pipelinerunrunstatus))_ | Runs is a map of PipelineRunRunStatus with the run name as the key<br />Deprecated: use ChildReferences instead. As of v0.45.0, this field is no<br />longer populated and is only included for backwards compatibility with<br />older server versions. |  | Optional: \{\} <br /> |
 | `pipelineResults` _[PipelineRunResult](#pipelinerunresult) array_ | PipelineResults are the list of results written out by the pipeline task's containers |  | Optional: \{\} <br /> |
-| `pipelineSpec` _[PipelineSpec](#pipelinespec)_ | PipelineSpec contains the exact spec used to instantiate the run.<br />See Pipeline.spec (API version: tekton.dev/v1beta1) |  | Schemaless: \{\} <br /> |
+| `pipelineSpec` _[PipelineSpec](#pipelinespec)_ | PipelineSpec contains the Pipeline spec used to instantiate the run, without documentation-only descriptions by default.<br />Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation.<br />See Pipeline.spec (API version: tekton.dev/v1beta1) |  | Schemaless: \{\} <br /> |
 | `skippedTasks` _[SkippedTask](#skippedtask) array_ | list of tasks that were skipped due to when expressions evaluating to false |  | Optional: \{\} <br /> |
 | `childReferences` _[ChildStatusReference](#childstatusreference) array_ | list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun. |  | Optional: \{\} <br /> |
 | `finallyStartTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed. |  | Optional: \{\} <br /> |
@@ -3019,7 +3019,7 @@ _Appears in:_
 | `taskRuns` _object (keys:string, values:[PipelineRunTaskRunStatus](#pipelineruntaskrunstatus))_ | TaskRuns is a map of PipelineRunTaskRunStatus with the taskRun name as the key.<br />Deprecated: use ChildReferences instead. As of v0.45.0, this field is no<br />longer populated and is only included for backwards compatibility with<br />older server versions. |  | Optional: \{\} <br /> |
 | `runs` _object (keys:string, values:[PipelineRunRunStatus](#pipelinerunrunstatus))_ | Runs is a map of PipelineRunRunStatus with the run name as the key<br />Deprecated: use ChildReferences instead. As of v0.45.0, this field is no<br />longer populated and is only included for backwards compatibility with<br />older server versions. |  | Optional: \{\} <br /> |
 | `pipelineResults` _[PipelineRunResult](#pipelinerunresult) array_ | PipelineResults are the list of results written out by the pipeline task's containers |  | Optional: \{\} <br /> |
-| `pipelineSpec` _[PipelineSpec](#pipelinespec)_ | PipelineSpec contains the exact spec used to instantiate the run.<br />See Pipeline.spec (API version: tekton.dev/v1beta1) |  | Schemaless: \{\} <br /> |
+| `pipelineSpec` _[PipelineSpec](#pipelinespec)_ | PipelineSpec contains the Pipeline spec used to instantiate the run, without documentation-only descriptions by default.<br />Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation.<br />See Pipeline.spec (API version: tekton.dev/v1beta1) |  | Schemaless: \{\} <br /> |
 | `skippedTasks` _[SkippedTask](#skippedtask) array_ | list of tasks that were skipped due to when expressions evaluating to false |  | Optional: \{\} <br /> |
 | `childReferences` _[ChildStatusReference](#childstatusreference) array_ | list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun. |  | Optional: \{\} <br /> |
 | `finallyStartTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed. |  | Optional: \{\} <br /> |
@@ -4065,7 +4065,7 @@ _Appears in:_
 | `resourcesResult` _[PipelineResourceResult](#pipelineresourceresult) array_ | Results from Resources built during the TaskRun.<br />This is tomb-stoned along with the removal of pipelineResources<br />Deprecated: this field is not populated and is preserved only for backwards compatibility |  | Optional: \{\} <br /> |
 | `taskResults` _[TaskRunResult](#taskrunresult) array_ | TaskRunResults are the list of results written out by the task's containers |  | Optional: \{\} <br /> |
 | `sidecars` _[SidecarState](#sidecarstate) array_ | The list has one entry per sidecar in the manifest. Each entry is<br />represents the imageid of the corresponding sidecar. |  |  |
-| `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.<br />See Task.spec (API version tekton.dev/v1beta1) |  | Schemaless: \{\} <br /> |
+| `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Task spec used to instantiate the run, without documentation-only descriptions by default.<br />Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation.<br />See Task.spec (API version tekton.dev/v1beta1) |  | Schemaless: \{\} <br /> |
 | `provenance` _[Provenance](#provenance)_ | Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.). |  | Optional: \{\} <br /> |
 | `spanContext` _object (keys:string, values:string)_ | SpanContext contains tracing span context fields |  |  |
 
@@ -4094,7 +4094,7 @@ _Appears in:_
 | `resourcesResult` _[PipelineResourceResult](#pipelineresourceresult) array_ | Results from Resources built during the TaskRun.<br />This is tomb-stoned along with the removal of pipelineResources<br />Deprecated: this field is not populated and is preserved only for backwards compatibility |  | Optional: \{\} <br /> |
 | `taskResults` _[TaskRunResult](#taskrunresult) array_ | TaskRunResults are the list of results written out by the task's containers |  | Optional: \{\} <br /> |
 | `sidecars` _[SidecarState](#sidecarstate) array_ | The list has one entry per sidecar in the manifest. Each entry is<br />represents the imageid of the corresponding sidecar. |  |  |
-| `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.<br />See Task.spec (API version tekton.dev/v1beta1) |  | Schemaless: \{\} <br /> |
+| `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Task spec used to instantiate the run, without documentation-only descriptions by default.<br />Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation.<br />See Task.spec (API version tekton.dev/v1beta1) |  | Schemaless: \{\} <br /> |
 | `provenance` _[Provenance](#provenance)_ | Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.). |  | Optional: \{\} <br /> |
 | `spanContext` _object (keys:string, values:string)_ | SpanContext contains tracing span context fields |  |  |
 

@@ -419,7 +419,10 @@ Set this field to "alpha" to allow [alpha features](#alpha-features) to be used.
 
 - `enable-kubernetes-sidecar`: Set this flag to `"true"` to enable native kubernetes sidecar support. This will allow Tekton sidecars to run as Kubernetes sidecars. Must be using Kubernetes v1.29 or greater.
 
-- `keep-status-spec-descriptions`: documentation-only `description` fields are stripped from the `status.taskSpec` and `status.pipelineSpec` snapshots by default to reduce etcd usage. These fields are never used by the controller during execution; the original Task/Pipeline objects keep their descriptions. Set this flag to `"true"` to retain them in the status snapshot during a migration window. The default is `"false"`. See [#10321](https://github.com/tektoncd/pipeline/issues/10321).
+- `keep-status-spec-descriptions`: set this flag to `"true"` to retain documentation-only
+  `description` fields in new `status.taskSpec` and `status.pipelineSpec` snapshots.
+  The default is `"false"`, which omits these fields to reduce stored Run size without
+  changing execution. See [Status spec descriptions](#status-spec-descriptions).
 
 For example:
 
@@ -459,6 +462,25 @@ Defaults to "ignore".
   security context for containers injected by Tekton. This makes the root filesystem of the container read-only,
   enhancing security. Note that this requires `set-security-context` to be enabled. By default, this flag is set
   to `false`. Note: This feature does not work in windows as it is not supported there, [Comparison with linux](https://kubernetes.io/docs/concepts/windows/intro/#compatibility-linux-similarities). 
+
+#### Status spec descriptions
+
+By default, `status.taskSpec` and `status.pipelineSpec` omit documentation-only
+`description` fields, including those in embedded Task specs. These snapshots
+preserve the fields used for execution, but are not exact copies of the original
+specs. The original Task and Pipeline resources, and inline specs supplied in a
+Run's `spec`, keep their descriptions.
+
+For Tasks and Pipelines resolved from Git or bundles, there may be no separate
+Task or Pipeline resource in the cluster. To read descriptions omitted from a
+status snapshot, consult the original remote definition. The source itself is
+not changed by stripping.
+
+Set `keep-status-spec-descriptions` to `"true"` before creating Runs if clients need
+descriptions in Run status. Enabling the flag does not guarantee restoration of
+descriptions already omitted from existing snapshots. Avoid changing the flag
+while Runs are active. Clients that read descriptions from Run status should
+handle their absence or retain access to the original definitions.
 
 ### Alpha Features
 
