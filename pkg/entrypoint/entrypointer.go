@@ -550,12 +550,20 @@ func GetContainerName(name string) string {
 }
 
 // loadStepResult reads the step result file and returns the string, array or object result value.
-func loadStepResult(stepDir string, stepName string, resultName string) (v1.ResultValue, error) {
+// expectedType is the result type the reference asks for. A reference without array indexing or an
+// object key is always a string, so the file contents are used as-is instead of being unmarshalled,
+// otherwise a string result holding "[]" or "{}" would be read back as an array or an object.
+func loadStepResult(stepDir string, stepName string, resultName string, expectedType string) (v1.ResultValue, error) {
 	v := v1.ResultValue{}
 	fp := getStepResultPath(stepDir, GetContainerName(stepName), resultName)
 	fileContents, err := os.ReadFile(fp)
 	if err != nil {
 		return v, err
+	}
+	if expectedType == "string" {
+		v.Type = v1.ParamTypeString
+		v.StringVal = string(fileContents)
+		return v, nil
 	}
 	err = v.UnmarshalJSON(fileContents)
 	if err != nil {
@@ -577,7 +585,7 @@ func findReplacement(stepDir string, s string) (string, []string, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	result, err := loadStepResult(stepDir, pr.ResourceName, pr.ResultName)
+	result, err := loadStepResult(stepDir, pr.ResourceName, pr.ResultName, pr.ResultType)
 	if err != nil {
 		return "", nil, err
 	}
