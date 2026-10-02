@@ -61,6 +61,7 @@ func TestTektonBundlesResolver(t *testing.T) {
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+	allowBundleResolverPrivateRegistry(ctx, t, c)
 
 	taskName := helpers.ObjectNameForTest(t)
 	pipelineName := helpers.ObjectNameForTest(t)
