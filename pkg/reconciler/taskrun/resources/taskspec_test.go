@@ -983,6 +983,7 @@ spec:
 func TestGetStepActionsData(t *testing.T) {
 	taskRunUser := int64(1001)
 	stepActionUser := int64(1000)
+	trueVal := true
 	tests := []struct {
 		name        string
 		tr          *v1.TaskRun
@@ -1261,6 +1262,43 @@ func TestGetStepActionsData(t *testing.T) {
 			Command:         []string{"ls"},
 			Args:            []string{"-lh"},
 			SecurityContext: &corev1.SecurityContext{RunAsUser: &stepActionUser},
+		}},
+	}, {
+		// When the StepAction does not set SecurityContext, the Step's
+		// own SecurityContext must be preserved rather than cleared to nil.
+		name: "step-action-with-unset-security-context-preserved",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepAction",
+						},
+						SecurityContext: &corev1.SecurityContext{RunAsUser: &taskRunUser, RunAsNonRoot: &trueVal},
+					}},
+				},
+			},
+		},
+		stepActions: []*v1beta1.StepAction{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepAction",
+				Namespace: "default",
+			},
+			Spec: v1beta1.StepActionSpec{
+				Image:   "myimage",
+				Command: []string{"ls"},
+				Args:    []string{"-lh"},
+			},
+		}},
+		want: []v1.Step{{
+			Image:           "myimage",
+			Command:         []string{"ls"},
+			Args:            []string{"-lh"},
+			SecurityContext: &corev1.SecurityContext{RunAsUser: &taskRunUser, RunAsNonRoot: &trueVal},
 		}},
 	}, {
 		name: "params propagated from taskrun",
