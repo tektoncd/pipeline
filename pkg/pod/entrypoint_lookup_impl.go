@@ -59,7 +59,7 @@ func NewEntrypointCache(kubeclient kubernetes.Interface) (EntrypointCache, error
 func (e *entrypointCache) get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string, imagePullSecrets []corev1.LocalObjectReference, hasArgs bool) (*imageData, error) {
 	// If image is specified by digest, check the local cache.
 	if digest, ok := ref.(name.Digest); ok {
-		if id, ok := e.lru.Get(digest.String()); ok {
+		if id, ok := e.lru.Get(cacheKey(namespace, serviceAccountName, digest.String())); ok {
 			return id.(*imageData), nil
 		}
 	}
@@ -87,7 +87,8 @@ func (e *entrypointCache) get(ctx context.Context, ref name.Reference, namespace
 	// This saves looking up each constinuent image's commands if we've seen
 	// the multi-platform image before.
 	refByDigest := ref.Context().Digest(desc.Digest.String()).String()
-	if id, ok := e.lru.Get(refByDigest); ok {
+	key := cacheKey(namespace, serviceAccountName, refByDigest)
+	if id, ok := e.lru.Get(key); ok {
 		return id.(*imageData), nil
 	}
 
@@ -120,9 +121,18 @@ func (e *entrypointCache) get(ctx context.Context, ref name.Reference, namespace
 	}
 
 	// Cache the digest->commands for future lookup.
-	e.lru.Add(refByDigest, id)
+	e.lru.Add(key, id)
 
 	return id, nil
+}
+
+// cacheKey scopes a cache entry to the namespace and service account whose
+// credentials were used to resolve it, so that a cache hit is only served to
+// TaskRuns using the same credential context. Without this, an entrypoint
+// resolved using one namespace's pull credentials could be served to another
+// namespace that doesn't have access to the same image.
+func cacheKey(namespace, serviceAccountName, digest string) string {
+	return fmt.Sprintf("%s/%s/%s", namespace, serviceAccountName, digest)
 }
 
 func buildCommandMap(idx v1.ImageIndex, hasArgs bool) (map[string][]string, error) {
