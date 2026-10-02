@@ -78,6 +78,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(ValidateVolumes(ts.Volumes).ViaField("volumes"))
 	errs = errs.Also(validateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate).ViaField("workspaces"))
 	errs = errs.Also(validateWorkspaceUsages(ctx, ts))
+	errs = errs.Also(validateWorkspaceVariableExpressions(ts))
 	mergedSteps, err := MergeStepsWithStepTemplate(ts.StepTemplate, ts.Steps)
 	if err != nil {
 		errs = errs.Also(&apis.FieldError{
@@ -196,6 +197,71 @@ func validateWorkspaceUsages(ctx context.Context, ts *TaskSpec) (errs *apis.Fiel
 		}
 	}
 
+	return errs
+}
+
+// validateWorkspaceVariableExpressions checks that workspace variable references in Steps
+// and Sidecars always include a property suffix (path, bound, claim, or volume).
+// A bare reference like $(workspaces.myws) is invalid.
+func validateWorkspaceVariableExpressions(ts *TaskSpec) (errs *apis.FieldError) {
+	wsNames := sets.NewString()
+	for _, w := range ts.Workspaces {
+		wsNames.Insert(w.Name)
+	}
+	if wsNames.Len() == 0 {
+		return nil
+	}
+
+	for idx, step := range ts.Steps {
+		errs = errs.Also(validateStepHasNoBareWorkspaceVars(step, wsNames).ViaFieldIndex("steps", idx))
+	}
+	for idx, sidecar := range ts.Sidecars {
+		errs = errs.Also(validateSidecarHasNoBareWorkspaceVars(sidecar, wsNames).ViaFieldIndex("sidecars", idx))
+	}
+	return errs
+}
+
+func validateStepHasNoBareWorkspaceVars(step Step, wsNames sets.String) *apis.FieldError {
+	errs := substitution.ValidateNoReferencesToBareVariables(step.Name, "workspaces", wsNames).ViaField("name")
+	errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(step.Image, "workspaces", wsNames).ViaField("image"))
+	errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(step.WorkingDir, "workspaces", wsNames).ViaField("workingDir"))
+	errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(step.Script, "workspaces", wsNames).ViaField("script"))
+	for i, cmd := range step.Command {
+		errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(cmd, "workspaces", wsNames).ViaFieldIndex("command", i))
+	}
+	for i, arg := range step.Args {
+		errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(arg, "workspaces", wsNames).ViaFieldIndex("args", i))
+	}
+	for _, env := range step.Env {
+		errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(env.Value, "workspaces", wsNames).ViaFieldKey("env", env.Name))
+	}
+	for i, v := range step.VolumeMounts {
+		errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(v.Name, "workspaces", wsNames).ViaField("name").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(v.MountPath, "workspaces", wsNames).ViaField("MountPath").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(v.SubPath, "workspaces", wsNames).ViaField("SubPath").ViaFieldIndex("volumeMount", i))
+	}
+	return errs
+}
+
+func validateSidecarHasNoBareWorkspaceVars(sidecar Sidecar, wsNames sets.String) *apis.FieldError {
+	errs := substitution.ValidateNoReferencesToBareVariables(sidecar.Name, "workspaces", wsNames).ViaField("name")
+	errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(sidecar.Image, "workspaces", wsNames).ViaField("image"))
+	errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(sidecar.WorkingDir, "workspaces", wsNames).ViaField("workingDir"))
+	errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(sidecar.Script, "workspaces", wsNames).ViaField("script"))
+	for i, cmd := range sidecar.Command {
+		errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(cmd, "workspaces", wsNames).ViaFieldIndex("command", i))
+	}
+	for i, arg := range sidecar.Args {
+		errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(arg, "workspaces", wsNames).ViaFieldIndex("args", i))
+	}
+	for _, env := range sidecar.Env {
+		errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(env.Value, "workspaces", wsNames).ViaFieldKey("env", env.Name))
+	}
+	for i, v := range sidecar.VolumeMounts {
+		errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(v.Name, "workspaces", wsNames).ViaField("name").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(v.MountPath, "workspaces", wsNames).ViaField("MountPath").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToBareVariables(v.SubPath, "workspaces", wsNames).ViaField("SubPath").ViaFieldIndex("volumeMount", i))
+	}
 	return errs
 }
 
