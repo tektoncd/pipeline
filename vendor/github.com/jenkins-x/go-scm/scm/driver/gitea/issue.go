@@ -7,11 +7,11 @@ package gitea
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"code.gitea.io/sdk/gitea"
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 type issueService struct {
@@ -31,15 +31,16 @@ func (s *issueService) AssignIssue(ctx context.Context, repo string, number int,
 	if issue == nil {
 		return res, fmt.Errorf("couldn't find issue %d in repository %s", number, repo)
 	}
-	assignees := sets.NewString(logins...)
+	assignees := append([]string{}, logins...)
 	for k := range issue.Assignees {
-		assignees.Insert(issue.Assignees[k].Login)
+		assignees = append(assignees, issue.Assignees[k].Login)
 	}
+	slices.Sort(assignees)
 
 	namespace, name := scm.Split(repo)
 	in := gitea.EditIssueOption{
 		Title:     issue.Title,
-		Assignees: assignees.List(),
+		Assignees: slices.Compact(assignees),
 	}
 	_, giteaResp, err := s.client.GiteaClient.EditIssue(namespace, name, int64(number), in)
 	return toSCMResponse(giteaResp), err
@@ -53,16 +54,18 @@ func (s *issueService) UnassignIssue(ctx context.Context, repo string, number in
 	if issue == nil {
 		return res, fmt.Errorf("couldn't find issue %d in repository %s", number, repo)
 	}
-	assignees := sets.NewString()
+	assignees := []string{}
 	for k := range issue.Assignees {
-		assignees.Insert(issue.Assignees[k].Login)
+		if login := issue.Assignees[k].Login; !slices.Contains(logins, login) {
+			assignees = append(assignees, login)
+		}
 	}
-	assignees.Delete(logins...)
+	slices.Sort(assignees)
 
 	namespace, name := scm.Split(repo)
 	in := gitea.EditIssueOption{
 		Title:     issue.Title,
-		Assignees: assignees.List(),
+		Assignees: slices.Compact(assignees),
 	}
 	_, giteaResp, err := s.client.GiteaClient.EditIssue(namespace, name, int64(number), in)
 	return toSCMResponse(giteaResp), err

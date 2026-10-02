@@ -6,6 +6,7 @@ package github
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/driver/internal/null"
-	errors2 "k8s.io/apimachinery/pkg/util/errors"
 )
 
 var teamRe = regexp.MustCompile(`^(.*)/(.*)$`)
@@ -164,7 +164,7 @@ func (s *pullService) DeletePullRequest(ctx context.Context, repo string, prID i
 
 func prepareReviewersBody(logins []string, org string) (prReviewers, error) {
 	body := prReviewers{}
-	var errors []error
+	var errs []error
 	for _, login := range logins {
 		mat := teamRe.FindStringSubmatch(login)
 		if mat == nil {
@@ -172,11 +172,11 @@ func prepareReviewersBody(logins []string, org string) (prReviewers, error) {
 		} else if mat[1] == org {
 			body.TeamReviewers = append(body.TeamReviewers, mat[2])
 		} else {
-			errors = append(errors, fmt.Errorf("team %s is not part of %s org", login, org))
+			errs = append(errs, fmt.Errorf("team %s is not part of %s org", login, org))
 		}
 	}
 
-	return body, errors2.NewAggregate(errors)
+	return body, errors.Join(errs...)
 }
 
 func (s *pullService) tryRequestReview(ctx context.Context, orgAndRepo string, number int, logins []string) (*scm.Response, error) {
