@@ -33,6 +33,14 @@ type TaskResult struct {
 	// +optional
 	Description string `json:"description,omitempty"`
 
+	// Default is the value a result takes if no actual value is produced by the task.
+	// If default is set, a task may be executed without producing the result and
+	// the default value will be used instead.
+	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	Default *ResultValue `json:"default,omitempty"`
+
 	// Value the expression used to retrieve the value of the result from an underlying Step.
 	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
