@@ -2294,6 +2294,72 @@ spec:
 	}
 }
 
+func TestReconcile_ClusterResolvedTaskUsesTaskNamespaceForLocalStepAction(t *testing.T) {
+	const (
+		taskRunNamespace = "taskrun-ns"
+		taskNamespace    = "task-ns"
+	)
+	tr := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: cross-namespace-task
+  namespace: taskrun-ns
+spec:
+  taskRef:
+    resolver: cluster
+`)
+	task := parse.MustParseV1Task(t, `
+metadata:
+  name: resolved-task
+  namespace: task-ns
+spec:
+  steps:
+  - name: referenced-step
+    ref:
+      name: local-action
+`)
+	stepAction := parse.MustParseV1beta1StepAction(t, `
+metadata:
+  name: local-action
+  namespace: task-ns
+spec:
+  image: busybox
+  command: ["echo", "resolved"]
+`)
+	taskBytes, err := yaml.Marshal(task)
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskRequest := getResolvedResolutionRequest(t, "cluster", taskBytes, taskRunNamespace, tr.Name)
+	d := test.Data{
+		TaskRuns:           []*v1.TaskRun{tr},
+		StepActions:        []*v1beta1.StepAction{stepAction},
+		ResolutionRequests: []*resolutionv1beta1.ResolutionRequest{&taskRequest},
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+		}},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, "default", taskRunNamespace)
+
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr)); controller.IsPermanentError(err) {
+		t.Fatalf("reconcile returned a permanent error: %v", err)
+	}
+	got, err := testAssets.Clients.Pipeline.TektonV1().TaskRuns(taskRunNamespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status.ResolvedTaskNamespace != taskNamespace {
+		t.Fatalf("resolved task namespace = %q, want %q", got.Status.ResolvedTaskNamespace, taskNamespace)
+	}
+	if got.Status.TaskSpec == nil || len(got.Status.TaskSpec.Steps) != 1 {
+		t.Fatalf("resolved TaskSpec steps = %#v, want one step", got.Status.TaskSpec)
+	}
+	if got.Status.TaskSpec.Steps[0].Image != "busybox" {
+		t.Fatalf("resolved StepAction image = %q, want %q", got.Status.TaskSpec.Steps[0].Image, "busybox")
+	}
+}
+
 func TestReconcile_RemoteStepAction_Error(t *testing.T) {
 	namespace := "foo"
 	trName := "test-task-run-success"

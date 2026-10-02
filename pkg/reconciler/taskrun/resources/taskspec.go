@@ -119,11 +119,14 @@ func hasStepRefs(taskSpec *v1.TaskSpec) bool {
 	return false
 }
 
-// resolveStepRef resolves a step referecing a StepAction by fetching the remote StepAction, merging it with the Step's specification, and returning the resolved step.
-func resolveStepRef(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.TaskRun, tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester, step *v1.Step) (*v1.Step, *v1.RefSource, error) {
+// resolveStepRef resolves a step referencing a StepAction by fetching the remote StepAction, merging it with the Step's specification, and returning the resolved step.
+// taskNamespace is the namespace where the resolved Task lives, which may differ from the TaskRun's namespace
+// when using cross-namespace resolution (e.g. cluster resolver). StepActions referenced by the Task should be
+// resolved in the Task's namespace, not the TaskRun's namespace.
+func resolveStepRef(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.TaskRun, tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester, step *v1.Step, taskNamespace string) (*v1.Step, *v1.RefSource, error) {
 	resolvedStep := step.DeepCopy()
 
-	getStepAction := GetStepActionFunc(tekton, k8s, requester, taskRun, taskSpec, resolvedStep)
+	getStepAction := GetStepActionFunc(tekton, k8s, requester, taskRun, taskSpec, resolvedStep, taskNamespace)
 	stepAction, source, err := getStepAction(ctx, resolvedStep.Ref.Name)
 	if err != nil {
 		return nil, nil, err
@@ -196,7 +199,9 @@ func updateTaskRunProvenance(taskRun *v1.TaskRun, stepName string, stepIndex int
 }
 
 // GetStepActionsData extracts the StepActions and merges them with the inlined Step specification.
-func GetStepActionsData(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.TaskRun, tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester) ([]v1.Step, error) {
+// taskNamespace is the namespace of the resolved Task, which may differ from the TaskRun's namespace
+// when cross-namespace resolution is used. StepActions referenced by the Task are resolved in this namespace.
+func GetStepActionsData(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.TaskRun, tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester, taskNamespace string) ([]v1.Step, error) {
 	steps := make([]v1.Step, len(taskSpec.Steps))
 
 	// Init step states and known step states indexes lookup map
@@ -230,7 +235,7 @@ func GetStepActionsData(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.T
 		}
 
 		g.Go(func() error {
-			resolvedStep, source, err := resolveStepRef(ctx, taskSpec, taskRun, tekton, k8s, requester, &step)
+			resolvedStep, source, err := resolveStepRef(ctx, taskSpec, taskRun, tekton, k8s, requester, &step, taskNamespace)
 			if err != nil {
 				return fmt.Errorf("failed to resolve step ref for step %q (index %d): %w", step.Name, i, err)
 			}

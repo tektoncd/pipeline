@@ -1582,6 +1582,7 @@ _Appears in:_
 | `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. |  |  |
 | `provenance` _[Provenance](#provenance)_ | Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.). |  | Optional: \{\} <br /> |
 | `spanContext` _object (keys:string, values:string)_ | SpanContext contains tracing span context fields |  |  |
+| `resolvedTaskNamespace` _string_ | ResolvedTaskNamespace is the namespace of the resolved Task, used for<br />cross-namespace StepAction resolution. Set by the controller, not user-modifiable. |  | Optional: \{\} <br /> |
 
 
 #### TaskRunStatusFields
@@ -1610,6 +1611,7 @@ _Appears in:_
 | `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. |  |  |
 | `provenance` _[Provenance](#provenance)_ | Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.). |  | Optional: \{\} <br /> |
 | `spanContext` _object (keys:string, values:string)_ | SpanContext contains tracing span context fields |  |  |
+| `resolvedTaskNamespace` _string_ | ResolvedTaskNamespace is the namespace of the resolved Task, used for<br />cross-namespace StepAction resolution. Set by the controller, not user-modifiable. |  | Optional: \{\} <br /> |
 
 
 

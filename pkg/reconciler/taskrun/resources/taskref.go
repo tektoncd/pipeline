@@ -39,6 +39,23 @@ import (
 	"knative.dev/pkg/kmeta"
 )
 
+const clusterResolverType = "cluster"
+
+// ResolvedTaskNamespaceForStepActions returns the namespace StepActions should be
+// resolved from for the TaskRun's resolved Task. Only the in-cluster resolver is
+// allowed to move StepAction lookup out of the TaskRun namespace; namespaces on
+// externally resolved Tasks are untrusted metadata and must not authorize local
+// cross-namespace StepAction reads.
+func ResolvedTaskNamespaceForStepActions(taskrun *v1.TaskRun, resolvedTaskNamespace string) string {
+	if taskrun == nil {
+		return ""
+	}
+	if taskrun.Spec.TaskRef != nil && taskrun.Spec.TaskRef.Resolver == clusterResolverType && resolvedTaskNamespace != "" {
+		return resolvedTaskNamespace
+	}
+	return taskrun.Namespace
+}
+
 // GetTaskKind returns the referenced Task kind (Task, ...) if the TaskRun is using TaskRef.
 func GetTaskKind(taskrun *v1.TaskRun) v1.TaskKind {
 	kind := v1.NamespacedTaskKind
@@ -62,10 +79,11 @@ func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekto
 			if taskrun.Status.Provenance != nil {
 				refSource = taskrun.Status.Provenance.RefSource
 			}
+			taskNamespace := ResolvedTaskNamespaceForStepActions(taskrun, taskrun.Status.ResolvedTaskNamespace)
 			return &v1.Task{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
-					Namespace: taskrun.Namespace,
+					Namespace: taskNamespace,
 				},
 				Spec: *taskrun.Status.TaskSpec,
 			}, refSource, nil, nil
@@ -138,29 +156,35 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 // It also requires a kubeclient, tektonclient, requester in case it needs to find that task in
 // cluster or authorize against an external repository. It will figure out whether it needs to look in the cluster or in
 // a remote location to fetch the reference.
-func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester, tr *v1.TaskRun, taskSpec v1.TaskSpec, step *v1.Step) GetStepAction {
+func GetStepActionFunc(tekton clientset.Interface, k8s kubernetes.Interface, requester remoteresource.Requester, tr *v1.TaskRun, taskSpec v1.TaskSpec, step *v1.Step, taskNamespace string) GetStepAction {
 	trName := tr.Name
-	namespace := tr.Namespace
 	if step.Ref != nil && step.Ref.Resolver != "" && requester != nil {
 		// Return an inline function that implements GetStepAction by calling Resolver.Get with the specified StepAction type and
 		// casting it to a StepAction.
 		return func(ctx context.Context, name string) (*v1beta1.StepAction, *v1.RefSource, error) {
 			// Perform params replacements for StepAction resolver params
 			ApplyParameterSubstitutionInResolverParams(tr, taskSpec, step)
+			// ResolutionRequests must be created in the TaskRun's namespace, not the
+			// Task's namespace, because Kubernetes does not support cross-namespace
+			// owner references. The TaskRun owns the ResolutionRequest, so both must
+			// live in the same namespace.
 			resolverPayload := remoteresource.ResolverPayload{
 				Name:      trName,
-				Namespace: namespace,
+				Namespace: tr.Namespace,
 				ResolutionSpec: &resolutionV1beta1.ResolutionRequestSpec{
 					Params: step.Ref.Params,
 					URL:    step.Ref.Name,
 				},
 			}
 			resolver := resolution.NewResolver(requester, tr, string(step.Ref.Resolver), resolverPayload)
-			return resolveStepAction(ctx, resolver, name, namespace, k8s, tekton)
+			return resolveStepAction(ctx, resolver, name, tr.Namespace, k8s, tekton)
 		}
 	}
+	// For local (non-resolver) StepAction lookups, use taskNamespace — the namespace
+	// where the resolved Task lives. StepActions referenced by a Task should be looked
+	// up in the Task's namespace.
 	local := &LocalStepActionRefResolver{
-		Namespace:    namespace,
+		Namespace:    taskNamespace,
 		Tektonclient: tekton,
 	}
 	return local.GetStepAction
