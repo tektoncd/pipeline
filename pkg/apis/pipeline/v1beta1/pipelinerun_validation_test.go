@@ -1116,8 +1116,11 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			Message: "expected exactly one, got neither",
 			Paths: []string{
 				"workspaces[0].configmap",
+				"workspaces[0].csi",
 				"workspaces[0].emptydir",
+				"workspaces[0].image",
 				"workspaces[0].persistentvolumeclaim",
+				"workspaces[0].projected",
 				"workspaces[0].secret",
 				"workspaces[0].volumeclaimtemplate",
 			},
