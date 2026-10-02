@@ -139,6 +139,47 @@ func TestEntrypointerFailures(t *testing.T) {
 	}
 }
 
+func TestEntrypointerArtifactReadFailureWritesErrorPostFile(t *testing.T) {
+	stepDir := t.TempDir()
+	artifactPath := filepath.Join(stepDir, "artifacts", "provenance.json")
+	if err := os.MkdirAll(artifactPath, 0o755); err != nil {
+		t.Fatalf("failed to create artifact directory: %v", err)
+	}
+
+	terminationFile, err := os.CreateTemp(t.TempDir(), "termination")
+	if err != nil {
+		t.Fatalf("unexpected error creating temporary termination file: %v", err)
+	}
+	defer os.Remove(terminationFile.Name())
+
+	fpw := &fakePostWriter{}
+	timeout := time.Duration(0)
+	postFile := "out"
+	err = Entrypointer{
+		Command:                []string{"echo"},
+		PostFile:               postFile,
+		Waiter:                 &fakeWaiter{},
+		Runner:                 &fakeRunner{},
+		PostWriter:             fpw,
+		TerminationPath:        terminationFile.Name(),
+		Timeout:                &timeout,
+		StepMetadataDir:        stepDir,
+		ResultExtractionMethod: ResultExtractionMethodTerminationMessage,
+	}.Go()
+	if err == nil {
+		t.Fatal("expected artifact read error, got nil")
+	}
+	if !strings.Contains(err.Error(), "error while handling step artifacts") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if fpw.wrote == nil {
+		t.Fatal("expected error post file to be written")
+	}
+	if got, want := *fpw.wrote, postFile+".err"; got != want {
+		t.Fatalf("post file = %q, want %q", got, want)
+	}
+}
+
 func TestEntrypointer(t *testing.T) {
 	for _, c := range []struct {
 		desc, entrypoint, postFile, stepDir, stepDirLink string
@@ -440,7 +481,7 @@ func TestReadResultsFromDisk(t *testing.T) {
 				TerminationPath:        terminationPath,
 				ResultExtractionMethod: config.ResultExtractionMethodTerminationMessage,
 			}
-			if err := e.readResultsFromDisk(ctx, "", c.resultType); err != nil {
+			if err := e.readResultsFromDisk(ctx, "", c.resultType, nil); err != nil {
 				t.Fatal(err)
 			}
 			msg, err := os.ReadFile(terminationPath)

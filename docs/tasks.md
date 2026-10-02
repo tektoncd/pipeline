@@ -1027,7 +1027,14 @@ message*, meaning that the **more steps you have in a Task, the smaller the resu
 For example, if you have 10 steps, the size of each step's Result will have a maximum of less than 1KB.
 
 If your `Task` writes a large number of small results, you can work around this limitation
-by writing each result from a separate `Step` so that each `Step` has its own termination message.
+by writing each result from a separate `Step` so that each `Step` has its own
+termination message. Each step reports only task result values that have not
+already been reported by an earlier step. Reading or rewriting an unchanged
+result does not add another copy to the termination message. If a later step
+changes a result, the final `TaskRun` result contains the later value.
+The `/tekton/results` directory remains shared, so steps can still read and
+modify results written by earlier steps. The Kubernetes per-container and
+per-Pod termination message limits described above still apply.
 If a termination message is detected as being too large the TaskRun will be placed into a failed state
 with the following message: `Termination message is above max allowed size 4096, caused by large task
 result`. Since Tekton also uses the termination message for some internal information, so the real
