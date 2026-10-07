@@ -54,7 +54,7 @@
 
 ## Abstract
 
-The Tekton Pipelines platform provides common abstractions for describing and executing container-based, run-to-completion workflows, typically in service of CI/CD scenarios. The Tekton Conformance Policy defines the requirements that Tekton implementations must meet to claim conformance with the Tekton API. [TEP-0131](https://github.com/tektoncd/community/blob/main/teps/0131-tekton-conformance-policy.md) lay out details of the policy itself.
+The Tekton Pipelines platform provides common abstractions for describing and executing container-based, run-to-completion workflows, typically in service of CI/CD scenarios. The Tekton Conformance Policy defines the requirements that Tekton implementations must meet to claim conformance with the Tekton API. [TEP-0131](https://github.com/tektoncd/community/blob/main/teps/0131-tekton-conformance-policy.md) lays out details of the policy itself.
 
 According to the policy, Tekton implementations can claim Conformance on GA Primitives, thus, all API Spec in this doc is for Tekton V1 APIs. Implementations are only required to provide resource management (i.e. CRUD APIs) for Runtime Primitives (TaskRun and PipelineRun). For Authoring-time Primitives (Task and Pipeline), supporting CRUD APIs is not a requirement but we recommend referencing them in runtime types (e.g. from git, catalog, within the cluster etc.)
 
@@ -140,7 +140,7 @@ A `PipelineRun` represents an instantiation of a single execution of a `Pipeline
 
 ### TypeMeta
 
-Derived from [Kuberentes Type Meta](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#TypeMeta)
+Derived from [Kuberntes Type Meta](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#TypeMeta)
 
 | Field        | Type   | Notes                                                             |
 |--------------|--------|-------------------------------------------------------------------|
@@ -156,7 +156,7 @@ Derived from standard Kubernetes [meta.v1/ObjectMeta](https://kubernetes.io/docs
 | `name`              | string             | REQUIRED            | Mutually exclusive with the `generateName` field.                                                                                                                                                                                   |
 | `labels`            | map<string,string> | RECOMMENDED         |                                                                                                                                                                                                                                     |
 | `annotations`       | map<string,string> | RECOMMENDED         | `annotations` are necessary in order to support integration with Tekton ecosystem tooling such as Results and Chains                                                                                                                |
-| `creationTimestamp` | string             | REQUIRED (see note) | `creationTimestamp` MUST be populated by the implementation, in [RFC3339](https://tools.ietf.org/html/rfc3339). <br>The field is required for any runtimeTypes such as `TaskRun` and `PipelineRun` and RECOMMENDED for othet types. |
+| `creationTimestamp` | string             | REQUIRED (see note) | `creationTimestamp` MUST be populated by the implementation, in [RFC3339](https://tools.ietf.org/html/rfc3339). <br>The field is required for any runtimeTypes such as `TaskRun` and `PipelineRun` and RECOMMENDED for other types. |
 | `uid`               | string             | RECOMMENDED         | If `uid` is not supported, the implementation must support another way of uniquely identifying a runtime object such as using a combination of `namespace` and `name`                                                               |
 | `resourceVersion`   | string             | OPTIONAL            |                                                                                                                                                                                                                                     |
 | `generation`        | int64              | OPTIONAL            |                                                                                                                                                                                                                                     |
@@ -261,7 +261,7 @@ Defines a pipeline
 
 ### PipelineTask
 
-PiplineTask defines a task in a Pipeline, passing inputs from both `Params`` and from the output of previous tasks.
+PipelineTask defines a task in a Pipeline, passing inputs from both `Params`` and from the output of previous tasks.
 
 | Field        | Type                                                              | Requirement | Notes                                                                                                                                                                             |
 |--------------|-------------------------------------------------------------------|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -292,7 +292,7 @@ Refers to a Task. Tasks should be referred either by a name or by using the Remo
 
 ### Param
 
-Provides a value for the named paramter.
+Provides a value for the named parameter.
 
 | Field   | Type                        | Requirement | Notes |
 |---------|-----------------------------|-------------|-------|
@@ -429,7 +429,7 @@ A `ParamValue` may be a string, a list of string, or a map of string to string.
 | `conditions`      | [][`Condition`](#condition)                     | REQUIRED    | Condition type `Succeeded` MUST be populated. See [Status Signalling](#status-signalling) for details. Other types are OPTIONAL |
 | `startTime`       | string                                          | REQUIRED    | MUST be populated by the implementation, in [RFC3339](https://tools.ietf.org/html/rfc3339).                                     |
 | `completionTime`  | string                                          | REQUIRED    | MUST be populated by the implementation, in [RFC3339](https://tools.ietf.org/html/rfc3339).                                     |
-| `pipelineSpec`    | [`PipelineSpec`](#pipelinespec)                 | RECOMMEDED  | Resolved spec of the pipeline that was executed                                                                                 |
+| `pipelineSpec`    | [`PipelineSpec`](#pipelinespec)                 | RECOMMENDED  | Resolved spec of the pipeline that was executed                                                                                 |
 | `results`         | [][`PipelineRunResult`](#pipelinerunresult)     | RECOMMENDED | Results produced from the pipeline                                                                                              |
 | `childReferences` | [][ChildStatusReference](#childstatusreference) | REQUIRED    | References to any child Runs created as part of executing the pipelinerun                                                       |
 
