@@ -23,12 +23,21 @@ import (
 
 	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // ValidateBindings will return an error if the bound workspaces in binds don't satisfy the declared
 // workspaces in decls.
 func ValidateBindings(ctx context.Context, decls []v1.WorkspaceDeclaration, binds []v1.WorkspaceBinding) error {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer("workspace").Start(ctx, "ValidateBindings",
+		trace.WithAttributes(
+			attribute.Int("workspace.declarations", len(decls)),
+			attribute.Int("workspace.bindings", len(binds)),
+		))
+	defer span.End()
+
 	// This will also be validated at webhook time but in case the webhook isn't invoked for some
 	// reason we'll invoke the same validation here.
 	for _, b := range binds {

@@ -23,6 +23,8 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pkgnames "github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/substitution"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -112,6 +114,10 @@ func getDeclaredWorkspace(name string, w []v1.WorkspaceDeclaration) (*v1.Workspa
 // specified through wb combined with the declared workspaces in ts will be available for
 // all Step and Sidecar containers in the resulting pod.
 func Apply(ctx context.Context, ts v1.TaskSpec, wb []v1.WorkspaceBinding, v map[string]corev1.Volume) (*v1.TaskSpec, error) {
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer("workspace").Start(ctx, "Apply",
+		trace.WithAttributes(attribute.Int("workspace.bindings", len(wb))))
+	defer span.End()
+
 	// If there are no bound workspaces, we don't need to do anything
 	if len(wb) == 0 {
 		return &ts, nil
