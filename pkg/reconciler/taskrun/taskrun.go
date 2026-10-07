@@ -683,6 +683,16 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
+	if err := func() error {
+		_, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "validateDebugBeforeSteps")
+		defer span.End()
+		return validateDebugBeforeSteps(taskSpec, &tr.Spec)
+	}(); err != nil {
+		logger.Errorf("TaskRun %q debug beforeSteps are invalid: %v", tr.Name, err)
+		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
+		return nil, nil, controller.NewPermanentError(err)
+	}
+
 	return taskSpec, rtr, nil
 }
 
