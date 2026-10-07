@@ -1,15 +1,16 @@
 <!--
 ---
-linkTitle: "Profiling etcd Usage"
+linkTitle: "Measuring and Estimating etcd Usage"
 weight: 1000
 ---
 -->
-# Understanding and profiling etcd usage
+# Measuring and estimating etcd usage
 
 This guide explains how a Tekton workload consumes etcd storage and how to
 measure that consumption. It is intended for operators and platform builders
 doing capacity planning or investigating etcd pressure.
 
+- [Prerequisites](#prerequisites)
 - [Why etcd cost is more than object size](#why-etcd-cost-is-more-than-object-size)
 - [The key primitive: per-key version](#the-key-primitive-per-key-version)
 - [How Tekton objects are laid out in etcd](#how-tekton-objects-are-laid-out-in-etcd)
@@ -19,49 +20,70 @@ doing capacity planning or investigating etcd pressure.
 - [Estimating total etcd cost](#estimating-total-etcd-cost)
 - [Caveats](#caveats)
 
+## Prerequisites
+
+You need:
+
+- `kubectl` access that can list the objects being measured.
+- `jq` for processing JSON output.
+- [`etcdctl`](https://etcd.io/docs/v3.5/install/) and direct access to the etcd
+  endpoint that stores the objects.
+
+Direct etcd access is highly privileged. Run these commands only from a control
+plane node or another environment approved by your platform provider. Do not
+copy etcd client credentials off the node. For a controlled kind cluster, see
+[kind's etcd access example](https://github.com/kubernetes-sigs/kind/issues/3058).
+
 ## Why etcd cost is more than object size
 
-etcd is an MVCC store: each write creates a new version of a key. Until etcd
-compacts old revisions, those versions consume storage. A TaskRun can be
-written many times as the Pipelines controller, Chains, Results, and platform
-controllers update it, so its write volume can be many times the size of its
-current value.
+etcd is an [MVCC store](https://etcd.io/docs/v3.7/learning/api/#revisions): each
+successful write creates a new version of a key. Until etcd compacts old
+revisions, those versions consume storage. A TaskRun can be written many times
+as the Pipelines controller, Chains, Results, and platform controllers update
+it.
 
-Both factors matter:
+This guide uses these terms:
 
-- **Object size:** bytes written by each update.
-- **Write count:** how often the object is created or updated.
+- **Write count:** the number of successful writes to a key during its current
+  lifetime.
+- **Current serialized size:** the number of bytes in the key's current value.
+- **Estimated cumulative payload bytes:** the write count multiplied by the
+  current serialized size.
 
-A small object rewritten thousands of times can cost more than a larger object
-written once.
+The last value estimates historical serialized payload volume. It does not
+measure physical etcd database usage. A small object rewritten thousands of
+times can cost more than a larger object written once.
 
 ## The key primitive: per-key version
 
 Every etcd key has a `version` field. It starts at 1 when the key is created and
-increments on every subsequent write to that key. It therefore gives the number
-of writes since the key's current lifetime began. Deleting and recreating a key
-starts the count again.
+increments on each successful write during the key's current lifetime. A
+currently existing key with version 10 has therefore been written 10 times.
+Deleting and recreating the key starts a new lifetime with version 1.
 
-From a kubeadm control-plane node, for example:
+From a kubeadm control plane node, for example:
 
 ```bash
+KEY=/registry/tekton.dev/taskruns/<namespace>/<name>
+
 ETCDCTL_API=3 etcdctl \
   --endpoints=https://127.0.0.1:2379 \
   --cacert=/etc/kubernetes/pki/etcd/ca.crt \
   --cert=/etc/kubernetes/pki/etcd/healthcheck-client.crt \
   --key=/etc/kubernetes/pki/etcd/healthcheck-client.key \
-  get /registry/minions/<node-name> -w fields \
+  get "$KEY" -w fields \
   | grep -E '^"(CreateRevision|ModRevision|Version)"'
 ```
 
 ```text
 "CreateRevision" : 6
 "ModRevision" : 1761674
-"Version" : 2028
+"Version" : 10
 ```
 
 `CreateRevision` and `ModRevision` are positions in the store-wide revision
-sequence. `Version` is the per-key write count used in this guide.
+sequence and can be ignored for this measurement. `Version` is the per-key
+write count used in this guide.
 
 ## How Tekton objects are laid out in etcd
 
@@ -76,20 +98,16 @@ these keys:
 | Event | `/registry/events/<namespace>/<name>` |
 
 Tekton resources are CustomResourceDefinitions and retain their API group in
-the key. Many resources compiled into the API server use an ungrouped prefix,
-and some have legacy names. For example, Nodes use `/registry/minions/`, and
-Services are split between `/registry/services/specs/` and
-`/registry/services/endpoints/`.
-
-Do not infer arbitrary storage keys from API resource names. Confirm the layout
-by listing a prefix:
+the key. Confirm the layout in the target cluster by listing the Tekton prefix:
 
 ```bash
 ETCDCTL_API=3 etcdctl ... get /registry/tekton.dev/ --prefix --keys-only
 ```
 
 The default API server prefix is `/registry`; use the configured
-`--etcd-prefix` instead when it differs.
+`--etcd-prefix` instead when it differs. See etcd's
+[Interacting with etcd](https://etcd.io/docs/v3.5/dev-guide/interacting_v3/)
+guide for general `etcdctl` usage.
 
 ## Profiling one object
 
@@ -135,15 +153,20 @@ For per-request attribution, enable the API server
 `user.username`. Metadata-level logging records the actor, verb, resource, and
 timestamp without logging object bodies.
 
-Count creates as well as updates: the first create gives the key version 1.
-Exclude dry-run and unsuccessful requests. Even then, audit events measure API
-requests rather than the physical bytes written by etcd, so use them for actor
-attribution rather than backend sizing.
+For a currently existing key with version N, its initial successful create
+accounts for version 1 and its successful updates or patches account for the
+remaining N-1 writes. Count successful `create`, `update`, and `patch` audit
+events when comparing audit records with a key's version. Exclude dry-run and
+unsuccessful requests. If a key was deleted and recreated, its current version
+does not include writes from the previous lifetime.
+
+Even then, audit events measure API requests rather than the physical bytes
+written by etcd, so use them for actor attribution rather than backend sizing.
 
 ## Profiling a PipelineRun
 
-To estimate one execution's write volume, profile the PipelineRun and the
-related keys that are in scope:
+To estimate one execution's cumulative payload bytes, profile the PipelineRun
+and the related keys that are in scope:
 
 1. Record the PipelineRun's UID.
 2. Select TaskRuns whose controller owner reference has that UID.
@@ -218,19 +241,20 @@ A three-task sequential PipelineRun measured immediately after completion
 produced this aggregate:
 
 ```text
-KIND            COUNT  WRITES     CURRENT(B) EST-WRITE-BYTES(B)
-Event              65      70          41081              44031
-PipelineRun         1       6           3029              18174
-Pod                 3      39          32175             418275
-TaskRun             3      27           9981              89829
-----------------------------------------------------------------
-TOTAL              72     142          86266             570309
+KIND            COUNT  WRITES     CURRENT(B) EST-PAYLOAD-BYTES(B)
+Event              65      70          41081                44031
+PipelineRun         1       6           3029                18174
+Pod                 3      39          32175               418275
+TaskRun             3      27           9981                89829
+------------------------------------------------------------------
+TOTAL              72     142          86266               570309
 ```
 
 Each TaskRun was written nine times and each Pod thirteen times. Events
-increased the object count but contributed little estimated write volume
-because most were written once. Keep per-object rows in the underlying analysis
-so a single hot TaskRun or Pod is not hidden by the aggregate.
+increased the object count but contributed relatively little to the estimated
+cumulative payload bytes because most were written once. Keep per-object rows
+in the underlying analysis so a single hot TaskRun or Pod is not hidden by the
+aggregate.
 
 ## Estimating total etcd cost
 
@@ -238,10 +262,10 @@ For a cheap first-order estimate, calculate this for every key and sum the
 results:
 
 ```text
-estimated write bytes = version × current serialized size
+estimated cumulative payload bytes = version × current serialized size
 ```
 
-The example above has an estimated rewrite multiple of `570309 / 86266`, or
+The example above has an estimated payload multiple of `570309 / 86266`, or
 about 6.6x. This estimate assumes every historical value was the same size as
 the current value. It overestimates objects that grew and underestimates objects
 that shrank.
@@ -260,7 +284,7 @@ between the two is space that defragmentation can reclaim.
 ## Caveats
 
 - **Compaction:** A key's `version` keeps increasing after old revisions are
-  compacted. `version × current size` estimates cumulative write volume, not
+  compacted. `version × current size` estimates cumulative payload bytes, not
   retained history. Compaction also does not return free pages to the
   filesystem; defragmentation does.
 - **Live-object discovery:** Objects already deleted or garbage-collected are
