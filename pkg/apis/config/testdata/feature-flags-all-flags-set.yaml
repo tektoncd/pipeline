@@ -41,3 +41,4 @@ data:
   enable-termination-message-compression: "true"
   keep-status-spec-descriptions: "true"
   surface-pod-events: "true"
+  enable-image-workspace: "true"
