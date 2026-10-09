@@ -1,0 +1,46 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: default-results-
+spec:
+  taskSpec:
+    results:
+      - name: result1
+        description: A result that will be produced
+      - name: string-result
+        description: A string result with default value
+        default: "default-string-value"
+      - name: array-result
+        type: array
+        description: An array result with default value
+        default:
+          - "foo"
+          - "bar"
+          - "baz"
+      - name: object-result
+        type: object
+        description: An object result with default value
+        properties:
+          url:
+            type: string
+          digest:
+            type: string
+        default:
+          url: "https://default.example.com"
+          digest: "sha256:default"
+    steps:
+      - name: produce-result1
+        image: bash:latest
+        script: |
+          #!/usr/bin/env bash
+          echo -n "actual-value" | tee $(results.result1.path)
+      - name: step-with-error
+        onError: continue
+        image: bash:latest
+        script: |
+          #!/usr/bin/env bash
+          # This step fails intentionally, so string-result, array-result,
+          # and object-result will use their default values
+          echo "This step fails, but default results will be used"
+          exit 1
+          echo -n "this-wont-be-written" | tee $(results.string-result.path)

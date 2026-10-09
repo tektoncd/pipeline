@@ -41,8 +41,8 @@ spec:
           echo "Error: expected matrix results to have the length 3 but has length $(params.matrixresultslength-1)"
           exit 1
         fi
-        if [ "$(params.matrixresultslength-2)" != 1 ]; then
-          echo "Error: expected matrix results to have the length 1 but has length $(params.matrixresultslength-2)"
+        if [ "$(params.matrixresultslength-2)" != 3 ]; then
+          echo "Error: expected matrix results to have the length 3 but has length $(params.matrixresultslength-2)"
           exit 1
         fi
         echo "Done validating the length of the matrix context variable"
@@ -66,9 +66,7 @@ spec:
         #!/usr/bin/env bash
         echo "Building image for $(params.IMAGE)"
         echo -n "$(params.DIGEST)" | sha256sum | tee $(results.IMAGE-DIGEST.path)
-        if [ -z $(params.DIGEST) ]; then
-          echo -n "$(params.DIGEST)" | sha256sum | tee $(results.IMAGE-URL.path)
-        fi
+        echo -n "$(params.IMAGE)" | sha256sum | tee $(results.IMAGE-URL.path)
 ---
 apiVersion: tekton.dev/v1
 kind: PipelineRun
