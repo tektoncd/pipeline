@@ -1263,6 +1263,41 @@ func TestGetStepActionsData(t *testing.T) {
 			SecurityContext: &corev1.SecurityContext{RunAsUser: &stepActionUser},
 		}},
 	}, {
+		name: "step-action-does-not-overwrite-security-context",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "mytaskrun",
+				Namespace: "default",
+			},
+			Spec: v1.TaskRunSpec{
+				TaskSpec: &v1.TaskSpec{
+					Steps: []v1.Step{{
+						Ref: &v1.Ref{
+							Name: "stepAction",
+						},
+						SecurityContext: &corev1.SecurityContext{RunAsUser: &taskRunUser},
+					}},
+				},
+			},
+		},
+		stepActions: []*v1beta1.StepAction{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stepAction",
+				Namespace: "default",
+			},
+			Spec: v1beta1.StepActionSpec{
+				Image:   "myimage",
+				Command: []string{"ls"},
+				Args:    []string{"-lh"},
+			},
+		}},
+		want: []v1.Step{{
+			Image:           "myimage",
+			Command:         []string{"ls"},
+			Args:            []string{"-lh"},
+			SecurityContext: &corev1.SecurityContext{RunAsUser: &taskRunUser},
+		}},
+	}, {
 		name: "params propagated from taskrun",
 		tr: &v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
