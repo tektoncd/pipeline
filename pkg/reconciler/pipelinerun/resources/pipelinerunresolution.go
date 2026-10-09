@@ -159,7 +159,8 @@ func (t *ResolvedPipelineTask) EvaluateCEL() error {
 
 // isDone returns true only if the task is skipped, succeeded or failed
 func (t ResolvedPipelineTask) isDone(facts *PipelineRunFacts) bool {
-	return t.Skip(facts).IsSkipped || t.isSuccessful() || t.isFailure() || t.isValidationFailed(facts.ValidationFailedTask)
+	return t.Skip(facts).IsSkipped || t.isSuccessful() || t.isFailure() || t.isValidationFailed(facts.ValidationFailedTask) ||
+		t.isRunCreationFailed(facts.RunCreationFailedTask)
 }
 
 // IsRunning returns true only if the task is neither succeeded, cancelled nor failed
@@ -324,6 +325,19 @@ func (t ResolvedPipelineTask) isValidationFailed(ftasks []*ResolvedPipelineTask)
 	return false
 }
 
+// isRunCreationFailed returns true if the task's child run could not be created because the API
+// server permanently rejected the request, e.g. an admission webhook denied it. Such a task has no
+// child run at all to observe - the reconciler only records tasks that got none created, see
+// recordRunCreationFailure - so it counts as done and the DAG can converge without it.
+func (t ResolvedPipelineTask) isRunCreationFailed(ftasks []*ResolvedPipelineTask) bool {
+	for _, ftask := range ftasks {
+		if ftask.PipelineTask != nil && t.PipelineTask != nil && ftask.PipelineTask.Name == t.PipelineTask.Name {
+			return true
+		}
+	}
+	return false
+}
+
 // isCancelledForTimeOut returns true only if the run is cancelled due to PipelineRun-controlled timeout
 // If the PipelineTask has a Matrix, isCancelled returns true if any run is cancelled due to PipelineRun-controlled timeout and all other runs are done.
 func (t ResolvedPipelineTask) isCancelledForTimeOut() bool {
@@ -460,7 +474,8 @@ func (t *ResolvedPipelineTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
 	var skippingReason v1.SkippingReason
 
 	switch {
-	case facts.isFinalTask(t.PipelineTask.Name) || t.isScheduled() || t.isValidationFailed(facts.ValidationFailedTask):
+	case facts.isFinalTask(t.PipelineTask.Name) || t.isScheduled() || t.isValidationFailed(facts.ValidationFailedTask) ||
+		t.isRunCreationFailed(facts.RunCreationFailedTask):
 		skippingReason = v1.None
 	case facts.IsStopping():
 		skippingReason = v1.StoppingSkip
