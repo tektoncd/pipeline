@@ -743,7 +743,7 @@
           "format": "int64"
         },
         "pipelineSpec": {
-          "description": "PipelineSpec contains the exact spec used to instantiate the run. See Pipeline.spec (API version: tekton.dev/v1)",
+          "description": "PipelineSpec contains the Pipeline spec used to instantiate the run, without documentation-only descriptions by default. Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation. See Pipeline.spec (API version: tekton.dev/v1)",
           "$ref": "#/definitions/v1.PipelineSpec"
         },
         "provenance": {
@@ -800,7 +800,7 @@
           "$ref": "#/definitions/v1.Time"
         },
         "pipelineSpec": {
-          "description": "PipelineSpec contains the exact spec used to instantiate the run. See Pipeline.spec (API version: tekton.dev/v1)",
+          "description": "PipelineSpec contains the Pipeline spec used to instantiate the run, without documentation-only descriptions by default. Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation. See Pipeline.spec (API version: tekton.dev/v1)",
           "$ref": "#/definitions/v1.PipelineSpec"
         },
         "provenance": {
@@ -2164,7 +2164,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "taskSpec": {
-          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
+          "description": "TaskSpec contains the Task spec used to instantiate the run, without documentation-only descriptions by default. Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation.",
           "$ref": "#/definitions/v1.TaskSpec"
         }
       }
@@ -2236,7 +2236,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "taskSpec": {
-          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
+          "description": "TaskSpec contains the Task spec used to instantiate the run, without documentation-only descriptions by default. Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation.",
           "$ref": "#/definitions/v1.TaskSpec"
         }
       }
