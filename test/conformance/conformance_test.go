@@ -1357,8 +1357,7 @@ spec:
 	// Parse and validate output YAML
 	resolvedPR := parse.MustParseV1PipelineRun(t, outputYAML)
 
-	// TODO to examine PipelineRunReason when https://github.com/tektoncd/pipeline/issues/7573 is fixed - PipelineTaskTimeout
-	if err := checkPipelineRunConditionSucceeded(resolvedPR.Status, FailureConditionStatus, "Failed"); err != nil {
+	if err := checkPipelineRunConditionSucceeded(resolvedPR.Status, FailureConditionStatus, "PipelineRunTimeout"); err != nil {
 		t.Error(err)
 	}
 }
