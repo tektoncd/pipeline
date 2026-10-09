@@ -5986,6 +5986,111 @@ status:
 	}
 }
 
+func TestTerminateStepsInPod_CancelledTimestamps(t *testing.T) {
+	// Model the real #8479 scenario: step-1 completed, step-2 was actively
+	// running user code, step-3's entrypoint was running but waiting on
+	// step-2, and step-4 was still waiting to start.
+	completionTime := metav1.NewTime(time.Date(2025, 1, 10, 20, 7, 22, 0, time.UTC))
+	step1FinishedAt := metav1.NewTime(time.Date(2025, 1, 10, 20, 7, 18, 0, time.UTC))
+	// Entrypoint startup times (container creation, before step-1 finished).
+	activeStepStartedAt := metav1.NewTime(time.Date(2025, 1, 10, 20, 7, 15, 0, time.UTC))
+	waitingEntrypointStartedAt := metav1.NewTime(time.Date(2025, 1, 10, 20, 7, 15, 0, time.UTC))
+
+	tr := &v1.TaskRun{
+		Status: v1.TaskRunStatus{
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				PodName:        "test-pod",
+				CompletionTime: &completionTime,
+				Steps: []v1.StepState{
+					{
+						// step-1: already completed, should be left untouched.
+						Name: "step-1",
+						ContainerState: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode:   0,
+								StartedAt:  metav1.NewTime(time.Date(2025, 1, 10, 20, 7, 17, 0, time.UTC)),
+								FinishedAt: step1FinishedAt,
+								Reason:     "Completed",
+							},
+						},
+					},
+					{
+						// step-2: active Running step (executing user command).
+						Name: "step-2",
+						ContainerState: corev1.ContainerState{
+							Running: &corev1.ContainerStateRunning{
+								StartedAt: activeStepStartedAt,
+							},
+						},
+					},
+					{
+						// step-3: Running but only the entrypoint is polling;
+						// user command never started.
+						Name: "step-3",
+						ContainerState: corev1.ContainerState{
+							Running: &corev1.ContainerStateRunning{
+								StartedAt: waitingEntrypointStartedAt,
+							},
+						},
+					},
+					{
+						// step-4: still Waiting.
+						Name: "step-4",
+						ContainerState: corev1.ContainerState{
+							Waiting: &corev1.ContainerStateWaiting{
+								Reason: "PodInitializing",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	terminateStepsInPod(tr, v1.TaskRunReasonCancelled)
+
+	// step-1 (Completed): untouched.
+	if tr.Status.Steps[0].Terminated.Reason != "Completed" {
+		t.Errorf("step-1 Reason = %q, want Completed", tr.Status.Steps[0].Terminated.Reason)
+	}
+
+	// step-2 (active Running): preserves its StartedAt, FinishedAt = CompletionTime.
+	s2 := tr.Status.Steps[1]
+	if s2.Terminated == nil {
+		t.Fatal("step-2: expected Terminated, got nil")
+	}
+	if !s2.Terminated.StartedAt.Time.Equal(activeStepStartedAt.Time) {
+		t.Errorf("step-2 StartedAt = %v, want %v (preserved)", s2.Terminated.StartedAt.Time, activeStepStartedAt.Time)
+	}
+	if !s2.Terminated.FinishedAt.Time.Equal(completionTime.Time) {
+		t.Errorf("step-2 FinishedAt = %v, want %v", s2.Terminated.FinishedAt.Time, completionTime.Time)
+	}
+
+	// step-3 (waiting entrypoint): StartedAt == FinishedAt == CompletionTime.
+	s3 := tr.Status.Steps[2]
+	if s3.Terminated == nil {
+		t.Fatal("step-3: expected Terminated, got nil")
+	}
+	if !s3.Terminated.StartedAt.Time.Equal(completionTime.Time) {
+		t.Errorf("step-3 StartedAt = %v, want %v (CompletionTime)", s3.Terminated.StartedAt.Time, completionTime.Time)
+	}
+	if !s3.Terminated.FinishedAt.Time.Equal(completionTime.Time) {
+		t.Errorf("step-3 FinishedAt = %v, want %v", s3.Terminated.FinishedAt.Time, completionTime.Time)
+	}
+
+	// step-4 (Waiting): StartedAt == FinishedAt == CompletionTime.
+	s4 := tr.Status.Steps[3]
+	if s4.Terminated == nil {
+		t.Fatal("step-4: expected Terminated, got nil")
+	}
+	if !s4.Terminated.StartedAt.Time.Equal(completionTime.Time) {
+		t.Errorf("step-4 StartedAt = %v, want %v (CompletionTime)", s4.Terminated.StartedAt.Time, completionTime.Time)
+	}
+	if !s4.Terminated.FinishedAt.Time.Equal(completionTime.Time) {
+		t.Errorf("step-4 FinishedAt = %v, want %v", s4.Terminated.FinishedAt.Time, completionTime.Time)
+	}
+}
+
 func Test_storeTaskSpecAndConfigSource(t *testing.T) {
 	tr := parse.MustParseV1TaskRun(t, `
 metadata:
