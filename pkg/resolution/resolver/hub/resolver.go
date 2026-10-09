@@ -43,6 +43,9 @@ const (
 	// TektonHubType is the value to use setting the type field to tekton
 	TektonHubType string = "tekton"
 
+	// StepActionKind is the value to use setting the kind field to stepaction
+	StepActionKind = "stepaction"
+
 	disabledError = "cannot handle resolution request, enable-hub-resolver feature flag not true"
 )
 
@@ -267,6 +270,12 @@ func resolveCatalogName(paramsMap, conf map[string]string) (string, error) {
 				return configAHTaskCatalog, nil
 			case "pipeline":
 				return configAHPipelineCatalog, nil
+			case StepActionKind:
+				configAHStepActionCatalog, ok := conf[ConfigArtifactHubStepActionCatalog]
+				if !ok {
+					return "", errors.New("default Artifact Hub StepAction catalog was not set during installation of the hub resolver")
+				}
+				return configAHStepActionCatalog, nil
 			default:
 				return "", fmt.Errorf("failed to resolve catalog name with kind: %s", paramsMap[ParamKind])
 			}
