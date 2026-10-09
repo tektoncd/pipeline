@@ -155,6 +155,12 @@ spec:
       # Change to directory with our .ko.yaml
       cd ${PROJECT_ROOT}
 
+      # ko does not set a creation timestamp by default, so published images inherit
+      # the base image's (which can predate the release by a long margin). Set it to
+      # the release commit's timestamp.
+      SOURCE_DATE_EPOCH=$(git log -1 --format='%ct')
+      export SOURCE_DATE_EPOCH
+
       # For each cmd/* directory, include a full gzipped tar of all source in
       # vendor/. This is overkill. Some deps' licenses require the source to be
       # included in the container image when they're used as a dependency.
