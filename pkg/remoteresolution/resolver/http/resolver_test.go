@@ -296,7 +296,7 @@ func TestResolverReconcileBasicAuth(t *testing.T) {
 				authUsername: "user",
 				url:          "https://blah/blah.com",
 			},
-			expectedErr: errors.New(`error getting "Http" "foo/rr": cannot get API token, secret notcreate not found in namespace foo`),
+			expectedErr: errors.New(`error getting "Http" "foo/rr": cannot get API token, secret not accessible in namespace foo`),
 		},
 		{
 			name: "bad/no valid secret key",
@@ -306,7 +306,7 @@ func TestResolverReconcileBasicAuth(t *testing.T) {
 				authSecretKey: wrongSecretKey,
 				url:           "https://blah/blah",
 			},
-			expectedErr: errors.New(`error getting "Http" "foo/rr": cannot get API token, key wrongsecretk not found in secret shhhhh in namespace foo`),
+			expectedErr: errors.New(`error getting "Http" "foo/rr": cannot get API token, secret not accessible in namespace foo`),
 		},
 		{
 			name: "bad/missing username params for secret with params",
