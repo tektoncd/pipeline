@@ -506,6 +506,36 @@ func TestValidateOverrides(t *testing.T) {
 	}
 }
 
+func TestValidateDebugBeforeSteps(t *testing.T) {
+	ts := &v1.TaskSpec{Steps: []v1.Step{{Name: "step1"}, {Name: "step2"}}}
+	debug := func(steps ...string) *v1.TaskRunDebug {
+		return &v1.TaskRunDebug{Breakpoints: &v1.TaskBreakpoints{BeforeSteps: steps}}
+	}
+	tcs := []struct {
+		name    string
+		trs     *v1.TaskRunSpec
+		wantErr bool
+	}{{
+		name: "no debug",
+		trs:  &v1.TaskRunSpec{},
+	}, {
+		name: "valid beforeSteps",
+		trs:  &v1.TaskRunSpec{Debug: debug("step1", "step2")},
+	}, {
+		name:    "unknown beforeSteps",
+		trs:     &v1.TaskRunSpec{Debug: debug("step1", "nonexistent-step")},
+		wantErr: true,
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateDebugBeforeSteps(ts, tc.trs)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("expected err: %t, but got err %v", tc.wantErr, err)
+			}
+		})
+	}
+}
+
 func TestValidateResult(t *testing.T) {
 	tcs := []struct {
 		name    string
