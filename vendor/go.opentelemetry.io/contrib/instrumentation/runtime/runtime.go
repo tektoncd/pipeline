@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package runtime // import "go.opentelemetry.io/contrib/instrumentation/runtime"
+package runtime
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/semconv/v1.41.0/goconv"
+	"go.opentelemetry.io/otel/semconv/v1.43.0/goconv"
 
 	"go.opentelemetry.io/contrib/instrumentation/runtime/internal/deprecatedruntime"
 	"go.opentelemetry.io/contrib/instrumentation/runtime/internal/x"
