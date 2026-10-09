@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/registry"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -778,4 +779,95 @@ func TestGetResolutionBackoffCustom(t *testing.T) {
 	if backoffConfig.Cap != configBackoffCap {
 		t.Fatalf("expected steps from config to be returned")
 	}
+}
+
+func TestGetInsecureSkipTLSVerify(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		config  map[string]string
+		want    bool
+		wantErr bool
+	}{{
+		name:   "not set",
+		config: map[string]string{},
+		want:   false,
+	}, {
+		name:   "empty",
+		config: map[string]string{bundle.ConfigInsecureSkipTLSVerify: ""},
+		want:   false,
+	}, {
+		name:   "true",
+		config: map[string]string{bundle.ConfigInsecureSkipTLSVerify: "true"},
+		want:   true,
+	}, {
+		name:   "false",
+		config: map[string]string{bundle.ConfigInsecureSkipTLSVerify: "false"},
+		want:   false,
+	}, {
+		name:    "invalid",
+		config:  map[string]string{bundle.ConfigInsecureSkipTLSVerify: "notabool"},
+		want:    false,
+		wantErr: true,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := framework.InjectResolverConfigToContext(t.Context(), tc.config)
+			got, err := bundle.GetInsecureSkipTLSVerify(ctx)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestGetEntryInsecureSkipTLSVerify(t *testing.T) {
+	exampleTask := &pipelinev1.Task{
+		ObjectMeta: metav1.ObjectMeta{Name: "example-task"},
+		TypeMeta:   metav1.TypeMeta{Kind: "Task", APIVersion: "tekton.dev/v1"},
+	}
+
+	// Share one in-memory registry between a plain HTTP server (for pushing) and a self-signed TLS server (for pulling).
+	reg := registry.New()
+	plain := httptest.NewServer(reg)
+	defer plain.Close()
+	secure := httptest.NewTLSServer(reg)
+	defer secure.Close()
+
+	plainURL, err := url.Parse(plain.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secureURL, err := url.Parse(secure.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pushToRegistry(t, plainURL.Host+"/testbundleresolver", "tls-task", []runtime.Object{exampleTask}, test.DefaultObjectAnnotationMapper)
+
+	opts := bundle.RequestOptions{
+		Bundle:    secureURL.Host + "/testbundleresolver/tls-task:latest",
+		EntryName: "example-task",
+		Kind:      "task",
+	}
+
+	t.Run("verification enabled by default", func(t *testing.T) {
+		ctx := framework.InjectResolverConfigToContext(t.Context(), map[string]string{})
+		if _, err := bundle.GetEntry(ctx, authn.DefaultKeychain, opts); err == nil {
+			t.Fatal("expected TLS verification error, got nil")
+		}
+	})
+
+	t.Run("verification skipped", func(t *testing.T) {
+		ctx := framework.InjectResolverConfigToContext(t.Context(), map[string]string{
+			bundle.ConfigInsecureSkipTLSVerify: "true",
+		})
+		entry, err := bundle.GetEntry(ctx, authn.DefaultKeychain, opts)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got := entry.Annotations()[bundle.ResolverAnnotationName]; got != "example-task" {
+			t.Errorf("got entry name %q, want %q", got, "example-task")
+		}
+	})
 }

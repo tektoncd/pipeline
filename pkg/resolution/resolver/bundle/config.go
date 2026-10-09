@@ -54,6 +54,9 @@ const (
 	// the maximum duration to try when backing off
 	ConfigBackoffCap  = "backoff-cap"
 	DefaultBackoffCap = 10 * time.Second
+	// ConfigInsecureSkipTLSVerify is the configuration field name for skipping TLS verification when pulling bundles
+	ConfigInsecureSkipTLSVerify  = "insecure-skip-tls-verify"
+	DefaultInsecureSkipTLSVerify = false
 )
 
 // GetBundleResolverBackoff returns a remote.Backoff to
@@ -112,4 +115,21 @@ func GetBundleResolverBackoff(ctx context.Context) (remote.Backoff, error) {
 	}
 
 	return customRetryBackoff, nil
+}
+
+// GetInsecureSkipTLSVerify returns whether to skip TLS verification when pulling bundles.
+// This can be configured with the insecure-skip-tls-verify field in the bundle-resolver-config ConfigMap.
+func GetInsecureSkipTLSVerify(ctx context.Context) (bool, error) {
+	conf := framework.GetResolverConfigFromContext(ctx)
+
+	v, ok := conf[ConfigInsecureSkipTLSVerify]
+	if !ok || v == "" {
+		return DefaultInsecureSkipTLSVerify, nil
+	}
+
+	skip, err := strconv.ParseBool(v)
+	if err != nil {
+		return DefaultInsecureSkipTLSVerify, fmt.Errorf("error parsing %s value %s: %w", ConfigInsecureSkipTLSVerify, v, err)
+	}
+	return skip, nil
 }
