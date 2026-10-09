@@ -81,7 +81,7 @@ type Step struct {
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// +optional
-	ComputeResources corev1.ResourceRequirements `json:"computeResources,omitempty" protobuf:"bytes,8,opt,name=computeResources"`
+	ComputeResources ComputeResourceRequirements `json:"computeResources,omitempty" protobuf:"bytes,8,opt,name=computeResources"`
 	// Volumes to mount into the Step's filesystem.
 	// Cannot be updated.
 	// +optional
@@ -198,7 +198,7 @@ func (s *Step) ToK8sContainer() *corev1.Container {
 		WorkingDir:      s.WorkingDir,
 		EnvFrom:         s.EnvFrom,
 		Env:             s.Env,
-		Resources:       s.ComputeResources,
+		Resources:       s.ComputeResources.MustToK8s(),
 		VolumeMounts:    s.VolumeMounts,
 		VolumeDevices:   s.VolumeDevices,
 		ImagePullPolicy: s.ImagePullPolicy,
@@ -215,7 +215,7 @@ func (s *Step) SetContainerFields(c corev1.Container) {
 	s.WorkingDir = c.WorkingDir
 	s.EnvFrom = c.EnvFrom
 	s.Env = c.Env
-	s.ComputeResources = c.Resources
+	s.ComputeResources = FromK8sResourceRequirements(c.Resources)
 	s.VolumeMounts = c.VolumeMounts
 	s.VolumeDevices = c.VolumeDevices
 	s.ImagePullPolicy = c.ImagePullPolicy
@@ -306,7 +306,7 @@ type StepTemplate struct {
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// +optional
-	ComputeResources corev1.ResourceRequirements `json:"computeResources,omitempty" protobuf:"bytes,8,opt,name=computeResources"`
+	ComputeResources ComputeResourceRequirements `json:"computeResources,omitempty" protobuf:"bytes,8,opt,name=computeResources"`
 	// Volumes to mount into the Step's filesystem.
 	// Cannot be updated.
 	// +optional
@@ -342,7 +342,7 @@ func (s *StepTemplate) SetContainerFields(c corev1.Container) {
 	s.WorkingDir = c.WorkingDir
 	s.EnvFrom = c.EnvFrom
 	s.Env = c.Env
-	s.ComputeResources = c.Resources
+	s.ComputeResources = FromK8sResourceRequirements(c.Resources)
 	s.VolumeMounts = c.VolumeMounts
 	s.VolumeDevices = c.VolumeDevices
 	s.ImagePullPolicy = c.ImagePullPolicy
@@ -358,7 +358,7 @@ func (s *StepTemplate) ToK8sContainer() *corev1.Container {
 		WorkingDir:      s.WorkingDir,
 		EnvFrom:         s.EnvFrom,
 		Env:             s.Env,
-		Resources:       s.ComputeResources,
+		Resources:       s.ComputeResources.MustToK8s(),
 		VolumeMounts:    s.VolumeMounts,
 		VolumeDevices:   s.VolumeDevices,
 		ImagePullPolicy: s.ImagePullPolicy,
@@ -438,7 +438,7 @@ type Sidecar struct {
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// +optional
-	ComputeResources corev1.ResourceRequirements `json:"computeResources,omitempty" protobuf:"bytes,8,opt,name=computeResources"`
+	ComputeResources ComputeResourceRequirements `json:"computeResources,omitempty" protobuf:"bytes,8,opt,name=computeResources"`
 	// Volumes to mount into the Sidecar's filesystem.
 	// Cannot be updated.
 	// +optional
@@ -567,7 +567,7 @@ func (s *Sidecar) ToK8sContainer() *corev1.Container {
 			Ports:                    s.Ports,
 			EnvFrom:                  s.EnvFrom,
 			Env:                      s.Env,
-			Resources:                s.ComputeResources,
+			Resources:                s.ComputeResources.MustToK8s(),
 			VolumeMounts:             s.VolumeMounts,
 			VolumeDevices:            s.VolumeDevices,
 			LivenessProbe:            s.LivenessProbe,
@@ -592,7 +592,7 @@ func (s *Sidecar) ToK8sContainer() *corev1.Container {
 		Ports:                    s.Ports,
 		EnvFrom:                  s.EnvFrom,
 		Env:                      s.Env,
-		Resources:                s.ComputeResources,
+		Resources:                s.ComputeResources.MustToK8s(),
 		VolumeMounts:             s.VolumeMounts,
 		VolumeDevices:            s.VolumeDevices,
 		LivenessProbe:            s.LivenessProbe,
@@ -620,7 +620,7 @@ func (s *Sidecar) SetContainerFields(c corev1.Container) {
 	s.Ports = c.Ports
 	s.EnvFrom = c.EnvFrom
 	s.Env = c.Env
-	s.ComputeResources = c.Resources
+	s.ComputeResources = FromK8sResourceRequirements(c.Resources)
 	s.VolumeMounts = c.VolumeMounts
 	s.VolumeDevices = c.VolumeDevices
 	s.LivenessProbe = c.LivenessProbe
