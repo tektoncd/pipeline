@@ -356,9 +356,21 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 		p: &Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 		},
-		expectedError: apis.FieldError{
+		expectedError: *(&apis.FieldError{
 			Message: `expected at least one, got none`,
 			Paths:   []string{"spec.description", "spec.params", "spec.resources", "spec.tasks", "spec.workspaces"},
+		}).Also(apis.ErrMissingField("spec.tasks")),
+	}, {
+		name: "pipeline with params but no tasks and no finally",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Params: ParamSpecs{{Name: "some-param", Type: ParamTypeString}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `missing field(s)`,
+			Paths:   []string{"spec.tasks"},
 		},
 	}, {
 		name: "invalid parameter usage in pipeline task",
@@ -1593,6 +1605,21 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 		finalTasks    []PipelineTask
 		expectedError apis.FieldError
 	}{{
+		name:  "pipeline with no tasks and no finally tasks",
+		tasks: []PipelineTask{},
+		expectedError: apis.FieldError{
+			Message: `missing field(s)`,
+			Paths:   []string{"tasks"},
+		},
+	}, {
+		name:       "pipeline with no tasks but at least one finally task",
+		tasks:      []PipelineTask{},
+		finalTasks: []PipelineTask{{Name: "final-task", TaskRef: &TaskRef{Name: "final-task"}}},
+		expectedError: apis.FieldError{
+			Message: `missing field(s)`,
+			Paths:   []string{"tasks"},
+		},
+	}, {
 		name: "pipeline tasks invalid (duplicate tasks)",
 		tasks: []PipelineTask{
 			{Name: "foo", TaskRef: &TaskRef{Name: "foo-task"}},
@@ -3156,10 +3183,10 @@ func TestValidatePipelineWithFinalTasks_Failure(t *testing.T) {
 				}},
 			},
 		},
-		expectedError: apis.FieldError{
+		expectedError: *(&apis.FieldError{
 			Message: `invalid value: spec.tasks is empty but spec.finally has 1 tasks`,
 			Paths:   []string{"spec.finally"},
-		},
+		}).Also(apis.ErrMissingField("spec.tasks")),
 	}, {
 		name: "invalid pipeline without any non-final task (tasks set to empty list of pipeline task) but at least one final task",
 		p: &Pipeline{
@@ -3568,7 +3595,7 @@ func TestValidatePipelineWithFinalTasks_Failure(t *testing.T) {
 				Finally: []PipelineTask{},
 			},
 		},
-		expectedError: *apis.ErrGeneric("expected at least one, got none", "spec.description", "spec.params", "spec.resources", "spec.tasks", "spec.workspaces"),
+		expectedError: *apis.ErrGeneric("expected at least one, got none", "spec.description", "spec.params", "spec.resources", "spec.tasks", "spec.workspaces").Also(apis.ErrMissingField("spec.tasks")),
 	}, {
 		name: "invalid pipeline with final tasks referring to invalid context variables",
 		p: &Pipeline{
