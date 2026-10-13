@@ -32,9 +32,12 @@ import (
 	th "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	"github.com/tektoncd/pipeline/pkg/resolutionrequestmetrics"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -384,4 +387,83 @@ func assertResolverStatus(t *testing.T, rr *v1beta1.ResolutionRequest, wantField
 
 func getRequestName(rr *v1beta1.ResolutionRequest) string {
 	return strings.Join([]string{rr.Namespace, rr.Name}, "/")
+}
+
+func TestReconcileRecordsCompletionMetrics(t *testing.T) {
+	testCases := []struct {
+		name  string
+		input *v1beta1.ResolutionRequest
+	}{
+		{
+			name: "succeeded request records completion",
+			input: &v1beta1.ResolutionRequest{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "rr",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.NewTime(time.Now().Add(-time.Second)),
+					Labels:            map[string]string{resolutioncommon.LabelKeyResolverType: "git"},
+				},
+				Status: v1beta1.ResolutionRequestStatus{
+					ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
+						Data: "some data",
+					},
+				},
+			},
+		},
+		{
+			name: "timed out request records completion",
+			input: &v1beta1.ResolutionRequest{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "rr",
+					Namespace:         "foo",
+					CreationTimestamp: metav1.NewTime(time.Now().Add(-2 * time.Minute)),
+					Labels:            map[string]string{resolutioncommon.LabelKeyResolverType: "git"},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+			ctx := config.ToContext(t.Context(), config.FromContextOrDefaults(t.Context()))
+			metricsRecorder, err := resolutionrequestmetrics.NewRecorderForTesting(ctx, provider)
+			if err != nil {
+				t.Fatalf("NewRecorderForTesting: %v", err)
+			}
+
+			reconciler := &Reconciler{metrics: metricsRecorder}
+			rr := tc.input.DeepCopy()
+			reconciler.reconcile(ctx, rr)
+
+			var rm metricdata.ResourceMetrics
+			if err := reader.Collect(ctx, &rm); err != nil {
+				t.Fatalf("Collect error: %v", err)
+			}
+
+			found := false
+			for _, sm := range rm.ScopeMetrics {
+				for _, m := range sm.Metrics {
+					if m.Name == "tekton_pipelines_controller_resolution_request_completion_seconds" {
+						hist, ok := m.Data.(metricdata.Histogram[float64])
+						if !ok {
+							t.Fatalf("completion metric data is not a Histogram[float64]: %T", m.Data)
+						}
+						if len(hist.DataPoints) != 1 {
+							t.Fatalf("expected 1 completion data point, got %d", len(hist.DataPoints))
+						}
+						if hist.DataPoints[0].Sum <= 0 {
+							t.Errorf("expected a positive completion duration, got %v", hist.DataPoints[0].Sum)
+						}
+						found = true
+					}
+				}
+			}
+			if !found {
+				t.Error("resolution_request_completion_seconds metric not found")
+			}
+		})
+	}
 }
