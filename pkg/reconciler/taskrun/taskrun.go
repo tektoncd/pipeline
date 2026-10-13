@@ -380,6 +380,13 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) (reconci
 	// Record the duration and count after the reconcile cycle.
 	defer c.durationAndCountMetrics(ctx, tr, before)
 
+	// Track how long tr waits on resolution of its Task reference. This is
+	// deferred after durationAndCountMetrics above so it runs first (defers
+	// execute LIFO): a run that both finishes resolving and completes within
+	// the same reconcile needs its wait time recorded before
+	// durationAndCountMetrics reads it.
+	defer c.metrics.ObserveResolutionWait(tr)
+
 	// If the TaskRun is just starting, this will also set the starttime,
 	// from which the timeout will immediately begin counting down.
 	if !tr.HasStarted() && !tr.IsPending() {
