@@ -48,7 +48,7 @@ func ValidateEnabledAPIFields(ctx context.Context, featureName string, wantVersi
 			errs = apis.ErrGeneric(message)
 		}
 	default:
-		errs = apis.ErrGeneric("invalid wantVersion %s, must be one of (%s, %s, %s)", wantVersion, AlphaAPIFields, BetaAPIFields, StableAPIFields)
+		errs = apis.ErrGeneric(fmt.Sprintf("invalid wantVersion %s, must be one of (%s, %s, %s)", wantVersion, AlphaAPIFields, BetaAPIFields, StableAPIFields))
 	}
 	return errs
 }
