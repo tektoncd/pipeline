@@ -376,6 +376,11 @@ const (
 	// PipelineRunReasonStoppedRunningFinally indicates that pipeline has been gracefully stopped
 	// and no new Tasks will be scheduled by the controller, but final tasks are now running
 	PipelineRunReasonStoppedRunningFinally PipelineRunReason = "StoppedRunningFinally"
+	// PipelineRunReasonCreateRunFailedRunningFinally indicates that the creation of a child run was
+	// permanently rejected and no new Tasks will be scheduled by the controller, but final tasks are
+	// now running. It also records that rejection across reconciles, since the task it hit has no
+	// child resource to report it
+	PipelineRunReasonCreateRunFailedRunningFinally PipelineRunReason = "CreateRunFailedRunningFinally"
 	// ReasonCouldntGetPipeline indicates that the reason for the failure status is that the
 	// associated Pipeline couldn't be retrieved
 	PipelineRunReasonCouldntGetPipeline PipelineRunReason = "CouldntGetPipeline"
