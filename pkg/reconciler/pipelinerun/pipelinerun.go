@@ -26,6 +26,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -190,10 +191,32 @@ var (
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) (reconcileErr pkgreconciler.Event) {
 	logger := logging.FromContext(ctx)
+
+	// initTracing can persist span context into the status, a real write. Hold
+	// the prior value so that write is not lost when the baseline is taken
+	// after. Holding the map rather than copying it is safe because initTracing
+	// assigns a whole new map, and never writes through the one already there.
+	oldSpanContext := pr.Status.SpanContext
+
 	ctx, rootSpan := initTracing(ctx, c.tracerProvider, pr)
 	defer rootSpan.End()
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "PipelineRun:ReconcileKind")
 	defer span.End()
+
+	// Everything the attribute needs is set up here rather than above, so a
+	// reconcile whose span does not record pays for none of it. Recording is
+	// the only thing checked: a span can record without being exported.
+	if span.IsRecording() {
+		var metadataUpdateAttempted *atomic.Bool
+		ctx, metadataUpdateAttempted = tknreconciler.TrackMetadataUpdate(ctx)
+		oldStatus := pr.Status.DeepCopy()
+		// Cloned, so the baseline does not depend on initTracing never writing
+		// into a map it was handed.
+		oldStatus.SpanContext = maps.Clone(oldSpanContext)
+		defer func() {
+			tknreconciler.RecordWriteIntent(span, oldStatus, &pr.Status, metadataUpdateAttempted.Load())
+		}()
+	}
 
 	span.SetAttributes(
 		attribute.String("pipelinerun", pr.Name), attribute.String("namespace", pr.Namespace),
@@ -703,6 +726,12 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	pipelineSpec = resources.ApplyWorkspaces(pipelineSpec, pr)
 	// Update pipelinespec of pipelinerun's status field
 	pr.Status.PipelineSpec = pipelineSpec
+	// strip a copy: pipelineSpec stays live for the rest of the reconcile, including the embedded specs of child TaskRuns
+	if !config.FromContextOrDefaults(ctx).FeatureFlags.KeepStatusSpecDescriptions {
+		statusSpec := pipelineSpec.DeepCopy()
+		statusSpec.StripDescriptions()
+		pr.Status.PipelineSpec = statusSpec
+	}
 
 	// validate pipelineSpec after apply parameters
 	if err := validatePipelineSpecAfterApplyParameters(ctx, pipelineSpec); err != nil {
@@ -1951,6 +1980,7 @@ func (c *Reconciler) syncMetadata(ctx context.Context, pr *v1.PipelineRun) error
 	updated := existing.DeepCopy()
 	updated.Labels = mergedLabels
 	updated.Annotations = mergedAnnotations
+	tknreconciler.MarkMetadataUpdate(ctx)
 	_, err = c.PipelineClientSet.TektonV1().PipelineRuns(pr.Namespace).Update(ctx, updated, metav1.UpdateOptions{})
 	return err
 }
@@ -1958,7 +1988,12 @@ func (c *Reconciler) syncMetadata(ctx context.Context, pr *v1.PipelineRun) error
 func storePipelineSpecAndMergeMeta(ctx context.Context, pr *v1.PipelineRun, ps *v1.PipelineSpec, meta *resolutionutil.ResolvedObjectMeta) error {
 	// Only store the PipelineSpec once, if it has never been set before.
 	if pr.Status.PipelineSpec == nil {
-		pr.Status.PipelineSpec = ps
+		// Snapshot the spec, stripping documentation-only descriptions to reduce etcd usage unless opted out. See #10321.
+		snapshot := ps.DeepCopy()
+		if !config.FromContextOrDefaults(ctx).FeatureFlags.KeepStatusSpecDescriptions {
+			snapshot.StripDescriptions()
+		}
+		pr.Status.PipelineSpec = snapshot
 		if meta == nil {
 			return nil
 		}

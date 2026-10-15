@@ -9,6 +9,9 @@ import "net/http"
 // BearerToken is an http.RoundTripper that makes HTTP
 // requests, wrapping a base RoundTripper and adding an
 // Authorization header with the Bearer Token.
+//
+// Deprecated: use Auth with SchemeCredential("Bearer"), which resolves the
+// token from a scm.TokenSource per request rather than capturing it.
 type BearerToken struct {
 	Base http.RoundTripper
 

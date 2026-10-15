@@ -781,17 +781,17 @@ no-shebang`,
 		Name:    "place-scripts",
 		Image:   images.ShellImageWin,
 		Command: []string{"pwsh"},
-		Args: []string{"-Command", `@"
+		Args: []string{"-Command", `@'
 #!win pwsh -File
 script-1
-"@ | Out-File -FilePath /tekton/scripts/script-0-9l9zj
-@"
+'@ | Out-File -FilePath /tekton/scripts/script-0-9l9zj
+@'
 #!win powershell -File
 script-3
-"@ | Out-File -FilePath /tekton/scripts/script-2-mz4c7.ps1
-@"
+'@ | Out-File -FilePath /tekton/scripts/script-2-mz4c7.ps1
+@'
 no-shebang
-"@ | Out-File -FilePath /tekton/scripts/script-3-mssqb.cmd
+'@ | Out-File -FilePath /tekton/scripts/script-3-mssqb.cmd
 `},
 		VolumeMounts:    []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 		SecurityContext: WindowsSecurityContext,
@@ -863,18 +863,18 @@ sidecar-1`,
 		Name:    "place-scripts",
 		Image:   images.ShellImageWin,
 		Command: []string{"pwsh"},
-		Args: []string{"-Command", `@"
+		Args: []string{"-Command", `@'
 #!win pwsh -File
 script-1
-"@ | Out-File -FilePath /tekton/scripts/script-0-9l9zj
-@"
+'@ | Out-File -FilePath /tekton/scripts/script-0-9l9zj
+@'
 #!win powershell -File
 script-3
-"@ | Out-File -FilePath /tekton/scripts/script-2-mz4c7.ps1
-@"
+'@ | Out-File -FilePath /tekton/scripts/script-2-mz4c7.ps1
+@'
 #!win pwsh -File
 sidecar-1
-"@ | Out-File -FilePath /tekton/scripts/sidecar-script-0-mssqb
+'@ | Out-File -FilePath /tekton/scripts/sidecar-script-0-mssqb
 `},
 		VolumeMounts:    []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 		SecurityContext: WindowsSecurityContext,
@@ -933,10 +933,10 @@ sidecar-1`,
 		Name:    "place-scripts",
 		Image:   images.ShellImageWin,
 		Command: []string{"pwsh"},
-		Args: []string{"-Command", `@"
+		Args: []string{"-Command", `@'
 #!win python
 sidecar-1
-"@ | Out-File -FilePath /tekton/scripts/sidecar-script-0-9l9zj
+'@ | Out-File -FilePath /tekton/scripts/sidecar-script-0-9l9zj
 `},
 		VolumeMounts:    []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 		SecurityContext: WindowsSecurityContext,
@@ -963,5 +963,42 @@ sidecar-1
 
 	if len(gotSidecars) != 1 {
 		t.Errorf("Wanted 1 sidecar, got %v", len(gotSidecars))
+	}
+}
+
+// TestConvertScripts_Windows_LiteralHereStringTerminator guards against a script body that
+// contains a literal `"@` line breaking out of the generated PowerShell here-string. The
+// expandable here-string (`@"..."@`) treats `"@` on its own line as its terminator, so a
+// script containing that sequence (e.g. from `$(params.x)` substitution) would end the
+// here-string early and turn the remaining script content into PowerShell commands run in
+// the init container. Using the non-expandable form (`@'...'@`) means only a `'@` line on
+// its own can terminate it, so a literal `"@` line is passed through as inert script content.
+func TestConvertScripts_Windows_LiteralHereStringTerminator(t *testing.T) {
+	names.TestingSeed()
+
+	gotInit, _, _ := convertScripts(images.ShellImage, images.ShellImageWin, []v1.Step{{
+		Script: `#!win pwsh -File
+echo before
+"@
+echo after`,
+		Image: "step-1",
+	}}, []v1.Sidecar{}, nil, SecurityContextConfig{SetSecurityContext: true, SetReadOnlyRootFilesystem: true})
+
+	wantInit := &corev1.Container{
+		Name:    "place-scripts",
+		Image:   images.ShellImageWin,
+		Command: []string{"pwsh"},
+		Args: []string{"-Command", `@'
+#!win pwsh -File
+echo before
+"@
+echo after
+'@ | Out-File -FilePath /tekton/scripts/script-0-9l9zj
+`},
+		VolumeMounts:    []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+		SecurityContext: WindowsSecurityContext,
+	}
+	if d := cmp.Diff(wantInit, gotInit); d != "" {
+		t.Errorf("Init Container Diff %s", diff.PrintWantGot(d))
 	}
 }

@@ -7260,11 +7260,9 @@ spec:
 status:
   pipelineSpec:
     results:
-    - description: pipeline result
-      name: result
+    - name: result
       value: $(finally.a-task.results.a-Result)
-    - description: custom task pipeline result
-      name: custom-result
+    - name: custom-result
       value: $(finally.b-task.results.b-Result)
     tasks:
     - name: c-task
@@ -7418,11 +7416,9 @@ spec:
 status:
   pipelineSpec:
     results:
-    - description: pipeline result
-      name: result
+    - name: result
       value: $(tasks.a-task.results.a-Result)
-    - description: custom task pipeline result
-      name: custom-result
+    - name: custom-result
       value: $(tasks.b-task.results.b-Result)
     tasks:
     - name: b-task
@@ -7612,10 +7608,14 @@ metadata:
 	ps := v1.PipelineSpec{Description: "foo-pipeline"}
 	ps1 := v1.PipelineSpec{Description: "bar-pipeline"}
 
+	// descriptions are stripped from the status snapshot by default (#10321)
+	strippedPS := ps.DeepCopy()
+	strippedPS.StripDescriptions()
+
 	want := pr.DeepCopy()
 	want.Status = v1.PipelineRunStatus{
 		PipelineRunStatusFields: v1.PipelineRunStatusFields{
-			PipelineSpec: ps.DeepCopy(),
+			PipelineSpec: strippedPS.DeepCopy(),
 			Provenance: &v1.Provenance{
 				RefSource:    refSource.DeepCopy(),
 				FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
@@ -7633,7 +7633,7 @@ metadata:
 	wantForGeneratedName := prWithGeneratedName.DeepCopy()
 	wantForGeneratedName.Status = v1.PipelineRunStatus{
 		PipelineRunStatusFields: v1.PipelineRunStatusFields{
-			PipelineSpec: ps.DeepCopy(),
+			PipelineSpec: strippedPS.DeepCopy(),
 			Provenance: &v1.Provenance{
 				RefSource:    refSource.DeepCopy(),
 				FeatureFlags: config.DefaultFeatureFlags.DeepCopy(),
@@ -7721,6 +7721,198 @@ metadata:
 				t.Fatal(diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+func Test_storePipelineSpec_stripsDescriptions(t *testing.T) {
+	ps := &v1.PipelineSpec{
+		Description: "pipeline desc",
+		Params:      v1.ParamSpecs{{Name: "p", Description: "param desc"}},
+		Results:     []v1.PipelineResult{{Name: "r", Description: "result desc"}},
+		Tasks: []v1.PipelineTask{{
+			Name:     "t",
+			TaskSpec: &v1.EmbeddedTask{TaskSpec: v1.TaskSpec{Description: "embedded desc"}},
+		}},
+	}
+
+	tests := []struct {
+		name         string
+		keep         bool
+		wantStripped bool
+	}{
+		{name: "default strips descriptions", keep: false, wantStripped: true},
+		{name: "opt-out keeps descriptions", keep: true, wantStripped: false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := config.ToContext(t.Context(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{KeepStatusSpecDescriptions: tc.keep},
+			})
+			pr := &v1.PipelineRun{ObjectMeta: metav1.ObjectMeta{Name: "foo"}}
+			if err := storePipelineSpecAndMergeMeta(ctx, pr, ps.DeepCopy(), nil); err != nil {
+				t.Fatalf("storePipelineSpecAndMergeMeta error = %v", err)
+			}
+			got := pr.Status.PipelineSpec
+			embedded := got.Tasks[0].TaskSpec.TaskSpec.Description
+			if tc.wantStripped && (got.Description != "" || got.Params[0].Description != "" || embedded != "") {
+				t.Errorf("expected descriptions stripped, got spec=%q param=%q embedded=%q", got.Description, got.Params[0].Description, embedded)
+			}
+			if !tc.wantStripped && (got.Description != "pipeline desc" || embedded != "embedded desc") {
+				t.Errorf("expected descriptions retained, got spec=%q embedded=%q", got.Description, embedded)
+			}
+		})
+	}
+}
+
+// Regression test: the stored snapshot is overwritten later in reconcile, so stripping must survive a full cycle.
+func TestReconcile_StripsStatusPipelineSpecDescriptions(t *testing.T) {
+	tests := []struct {
+		name string
+		keep string
+	}{
+		{name: "default strips descriptions", keep: "false"},
+		{name: "opt-out keeps descriptions", keep: "true"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  description: pipeline desc
+  params:
+  - name: p
+    type: string
+    default: v
+    description: param desc
+  tasks:
+  - name: a-task
+    description: task desc
+    taskRef:
+      name: a-task
+`)}
+			prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-strip-descriptions
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+`)}
+			ts := []*v1.Task{parse.MustParseV1Task(t, `
+metadata:
+  name: a-task
+  namespace: foo
+spec:
+  steps:
+  - name: step1
+    image: foo
+`)}
+
+			d := test.Data{
+				PipelineRuns: prs,
+				Pipelines:    ps,
+				Tasks:        ts,
+				ConfigMaps: []*corev1.ConfigMap{{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data:       map[string]string{"keep-status-spec-descriptions": tc.keep},
+				}},
+			}
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+
+			reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-strip-descriptions", nil, false)
+
+			got := reconciledRun.Status.PipelineSpec
+			if got == nil {
+				t.Fatal("expected status.pipelineSpec to be set after reconcile")
+			}
+			// want returns the original description only when the opt-out flag is set.
+			want := func(original string) string {
+				if tc.keep == "true" {
+					return original
+				}
+				return ""
+			}
+			for _, f := range []struct {
+				field, got, original string
+			}{
+				{"description", got.Description, "pipeline desc"},
+				{"params[0].description", got.Params[0].Description, "param desc"},
+				{"tasks[0].description", got.Tasks[0].Description, "task desc"},
+			} {
+				if f.got != want(f.original) {
+					t.Errorf("status.pipelineSpec.%s = %q, want %q", f.field, f.got, want(f.original))
+				}
+			}
+		})
+	}
+}
+
+func TestReconcile_KeepsEmbeddedTaskSpecDescriptionsOnChildTaskRun(t *testing.T) {
+	prs := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-embedded-spec
+  namespace: foo
+spec:
+  pipelineSpec:
+    description: pipeline desc
+    tasks:
+    - name: a-task
+      description: pipeline task desc
+      taskSpec:
+        description: embedded task description
+        params:
+        - name: p
+          type: string
+          default: v
+          description: embedded param desc
+        steps:
+        - name: step1
+          image: foo
+`)}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data:       map[string]string{"keep-status-spec-descriptions": "false"},
+		}},
+	}
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-embedded-spec", nil, false)
+
+	// the child TaskRun spec is a real user-facing object, so descriptions must survive there
+	tr, err := clients.Pipeline.TektonV1().TaskRuns("foo").Get(prt.TestAssets.Ctx, "test-pipeline-run-embedded-spec-a-task", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting created TaskRun: %v", err)
+	}
+	if tr.Spec.TaskSpec == nil {
+		t.Fatal("expected child TaskRun to carry an embedded spec.taskSpec")
+	}
+	if got := tr.Spec.TaskSpec.Description; got != "embedded task description" {
+		t.Errorf("child TaskRun spec.taskSpec.description = %q, want %q", got, "embedded task description")
+	}
+	if got := tr.Spec.TaskSpec.Params[0].Description; got != "embedded param desc" {
+		t.Errorf("child TaskRun spec.taskSpec.params[0].description = %q, want %q", got, "embedded param desc")
+	}
+
+	// status stays stripped
+	got := reconciledRun.Status.PipelineSpec
+	if got == nil {
+		t.Fatal("expected status.pipelineSpec to be set after reconcile")
+	}
+	if got.Description != "" {
+		t.Errorf("status.pipelineSpec.description = %q, want empty", got.Description)
+	}
+	if got.Tasks[0].TaskSpec == nil {
+		t.Fatal("expected status.pipelineSpec.tasks[0].taskSpec to be set")
+	}
+	if d := got.Tasks[0].TaskSpec.Description; d != "" {
+		t.Errorf("status.pipelineSpec.tasks[0].taskSpec.description = %q, want empty", d)
 	}
 }
 

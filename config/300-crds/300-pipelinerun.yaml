@@ -2371,6 +2371,8 @@ spec:
                         enableStepActions:
                           description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
+                        enableSurfacePodEvents:
+                          type: boolean
                         enableTektonOCIBundles:
                           description: |-
                             DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
@@ -2385,6 +2387,8 @@ spec:
                           type: boolean
                         enforceNonfalsifiability:
                           type: string
+                        keepStatusSpecDescriptions:
+                          type: boolean
                         maxResultSize:
                           type: integer
                         requireGitSSHSecretKnownHosts:
@@ -2751,6 +2755,8 @@ spec:
                                   enableStepActions:
                                     description: EnableStepActions is a no-op flag since StepActions are stable
                                     type: boolean
+                                  enableSurfacePodEvents:
+                                    type: boolean
                                   enableTektonOCIBundles:
                                     description: |-
                                       DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
@@ -2765,6 +2771,8 @@ spec:
                                     type: boolean
                                   enforceNonfalsifiability:
                                     type: string
+                                  keepStatusSpecDescriptions:
+                                    type: boolean
                                   maxResultSize:
                                     type: integer
                                   requireGitSSHSecretKnownHosts:
@@ -3024,6 +3032,8 @@ spec:
                                         enableStepActions:
                                           description: EnableStepActions is a no-op flag since StepActions are stable
                                           type: boolean
+                                        enableSurfacePodEvents:
+                                          type: boolean
                                         enableTektonOCIBundles:
                                           description: |-
                                             DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
@@ -3038,6 +3048,8 @@ spec:
                                           type: boolean
                                         enforceNonfalsifiability:
                                           type: string
+                                        keepStatusSpecDescriptions:
+                                          type: boolean
                                         maxResultSize:
                                           type: integer
                                         requireGitSSHSecretKnownHosts:
@@ -5470,6 +5482,8 @@ spec:
                         enableStepActions:
                           description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
+                        enableSurfacePodEvents:
+                          type: boolean
                         enableTektonOCIBundles:
                           description: |-
                             DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
@@ -5484,6 +5498,8 @@ spec:
                           type: boolean
                         enforceNonfalsifiability:
                           type: string
+                        keepStatusSpecDescriptions:
+                          type: boolean
                         maxResultSize:
                           type: integer
                         requireGitSSHSecretKnownHosts:

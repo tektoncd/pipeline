@@ -33,7 +33,7 @@ Complete these prerequisites to run Tekton locally using Docker Desktop:
   such as [Stackdriver](https://cloud.google.com/logging/).
 - You can deploy Elasticsearch, Beats, or Kibana locally to view logs. You can find an
   example configuration at <https://github.com/mgreau/tekton-pipelines-elastic-tutorials>.
-- To learn more about obtaining logs, see [Logs](logs.md).
+- To learn more about obtaining logs, see [Logs](../logs.md).
 
 ## Using Minikube
 
