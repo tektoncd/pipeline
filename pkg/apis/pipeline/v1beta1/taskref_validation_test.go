@@ -113,6 +113,16 @@ func TestTaskRef_Invalid(t *testing.T) {
 		wantErr: apis.ErrMultipleOneOf("name", "params"),
 		wc:      enableConciseResolverSyntax,
 	}, {
+		name: "taskRef with resolver and k8s style name without enable-concise-resolver-syntax",
+		taskRef: &v1beta1.TaskRef{
+			Name: "foo",
+			ResolverRef: v1beta1.ResolverRef{
+				Resolver: "git",
+			},
+		},
+		wantErr: apis.ErrMultipleOneOf("name", "resolver"),
+		wc:      cfgtesting.EnableBetaAPIFields,
+	}, {
 		name:    "taskRef with url-like name without enable-concise-resolver-syntax",
 		taskRef: &v1beta1.TaskRef{Name: "https://foo.com/bar"},
 		wantErr: apis.ErrMissingField("resolver").Also(&apis.FieldError{
