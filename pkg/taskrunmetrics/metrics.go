@@ -52,6 +52,7 @@ type Recorder struct {
 
 	trDurationHistogram                    metric.Float64Histogram
 	prTRDurationHistogram                  metric.Float64Histogram
+	trScheduledDurationHistogram           metric.Float64Histogram
 	trDurationGauge                        metric.Float64Gauge
 	prTRDurationGauge                      metric.Float64Gauge
 	trTotalCounter                         metric.Int64Counter
@@ -175,6 +176,19 @@ func (r *Recorder) configure(cfg *config.Metrics) error {
 		r.prTRDurationGauge = nil
 	}
 
+	if r.trScheduledDurationHistogram == nil {
+		trScheduledDurationHistogram, err := r.meter.Float64Histogram(
+			"tekton_pipelines_controller_taskrun_scheduled_duration_seconds",
+			metric.WithDescription("Time from TaskRun creation to first reconcile (controller scheduling latency)"),
+			metric.WithUnit("s"),
+			metric.WithExplicitBucketBoundaries(10, 30, 60, 300, 900, 1800, 3600, 5400, 10800, 21600, 43200, 86400),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create taskrun scheduled duration histogram: %w", err)
+		}
+		r.trScheduledDurationHistogram = trScheduledDurationHistogram
+	}
+
 	trTotalCounter, err := r.meter.Int64Counter(
 		"tekton_pipelines_controller_taskrun_total",
 		metric.WithDescription("Number of taskruns"),
@@ -296,6 +310,11 @@ func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1.TaskRun, beforeC
 	}
 
 	r.trTotalCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("status", status)))
+
+	if tr.Status.StartTime != nil && r.trScheduledDurationHistogram != nil {
+		scheduled := tr.Status.StartTime.Time.Sub(tr.CreationTimestamp.Time)
+		r.trScheduledDurationHistogram.Record(ctx, scheduled.Seconds(), metric.WithAttributes(attrs...))
+	}
 
 	return nil
 }
