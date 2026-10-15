@@ -20,12 +20,15 @@ import (
 	"errors"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 func TestValidateResolvedTask_ValidParams(t *testing.T) {
@@ -956,5 +959,141 @@ func TestEnumValidation_Failure(t *testing.T) {
 		} else if d := cmp.Diff(tc.expectedErr.Error(), err.Error()); d != "" {
 			t.Errorf("expected error does not match: %s", diff.PrintWantGot(d))
 		}
+	}
+}
+
+func doneTaskRun(tr *v1.TaskRun) *v1.TaskRun {
+	tr.Status.Conditions = duckv1.Conditions{{
+		Type:   apis.ConditionSucceeded,
+		Status: corev1.ConditionTrue,
+	}}
+	return tr
+}
+
+func TestValidateResultsProduced(t *testing.T) {
+	taskSpec := &v1.TaskSpec{
+		Results: []v1.TaskResult{
+			{Name: "with-default", Default: &v1.ParamValue{Type: v1.ParamTypeString, StringVal: "fallback"}},
+			{Name: "without-default"},
+		},
+	}
+
+	for _, tc := range []struct {
+		name        string
+		tr          *v1.TaskRun
+		taskSpec    *v1.TaskSpec
+		featureFlag bool
+		wantErr     error
+	}{{
+		name:        "feature flag disabled — no error even if results are missing",
+		featureFlag: false,
+		tr: doneTaskRun(&v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+		}),
+		taskSpec: taskSpec,
+		wantErr:  nil,
+	}, {
+		name:        "taskrun not done — no error",
+		featureFlag: true,
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Status: v1.TaskRunStatus{
+				Status: duckv1.Status{Conditions: duckv1.Conditions{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionUnknown,
+				}}},
+			},
+		},
+		taskSpec: taskSpec,
+		wantErr:  nil,
+	}, {
+		name:        "all results produced — no error",
+		featureFlag: true,
+		tr: doneTaskRun(&v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Results: []v1.TaskRunResult{
+						{Name: "with-default", Type: v1.ResultsTypeString, Value: *v1.NewStructuredValues("produced")},
+						{Name: "without-default", Type: v1.ResultsTypeString, Value: *v1.NewStructuredValues("produced")},
+					},
+				},
+			},
+		}),
+		taskSpec: taskSpec,
+		wantErr:  nil,
+	}, {
+		name:        "result with default not produced — no error (default was pre-populated)",
+		featureFlag: true,
+		tr: doneTaskRun(&v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Results: []v1.TaskRunResult{
+						{Name: "with-default", Type: v1.ResultsTypeString, Value: *v1.NewStructuredValues("fallback")},
+						{Name: "without-default", Type: v1.ResultsTypeString, Value: *v1.NewStructuredValues("produced")},
+					},
+				},
+			},
+		}),
+		taskSpec: taskSpec,
+		wantErr:  nil,
+	}, {
+		name:        "result without default not produced — error",
+		featureFlag: true,
+		tr: doneTaskRun(&v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					Results: []v1.TaskRunResult{
+						{Name: "with-default", Type: v1.ResultsTypeString, Value: *v1.NewStructuredValues("fallback")},
+					},
+				},
+			},
+		}),
+		taskSpec: taskSpec,
+		wantErr:  errors.New("missing results: without-default"),
+	}, {
+		name:        "multiple results without defaults not produced — all listed in error",
+		featureFlag: true,
+		tr: doneTaskRun(&v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+		}),
+		taskSpec: &v1.TaskSpec{
+			Results: []v1.TaskResult{
+				{Name: "result-a"},
+				{Name: "result-b"},
+			},
+		},
+		wantErr: errors.New("missing results: result-a, result-b"),
+	}, {
+		name:        "no declared results — no error",
+		featureFlag: true,
+		tr: doneTaskRun(&v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+		}),
+		taskSpec: &v1.TaskSpec{},
+		wantErr:  nil,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := config.ToContext(t.Context(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableDefaultResults: tc.featureFlag,
+				},
+			})
+			err := validateResultsProduced(ctx, tc.tr, tc.taskSpec)
+			if tc.wantErr == nil {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("expected error %q but got none", tc.wantErr)
+			}
+			if d := cmp.Diff(tc.wantErr.Error(), err.Error()); d != "" {
+				t.Errorf("error mismatch: %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
