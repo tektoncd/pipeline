@@ -33,6 +33,12 @@ import (
 // we should stop relying on a hardcoded string.
 var errEtcdLeaderChange = "etcdserver: leader changed"
 
+// errDatabaseLocked is returned by sqlite-backed Kubernetes API servers
+// (e.g. k3s using its default sqlite/kine datastore) when a write is
+// rejected due to lock contention under concurrent load. It is the
+// sqlite analog of errEtcdLeaderChange above and is likewise transient.
+var errDatabaseLocked = "database is locked"
+
 // Error embeds both a short machine-readable string reason for resolution
 // problems alongside the original error generated during the resolution flow.
 type Error struct {
@@ -157,7 +163,7 @@ func IsErrTransient(err error) bool {
 	case apierrors.IsConflict(err), apierrors.IsServerTimeout(err), apierrors.IsTimeout(err), apierrors.IsTooManyRequests(err), errors.Is(err, apiserver.ErrCouldntValidateObjectRetryable):
 		return true
 	default:
-		return slices.ContainsFunc([]string{errEtcdLeaderChange, context.DeadlineExceeded.Error()}, func(s string) bool {
+		return slices.ContainsFunc([]string{errEtcdLeaderChange, errDatabaseLocked, context.DeadlineExceeded.Error()}, func(s string) bool {
 			return strings.Contains(err.Error(), s)
 		})
 	}
