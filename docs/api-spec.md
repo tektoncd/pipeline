@@ -140,7 +140,7 @@ A `PipelineRun` represents an instantiation of a single execution of a `Pipeline
 
 ### TypeMeta
 
-Derived from [Kuberntes Type Meta](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#TypeMeta)
+Derived from [Kubernetes Type Meta](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#TypeMeta)
 
 | Field        | Type   | Notes                                                             |
 |--------------|--------|-------------------------------------------------------------------|
