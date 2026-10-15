@@ -111,6 +111,39 @@ func TestResultsValidateError(t *testing.T) {
 			Message: "missing field(s)",
 			Paths:   []string{"MY-RESULT.properties"},
 		},
+	}, {
+		name: "reserved result name ExitCode",
+		Result: v1.TaskResult{
+			Name:        "ExitCode",
+			Description: "collides with entrypointer's internal bookkeeping result",
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: ExitCode`,
+			Paths:   []string{"name"},
+			Details: `"ExitCode" is a reserved result name`,
+		},
+	}, {
+		name: "reserved result name StartedAt",
+		Result: v1.TaskResult{
+			Name:        "StartedAt",
+			Description: "collides with entrypointer's internal bookkeeping result",
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: StartedAt`,
+			Paths:   []string{"name"},
+			Details: `"StartedAt" is a reserved result name`,
+		},
+	}, {
+		name: "reserved result name Reason",
+		Result: v1.TaskResult{
+			Name:        "Reason",
+			Description: "collides with entrypointer's internal bookkeeping result",
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: Reason`,
+			Paths:   []string{"name"},
+			Details: `"Reason" is a reserved result name`,
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -409,6 +442,39 @@ func TestStepResultsValidateError(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: "missing field(s)",
 			Paths:   []string{"MY-RESULT.properties"},
+		},
+	}, {
+		name: "reserved result name ExitCode",
+		Result: v1.StepResult{
+			Name:        "ExitCode",
+			Description: "collides with entrypointer's internal bookkeeping result",
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: ExitCode`,
+			Paths:   []string{"name"},
+			Details: `"ExitCode" is a reserved result name`,
+		},
+	}, {
+		name: "reserved result name StartedAt",
+		Result: v1.StepResult{
+			Name:        "StartedAt",
+			Description: "collides with entrypointer's internal bookkeeping result",
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: StartedAt`,
+			Paths:   []string{"name"},
+			Details: `"StartedAt" is a reserved result name`,
+		},
+	}, {
+		name: "reserved result name Reason",
+		Result: v1.StepResult{
+			Name:        "Reason",
+			Description: "collides with entrypointer's internal bookkeeping result",
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: Reason`,
+			Paths:   []string{"name"},
+			Details: `"Reason" is a reserved result name`,
 		},
 	}}
 	for _, tt := range tests {
