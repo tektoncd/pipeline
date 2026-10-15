@@ -235,6 +235,25 @@ func validateOverrides(ts *v1.TaskSpec, trs *v1.TaskRunSpec) error {
 	return errors.Join(stepErr, sidecarErr)
 }
 
+// validateDebugBeforeSteps checks that every debug.breakpoints.beforeSteps entry names a step in
+// the resolved TaskSpec. The webhook can only do this for inline taskSpecs, so this covers taskRef.
+func validateDebugBeforeSteps(ts *v1.TaskSpec, trs *v1.TaskRunSpec) error {
+	if trs.Debug == nil || trs.Debug.Breakpoints == nil {
+		return nil
+	}
+	var errs []error
+	stepNames := sets.NewString()
+	for _, step := range ts.Steps {
+		stepNames.Insert(step.Name)
+	}
+	for _, name := range trs.Debug.Breakpoints.BeforeSteps {
+		if !stepNames.Has(name) {
+			errs = append(errs, pipelineErrors.WrapUserError(fmt.Errorf("invalid debug beforeSteps: No Step named %s", name)))
+		}
+	}
+	return errors.Join(errs...)
+}
+
 func validateStepOverrides(ts *v1.TaskSpec, trs *v1.TaskRunSpec) error {
 	var errs []error
 	stepNames := sets.NewString()
