@@ -15,5 +15,4 @@ limitations under the License.
 */
 
 // Package v1beta1 contains API Schema definitions for the customrun v1beta1 API group
-// +groupName=tekton.dev
 package v1beta1
