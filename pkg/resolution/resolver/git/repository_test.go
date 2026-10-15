@@ -75,7 +75,7 @@ func TestClone(t *testing.T) {
 				expectedCmd = append(expectedCmd, "--config-env", "http.extraHeader=GIT_AUTH_HEADER")
 				expectedEnv = append(expectedEnv, "GIT_AUTH_HEADER=Authorization: Basic "+token)
 			}
-			expectedCmd = append(expectedCmd, "clone", "--depth=1", "--no-checkout", "--", test.url, repo.directory)
+			expectedCmd = append(expectedCmd, "clone", "--depth=1", "--no-checkout", "--filter=blob:none", "--sparse", "--", test.url, repo.directory)
 
 			if len(executions) != 1 {
 				t.Fatalf("Expected 1 command execution during cloning, got %d: %v", len(executions), executions)
@@ -475,6 +475,375 @@ func TestGetFileContent_SymlinkEscape_RealGitRepo(t *testing.T) {
 				t.Fatalf("symlink escape was NOT blocked — read %d bytes: %q", len(content), string(content))
 			}
 		})
+	}
+}
+
+// TestClonePartial_ArgumentStructure uses a mock executor to verify the
+// exact git argv for the filtered, sparse clone path: the cone derived
+// from pathInRepo, and that a root-level path skips "sparse-checkout set"
+// entirely since "--sparse" alone already materialises root-level files.
+func TestClonePartial_ArgumentStructure(t *testing.T) {
+	testCases := []struct {
+		name            string
+		pathInRepo      string
+		expectSparseSet bool
+		expectedDir     string
+	}{
+		{name: "nested path", pathInRepo: ".tekton/pipeline.yaml", expectSparseSet: true, expectedDir: ".tekton"},
+		{name: "deeply nested path", pathInRepo: "a/b/c/pipeline.yaml", expectSparseSet: true, expectedDir: "a/b/c"},
+		{name: "root-level path", pathInRepo: "pipeline.yaml", expectSparseSet: false},
+		{name: "empty path", pathInRepo: "", expectSparseSet: false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var invocations [][]string
+			executor := func(ctx context.Context, name string, args ...string) *exec.Cmd {
+				invocation := append([]string{name}, args...)
+				invocations = append(invocations, invocation)
+				return exec.CommandContext(ctx, "echo", invocation...)
+			}
+
+			r := remote{url: "https://example.invalid/repo.git", pathInRepo: tc.pathInRepo, cmdExecutor: executor}
+			repo, cleanup, err := r.clone(t.Context())
+			defer cleanup()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !repo.partial {
+				t.Fatal("expected the partial, sparse clone to have succeeded")
+			}
+
+			cloneArgs := invocations[0]
+			for _, want := range []string{"--filter=blob:none", "--sparse"} {
+				if !slices.Contains(cloneArgs, want) {
+					t.Fatalf("expected clone args to contain %q, got %v", want, cloneArgs)
+				}
+			}
+
+			sawSparseSet := false
+			for _, inv := range invocations[1:] {
+				if !slices.Contains(inv, "sparse-checkout") {
+					continue
+				}
+				sawSparseSet = true
+				sepIdx, dirIdx := -1, -1
+				for i, a := range inv {
+					if a == "--" {
+						sepIdx = i
+					}
+					if a == tc.expectedDir {
+						dirIdx = i
+					}
+				}
+				if sepIdx == -1 {
+					t.Fatalf("expected '--' separator in sparse-checkout set args: %v", inv)
+				}
+				if dirIdx == -1 || dirIdx < sepIdx {
+					t.Fatalf("expected dir %q after the '--' separator in sparse-checkout set args: %v", tc.expectedDir, inv)
+				}
+			}
+			if sawSparseSet != tc.expectSparseSet {
+				t.Fatalf("expected sparse-checkout set invoked=%v, got %v (invocations: %v)", tc.expectSparseSet, sawSparseSet, invocations)
+			}
+		})
+	}
+}
+
+// TestClonePartial_FallbackOnFailure verifies that when the filtered,
+// sparse clone attempt fails for any reason, clone() retries once using
+// the original unfiltered sequence instead of failing the resolution.
+// This is R2's highest-risk path: a server without uploadpack.allowFilter
+// must keep working, not break.
+func TestClonePartial_FallbackOnFailure(t *testing.T) {
+	var invocations [][]string
+	filteredAttempts := 0
+	executor := func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		invocation := append([]string{name}, args...)
+		invocations = append(invocations, invocation)
+		if slices.Contains(invocation, "clone") && slices.Contains(invocation, "--filter=blob:none") {
+			filteredAttempts++
+			// Simulate a server that rejects the filtered clone, every
+			// time. Exit non-zero without touching the target directory,
+			// exactly like a real failed git-clone would.
+			return exec.CommandContext(ctx, "false")
+		}
+		return exec.CommandContext(ctx, "echo", invocation...)
+	}
+
+	r := remote{url: "https://example.invalid/repo.git", pathInRepo: "sub/dir/file.yaml", cmdExecutor: executor}
+	repo, cleanup, err := r.clone(t.Context())
+	defer cleanup()
+	if err != nil {
+		t.Fatalf("expected clone to succeed via fallback, got error: %v", err)
+	}
+	if repo.partial {
+		t.Fatal("expected repo.partial to be false after falling back to the unfiltered clone")
+	}
+	if filteredAttempts != filteredOperationAttempts {
+		t.Fatalf("expected %d filtered clone attempts before falling back, got %d", filteredOperationAttempts, filteredAttempts)
+	}
+
+	cloneInvocations := 0
+	for _, inv := range invocations {
+		if slices.Contains(inv, "clone") {
+			cloneInvocations++
+		}
+		if slices.Contains(inv, "sparse-checkout") {
+			t.Fatalf("did not expect sparse-checkout set to run when every filtered clone attempt failed: %v", invocations)
+		}
+	}
+	if cloneInvocations != filteredOperationAttempts+1 {
+		t.Fatalf("expected %d clone invocations (%d failed filtered attempts + fallback), got %d: %v", filteredOperationAttempts+1, filteredOperationAttempts, cloneInvocations, invocations)
+	}
+
+	fallbackArgs := invocations[len(invocations)-1]
+	for _, unwanted := range []string{"--filter=blob:none", "--sparse"} {
+		if slices.Contains(fallbackArgs, unwanted) {
+			t.Fatalf("fallback clone must not include %q, got %v", unwanted, fallbackArgs)
+		}
+	}
+}
+
+// TestClonePartial_RetriesBeforeFallback verifies that a single transient
+// failure of the filtered clone does not immediately escalate to an
+// expensive full clone: the same filtered attempt is retried once first,
+// and if that retry succeeds, no fallback happens at all. This is the
+// large-repo-on-a-flaky-connection case: a one-off network blip should not
+// guarantee the costly unfiltered path that this change exists to avoid.
+func TestClonePartial_RetriesBeforeFallback(t *testing.T) {
+	var invocations [][]string
+	filteredAttempts := 0
+	executor := func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		invocation := append([]string{name}, args...)
+		invocations = append(invocations, invocation)
+		if slices.Contains(invocation, "clone") && slices.Contains(invocation, "--filter=blob:none") {
+			filteredAttempts++
+			if filteredAttempts == 1 {
+				// First attempt fails transiently; every later attempt
+				// (including sparse-checkout set) succeeds.
+				return exec.CommandContext(ctx, "false")
+			}
+		}
+		return exec.CommandContext(ctx, "echo", invocation...)
+	}
+
+	r := remote{url: "https://example.invalid/repo.git", cmdExecutor: executor}
+	repo, cleanup, err := r.clone(t.Context())
+	defer cleanup()
+	if err != nil {
+		t.Fatalf("expected the retried partial clone to succeed, got error: %v", err)
+	}
+	if !repo.partial {
+		t.Fatal("expected repo.partial to remain true — the retry should have avoided any fallback")
+	}
+	if filteredAttempts != 2 {
+		t.Fatalf("expected exactly 2 filtered clone attempts (1 failed + 1 retry), got %d", filteredAttempts)
+	}
+
+	cloneInvocations := 0
+	for _, inv := range invocations {
+		if slices.Contains(inv, "clone") {
+			cloneInvocations++
+			if !slices.Contains(inv, "--filter=blob:none") || !slices.Contains(inv, "--sparse") {
+				t.Fatalf("expected every clone invocation to still be filtered — no fallback should have occurred: %v", inv)
+			}
+		}
+	}
+	if cloneInvocations != 2 {
+		t.Fatalf("expected exactly 2 clone invocations (no fallback clone), got %d: %v", cloneInvocations, invocations)
+	}
+}
+
+// TestCheckout_FallbackOnFilteredFetchFailure verifies that a failure in
+// the filtered fetch — not just the initial filtered clone — also triggers
+// the fallback to an unfiltered sequence. clone() and checkout() are
+// separate git invocations against separate connections, so a server (or
+// network) that tolerates --filter at clone time is not guaranteed to at
+// fetch time too; checkout() must not simply propagate that failure.
+func TestCheckout_FallbackOnFilteredFetchFailure(t *testing.T) {
+	var invocations [][]string
+	filteredFetchAttempts := 0
+	executor := func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		invocation := append([]string{name}, args...)
+		invocations = append(invocations, invocation)
+		if slices.Contains(invocation, "fetch") && slices.Contains(invocation, "--filter=blob:none") {
+			filteredFetchAttempts++
+			// Simulate a server that accepted the filtered clone but
+			// rejects (or fails) the filtered fetch, every time — a
+			// distinct connection/negotiation from the clone.
+			return exec.CommandContext(ctx, "false")
+		}
+		return exec.CommandContext(ctx, "echo", invocation...)
+	}
+
+	r := remote{url: "https://example.invalid/repo.git", pathInRepo: "sub/dir/file.yaml", cmdExecutor: executor}
+	repo, cleanup, err := r.clone(t.Context())
+	defer cleanup()
+	if err != nil {
+		t.Fatalf("expected the initial partial clone to succeed, got error: %v", err)
+	}
+	if !repo.partial {
+		t.Fatal("expected repo.partial to be true after a successful partial clone")
+	}
+
+	if err := repo.checkout(t.Context(), "main"); err != nil {
+		t.Fatalf("expected checkout to succeed via fallback, got error: %v", err)
+	}
+	if repo.partial {
+		t.Fatal("expected repo.partial to be false after falling back to an unfiltered clone/fetch")
+	}
+	if filteredFetchAttempts != filteredOperationAttempts {
+		t.Fatalf("expected %d filtered fetch attempts before falling back, got %d", filteredOperationAttempts, filteredFetchAttempts)
+	}
+
+	var cloneInvocations, fetchInvocations [][]string
+	for _, inv := range invocations {
+		if slices.Contains(inv, "clone") {
+			cloneInvocations = append(cloneInvocations, inv)
+		}
+		if slices.Contains(inv, "fetch") {
+			fetchInvocations = append(fetchInvocations, inv)
+		}
+	}
+	if len(cloneInvocations) != 2 {
+		t.Fatalf("expected 2 clone invocations (initial partial clone + fallback reclone), got %d: %v", len(cloneInvocations), invocations)
+	}
+	if len(fetchInvocations) != filteredOperationAttempts+1 {
+		t.Fatalf("expected %d fetch invocations (%d failed filtered fetch attempts + unfiltered fallback), got %d: %v", filteredOperationAttempts+1, filteredOperationAttempts, len(fetchInvocations), invocations)
+	}
+
+	// The fallback reclone (second clone invocation) must be the plain,
+	// unfiltered sequence — not a repeat of the filtered attempt.
+	fallbackCloneArgs := cloneInvocations[1]
+	for _, unwanted := range []string{"--filter=blob:none", "--sparse"} {
+		if slices.Contains(fallbackCloneArgs, unwanted) {
+			t.Fatalf("fallback reclone must not include %q, got %v", unwanted, fallbackCloneArgs)
+		}
+	}
+
+	fallbackFetchArgs := fetchInvocations[len(fetchInvocations)-1]
+	if slices.Contains(fallbackFetchArgs, "--filter=blob:none") {
+		t.Fatalf("fallback fetch must not include --filter=blob:none, got %v", fallbackFetchArgs)
+	}
+}
+
+// TestCheckout_RetriesFetchBeforeFallback mirrors
+// TestClonePartial_RetriesBeforeFallback for the fetch stage: a single
+// transient failure of the filtered fetch is retried once before checkout()
+// escalates to a full, unfiltered clone.
+func TestCheckout_RetriesFetchBeforeFallback(t *testing.T) {
+	var invocations [][]string
+	filteredFetchAttempts := 0
+	executor := func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		invocation := append([]string{name}, args...)
+		invocations = append(invocations, invocation)
+		if slices.Contains(invocation, "fetch") && slices.Contains(invocation, "--filter=blob:none") {
+			filteredFetchAttempts++
+			if filteredFetchAttempts == 1 {
+				return exec.CommandContext(ctx, "false")
+			}
+		}
+		return exec.CommandContext(ctx, "echo", invocation...)
+	}
+
+	r := remote{url: "https://example.invalid/repo.git", cmdExecutor: executor}
+	repo, cleanup, err := r.clone(t.Context())
+	defer cleanup()
+	if err != nil {
+		t.Fatalf("failed to clone: %v", err)
+	}
+
+	if err := repo.checkout(t.Context(), "main"); err != nil {
+		t.Fatalf("expected the retried fetch to succeed, got error: %v", err)
+	}
+	if !repo.partial {
+		t.Fatal("expected repo.partial to remain true — the retry should have avoided any fallback")
+	}
+	if filteredFetchAttempts != 2 {
+		t.Fatalf("expected exactly 2 filtered fetch attempts (1 failed + 1 retry), got %d", filteredFetchAttempts)
+	}
+
+	cloneInvocations := 0
+	for _, inv := range invocations {
+		if slices.Contains(inv, "clone") {
+			cloneInvocations++
+		}
+	}
+	if cloneInvocations != 1 {
+		t.Fatalf("expected exactly 1 clone invocation (no fallback reclone), got %d: %v", cloneInvocations, invocations)
+	}
+}
+
+// TestClonePartial_SparseCheckoutRestrictsTree exercises the real git
+// binary (via a file:// remote, which — unlike a plain local path — goes
+// through the same upload-pack negotiation as a network clone) and
+// verifies that a sibling directory outside pathInRepo's cone is never
+// materialised, while root-level files still are.
+func TestClonePartial_SparseCheckoutRestrictsTree(t *testing.T) {
+	repoDir, _ := createTestRepo(t, []commitForRepo{
+		{Dir: "tasks", Filename: "example.yaml", Content: "wanted"},
+		{Dir: "other", Filename: "big.bin", Content: "not wanted"},
+	})
+
+	ctx := t.Context()
+	repo, cleanup, err := remote{url: "file://" + repoDir, pathInRepo: "tasks/example.yaml"}.clone(ctx)
+	defer cleanup()
+	if err != nil {
+		t.Fatalf("failed to clone: %v", err)
+	}
+	if !repo.partial {
+		t.Fatal("expected the file:// clone to take the partial path")
+	}
+	if err := repo.checkout(ctx, "main"); err != nil {
+		t.Fatalf("failed to checkout: %v", err)
+	}
+
+	content, err := repo.getFileContent("tasks/example.yaml")
+	if err != nil {
+		t.Fatalf("expected the requested file to be present: %v", err)
+	}
+	if string(content) != "wanted" {
+		t.Fatalf("expected content %q, got %q", "wanted", string(content))
+	}
+	if _, err := repo.getFileContent("README"); err != nil {
+		t.Fatalf("expected root-level files to still be present in cone mode: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(repo.directory, "other")); !os.IsNotExist(err) {
+		t.Fatalf("expected sibling directory 'other' to be absent from the working tree, stat returned: %v", err)
+	}
+}
+
+// TestGetFileContent_ErrorParity_MissingSparseDirectory verifies that when
+// pathInRepo names a directory that doesn't exist in the repository,
+// resolution still fails with the same "file does not exist" error as
+// before this change. "git sparse-checkout set" succeeds silently on a
+// missing cone and yields an empty working tree, so this isn't automatic —
+// it depends on getFileContent's existing os.ErrNotExist handling.
+func TestGetFileContent_ErrorParity_MissingSparseDirectory(t *testing.T) {
+	repoDir, _ := createTestRepo(t, []commitForRepo{
+		{Dir: "tasks", Filename: "example.yaml", Content: "valid content"},
+	})
+
+	ctx := t.Context()
+	repo, cleanup, err := remote{url: "file://" + repoDir, pathInRepo: "does-not-exist/pipeline.yaml"}.clone(ctx)
+	defer cleanup()
+	if err != nil {
+		t.Fatalf("failed to clone: %v", err)
+	}
+	if !repo.partial {
+		t.Fatal("expected the file:// clone to take the partial path")
+	}
+	if err := repo.checkout(ctx, "main"); err != nil {
+		t.Fatalf("failed to checkout: %v", err)
+	}
+
+	_, err = repo.getFileContent("does-not-exist/pipeline.yaml")
+	if err == nil {
+		t.Fatal("expected an error resolving a file under a missing sparse directory, got nil")
+	}
+	if err.Error() != "file does not exist" {
+		t.Fatalf("expected error %q, got %q", "file does not exist", err.Error())
 	}
 }
 
