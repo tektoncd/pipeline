@@ -10,36 +10,47 @@ weight: 204
 <!-- toc -->
 - [PipelineRuns](#pipelineruns)
   - [Overview](#overview)
-  - [Configuring a <code>PipelineRun</code>](#configuring-a-pipelinerun)
-    - [Specifying the target <code>Pipeline</code>](#specifying-the-target-pipeline)
+  - [Configuring a `PipelineRun`](#configuring-a-pipelinerun)
+    - [Specifying the target `Pipeline`](#specifying-the-target-pipeline)
       - [Tekton Bundles](#tekton-bundles)
       - [Remote Pipelines](#remote-pipelines)
     - [Specifying Task-level `ComputeResources`](#specifying-task-level-computeresources)
-    - [Specifying <code>Parameters</code>](#specifying-parameters)
+    - [Specifying `Parameters`](#specifying-parameters)
+      - [Parameter Enums](#parameter-enums)
       - [Propagated Parameters](#propagated-parameters)
         - [Scope and Precedence](#scope-and-precedence)
         - [Default Values](#default-values)
+        - [Referenced Resources](#referenced-resources)
         - [Object Parameters](#object-parameters)
-    - [Specifying custom <code>ServiceAccount</code> credentials](#specifying-custom-serviceaccount-credentials)
-    - [Mapping <code>ServiceAccount</code> credentials to <code>Tasks</code>](#mapping-serviceaccount-credentials-to-tasks)
-    - [Specifying a <code>Pod</code> template](#specifying-a-pod-template)
+    - [Specifying custom `ServiceAccount` credentials](#specifying-custom-serviceaccount-credentials)
+    - [Mapping `ServiceAccount` credentials to `Tasks`](#mapping-serviceaccount-credentials-to-tasks)
+      - [Propagated Results](#propagated-results)
+    - [Specifying a `Pod` template](#specifying-a-pod-template)
     - [Specifying taskRunSpecs](#specifying-taskrunspecs)
       - [Parameter Substitution in taskRunSpecs](#parameter-substitution-in-taskrunspecs)
       - [Matrix Support with taskRunSpecs](#matrix-support-with-taskrunspecs)
-    - [Specifying <code>Workspaces</code>](#specifying-workspaces)
+    - [Specifying `Workspaces`](#specifying-workspaces)
       - [Propagated Workspaces](#propagated-workspaces)
-        - [Referenced TaskRuns within Embedded PipelineRuns](#referenced-taskruns-within-embedded-pipelineruns)
-    - [Specifying <code>LimitRange</code> values](#specifying-limitrange-values)
+        - [Workspace Referenced Resources](#workspace-referenced-resources)
+      - [Referenced TaskRuns within Embedded PipelineRuns](#referenced-taskruns-within-embedded-pipelineruns)
+    - [Specifying `LimitRange` values](#specifying-limitrange-values)
     - [Configuring a failure timeout](#configuring-a-failure-timeout)
-  - [<code>PipelineRun</code> status](#pipelinerun-status)
-    - [The <code>status</code> field](#the-status-field)
+      - [Global default timeout](#global-default-timeout)
+      - [PipelineRun-level timeouts](#pipelinerun-level-timeouts)
+      - [Per-task timeouts](#per-task-timeouts)
+      - [Per-task overrides via `taskRunSpecs`](#per-task-overrides-via-taskrunspecs)
+  - [`PipelineRun` status](#pipelinerun-status)
+    - [The `status` field](#the-status-field)
     - [Monitoring execution status](#monitoring-execution-status)
     - [Marking off user errors](#marking-off-user-errors)
   - [Delegating reconciliation](#delegating-reconciliation)
-  - [Cancelling a <code>PipelineRun</code>](#cancelling-a-pipelinerun)
-  - [Gracefully cancelling a <code>PipelineRun</code>](#gracefully-cancelling-a-pipelinerun)
-  - [Gracefully stopping a <code>PipelineRun</code>](#gracefully-stopping-a-pipelinerun)
-  - [Pending <code>PipelineRuns</code>](#pending-pipelineruns)
+    - [Example](#example)
+    - [Behavior](#behavior)
+    - [External controller responsibilities](#external-controller-responsibilities)
+  - [Cancelling a `PipelineRun`](#cancelling-a-pipelinerun)
+  - [Gracefully cancelling a `PipelineRun`](#gracefully-cancelling-a-pipelinerun)
+  - [Gracefully stopping a `PipelineRun`](#gracefully-stopping-a-pipelinerun)
+  - [Pending `PipelineRuns`](#pending-pipelineruns)
 <!-- /toc -->
 
 
@@ -77,8 +88,8 @@ A `PipelineRun` definition supports the following fields:
     object that supplies specific execution credentials for the `Pipeline`.
   - [`status`](#cancelling-a-pipelinerun) - Specifies options for cancelling a `PipelineRun`.
   - [`taskRunSpecs`](#specifying-taskrunspecs) - Specifies a list of `PipelineTaskRunSpec` which allows for setting `ServiceAccountName`, [`Pod` template](./podtemplates.md), and `Metadata` for each task. This overrides the `Pod` template set for the entire `Pipeline`.
-  - [`timeout`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails. `timeout` is deprecated and will eventually be removed, so consider using `timeouts` instead.
-  - [`timeouts`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails. `timeouts` allows more granular timeout configuration, at the pipeline, tasks, and finally levels
+  - [`timeout`](#configuring-a-failure-timeout) - **Deprecated.** Specifies the timeout before the `PipelineRun` fails. Use [`timeouts`](#configuring-a-failure-timeout) instead.
+  - [`timeouts`](#configuring-a-failure-timeout) - **Recommended.** Specifies the timeout before the `PipelineRun` fails. `timeouts` allows more granular timeout configuration, at the pipeline, tasks, and finally levels.
   - [`podTemplate`](#specifying-a-pod-template) - Specifies a [`Pod` template](./podtemplates.md) to use as the basis for the configuration of the `Pod` that executes each `Task`.
   - [`workspaces`](#specifying-workspaces) - Specifies a set of workspace bindings which must match the names of workspaces declared in the pipeline being used.
   - [`managedBy`](#delegating-reconciliation) - Specifies the controller responsible for managing this PipelineRun's lifecycle.
@@ -1389,6 +1400,16 @@ For more information, see the [`LimitRange` support in Pipeline](./compute-resou
 
 ### Configuring a failure timeout
 
+All timeout configurations are summarized below:
+
+| Config | Description | Default | Priority |
+| ------ | ----------- | ------- | -------- |
+| Global default timeout | Set via `default-timeout-minutes` in [`config/config-defaults.yaml`](./../config/config-defaults.yaml). Applies when no other timeout is specified. | 60 minutes | 4 (lowest) |
+| PipelineRun-level timeouts | Set via `timeouts.pipeline`, `timeouts.tasks`, and `timeouts.finally` on the `PipelineRun`. | Global default timeout | 3 |
+| Per-task timeouts | Set via `pipeline.spec.tasks[].timeout` in the `Pipeline` definition. | PipelineRun-level timeout | 2 |
+| Per-task overrides via `taskRunSpecs` | Set via `taskRunSpecs[].timeout` on the `PipelineRun`. Overrides the Pipeline spec timeout at runtime without modifying the Pipeline definition. | Per-task timeout | 1 (highest) |
+
+
 You can use the `timeouts` field to set the `PipelineRun's` desired timeout value in minutes.
 There are three sub-fields:
 - `pipeline`: specifies the timeout for the entire PipelineRun. Defaults to to the global configurable default timeout of 60 minutes.
@@ -1414,38 +1435,6 @@ it is used as the individual timeout for `finally` TaskRuns that do not have an 
 For example:
 
 ```yaml
-timeouts:
-  pipeline: "0h0m60s"
-  tasks: "0h0m40s"
-  finally: "0h0m20s"
-```
-
-All three sub-fields are optional, and will be automatically processed according to the following constraint:
-* `timeouts.pipeline >= timeouts.tasks + timeouts.finally`
-
-Each `timeout` field is a `duration` conforming to Go's
-[`ParseDuration`](https://golang.org/pkg/time/#ParseDuration) format. For example, valid
-values are `1h30m`, `1h`, `1m`, and `60s`.
-
-If any of the sub-fields are set to "0", there is no timeout for that section of the PipelineRun,
-meaning that it will run until it completes successfully or encounters an error.
-To set `timeouts.tasks` or `timeouts.finally` to "0", you must also set `timeouts.pipeline` to "0".
-
-The global default timeout is set to 60 minutes when you first install Tekton. You can set
-a different global default timeout value using the `default-timeout-minutes` field in
-[`config/config-defaults.yaml`](./../config/config-defaults.yaml).
-
-#### Overriding Individual Task Timeouts
-
-You can use `taskRunSpecs` to override individual task timeouts at runtime without modifying the Pipeline definition.
-
-**Timeout Precedence (highest to lowest):**
-1. `taskRunSpecs[].timeout` - runtime override per task
-2. `pipeline.spec.tasks[].timeout` - Pipeline spec timeout
-3. `timeouts.tasks` or `timeouts.pipeline` - PipelineRun constraints  
-4. Global default timeout
-
-```yaml
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 spec:
@@ -1454,18 +1443,80 @@ spec:
   pipelineSpec:
     tasks:
     - name: task-a
-      timeout: "8m"     # 2. Pipeline spec timeout
+      timeout: "8m"     # 2. Timeout in Pipeline spec
       taskSpec: { ... }
-    - name: task-b  
+    - name: task-b
       taskSpec: { ... } # 4. Uses global default (60m)
   taskRunSpecs:
   - pipelineTaskName: task-a
     timeout: "5m"       # 1. Highest priority - overrides 8m Pipeline timeout
 ```
 
-**Note:** `taskRunSpecs` timeouts cannot exceed pipeline-level constraints and will fail validation if they do.
+#### Global default timeout
 
-Example timeouts usages are as follows:
+This configuration represents the global default timeout and has the lowest priority. Any other timeout configuration will override it.<br>
+When you first install Tekton, the global default timeout is set to 60 minutes. You can set a different global default timeout value using the [`default-timeout-minutes`](/config/config-defaults.yaml#L40) field in the [`config/config-defaults.yaml`](/config/config-defaults.yaml) file.
+
+An example is:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+data:
+  default-timeout-minutes: 60
+```
+
+#### PipelineRun-level timeouts
+
+This configuration represents PipelineRun-level timeouts. Setting the `pipeline` field of this configuration overrides the global default timeout.<br>
+If not set, the `pipeline` field timeout will be the same as the global default timeout. You can configure this via the `spec.timeouts` field in the YAML when creating a `PipelineRun`.
+
+Each timeout field is a duration that conforms to Go's `ParseDuration` format. For example, valid values include `1h30m`, `1h`, `1m`, and `60s`.
+
+An example is:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+spec:
+  timeouts:
+    pipeline: "0h0m60s"
+    tasks: "0h0m40s"
+    finally: "0h0m20s"
+```
+
+The three sub-fields are:
+
+- `pipeline`: Specifies the timeout for the entire PipelineRun.<br>
+When `timeouts.pipeline` expires, any running child TaskRuns will be cancelled (whether they are regular Tasks or finally Tasks), and the PipelineRun will be marked as failed.
+- `tasks`: Specifies the cumulative timeout consumed by non-finally Tasks defined in `pipeline.spec.tasks`.<br>
+When `timeouts.tasks` expires, any running child TaskRuns will be cancelled; if `timeouts.finally` is specified, the finally Tasks will run, and the PipelineRun will be marked as failed.
+- `finally`: Specifies the cumulative timeout consumed by finally Tasks defined in `pipeline.spec.finally`.<br>
+(Since all finally Tasks run in parallel, this is functionally equivalent to the timeout for any single finally Task.)<br>
+When `timeouts.finally` expires, any running finally TaskRuns will be cancelled, and the PipelineRun will be marked as failed.
+
+> **Note:** The configuration must satisfy the constraint `timeouts.pipeline >= timeouts.tasks + timeouts.finally`.
+
+> **Note:** If any sub-field is set to `"0"`, it means that portion of the PipelineRun has no timeout limit, meaning it will run until it either completes successfully or encounters an error. To set `timeouts.tasks` or `timeouts.finally` to `"0"`, you must also set `timeouts.pipeline` to `"0"`.
+
+#### Per-task timeouts
+
+You can specify a timeout for an individual Task using `pipeline.spec.tasks[].timeout` in the Pipeline definition.<br>
+This has higher priority than the PipelineRun-level `timeouts` sub-fields (`pipeline`, `tasks`, `finally`), but lower priority than per-task overrides via `taskRunSpecs`.
+
+#### Per-task overrides via `taskRunSpecs`
+
+You can use `taskRunSpecs` to override individual task timeouts at runtime without modifying the Pipeline definition.
+
+> **Note:** `taskRunSpecs` timeouts cannot exceed pipeline-level constraint limits; otherwise, validation will fail.
+
+Example timeout usages are as follows:
 
 Combination 1: Set the timeout for the entire `pipeline` and reserve a portion of it for `tasks`.
 
@@ -1497,7 +1548,7 @@ spec:
     tasks: "0h3m0s"
 ```
 
-Combination : Set only a `finally` timeout, with no timeout for the entire `pipeline`.
+Combination 4: Set only a `finally` timeout, with no timeout for the entire `pipeline`.
 
 ```yaml
 kind: PipelineRun
@@ -1507,13 +1558,12 @@ spec:
     finally: "0h3m0s"
 ```
 
-You can also use the *Deprecated* `timeout` field to set the `PipelineRun's` desired timeout value in minutes.
-If you do not specify this value in the `PipelineRun`, the global default timeout value applies.
-If you set the timeout to 0, the `PipelineRun` fails immediately upon encountering an error.
+> **Note:** An internal detail of the `PipelineRun` and `TaskRun` reconcilers in the Tekton controller is that it will requeue a `PipelineRun` or `TaskRun` for re-evaluation, versus waiting for the next update, under certain conditions. The wait time for that re-queueing is the elapsed time subtracted from the timeout; however, if the timeout is set to `'0'`, that calculation produces a negative number, and the new reconciliation event will fire immediately, which can impact overall performance, which is counter to the intent of wait time calculation. So instead, the reconcilers will use the configured global timeout as the wait time when the associated timeout has been set to `'0'`.
 
-> :warning: ** `timeout` is deprecated and will be removed in future versions. Consider using `timeouts` instead.
-
-> :note: An internal detail of the `PipelineRun` and `TaskRun` reconcilers in the Tekton controller is that it will requeue a `PipelineRun` or `TaskRun` for re-evaluation, versus waiting for the next update, under certain conditions.  The wait time for that re-queueing is the elapsed time subtracted from the timeout; however, if the timeout is set to '0', that calculation produces a negative number, and the new reconciliation event will fire immediately, which can impact overall performance, which is counter to the intent of wait time calculation.  So instead, the reconcilers will use the configured global timeout as the wait time when the associated timeout has been set to '0'.
+> **Warning:** You can also use the deprecated `timeout` field to set the expected timeout duration (in minutes) for the PipelineRun.<br>
+> If you do not specify this value in the PipelineRun, the global default timeout will apply.<br>
+> If you set the timeout to `0`, the PipelineRun will fail immediately upon encountering an error.<br>
+> If you are still using this configuration, it is strongly recommended to switch to the `timeouts` field, as this configuration will be removed in a future release.
 
 ## `PipelineRun` status
 
