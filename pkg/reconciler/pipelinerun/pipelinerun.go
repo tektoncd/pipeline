@@ -244,6 +244,13 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) (rec
 	// Record the duration and count after the reconcile cycle.
 	defer c.durationAndCountMetrics(ctx, pr, before)
 
+	// Track how long pr waits on resolution of its Pipeline reference. This is
+	// deferred after durationAndCountMetrics above so it runs first (defers
+	// execute LIFO): a run that both finishes resolving and completes within
+	// the same reconcile needs its wait time recorded before
+	// durationAndCountMetrics reads it.
+	defer c.metrics.ObserveResolutionWait(pr)
+
 	// Check if we are failing to mark this as timed out for a while. If we are, mark immediately and finish the
 	// reconcile. We are assuming here that if the PipelineRun has timed out for a long time, it had time to run
 	// before and it kept failing. One reason that can happen is exceeding etcd request size limit. Finishing it early
