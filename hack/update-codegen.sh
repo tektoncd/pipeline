@@ -97,6 +97,10 @@ ${REPO_ROOT_DIR}/hack/update-deps.sh
 # before generating the final OpenAPI/Swagger specs.
 ${REPO_ROOT_DIR}/hack/update-schemas.sh
 
+# Patch computeResources CRD fields with x-kubernetes-preserve-unknown-fields
+# to support variable references like $(params.MEM) in resource quantities.
+${REPO_ROOT_DIR}/hack/patch-compute-resources-crds.sh
+
 # Make sure the OpenAPI specification and Swagger file are up-to-date
 ${REPO_ROOT_DIR}/hack/update-openapigen.sh
 

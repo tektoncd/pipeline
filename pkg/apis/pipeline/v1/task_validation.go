@@ -88,6 +88,9 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	errs = errs.Also(StepList(mergedSteps).Validate(ctx).ViaField("steps"))
+	if ts.StepTemplate != nil {
+		errs = errs.Also(ts.StepTemplate.ComputeResources.Validate("computeResources").ViaField("stepTemplate"))
+	}
 	errs = errs.Also(SidecarList(ts.Sidecars).Validate(ctx).ViaField("sidecars"))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
@@ -535,6 +538,13 @@ func validateStepVariables(ctx context.Context, step Step, prefix string, vars s
 		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v.SubPath, prefix, vars).ViaField("SubPath").ViaFieldIndex("volumeMount", i))
 	}
 	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(string(step.OnError), prefix, vars).ViaField("onError"))
+	// Validate variable references in compute resources
+	for k, v := range step.ComputeResources.RawRequests {
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v, prefix, vars).ViaField(string(k)).ViaField("requests").ViaField("computeResources"))
+	}
+	for k, v := range step.ComputeResources.RawLimits {
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v, prefix, vars).ViaField(string(k)).ViaField("limits").ViaField("computeResources"))
+	}
 	return errs
 }
 
