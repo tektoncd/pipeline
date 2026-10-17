@@ -104,6 +104,7 @@ func TestMergeGlobalConfigWithLocal(t *testing.T) {
 	cfg.FeatureFlags.NonOverridableFields = " coschedule "
 	cfg.FeatureFlags.EnableTerminationMessageCompression = true
 	cfg.FeatureFlags.KeepStatusSpecDescriptions = true
+	cfg.FeatureFlags.EnableSurfacePodEvents = true
 	cfg.Defaults.DefaultTaskRunWorkspaceBinding = "emptyDir: {}"
 	cfg.Defaults.DefaultForbiddenEnv = []string{"FORBIDDEN_ENV"}
 	cfg.Defaults.DefaultPodTemplate = &pod.Template{NodeSelector: map[string]string{"disk": "ssd"}}
@@ -147,7 +148,7 @@ func TestMergeGlobalConfigWithLocal(t *testing.T) {
 		!cmp.Equal(merged.Defaults.DefaultForbiddenEnv, cfg.Defaults.DefaultForbiddenEnv) {
 		t.Error("optional cluster defaults were not preserved")
 	}
-	if !merged.FeatureFlags.EnableTerminationMessageCompression || !merged.FeatureFlags.KeepStatusSpecDescriptions || !merged.FeatureFlags.PerNamespaceConfiguration || merged.FeatureFlags.NonOverridableFields != " coschedule " {
+	if !merged.FeatureFlags.EnableTerminationMessageCompression || !merged.FeatureFlags.KeepStatusSpecDescriptions || !merged.FeatureFlags.EnableSurfacePodEvents || !merged.FeatureFlags.PerNamespaceConfiguration || merged.FeatureFlags.NonOverridableFields != " coschedule " {
 		t.Error("cluster feature flags were not preserved")
 	}
 }
