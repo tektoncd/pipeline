@@ -4241,6 +4241,13 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 							},
 						},
 					},
+					"resolvedTaskNamespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResolvedTaskNamespace is the namespace of the resolved Task, used for cross-namespace StepAction resolution. Set by the controller, not user-modifiable.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"podName"},
 			},
@@ -4375,6 +4382,13 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref common.ReferenceCallbac
 									},
 								},
 							},
+						},
+					},
+					"resolvedTaskNamespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResolvedTaskNamespace is the namespace of the resolved Task, used for cross-namespace StepAction resolution. Set by the controller, not user-modifiable.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
