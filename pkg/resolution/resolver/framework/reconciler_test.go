@@ -65,6 +65,7 @@ func TestReconcile(t *testing.T) {
 		reconcilerTimeout time.Duration
 		expectedStatus    *v1beta1.ResolutionRequestStatus
 		expectedErr       error
+		notLeader         bool
 	}{
 		{
 			name: "unknown value",
@@ -210,6 +211,22 @@ func TestReconcile(t *testing.T) {
 			reconcilerTimeout: 1 * time.Second,
 			expectedErr:       errors.New("context deadline exceeded"),
 		}, {
+			name: "non-leader skips resolution",
+			inputRequest: &v1beta1.ResolutionRequest{
+				ObjectMeta: metav1.ObjectMeta{Name: "rr", Namespace: "foo"},
+				Spec: v1beta1.ResolutionRequestSpec{
+					Params: []pipelinev1.Param{{
+						Name:  framework.FakeParamName,
+						Value: *pipelinev1.NewStructuredValues("bar"),
+					}},
+				},
+			},
+			paramMap: map[string]*framework.FakeResolvedResource{
+				"bar": {ErrorWith: "resolver should not have been called"},
+			},
+			expectedStatus: &v1beta1.ResolutionRequestStatus{},
+			notLeader:      true,
+		}, {
 			name: "resolved but not yet done should skip re-resolution",
 			inputRequest: &v1beta1.ResolutionRequest{
 				TypeMeta: metav1.TypeMeta{
@@ -280,7 +297,14 @@ func TestReconcile(t *testing.T) {
 			testAssets, cancel := getResolverFrameworkController(ctx, t, d, fakeResolver, setClockOnReconciler)
 			defer cancel()
 
+			if tc.notLeader {
+				testAssets.Controller.Reconciler.(pkgreconciler.LeaderAware).Demote(pkgreconciler.UniversalBucket())
+			}
+
 			err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(tc.inputRequest))
+			if tc.notLeader && !controller.IsSkipKey(err) {
+				t.Fatalf("expected non-leader reconciliation to be skipped, got %v", err)
+			}
 			if tc.expectedErr != nil {
 				if err == nil {
 					t.Fatalf("expected to get error %v, but got nothing", tc.expectedErr)
@@ -290,7 +314,7 @@ func TestReconcile(t *testing.T) {
 				}
 			} else {
 				if err != nil {
-					if ok, _ := controller.IsRequeueKey(err); !ok {
+					if ok, _ := controller.IsRequeueKey(err); !ok && !(tc.notLeader && controller.IsSkipKey(err)) {
 						t.Fatalf("did not expect an error, but got %v", err)
 					}
 				}

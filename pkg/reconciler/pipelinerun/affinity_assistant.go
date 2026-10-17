@@ -59,9 +59,9 @@ const (
 )
 
 var (
-	// Deprecated: use volumeclain.ErrPvcCreationFailed instead
+	// Deprecated: use volumeclaim.ErrPvcCreationFailed instead
 	ErrPvcCreationFailed = volumeclaim.ErrPvcCreationFailed
-	// Deprecated: use volumeclaim.ErrAffinityAssistantCreationFailed instead
+	// Deprecated: use volumeclaim.ErrPvcCreationFailedRetryable instead
 	ErrPvcCreationFailedRetryable      = volumeclaim.ErrPvcCreationFailedRetryable
 	ErrAffinityAssistantCreationFailed = errors.New("Affinity Assistant creation error")
 )

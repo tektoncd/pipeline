@@ -304,6 +304,9 @@ func (i *uncompressedImage) LayerByDiffID(h v1.Hash) (partial.UncompressedLayer,
 	}
 	for idx, diffID := range cfg.RootFS.DiffIDs {
 		if diffID == h {
+			if idx >= len(i.imgDescriptor.Layers) {
+				return nil, fmt.Errorf("config has %d rootfs.diff_id(s) but tarball manifest only references %d layer(s); the config may not describe a runnable image", len(cfg.RootFS.DiffIDs), len(i.imgDescriptor.Layers))
+			}
 			// Technically the media type should be 'application/tar' but given that our
 			// v1.Layer doesn't force consumers to care about whether the layer is compressed
 			// we should be fine returning the DockerLayer media type

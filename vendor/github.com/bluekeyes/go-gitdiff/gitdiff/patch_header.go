@@ -186,9 +186,9 @@ func ParsePatchHeader(header string, options ...PatchHeaderOption) (*PatchHeader
 	}
 
 	var firstLine, rest string
-	if idx := strings.IndexByte(header, '\n'); idx >= 0 {
-		firstLine = header[:idx]
-		rest = header[idx+1:]
+	if before, after, ok := strings.Cut(header, "\n"); ok {
+		firstLine = before
+		rest = after
 	} else {
 		firstLine = header
 		rest = ""
@@ -362,8 +362,8 @@ func parseHeaderMail(mailLine string, r io.Reader, opts patchHeaderOptions) (*Pa
 
 	h := &PatchHeader{}
 
-	if strings.HasPrefix(mailLine, mailHeaderPrefix) {
-		mailLine = strings.TrimPrefix(mailLine, mailHeaderPrefix)
+	if after, ok := strings.CutPrefix(mailLine, mailHeaderPrefix); ok {
+		mailLine = after
 		if i := strings.IndexByte(mailLine, ' '); i > 0 {
 			h.SHA = mailLine[:i]
 		}

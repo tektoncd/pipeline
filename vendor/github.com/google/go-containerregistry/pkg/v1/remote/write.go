@@ -21,13 +21,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"sort"
 	"strings"
 	"sync"
 
+	"github.com/google/go-containerregistry/internal/ipaddr"
 	"github.com/google/go-containerregistry/internal/redact"
 	"github.com/google/go-containerregistry/internal/retry"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -61,10 +61,19 @@ type writer struct {
 	backoff   Backoff
 	predicate retry.Predicate
 
+	referrersTagFallback bool
+
 	scopeLock sync.Mutex
 	// Keep track of scopes that we have already requested.
 	scopeSet map[string]struct{}
 	scopes   []string
+}
+
+// getClient returns the HTTP client, blocking on scope updates.
+func (w *writer) getClient() *http.Client {
+	w.scopeLock.Lock()
+	defer w.scopeLock.Unlock()
+	return w.client
 }
 
 // makeDeleteClient returns an HTTP client whose token includes the "delete"
@@ -83,7 +92,7 @@ func makeDeleteClient(ctx context.Context, repo name.Repository, o *options) (*h
 	if err != nil {
 		return nil, err
 	}
-	return &http.Client{Transport: tr}, nil
+	return &http.Client{Transport: tr, CheckRedirect: checkRedirectSSRF}, nil
 }
 
 func makeWriter(ctx context.Context, repo name.Repository, ls []v1.Layer, o *options) (*writer, error) {
@@ -106,15 +115,16 @@ func makeWriter(ctx context.Context, repo name.Repository, ls []v1.Layer, o *opt
 		scopeSet[scope] = struct{}{}
 	}
 	return &writer{
-		repo:      repo,
-		client:    &http.Client{Transport: tr},
-		auth:      auth,
-		transport: o.transport,
-		progress:  o.progress,
-		backoff:   o.retryBackoff,
-		predicate: o.retryPredicate,
-		scopes:    scopes,
-		scopeSet:  scopeSet,
+		repo:                 repo,
+		client:               &http.Client{Transport: tr, CheckRedirect: checkRedirectSSRF},
+		auth:                 auth,
+		transport:            o.transport,
+		progress:             o.progress,
+		backoff:              o.retryBackoff,
+		predicate:            o.retryPredicate,
+		referrersTagFallback: o.referrersTagFallback,
+		scopes:               scopes,
+		scopeSet:             scopeSet,
 	}, nil
 }
 
@@ -149,7 +159,7 @@ func (w *writer) maybeUpdateScopes(ctx context.Context, ml *MountableLayer) erro
 		if err != nil {
 			return err
 		}
-		w.client = &http.Client{Transport: wt}
+		w.client = &http.Client{Transport: wt, CheckRedirect: checkRedirectSSRF}
 	}
 
 	return nil
@@ -183,10 +193,8 @@ func (w *writer) nextLocation(resp *http.Response) (string, error) {
 	// always allowed regardless of whether the registry IP is private.
 	origHost := resp.Request.URL.Hostname()
 	if destHost := resolved.Hostname(); destHost != origHost {
-		if ip := net.ParseIP(destHost); ip != nil {
-			if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() || ip.IsUnspecified() {
-				return "", fmt.Errorf("SSRF protection: Location header redirects to private/link-local host %q", destHost)
-			}
+		if ipaddr.IsPrivateOrLinkLocal(destHost) {
+			return "", fmt.Errorf("SSRF protection: Location header redirects to private/link-local host %q", destHost)
 		}
 	}
 
@@ -205,7 +213,7 @@ func (w *writer) checkExistingBlob(ctx context.Context, h v1.Hash) (bool, error)
 		return false, err
 	}
 
-	resp, err := w.client.Do(req.WithContext(ctx))
+	resp, err := w.getClient().Do(req.WithContext(ctx))
 	if err != nil {
 		return false, err
 	}
@@ -243,7 +251,7 @@ func (w *writer) initiateUpload(ctx context.Context, from, mount, origin string)
 		return "", false, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := w.client.Do(req.WithContext(ctx))
+	resp, err := w.getClient().Do(req.WithContext(ctx))
 	if err != nil {
 		if from != "" {
 			// https://github.com/google/go-containerregistry/issues/1679
@@ -323,7 +331,7 @@ func (w *writer) streamBlob(ctx context.Context, layer v1.Layer, streamLocation 
 	}
 	req.Header.Set("Content-Type", "application/octet-stream")
 
-	resp, err := w.client.Do(req.WithContext(ctx))
+	resp, err := w.getClient().Do(req.WithContext(ctx))
 	if err != nil {
 		return "", err
 	}
@@ -355,7 +363,7 @@ func (w *writer) commitBlob(ctx context.Context, location, digest string) error 
 	}
 	req.Header.Set("Content-Type", "application/octet-stream")
 
-	resp, err := w.client.Do(req.WithContext(ctx))
+	resp, err := w.getClient().Do(req.WithContext(ctx))
 	if err != nil {
 		return err
 	}
@@ -514,7 +522,7 @@ func (w *writer) commitSubjectReferrers(ctx context.Context, sub name.Digest, ad
 		return err
 	}
 	req.Header.Set("Accept", string(types.OCIImageIndex))
-	resp, err := w.client.Do(req.WithContext(ctx))
+	resp, err := w.getClient().Do(req.WithContext(ctx))
 	if err != nil {
 		return err
 	}
@@ -527,6 +535,9 @@ func (w *writer) commitSubjectReferrers(ctx context.Context, sub name.Digest, ad
 		// The registry supports Referrers API. The registry is responsible for updating the referrers list.
 		return nil
 	}
+	if !w.referrersTagFallback {
+		return fmt.Errorf("registry %s does not support the Referrers API and the referrers tag fallback is disabled", w.repo.RegistryStr())
+	}
 
 	// The registry doesn't support Referrers API, we need to update the manifest tagged with the fallback tag.
 	// Make the request to GET the current manifest.
@@ -537,7 +548,7 @@ func (w *writer) commitSubjectReferrers(ctx context.Context, sub name.Digest, ad
 		return err
 	}
 	req.Header.Set("Accept", string(types.OCIImageIndex))
-	resp, err = w.client.Do(req.WithContext(ctx))
+	resp, err = w.getClient().Do(req.WithContext(ctx))
 	if err != nil {
 		return err
 	}
@@ -597,9 +608,10 @@ func (w *writer) commitManifest(ctx context.Context, t Taggable, ref name.Refere
 		return err
 	}
 	var mf struct {
-		MediaType    types.MediaType `json:"mediaType"`
-		Subject      *v1.Descriptor  `json:"subject,omitempty"`
-		ArtifactType string          `json:"artifactType,omitempty"`
+		MediaType    types.MediaType   `json:"mediaType"`
+		Subject      *v1.Descriptor    `json:"subject,omitempty"`
+		ArtifactType string            `json:"artifactType,omitempty"`
+		Annotations  map[string]string `json:"annotations,omitempty"`
 		Config       struct {
 			MediaType types.MediaType `json:"mediaType"`
 		} `json:"config"`
@@ -624,7 +636,7 @@ func (w *writer) commitManifest(ctx context.Context, t Taggable, ref name.Refere
 		}
 		req.Header.Set("Content-Type", string(desc.MediaType))
 
-		resp, err := w.client.Do(req.WithContext(ctx))
+		resp, err := w.getClient().Do(req.WithContext(ctx))
 		if err != nil {
 			return err
 		}
@@ -642,9 +654,10 @@ func (w *writer) commitManifest(ctx context.Context, t Taggable, ref name.Refere
 				return err
 			}
 			desc := v1.Descriptor{
-				MediaType: mf.MediaType,
-				Digest:    h,
-				Size:      size,
+				MediaType:   mf.MediaType,
+				Digest:      h,
+				Size:        size,
+				Annotations: mf.Annotations,
 			}
 			if mf.ArtifactType != "" {
 				desc.ArtifactType = mf.ArtifactType

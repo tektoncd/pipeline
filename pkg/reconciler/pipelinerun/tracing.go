@@ -39,15 +39,17 @@ const (
 	TaskRunSpanContextAnnotation = "tekton.dev/taskrunSpanContext"
 )
 
-// initialize tracing by creating the root span and injecting the
-// spanContext is propagated through annotations in the CR
-func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, pr *v1.PipelineRun) context.Context {
+// initTracing initializes tracing by creating or restoring the root span.
+// It persists the span context in status and restores parent context propagated
+// through annotations. The caller is responsible for ending the returned span.
+func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, pr *v1.PipelineRun) (context.Context, trace.Span) {
 	logger := logging.FromContext(ctx)
 	pro := otel.GetTextMapPropagator()
+	noopSpan := trace.SpanFromContext(context.Background())
 
 	// SpanContext was created already
 	if len(pr.Status.SpanContext) > 0 {
-		return pro.Extract(ctx, propagation.MapCarrier(pr.Status.SpanContext))
+		return pro.Extract(ctx, propagation.MapCarrier(pr.Status.SpanContext)), noopSpan
 	}
 
 	spanContext := make(map[string]string)
@@ -60,12 +62,11 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, pr *v
 		}
 
 		pr.Status.SpanContext = spanContext
-		return pro.Extract(ctx, propagation.MapCarrier(pr.Status.SpanContext))
+		return pro.Extract(ctx, propagation.MapCarrier(pr.Status.SpanContext)), noopSpan
 	}
 
 	// Create a new root span since there was no parent spanContext provided through annotations
 	ctxWithTrace, span := tracerProvider.Tracer(TracerName).Start(ctx, "PipelineRun:Reconciler")
-	defer span.End()
 	span.SetAttributes(attribute.String("pipelinerun", pr.Name), attribute.String("namespace", pr.Namespace))
 
 	pro.Inject(ctxWithTrace, propagation.MapCarrier(spanContext))
@@ -73,12 +74,13 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, pr *v
 	logger.Debug("got tracing carrier", spanContext)
 	if len(spanContext) == 0 {
 		logger.Debug("tracerProvider doesn't provide a traceId, tracing is disabled")
-		return ctx
+		span.End()
+		return ctx, noopSpan
 	}
 
 	span.AddEvent("updating PipelineRun status with SpanContext")
 	pr.Status.SpanContext = spanContext
-	return ctxWithTrace
+	return ctxWithTrace, span
 }
 
 // Extract spanContext from the context and return it as json encoded string

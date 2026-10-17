@@ -58,6 +58,17 @@ func TestRestrictLength(t *testing.T) {
 		// trimmed until they do.
 		in:   "abcdefg   !@#!$",
 		want: "abcdefg",
+	}, {
+		// Values with no alphanumeric character are trimmed down to
+		// the empty string rather than panicking.
+		in:   "--",
+		want: "",
+	}, {
+		in:   "...",
+		want: "",
+	}, {
+		in:   "!!!",
+		want: "",
 	}} {
 		t.Run(c.in, func(t *testing.T) {
 			got := pkgnames.SimpleNameGenerator.RestrictLength(c.in)

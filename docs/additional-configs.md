@@ -32,6 +32,7 @@ installation.
   - [Verify Tekton Resources](#verify-tekton-resources)
   - [Pipelinerun with Affinity Assistant](#pipelineruns-with-affinity-assistant)
   - [TaskRuns with `imagePullBackOff` Timeout](#taskruns-with-imagepullbackoff-timeout)
+  - [TaskRuns with `CreateContainerError` Timeout](#taskruns-with-createcontainererror-timeout)
   - [Disabling Inline Spec in TaskRun and PipelineRun](#disabling-inline-spec-in-taskrun-and-pipelinerun)
   - [Exponential Backoff for TaskRun and CustomRun Creation](#exponential-backoff-for-taskrun-and-customrun-creation)
   - [Limiting Step reference concurrency resolution](#limiting-step-reference-concurrency-resolution)
@@ -418,6 +419,8 @@ Set this field to "alpha" to allow [alpha features](#alpha-features) to be used.
 
 - `enable-kubernetes-sidecar`: Set this flag to `"true"` to enable native kubernetes sidecar support. This will allow Tekton sidecars to run as Kubernetes sidecars. Must be using Kubernetes v1.29 or greater.
 
+- `keep-status-spec-descriptions`: documentation-only `description` fields are stripped from the `status.taskSpec` and `status.pipelineSpec` snapshots by default to reduce etcd usage. These fields are never used by the controller during execution; the original Task/Pipeline objects keep their descriptions. Set this flag to `"true"` to retain them in the status snapshot during a migration window. The default is `"false"`. See [#10321](https://github.com/tektoncd/pipeline/issues/10321).
+
 For example:
 
 ```yaml
@@ -446,8 +449,11 @@ Defaults to "ignore".
   set to `"sidecar-logs"` since sidecar logs bypass the termination message entirely. This is an
   alpha feature gated behind `enable-api-fields: "alpha"` or the per-feature flag. Defaults to `"false"`.
 
-- `set-security-context`: Set this flag to `true` to set a security context for containers injected by Tekton that will allow TaskRun pods
-to run in namespaces with `restricted` pod security admission. By default, this is set to `false`.
+- `set-security-context`: By default, Tekton applies a security context intended to satisfy
+  `restricted` pod security admission to containers it injects into TaskRuns and to Affinity
+  Assistant containers. It does not modify the security contexts of user-defined Steps or
+  Sidecars; those containers must independently satisfy the namespace's pod security requirements. Set this flag to
+  `false` to disable the generated security contexts.
 
 - `set-security-context-read-only-root-filesystem`: Set this flag to `true` to enable `readOnlyRootFilesystem` in the
   security context for containers injected by Tekton. This makes the root filesystem of the container read-only,
@@ -553,10 +559,20 @@ Out-of-the-box, Tekton Pipelines Controller is configured for relatively small-s
 
 ## Running TaskRuns and PipelineRuns with restricted pod security standards
 
-To allow TaskRuns and PipelineRuns to run in namespaces with [restricted pod security standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/),
-set the "set-security-context" feature flag to "true" in the [feature-flags configMap](#customizing-the-pipelines-controller-behavior). This configuration option applies a [SecurityContext](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/)
-to any containers injected into TaskRuns by the Pipelines controller. If the [Affinity Assistants](affinityassistants.md) feature is enabled, the SecurityContext is also applied to those containers.
-This SecurityContext may not be supported in all Kubernetes implementations (for example, OpenShift).
+The `set-security-context` feature flag defaults to `"true"`. It applies a
+[SecurityContext](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/)
+to containers injected into TaskRuns by the Pipelines controller and to
+[Affinity Assistant](affinityassistants.md) containers. It does not modify security contexts on
+user-defined Steps or Sidecars; those containers must independently meet the namespace's
+[restricted pod security standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/).
+
+Some injected images and Kubernetes implementations (for example, OpenShift) may not
+support the generated security context. Disable it with:
+
+```shell
+kubectl patch configmap feature-flags -n tekton-pipelines --type merge \
+  -p '{"data":{"set-security-context":"false"}}'
+```
 
 **Note**: running TaskRuns and PipelineRuns in the "tekton-pipelines" namespace is discouraged.
 
@@ -789,6 +805,27 @@ metadata:
   namespace: tekton-pipelines
 data:
   default-imagepullbackoff-timeout: "5m"
+```
+
+## TaskRuns with `CreateContainerError` Timeout
+
+When the container runtime (e.g. CRI-O) is under heavy load, it may fail to create a container within the kubelet's
+`RuntimeRequestTimeout` (default 2 minutes), resulting in `CreateContainerError` or `CreateContainerConfigError` with the
+message `"context deadline exceeded"`. This is a transient error — the container runtime will typically succeed once its
+queue clears.
+
+The default value of `default-create-container-error-timeout` is `0`, which means the TaskRun fails immediately
+(fail fast) — preserving the existing behavior. To allow the controller to wait for the container runtime to recover,
+set a non-zero duration such as "1m", "5m", "10s", "1h", etc.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-create-container-error-timeout: "5m"
 ```
 
 ## Disabling Inline Spec in Pipeline, TaskRun and PipelineRun

@@ -1,4 +1,4 @@
-# BigCache [![Build Status](https://github.com/allegro/bigcache/workflows/build/badge.svg)](https://github.com/allegro/bigcache/actions?query=workflow%3Abuild)&nbsp;[![Coverage Status](https://coveralls.io/repos/github/allegro/bigcache/badge.svg?branch=master)](https://coveralls.io/github/allegro/bigcache?branch=master)&nbsp;[![GoDoc](https://godoc.org/github.com/allegro/bigcache/v3?status.svg)](https://godoc.org/github.com/allegro/bigcache/v3)&nbsp;[![Go Report Card](https://goreportcard.com/badge/github.com/allegro/bigcache/v3)](https://goreportcard.com/report/github.com/allegro/bigcache/v3)
+# BigCache [![Build Status](https://github.com/allegro/bigcache/workflows/build/badge.svg)](https://github.com/allegro/bigcache/actions?query=workflow%3Abuild)&nbsp;[![Coverage Status](https://coveralls.io/repos/github/allegro/bigcache/badge.svg?branch=main)](https://coveralls.io/github/allegro/bigcache?branch=main)&nbsp;[![GoDoc](https://godoc.org/github.com/allegro/bigcache/v3?status.svg)](https://godoc.org/github.com/allegro/bigcache/v3)&nbsp;[![Go Report Card](https://goreportcard.com/badge/github.com/allegro/bigcache/v3)](https://goreportcard.com/report/github.com/allegro/bigcache/v3)
 
 Fast, concurrent, evicting in-memory cache written to keep big number of entries without impact on performance.
 BigCache keeps entries on heap but omits GC for them. To achieve that, operations on byte slices take place,
@@ -12,8 +12,9 @@ Requires Go 1.12 or newer.
 
 ```go
 import (
-	"fmt"
 	"context"
+	"fmt"
+	"time"
 	"github.com/allegro/bigcache/v3"
 )
 
@@ -32,7 +33,10 @@ allocation can be avoided in that way.
 
 ```go
 import (
+	"context"
+	"fmt"
 	"log"
+	"time"
 
 	"github.com/allegro/bigcache/v3"
 )

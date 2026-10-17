@@ -26,7 +26,7 @@ jobs:
     - name: Get base depth
       id: base-depth
       run: echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: ${{ steps.base-depth.outputs.base-depth }}
@@ -65,14 +65,14 @@ jobs:
 
   build:
     name: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     needs: [changes]
     if: ${{ needs.changes.outputs.non-docs == 'true' }}
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         persist-credentials: false
-    - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6.5.0
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
       with:
         go-version-file: "go.mod"
     - name: build
@@ -80,14 +80,14 @@ jobs:
         go build -v ./...
   buildFips:
     name: buildFips
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     needs: [changes]
     if: ${{ needs.changes.outputs.non-docs == 'true' }}
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         persist-credentials: false
-    - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6.5.0
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
       with:
         go-version-file: "go.mod"
     - name: build
@@ -96,17 +96,17 @@ jobs:
         echo "Build finished with exit code: $?"
   linting:
     name: lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     permissions:
       contents: read
       checks: write # Used by golangci-lint to annotate code in the PR
     needs: [changes]
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         fetch-depth: 0
         persist-credentials: false
-    - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6.5.0
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
       with:
         go-version-file: "go.mod"
     - name: gofmt
@@ -137,12 +137,12 @@ jobs:
   tests:
     needs: [build]
     name: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         persist-credentials: false
-    - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6.5.0
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
       with:
         go-version-file: "go.mod"
     - name: unit-test
@@ -151,12 +151,12 @@ jobs:
   generated:
     needs: [build]
     name: Check generated code
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         persist-credentials: false
-    - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6.5.0
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
       with:
         go-version-file: "go.mod"
     - name: generated
@@ -165,14 +165,14 @@ jobs:
   multi-arch-build:
     needs: [build]
     name: Multi-arch build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     env:
       KOCACHE: /tmp/ko-cache
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         persist-credentials: false
-    - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6.5.0
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
       with:
         go-version-file: "go.mod"
     - name: Cache ko build cache
@@ -182,7 +182,7 @@ jobs:
         key: ${{ runner.os }}-${{ runner.arch }}-ko-${{ hashFiles('go.sum') }}
         restore-keys: |
           ${{ runner.os }}-${{ runner.arch }}-ko-
-    - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
+    - uses: ko-build/setup-ko@61b4d1d396f5b2e7d6bb6fefdce3dc38d1a13445 # v0.10
       with:
         version: v0.18.1
     - name: ko-resolve

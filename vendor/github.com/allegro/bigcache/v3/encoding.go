@@ -78,6 +78,6 @@ func readHashFromEntry(data []byte) uint64 {
 	return binary.LittleEndian.Uint64(data[timestampSizeInBytes:])
 }
 
-func resetKeyFromEntry(data []byte) {
+func resetHashFromEntry(data []byte) {
 	binary.LittleEndian.PutUint64(data[timestampSizeInBytes:], 0)
 }

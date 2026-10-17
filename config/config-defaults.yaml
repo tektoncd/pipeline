@@ -92,6 +92,12 @@ data:
     # possible values could be 1m, 5m, 10s, 1h, etc
     # default-imagepullbackoff-timeout: "5m"
 
+    # default-create-container-error-timeout contains the default duration to wait
+    # before failing a TaskRun when a container fails with "context deadline exceeded"
+    # (e.g. CRI-O under heavy load). Specifying 0 here is equivalent to fail fast.
+    # possible values could be 1m, 5m, 10s, 1h, etc
+    # default-create-container-error-timeout: "5m"
+
     # default-maximum-resolution-timeout specifies the default duration used by the
     # resolution controller before timing out when exceeded.
     # Possible values include "1m", "5m", "10s", "1h", etc.

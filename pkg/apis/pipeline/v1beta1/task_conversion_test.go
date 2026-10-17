@@ -232,6 +232,7 @@ spec:
       path: /path
     stderrConfig:
       path: /another-path
+    restartPolicy: Always
   volumes:
   - name: volume
   params:
