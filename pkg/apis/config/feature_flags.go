@@ -128,6 +128,11 @@ const (
 	KeepStatusSpecDescriptions = "keep-status-spec-descriptions"
 	// DefaultKeepStatusSpecDescriptions is the default value for KeepStatusSpecDescriptions
 	DefaultKeepStatusSpecDescriptions = false
+	// SurfacePodEvents is the flag to enable surfacing Pod Warning events
+	// onto TaskRun status when a Pod is stuck pending with no useful message.
+	SurfacePodEvents = "surface-pod-events"
+	// DefaultSurfacePodEvents is the default value for SurfacePodEvents
+	DefaultSurfacePodEvents = false
 
 	// PerNamespaceConfigurationKey enables per-namespace configuration overrides.
 	PerNamespaceConfigurationKey = "per-namespace-configuration"
@@ -207,6 +212,13 @@ var (
 		Enabled:   DefaultAlphaFeatureEnabled,
 	}
 
+	// DefaultSurfacePodEventsFlag is the default PerFeatureFlag value for SurfacePodEvents
+	DefaultSurfacePodEventsFlag = PerFeatureFlag{
+		Name:      SurfacePodEvents,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
 	DefaultEnableTektonOCIBundles = PerFeatureFlag{
 		Name:       EnableTektonOCIBundles,
 		Stability:  AlphaAPIFields,
@@ -250,6 +262,7 @@ type FeatureFlags struct {
 	EnableWaitExponentialBackoff        bool   `json:"enableWaitExponentialBackoff,omitempty"`
 	EnableTerminationMessageCompression bool   `json:"enableTerminationMessageCompression,omitempty"`
 	KeepStatusSpecDescriptions          bool   `json:"keepStatusSpecDescriptions,omitempty"`
+	EnableSurfacePodEvents              bool   `json:"enableSurfacePodEvents,omitempty"`
 	// PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
 	// are honored. Default: false.
 	PerNamespaceConfiguration bool `json:"perNamespaceConfiguration,omitempty"`
@@ -373,6 +386,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setFeature(KeepStatusSpecDescriptions, DefaultKeepStatusSpecDescriptions, &tc.KeepStatusSpecDescriptions); err != nil {
+		return nil, err
+	}
+	if err := setPerFeatureFlag(SurfacePodEvents, DefaultSurfacePodEventsFlag, &tc.EnableSurfacePodEvents); err != nil {
 		return nil, err
 	}
 

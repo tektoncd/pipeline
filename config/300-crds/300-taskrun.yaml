@@ -1886,6 +1886,8 @@ spec:
                         enableStepActions:
                           description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
+                        enableSurfacePodEvents:
+                          type: boolean
                         enableTektonOCIBundles:
                           description: |-
                             DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
@@ -2170,6 +2172,8 @@ spec:
                                 type: boolean
                               enableStepActions:
                                 description: EnableStepActions is a no-op flag since StepActions are stable
+                                type: boolean
+                              enableSurfacePodEvents:
                                 type: boolean
                               enableTektonOCIBundles:
                                 description: |-
@@ -4064,6 +4068,8 @@ spec:
                         enableStepActions:
                           description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
+                        enableSurfacePodEvents:
+                          type: boolean
                         enableTektonOCIBundles:
                           description: |-
                             DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
@@ -4340,6 +4346,8 @@ spec:
                                 type: boolean
                               enableStepActions:
                                 description: EnableStepActions is a no-op flag since StepActions are stable
+                                type: boolean
+                              enableSurfacePodEvents:
                                 type: boolean
                               enableTektonOCIBundles:
                                 description: |-
@@ -6915,7 +6923,7 @@ spec:
                           onError:
                             description: |-
                               OnError defines the exiting behavior of a container on error
-                              can be set to [ continue | stopAndFail ]
+                              can be set to [ continue | stopAndFail | continueAndFail ]
                             type: string
                           params:
                             description: Params declares parameters passed to this step action.

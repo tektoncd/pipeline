@@ -2371,6 +2371,8 @@ spec:
                         enableStepActions:
                           description: EnableStepActions is a no-op flag since StepActions are stable
                           type: boolean
+                        enableSurfacePodEvents:
+                          type: boolean
                         enableTektonOCIBundles:
                           description: |-
                             DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
@@ -2763,6 +2765,8 @@ spec:
                                   enableStepActions:
                                     description: EnableStepActions is a no-op flag since StepActions are stable
                                     type: boolean
+                                  enableSurfacePodEvents:
+                                    type: boolean
                                   enableTektonOCIBundles:
                                     description: |-
                                       DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
@@ -3047,6 +3051,8 @@ spec:
                                           type: boolean
                                         enableStepActions:
                                           description: EnableStepActions is a no-op flag since StepActions are stable
+                                          type: boolean
+                                        enableSurfacePodEvents:
                                           type: boolean
                                         enableTektonOCIBundles:
                                           description: |-
@@ -5505,6 +5511,8 @@ spec:
                           type: boolean
                         enableStepActions:
                           description: EnableStepActions is a no-op flag since StepActions are stable
+                          type: boolean
+                        enableSurfacePodEvents:
                           type: boolean
                         enableTektonOCIBundles:
                           description: |-
