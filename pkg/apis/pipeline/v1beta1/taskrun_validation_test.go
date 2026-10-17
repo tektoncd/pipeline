@@ -745,18 +745,17 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		wantErr: apis.ErrGeneric("before step must be unique, the same step: step-1 is defined multiple times at", "debug.breakpoints.beforeSteps[1]"),
 		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
-		name: "empty onFailure breakpoint",
+		name: "breakpoints with only beforeSteps set",
 		spec: v1beta1.TaskRunSpec{
 			TaskRef: &v1beta1.TaskRef{
 				Name: "my-task",
 			},
 			Debug: &v1beta1.TaskRunDebug{
 				Breakpoints: &v1beta1.TaskBreakpoints{
-					OnFailure: "",
+					BeforeSteps: []string{"step-1"},
 				},
 			},
 		},
-		wantErr: apis.ErrInvalidValue("onFailure breakpoint is empty, it is only allowed to be set as enabled", "debug.breakpoints.onFailure"),
 		wc:      cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "duplicate stepOverride names",
