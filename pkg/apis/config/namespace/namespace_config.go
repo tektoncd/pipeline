@@ -403,6 +403,7 @@ func configToFeatureFlagsMap(flags *config.FeatureFlags) map[string]string {
 		enableWaitExponentialBackoffKey:             strconv.FormatBool(flags.EnableWaitExponentialBackoff),
 		enableTerminationMessageCompressionKey:      strconv.FormatBool(flags.EnableTerminationMessageCompression),
 		config.KeepStatusSpecDescriptions:           strconv.FormatBool(flags.KeepStatusSpecDescriptions),
+		config.SurfacePodEvents:                     strconv.FormatBool(flags.EnableSurfacePodEvents),
 		perNamespaceConfigurationKey:                strconv.FormatBool(flags.PerNamespaceConfiguration),
 		nonOverridableFieldsKey:                     flags.NonOverridableFields,
 	}
