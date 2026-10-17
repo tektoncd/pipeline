@@ -88,9 +88,7 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, pr *v
 // Extract spanContext from the context and return it as json encoded string
 func getMarshalledSpanFromContext(ctx context.Context) (string, error) {
 	carrier := make(map[string]string)
-	pro := otel.GetTextMapPropagator()
-
-	pro.Inject(ctx, propagation.MapCarrier(carrier))
+	propagation.TraceContext{}.Inject(ctx, propagation.MapCarrier(carrier))
 
 	if len(carrier) == 0 {
 		return "", errors.New("spanContext not present in the context, unable to marshall")

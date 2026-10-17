@@ -22,6 +22,7 @@ import (
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/propagation"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
@@ -147,6 +148,35 @@ func TestInitTracing(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestGetMarshalledSpanFromContextExcludesBaggage(t *testing.T) {
+	ctx, _ := tracingPropagationTestContext(t)
+	member, err := baggage.NewMember("tenant", "secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bag, err := baggage.New(member)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx = baggage.ContextWithBaggage(ctx, bag)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+
+	encoded, err := getMarshalledSpanFromContext(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var carrier map[string]string
+	if err := json.Unmarshal([]byte(encoded), &carrier); err != nil {
+		t.Fatal(err)
+	}
+	if carrier["traceparent"] == "" {
+		t.Fatal("traceparent not propagated")
+	}
+	if _, ok := carrier["baggage"]; ok {
+		t.Fatalf("baggage propagated in span context: %v", carrier)
 	}
 }
 
