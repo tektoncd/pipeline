@@ -7,13 +7,6 @@ func max(a, b int) int {
 	return b
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func convertMBToBytes(value int) int {
 	return value * 1024 * 1024
 }

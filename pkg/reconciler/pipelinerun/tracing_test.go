@@ -24,6 +24,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/logging"
@@ -31,14 +32,19 @@ import (
 )
 
 func TestInitTracing(t *testing.T) {
-	previousPropagator := otel.GetTextMapPropagator()
+	oldPropagator := otel.GetTextMapPropagator()
 	otel.SetTextMapPropagator(propagation.TraceContext{})
-	t.Cleanup(func() { otel.SetTextMapPropagator(previousPropagator) })
+	t.Cleanup(func() { otel.SetTextMapPropagator(oldPropagator) })
+
+	exporter := tracetest.NewInMemoryExporter()
+	tracerProvider := tracesdk.NewTracerProvider(tracesdk.WithSyncer(exporter))
+	defer func() { _ = tracerProvider.Shutdown(t.Context()) }()
 
 	testcases := []struct {
 		name                    string
 		pipelineRun             *v1.PipelineRun
 		tracerProvider          trace.TracerProvider
+		exporter                *tracetest.InMemoryExporter
 		expectSpanContextStatus bool
 		expectValidSpanContext  bool
 		parentTraceID           string
@@ -50,7 +56,8 @@ func TestInitTracing(t *testing.T) {
 				Namespace: "testns",
 			},
 		},
-		tracerProvider:          tracesdk.NewTracerProvider(),
+		tracerProvider:          tracerProvider,
+		exporter:                exporter,
 		expectSpanContextStatus: true,
 		expectValidSpanContext:  true,
 	}, {
@@ -98,7 +105,24 @@ func TestInitTracing(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			pr := tc.pipelineRun
-			ctx := initTracing(t.Context(), tc.tracerProvider, pr)
+			ctx, span := initTracing(t.Context(), tc.tracerProvider, pr)
+
+			if tc.exporter != nil {
+				if got := tc.exporter.GetSpans(); len(got) != 0 {
+					t.Fatalf("root span exported before caller ended it: got %d spans", len(got))
+				}
+			}
+
+			span.End()
+			if tc.exporter != nil {
+				spans := tc.exporter.GetSpans()
+				if len(spans) != 1 {
+					t.Fatalf("exported spans = %d, want 1", len(spans))
+				}
+				if spans[0].Name != "PipelineRun:Reconciler" {
+					t.Fatalf("exported span name = %q, want PipelineRun:Reconciler", spans[0].Name)
+				}
+			}
 
 			if ctx == nil {
 				t.Fatalf("returned nil context from initTracing")

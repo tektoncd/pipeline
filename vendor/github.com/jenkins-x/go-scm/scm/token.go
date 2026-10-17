@@ -32,3 +32,18 @@ type (
 func WithContext(parent context.Context, token *Token) context.Context {
 	return context.WithValue(parent, TokenKey{}, token)
 }
+
+// StaticTokenSource returns a TokenSource that always returns the same token.
+// Because the token is never refreshed it is only suitable for credentials
+// that do not expire, such as a personal access token.
+func StaticTokenSource(token string) TokenSource {
+	return staticTokenSource{token: &Token{Token: token}}
+}
+
+type staticTokenSource struct {
+	token *Token
+}
+
+func (s staticTokenSource) Token(context.Context) (*Token, error) {
+	return s.token, nil
+}

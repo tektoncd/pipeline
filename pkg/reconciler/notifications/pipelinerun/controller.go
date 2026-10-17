@@ -42,7 +42,7 @@ func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 
 		pipelineRunInformer := pipelineruninformer.Get(ctx)
 		if _, err := pipelineRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register PipelineRun informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register PipelineRun informer event handler: %v", err)
 		}
 
 		return impl

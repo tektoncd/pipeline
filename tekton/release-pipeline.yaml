@@ -310,7 +310,7 @@ spec:
             description: The full URL of the release file (no tag) in the bucket
         steps:
           - name: create-results
-            image: docker.io/library/alpine:3.20.3@sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d
+            image: docker.io/library/alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
             env:
               - name: RELEASE_BUCKET
                 value: $(params.releaseBucket)
@@ -350,7 +350,7 @@ spec:
             description: Whether Chains signing succeeded (true, failed, or timeout)
         steps:
           - name: wait-and-extract
-            image: docker.io/alpine/k8s:1.32.2@sha256:15cfdf84d6de3559bc54d7479eb4e8aadbf71f6d7f08782cb1e91f3446f4b2d8
+            image: docker.io/alpine/k8s:1.37.1@sha256:712dc5385d1c1a3f83b747fa9e40f64d433a97f72ff42f9755ff7dd1f62846e4
             script: |
               #!/bin/sh
               set -e
@@ -505,7 +505,7 @@ spec:
           - name: workarea
         steps:
           - name: setup
-            image: docker.io/library/alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
+            image: docker.io/library/alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
             script: |
               #!/bin/sh
               set -e
@@ -559,7 +559,7 @@ spec:
           - name: url
             value: https://github.com/tektoncd/plumbing
           - name: revision
-            value: 7abffd25eb2e578e6698a9ff13470d04906f79e6
+            value: ddcbc8eb56fe4b340ec4c0930f78e68b6a56783e
           - name: pathInRepo
             value: tekton/resources/release/base/github_release_oci.yaml
       params:

@@ -17,6 +17,7 @@ import (
 
 	"code.gitea.io/sdk/gitea"
 	"github.com/jenkins-x/go-scm/scm"
+	"github.com/jenkins-x/go-scm/scm/transport"
 )
 
 // NewWebHookService creates a new instance of the webhook service without the rest of the client
@@ -31,6 +32,35 @@ func New(uri string) (*scm.Client, error) {
 
 // NewWithToken returns a new Gitea API client with the token set.
 func NewWithToken(uri, token string) (*scm.Client, error) {
+	return newClient(uri, gitea.SetToken(token))
+}
+
+// NewWithBasicAuth returns a new Gitea API client with the basic auth set.
+func NewWithBasicAuth(uri, user, password string) (*scm.Client, error) {
+	return newClient(uri, gitea.SetBasicAuth(user, password))
+}
+
+// NewWithTokenSource returns a new Gitea API client that resolves its token
+// from source on every request, so a token that expires part way through the
+// life of the client is replaced without the client having to be rebuilt.
+func NewWithTokenSource(uri string, source scm.TokenSource) (*scm.Client, error) {
+	httpClient := &http.Client{
+		Transport: &transport.Auth{
+			Source:     source,
+			Credential: transport.SchemeCredential("token"),
+		},
+	}
+	client, err := newClient(uri, gitea.SetHTTPClient(httpClient))
+	if err != nil {
+		return nil, err
+	}
+	// The Gitea SDK serves most of this driver from its own http.Client, but a
+	// handful of calls go through scm.Client, so both need the transport.
+	client.Client = httpClient
+	return client, nil
+}
+
+func newClient(uri string, opts ...gitea.ClientOption) (*scm.Client, error) {
 	base, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -39,7 +69,7 @@ func NewWithToken(uri, token string) (*scm.Client, error) {
 		base.Path += "/"
 	}
 	client := &wrapper{Client: new(scm.Client)}
-	client.GiteaClient, err = gitea.NewClient(base.String(), gitea.SetToken(token))
+	client.GiteaClient, err = gitea.NewClient(base.String(), opts...)
 
 	if err != nil {
 		return nil, err
@@ -56,37 +86,6 @@ func NewWithToken(uri, token string) (*scm.Client, error) {
 	client.Repositories = &repositoryService{client}
 	client.Reviews = &reviewService{client}
 	client.Releases = &releaseService{client}
-	client.Users = &userService{client}
-	client.Webhooks = &webhookService{client}
-	return client.Client, nil
-}
-
-// NewWithBasicAuth returns a new Gitea API client with the basic auth set.
-func NewWithBasicAuth(uri, user, password string) (*scm.Client, error) {
-	base, err := url.Parse(uri)
-	if err != nil {
-		return nil, err
-	}
-	if !strings.HasSuffix(base.Path, "/") {
-		base.Path += "/"
-	}
-	client := &wrapper{Client: new(scm.Client)}
-	client.GiteaClient, err = gitea.NewClient(base.String(), gitea.SetBasicAuth(user, password))
-
-	if err != nil {
-		return nil, err
-	}
-	client.BaseURL = base
-	// initialize services
-	client.Driver = scm.DriverGitea
-	client.Contents = &contentService{client}
-	client.Git = &gitService{client}
-	client.Issues = &issueService{client}
-	client.Milestones = &milestoneService{client}
-	client.Organizations = &organizationService{client}
-	client.PullRequests = &pullService{&issueService{client}}
-	client.Repositories = &repositoryService{client}
-	client.Reviews = &reviewService{client}
 	client.Users = &userService{client}
 	client.Webhooks = &webhookService{client}
 	return client.Client, nil

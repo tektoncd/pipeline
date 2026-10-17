@@ -140,6 +140,10 @@ func LoadECDSAVerifier(pub *ecdsa.PublicKey, hashFunc crypto.Hash) (*ECDSAVerifi
 		return nil, errors.New("invalid ECDSA public key specified")
 	}
 
+	if _, err := pub.Bytes(); err != nil {
+		return nil, fmt.Errorf("invalid ECDSA public key: %w", err)
+	}
+
 	if !isSupportedAlg(hashFunc, ecdsaSupportedHashFuncs) {
 		return nil, errors.New("invalid hash function specified")
 	}
@@ -185,11 +189,6 @@ func (e ECDSAVerifier) VerifySignature(signature, message io.Reader, opts ...Ver
 	sigBytes, err := io.ReadAll(signature)
 	if err != nil {
 		return fmt.Errorf("reading signature: %w", err)
-	}
-
-	// Without this check, VerifyASN1 panics on an invalid key.
-	if !e.publicKey.IsOnCurve(e.publicKey.X, e.publicKey.Y) {
-		return fmt.Errorf("invalid ECDSA public key for %s", e.publicKey.Params().Name)
 	}
 
 	asnParseTest := struct {

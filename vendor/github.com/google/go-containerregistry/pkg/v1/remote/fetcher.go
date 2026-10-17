@@ -17,13 +17,14 @@ package remote
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
 
+	"github.com/google/go-containerregistry/internal/ipaddr"
 	"github.com/google/go-containerregistry/internal/limit"
 	"github.com/google/go-containerregistry/internal/redact"
 	"github.com/google/go-containerregistry/internal/verify"
@@ -98,10 +99,8 @@ func checkRedirectSSRF(req *http.Request, via []*http.Request) error {
 	if destHost == origHost {
 		return nil // same-host redirect is always allowed
 	}
-	if ip := net.ParseIP(destHost); ip != nil {
-		if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() || ip.IsUnspecified() {
-			return fmt.Errorf("SSRF protection: redirect from %q to private/link-local host %q denied", origHost, destHost)
-		}
+	if ipaddr.IsPrivateOrLinkLocal(destHost) {
+		return fmt.Errorf("SSRF protection: redirect from %q to private/link-local host %q denied", origHost, destHost)
 	}
 	return nil
 }
@@ -174,10 +173,26 @@ func (f *fetcher) fetchManifest(ctx context.Context, ref name.Reference, accepta
 		return nil, nil, err
 	}
 
-	digest, size, err := v1.SHA256(bytes.NewReader(manifest))
+	// Hash with the algorithm of the reference when pulling by digest.
+	dgst, byDigest := ref.(name.Digest)
+	algo := "sha256"
+	if byDigest {
+		h, err := v1.NewHash(dgst.DigestStr())
+		if err != nil {
+			return nil, nil, err
+		}
+		algo = h.Algorithm
+	}
+	hasher, err := v1.Hasher(algo)
 	if err != nil {
 		return nil, nil, err
 	}
+	hasher.Write(manifest)
+	digest := v1.Hash{
+		Algorithm: algo,
+		Hex:       hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size()))),
+	}
+	size := int64(len(manifest))
 
 	mediaType := types.MediaType(resp.Header.Get("Content-Type"))
 	contentDigest, err := v1.NewHash(resp.Header.Get("Docker-Content-Digest"))
@@ -188,7 +203,7 @@ func (f *fetcher) fetchManifest(ctx context.Context, ref name.Reference, accepta
 	}
 
 	// Validate the digest matches what we asked for, if pulling by digest.
-	if dgst, ok := ref.(name.Digest); ok {
+	if byDigest {
 		if digest.String() != dgst.DigestStr() {
 			return nil, nil, fmt.Errorf("manifest digest: %q does not match requested digest: %q for %q", digest, dgst.DigestStr(), ref)
 		}
@@ -380,10 +395,8 @@ func validateForeignURL(rawURL string, insecure bool) error {
 		return fmt.Errorf("foreign layer URL scheme %q not allowed; must be https (or http for insecure registries)", u.Scheme)
 	}
 	host := u.Hostname()
-	if ip := net.ParseIP(host); ip != nil {
-		if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() || ip.IsUnspecified() {
-			return fmt.Errorf("foreign layer URL host %q is a private or link-local address", host)
-		}
+	if ipaddr.IsPrivateOrLinkLocal(host) {
+		return fmt.Errorf("foreign layer URL host %q is a private or link-local address", host)
 	}
 	return nil
 }

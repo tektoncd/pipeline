@@ -1263,10 +1263,11 @@ taskSpec:
 **Note:** Every `PipelineTask` can only access its own `retries` and `retry-count`. These
 values aren't accessible for other `PipelineTask`s.
 
-**Note:** `$(context.task.retry-count)` is only substituted when the `PipelineTask`
-defines its task body inline with `taskSpec`. When the `PipelineTask` uses `taskRef`,
-the variable is passed through as a literal string because the referenced `Task` is
-resolved before the retry-count context is available.
+**Note:** `$(context.task.retry-count)` is substituted in the `Task`'s execution
+context, so a referenced `Task` should use it inside the `Task` itself. If that
+`Task` also needs the `PipelineTask`'s configured retries, pass
+`$(context.pipelineTask.retries)` via the `PipelineTask`'s `params` and consume it
+as `$(params.<name>)`.
 
 ## Using `Results`
 

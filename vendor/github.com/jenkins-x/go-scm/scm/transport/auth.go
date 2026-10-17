@@ -9,6 +9,9 @@ import "net/http"
 // Authorization is an http.RoundTripper that makes HTTP
 // requests, wrapping a base RoundTripper and adding an
 // Authorization header with credentials
+//
+// Deprecated: use Auth with SchemeCredential(scheme), which resolves the
+// credential from a scm.TokenSource per request rather than capturing it.
 type Authorization struct {
 	Base http.RoundTripper
 

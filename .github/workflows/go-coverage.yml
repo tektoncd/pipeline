@@ -32,7 +32,7 @@ jobs:
 
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
 
@@ -50,7 +50,11 @@ jobs:
       - name: Generate coverage
         working-directory: ${{ github.workspace }}/src/github.com/tektoncd/pipeline
         run: |
-          go test -coverprofile=coverage.out -covermode=atomic ./... || true
+          PACKAGES=$(go list ./... | grep -vE '/cmd(/|$)|/vendor(/|$)|/hack(/|$)|/test(/|$)|/fake(/|$)|/pkg/client(/|$)|/examples(/|$)|/tekton(/|$)')
+          COVERPKG=$(echo $PACKAGES | tr ' ' ',')
+          go test -coverprofile=coverage_raw.out -covermode=atomic -coverpkg="$COVERPKG" $PACKAGES
+          grep -vE 'zz_generated\.deepcopy\.go|openapi_generated\.go' coverage_raw.out > coverage.out
+          rm -f coverage_raw.out
           echo "Generated coverage profile"
 
       - name: Archive coverage results
@@ -61,7 +65,7 @@ jobs:
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
-        uses: fgrosse/go-coverage-report@e432de98ee94a276e8f666d25bfd76347665f75b # v1.3.1
+        uses: fgrosse/go-coverage-report@c4bf7e78d1379325814b4dd42d80e526082e788b # v1.5.0
         continue-on-error: true # This may fail if artifact on main branch does not exist (first run or expired)
         with:
           coverage-artifact-name: "code-coverage"
@@ -69,7 +73,6 @@ jobs:
 
   codecov-upload:
     name: Upload coverage to Codecov
-    if: github.event_name != 'pull_request'
     needs: go-coverage
     runs-on: ubuntu-24.04
     permissions:
@@ -79,7 +82,7 @@ jobs:
 
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
 
@@ -94,10 +97,11 @@ jobs:
           name: code-coverage
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v6.0.2
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5  # v7.1.1
         continue-on-error: true
         with:
           files: coverage.out
           flags: unit-tests
           use_oidc: true
           fail_ci_if_error: false
+          disable_search: true

@@ -441,6 +441,25 @@ Available formats:
 | `standard-quiet` | Standard `go test` format |
 | `standard-verbose` | Standard `go test -v` format |
 
+##### End-to-end (e2e) tests
+
+Before running the e2e tests, ensure that Pipelines is installed locally in a kind cluster. The steps below summarize the process:
+
+```shell
+ko apply -R -f config/
+kubectl apply -f optional_config/enable-log-access-to-controller/
+export KO_DOCKER_REPO=kind.local
+export SYSTEM_NAMESPACE=tekton-pipelines
+```
+
+Then run the e2e tests:
+
+```shell
+go test -v -count=1 -tags=e2e -timeout=20m ./test -skipRootUserTests=true
+```
+
+For more details, flags, and advanced options see the [e2e testing guide](test/README.md#running).
+
 ---
 
 ### Managing Tekton Objects using `ko`

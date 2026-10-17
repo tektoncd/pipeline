@@ -26,6 +26,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/stretchr/testify/assert"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -3140,6 +3141,54 @@ func TestResolvePipeline_WhenExpressions(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Did not expect error when resolving PipelineRun: %v", err)
 		}
+	})
+}
+
+func TestResolvePipelineTask_TaskNotFoundError(t *testing.T) {
+	names.TestingSeed()
+	tName1 := "pipelinerun-mytask1-always-true"
+
+	t1 := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: tName1,
+		},
+	}
+
+	ptwe1 := v1.WhenExpression{
+		Input:    "foo",
+		Operator: selection.In,
+		Values:   []string{"foo"},
+	}
+
+	pt := v1.PipelineTask{
+		Name:    "mytask1",
+		TaskRef: &v1.TaskRef{Name: "task"},
+		When:    []v1.WhenExpression{ptwe1},
+	}
+
+	pr := v1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun",
+		},
+	}
+
+	getTask := func(_ context.Context, name string) (*v1.Task, *v1.RefSource, *trustedresources.VerificationResult, error) {
+		return nil, nil, nil, errors.New("task not found")
+	}
+	getTaskRun := func(name string) (*v1.TaskRun, error) {
+		return t1, nil
+	}
+
+	t.Run("Task not found error", func(t *testing.T) {
+		_, err := ResolvePipelineTask(t.Context(), pr, nopGetPipelineRun, nopGetPipeline, getTask, getTaskRun, nopGetCustomRun, pt, nil)
+		if err == nil {
+			t.Fatal("expected error but got nil")
+		}
+		var tnfe *TaskNotFoundError
+		if !errors.As(err, &tnfe) {
+			t.Fatalf("expected TaskNotFoundError but got %T: %v", err, err)
+		}
+		assert.Contains(t, err.Error(), "Couldn't retrieve Task \"task\": task not found")
 	})
 }
 

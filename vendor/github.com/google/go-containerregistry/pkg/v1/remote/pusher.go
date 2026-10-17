@@ -122,7 +122,11 @@ func (p *Pusher) writer(ctx context.Context, repo name.Repository, o *options) (
 		o:    o,
 	})
 	rw := v.(*repoWriter)
-	return rw, rw.init(ctx)
+	if err := rw.init(ctx); err != nil {
+		p.writers.CompareAndDelete(repo, rw)
+		return nil, err
+	}
+	return rw, nil
 }
 
 func (p *Pusher) Put(ctx context.Context, ref name.Reference, t Taggable) error {
@@ -410,7 +414,7 @@ func (rw *repoWriter) writeChild(ctx context.Context, child partial.Describable,
 func (rw *repoWriter) manifestExists(ctx context.Context, ref name.Reference, t Taggable) (bool, error) {
 	f := &fetcher{
 		target: ref.Context(),
-		client: rw.w.client,
+		client: rw.w.getClient(),
 	}
 
 	m, err := taggableToManifest(t)

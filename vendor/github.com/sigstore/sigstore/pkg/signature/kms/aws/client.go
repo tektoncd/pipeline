@@ -136,7 +136,7 @@ func (a *awsClient) setupClient(ctx context.Context, opts ...func(*config.LoadOp
 	if os.Getenv("AWS_TLS_INSECURE_SKIP_VERIFY") == "1" {
 		opts = append(opts, config.WithHTTPClient(&http.Client{
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint: gosec
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
 			},
 		}))
 	}
@@ -260,9 +260,9 @@ func (a *awsClient) createKey(ctx context.Context, algorithm string) (crypto.Pub
 	usage := types.KeyUsageTypeSignVerify
 	description := "Created by Sigstore"
 	key, err := a.client.CreateKey(ctx, &kms.CreateKeyInput{
-		CustomerMasterKeySpec: types.CustomerMasterKeySpec(algorithm),
-		KeyUsage:              usage,
-		Description:           &description,
+		KeySpec:     types.KeySpec(algorithm),
+		KeyUsage:    usage,
+		Description: &description,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("creating key: %w", err)
