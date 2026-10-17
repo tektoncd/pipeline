@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	nsconfig "github.com/tektoncd/pipeline/pkg/apis/config/namespace"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -178,6 +179,7 @@ type Reconciler struct {
 	pvcHandler               volumeclaim.PvcHandler
 	resolutionRequester      resolution.Requester
 	tracerProvider           trace.TracerProvider
+	perNamespaceConfig       *nsconfig.PerNamespaceConfig
 }
 
 var (
@@ -191,6 +193,11 @@ var (
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1.PipelineRun) (reconcileErr pkgreconciler.Event) {
 	logger := logging.FromContext(ctx)
+	if mergedCtx, err := c.perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, pr.Namespace); err != nil {
+		logger.Warnf("namespace config for %q: %v", pr.Namespace, err)
+	} else {
+		ctx = mergedCtx
+	}
 
 	// initTracing can persist span context into the status, a real write. Hold
 	// the prior value so that write is not lost when the baseline is taken
