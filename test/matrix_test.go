@@ -693,6 +693,8 @@ spec:
 		t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
 	}
 
+	// Use a short, fixed PipelineRun name (the namespace is already unique per test) so that
+	// "<pr>-<pt>-<includeName>" fits within the 63 character limit and is not hashed by kmeta.ChildName.
 	pipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -714,7 +716,7 @@ spec:
               params:
                 - name: test-case
                   value: robots-txt
-`, helpers.ObjectNameForTest(t), namespace))
+`, "matrix-include-names", namespace))
 	prName := pipelineRun.Name
 
 	t.Logf("Creating PipelineRun %s", prName)
