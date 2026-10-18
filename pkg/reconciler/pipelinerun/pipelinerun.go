@@ -570,6 +570,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		return err
 	case err != nil:
 		logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
+		if resolutioncommon.IsErrTransient(err) {
+			return err
+		}
 		pr.Status.MarkFailed(v1.PipelineRunReasonCouldntGetPipeline.String(),
 			"Error retrieving pipeline for pipelinerun %s/%s: %s",
 			pr.Namespace, pr.Name, err)
