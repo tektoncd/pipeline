@@ -280,7 +280,7 @@ func (repo *repository) execGit(ctx context.Context, subCmd string, args ...stri
 	return out, err
 }
 
-func (repo *repository) getFileContent(givenPath string) ([]byte, error) {
+func (repo *repository) getFileContent(ctx context.Context, givenPath string) ([]byte, error) {
 	if _, err := os.Stat(repo.directory); errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("repository clone no longer exists, used after cleaned? %w", err)
 	}
@@ -303,6 +303,21 @@ func (repo *repository) getFileContent(givenPath string) ([]byte, error) {
 	resolvedPath, err := filepath.EvalSymlinks(absPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			// On a partial, sparse clone (repo.partial) this is ambiguous:
+			// it means either givenPath genuinely doesn't exist, or it's an
+			// in-repo symlink whose target lies outside the directory the
+			// sparse checkout selected, so it was never materialised on
+			// disk. Resolve that case through git's object database
+			// instead of the filesystem -- see resolveViaGitObjects.
+			if repo.partial {
+				// resolveViaGitObjects already returns the same "file does
+				// not exist" text for a path that's genuinely absent (see
+				// TestGetFileContent_ErrorParity_MissingSparseDirectory),
+				// and a more specific error for a symlink that escapes the
+				// repository or a chain that's too deep -- both worth
+				// surfacing rather than collapsing into a generic message.
+				return repo.resolveViaGitObjects(ctx, givenPath)
+			}
 			return nil, errors.New("file does not exist")
 		}
 		return nil, err

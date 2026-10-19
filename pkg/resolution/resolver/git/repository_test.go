@@ -378,7 +378,7 @@ func TestGetFileContent(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			content, err := repo.getFileContent(tc.path)
+			content, err := repo.getFileContent(t.Context(), tc.path)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatalf("expected error, got nil (content: %q)", string(content))
@@ -452,7 +452,7 @@ func TestGetFileContent_SymlinkEscape_RealGitRepo(t *testing.T) {
 	}
 
 	// Verify a normal file can be read.
-	content, err := repo.getFileContent("task.yaml")
+	content, err := repo.getFileContent(ctx, "task.yaml")
 	if err != nil {
 		t.Fatalf("expected to read normal file, got error: %v", err)
 	}
@@ -470,7 +470,7 @@ func TestGetFileContent_SymlinkEscape_RealGitRepo(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			content, err := repo.getFileContent(tc.path)
+			content, err := repo.getFileContent(t.Context(), tc.path)
 			if err == nil {
 				t.Fatalf("symlink escape was NOT blocked — read %d bytes: %q", len(content), string(content))
 			}
@@ -799,14 +799,14 @@ func TestClonePartial_SparseCheckoutRestrictsTree(t *testing.T) {
 		t.Fatalf("failed to checkout: %v", err)
 	}
 
-	content, err := repo.getFileContent("tasks/example.yaml")
+	content, err := repo.getFileContent(ctx, "tasks/example.yaml")
 	if err != nil {
 		t.Fatalf("expected the requested file to be present: %v", err)
 	}
 	if string(content) != "wanted" {
 		t.Fatalf("expected content %q, got %q", "wanted", string(content))
 	}
-	if _, err := repo.getFileContent("README"); err != nil {
+	if _, err := repo.getFileContent(ctx, "README"); err != nil {
 		t.Fatalf("expected root-level files to still be present in cone mode: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(repo.directory, "other")); !os.IsNotExist(err) {
@@ -838,7 +838,7 @@ func TestGetFileContent_ErrorParity_MissingSparseDirectory(t *testing.T) {
 		t.Fatalf("failed to checkout: %v", err)
 	}
 
-	_, err = repo.getFileContent("does-not-exist/pipeline.yaml")
+	_, err = repo.getFileContent(ctx, "does-not-exist/pipeline.yaml")
 	if err == nil {
 		t.Fatal("expected an error resolving a file under a missing sparse directory, got nil")
 	}

@@ -292,7 +292,7 @@ func (g *GitResolver) ResolveGitClone(ctx context.Context) (framework.ResolvedRe
 		return nil, err
 	}
 
-	fileContents, err := repo.getFileContent(path)
+	fileContents, err := repo.getFileContent(ctx, path)
 	if err != nil {
 		return nil, fmt.Errorf("error opening file %q: %w", path, err)
 	}
