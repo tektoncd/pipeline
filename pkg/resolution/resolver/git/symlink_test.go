@@ -52,7 +52,7 @@ func symlinkAndCommit(t *testing.T, repoDir, linkPath, target string) {
 // on the symlink chain and not, say, every small blob in the repository.
 func countObjectsInPack(t *testing.T, dir string) int {
 	t.Helper()
-	out, err := exec.Command("git", "-C", dir, "count-objects", "-v").Output()
+	out, err := exec.CommandContext(t.Context(), "git", "-C", dir, "count-objects", "-v").Output()
 	if err != nil {
 		t.Fatalf("git count-objects: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestGetFileContent_ChainedSymlinksOutsideSparseCone(t *testing.T) {
 	// already arrived at clone time. Enabling the capability on the
 	// server side is what actually makes --filter=blob:none deferral
 	// happen, which is the behaviour this test means to verify.
-	if out, err := exec.Command("git", "-C", repoDir, "config", "uploadpack.allowFilter", "true").CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "git", "-C", repoDir, "config", "uploadpack.allowFilter", "true").CombinedOutput(); err != nil {
 		t.Fatalf("git config uploadpack.allowFilter: %q: %v", out, err)
 	}
 

@@ -17,6 +17,7 @@ limitations under the License.
 package git
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -149,7 +150,8 @@ func (repo *repository) resolveViaGitObjects(ctx context.Context, givenPath stri
 			// the target is deliberately left unresolved here -- it's
 			// processed by this same loop, against whatever resolved
 			// stack is current when the loop reaches it.
-			remaining = append(targetComponents, rest...)
+			targetComponents = append(targetComponents, rest...)
+			remaining = targetComponents
 			continue
 		}
 
@@ -200,7 +202,7 @@ func symlinkTargetComponents(symlinkPathspec string, rawTarget []byte) ([]string
 	if len(rawTarget) > maxSymlinkTargetLength {
 		return nil, fmt.Errorf("symlink %q target exceeds %d bytes", symlinkPathspec, maxSymlinkTargetLength)
 	}
-	if strings.ContainsRune(string(rawTarget), 0) {
+	if bytes.ContainsRune(rawTarget, 0) {
 		return nil, fmt.Errorf("symlink %q target contains a NUL byte", symlinkPathspec)
 	}
 	target := string(rawTarget)
