@@ -1405,14 +1405,14 @@ All timeout configurations are summarized below:
 | Config | Description | Default | Priority |
 | ------ | ----------- | ------- | -------- |
 | Global default timeout | Set via `default-timeout-minutes` in [`config/config-defaults.yaml`](./../config/config-defaults.yaml). Applies when no other timeout is specified. | 60 minutes | 4 (lowest) |
-| PipelineRun-level timeouts | Set via `timeouts.pipeline`, `timeouts.tasks`, and `timeouts.finally` on the `PipelineRun`. | Global default timeout | 3 |
+| PipelineRun-level timeouts | Set via `timeouts.pipeline`, `timeouts.tasks`, and `timeouts.finally` on the `PipelineRun`. | Only `timeouts.pipeline` defaults to the global timeout; `timeouts.tasks` and `timeouts.finally` remain unset unless explicitly configured or computed from the other fields. | 3 |
 | Per-task timeouts | Set via `pipeline.spec.tasks[].timeout` in the `Pipeline` definition. | PipelineRun-level timeout | 2 |
 | Per-task overrides via `taskRunSpecs` | Set via `taskRunSpecs[].timeout` on the `PipelineRun`. Overrides the Pipeline spec timeout at runtime without modifying the Pipeline definition. | Per-task timeout | 1 (highest) |
 
 
-You can use the `timeouts` field to set the `PipelineRun's` desired timeout value in minutes.
+You can use the `timeouts` field to set the `PipelineRun's` desired timeout durations.
 There are three sub-fields:
-- `pipeline`: specifies the timeout for the entire PipelineRun. Defaults to to the global configurable default timeout of 60 minutes.
+- `pipeline`: specifies the timeout for the entire PipelineRun. Defaults to the global configurable default timeout of 60 minutes.
 When `timeouts.pipeline` has elapsed, any running child TaskRuns will be canceled, regardless of whether they are normal Tasks
 or `finally` Tasks, and the PipelineRun will fail.
 - `tasks`: specifies the timeout for the cumulative time taken by non-`finally` Tasks specified in `pipeline.spec.tasks`.
@@ -1446,7 +1446,7 @@ spec:
       timeout: "8m"     # 2. Timeout in Pipeline spec
       taskSpec: { ... }
     - name: task-b
-      taskSpec: { ... } # 4. Uses global default (60m)
+      taskSpec: { ... } # 4. No explicit timeout; bounded by pipeline timeout (10m)
   taskRunSpecs:
   - pipelineTaskName: task-a
     timeout: "5m"       # 1. Highest priority - overrides 8m Pipeline timeout
@@ -1455,7 +1455,7 @@ spec:
 #### Global default timeout
 
 This configuration represents the global default timeout and has the lowest priority. Any other timeout configuration will override it.<br>
-When you first install Tekton, the global default timeout is set to 60 minutes. You can set a different global default timeout value using the [`default-timeout-minutes`](/config/config-defaults.yaml#L40) field in the [`config/config-defaults.yaml`](/config/config-defaults.yaml) file.
+When you first install Tekton, the global default timeout is set to 60 minutes. You can set a different global default timeout value using the `default-timeout-minutes` field in the [`config/config-defaults.yaml`](./../config/config-defaults.yaml) file.
 
 An example is:
 
@@ -1469,13 +1469,13 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 data:
-  default-timeout-minutes: 60
+  default-timeout-minutes: "60"
 ```
 
 #### PipelineRun-level timeouts
 
 This configuration represents PipelineRun-level timeouts. Setting the `pipeline` field of this configuration overrides the global default timeout.<br>
-If not set, the `pipeline` field timeout will be the same as the global default timeout. You can configure this via the `spec.timeouts` field in the YAML when creating a `PipelineRun`.
+If not set, the `pipeline` field timeout will be the same as the global default timeout. The `tasks` and `finally` fields remain unset unless explicitly configured or computed from the other fields. You can configure these timeouts via the `spec.timeouts` field in the YAML when creating a `PipelineRun`.
 
 Each timeout field is a duration that conforms to Go's `ParseDuration` format. For example, valid values include `1h30m`, `1h`, `1m`, and `60s`.
 
@@ -1560,10 +1560,10 @@ spec:
 
 > **Note:** An internal detail of the `PipelineRun` and `TaskRun` reconcilers in the Tekton controller is that it will requeue a `PipelineRun` or `TaskRun` for re-evaluation, versus waiting for the next update, under certain conditions. The wait time for that re-queueing is the elapsed time subtracted from the timeout; however, if the timeout is set to `'0'`, that calculation produces a negative number, and the new reconciliation event will fire immediately, which can impact overall performance, which is counter to the intent of wait time calculation. So instead, the reconcilers will use the configured global timeout as the wait time when the associated timeout has been set to `'0'`.
 
-> **Warning:** You can also use the deprecated `timeout` field to set the expected timeout duration (in minutes) for the PipelineRun.<br>
-> If you do not specify this value in the PipelineRun, the global default timeout will apply.<br>
-> If you set the timeout to `0`, the PipelineRun will fail immediately upon encountering an error.<br>
-> If you are still using this configuration, it is strongly recommended to switch to the `timeouts` field, as this configuration will be removed in a future release.
+> **Warning:** The deprecated `spec.timeout` field is only available in `tekton.dev/v1beta1`. It accepts a Go duration string, such as `"1h30m"` or `"60s"`, to set the timeout for the entire PipelineRun.<br>
+> If neither `spec.timeout` nor `spec.timeouts` is specified, the global default timeout applies.<br>
+> Setting `spec.timeout` to `"0"` disables the timeout; it does not prevent the PipelineRun from failing when an error occurs.<br>
+> Use `spec.timeouts` instead. The `tekton.dev/v1` API only supports `spec.timeouts`.
 
 ## `PipelineRun` status
 
