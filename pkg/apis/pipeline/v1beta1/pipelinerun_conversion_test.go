@@ -73,20 +73,6 @@ var (
 					Name:          "running-step",
 					ContainerName: "step-running-step",
 				}},
-				CloudEvents: []v1beta1.CloudEventDelivery{
-					{
-						Target: "http//sink1",
-						Status: v1beta1.CloudEventDeliveryState{
-							Condition: v1beta1.CloudEventConditionUnknown,
-						},
-					},
-					{
-						Target: "http//sink2",
-						Status: v1beta1.CloudEventDeliveryState{
-							Condition: v1beta1.CloudEventConditionUnknown,
-						},
-					},
-				},
 				Sidecars: []v1beta1.SidecarState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{

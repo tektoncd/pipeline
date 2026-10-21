@@ -50,6 +50,18 @@ spec:
     - name: runTests
       description: If set to something other than "true", skip the build and test tasks
       default: "true"
+    - name: previousReleaseTag
+      description: Previous release tag for changelog generation (e.g. v1.8.0). If empty, auto-detected from git tags.
+      default: ""
+    - name: releaseName
+      description: Release name (e.g. "Devon Rex Dreadnought"). If empty, uses version tag.
+      default: ""
+    - name: releaseMode
+      description: |
+        Set to "nightly" to skip Chains signing verification and GitHub draft
+        release creation. Defaults to "stable" so official releases get the full
+        behaviour without needing to pass this param explicitly.
+      default: "stable"
   workspaces:
     - name: workarea
       description: The workspace where the repo will be cloned.
@@ -57,6 +69,13 @@ spec:
       description: The secret that contains auth credentials to push to the output bucket
     - name: release-images-secret
       description: The secret that contains a service account authorized to push to the imageRegistry
+    - name: github-secret
+      description: |
+        The secret containing GITHUB_TOKEN for creating draft releases.
+        When not bound, the draft-release tasks (wait-for-chains, prepare-draft-release,
+        create-draft-release) are skipped and the draft must be created manually
+        following the cheat sheet instructions.
+      optional: true
   results:
     - name: commit-sha
       description: the sha of the commit that was released
@@ -291,7 +310,7 @@ spec:
             description: The full URL of the release file (no tag) in the bucket
         steps:
           - name: create-results
-            image: docker.io/library/alpine:3.20.3@sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d
+            image: docker.io/library/alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
             env:
               - name: RELEASE_BUCKET
                 value: $(params.releaseBucket)
@@ -306,3 +325,260 @@ spec:
 
               echo "${BASE_URL}/release.yaml" > $(results.release.path)
               echo "${BASE_URL}/release.notags.yaml" > $(results.release-no-tag.path)
+
+    - name: wait-for-chains
+      runAfter: [publish-images]
+      timeout: "30m"
+      when:
+        - cel: "'$(params.releaseMode)' == 'stable'"
+        - input: "$(workspaces.github-secret.bound)"
+          operator: in
+          values: ["true"]
+      params:
+        - name: pipelineRunName
+          value: $(context.pipelineRun.name)
+        - name: namespace
+          value: $(context.pipelineRun.namespace)
+      taskSpec:
+        params:
+          - name: pipelineRunName
+          - name: namespace
+        results:
+          - name: rekor-uuid
+            description: Rekor UUID from Chains transparency log
+          - name: signed
+            description: Whether Chains signing succeeded (true, failed, or timeout)
+        steps:
+          - name: wait-and-extract
+            image: docker.io/alpine/k8s:1.37.1@sha256:712dc5385d1c1a3f83b747fa9e40f64d433a97f72ff42f9755ff7dd1f62846e4
+            script: |
+              #!/bin/sh
+              set -e
+
+              NAMESPACE="$(params.namespace)"
+              PIPELINERUN="$(params.pipelineRunName)"
+
+              # Find the TaskRun name for publish-images
+              # The TaskRun name follows the pattern: <pipelinerun>-<taskname>-<random>
+              echo "Looking for publish-images TaskRun in PipelineRun ${PIPELINERUN}..."
+              TASKRUN_NAME=""
+              MAX_FIND_ATTEMPTS=10
+              FIND_ATTEMPT=0
+              while [ -z "${TASKRUN_NAME}" ] && [ $FIND_ATTEMPT -lt $MAX_FIND_ATTEMPTS ]; do
+                TASKRUN_NAME=$(kubectl get taskrun -n "${NAMESPACE}" \
+                  -l tekton.dev/pipelineRun="${PIPELINERUN}",tekton.dev/pipelineTask=publish-images \
+                  -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+                if [ -z "${TASKRUN_NAME}" ]; then
+                  FIND_ATTEMPT=$((FIND_ATTEMPT + 1))
+                  echo "  Attempt ${FIND_ATTEMPT}/${MAX_FIND_ATTEMPTS} - TaskRun not found yet..."
+                  sleep 10
+                fi
+              done
+
+              if [ -z "${TASKRUN_NAME}" ]; then
+                echo "ERROR: Could not find publish-images TaskRun"
+                printf 'unknown' > "$(results.rekor-uuid.path)"
+                printf 'error' > "$(results.signed.path)"
+                # Don't fail the pipeline — the release artifacts are already published.
+                # The draft release can be created manually using the cheat sheet.
+                exit 0
+              fi
+
+              echo "Found TaskRun: ${TASKRUN_NAME}"
+              echo "Waiting for Chains to sign TaskRun ${TASKRUN_NAME}..."
+
+              MAX_ATTEMPTS=60  # 30 minutes with 30s interval
+              ATTEMPT=0
+              while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+                SIGNED=$(kubectl get taskrun "${TASKRUN_NAME}" -n "${NAMESPACE}" \
+                  -o jsonpath='{.metadata.annotations.chains\.tekton\.dev/signed}' 2>/dev/null || echo "")
+
+                if [ "${SIGNED}" = "true" ] || [ "${SIGNED}" = "failed" ]; then
+                  echo "Chains signing status: ${SIGNED}"
+                  printf '%s' "${SIGNED}" > "$(results.signed.path)"
+
+                  # The release notes verification commands need the in-toto
+                  # *attestation* entry (kind "intoto"), which lists every
+                  # published image as a subject. The chains transparency
+                  # annotation only points at the per-image signature entry
+                  # (kind "hashedrekord"), which has no subjects, so we must
+                  # look the attestation up explicitly.
+                  #
+                  # Strategy: take one published image digest from the
+                  # publish-images IMAGES result, ask the Rekor search index
+                  # for every log entry referencing that digest, then keep the
+                  # entry whose body kind is "intoto".
+                  REKOR_HOST="https://rekor.sigstore.dev"
+                  REKOR_UUID=""
+
+                  IMAGES=$(kubectl get taskrun -n "${NAMESPACE}" \
+                    -l tekton.dev/pipelineRun="${PIPELINERUN}",tekton.dev/pipelineTask=publish-images \
+                    -o jsonpath='{.items[0].status.results[?(@.name=="IMAGES")].value}' 2>/dev/null || echo "")
+                  IMAGE_DIGEST=$(echo "${IMAGES}" | grep -oE 'sha256:[0-9a-f]{64}' | head -1)
+
+                  if [ -n "${IMAGE_DIGEST}" ]; then
+                    echo "Searching Rekor for the in-toto attestation of ${IMAGE_DIGEST}..."
+                    CANDIDATES=$(wget -qO- --header='Content-Type: application/json' \
+                      --post-data="{\"hash\":\"${IMAGE_DIGEST}\"}" \
+                      "${REKOR_HOST}/api/v1/index/retrieve" 2>/dev/null | jq -r '.[]?' || echo "")
+                    for uuid in ${CANDIDATES}; do
+                      KIND=$(wget -qO- "${REKOR_HOST}/api/v1/log/entries/${uuid}" 2>/dev/null \
+                        | jq -r '.[].body' | base64 -d 2>/dev/null | jq -r '.kind' 2>/dev/null || echo "")
+                      if [ "${KIND}" = "intoto" ]; then
+                        REKOR_UUID="${uuid}"
+                        break
+                      fi
+                    done
+                  fi
+
+                  if [ -z "${REKOR_UUID}" ]; then
+                    # Fall back to the transparency annotation. This points at
+                    # the per-image signature entry rather than the attestation,
+                    # but it is better than nothing for manual investigation.
+                    echo "WARNING: Could not find an in-toto attestation entry; falling back to the transparency annotation"
+                    TRANSPARENCY=$(kubectl get taskrun "${TASKRUN_NAME}" -n "${NAMESPACE}" \
+                      -o jsonpath='{.metadata.annotations.chains\.tekton\.dev/transparency}' 2>/dev/null || echo "")
+                    if [ -n "${TRANSPARENCY}" ]; then
+                      # URL format: https://rekor.sigstore.dev/api/v1/log/entries?logIndex=NNNN
+                      # Fetch the full entry UUID from the Rekor API (logIndex alone is not the UUID)
+                      REKOR_UUID=$(wget -qO- "${TRANSPARENCY}" | jq -r 'keys[0]')
+                      if [ -z "${REKOR_UUID}" ]; then
+                        # Fall back to logIndex
+                        REKOR_UUID=$(echo "${TRANSPARENCY}" | grep -oE 'logIndex=[0-9]+' | cut -d= -f2)
+                      fi
+                    fi
+                  fi
+
+                  if [ -z "${REKOR_UUID}" ]; then
+                    REKOR_UUID="unknown"
+                  fi
+                  echo "Rekor UUID: ${REKOR_UUID}"
+                  printf '%s' "${REKOR_UUID}" > "$(results.rekor-uuid.path)"
+                  exit 0
+                fi
+
+                ATTEMPT=$((ATTEMPT + 1))
+                echo "  Attempt ${ATTEMPT}/${MAX_ATTEMPTS} - signing status: '${SIGNED:-pending}'"
+                sleep 30
+              done
+
+              echo "WARNING: Timed out waiting for Chains to sign"
+              printf 'timeout' > "$(results.signed.path)"
+              printf 'unknown' > "$(results.rekor-uuid.path)"
+              # Don't fail the pipeline — the release artifacts are already published.
+              # The draft release can be created manually using the cheat sheet.
+              exit 0
+
+    - name: prepare-draft-release
+      runAfter: [publish-to-bucket]
+      when:
+        - cel: "'$(params.releaseMode)' == 'stable'"
+        - input: "$(workspaces.github-secret.bound)"
+          operator: in
+          values: ["true"]
+      params:
+        - name: package
+          value: $(params.package)
+        - name: versionTag
+          value: $(params.versionTag)
+        - name: previousReleaseTag
+          value: $(params.previousReleaseTag)
+        - name: releaseName
+          value: $(params.releaseName)
+      workspaces:
+        - name: workarea
+          workspace: workarea
+      taskSpec:
+        params:
+          - name: package
+          - name: versionTag
+          - name: previousReleaseTag
+          - name: releaseName
+        results:
+          - name: package
+            description: The package in org/repo format (without github.com/ prefix)
+          - name: previous-tag
+            description: The previous release tag
+          - name: release-name
+            description: The release name to use
+        workspaces:
+          - name: workarea
+        steps:
+          - name: setup
+            image: docker.io/library/alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+            script: |
+              #!/bin/sh
+              set -e
+              apk add --no-cache git > /dev/null 2>&1
+
+              WORKAREA="$(workspaces.workarea.path)"
+              VERSION="$(params.versionTag)"
+              PREVIOUS="$(params.previousReleaseTag)"
+              NAME="$(params.releaseName)"
+
+              # Strip github.com/ prefix from package for the draft release task
+              # (it expects org/repo format, e.g. tektoncd/pipeline)
+              PACKAGE=$(echo "$(params.package)" | sed 's|^github\.com/||')
+              printf '%s' "${PACKAGE}" > "$(results.package.path)"
+              echo "Package: ${PACKAGE}"
+
+              # Detect previous tag if not provided
+              if [ -z "${PREVIOUS}" ]; then
+                git config --global --add safe.directory "${WORKAREA}/git"
+                git -C "${WORKAREA}/git" fetch --tags
+                PREVIOUS=$(git -C "${WORKAREA}/git" tag --sort=-v:refname | grep '^v[0-9]' | while read tag; do
+                  if [ "$(printf '%s\n%s' "$tag" "$VERSION" | sort -V | head -1)" = "$tag" ] && [ "$tag" != "$VERSION" ]; then
+                    echo "$tag"
+                    break
+                  fi
+                done)
+                if [ -z "${PREVIOUS}" ]; then
+                  echo "WARNING: Could not auto-detect previous tag"
+                  PREVIOUS="unknown"
+                fi
+                echo "Auto-detected previous tag: ${PREVIOUS}"
+              fi
+              printf '%s' "${PREVIOUS}" > "$(results.previous-tag.path)"
+
+              # Use provided name or fall back to version
+              if [ -z "${NAME}" ]; then
+                NAME="Release ${VERSION}"
+              fi
+              printf '%s' "${NAME}" > "$(results.release-name.path)"
+
+    - name: create-draft-release
+      runAfter: [prepare-draft-release, wait-for-chains]
+      when:
+        - cel: "'$(params.releaseMode)' == 'stable'"
+        - input: "$(workspaces.github-secret.bound)"
+          operator: in
+          values: ["true"]
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/tektoncd/plumbing
+          - name: revision
+            value: ddcbc8eb56fe4b340ec4c0930f78e68b6a56783e
+          - name: pathInRepo
+            value: tekton/resources/release/base/github_release_oci.yaml
+      params:
+        - name: package
+          value: $(tasks.prepare-draft-release.results.package)
+        - name: git-revision
+          value: $(params.gitRevision)
+        - name: release-name
+          value: $(tasks.prepare-draft-release.results.release-name)
+        - name: release-tag
+          value: $(params.versionTag)
+        - name: previous-release-tag
+          value: $(tasks.prepare-draft-release.results.previous-tag)
+        - name: rekor-uuid
+          value: $(tasks.wait-for-chains.results.rekor-uuid)
+        - name: source-subpath
+          value: git
+        - name: release-subpath
+          value: bucket/$(params.versionTag)
+      workspaces:
+        - name: shared
+          workspace: workarea

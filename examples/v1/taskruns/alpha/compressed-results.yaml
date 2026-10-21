@@ -1,0 +1,65 @@
+# This TaskRun demonstrates the termination message compression feature.
+# It produces many results that would exceed the 4KB termination message limit
+# without compression, but fit within the limit when compression is enabled.
+#
+# Prerequisites:
+#   Set the feature flag in the feature-flags ConfigMap:
+#     kubectl patch configmap feature-flags -n tekton-pipelines \
+#       -p '{"data":{"enable-termination-message-compression":"true"}}'
+#
+# The task generates 20 image digest results. Without compression, this
+# produces ~5KB of JSON, exceeding the 4KB Kubernetes termination message
+# limit. With compression enabled (~40-50% reduction), it fits comfortably.
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: compressed-results-
+spec:
+  taskSpec:
+    results:
+      - name: digest-1
+      - name: digest-2
+      - name: digest-3
+      - name: digest-4
+      - name: digest-5
+      - name: digest-6
+      - name: digest-7
+      - name: digest-8
+      - name: digest-9
+      - name: digest-10
+      - name: digest-11
+      - name: digest-12
+      - name: digest-13
+      - name: digest-14
+      - name: digest-15
+      - name: digest-16
+      - name: digest-17
+      - name: digest-18
+      - name: digest-19
+      - name: digest-20
+    steps:
+      - name: generate-digests
+        image: mirror.gcr.io/bash
+        script: |
+          #!/usr/bin/env bash
+          echo -n "gcr.io/my-project/image-1@sha256:a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2" > $(results.digest-1.path)
+          echo -n "gcr.io/my-project/image-2@sha256:b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b201" > $(results.digest-2.path)
+          echo -n "gcr.io/my-project/image-3@sha256:c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b20102" > $(results.digest-3.path)
+          echo -n "gcr.io/my-project/image-4@sha256:d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2010203" > $(results.digest-4.path)
+          echo -n "gcr.io/my-project/image-5@sha256:e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b201020304" > $(results.digest-5.path)
+          echo -n "gcr.io/my-project/image-6@sha256:f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b20102030405" > $(results.digest-6.path)
+          echo -n "gcr.io/my-project/image-7@sha256:a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2010203040506" > $(results.digest-7.path)
+          echo -n "gcr.io/my-project/image-8@sha256:b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b201020304050607" > $(results.digest-8.path)
+          echo -n "gcr.io/my-project/image-9@sha256:c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b20102030405060708" > $(results.digest-9.path)
+          echo -n "gcr.io/my-project/image-10@sha256:d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2010203040506070809" > $(results.digest-10.path)
+          echo -n "gcr.io/my-project/image-11@sha256:e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b201020304050607080910" > $(results.digest-11.path)
+          echo -n "gcr.io/my-project/image-12@sha256:f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b20102030405060708091011" > $(results.digest-12.path)
+          echo -n "gcr.io/my-project/image-13@sha256:a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2010203040506070809101112" > $(results.digest-13.path)
+          echo -n "gcr.io/my-project/image-14@sha256:b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b201020304050607080910111213" > $(results.digest-14.path)
+          echo -n "gcr.io/my-project/image-15@sha256:c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b20102030405060708091011121314" > $(results.digest-15.path)
+          echo -n "gcr.io/my-project/image-16@sha256:d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2010203040506070809101112131415" > $(results.digest-16.path)
+          echo -n "gcr.io/my-project/image-17@sha256:e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b201020304050607080910111213141516" > $(results.digest-17.path)
+          echo -n "gcr.io/my-project/image-18@sha256:f6a1b2c3d4e5f6a1b2c3d4e5f6a1b20102030405060708091011121314151617" > $(results.digest-18.path)
+          echo -n "gcr.io/my-project/image-19@sha256:a1b2c3d4e5f6a1b2c3d4e5f6a1b2010203040506070809101112131415161718" > $(results.digest-19.path)
+          echo -n "gcr.io/my-project/image-20@sha256:b2c3d4e5f6a1b2c3d4e5f6a1b201020304050607080910111213141516171819" > $(results.digest-20.path)
+          echo "Wrote 20 digest results"

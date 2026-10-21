@@ -348,3 +348,73 @@ func TestImageInfo(t *testing.T) {
 		})
 	}
 }
+
+func TestImageInfo_PlatformDoesNotLeakControllerVariant(t *testing.T) {
+	// Regression test for https://github.com/tektoncd/pipeline/issues/10073
+	//
+	// When the controller runs on ARM (which has a CPU variant like "v8"),
+	// and resolves a single-platform amd64 image, the platform key must
+	// NOT include the controller's variant. It should be "linux/amd64",
+	// not "linux/amd64/v8".
+	tests := []struct {
+		name         string
+		os           string
+		arch         string
+		entrypoint   []string
+		wantPlatform string
+	}{{
+		name:         "amd64 image should not have variant",
+		os:           "linux",
+		arch:         "amd64",
+		entrypoint:   []string{"/bin/sh"},
+		wantPlatform: "linux/amd64",
+	}, {
+		name:         "arm64 image should not have variant from controller",
+		os:           "linux",
+		arch:         "arm64",
+		entrypoint:   []string{"/bin/sh"},
+		wantPlatform: "linux/arm64",
+	}, {
+		name:         "windows amd64 image",
+		os:           "windows",
+		arch:         "amd64",
+		entrypoint:   []string{"cmd.exe"},
+		wantPlatform: "windows/amd64",
+	}}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			img, err := random.Image(1, 1)
+			if err != nil {
+				t.Fatalf("random.Image: %v", err)
+			}
+
+			cf, err := img.ConfigFile()
+			if err != nil {
+				t.Fatalf("ConfigFile: %v", err)
+			}
+			cf.OS = tc.os
+			cf.Architecture = tc.arch
+			cf.Config.Entrypoint = tc.entrypoint
+
+			img, err = mutate.ConfigFile(img, cf)
+			if err != nil {
+				t.Fatalf("mutate.ConfigFile: %v", err)
+			}
+
+			_, platform, err := imageInfo(img, false)
+			if err != nil {
+				t.Fatalf("imageInfo: %v", err)
+			}
+
+			if platform != tc.wantPlatform {
+				t.Errorf("imageInfo platform = %q, want %q (controller variant may have leaked)", platform, tc.wantPlatform)
+			}
+
+			// Verify no CPU variant is present in the platform string.
+			if strings.Count(platform, "/") > 1 {
+				t.Errorf("platform %q contains a CPU variant, which should not be set from single-image config", platform)
+			}
+		})
+	}
+}

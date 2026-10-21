@@ -95,18 +95,51 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			name: "git url from a local repository",
+			name: "git url from a local repository is rejected",
 			params: map[string]string{
 				UrlParam:      "/tmp/repo",
 				PathParam:     "bar",
 				RevisionParam: "baz",
 			},
+			wantErr: "invalid git repository url: /tmp/repo",
 		},
 		{
 			name: "git url from a git ssh repository",
 			params: map[string]string{
 				UrlParam:      "git@host.com:foo/bar",
 				PathParam:     "bar",
+				RevisionParam: "baz",
+			},
+		},
+		{
+			name: "git url from an ssh:// repository",
+			params: map[string]string{
+				UrlParam:      "ssh://git@host.com/foo/bar",
+				PathParam:     "bar",
+				RevisionParam: "baz",
+			},
+		},
+		{
+			name: "git url from an ftp repository",
+			params: map[string]string{
+				UrlParam:      "ftp://host.com/foo/bar",
+				PathParam:     "bar",
+				RevisionParam: "baz",
+			},
+		},
+		{
+			name: "git url from an ftps repository",
+			params: map[string]string{
+				UrlParam:      "ftps://host.com/foo/bar",
+				PathParam:     "bar",
+				RevisionParam: "baz",
+			},
+		},
+		{
+			name: "leading slash is stripped",
+			params: map[string]string{
+				UrlParam:      "https://foo/bar/hello/moto",
+				PathParam:     "/task/git-clone/0.10/git-clone.yaml",
 				RevisionParam: "baz",
 			},
 		},
@@ -193,6 +226,70 @@ func TestValidateParams_Failure(t *testing.T) {
 				RepoParam:     "foo",
 			},
 			expectedErr: "'org' is required when 'repo' is specified",
+		}, {
+			name: "revision starts with dash (argument injection)",
+			params: map[string]string{
+				RevisionParam: "--upload-pack=/bin/sh",
+				PathParam:     "foo/bar.yaml",
+				UrlParam:      "https://github.com/tektoncd/catalog",
+			},
+			expectedErr: `invalid revision "--upload-pack=/bin/sh": must not begin with '-'`,
+		}, {
+			name: "revision starts with single dash",
+			params: map[string]string{
+				RevisionParam: "-v",
+				PathParam:     "foo/bar.yaml",
+				UrlParam:      "https://github.com/tektoncd/catalog",
+			},
+			expectedErr: `invalid revision "-v": must not begin with '-'`,
+		}, {
+			name: "local filesystem url rejected",
+			params: map[string]string{
+				RevisionParam: "main",
+				PathParam:     "foo/bar.yaml",
+				UrlParam:      "/tmp/localrepo",
+			},
+			expectedErr: "invalid git repository url: /tmp/localrepo",
+		}, {
+			name: "file:// url rejected",
+			params: map[string]string{
+				RevisionParam: "main",
+				PathParam:     "foo/bar.yaml",
+				UrlParam:      "file:///tmp/localrepo",
+			},
+			expectedErr: "invalid git repository url: file:///tmp/localrepo",
+		}, {
+			name: "path traversal with dot-dot",
+			params: map[string]string{
+				RevisionParam: "abcd1234",
+				PathParam:     "../../etc/passwd",
+				UrlParam:      "https://github.com/tektoncd/catalog",
+			},
+			expectedErr: `invalid path "../../etc/passwd": must not contain '..' components`,
+		}, {
+			name: "path traversal deeply nested",
+			params: map[string]string{
+				RevisionParam: "abcd1234",
+				PathParam:     "../../../../var/run/secrets/kubernetes.io/serviceaccount/token",
+				UrlParam:      "https://github.com/tektoncd/catalog",
+			},
+			expectedErr: `invalid path "../../../../var/run/secrets/kubernetes.io/serviceaccount/token": must not contain '..' components`,
+		}, {
+			name: "path traversal with leading dot-dot",
+			params: map[string]string{
+				RevisionParam: "abcd1234",
+				PathParam:     "../secret",
+				UrlParam:      "https://github.com/tektoncd/catalog",
+			},
+			expectedErr: `invalid path "../secret": must not contain '..' components`,
+		}, {
+			name: "path traversal embedded dot-dot",
+			params: map[string]string{
+				RevisionParam: "abcd1234",
+				PathParam:     "foo/../../../etc/passwd",
+				UrlParam:      "https://github.com/tektoncd/catalog",
+			},
+			expectedErr: `invalid path "foo/../../../etc/passwd": must not contain '..' components`,
 		},
 	}
 
@@ -293,26 +390,36 @@ type params struct {
 }
 
 func TestResolve(t *testing.T) {
+	objTemplate := "{\"apiVersion\": \"tekton.dev/v1\", \"kind\": \"%s\", \"metadata\": {\"name\": \"%s\"}}"
+	mainContent := fmt.Sprintf(objTemplate, "Pipeline", "released content in main branch and in tag v1")
+	oldBranchContent := fmt.Sprintf(objTemplate, "Pipeline", "oldcontent in test branch")
+	newBranchContent := fmt.Sprintf(objTemplate, "Pipeline", "new content in test branch")
+
 	// local repo set up for anonymous cloning
 	// ----
 	commits := []commitForRepo{{
 		Dir:      "foo/",
 		Filename: "old",
-		Content:  "old content in test branch",
+		Content:  oldBranchContent,
 		Branch:   "test-branch",
 	}, {
 		Dir:      "foo/",
 		Filename: "new",
-		Content:  "new content in test branch",
+		Content:  newBranchContent,
 		Branch:   "test-branch",
 	}, {
 		Dir:      "./",
 		Filename: "released",
-		Content:  "released content in main branch and in tag v1",
+		Content:  mainContent,
 		Tag:      "v1",
 	}}
 
 	anonFakeRepoURL, commitSHAsInAnonRepo := createTestRepo(t, commits)
+
+	// Clone integration tests use local filesystem paths which are
+	// rejected by validateRepoURL in production. Override the validator
+	// for the duration of this test so the clone path can be exercised.
+	t.Cleanup(SetValidateRepoURLForTesting(func(_ string) bool { return true }))
 
 	// local repo set up for scm cloning
 	// ----
@@ -372,7 +479,7 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[2],
-		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte("released content in main branch and in tag v1")),
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte(mainContent)),
 	}, {
 		name: "clone: revision is tag name",
 		args: &params{
@@ -381,7 +488,7 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[2],
-		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte("released content in main branch and in tag v1")),
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte(mainContent)),
 	}, {
 		name: "clone: revision is the full tag name i.e. refs/tags/v1",
 		args: &params{
@@ -390,7 +497,7 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[2],
-		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte("released content in main branch and in tag v1")),
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte(mainContent)),
 	}, {
 		name: "clone: revision is a branch name",
 		args: &params{
@@ -399,7 +506,7 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[1],
-		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte("new content in test branch")),
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte(newBranchContent)),
 	}, {
 		name: "clone: revision is a specific commit sha",
 		args: &params{
@@ -408,7 +515,7 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[0],
-		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte("old content in test branch")),
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte(oldBranchContent)),
 	}, {
 		name: "clone: file does not exist",
 		args: &params{
@@ -426,7 +533,7 @@ func TestResolve(t *testing.T) {
 			namespace:   "foo",
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[2],
-		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte("released content in main branch and in tag v1")),
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData([]byte(mainContent)),
 	}, {
 		name: "clone: secret for git clone does not exist",
 		args: &params{
@@ -573,6 +680,66 @@ func TestResolve(t *testing.T) {
 		config: map[string]string{
 			ServerURLKey: "notsofake",
 			SCMTypeKey:   "definitivelynotafake",
+		},
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData(mainTaskYAML),
+	}, {
+		name: "api: custom serverURL without token is rejected",
+		args: &params{
+			revision:   "main",
+			pathInRepo: "tasks/example-task.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			serverURL:  "https://attacker.example.com",
+			scmType:    "github",
+		},
+		config: map[string]string{
+			ServerURLKey:          "fake",
+			SCMTypeKey:            "fake",
+			APISecretNameKey:      "token-secret",
+			APISecretKeyKey:       "token",
+			APISecretNamespaceKey: system.Namespace(),
+		},
+		apiToken:       "some-token",
+		expectedStatus: resolution.CreateResolutionRequestFailureStatus(),
+		expectedErr:    createError(`custom serverURL "https://attacker.example.com" requires a token parameter; the system token cannot be sent to a non-default server URL`),
+	}, {
+		name: "api: custom serverURL with user-provided token is allowed",
+		args: &params{
+			revision:   "main",
+			pathInRepo: "tasks/example-task.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			serverURL:  "fake",
+			scmType:    "fake",
+			token:      "token-secret",
+			tokenKey:   "token",
+			namespace:  "foo",
+		},
+		config: map[string]string{
+			ServerURLKey: "notsofake",
+			SCMTypeKey:   "definitivelynotafake",
+		},
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    resolution.CreateResolutionRequestStatusWithData(mainTaskYAML),
+	}, {
+		name: "api: serverURL matching system config without token is allowed",
+		args: &params{
+			revision:   "main",
+			pathInRepo: "tasks/example-task.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			serverURL:  "fake",
+			scmType:    "fake",
+		},
+		config: map[string]string{
+			ServerURLKey:          "fake",
+			SCMTypeKey:            "fake",
+			APISecretNameKey:      "token-secret",
+			APISecretKeyKey:       "token",
+			APISecretNamespaceKey: system.Namespace(),
 		},
 		apiToken:          "some-token",
 		expectedCommitSHA: commitSHAsInSCMRepo[0],
@@ -1059,5 +1226,136 @@ func TestGetScmConfigForParamConfigKey(t *testing.T) {
 				t.Errorf("expected config: %s", diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+func TestResolveWithRetrySucceedsAfterTransientFailure(t *testing.T) {
+	config := map[string]string{
+		ConfigBackoffDuration: "1ms",
+		ConfigBackoffFactor:   "1.0",
+		ConfigBackoffJitter:   "0",
+		ConfigBackoffSteps:    "3",
+		ConfigBackoffCap:      "10ms",
+	}
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
+
+	callCount := 0
+	expected := &resolvedGitResource{
+		Content:  []byte("hello"),
+		Revision: "abc123",
+	}
+
+	result, err := ResolveWithRetry(ctx, func() (framework.ResolvedResource, error) {
+		callCount++
+		if callCount < 3 {
+			return nil, errors.New("transient error")
+		}
+		return expected, nil
+	})
+	if err != nil {
+		t.Fatalf("expected success after retries, got error: %v", err)
+	}
+	if callCount != 3 {
+		t.Fatalf("expected 3 attempts, got %d", callCount)
+	}
+	if string(result.Data()) != string(expected.Data()) {
+		t.Fatalf("expected data %q, got %q", expected.Data(), result.Data())
+	}
+}
+
+func TestResolveWithRetryExhaustsRetries(t *testing.T) {
+	config := map[string]string{
+		ConfigBackoffDuration: "1ms",
+		ConfigBackoffFactor:   "1.0",
+		ConfigBackoffJitter:   "0",
+		ConfigBackoffSteps:    "2",
+		ConfigBackoffCap:      "10ms",
+	}
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
+
+	callCount := 0
+	_, err := ResolveWithRetry(ctx, func() (framework.ResolvedResource, error) {
+		callCount++
+		return nil, errors.New("persistent error")
+	})
+	if err == nil {
+		t.Fatal("expected error after exhausting retries, got nil")
+	}
+	if callCount != 2 {
+		t.Fatalf("expected 2 attempts (matching steps), got %d", callCount)
+	}
+}
+
+func TestResolveWithRetryContextCancelled(t *testing.T) {
+	config := map[string]string{
+		ConfigBackoffSteps: "3",
+	}
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
+	ctx, cancel := context.WithCancel(ctx)
+	cancel()
+
+	_, err := ResolveWithRetry(ctx, func() (framework.ResolvedResource, error) {
+		t.Fatal("fn should not be called with cancelled context")
+		return nil, errors.New("unreachable")
+	})
+	if err == nil {
+		t.Fatal("expected error with cancelled context, got nil")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled error, got: %v", err)
+	}
+}
+
+func TestResolveWithRetryContextCancelledMidBackoff(t *testing.T) {
+	config := map[string]string{
+		ConfigBackoffDuration: "50ms",
+		ConfigBackoffFactor:   "1.0",
+		ConfigBackoffJitter:   "0",
+		ConfigBackoffSteps:    "5",
+		ConfigBackoffCap:      "1s",
+	}
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
+	ctx, cancel := context.WithCancel(ctx)
+
+	callCount := 0
+	_, err := ResolveWithRetry(ctx, func() (framework.ResolvedResource, error) {
+		callCount++
+		if callCount == 1 {
+			cancel()
+		}
+		return nil, errors.New("transient error")
+	})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled error, got: %v", err)
+	}
+}
+
+func TestResolveWithRetrySucceedsFirstAttempt(t *testing.T) {
+	config := map[string]string{
+		ConfigBackoffSteps: "3",
+	}
+	ctx := framework.InjectResolverConfigToContext(t.Context(), config)
+
+	callCount := 0
+	expected := &resolvedGitResource{
+		Content:  []byte("hello"),
+		Revision: "abc123",
+	}
+
+	result, err := ResolveWithRetry(ctx, func() (framework.ResolvedResource, error) {
+		callCount++
+		return expected, nil
+	})
+	if err != nil {
+		t.Fatalf("expected success, got error: %v", err)
+	}
+	if callCount != 1 {
+		t.Fatalf("expected 1 attempt, got %d", callCount)
+	}
+	if string(result.Data()) != string(expected.Data()) {
+		t.Fatalf("expected data %q, got %q", expected.Data(), result.Data())
 	}
 }

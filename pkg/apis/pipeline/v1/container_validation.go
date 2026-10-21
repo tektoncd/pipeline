@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -197,8 +198,9 @@ func (s *Step) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	for j, vm := range s.VolumeMounts {
-		if strings.HasPrefix(vm.MountPath, "/tekton/") &&
-			!strings.HasPrefix(vm.MountPath, "/tekton/home") {
+		cleanMountPath := filepath.Clean(vm.MountPath)
+		if strings.HasPrefix(cleanMountPath, "/tekton/") &&
+			!strings.HasPrefix(cleanMountPath, "/tekton/home") {
 			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("volumeMount cannot be mounted under /tekton/ (volumeMount %q mounted at %q)", vm.Name, vm.MountPath), "mountPath").ViaFieldIndex("volumeMounts", j))
 		}
 		if strings.HasPrefix(vm.Name, "tekton-internal-") {
@@ -207,11 +209,11 @@ func (s *Step) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	if s.OnError != "" {
-		if !isParamRefs(string(s.OnError)) && s.OnError != Continue && s.OnError != StopAndFail {
+		if !isParamRefs(string(s.OnError)) && s.OnError != Continue && s.OnError != StopAndFail && s.OnError != ContinueAndFail {
 			errs = errs.Also(&apis.FieldError{
 				Message: fmt.Sprintf("invalid value: \"%v\"", s.OnError),
 				Paths:   []string{"onError"},
-				Details: "Task step onError must be either \"continue\" or \"stopAndFail\"",
+				Details: "Task step onError must be \"continue\", \"stopAndFail\" or \"continueAndFail\"",
 			})
 		}
 	}

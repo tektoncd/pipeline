@@ -7,7 +7,6 @@ on:
 permissions:
   contents: read
   pull-requests: read
-  checks: write
 
 defaults:
   run:
@@ -20,47 +19,56 @@ jobs:
     - name: Show Github Object
       run: |
         cat <<'EOF'
-        ${{ toJson(github) }}
+        ${GITHUB_CONTEXT}
         EOF
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
     - name: Show Github Event Path Json
       run: 'cat $GITHUB_EVENT_PATH || true'
     - name: Set PR variables
       id: pr
-      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      env:
+        ISSUE_NUMBER: ${{ github.event.client_payload.github.payload.issue.number }}
       with:
         script: |
           const pr = await github.rest.pulls.get({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            pull_number: ${{ github.event.client_payload.github.payload.issue.number }}
+            pull_number: parseInt(process.env.ISSUE_NUMBER, 10)
           });
           core.setOutput('sha', pr.data.head.sha);
 
     - name: Create comment
       if: ${{ failure() }}
-      uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
-      with:
-        token: ${{ secrets.CHATOPS_TOKEN }}
-        repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
-        issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
-        body: |
-          Something went wrong with your `/${{ github.event.client_payload.slash_command.command }}` command: [please check the logs][1].
-
-          [1]: ${{ steps.vars.outputs.run-url }}
+      run: |
+        gh issue comment "${ISSUE_NUMBER}" \
+          --repo "${REPO}" \
+          --body "Something went wrong with your \`/${COMMAND}\` command: [please check the logs](${RUN_URL})."
+      env:
+        GH_TOKEN: ${{ secrets.CHATOPS_TOKEN }}
+        REPO: ${{ github.event.client_payload.github.payload.repository.full_name }}
+        ISSUE_NUMBER: ${{ github.event.client_payload.github.payload.issue.number }}
+        COMMAND: ${{ github.event.client_payload.slash_command.command }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
     - name: Add reaction
       if: ${{ success() }}
-      uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
-      with:
-        token: ${{ secrets.CHATOPS_TOKEN }}
-        repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
-        comment-id: ${{ github.event.client_payload.github.payload.comment.id }}
-        reactions: hooray
+      run: |
+        gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+          -f content='hooray'
+      env:
+        GH_TOKEN: ${{ secrets.CHATOPS_TOKEN }}
+        REPO: ${{ github.event.client_payload.github.payload.repository.full_name }}
+        COMMENT_ID: ${{ github.event.client_payload.github.payload.comment.id }}
     outputs:
       sha: ${{ steps.pr.outputs.sha }}
 
   e2e-extras:
     needs: [run-if-requested]
+    permissions:
+      contents: read
+      checks: write # Used to create/update check runs
     if: ${{ needs.run-if-requested.result == 'success' }}
     concurrency:
       group: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.k8s-name }}-${{ matrix.feature-flags }}-${{ github.event.client_payload.github.payload.issue.number }}
@@ -71,7 +79,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-        - ubuntu-latest
+        - ubuntu-latest-8-cores
         k8s-name:
         - k8s-latest-minus-five  # 1.29
         - k8s-latest-minus-four  # 1.30
@@ -97,34 +105,38 @@ jobs:
       KOCACHE: /tmp/ko-cache
     steps:
     - name: Report tests check
-      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       id: check-run
+      env:
+        HEAD_SHA: ${{ needs.run-if-requested.outputs.sha }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
           const check = await github.rest.checks.create({
             name: 'run tests',
-            head_sha: '${{ needs.run-if-requested.outputs.sha }}',
+            head_sha: process.env.HEAD_SHA,
             status: 'in_progress',
-            details_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+            details_url: process.env.RUN_URL,
             ...context.repo
           })
           return { id: check.data.id }
 
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         ref: ${{ needs.run-if-requested.outputs.sha }}
-    - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417  # v6.3.0
+        persist-credentials: false
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
       with:
         go-version-file: "go.mod"
     - name: Cache ko build cache
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306  # v5.0.3
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
       with:
         path: /tmp/ko-cache
         key: ${{ runner.os }}-${{ runner.arch }}-ko-${{ hashFiles('go.sum') }}
         restore-keys: |
           ${{ runner.os }}-${{ runner.arch }}-ko-
-    - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
+    - uses: ko-build/setup-ko@61b4d1d396f5b2e7d6bb6fefdce3dc38d1a13445 # v0.10
 
     - name: Install Dependencies
       run: |
@@ -149,32 +161,37 @@ jobs:
           --e2e-env ./test/e2e-tests-kind-${{ matrix.feature-flags }}.env
 
     - name: Upload test results
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: extra-tests-${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}
         path: ${{ env.ARTIFACTS }}
 
-    - uses: chainguard-dev/actions/kind-diag@71714a76c3df10b544595a2294c16649dc3472e5 # v1.6.5
+    - uses: chainguard-dev/actions/kind-diag@ec1df73a5b59652ce6862329ecc9a29ddaef9f46 # v1.6.39
       if: ${{ failure() }}
       with:
         artifact-name: extra-tests-${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}-logs
 
     - name: Report tests check
       if: success() || failure()
-      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      env:
+        CHECK_RUN_ID: ${{ fromJSON(steps.check-run.outputs.result).id }}
+        HEAD_SHA: ${{ needs.run-if-requested.outputs.sha }}
+        TEST_OUTCOME: ${{ steps.tests-step.outcome }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
           const resp = await github.rest.checks.update({
             name: 'run tests',
-            check_run_id: ${{ fromJSON(steps.check-run.outputs.result).id }},
-            head_sha: '${{ needs.run-if-requested.outputs.sha }}',
+            check_run_id: parseInt(process.env.CHECK_RUN_ID, 10),
+            head_sha: process.env.HEAD_SHA,
             status: 'completed',
-            conclusion: '${{ steps.tests-step.outcome }}',
-            details_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+            conclusion: process.env.TEST_OUTCOME,
+            details_url: process.env.RUN_URL,
             output: {
               title: 'Run tests',
-              summary: 'Results: ${{ steps.tests-step.outcome }}\n\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+              summary: `Results: ${process.env.TEST_OUTCOME}\n\n${process.env.RUN_URL}`
             },
             ...context.repo
           })
@@ -185,8 +202,8 @@ jobs:
     - name: Dump Artifacts
       if: ${{ failure() }}
       run: |
-        if [[ -d ${{ env.ARTIFACTS }} ]]; then
-          cd ${{ env.ARTIFACTS }}
+        if [[ -d ${ARTIFACTS} ]]; then
+          cd ${ARTIFACTS}
           for x in $(find . -type f); do
             echo "::group:: artifact $x"
             cat $x

@@ -19,6 +19,7 @@ package taskrun
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/internal/reconciler/cachetransform"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -29,7 +30,6 @@ import (
 	resolutionclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client"
 	resolutioninformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
 	"github.com/tektoncd/pipeline/pkg/pod"
-	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolution "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
 	"github.com/tektoncd/pipeline/pkg/spire"
@@ -71,6 +71,13 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		pipelineclientset := pipelineclient.Get(ctx)
 		taskRunInformer := taskruninformer.Get(ctx)
 		podInformer := filteredpodinformer.Get(ctx, v1.ManagedByLabelKey)
+
+		// NOTE: a cache transform strips non-mandatory fields from the cached
+		// TaskRuns and Pods to reduce controller memory usage. If you add logic
+		// that reads a field from these listers, verify it is not stripped.
+		// See internal/reconciler/cachetransform.
+		cachetransform.Setup(ctx, taskRunInformer.Informer(), cachetransform.ForTektonResource)
+		cachetransform.Setup(ctx, podInformer.Informer(), cachetransform.ForPod)
 		limitrangeInformer := limitrangeinformer.Get(ctx)
 		verificationpolicyInformer := verificationpolicyinformer.Get(ctx)
 		resolutionInformer := resolutioninformer.Get(ctx)
@@ -100,7 +107,6 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			taskRunLister:            taskRunInformer.Lister(),
 			limitrangeLister:         limitrangeInformer.Lister(),
 			verificationPolicyLister: verificationpolicyInformer.Lister(),
-			cloudEventClient:         cloudeventclient.Get(ctx),
 			metrics:                  taskrunmetricsRecorder,
 			entrypointCache:          entrypointCache,
 			podLister:                podInformer.Lister(),
@@ -117,21 +123,21 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		})
 
 		if _, err := secretinformer.Informer().AddEventHandler(controller.HandleAll(tracerProvider.Handler)); err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register Secret informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register Secret informer event handler: %v", err)
 		}
 
 		if _, err := taskRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: taskRunFilterManagedBy,
 			Handler:    controller.HandleAll(impl.Enqueue),
 		}); err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register TaskRun informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register TaskRun informer event handler: %v", err)
 		}
 
 		if _, err := podInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1.TaskRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		}); err != nil {
-			logging.FromContext(ctx).Panicf("Couldn't register Pod informer event handler: %w", err)
+			logging.FromContext(ctx).Panicf("Couldn't register Pod informer event handler: %v", err)
 		}
 
 		return impl

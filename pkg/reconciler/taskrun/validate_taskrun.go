@@ -79,7 +79,6 @@ func missingParamsNames(neededParams sets.String, providedParams sets.String, pa
 	return missingParamsNamesWithNoDefaults
 }
 func wrongTypeParamsNames(params []v1.Param, matrix v1.Params, neededParamsTypes map[string]v1.ParamType) []string {
-	// It should be used to refer string and need to add [*] to refer to array or object.
 	var wrongTypeParamNames []string
 	for _, param := range params {
 		if _, ok := neededParamsTypes[param.Name]; !ok {

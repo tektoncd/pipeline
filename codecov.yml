@@ -1,3 +1,25 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 5%
+    patch:
+      default: false
+
 ignore:
-- "pkg/apis/pipeline/v1alpha1/zz_generated.deepcopy.go"
-- "pkg/apis/pipeline/v1beta1/zz_generated.deepcopy.go"
+  # Entry-point binaries — not unit-testable.
+  - "cmd"
+  # Auto-generated client code.
+  - "pkg/client/"
+  # Auto-generated deepcopy/openapi code.
+  - "**/zz_generated.deepcopy.go"
+  - "**/openapi_generated.go"
+  - "**/fake/**"
+  - "examples"
+  - "hack"
+  - "test"
+  - "config"
+  - "tekton"
+  - "docs"
+  - "vendor"

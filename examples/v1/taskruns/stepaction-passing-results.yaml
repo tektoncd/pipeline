@@ -15,7 +15,7 @@ spec:
           type: string
         IMAGE_DIGEST:
           type: string
-  image: mirror.gcr.io/bash
+  image: mirror.gcr.io/bash@sha256:e320b40b14abc61f053286705070342c46034a549a276b798e64541457c4af92
   env:
     - name: STRINGPARAM
       value: $(params.param2)
@@ -75,7 +75,7 @@ spec:
                 type: string
               IMAGE_DIGEST:
                 type: string
-        image: mirror.gcr.io/alpine
+        image: mirror.gcr.io/alpine@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
         script: |
           echo -n "[\"image1\", \"image2\", \"image3\"]" | tee $(step.results.result1.path)
           echo -n "foo" | tee $(step.results.result2.path)

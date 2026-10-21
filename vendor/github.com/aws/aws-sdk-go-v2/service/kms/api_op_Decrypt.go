@@ -4,11 +4,8 @@ package kms
 
 import (
 	"context"
-	"fmt"
-	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Decrypts ciphertext that was encrypted by a KMS key using any of the following
@@ -66,9 +63,10 @@ import (
 // The KMS key that you use for this operation must be in a compatible key state.
 // For details, see [Key states of KMS keys]in the Key Management Service Developer Guide.
 //
-// Cross-account use: Yes. If you use the KeyId parameter to identify a KMS key in
-// a different Amazon Web Services account, specify the key ARN or the alias ARN of
-// the KMS key.
+// Cross-account use: Yes. To specify a KMS key in a different Amazon Web Services
+// account, use the [key ARN]or [alias ARN]. A short [key ID] is also acceptable when decrypting symmetric
+// ciphertexts, though using a full key ARN is recommended to be more explicit
+// about the intended KMS key.
 //
 // Required permissions: [kms:Decrypt] (key policy)
 //
@@ -85,16 +83,19 @@ import (
 // Eventual consistency: The KMS API follows an eventual consistency model. For
 // more information, see [KMS eventual consistency].
 //
-// [Amazon Web Services Encryption SDK]: https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/
 // [Cryptographic attestation support in KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/cryptographic-attestation.html
-// [Key states of KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html
+// [key ID]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#key-id-key-id
 // [kms:Decrypt]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
 // [Asymmetric KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/symmetric-asymmetric.html
 // [Amazon Web Services Nitro Enclaves]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nitro-enclave.html
 // [Amazon S3 client-side encryption]: https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingClientSideEncryption.html
-// [Best practices for IAM policies]: https://docs.aws.amazon.com/kms/latest/developerguide/iam-policies.html#iam-policies-best-practices
+// [alias ARN]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#key-id-alias-ARN
 // [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/accessing-kms.html#programming-eventual-consistency
 // [Amazon Web Services Nitro Enclaves SDK]: https://docs.aws.amazon.com/enclaves/latest/user/developing-applications.html#sdk
+// [Amazon Web Services Encryption SDK]: https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/
+// [key ARN]: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#key-id-key-ARN
+// [Key states of KMS keys]: https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html
+// [Best practices for IAM policies]: https://docs.aws.amazon.com/kms/latest/developerguide/iam-policies.html#iam-policies-best-practices
 func (c *Client) Decrypt(ctx context.Context, params *DecryptInput, optFns ...func(*Options)) (*DecryptOutput, error) {
 	if params == nil {
 		params = &DecryptInput{}
@@ -114,7 +115,8 @@ type DecryptInput struct {
 
 	// Ciphertext to be decrypted. The blob includes metadata.
 	//
-	// This member is required.
+	// This parameter is required in all cases except when DryRun is true and
+	// DryRunModifiers is set to IGNORE_CIPHERTEXT .
 	CiphertextBlob []byte
 
 	// Checks if your request will succeed. DryRun is an optional parameter.
@@ -124,6 +126,19 @@ type DecryptInput struct {
 	//
 	// [Testing your permissions]: https://docs.aws.amazon.com/kms/latest/developerguide/testing-permissions.html
 	DryRun *bool
+
+	// Specifies the modifiers to apply to the dry run operation. DryRunModifiers is
+	// an optional parameter that only applies when DryRun is set to true .
+	//
+	// When set to IGNORE_CIPHERTEXT , KMS performs only authorization validation
+	// without ciphertext validation. This allows you to test permissions without
+	// requiring a valid ciphertext blob.
+	//
+	// To learn more about how to use this parameter, see [Testing your permissions] in the Key Management
+	// Service Developer Guide.
+	//
+	// [Testing your permissions]: https://docs.aws.amazon.com/kms/latest/developerguide/testing-permissions.html
+	DryRunModifiers []types.DryRunModifierType
 
 	// Specifies the encryption algorithm that will be used to decrypt the ciphertext.
 	// Specify the same algorithm that was used to encrypt the data. If you specify a
@@ -170,14 +185,15 @@ type DecryptInput struct {
 	// IncorrectKeyException .
 	//
 	// This parameter is required only when the ciphertext was encrypted under an
-	// asymmetric KMS key. If you used a symmetric encryption KMS key, KMS can get the
+	// asymmetric KMS key or when DryRun is true and DryRunModifiers is set to
+	// IGNORE_CIPHERTEXT . If you used a symmetric encryption KMS key, KMS can get the
 	// KMS key from metadata that it adds to the symmetric ciphertext blob. However, it
 	// is always recommended as a best practice. This practice ensures that you use the
 	// KMS key that you intend.
 	//
 	// To specify a KMS key, use its key ID, key ARN, alias name, or alias ARN. When
 	// using an alias name, prefix it with "alias/" . To specify a KMS key in a
-	// different Amazon Web Services account, you must use the key ARN or alias ARN.
+	// different Amazon Web Services account, you should use the key ARN or alias ARN.
 	//
 	// For example:
 	//
@@ -263,9 +279,6 @@ type DecryptOutput struct {
 }
 
 func (c *Client) addOperationDecryptMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDecrypt{}, middleware.After)
 	if err != nil {
 		return err
@@ -274,68 +287,17 @@ func (c *Client) addOperationDecryptMiddlewares(stack *middleware.Stack, options
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "Decrypt"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addSetLoggerMiddleware(stack, options); err != nil {
-		return err
-	}
-	if err = addClientRequestID(stack); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
-		return err
-	}
-	if err = addRawResponseToMetadata(stack); err != nil {
-		return err
-	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = addSpanRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addClientUserAgent(stack, options); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
-		return err
-	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
-		return err
-	}
-	if err = addOpDecryptValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDecrypt(options.Region), middleware.Before); err != nil {
-		return err
-	}
-	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -350,22 +312,8 @@ func (c *Client) addOperationDecryptMiddlewares(stack *middleware.Stack, options
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAttempt(stack, options); err != nil {
-		return err
-	}
 	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
-}
-
-func newServiceMetadataMiddleware_opDecrypt(region string) *awsmiddleware.RegisterServiceMetadata {
-	return &awsmiddleware.RegisterServiceMetadata{
-		Region:        region,
-		ServiceID:     ServiceID,
-		OperationName: "Decrypt",
-	}
 }

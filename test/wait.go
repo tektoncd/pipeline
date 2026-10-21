@@ -50,8 +50,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"go.opencensus.io/trace"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"go.opentelemetry.io/otel"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -87,7 +87,7 @@ func pollImmediateWithContext(ctx context.Context, fn func() (bool, error)) erro
 // version will be used to determine the client to be applied for the wait.
 func WaitForTaskRunState(ctx context.Context, c *clients, name string, inState ConditionAccessorFn, desc, version string) error {
 	metricName := fmt.Sprintf("WaitForTaskRunState/%s/%s", name, desc)
-	_, span := trace.StartSpan(ctx, metricName)
+	_, span := otel.Tracer("").Start(ctx, metricName)
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
@@ -114,7 +114,7 @@ func WaitForTaskRunState(ctx context.Context, c *clients, name string, inState C
 // track how long it took for name to get into the state checked by inState.
 func WaitForDeploymentState(ctx context.Context, c *clients, name string, namespace string, inState func(d *appsv1.Deployment) (bool, error), desc string) error {
 	metricName := fmt.Sprintf("WaitForDeploymentState/%s/%s", name, desc)
-	_, span := trace.StartSpan(ctx, metricName)
+	_, span := otel.Tracer("").Start(ctx, metricName)
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
@@ -132,7 +132,7 @@ func WaitForDeploymentState(ctx context.Context, c *clients, name string, namesp
 // track how long it took for name to get into the state checked by inState.
 func WaitForPodState(ctx context.Context, c *clients, name string, namespace string, inState func(r *corev1.Pod) (bool, error), desc string) error {
 	metricName := fmt.Sprintf("WaitForPodState/%s/%s", name, desc)
-	_, span := trace.StartSpan(ctx, metricName)
+	_, span := otel.Tracer("").Start(ctx, metricName)
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
@@ -150,7 +150,7 @@ func WaitForPodState(ctx context.Context, c *clients, name string, namespace str
 // track how long it took to delete all the PVCs in the namespace.
 func WaitForPVCIsDeleted(ctx context.Context, c *clients, polltimeout time.Duration, name, namespace, desc string) error {
 	metricName := fmt.Sprintf("WaitForPVCIsDeleted/%s/%s", name, desc)
-	_, span := trace.StartSpan(ctx, metricName)
+	_, span := otel.Tracer("").Start(ctx, metricName)
 	defer span.End()
 
 	ctx, cancel := context.WithTimeout(ctx, polltimeout)
@@ -176,7 +176,7 @@ func WaitForPVCIsDeleted(ctx context.Context, c *clients, polltimeout time.Durat
 // version will be used to determine the client to be applied for the wait.
 func WaitForPipelineRunState(ctx context.Context, c *clients, name string, polltimeout time.Duration, inState ConditionAccessorFn, desc, version string) error {
 	metricName := fmt.Sprintf("WaitForPipelineRunState/%s/%s", name, desc)
-	_, span := trace.StartSpan(ctx, metricName)
+	_, span := otel.Tracer("").Start(ctx, metricName)
 	defer span.End()
 
 	ctx, cancel := context.WithTimeout(ctx, polltimeout)
@@ -206,7 +206,7 @@ func WaitForPipelineRunState(ctx context.Context, c *clients, name string, pollt
 // track how long it took for name to get into the state checked by inState.
 func WaitForServiceExternalIPState(ctx context.Context, c *clients, namespace, name string, inState func(s *corev1.Service) (bool, error), desc string) error {
 	metricName := fmt.Sprintf("WaitForServiceExternalIPState/%s/%s", name, desc)
-	_, span := trace.StartSpan(ctx, metricName)
+	_, span := otel.Tracer("").Start(ctx, metricName)
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
@@ -316,6 +316,31 @@ func TaskRunFailed(name string) ConditionAccessorFn {
 	return Failed(name)
 }
 
+// TaskRunPending provides a poll condition function that checks if the TaskRun
+// has been marked pending by the Tekton controller. If the TaskRun starts
+// running before we observe the pending state, an error is returned.
+func TaskRunPending(name string) ConditionAccessorFn {
+	running := Running(name)
+
+	return func(ca apis.ConditionAccessor) (bool, error) {
+		c := ca.GetCondition(apis.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionUnknown && c.Reason == string(v1.TaskRunReasonPending) {
+				return true, nil
+			}
+		}
+		status, err := running(ca)
+		if status {
+			reason := ""
+			if c != nil {
+				reason = c.Reason
+			}
+			return false, fmt.Errorf("status should be %s, but it is %s", v1.TaskRunReasonPending, reason)
+		}
+		return status, err
+	}
+}
+
 // PipelineRunSucceed provides a poll condition function that checks if the PipelineRun
 // has successfully completed.
 func PipelineRunSucceed(name string) ConditionAccessorFn {
@@ -336,7 +361,7 @@ func PipelineRunPending(name string) ConditionAccessorFn {
 	return func(ca apis.ConditionAccessor) (bool, error) {
 		c := ca.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
-			if c.Status == corev1.ConditionUnknown && c.Reason == string(v1beta1.PipelineRunReasonPending) {
+			if c.Status == corev1.ConditionUnknown && c.Reason == string(v1.PipelineRunReasonPending) {
 				return true, nil
 			}
 		}
@@ -347,7 +372,7 @@ func PipelineRunPending(name string) ConditionAccessorFn {
 			if c != nil {
 				reason = c.Reason
 			}
-			return false, fmt.Errorf("status should be %s, but it is %s", v1beta1.PipelineRunReasonPending, reason)
+			return false, fmt.Errorf("status should be %s, but it is %s", v1.PipelineRunReasonPending, reason)
 		}
 		return status, err
 	}

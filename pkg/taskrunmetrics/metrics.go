@@ -59,7 +59,7 @@ type Recorder struct {
 	runningTRsWaitingOnTaskResolutionGauge metric.Int64ObservableGauge
 	runningTRsThrottledByQuotaGauge        metric.Int64ObservableGauge
 	runningTRsThrottledByNodeGauge         metric.Int64ObservableGauge
-	podLatencyGauge                        metric.Float64Gauge
+	podLatencyHistogram                    metric.Float64Histogram
 
 	insertTaskTag     func(task, taskrun string) []attribute.KeyValue
 	insertPipelineTag func(pipeline, pipelinerun string) []attribute.KeyValue
@@ -220,15 +220,16 @@ func (r *Recorder) configure(cfg *config.Metrics) error {
 	}
 	r.runningTRsThrottledByNodeGauge = runningTRsThrottledByNodeGauge
 
-	podLatencyGauge, err := r.meter.Float64Gauge(
+	podLatencyHistogram, err := r.meter.Float64Histogram(
 		"tekton_pipelines_controller_taskruns_pod_latency_milliseconds",
 		metric.WithDescription("scheduling latency for the taskrun pods"),
 		metric.WithUnit("ms"),
+		metric.WithExplicitBucketBoundaries(5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create taskrun pod latency gauge: %w", err)
+		return fmt.Errorf("failed to create taskrun pod latency histogram: %w", err)
 	}
-	r.podLatencyGauge = podLatencyGauge
+	r.podLatencyHistogram = podLatencyHistogram
 
 	return nil
 }
@@ -326,25 +327,25 @@ func (r *Recorder) observeRunningTaskRuns(ctx context.Context, o metric.Observer
 	var trsWaitResolvingTaskRef int64
 
 	for _, tr := range trs {
-		if !tr.IsDone() {
-			runningTrs++
-			succeedCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
-			if succeedCondition != nil && succeedCondition.Status == corev1.ConditionUnknown {
-				var attrs []attribute.KeyValue
-				if addNamespaceLabelToThrottleMetric {
-					attrs = append(attrs, attribute.String("namespace", tr.Namespace))
-				}
-				attrSet := attribute.NewSet(attrs...)
+		succeedCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
+		if succeedCondition == nil || !succeedCondition.IsUnknown() {
+			continue
+		}
+		runningTrs++
 
-				switch succeedCondition.Reason {
-				case pod.ReasonExceededResourceQuota:
-					trsThrottledByQuota[attrSet]++
-				case pod.ReasonExceededNodeResources:
-					trsThrottledByNode[attrSet]++
-				case v1.TaskRunReasonResolvingTaskRef:
-					trsWaitResolvingTaskRef++
-				}
-			}
+		var attrs []attribute.KeyValue
+		if addNamespaceLabelToThrottleMetric {
+			attrs = append(attrs, attribute.String("namespace", tr.Namespace))
+		}
+		attrSet := attribute.NewSet(attrs...)
+
+		switch succeedCondition.Reason {
+		case pod.ReasonExceededResourceQuota:
+			trsThrottledByQuota[attrSet]++
+		case pod.ReasonExceededNodeResources:
+			trsThrottledByNode[attrSet]++
+		case v1.TaskRunReasonResolvingTaskRef:
+			trsWaitResolvingTaskRef++
 		}
 	}
 
@@ -395,11 +396,10 @@ func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1
 
 	attrs := []attribute.KeyValue{
 		attribute.String("namespace", tr.Namespace),
-		attribute.String("pod", pod.Name),
 	}
 	attrs = append(attrs, r.insertTaskTag(taskName, tr.Name)...)
 
-	r.podLatencyGauge.Record(ctx, float64(latency.Milliseconds()), metric.WithAttributes(attrs...))
+	r.podLatencyHistogram.Record(ctx, float64(latency.Milliseconds()), metric.WithAttributes(attrs...))
 
 	return nil
 }
@@ -453,11 +453,16 @@ func getTaskTagName(tr *v1.TaskRun) string {
 // IsPartOfPipeline return true if TaskRun is a part of a Pipeline.
 // It also return the name of Pipeline and PipelineRun
 func IsPartOfPipeline(tr *v1.TaskRun) (bool, string, string) {
-	if pipelineName, ok := tr.Labels[pipeline.PipelineLabelKey]; ok {
-		if pipelineRun, ok := tr.Labels[pipeline.PipelineRunLabelKey]; ok {
-			return true, pipelineName, pipelineRun
+	pipelineName, plOk := tr.Labels[pipeline.PipelineLabelKey]
+	pipelineRunName, plrOk := tr.Labels[pipeline.PipelineRunLabelKey]
+
+	if plOk && plrOk {
+		if pipelineName == pipelineRunName {
+			pipelineName = anonymous
 		}
+		return true, pipelineName, pipelineRunName
 	}
+
 	return false, "", ""
 }
 

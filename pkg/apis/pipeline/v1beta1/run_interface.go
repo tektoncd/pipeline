@@ -23,7 +23,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-// RunObject is implemented by CustomRun and Run
+// RunObject is implemented by Run, CustomRun, TaskRun and PipelineRun
 type RunObject interface {
 	// Object requires GetObjectKind() and DeepCopyObject()
 	runtime.Object
@@ -31,13 +31,18 @@ type RunObject interface {
 	// ObjectMetaAccessor requires a GetObjectMeta that returns the ObjectMeta
 	metav1.ObjectMetaAccessor
 
-	// GetStatusCondition returns a ConditionAccessor for the status of the objectWithCondition
+	// GetStatusCondition returns a ConditionAccessor
 	GetStatusCondition() apis.ConditionAccessor
 
 	IsSuccessful() bool
 	IsCancelled() bool
 	HasStarted() bool
 	IsDone() bool
+}
+
+// RunObjectWithRetries is implemented by Run and CustomRun
+type RunObjectWithRetries interface {
+	RunObject
 
 	GetRetryCount() int
 }

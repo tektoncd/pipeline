@@ -239,6 +239,16 @@ func TestStepActionSpecValidate(t *testing.T) {
 			}},
 		},
 	}, {
+		name: "valid step action script referencing declared results",
+		fields: fields{
+			Image:   "my-image",
+			Results: []v1.StepResult{{Name: "a-result"}},
+			Script: `
+echo foo > $(results.a-result.path)
+echo foo > $(step.results.a-result.path)
+`,
+		},
+	}, {
 		name: "valid volumeMounts",
 		fields: fields{
 			Image: "my-image",

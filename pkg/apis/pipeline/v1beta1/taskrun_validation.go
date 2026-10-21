@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
@@ -46,6 +47,19 @@ func (tr *TaskRun) SupportedVerbs() []admissionregistrationv1.OperationType {
 // Validate taskrun
 func (tr *TaskRun) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(tr.GetObjectMeta()).ViaField("metadata")
+
+	if tr.IsPending() && tr.HasStarted() {
+		errs = errs.Also(apis.ErrInvalidValue("TaskRun cannot be Pending after it is started", "spec.status"))
+	}
+
+	// Mirrors the v1 check so updates through the still-served v1beta1 API cannot
+	// bypass controller-managed label immutability.
+	if apis.IsInUpdate(ctx) && !pipeline.IsControllerServiceAccount(ctx) {
+		if oldObj, ok := apis.GetBaseline(ctx).(*TaskRun); ok && oldObj != nil {
+			errs = errs.Also(pipeline.ValidateImmutableLabels(oldObj.Labels, tr.Labels, pipeline.ControllerManagedLabels))
+		}
+	}
+
 	return errs.Also(tr.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 
@@ -97,8 +111,8 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	if ts.Status != "" {
-		if ts.Status != TaskRunSpecStatusCancelled {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be %s", ts.Status, TaskRunSpecStatusCancelled), "status"))
+		if ts.Status != TaskRunSpecStatusCancelled && ts.Status != TaskRunSpecStatusPending {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be %s or %s", ts.Status, TaskRunSpecStatusCancelled, TaskRunSpecStatusPending), "status"))
 		}
 	}
 	if ts.Status == "" {

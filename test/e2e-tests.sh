@@ -34,6 +34,7 @@ ENABLE_PARAM_ENUM=${ENABLE_PARAM_ENUM:="false"}
 ENABLE_ARTIFACTS=${ENABLE_ARTIFACTS:="false"}
 ENABLE_CONCISE_RESOLVER_SYNTAX=${ENABLE_CONCISE_RESOLVER_SYNTAX:="false"}
 ENABLE_KUBERNETES_SIDECAR=${ENABLE_KUBERNETES_SIDECAR:="false"}
+ENABLE_TERMINATION_MESSAGE_COMPRESSION=${ENABLE_TERMINATION_MESSAGE_COMPRESSION:="false"}
 
 # Script entry point.
 
@@ -155,6 +156,18 @@ function set_enable_kubernetes_sidecar() {
   with_retries kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
 }
 
+function set_enable_termination_message_compression() {
+  local method="$1"
+  if [ "$method" != "false" ] && [ "$method" != "true" ]; then
+    printf "Invalid value for enable-termination-message-compression %s\n" ${method}
+    exit 255
+  fi
+  printf "Setting enable-termination-message-compression to %s\n", ${method}
+  jsonpatch=$(printf "{\"data\": {\"enable-termination-message-compression\": \"%s\"}}" $1)
+  echo "feature-flags ConfigMap patch: ${jsonpatch}"
+  with_retries kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+}
+
 function set_default_sidecar_log_polling_interval() {
   # Sets the default-sidecar-log-polling-interval in the config-defaults ConfigMap to 0ms for e2e tests
   echo "Patching config-defaults ConfigMap: setting default-sidecar-log-polling-interval to 0ms"
@@ -194,6 +207,7 @@ set_enable_param_enum "$ENABLE_PARAM_ENUM"
 set_enable_artifacts "$ENABLE_ARTIFACTS"
 set_enable_concise_resolver_syntax "$ENABLE_CONCISE_RESOLVER_SYNTAX"
 set_enable_kubernetes_sidecar "$ENABLE_KUBERNETES_SIDECAR"
+set_enable_termination_message_compression "$ENABLE_TERMINATION_MESSAGE_COMPRESSION"
 set_default_sidecar_log_polling_interval
 run_e2e
 

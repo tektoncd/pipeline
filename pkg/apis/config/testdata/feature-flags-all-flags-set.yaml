@@ -38,3 +38,6 @@ data:
   disable-inline-spec: "pipeline,pipelinerun,taskrun"
   enable-concise-resolver-syntax: "true"
   enable-kubernetes-sidecar: "true"
+  enable-termination-message-compression: "true"
+  keep-status-spec-descriptions: "true"
+  surface-pod-events: "true"

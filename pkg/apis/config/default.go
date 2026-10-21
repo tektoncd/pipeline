@@ -51,6 +51,8 @@ const (
 
 	DefaultImagePullBackOffTimeout = 0 * time.Minute
 
+	DefaultCreateContainerErrorTimeout = 0 * time.Minute
+
 	// Default maximum resolution timeout used by the resolution controller before timing out when exceeded
 	DefaultMaximumResolutionTimeout = 1 * time.Minute
 
@@ -71,6 +73,7 @@ const (
 	defaultResolverTypeKey                  = "default-resolver-type"
 	defaultContainerResourceRequirementsKey = "default-container-resource-requirements"
 	defaultImagePullBackOffTimeout          = "default-imagepullbackoff-timeout"
+	defaultCreateContainerErrorTimeout      = "default-create-container-error-timeout"
 	defaultMaximumResolutionTimeout         = "default-maximum-resolution-timeout"
 	defaultSidecarLogPollingIntervalKey     = "default-sidecar-log-polling-interval"
 	DefaultStepRefConcurrencyLimitKey       = "default-step-ref-concurrency-limit"
@@ -94,6 +97,7 @@ type Defaults struct {
 	DefaultResolverType                  string
 	DefaultContainerResourceRequirements map[string]corev1.ResourceRequirements
 	DefaultImagePullBackOffTimeout       time.Duration
+	DefaultCreateContainerErrorTimeout   time.Duration
 	DefaultMaximumResolutionTimeout      time.Duration
 	// DefaultSidecarLogPollingInterval specifies how frequently (as a time.Duration) the Tekton sidecar log results container polls for step completion files.
 	// This value is loaded from the 'sidecar-log-polling-interval' key in the config-defaults ConfigMap.
@@ -131,6 +135,7 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 		other.DefaultMaxMatrixCombinationsCount == cfg.DefaultMaxMatrixCombinationsCount &&
 		other.DefaultResolverType == cfg.DefaultResolverType &&
 		other.DefaultImagePullBackOffTimeout == cfg.DefaultImagePullBackOffTimeout &&
+		other.DefaultCreateContainerErrorTimeout == cfg.DefaultCreateContainerErrorTimeout &&
 		other.DefaultMaximumResolutionTimeout == cfg.DefaultMaximumResolutionTimeout &&
 		other.DefaultSidecarLogPollingInterval == cfg.DefaultSidecarLogPollingInterval &&
 		other.DefaultStepRefConcurrencyLimit == cfg.DefaultStepRefConcurrencyLimit &&
@@ -140,16 +145,17 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 // NewDefaultsFromMap returns a Config given a map corresponding to a ConfigMap
 func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	tc := Defaults{
-		DefaultTimeoutMinutes:             DefaultTimeoutMinutes,
-		DefaultServiceAccount:             DefaultServiceAccountValue,
-		DefaultManagedByLabelValue:        DefaultManagedByLabelValue,
-		DefaultCloudEventsSink:            DefaultCloudEventSinkValue,
-		DefaultMaxMatrixCombinationsCount: DefaultMaxMatrixCombinationsCount,
-		DefaultResolverType:               DefaultResolverTypeValue,
-		DefaultImagePullBackOffTimeout:    DefaultImagePullBackOffTimeout,
-		DefaultMaximumResolutionTimeout:   DefaultMaximumResolutionTimeout,
-		DefaultSidecarLogPollingInterval:  DefaultSidecarLogPollingInterval,
-		DefaultStepRefConcurrencyLimit:    DefaultStepRefConcurrencyLimit,
+		DefaultTimeoutMinutes:              DefaultTimeoutMinutes,
+		DefaultServiceAccount:              DefaultServiceAccountValue,
+		DefaultManagedByLabelValue:         DefaultManagedByLabelValue,
+		DefaultCloudEventsSink:             DefaultCloudEventSinkValue,
+		DefaultMaxMatrixCombinationsCount:  DefaultMaxMatrixCombinationsCount,
+		DefaultResolverType:                DefaultResolverTypeValue,
+		DefaultImagePullBackOffTimeout:     DefaultImagePullBackOffTimeout,
+		DefaultCreateContainerErrorTimeout: DefaultCreateContainerErrorTimeout,
+		DefaultMaximumResolutionTimeout:    DefaultMaximumResolutionTimeout,
+		DefaultSidecarLogPollingInterval:   DefaultSidecarLogPollingInterval,
+		DefaultStepRefConcurrencyLimit:     DefaultStepRefConcurrencyLimit,
 	}
 
 	if defaultTimeoutMin, ok := cfgMap[defaultTimeoutMinutesKey]; ok {
@@ -226,6 +232,14 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 			return nil, fmt.Errorf("failed parsing default config %q", defaultImagePullBackOffTimeout)
 		}
 		tc.DefaultImagePullBackOffTimeout = timeout
+	}
+
+	if defaultCreateContainerError, ok := cfgMap[defaultCreateContainerErrorTimeout]; ok {
+		timeout, err := time.ParseDuration(defaultCreateContainerError)
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing default config %q: %w", defaultCreateContainerErrorTimeout, err)
+		}
+		tc.DefaultCreateContainerErrorTimeout = timeout
 	}
 
 	if defaultMaximumResolutionTimeout, ok := cfgMap[defaultMaximumResolutionTimeout]; ok {

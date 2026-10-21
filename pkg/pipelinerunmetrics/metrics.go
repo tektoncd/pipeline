@@ -258,34 +258,36 @@ func (r *Recorder) observeRunningPipelineRuns(ctx context.Context, o metric.Obse
 
 	for _, pr := range prs {
 		succeedCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
-		if succeedCondition.IsUnknown() {
-			// Handle waiting metrics (these are cluster-wide, no extra attributes).
-			switch succeedCondition.Reason {
-			case v1.PipelineRunReasonResolvingPipelineRef.String():
-				waitingOnPipelineCount++
-			case v1.TaskRunReasonResolvingTaskRef:
-				waitingOnTaskCount++
-			}
-
-			// Handle running_pipelineruns metric with per-level aggregation.
-			pipelineName := getPipelineTagName(pr)
-			var attrs []attribute.KeyValue
-
-			// Build attributes based on configured level.
-			switch cfg.RunningPipelinerunLevel {
-			case config.PipelinerunLevelAtPipelinerun:
-				attrs = append(attrs, attribute.String("pipelinerun", pr.Name))
-				fallthrough
-			case config.PipelinerunLevelAtPipeline:
-				attrs = append(attrs, attribute.String("pipeline", pipelineName))
-				fallthrough
-			case config.PipelinerunLevelAtNS:
-				attrs = append(attrs, attribute.String("namespace", pr.Namespace))
-			}
-
-			attrSet := attribute.NewSet(attrs...)
-			currentCounts[attrSet]++
+		if succeedCondition == nil || !succeedCondition.IsUnknown() {
+			continue
 		}
+
+		// Handle waiting metrics (these are cluster-wide, no extra attributes).
+		switch succeedCondition.Reason {
+		case v1.PipelineRunReasonResolvingPipelineRef.String():
+			waitingOnPipelineCount++
+		case v1.TaskRunReasonResolvingTaskRef:
+			waitingOnTaskCount++
+		}
+
+		// Handle running_pipelineruns metric with per-level aggregation.
+		pipelineName := getPipelineTagName(pr)
+		var attrs []attribute.KeyValue
+
+		// Build attributes based on configured level.
+		switch cfg.RunningPipelinerunLevel {
+		case config.PipelinerunLevelAtPipelinerun:
+			attrs = append(attrs, attribute.String("pipelinerun", pr.Name))
+			fallthrough
+		case config.PipelinerunLevelAtPipeline:
+			attrs = append(attrs, attribute.String("pipeline", pipelineName))
+			fallthrough
+		case config.PipelinerunLevelAtNS:
+			attrs = append(attrs, attribute.String("namespace", pr.Namespace))
+		}
+
+		attrSet := attribute.NewSet(attrs...)
+		currentCounts[attrSet]++
 	}
 
 	// Report running_pipelineruns.
@@ -346,7 +348,11 @@ func getPipelineTagName(pr *v1.PipelineRun) string {
 	case pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Name != "":
 		pipelineName = pr.Spec.PipelineRef.Name
 	case pr.Spec.PipelineSpec != nil:
-		// anonymous — inline spec, no external pipeline name
+		if pr.ObjectMeta.GenerateName == "" {
+			// anonymous — inline spec, no external pipeline name and no generic name
+			break
+		}
+		fallthrough
 	default:
 		if label, ok := pr.Labels[pipeline.PipelineLabelKey]; ok && label != "" {
 			pipelineName = label

@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	fakesecretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret/fake"
+	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing"
 )
 
@@ -79,17 +80,15 @@ func TestOnStoreWithSecret(t *testing.T) {
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "tracing-sec",
-			// system.Namespace() will return `knative-testing`
-			// Set inside the imported knative testing package
-			Namespace: "knative-testing",
+			Name:      "tracing-sec",
+			Namespace: system.Namespace(),
 		},
 		Data: map[string][]byte{
 			"username": []byte("user"),
 			"password": []byte("pass"),
 		},
 	}
-	if _, err := client.CoreV1().Secrets("knative-testing").Create(ctx, secret, metav1.CreateOptions{}); err != nil {
+	if _, err := client.CoreV1().Secrets(system.Namespace()).Create(ctx, secret, metav1.CreateOptions{}); err != nil {
 		t.Errorf("Unable to create secret for tracing,err : %v", err.Error())
 	}
 

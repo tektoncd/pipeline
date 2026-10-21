@@ -20,9 +20,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
+	"maps"
 	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
@@ -44,7 +46,6 @@ import (
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
-	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/remote"
@@ -62,6 +63,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	corev1Listers "k8s.io/client-go/listers/core/v1"
@@ -89,12 +91,23 @@ type Reconciler struct {
 	limitrangeLister         corev1Listers.LimitRangeLister
 	podLister                corev1Listers.PodLister
 	verificationPolicyLister alphalisters.VerificationPolicyLister
-	cloudEventClient         cloudevent.CEClient
 	entrypointCache          podconvert.EntrypointCache
 	metrics                  *taskrunmetrics.Recorder
 	pvcHandler               volumeclaim.PvcHandler
 	resolutionRequester      resolution.Requester
 	tracerProvider           trace.TracerProvider
+
+	// Native-sidecar detection (ServerVersion + IsNativeSidecarSupport) when EnableKubernetesSidecar
+	// is set is memoized via sync.OnceValues after lazy init guarded by nativeSidecarOnce (#9755).
+	// Status.Sidecars cannot be used to skip stopSidecars: injected containers (e.g. Istio)
+	// are not listed there but buildSidecarStopPatch stops them using the live Pod.
+	nativeSidecarOnce        sync.Once
+	nativeSidecarFromCluster func() (useTektonNop bool, err error)
+	// podEventStates retains exhausted records for live TaskRuns so unrelated
+	// reconciles cannot renew the three-List budget. Lifecycle observations,
+	// including ObserveDeletion, remove records; elapsed time alone does not.
+	podEventStateMu sync.Mutex
+	podEventStates  map[types.NamespacedName]podEventState
 }
 
 const (
@@ -103,12 +116,194 @@ const (
 	CreateContainerConfigError = "CreateContainerConfigError" // Missing ConfigMap/Secret, invalid env vars, etc.
 	CreateContainerError       = "CreateContainerError"       // Other container creation failures
 	ErrImagePull               = "ErrImagePull"               // Initial image pull failure
+
+	// remoteResolutionRequeueAfter is how long to wait before re-reconciling a
+	// TaskRun that is awaiting an in-progress ResolutionRequest. Periodic
+	// requeue ensures progress even if the ResolutionRequest completion event
+	// is missed or cannot be mapped back via owner references (see #10414).
+	remoteResolutionRequeueAfter = time.Second
+	podEventInitialRetryAfter    = 5 * time.Second
+	podEventFinalRetryAfter      = 30 * time.Second
+	podEventMaxLookupAttempts    = 3
 )
+
+type podEventState struct {
+	taskRunUID types.UID
+	podUID     types.UID
+	attempts   int
+	retryAt    time.Time
+	// warningFromCurrentPod is provenance, not a security assertion. It is true
+	// only when the persisted Event fallback was observed for taskRunUID and podUID.
+	warningFromCurrentPod bool
+}
+
+func shouldLookupPodEvents(pod *corev1.Pod) bool {
+	return pod.Status.Phase == corev1.PodPending && podconvert.IsGenericPending(pod)
+}
+
+func podEventStateKey(tr *v1.TaskRun) types.NamespacedName {
+	return types.NamespacedName{Namespace: tr.Namespace, Name: tr.Name}
+}
+
+// observePodEventState clears state for a replaced TaskRun or Pod. The new Pod
+// receives an independent budget when it first needs an Event lookup.
+func (c *Reconciler) observePodEventState(tr *v1.TaskRun, pod *corev1.Pod) {
+	if pod.UID == "" {
+		return
+	}
+	key := podEventStateKey(tr)
+	c.podEventStateMu.Lock()
+	defer c.podEventStateMu.Unlock()
+	if state, ok := c.podEventStates[key]; ok &&
+		(state.taskRunUID != tr.UID || state.podUID != pod.UID) {
+		delete(c.podEventStates, key)
+	}
+}
+
+func (c *Reconciler) beginPodEventLookup(tr *v1.TaskRun, pod *corev1.Pod) bool {
+	if pod.UID == "" {
+		return false
+	}
+	now := c.Clock.Now()
+	key := podEventStateKey(tr)
+	c.podEventStateMu.Lock()
+	defer c.podEventStateMu.Unlock()
+	state, ok := c.podEventStates[key]
+	if ok {
+		if state.taskRunUID != tr.UID || state.podUID != pod.UID || state.attempts >= podEventMaxLookupAttempts || state.retryAt.After(now) {
+			return false
+		}
+		state.attempts++
+		state.retryAt = time.Time{}
+		c.podEventStates[key] = state
+		return true
+	}
+	if c.podEventStates == nil {
+		c.podEventStates = make(map[types.NamespacedName]podEventState)
+	}
+	c.podEventStates[key] = podEventState{taskRunUID: tr.UID, podUID: pod.UID, attempts: 1}
+	return true
+}
+
+func (c *Reconciler) schedulePodEventRetry(tr *v1.TaskRun, pod *corev1.Pod) {
+	if pod.UID == "" {
+		return
+	}
+	now := c.Clock.Now()
+	key := podEventStateKey(tr)
+	c.podEventStateMu.Lock()
+	defer c.podEventStateMu.Unlock()
+	state, ok := c.podEventStates[key]
+	if !ok || state.taskRunUID != tr.UID || state.podUID != pod.UID || state.attempts >= podEventMaxLookupAttempts || state.retryAt.After(now) {
+		return
+	}
+	switch state.attempts {
+	case 1:
+		state.retryAt = now.Add(podEventInitialRetryAfter)
+	case 2:
+		state.retryAt = now.Add(podEventFinalRetryAfter)
+	}
+	c.podEventStates[key] = state
+}
+
+func (c *Reconciler) pendingPodEventRetryForTaskRun(tr *v1.TaskRun) (time.Duration, bool) {
+	if tr.Status.PodName == "" {
+		return 0, false
+	}
+	pod, err := c.podLister.Pods(tr.Namespace).Get(tr.Status.PodName)
+	if k8serrors.IsNotFound(err) {
+		c.clearPodEventStateForTaskRun(tr)
+		return 0, false
+	}
+	if err != nil || pod.UID == "" {
+		return 0, false
+	}
+	now := c.Clock.Now()
+	key := podEventStateKey(tr)
+	c.podEventStateMu.Lock()
+	defer c.podEventStateMu.Unlock()
+	state, ok := c.podEventStates[key]
+	if !ok || state.taskRunUID != tr.UID || state.podUID != pod.UID || state.retryAt.IsZero() || !state.retryAt.After(now) {
+		return 0, false
+	}
+	return state.retryAt.Sub(now), true
+}
+
+func (c *Reconciler) clearPodEventStateForTaskRun(tr *v1.TaskRun) {
+	key := podEventStateKey(tr)
+	c.podEventStateMu.Lock()
+	defer c.podEventStateMu.Unlock()
+	if state, ok := c.podEventStates[key]; ok && state.taskRunUID == tr.UID {
+		delete(c.podEventStates, key)
+	}
+}
+
+func (c *Reconciler) hasCurrentPodWarning(tr *v1.TaskRun, pod *corev1.Pod) bool {
+	if pod.UID == "" {
+		return false
+	}
+	key := podEventStateKey(tr)
+	c.podEventStateMu.Lock()
+	defer c.podEventStateMu.Unlock()
+	state, ok := c.podEventStates[key]
+	return ok && state.taskRunUID == tr.UID && state.podUID == pod.UID && state.warningFromCurrentPod
+}
+
+func (c *Reconciler) markCurrentPodWarning(tr *v1.TaskRun, pod *corev1.Pod) {
+	if pod.UID == "" {
+		return
+	}
+	key := podEventStateKey(tr)
+	c.podEventStateMu.Lock()
+	defer c.podEventStateMu.Unlock()
+	state, ok := c.podEventStates[key]
+	if ok && state.taskRunUID == tr.UID && state.podUID == pod.UID {
+		state.warningFromCurrentPod = true
+		state.retryAt = time.Time{}
+		c.podEventStates[key] = state
+	}
+}
+
+func (c *Reconciler) discardCurrentPodWarning(tr *v1.TaskRun, pod *corev1.Pod) {
+	if pod.UID == "" {
+		return
+	}
+	key := podEventStateKey(tr)
+	c.podEventStateMu.Lock()
+	defer c.podEventStateMu.Unlock()
+	state, ok := c.podEventStates[key]
+	if ok && state.taskRunUID == tr.UID && state.podUID == pod.UID {
+		state.warningFromCurrentPod = false
+		c.podEventStates[key] = state
+	}
+}
+
+func (c *Reconciler) hasCurrentPodWarningForTaskRun(tr *v1.TaskRun) bool {
+	if tr.Status.PodName == "" {
+		return false
+	}
+	pod, err := c.podLister.Pods(tr.Namespace).Get(tr.Status.PodName)
+	if k8serrors.IsNotFound(err) {
+		c.clearPodEventStateForTaskRun(tr)
+		return false
+	}
+	if err != nil {
+		return false
+	}
+	return c.hasCurrentPodWarning(tr, pod)
+}
+
+func (c *Reconciler) ObserveDeletion(_ context.Context, key types.NamespacedName) error {
+	c.podEventStateMu.Lock()
+	defer c.podEventStateMu.Unlock()
+	delete(c.podEventStates, key)
+	return nil
+}
 
 var (
 	// Check that our Reconciler implements taskrunreconciler.Interface
-	_ taskrunreconciler.Interface = (*Reconciler)(nil)
-
+	_ taskrunreconciler.Interface       = (*Reconciler)(nil)
+	_ pkgreconciler.OnDeletionInterface = (*Reconciler)(nil)
 	// Pod failure reasons that trigger failure of the TaskRun
 	// Note: ErrImagePull is intentionally not included as it's a transient state
 	// that Kubernetes will automatically retry before transitioning to ImagePullBackOff
@@ -123,14 +318,62 @@ var (
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Task Run
 // resource with the current status of the resource.
-func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgreconciler.Event {
+func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) (reconcileErr pkgreconciler.Event) {
 	logger := logging.FromContext(ctx)
-	ctx = cloudevent.ToContext(ctx, c.cloudEventClient)
-	ctx = initTracing(ctx, c.tracerProvider, tr)
+
+	// initTracing can persist span context into the status, a real write. Hold
+	// the prior value so that write is not lost when the baseline is taken
+	// after. Holding the map rather than copying it is safe because initTracing
+	// assigns a whole new map, and never writes through the one already there.
+	oldSpanContext := tr.Status.SpanContext
+
+	ctx, rootSpan := initTracing(ctx, c.tracerProvider, tr)
+	defer rootSpan.End()
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:ReconcileKind")
 	defer span.End()
 
+	// Everything the attribute needs is set up here rather than above, so a
+	// reconcile whose span does not record pays for none of it. Recording is
+	// the only thing checked: a span can record without being exported.
+	if span.IsRecording() {
+		var metadataUpdateAttempted *atomic.Bool
+		ctx, metadataUpdateAttempted = tknreconciler.TrackMetadataUpdate(ctx)
+		oldStatus := tr.Status.DeepCopy()
+		// Cloned, so the baseline does not depend on initTracing never writing
+		// into a map it was handed.
+		oldStatus.SpanContext = maps.Clone(oldSpanContext)
+		defer func() {
+			tknreconciler.RecordWriteIntent(span, oldStatus, &tr.Status, metadataUpdateAttempted.Load())
+		}()
+	}
+
 	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
+	if spanCtx := span.SpanContext(); spanCtx.IsValid() {
+		logger = logger.With(zap.String("traceID", spanCtx.TraceID().String()), zap.String("spanID", spanCtx.SpanID().String()))
+		ctx = logging.WithLogger(ctx, logger)
+	}
+
+	// Set the release annotation early so it's available throughout reconciliation.
+	// Only set for TaskRuns that haven't completed yet, to avoid overwriting
+	// the annotation with the current controller version on resyncs of done runs.
+	if !tr.IsDone() {
+		if tr.Annotations == nil {
+			tr.Annotations = make(map[string]string, 1)
+		}
+		tr.Annotations[podconvert.ReleaseAnnotation] = changeset.Get()
+	}
+
+	// Sync metadata (labels/annotations) at the end of every reconciliation.
+	// This is deferred to ensure it runs on every exit path.
+	// Knative's generated reconciler only calls UpdateStatus(), never writes .metadata,
+	// so we must persist label/annotation changes ourselves.
+	defer func() {
+		if err := c.syncMetadata(ctx, tr); err != nil {
+			logger.Warn("Failed to sync TaskRun metadata", zap.Error(err))
+			events.EmitError(controller.GetEventRecorder(ctx), err, tr)
+			reconcileErr = errors.Join(reconcileErr, err)
+		}
+	}()
 	// Read the initial condition
 	before := tr.Status.GetCondition(apis.ConditionSucceeded)
 
@@ -139,14 +382,14 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 
 	// If the TaskRun is just starting, this will also set the starttime,
 	// from which the timeout will immediately begin counting down.
-	if !tr.HasStarted() {
+	if !tr.HasStarted() && !tr.IsPending() {
 		tr.Status.InitializeConditions()
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
 		if tr.Status.StartTime.Sub(tr.CreationTimestamp.Time) < 0 {
 			logger.Warnf("TaskRun %s createTimestamp %s is after the taskRun started %s", tr.GetNamespacedName().String(), tr.CreationTimestamp, tr.Status.StartTime)
 			tr.Status.StartTime = &tr.CreationTimestamp
 		}
-		// Emit events. During the first reconcile the status of the TaskRun may change twice
+		// Emit k8s events. During the first reconcile the status of the TaskRun may change twice
 		// from not Started to Started and then to Running, so we need to sent the event here
 		// and at the end of 'Reconcile' again.
 		// We also want to send the "Started" event as soon as possible for anyone who may be waiting
@@ -157,23 +400,16 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 
 	// If the TaskRun is complete, run some post run fixtures when applicable
 	if tr.IsDone() {
+		c.clearPodEventStateForTaskRun(tr)
 		logger.Infof("taskrun done : %s \n", tr.Name)
 
-		// We may be reading a version of the object that was stored at an older version
-		// and may not have had all of the assumed default specified.
-		tr.SetDefaults(ctx)
-
-		useTektonSidecar := true
-		if config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
-			dc := c.KubeClientSet.Discovery()
-			sv, err := dc.ServerVersion()
-			if err != nil {
-				return err
-			}
-			if podconvert.IsNativeSidecarSupport(sv) {
-				useTektonSidecar = false
-				logger.Infof("Using Kubernetes Native Sidecars \n")
-			}
+		// stopSidecars must run whenever we use Tekton-managed sidecars: TaskRun status only
+		// lists containers with the sidecar- prefix; injected sidecars are visible only on
+		// the Pod (see buildSidecarStopPatch). Cache ServerVersion + native-sidecar detection
+		// so we do not call Discovery on every resync (#9755).
+		useTektonSidecar, err := c.useTektonSidecarMode(ctx, logger)
+		if err != nil {
+			return err
 		}
 		if useTektonSidecar {
 			if err := c.stopSidecars(ctx, tr); err != nil {
@@ -181,33 +417,49 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 			}
 		}
 
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, nil)
+		return c.emitReconcileEvents(ctx, tr, before, nil)
 	}
 
 	// If the TaskRun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
+		span.SetAttributes(attribute.String("reason", "Cancelled"))
 		message := fmt.Sprintf("TaskRun %q was cancelled. %s", tr.Name, tr.Spec.StatusMessage)
+		message = appendPreviousConditionContext(before, message)
 		err := c.failTaskRun(ctx, tr, v1.TaskRunReasonCancelled, message)
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+		return c.emitReconcileEvents(ctx, tr, before, err)
+	}
+
+	// When TaskRun is pending, do not create a Pod. Set condition and return.
+	if tr.IsPending() {
+		tr.Status.MarkResourceOngoing(v1.TaskRunReasonPending, fmt.Sprintf("TaskRun %q is pending", tr.Name))
+		return c.emitReconcileEvents(ctx, tr, before, nil)
 	}
 
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
 	if tr.HasTimedOut(ctx, c.Clock) {
+		span.SetAttributes(attribute.String("reason", "TimedOut"))
 		// Before failing the TaskRun, ensure step statuses are populated from the pod
 		// This prevents a race condition where the timeout occurs before pod status is fetched
 		if err := c.updateStepStatusesFromPod(ctx, tr); err != nil {
 			logger.Warnf("Failed to update step statuses from pod before timeout: %v", err)
 		}
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout(ctx))
+		message = appendPreviousConditionContext(before, message)
+		if c.hasCurrentPodWarningForTaskRun(tr) {
+			message = appendLastObservedPodWarning(before, message)
+		}
 		err := c.failTaskRun(ctx, tr, v1.TaskRunReasonTimedOut, message)
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+		return c.emitReconcileEvents(ctx, tr, before, err)
 	}
 
 	// Check for Pod Failures
+	// Note: appendPreviousConditionContext is intentionally NOT used here because
+	// checkPodFailed already provides a specific, actionable error message derived
+	// from the current pod state (e.g., ImagePullBackOff, CreateContainerConfigError).
 	if failed, reason, message := c.checkPodFailed(ctx, tr); failed {
 		err := c.failTaskRun(ctx, tr, reason, message)
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+		return c.emitReconcileEvents(ctx, tr, before, err)
 	}
 
 	// prepare fetches all required resources, validates them together with the
@@ -219,7 +471,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 		// reconcile an invalid TaskRun anymore
 		span.SetStatus(codes.Error, "taskrun prepare error")
 		span.RecordError(err)
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, nil, err)
+		return c.emitReconcileEvents(ctx, tr, nil, err)
 	}
 
 	// Store the condition before reconcile
@@ -232,16 +484,17 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 		if errors.Is(err, sidecarlogresults.ErrSizeExceeded) {
 			message := fmt.Sprintf("%s TaskRun \"%q\" failed: %s", pipelineErrors.UserErrorLabel, tr.Name, err.Error())
 			err := c.failTaskRun(ctx, tr, v1.TaskRunReasonResultLargerThanAllowedLimit, message)
-			return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+			return c.emitReconcileEvents(ctx, tr, before, err)
 		}
 	}
 
 	// Emit events (only when ConditionSucceeded was changed)
-	if err = c.finishReconcileUpdateEmitEvents(ctx, tr, before, err); err != nil {
+	if err = c.emitReconcileEvents(ctx, tr, before, err); err != nil {
 		return err
 	}
 
 	if tr.Status.StartTime != nil {
+		retryAfter, hasRetry := c.pendingPodEventRetryForTaskRun(tr)
 		// Compute the time since the task started.
 		elapsed := c.Clock.Since(tr.Status.StartTime.Time)
 		// Snooze this resource until the timeout has elapsed.
@@ -252,13 +505,23 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) pkgrecon
 		// 2. User didn't set tr.Spec.Timeout (nil) AND default-timeout-minutes config is "0"
 		// In both cases, we should not requeue based on timeout. The reconciler will
 		// still be triggered appropriately by pod watch events when the TaskRun changes.
-		if timeout == config.NoTimeoutDuration {
-			return nil
+		if requeueAfter, ok := earliestPodEventOrTimeoutRequeue(retryAfter, hasRetry, timeout, elapsed); ok {
+			return controller.NewRequeueAfter(requeueAfter)
 		}
-		waitTime := timeout - elapsed
-		return controller.NewRequeueAfter(waitTime)
+		return nil
 	}
 	return nil
+}
+
+func earliestPodEventOrTimeoutRequeue(retryAfter time.Duration, hasRetry bool, timeout, elapsed time.Duration) (time.Duration, bool) {
+	if timeout == config.NoTimeoutDuration {
+		return retryAfter, hasRetry
+	}
+	waitTime := timeout - elapsed
+	if hasRetry && retryAfter < waitTime {
+		return retryAfter, true
+	}
+	return waitTime, true
 }
 
 func (c *Reconciler) checkPodFailed(ctx context.Context, tr *v1.TaskRun) (bool, v1.TaskRunReason, string) {
@@ -342,6 +605,28 @@ func (c *Reconciler) checkContainerFailure(
 		return true, v1.TaskRunReasonImagePullFailed, message
 	}
 
+	// For CreateContainerError/CreateContainerConfigError with "context deadline exceeded",
+	// give the container runtime a grace period to recover (e.g. CRI-O under heavy load).
+	if (waiting.Reason == CreateContainerConfigError || waiting.Reason == CreateContainerError) &&
+		strings.Contains(waiting.Message, "context deadline exceeded") {
+		createContainerErrorTimeout := config.FromContextOrDefaults(ctx).Defaults.DefaultCreateContainerErrorTimeout
+		if createContainerErrorTimeout != 0 {
+			p, err := c.podLister.Pods(tr.Namespace).Get(tr.Status.PodName)
+			if err != nil {
+				message := fmt.Sprintf(`the %s %q in TaskRun %q failed to start. Failed to get pod with error: "%s."`, containerType, name, tr.Name, err)
+				return true, v1.TaskRunReasonPodCreationFailed, message
+			}
+			podConditions := []string{string(corev1.PodInitialized), "PodReadyToStartContainers"}
+			for _, condition := range p.Status.Conditions {
+				if slices.Contains(podConditions, string(condition.Type)) {
+					if c.Clock.Since(condition.LastTransitionTime.Time) < createContainerErrorTimeout {
+						return false, "", ""
+					}
+				}
+			}
+		}
+	}
+
 	// Handle CreateContainerConfigError (missing ConfigMap/Secret, invalid env vars, etc.)
 	if waiting.Reason == CreateContainerConfigError {
 		message := fmt.Sprintf(`the %s %q in TaskRun %q failed to start. The pod errored with the message: "%s."`, containerType, name, tr.Name, waiting.Message)
@@ -368,6 +653,35 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1.TaskRun
 			logger.Warnf("Failed to log the duration and count of taskruns : %v", err)
 		}
 	}
+}
+
+// useTektonSidecarMode returns whether the done path should run stopSidecars (Tekton nop
+// image) vs skipping it for native Kubernetes sidecars. When EnableKubernetesSidecar is enabled,
+// ServerVersion is queried at most once per reconciler; later reconciles reuse the memoized result.
+func (c *Reconciler) useTektonSidecarMode(ctx context.Context, logger *zap.SugaredLogger) (bool, error) {
+	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
+		return true, nil
+	}
+	c.nativeSidecarOnce.Do(func() {
+		c.nativeSidecarFromCluster = newNativeSidecarFromCluster(c.KubeClientSet, logger)
+	})
+	return c.nativeSidecarFromCluster()
+}
+
+// newNativeSidecarFromCluster returns a function that queries ServerVersion at most once and
+// returns whether to use Tekton nop sidecar teardown (true) vs native Kubernetes sidecars (false).
+func newNativeSidecarFromCluster(client kubernetes.Interface, log *zap.SugaredLogger) func() (bool, error) {
+	return sync.OnceValues(func() (bool, error) {
+		sv, err := client.Discovery().ServerVersion()
+		if err != nil {
+			return false, err
+		}
+		if podconvert.IsNativeSidecarSupport(sv) {
+			log.Info("Using Kubernetes Native Sidecars")
+			return false, nil
+		}
+		return true, nil
+	})
 }
 
 func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
@@ -413,37 +727,21 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
 	return nil
 }
 
-func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
-	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "finishReconcileUpdateEmitEvents")
+func (c *Reconciler) emitReconcileEvents(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "emitReconcileEvents")
 	defer span.End()
-	logger := logging.FromContext(ctx)
 
 	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
 	if afterCondition.IsFalse() && !tr.IsCancelled() && tr.IsRetriable() {
 		retryTaskRun(tr, afterCondition.Message)
 		afterCondition = tr.Status.GetCondition(apis.ConditionSucceeded)
 	}
-	// Send k8s events and cloud events (when configured)
 	events.Emit(ctx, beforeCondition, afterCondition, tr)
 
-	errs := []error{previousError}
-
-	// If the Run has been completed before and remains so at present,
-	// no need to update the labels and annotations
-	skipUpdateLabelsAndAnnotations := !afterCondition.IsUnknown() && !beforeCondition.IsUnknown()
-	if !skipUpdateLabelsAndAnnotations {
-		_, err := c.updateLabelsAndAnnotations(ctx, tr)
-		if err != nil {
-			logger.Warn("Failed to update TaskRun labels/annotations", zap.Error(err))
-			events.EmitError(controller.GetEventRecorder(ctx), err, tr)
-			errs = append(errs, err)
-		}
-	}
-	joinedErr := errors.Join(errs...)
 	if controller.IsPermanentError(previousError) {
-		return controller.NewPermanentError(joinedErr)
+		return controller.NewPermanentError(previousError)
 	}
-	return joinedErr
+	return previousError
 }
 
 // `prepare` fetches resources the taskrun depends on, runs validation and conversion
@@ -451,9 +749,8 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 // error but it does not sync updates back to etcd. It does not emit events.
 // All errors returned by `prepare` are always handled by `Reconcile`, so they don't cause
 // the key to be re-queued directly.
-// `prepare` returns spec and resources. In future we might store
-// them in the TaskRun.Status so we don't need to re-run `prepare` at every
-// reconcile (see https://github.com/tektoncd/pipeline/issues/2473).
+// `prepare` returns spec and resources. The resolved TaskSpec is stored in the
+// TaskRun.Status so we don't need to re-fetch and re-validate it at every reconcile.
 func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec, *resources.ResolvedTask, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "prepare")
 	defer span.End()
@@ -472,7 +769,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("TaskRun %s/%s awaiting remote resource", tr.Namespace, tr.Name)
 		tr.Status.MarkResourceOngoing(v1.TaskRunReasonResolvingTaskRef, message)
-		return nil, nil, err
+		return nil, nil, controller.NewRequeueAfter(remoteResolutionRequeueAfter)
 	case errors.Is(err, apiserver.ErrReferencedObjectValidationFailed), errors.Is(err, apiserver.ErrCouldntValidateObjectPermanent):
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonTaskFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -497,7 +794,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	case errors.Is(err, remote.ErrRequestInProgress):
 		message := fmt.Sprintf("TaskRun %s/%s awaiting remote StepAction", tr.Namespace, tr.Name)
 		tr.Status.MarkResourceOngoing(v1.TaskRunReasonResolvingStepActionRef, message)
-		return nil, nil, err
+		return nil, nil, controller.NewRequeueAfter(remoteResolutionRequeueAfter)
 	case errors.Is(err, apiserver.ErrReferencedObjectValidationFailed), errors.Is(err, apiserver.ErrCouldntValidateObjectPermanent):
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonTaskFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -551,27 +848,43 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		Kind:     resources.GetTaskKind(tr),
 	}
 
-	if err := validateTaskSpecRequestResources(taskSpec); err != nil {
+	if err := func() error {
+		_, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "validateTaskSpecRequestResources")
+		defer span.End()
+		return validateTaskSpecRequestResources(taskSpec)
+	}(); err != nil {
 		logger.Errorf("TaskRun %s taskSpec request resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
-	if err := ValidateResolvedTask(ctx, tr.Spec.Params, &v1.Matrix{}, rtr); err != nil {
+	if err := func() error {
+		spanCtx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "ValidateResolvedTask")
+		defer span.End()
+		return ValidateResolvedTask(spanCtx, tr.Spec.Params, &v1.Matrix{}, rtr)
+	}(); err != nil {
 		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableParamEnum {
-		if err := ValidateEnumParam(ctx, tr.Spec.Params, rtr.TaskSpec.Params); err != nil {
+		if err := func() error {
+			spanCtx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "ValidateEnumParam")
+			defer span.End()
+			return ValidateEnumParam(spanCtx, tr.Spec.Params, rtr.TaskSpec.Params)
+		}(); err != nil {
 			logger.Errorf("TaskRun %q Param Enum validation failed: %v", tr.Name, err)
 			tr.Status.MarkResourceFailed(v1.TaskRunReasonInvalidParamValue, err)
 			return nil, nil, controller.NewPermanentError(err)
 		}
 	}
 
-	if err := resources.ValidateParamArrayIndex(rtr.TaskSpec, tr.Spec.Params); err != nil {
+	if err := func() error {
+		_, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "ValidateParamArrayIndex")
+		defer span.End()
+		return resources.ValidateParamArrayIndex(rtr.TaskSpec, tr.Spec.Params)
+	}(); err != nil {
 		logger.Errorf("TaskRun %q Param references are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -596,7 +909,11 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	} else {
 		workspaceDeclarations = taskSpec.Workspaces
 	}
-	if err := workspace.ValidateBindings(ctx, workspaceDeclarations, tr.Spec.Workspaces); err != nil {
+	if err := func() error {
+		spanCtx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "ValidateBindings")
+		defer span.End()
+		return workspace.ValidateBindings(spanCtx, workspaceDeclarations, tr.Spec.Workspaces)
+	}(); err != nil {
 		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -614,7 +931,11 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		}
 	}
 
-	if err := validateOverrides(taskSpec, &tr.Spec); err != nil {
+	if err := func() error {
+		_, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "validateOverrides")
+		defer span.End()
+		return validateOverrides(taskSpec, &tr.Spec)
+	}(); err != nil {
 		logger.Errorf("TaskRun %q step or sidecar overrides are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -690,12 +1011,18 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	// Get the randomized volume names assigned to workspace bindings
 	workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
 
-	ts, err := applyParamsContextsResultsAndWorkspaces(ctx, tr, rtr, workspaceVolumes)
+	ts, err := applyParamsContextsResultsAndWorkspaces(ctx, c.tracerProvider.Tracer(TracerName), tr, rtr, workspaceVolumes)
 	if err != nil {
 		logger.Errorf("Error updating task spec parameters, contexts, results and workspaces: %s", err)
 		return err
 	}
 	tr.Status.TaskSpec = ts
+	// strip a copy: ts stays live for the rest of the reconcile and is handed to createPod
+	if !config.FromContextOrDefaults(ctx).FeatureFlags.KeepStatusSpecDescriptions {
+		statusSpec := ts.DeepCopy()
+		statusSpec.StripDescriptions()
+		tr.Status.TaskSpec = statusSpec
+	}
 
 	if len(tr.Status.TaskSpec.Steps) > 0 {
 		logger.Debugf("set taskspec for %s/%s - script: %s", tr.Namespace, tr.Name, tr.Status.TaskSpec.Steps[0].Script)
@@ -708,6 +1035,38 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 			logger.Errorf("Failed to create task run pod for taskrun %q: %v", tr.Name, newErr)
 			return newErr
 		}
+	}
+
+	if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+		c.clearPodEventStateForTaskRun(tr)
+	}
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableSurfacePodEvents {
+		c.observePodEventState(tr, pod)
+		if pod.Status.Phase == corev1.PodPending && !shouldLookupPodEvents(pod) {
+			c.discardCurrentPodWarning(tr, pod)
+		}
+	}
+
+	lookupPodEvents := false
+	lookupAttempted := false
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableSurfacePodEvents && shouldLookupPodEvents(pod) {
+		condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+		if condition != nil && podconvert.IsLastObservedPodWarning(condition.Message) && c.hasCurrentPodWarning(tr, pod) {
+			// The warning was produced for this Pod UID and remains the best
+			// available diagnosis until the Pod reports a useful one.
+		} else {
+			// A prefix alone does not prove that the warning belongs to this Pod.
+			// Prevent the Pod status renderer from carrying it forward while a
+			// current-UID lookup is pending, exhausted, or being re-established.
+			if condition != nil && podconvert.IsLastObservedPodWarning(condition.Message) {
+				condition.Message = ""
+			}
+			lookupPodEvents = c.beginPodEventLookup(tr, pod)
+			lookupAttempted = lookupPodEvents
+		}
+	}
+	if !lookupPodEvents {
+		ctx = podconvert.WithPodEventLookup(ctx, false)
 	}
 
 	if podconvert.IsPodExceedingNodeResources(pod) {
@@ -728,8 +1087,22 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	if err != nil {
 		return err
 	}
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableSurfacePodEvents && shouldLookupPodEvents(pod) {
+		condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+		if condition != nil && podconvert.IsLastObservedPodWarning(condition.Message) {
+			if lookupAttempted || c.hasCurrentPodWarning(tr, pod) {
+				c.markCurrentPodWarning(tr, pod)
+			}
+		} else if lookupAttempted {
+			c.schedulePodEventRetry(tr, pod)
+		}
+	}
 
-	if err := validateTaskRunResults(tr, rtr.TaskSpec); err != nil {
+	if err := func() error {
+		_, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "validateTaskRunResults")
+		defer span.End()
+		return validateTaskRunResults(tr, rtr.TaskSpec)
+	}(); err != nil {
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 		return err
 	}
@@ -775,29 +1148,42 @@ func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr 
 	return nil
 }
 
-func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1.TaskRun) (*v1.TaskRun, error) {
-	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updateLabelsAndAnnotations")
+// syncMetadata persists label and annotation changes made during reconciliation.
+// Knative's generated reconciler only calls UpdateStatus() after ReconcileKind returns,
+// so metadata changes must be persisted separately. This is called via defer in
+// ReconcileKind to ensure it runs on every exit path.
+func (c *Reconciler) syncMetadata(ctx context.Context, tr *v1.TaskRun) (err error) {
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "syncMetadata")
 	defer span.End()
-	// Ensure the TaskRun is properly decorated with the version of the Tekton controller processing it.
-	if tr.Annotations == nil {
-		tr.Annotations = make(map[string]string, 1)
-	}
-	tr.Annotations[podconvert.ReleaseAnnotation] = changeset.Get()
+	defer func() {
+		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
+			span.RecordError(err)
+		}
+	}()
 
-	newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
+	existing, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
 	if err != nil {
-		return nil, fmt.Errorf("error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
+		return fmt.Errorf("error getting TaskRun %s when syncing metadata: %w", tr.Name, err)
 	}
-	if !reflect.DeepEqual(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) || !reflect.DeepEqual(tr.ObjectMeta.Annotations, newTr.ObjectMeta.Annotations) {
-		// Note that this uses Update vs. Patch because the former is significantly easier to test.
-		// If we want to switch this to Patch, then we will need to teach the utilities in test/controller.go
-		// to deal with Patch (setting resourceVersion, and optimistic concurrency checks).
-		newTr = newTr.DeepCopy()
-		newTr.Labels = kmap.Union(newTr.Labels, tr.Labels)
-		newTr.Annotations = kmap.Union(kmap.ExcludeKeys(newTr.Annotations, tknreconciler.KubectlLastAppliedAnnotationKey), tr.Annotations)
-		return c.PipelineClientSet.TektonV1().TaskRuns(tr.Namespace).Update(ctx, newTr, metav1.UpdateOptions{})
+
+	// Merge labels and annotations: existing values are preserved, reconciled values take precedence
+	mergedLabels := kmap.Union(existing.Labels, tr.Labels)
+	mergedAnnotations := kmap.Union(
+		kmap.ExcludeKeys(existing.Annotations, tknreconciler.KubectlLastAppliedAnnotationKey),
+		tr.Annotations,
+	)
+
+	if maps.Equal(mergedLabels, existing.ObjectMeta.Labels) && maps.Equal(mergedAnnotations, existing.ObjectMeta.Annotations) {
+		return nil
 	}
-	return newTr, nil
+
+	updated := existing.DeepCopy()
+	updated.Labels = mergedLabels
+	updated.Annotations = mergedAnnotations
+	tknreconciler.MarkMetadataUpdate(ctx)
+	_, err = c.PipelineClientSet.TektonV1().TaskRuns(tr.Namespace).Update(ctx, updated, metav1.UpdateOptions{})
+	return err
 }
 
 func (c *Reconciler) handlePodCreationError(tr *v1.TaskRun, err error) error {
@@ -876,6 +1262,38 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.
 	return nil
 }
 
+// appendPreviousConditionContext preserves diagnostic context from the previous Succeeded
+// condition when a TaskRun is being failed (e.g. due to cancellation or timeout). If the
+// condition had a meaningful prior reason (not just Started/Running/Pending), the previous
+// reason and message are appended to the new message so operators can see why the TaskRun
+// was in its prior state. The prevCondition should be captured before InitializeConditions
+// can overwrite it (e.g. the "before" variable from ReconcileKind).
+func appendPreviousConditionContext(prevCondition *apis.Condition, message string) string {
+	if prevCondition == nil {
+		return message
+	}
+	if podconvert.IsLastObservedPodWarning(prevCondition.Message) {
+		return message
+	}
+	switch prevCondition.Reason {
+	case v1.TaskRunReasonStarted.String(),
+		v1.TaskRunReasonRunning.String(),
+		v1.TaskRunReasonPending.String():
+		return message
+	}
+	if prevCondition.Message != "" {
+		return fmt.Sprintf("%s\nPrevious status: [%s] %s", message, prevCondition.Reason, prevCondition.Message)
+	}
+	return message
+}
+
+func appendLastObservedPodWarning(prevCondition *apis.Condition, message string) string {
+	if prevCondition == nil || !podconvert.IsLastObservedPodWarning(prevCondition.Message) || strings.Contains(message, prevCondition.Message) {
+		return message
+	}
+	return fmt.Sprintf("%s. %s", message, prevCondition.Message)
+}
+
 // updateStepStatusesFromPod fetches the pod and updates step statuses in the TaskRun
 // This is called before failing a TaskRun to ensure step statuses are populated
 func (c *Reconciler) updateStepStatusesFromPod(ctx context.Context, tr *v1.TaskRun) error {
@@ -897,7 +1315,7 @@ func (c *Reconciler) updateStepStatusesFromPod(ctx context.Context, tr *v1.TaskR
 
 	// Update step statuses from pod using the existing MakeTaskRunStatus function
 	// This ensures consistency with the normal reconciliation path
-	status, err := podconvert.MakeTaskRunStatus(ctx, logger, *tr, pod, c.KubeClientSet, tr.Status.TaskSpec)
+	status, err := podconvert.MakeTaskRunStatus(podconvert.WithPodEventLookup(ctx, false), logger, *tr, pod, c.KubeClientSet, tr.Status.TaskSpec)
 	if err != nil {
 		return err
 	}
@@ -941,9 +1359,15 @@ func terminateStepsInPod(tr *v1.TaskRun, taskRunReason v1.TaskRunReason) {
 
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
 // TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
-func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*corev1.Pod, error) {
+func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (_ *corev1.Pod, err error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createPod")
 	defer span.End()
+	defer func() {
+		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
+			span.RecordError(err)
+		}
+	}()
 	logger := logging.FromContext(ctx)
 
 	// We don't want to mutate tr.Status.TaskSpec inside
@@ -965,7 +1389,6 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 		return nil, validateErr
 	}
 
-	var err error
 	ts, err = workspace.Apply(ctx, *ts, tr.Spec.Workspaces, workspaceVolumes)
 	if err != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to workspace error %v", tr.Name, err)
@@ -1051,15 +1474,20 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 	return pod, nil
 }
 
-// applyParamsContextsResultsAndWorkspaces applies paramater, context, results and workspace substitutions to the TaskSpec.
-func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*v1.TaskSpec, error) {
+// applyParamsContextsResultsAndWorkspaces applies parameter, context, results and workspace substitutions to the TaskSpec.
+func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tracer trace.Tracer, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*v1.TaskSpec, error) {
+	ctx, span := tracer.Start(ctx, "applyParamsContextsResultsAndWorkspaces")
+	defer span.End()
+
 	ts := rtr.TaskSpec.DeepCopy()
 	var defaults []v1.ParamSpec
 	if len(ts.Params) > 0 {
 		defaults = append(defaults, ts.Params...)
 	}
 	// Apply parameter substitution from the taskrun.
+	_, paramSpan := tracer.Start(ctx, "ApplyParameters")
 	ts = resources.ApplyParameters(ts, tr, defaults...)
+	paramSpan.End()
 
 	// Apply context substitution from the taskrun
 	ts = resources.ApplyContexts(ts, rtr.TaskName, tr)
@@ -1091,8 +1519,9 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tr *v1.TaskRun
 			ts.Workspaces = append(ts.Workspaces, v1.WorkspaceDeclaration{Name: trw.Name})
 		}
 	}
+	_, workspaceSpan := tracer.Start(ctx, "ApplyWorkspaces")
 	ts = resources.ApplyWorkspaces(ctx, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
-
+	workspaceSpan.End()
 	return ts, nil
 }
 
@@ -1170,7 +1599,12 @@ func applyVolumeClaimTemplates(workspaceBindings []v1.WorkspaceBinding, owner me
 func storeTaskSpecAndMergeMeta(ctx context.Context, tr *v1.TaskRun, ts *v1.TaskSpec, meta *resolutionutil.ResolvedObjectMeta) error {
 	// Only store the TaskSpec once, if it has never been set before.
 	if tr.Status.TaskSpec == nil {
-		tr.Status.TaskSpec = ts
+		// Snapshot the spec, stripping documentation-only descriptions to reduce etcd usage unless opted out. See #10321.
+		snapshot := ts.DeepCopy()
+		if !config.FromContextOrDefaults(ctx).FeatureFlags.KeepStatusSpecDescriptions {
+			snapshot.StripDescriptions()
+		}
+		tr.Status.TaskSpec = snapshot
 		if meta == nil {
 			return nil
 		}

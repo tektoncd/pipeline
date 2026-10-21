@@ -13,11 +13,12 @@ Use resolver type `hub`.
 
 | Param Name       | Description                                                                   | Example Value                                              |
 |------------------|-------------------------------------------------------------------------------|------------------------------------------------------------|
-| `catalog`        | The catalog from where to pull the resource (Optional)                        | Default:  `tekton-catalog-tasks` (for `task` kind);  `tekton-catalog-pipelines` (for `pipeline` kind)                                        |
+| `catalog`        | The catalog from where to pull the resource (Optional)                        | Default:  `tekton-catalog-tasks` (for `task` kind);  `tekton-catalog-pipelines` (for `pipeline` kind); no default for `stepaction` kind, so `catalog` must be set explicitly |
 | `type`           | The type of Hub from where to pull the resource (Optional). Either `artifact` or `tekton` | Default:  `artifact` (recommended). Note: `tekton` type is deprecated.                                         |
-| `kind`           | Either `task` or `pipeline` (Optional)                                        | Default: `task`                                                     |
+| `kind`           | `task`, `pipeline` or `stepaction` (Optional)                                        | Default: `task`                                                     |
 | `name`           | The name of the task or pipeline to fetch from the hub                        | `golang-build`                                             |
 | `version`        | Version or a Constraint (see [below](#version-constraint) of a task or a pipeline to pull in from. Wrap the number in quotes!   | `"0.5.0"`, `">= 0.5.0"`                                                    |
+| `url`            | Custom hub API endpoint to query instead of the cluster-configured default (Optional). Must be an absolute HTTP or HTTPS URL. Overrides all other URL configuration (ConfigMap URL lists, environment variables, and defaults). | `https://internal-hub.example.com`                        |
 
 The Catalogs in the Artifact Hub follows the semVer (i.e.` <major-version>.<minor-version>.0`) and the Catalogs in the Tekton Hub follows the simplified semVer (i.e. `<major-version>.<minor-version>`). Both full and simplified semantic versioning will be accepted by the `version` parameter. The Hub Resolver will map the version to the format expected by the target Hub `type`.
 
@@ -44,6 +45,8 @@ for the name, namespace and defaults that the resolver ships with.
 | `default-artifact-hub-pipeline-catalog`| The default artifact hub catalog from where to pull the resource for pipeline kind.  | `tekton-catalog-pipelines`               |
 | `default-kind`              | The default object kind for references.              | `task`, `pipeline`     |
 | `default-type`              | The default hub from where to pull the resource.     | `artifact`, `tekton`   |
+| `artifact-hub-urls`         | Ordered YAML list of Artifact Hub API URLs to try. First successful response wins. If not set, the `ARTIFACT_HUB_API` env var or default is used. URLs must use `http` or `https` scheme. | See [below](#configuring-multiple-hub-urls) |
+| `tekton-hub-urls`           | Ordered YAML list of Tekton Hub API URLs to try. First successful response wins. If not set, the `TEKTON_HUB_API` env var is used. URLs must use `http` or `https` scheme. | See [below](#configuring-multiple-hub-urls) |
 
 ### Configuring the Hub API endpoint
 
@@ -127,6 +130,99 @@ spec:
   # Resolution of the pipeline will succeed but the PipelineRun
   # overall will not succeed without those parameters.
 ```
+
+### StepAction Resolution
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: hub-stepaction-demo
+spec:
+  taskSpec:
+    steps:
+    - name: git-clone
+      ref:
+        resolver: hub
+        params:
+        - name: catalog
+          value: git-clone-stepaction
+        - name: type # optional
+          value: artifact
+        - name: kind
+          value: stepaction
+        - name: name
+          value: git-clone
+        - name: version
+          value: "1.6.0"
+  # Note: Artifact Hub StepAction packages use the tekton-stepaction package type
+```
+
+### Task Resolution from a Private Hub
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: private-hub-task-reference
+spec:
+  taskRef:
+    resolver: hub
+    params:
+    - name: url
+      value: https://internal-hub.example.com
+    - name: catalog
+      value: my-team-catalog
+    - name: type
+      value: artifact
+    - name: kind
+      value: task
+    - name: name
+      value: my-task
+    - name: version
+      value: "1.0.0"
+```
+
+When the `url` parameter is not specified, the resolver falls back to the
+cluster-configured defaults: first checking the ConfigMap URL lists
+(`artifact-hub-urls` / `tekton-hub-urls`), then the environment variables
+(`ARTIFACT_HUB_API` / `TEKTON_HUB_API`). This allows Pipeline authors to
+explicitly choose which hub instance to query on a per-resolution basis, which
+is useful in multi-team environments or air-gapped deployments where resources
+are hosted on private hub instances.
+
+### Configuring Multiple Hub URLs
+
+You can configure multiple hub API URLs in the `hubresolver-config` ConfigMap.
+The resolver will try each URL in order and return the first successful result.
+This is useful for layered catalogs, multi-team environments, or air-gapped
+deployments where resources may exist on different hub instances.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hubresolver-config
+  namespace: tekton-pipelines-resolvers
+data:
+  artifact-hub-urls: |
+    - https://internal-hub.example.com/
+    - https://artifacthub.io/
+  tekton-hub-urls: |
+    - https://internal-tekton-hub.example.com/
+    - https://api.hub.tekton.dev/
+```
+
+> **Note:** All URLs (whether in the ConfigMap lists, the `url` parameter, or environment variables) must use `http` or `https` scheme. Other schemes (e.g., `ftp://`) will be rejected.
+
+**URL precedence** (highest to lowest):
+1. Per-resolution `url` parameter — single URL override for a specific resolution request
+2. ConfigMap URL lists (`artifact-hub-urls` / `tekton-hub-urls`) — tried in order, first success wins
+3. Environment variable (`ARTIFACT_HUB_API` / `TEKTON_HUB_API`) — single URL fallback
+4. Default URL (`https://artifacthub.io` for artifact type)
+
+If the ConfigMap URL list keys are not set (commented out by default), the
+resolver behaves exactly as before, using the environment variable or default URL.
 
 ### Version constraint
 

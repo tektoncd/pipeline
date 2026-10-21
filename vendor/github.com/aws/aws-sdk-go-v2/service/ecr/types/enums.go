@@ -2,21 +2,68 @@
 
 package types
 
+type ArtifactStatus string
+
+// Enum values for ArtifactStatus
+const (
+	ArtifactStatusActive     ArtifactStatus = "ACTIVE"
+	ArtifactStatusArchived   ArtifactStatus = "ARCHIVED"
+	ArtifactStatusActivating ArtifactStatus = "ACTIVATING"
+)
+
+// Values returns all known values for ArtifactStatus. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (ArtifactStatus) Values() []ArtifactStatus {
+	return []ArtifactStatus{
+		"ACTIVE",
+		"ARCHIVED",
+		"ACTIVATING",
+	}
+}
+
+type ArtifactStatusFilter string
+
+// Enum values for ArtifactStatusFilter
+const (
+	ArtifactStatusFilterActive     ArtifactStatusFilter = "ACTIVE"
+	ArtifactStatusFilterArchived   ArtifactStatusFilter = "ARCHIVED"
+	ArtifactStatusFilterActivating ArtifactStatusFilter = "ACTIVATING"
+	ArtifactStatusFilterAny        ArtifactStatusFilter = "ANY"
+)
+
+// Values returns all known values for ArtifactStatusFilter. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (ArtifactStatusFilter) Values() []ArtifactStatusFilter {
+	return []ArtifactStatusFilter{
+		"ACTIVE",
+		"ARCHIVED",
+		"ACTIVATING",
+		"ANY",
+	}
+}
+
 type EncryptionType string
 
 // Enum values for EncryptionType
 const (
-	EncryptionTypeAes256 EncryptionType = "AES256"
-	EncryptionTypeKms    EncryptionType = "KMS"
+	EncryptionTypeAes256  EncryptionType = "AES256"
+	EncryptionTypeKms     EncryptionType = "KMS"
+	EncryptionTypeKmsDsse EncryptionType = "KMS_DSSE"
 )
 
 // Values returns all known values for EncryptionType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (EncryptionType) Values() []EncryptionType {
 	return []EncryptionType{
 		"AES256",
 		"KMS",
+		"KMS_DSSE",
 	}
 }
 
@@ -33,8 +80,9 @@ const (
 )
 
 // Values returns all known values for FindingSeverity. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (FindingSeverity) Values() []FindingSeverity {
 	return []FindingSeverity{
 		"INFORMATIONAL",
@@ -50,15 +98,18 @@ type ImageActionType string
 
 // Enum values for ImageActionType
 const (
-	ImageActionTypeExpire ImageActionType = "EXPIRE"
+	ImageActionTypeExpire     ImageActionType = "EXPIRE"
+	ImageActionTypeTransition ImageActionType = "TRANSITION"
 )
 
 // Values returns all known values for ImageActionType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ImageActionType) Values() []ImageActionType {
 	return []ImageActionType{
 		"EXPIRE",
+		"TRANSITION",
 	}
 }
 
@@ -76,11 +127,13 @@ const (
 	ImageFailureCodeUpstreamAccessDenied          ImageFailureCode = "UpstreamAccessDenied"
 	ImageFailureCodeUpstreamTooManyRequests       ImageFailureCode = "UpstreamTooManyRequests"
 	ImageFailureCodeUpstreamUnavailable           ImageFailureCode = "UpstreamUnavailable"
+	ImageFailureCodeImageInaccessible             ImageFailureCode = "ImageInaccessible"
 )
 
 // Values returns all known values for ImageFailureCode. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ImageFailureCode) Values() []ImageFailureCode {
 	return []ImageFailureCode{
 		"InvalidImageDigest",
@@ -93,6 +146,51 @@ func (ImageFailureCode) Values() []ImageFailureCode {
 		"UpstreamAccessDenied",
 		"UpstreamTooManyRequests",
 		"UpstreamUnavailable",
+		"ImageInaccessible",
+	}
+}
+
+type ImageStatus string
+
+// Enum values for ImageStatus
+const (
+	ImageStatusActive     ImageStatus = "ACTIVE"
+	ImageStatusArchived   ImageStatus = "ARCHIVED"
+	ImageStatusActivating ImageStatus = "ACTIVATING"
+)
+
+// Values returns all known values for ImageStatus. Note that this can be expanded
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (ImageStatus) Values() []ImageStatus {
+	return []ImageStatus{
+		"ACTIVE",
+		"ARCHIVED",
+		"ACTIVATING",
+	}
+}
+
+type ImageStatusFilter string
+
+// Enum values for ImageStatusFilter
+const (
+	ImageStatusFilterActive     ImageStatusFilter = "ACTIVE"
+	ImageStatusFilterArchived   ImageStatusFilter = "ARCHIVED"
+	ImageStatusFilterActivating ImageStatusFilter = "ACTIVATING"
+	ImageStatusFilterAny        ImageStatusFilter = "ANY"
+)
+
+// Values returns all known values for ImageStatusFilter. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (ImageStatusFilter) Values() []ImageStatusFilter {
+	return []ImageStatusFilter{
+		"ACTIVE",
+		"ARCHIVED",
+		"ACTIVATING",
+		"ANY",
 	}
 }
 
@@ -100,17 +198,40 @@ type ImageTagMutability string
 
 // Enum values for ImageTagMutability
 const (
-	ImageTagMutabilityMutable   ImageTagMutability = "MUTABLE"
-	ImageTagMutabilityImmutable ImageTagMutability = "IMMUTABLE"
+	ImageTagMutabilityMutable                ImageTagMutability = "MUTABLE"
+	ImageTagMutabilityImmutable              ImageTagMutability = "IMMUTABLE"
+	ImageTagMutabilityImmutableWithExclusion ImageTagMutability = "IMMUTABLE_WITH_EXCLUSION"
+	ImageTagMutabilityMutableWithExclusion   ImageTagMutability = "MUTABLE_WITH_EXCLUSION"
 )
 
 // Values returns all known values for ImageTagMutability. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ImageTagMutability) Values() []ImageTagMutability {
 	return []ImageTagMutability{
 		"MUTABLE",
 		"IMMUTABLE",
+		"IMMUTABLE_WITH_EXCLUSION",
+		"MUTABLE_WITH_EXCLUSION",
+	}
+}
+
+type ImageTagMutabilityExclusionFilterType string
+
+// Enum values for ImageTagMutabilityExclusionFilterType
+const (
+	ImageTagMutabilityExclusionFilterTypeWildcard ImageTagMutabilityExclusionFilterType = "WILDCARD"
+)
+
+// Values returns all known values for ImageTagMutabilityExclusionFilterType. Note
+// that this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (ImageTagMutabilityExclusionFilterType) Values() []ImageTagMutabilityExclusionFilterType {
+	return []ImageTagMutabilityExclusionFilterType{
+		"WILDCARD",
 	}
 }
 
@@ -120,15 +241,18 @@ type LayerAvailability string
 const (
 	LayerAvailabilityAvailable   LayerAvailability = "AVAILABLE"
 	LayerAvailabilityUnavailable LayerAvailability = "UNAVAILABLE"
+	LayerAvailabilityArchived    LayerAvailability = "ARCHIVED"
 )
 
 // Values returns all known values for LayerAvailability. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (LayerAvailability) Values() []LayerAvailability {
 	return []LayerAvailability{
 		"AVAILABLE",
 		"UNAVAILABLE",
+		"ARCHIVED",
 	}
 }
 
@@ -141,8 +265,9 @@ const (
 )
 
 // Values returns all known values for LayerFailureCode. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (LayerFailureCode) Values() []LayerFailureCode {
 	return []LayerFailureCode{
 		"InvalidLayerDigest",
@@ -162,14 +287,73 @@ const (
 
 // Values returns all known values for LifecyclePolicyPreviewStatus. Note that
 // this can be expanded in the future, and so it is only as up to date as the
-// client. The ordering of this slice is not guaranteed to be stable across
-// updates.
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (LifecyclePolicyPreviewStatus) Values() []LifecyclePolicyPreviewStatus {
 	return []LifecyclePolicyPreviewStatus{
 		"IN_PROGRESS",
 		"COMPLETE",
 		"EXPIRED",
 		"FAILED",
+	}
+}
+
+type LifecyclePolicyStorageClass string
+
+// Enum values for LifecyclePolicyStorageClass
+const (
+	LifecyclePolicyStorageClassArchive  LifecyclePolicyStorageClass = "ARCHIVE"
+	LifecyclePolicyStorageClassStandard LifecyclePolicyStorageClass = "STANDARD"
+)
+
+// Values returns all known values for LifecyclePolicyStorageClass. Note that this
+// can be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (LifecyclePolicyStorageClass) Values() []LifecyclePolicyStorageClass {
+	return []LifecyclePolicyStorageClass{
+		"ARCHIVE",
+		"STANDARD",
+	}
+}
+
+type LifecyclePolicyTargetStorageClass string
+
+// Enum values for LifecyclePolicyTargetStorageClass
+const (
+	LifecyclePolicyTargetStorageClassArchive LifecyclePolicyTargetStorageClass = "ARCHIVE"
+)
+
+// Values returns all known values for LifecyclePolicyTargetStorageClass. Note
+// that this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (LifecyclePolicyTargetStorageClass) Values() []LifecyclePolicyTargetStorageClass {
+	return []LifecyclePolicyTargetStorageClass{
+		"ARCHIVE",
+	}
+}
+
+type RCTAppliedFor string
+
+// Enum values for RCTAppliedFor
+const (
+	RCTAppliedForReplication      RCTAppliedFor = "REPLICATION"
+	RCTAppliedForPullThroughCache RCTAppliedFor = "PULL_THROUGH_CACHE"
+	RCTAppliedForCreateOnPush     RCTAppliedFor = "CREATE_ON_PUSH"
+)
+
+// Values returns all known values for RCTAppliedFor. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (RCTAppliedFor) Values() []RCTAppliedFor {
+	return []RCTAppliedFor{
+		"REPLICATION",
+		"PULL_THROUGH_CACHE",
+		"CREATE_ON_PUSH",
 	}
 }
 
@@ -183,8 +367,9 @@ const (
 )
 
 // Values returns all known values for ReplicationStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ReplicationStatus) Values() []ReplicationStatus {
 	return []ReplicationStatus{
 		"IN_PROGRESS",
@@ -201,8 +386,9 @@ const (
 )
 
 // Values returns all known values for RepositoryFilterType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (RepositoryFilterType) Values() []RepositoryFilterType {
 	return []RepositoryFilterType{
 		"PREFIX_MATCH",
@@ -219,8 +405,9 @@ const (
 )
 
 // Values returns all known values for ScanFrequency. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ScanFrequency) Values() []ScanFrequency {
 	return []ScanFrequency{
 		"SCAN_ON_PUSH",
@@ -238,8 +425,9 @@ const (
 
 // Values returns all known values for ScanningConfigurationFailureCode. Note that
 // this can be expanded in the future, and so it is only as up to date as the
-// client. The ordering of this slice is not guaranteed to be stable across
-// updates.
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ScanningConfigurationFailureCode) Values() []ScanningConfigurationFailureCode {
 	return []ScanningConfigurationFailureCode{
 		"REPOSITORY_NOT_FOUND",
@@ -255,8 +443,9 @@ const (
 
 // Values returns all known values for ScanningRepositoryFilterType. Note that
 // this can be expanded in the future, and so it is only as up to date as the
-// client. The ordering of this slice is not guaranteed to be stable across
-// updates.
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ScanningRepositoryFilterType) Values() []ScanningRepositoryFilterType {
 	return []ScanningRepositoryFilterType{
 		"WILDCARD",
@@ -275,11 +464,14 @@ const (
 	ScanStatusPending                ScanStatus = "PENDING"
 	ScanStatusScanEligibilityExpired ScanStatus = "SCAN_ELIGIBILITY_EXPIRED"
 	ScanStatusFindingsUnavailable    ScanStatus = "FINDINGS_UNAVAILABLE"
+	ScanStatusLimitExceeded          ScanStatus = "LIMIT_EXCEEDED"
+	ScanStatusImageArchived          ScanStatus = "IMAGE_ARCHIVED"
 )
 
 // Values returns all known values for ScanStatus. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ScanStatus) Values() []ScanStatus {
 	return []ScanStatus{
 		"IN_PROGRESS",
@@ -290,6 +482,8 @@ func (ScanStatus) Values() []ScanStatus {
 		"PENDING",
 		"SCAN_ELIGIBILITY_EXPIRED",
 		"FINDINGS_UNAVAILABLE",
+		"LIMIT_EXCEEDED",
+		"IMAGE_ARCHIVED",
 	}
 }
 
@@ -302,12 +496,51 @@ const (
 )
 
 // Values returns all known values for ScanType. Note that this can be expanded in
-// the future, and so it is only as up to date as the client. The ordering of this
-// slice is not guaranteed to be stable across updates.
+// the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ScanType) Values() []ScanType {
 	return []ScanType{
 		"BASIC",
 		"ENHANCED",
+	}
+}
+
+type SigningRepositoryFilterType string
+
+// Enum values for SigningRepositoryFilterType
+const (
+	SigningRepositoryFilterTypeWildcardMatch SigningRepositoryFilterType = "WILDCARD_MATCH"
+)
+
+// Values returns all known values for SigningRepositoryFilterType. Note that this
+// can be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (SigningRepositoryFilterType) Values() []SigningRepositoryFilterType {
+	return []SigningRepositoryFilterType{
+		"WILDCARD_MATCH",
+	}
+}
+
+type SigningStatus string
+
+// Enum values for SigningStatus
+const (
+	SigningStatusInProgress SigningStatus = "IN_PROGRESS"
+	SigningStatusComplete   SigningStatus = "COMPLETE"
+	SigningStatusFailed     SigningStatus = "FAILED"
+)
+
+// Values returns all known values for SigningStatus. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (SigningStatus) Values() []SigningStatus {
+	return []SigningStatus{
+		"IN_PROGRESS",
+		"COMPLETE",
+		"FAILED",
 	}
 }
 
@@ -321,8 +554,9 @@ const (
 )
 
 // Values returns all known values for TagStatus. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (TagStatus) Values() []TagStatus {
 	return []TagStatus{
 		"TAGGED",
@@ -331,28 +565,52 @@ func (TagStatus) Values() []TagStatus {
 	}
 }
 
+type TargetStorageClass string
+
+// Enum values for TargetStorageClass
+const (
+	TargetStorageClassStandard TargetStorageClass = "STANDARD"
+	TargetStorageClassArchive  TargetStorageClass = "ARCHIVE"
+)
+
+// Values returns all known values for TargetStorageClass. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (TargetStorageClass) Values() []TargetStorageClass {
+	return []TargetStorageClass{
+		"STANDARD",
+		"ARCHIVE",
+	}
+}
+
 type UpstreamRegistry string
 
 // Enum values for UpstreamRegistry
 const (
+	UpstreamRegistryEcr                     UpstreamRegistry = "ecr"
 	UpstreamRegistryEcrPublic               UpstreamRegistry = "ecr-public"
 	UpstreamRegistryQuay                    UpstreamRegistry = "quay"
 	UpstreamRegistryK8s                     UpstreamRegistry = "k8s"
 	UpstreamRegistryDockerHub               UpstreamRegistry = "docker-hub"
 	UpstreamRegistryGitHubContainerRegistry UpstreamRegistry = "github-container-registry"
 	UpstreamRegistryAzureContainerRegistry  UpstreamRegistry = "azure-container-registry"
+	UpstreamRegistryGitLabContainerRegistry UpstreamRegistry = "gitlab-container-registry"
 )
 
 // Values returns all known values for UpstreamRegistry. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (UpstreamRegistry) Values() []UpstreamRegistry {
 	return []UpstreamRegistry{
+		"ecr",
 		"ecr-public",
 		"quay",
 		"k8s",
 		"docker-hub",
 		"github-container-registry",
 		"azure-container-registry",
+		"gitlab-container-registry",
 	}
 }

@@ -89,7 +89,9 @@ func (a *AuthConfig) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements json.Marshaler
 func (a AuthConfig) MarshalJSON() ([]byte, error) {
 	shadow := (authConfig)(a)
-	shadow.Auth = encodeDockerConfigFieldAuth(shadow.Username, shadow.Password)
+	if shadow.Username != "" || shadow.Password != "" {
+		shadow.Auth = encodeDockerConfigFieldAuth(shadow.Username, shadow.Password)
+	}
 	return json.Marshal(shadow)
 }
 

@@ -57,6 +57,12 @@ type AwsEcrContainerImageDetails struct {
 	// The image tags attached to the Amazon ECR container image.
 	ImageTags []string
 
+	// The number of Amazon ECS or Amazon EKS clusters currently running the image.
+	InUseCount *int64
+
+	// The most recent date and time a cluster was running the image.
+	LastInUseAt *time.Time
+
 	// The platform of the Amazon ECR container image.
 	Platform *string
 
@@ -127,38 +133,54 @@ type CvssScoreDetails struct {
 // An object representing a filter on a DescribeImages operation.
 type DescribeImagesFilter struct {
 
-	// The tag status with which to filter your DescribeImages results. You can filter
-	// results based on whether they are TAGGED or UNTAGGED .
+	// The image status with which to filter your DescribeImages results. Valid values are ACTIVE ,
+	// ARCHIVED , and ACTIVATING .
+	ImageStatus ImageStatusFilter
+
+	// The tag status with which to filter your DescribeImages results. You can filter results based
+	// on whether they are TAGGED or UNTAGGED .
 	TagStatus TagStatus
 
 	noSmithyDocumentSerde
 }
 
 // The encryption configuration for the repository. This determines how the
-// contents of your repository are encrypted at rest. By default, when no
-// encryption configuration is set or the AES256 encryption type is used, Amazon
-// ECR uses server-side encryption with Amazon S3-managed encryption keys which
-// encrypts your data at rest using an AES-256 encryption algorithm. This does not
-// require any action on your part. For more control over the encryption of the
-// contents of your repository, you can use server-side encryption with Key
-// Management Service key stored in Key Management Service (KMS) to encrypt your
-// images. For more information, see Amazon ECR encryption at rest (https://docs.aws.amazon.com/AmazonECR/latest/userguide/encryption-at-rest.html)
-// in the Amazon Elastic Container Registry User Guide.
+// contents of your repository are encrypted at rest.
+//
+// By default, when no encryption configuration is set or the AES256 encryption
+// type is used, Amazon ECR uses server-side encryption with Amazon S3-managed
+// encryption keys which encrypts your data at rest using an AES256 encryption
+// algorithm. This does not require any action on your part.
+//
+// For more control over the encryption of the contents of your repository, you
+// can use server-side encryption with Key Management Service key stored in Key
+// Management Service (KMS) to encrypt your images. For more information, see [Amazon ECR encryption at rest]in
+// the Amazon Elastic Container Registry User Guide.
+//
+// [Amazon ECR encryption at rest]: https://docs.aws.amazon.com/AmazonECR/latest/userguide/encryption-at-rest.html
 type EncryptionConfiguration struct {
 
-	// The encryption type to use. If you use the KMS encryption type, the contents of
-	// the repository will be encrypted using server-side encryption with Key
-	// Management Service key stored in KMS. When you use KMS to encrypt your data, you
-	// can either use the default Amazon Web Services managed KMS key for Amazon ECR,
-	// or specify your own KMS key, which you already created. For more information,
-	// see Protecting data using server-side encryption with an KMS key stored in Key
-	// Management Service (SSE-KMS) (https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html)
-	// in the Amazon Simple Storage Service Console Developer Guide. If you use the
-	// AES256 encryption type, Amazon ECR uses server-side encryption with Amazon
-	// S3-managed encryption keys which encrypts the images in the repository using an
-	// AES-256 encryption algorithm. For more information, see Protecting data using
-	// server-side encryption with Amazon S3-managed encryption keys (SSE-S3) (https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingServerSideEncryption.html)
-	// in the Amazon Simple Storage Service Console Developer Guide.
+	// The encryption type to use.
+	//
+	// If you use the KMS encryption type, the contents of the repository will be
+	// encrypted using server-side encryption with Key Management Service key stored in
+	// KMS. When you use KMS to encrypt your data, you can either use the default
+	// Amazon Web Services managed KMS key for Amazon ECR, or specify your own KMS key,
+	// which you already created.
+	//
+	// If you use the KMS_DSSE encryption type, the contents of the repository will be
+	// encrypted with two layers of encryption using server-side encryption with the
+	// KMS Management Service key stored in KMS. Similar to the KMS encryption type,
+	// you can either use the default Amazon Web Services managed KMS key for Amazon
+	// ECR, or specify your own KMS key, which you've already created.
+	//
+	// If you use the AES256 encryption type, Amazon ECR uses server-side encryption
+	// with Amazon S3-managed encryption keys which encrypts the images in the
+	// repository using an AES256 encryption algorithm.
+	//
+	// For more information, see [Amazon ECR encryption at rest] in the Amazon Elastic Container Registry User Guide.
+	//
+	// [Amazon ECR encryption at rest]: https://docs.aws.amazon.com/AmazonECR/latest/userguide/encryption-at-rest.html
 	//
 	// This member is required.
 	EncryptionType EncryptionType
@@ -167,6 +189,38 @@ type EncryptionConfiguration struct {
 	// The alias, key ID, or full ARN of the KMS key can be specified. The key must
 	// exist in the same Region as the repository. If no key is specified, the default
 	// Amazon Web Services managed KMS key for Amazon ECR will be used.
+	KmsKey *string
+
+	noSmithyDocumentSerde
+}
+
+// The encryption configuration to associate with the repository creation template.
+type EncryptionConfigurationForRepositoryCreationTemplate struct {
+
+	// The encryption type to use.
+	//
+	// If you use the KMS encryption type, the contents of the repository will be
+	// encrypted using server-side encryption with Key Management Service key stored in
+	// KMS. When you use KMS to encrypt your data, you can either use the default
+	// Amazon Web Services managed KMS key for Amazon ECR, or specify your own KMS key,
+	// which you already created. For more information, see [Protecting data using server-side encryption with an KMS key stored in Key Management Service (SSE-KMS)]in the Amazon Simple
+	// Storage Service Console Developer Guide.
+	//
+	// If you use the AES256 encryption type, Amazon ECR uses server-side encryption
+	// with Amazon S3-managed encryption keys which encrypts the images in the
+	// repository using an AES256 encryption algorithm. For more information, see [Protecting data using server-side encryption with Amazon S3-managed encryption keys (SSE-S3)]in
+	// the Amazon Simple Storage Service Console Developer Guide.
+	//
+	// [Protecting data using server-side encryption with Amazon S3-managed encryption keys (SSE-S3)]: https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingServerSideEncryption.html
+	// [Protecting data using server-side encryption with an KMS key stored in Key Management Service (SSE-KMS)]: https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html
+	//
+	// This member is required.
+	EncryptionType EncryptionType
+
+	// If you use the KMS encryption type, specify the KMS key to use for encryption.
+	// The full ARN of the KMS key must be specified. The key must exist in the same
+	// Region as the repository. If no key is specified, the default Amazon Web
+	// Services managed KMS key for Amazon ECR will be used.
 	KmsKey *string
 
 	noSmithyDocumentSerde
@@ -182,11 +236,20 @@ type EnhancedImageScanFinding struct {
 	// The description of the finding.
 	Description *string
 
+	// If a finding discovered in your environment has an exploit available.
+	ExploitAvailable *string
+
 	// The Amazon Resource Number (ARN) of the finding.
 	FindingArn *string
 
 	// The date and time that the finding was first observed.
 	FirstObservedAt *time.Time
+
+	// Details on whether a fix is available through a version update. This value can
+	// be YES , NO , or PARTIAL . A PARTIAL fix means that some, but not all, of the
+	// packages identified in the finding have fixes available through updated
+	// versions.
+	FixAvailable *string
 
 	// The date and time that the finding was last observed.
 	LastObservedAt *time.Time
@@ -268,24 +331,40 @@ type ImageDetail struct {
 	// The current state of the scan.
 	ImageScanStatus *ImageScanStatus
 
-	// The size, in bytes, of the image in the repository. If the image is a manifest
-	// list, this will be the max size of all manifests in the list. Beginning with
-	// Docker version 1.9, the Docker client compresses image layers before pushing
-	// them to a V2 Docker registry. The output of the docker images command shows the
-	// uncompressed image size, so it may return a larger image size than the image
-	// sizes returned by DescribeImages .
+	// The size, in bytes, of the image in the repository.
+	//
+	// If the image is a manifest list, this will be the max size of all manifests in
+	// the list.
+	//
+	// Starting with Docker version 1.9, the Docker client compresses image layers
+	// before pushing them to a V2 Docker registry. The output of the docker images
+	// command shows the uncompressed image size. Therefore, Docker might return a
+	// larger image than the image shown in the Amazon Web Services Management Console.
 	ImageSizeInBytes *int64
+
+	// The current status of the image.
+	ImageStatus ImageStatus
 
 	// The list of tags associated with this image.
 	ImageTags []string
 
+	// The date and time, expressed in standard JavaScript date format, when the image
+	// was last restored from Amazon ECR archive to Amazon ECR standard.
+	LastActivatedAt *time.Time
+
+	// The date and time, expressed in standard JavaScript date format, when the image
+	// was last transitioned to Amazon ECR archive.
+	LastArchivedAt *time.Time
+
 	// The date and time, expressed in standard JavaScript date format, when Amazon
-	// ECR recorded the last image pull. Amazon ECR refreshes the last image pull
-	// timestamp at least once every 24 hours. For example, if you pull an image once a
-	// day then the lastRecordedPullTime timestamp will indicate the exact time that
-	// the image was last pulled. However, if you pull an image once an hour, because
-	// Amazon ECR refreshes the lastRecordedPullTime timestamp at least once every 24
-	// hours, the result may not be the exact time that the image was last pulled.
+	// ECR recorded the last image pull.
+	//
+	// Amazon ECR refreshes the last image pull timestamp at least once every 24
+	// hours. For example, if you pull an image once a day then the
+	// lastRecordedPullTime timestamp will indicate the exact time that the image was
+	// last pulled. However, if you pull an image once an hour, because Amazon ECR
+	// refreshes the lastRecordedPullTime timestamp at least once every 24 hours, the
+	// result may not be the exact time that the image was last pulled.
 	LastRecordedPullTime *time.Time
 
 	// The Amazon Web Services account ID associated with the registry to which this
@@ -294,6 +373,9 @@ type ImageDetail struct {
 
 	// The name of the repository to which this image belongs.
 	RepositoryName *string
+
+	// The digest of the subject manifest for images that are referrers.
+	SubjectManifestDigest *string
 
 	noSmithyDocumentSerde
 }
@@ -321,6 +403,36 @@ type ImageIdentifier struct {
 
 	// The tag used for the image.
 	ImageTag *string
+
+	noSmithyDocumentSerde
+}
+
+// An object representing an artifact associated with a subject image.
+type ImageReferrer struct {
+
+	// The digest of the artifact manifest.
+	//
+	// This member is required.
+	Digest *string
+
+	// The media type of the artifact manifest.
+	//
+	// This member is required.
+	MediaType *string
+
+	// The size, in bytes, of the artifact.
+	//
+	// This member is required.
+	Size *int64
+
+	// A map of annotations associated with the artifact.
+	Annotations map[string]string
+
+	// The status of the artifact. Valid values are ACTIVE , ARCHIVED , or ACTIVATING .
+	ArtifactStatus ArtifactStatus
+
+	// A string identifying the type of artifact.
+	ArtifactType *string
 
 	noSmithyDocumentSerde
 }
@@ -407,8 +519,9 @@ type ImageScanningConfiguration struct {
 	// The setting that determines whether images are scanned after being pushed to a
 	// repository. If set to true , images will be scanned after being pushed. If this
 	// parameter is not specified, it will default to false and images will not be
-	// scanned unless a scan is manually started with the API_StartImageScan (https://docs.aws.amazon.com/AmazonECR/latest/APIReference/API_StartImageScan.html)
-	// API.
+	// scanned unless a scan is manually started with the [API_StartImageScan]API.
+	//
+	// [API_StartImageScan]: https://docs.aws.amazon.com/AmazonECR/latest/APIReference/API_StartImageScan.html
 	ScanOnPush bool
 
 	noSmithyDocumentSerde
@@ -422,6 +535,50 @@ type ImageScanStatus struct {
 
 	// The current state of an image scan.
 	Status ScanStatus
+
+	noSmithyDocumentSerde
+}
+
+// The signing status for an image. Each status corresponds to a signing profile.
+type ImageSigningStatus struct {
+
+	// The failure code, which is only present if status is FAILED .
+	FailureCode *string
+
+	// A description of why signing the image failed. This field is only present if
+	// status is FAILED .
+	FailureReason *string
+
+	// The ARN of the Amazon Web Services Signer signing profile used to sign the
+	// image.
+	SigningProfileArn *string
+
+	// The image's signing status. Possible values are:
+	//
+	//   - IN_PROGRESS - Signing is currently in progress.
+	//
+	//   - COMPLETE - The signature was successfully generated.
+	//
+	//   - FAILED - Signing failed. See failureCode and failureReason for details.
+	Status SigningStatus
+
+	noSmithyDocumentSerde
+}
+
+// A filter that specifies which image tags should be excluded from the
+// repository's image tag mutability setting.
+type ImageTagMutabilityExclusionFilter struct {
+
+	// The filter value used to match image tags for exclusion from mutability
+	// settings.
+	//
+	// This member is required.
+	Filter *string
+
+	// The type of filter to apply for excluding image tags from mutability settings.
+	//
+	// This member is required.
+	FilterType ImageTagMutabilityExclusionFilterType
 
 	noSmithyDocumentSerde
 }
@@ -489,6 +646,9 @@ type LifecyclePolicyPreviewResult struct {
 	// The list of tags associated with this image.
 	ImageTags []string
 
+	// The storage class of the image.
+	StorageClass LifecyclePolicyStorageClass
+
 	noSmithyDocumentSerde
 }
 
@@ -498,11 +658,19 @@ type LifecyclePolicyPreviewSummary struct {
 	// The number of expiring images.
 	ExpiringImageTotalCount *int32
 
+	// The total count of images that will be transitioned to each storage class. This
+	// field is only present if at least one image will be transitoned in the summary.
+	TransitioningImageTotalCounts []TransitioningImageTotalCount
+
 	noSmithyDocumentSerde
 }
 
 // The type of action to be taken.
 type LifecyclePolicyRuleAction struct {
+
+	// The target storage class for the action. This is only present when the type is
+	// TRANSITION.
+	TargetStorageClass LifecyclePolicyTargetStorageClass
 
 	// The type of action to be taken.
 	Type ImageActionType
@@ -510,11 +678,28 @@ type LifecyclePolicyRuleAction struct {
 	noSmithyDocumentSerde
 }
 
+// An object representing a filter on a ListImageReferrers operation.
+type ListImageReferrersFilter struct {
+
+	// The artifact status with which to filter your ListImageReferrers results. Valid values are ACTIVE
+	// , ARCHIVED , ACTIVATING , or ANY . If not specified, only artifacts with ACTIVE
+	// status are returned.
+	ArtifactStatus ArtifactStatusFilter
+
+	// The artifact types with which to filter your ListImageReferrers results.
+	ArtifactTypes []string
+
+	noSmithyDocumentSerde
+}
+
 // An object representing a filter on a ListImages operation.
 type ListImagesFilter struct {
 
-	// The tag status with which to filter your ListImages results. You can filter
-	// results based on whether they are TAGGED or UNTAGGED .
+	// The image status with which to filter your ListImages results. Valid values are ACTIVE ,
+	// ARCHIVED , and ACTIVATING .
+	ImageStatus ImageStatusFilter
+
+	// The tag status with which to filter your ListImages results.
 	TagStatus TagStatus
 
 	noSmithyDocumentSerde
@@ -567,6 +752,9 @@ type PullThroughCacheRule struct {
 	// rule.
 	CredentialArn *string
 
+	// The ARN of the IAM role associated with the pull through cache rule.
+	CustomRoleArn *string
+
 	// The Amazon ECR repository prefix associated with the pull through cache rule.
 	EcrRepositoryPrefix *string
 
@@ -584,6 +772,9 @@ type PullThroughCacheRule struct {
 
 	// The upstream registry URL associated with the pull through cache rule.
 	UpstreamRegistryUrl *string
+
+	// The upstream repository prefix associated with the pull through cache rule.
+	UpstreamRepositoryPrefix *string
 
 	noSmithyDocumentSerde
 }
@@ -706,6 +897,10 @@ type Repository struct {
 	// The tag mutability setting for the repository.
 	ImageTagMutability ImageTagMutability
 
+	// A list of filters that specify which image tags are excluded from the
+	// repository's image tag mutability setting.
+	ImageTagMutabilityExclusionFilters []ImageTagMutabilityExclusionFilter
+
 	// The Amazon Web Services account ID associated with the registry that contains
 	// the repository.
 	RegistryId *string
@@ -723,6 +918,65 @@ type Repository struct {
 	// The URI for the repository. You can use this URI for container image push and
 	// pull operations.
 	RepositoryUri *string
+
+	noSmithyDocumentSerde
+}
+
+// The details of the repository creation template associated with the request.
+type RepositoryCreationTemplate struct {
+
+	// A list of enumerable Strings representing the repository creation scenarios
+	// that this template will apply towards. The supported scenarios are
+	// PULL_THROUGH_CACHE, REPLICATION, and CREATE_ON_PUSH
+	AppliedFor []RCTAppliedFor
+
+	// The date and time, in JavaScript date format, when the repository creation
+	// template was created.
+	CreatedAt *time.Time
+
+	// The ARN of the role to be assumed by Amazon ECR. Amazon ECR will assume your
+	// supplied role when the customRoleArn is specified. When this field isn't
+	// specified, Amazon ECR will use the service-linked role for the repository
+	// creation template.
+	CustomRoleArn *string
+
+	// The description associated with the repository creation template.
+	Description *string
+
+	// The encryption configuration associated with the repository creation template.
+	EncryptionConfiguration *EncryptionConfigurationForRepositoryCreationTemplate
+
+	// The tag mutability setting for the repository. If this parameter is omitted,
+	// the default setting of MUTABLE will be used which will allow image tags to be
+	// overwritten. If IMMUTABLE is specified, all image tags within the repository
+	// will be immutable which will prevent them from being overwritten.
+	ImageTagMutability ImageTagMutability
+
+	// A list of filters that specify which image tags are excluded from the
+	// repository creation template's image tag mutability setting.
+	ImageTagMutabilityExclusionFilters []ImageTagMutabilityExclusionFilter
+
+	// The lifecycle policy to use for repositories created using the template.
+	LifecyclePolicy *string
+
+	// The repository namespace prefix associated with the repository creation
+	// template.
+	Prefix *string
+
+	// The repository policy to apply to repositories created using the template. A
+	// repository policy is a permissions policy associated with a repository to
+	// control access permissions.
+	RepositoryPolicy *string
+
+	// The metadata to apply to the repository to help you categorize and organize.
+	// Each tag consists of a key and an optional value, both of which you define. Tag
+	// keys can have a maximum character length of 128 characters, and tag values can
+	// have a maximum length of 256 characters.
+	ResourceTags []Tag
+
+	// The date and time, in JavaScript date format, when the repository creation
+	// template was last updated.
+	UpdatedAt *time.Time
 
 	noSmithyDocumentSerde
 }
@@ -815,8 +1069,9 @@ type ResourceDetails struct {
 }
 
 // The details of a scanning repository filter. For more information on how to use
-// filters, see Using filters (https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning.html#image-scanning-filters)
-// in the Amazon Elastic Container Registry User Guide.
+// filters, see [Using filters]in the Amazon Elastic Container Registry User Guide.
+//
+// [Using filters]: https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning.html#image-scanning-filters
 type ScanningRepositoryFilter struct {
 
 	// The filter to use when scanning.
@@ -841,6 +1096,82 @@ type ScoreDetails struct {
 	noSmithyDocumentSerde
 }
 
+// The signing configuration for a registry, which specifies rules for
+// automatically signing images when pushed.
+type SigningConfiguration struct {
+
+	// A list of signing rules. Each rule defines a signing profile and optional
+	// repository filters that determine which images are automatically signed. Maximum
+	// of 10 rules.
+	//
+	// This member is required.
+	Rules []SigningRule
+
+	noSmithyDocumentSerde
+}
+
+// A repository filter used to determine which repositories have their images
+// automatically signed on push. Each filter consists of a filter type and filter
+// value.
+type SigningRepositoryFilter struct {
+
+	// The filter value used to match repository names. When using WILDCARD_MATCH , the
+	// * character matches any sequence of characters.
+	//
+	// Examples:
+	//
+	//   - myapp/* - Matches all repositories starting with myapp/
+	//
+	//   - */production - Matches all repositories ending with /production
+	//
+	//   - *prod* - Matches all repositories containing prod
+	//
+	// This member is required.
+	Filter *string
+
+	// The type of filter to apply. Currently, only WILDCARD_MATCH is supported, which
+	// uses wildcard patterns to match repository names.
+	//
+	// This member is required.
+	FilterType SigningRepositoryFilterType
+
+	noSmithyDocumentSerde
+}
+
+// A signing rule that specifies a signing profile and optional repository
+// filters. When an image is pushed to a matching repository, a signing job is
+// created using the specified profile.
+type SigningRule struct {
+
+	// The ARN of the Amazon Web Services Signer signing profile to use for signing
+	// images that match this rule. For more information about signing profiles, see [Signing profiles]
+	// in the Amazon Web Services Signer Developer Guide.
+	//
+	// [Signing profiles]: https://docs.aws.amazon.com/signer/latest/developerguide/signing-profiles.html
+	//
+	// This member is required.
+	SigningProfileArn *string
+
+	// A list of repository filters that determine which repositories have their
+	// images signed on push. If no filters are specified, all images pushed to the
+	// registry are signed using the rule's signing profile. Maximum of 100 filters per
+	// rule.
+	RepositoryFilters []SigningRepositoryFilter
+
+	noSmithyDocumentSerde
+}
+
+// An object that identifies an image subject.
+type SubjectIdentifier struct {
+
+	// The digest of the image.
+	//
+	// This member is required.
+	ImageDigest *string
+
+	noSmithyDocumentSerde
+}
+
 // The metadata to apply to a resource to help you categorize and organize them.
 // Each tag consists of a key and a value, both of which you define. Tag keys can
 // have a maximum character length of 128 characters, and tag values can have a
@@ -861,6 +1192,18 @@ type Tag struct {
 	noSmithyDocumentSerde
 }
 
+// The total count of images transitioning to a storage class.
+type TransitioningImageTotalCount struct {
+
+	// The total number of images transitioning to the storage class.
+	ImageTotalCount *int32
+
+	// The target storage class.
+	TargetStorageClass LifecyclePolicyTargetStorageClass
+
+	noSmithyDocumentSerde
+}
+
 // Information on the vulnerable package identified by a finding.
 type VulnerablePackage struct {
 
@@ -872,6 +1215,9 @@ type VulnerablePackage struct {
 
 	// The file path of the vulnerable package.
 	FilePath *string
+
+	// The version of the package that contains the vulnerability fix.
+	FixedInVersion *string
 
 	// The name of the vulnerable package.
 	Name *string

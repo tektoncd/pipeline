@@ -174,7 +174,7 @@ func (c *Client) ReadNotification(id int64, status ...NotifyStatus) (*Notificati
 		resp, err := c.getParsedResponse("PATCH", link, nil, nil, thread)
 		return thread, resp, err
 	}
-	_, resp, err := c.getResponse("PATCH", link, nil, nil)
+	resp, err := c.doRequestWithStatusHandle("PATCH", link, nil, nil)
 	return nil, resp, err
 }
 
@@ -210,7 +210,7 @@ func (c *Client) ReadNotifications(opt MarkNotificationOptions) ([]*Notification
 		resp, err := c.getParsedResponse("PUT", link.String(), nil, nil, &threads)
 		return threads, resp, err
 	}
-	_, resp, err := c.getResponse("PUT", link.String(), nil, nil)
+	resp, err := c.doRequestWithStatusHandle("PUT", link.String(), nil, nil)
 	return nil, resp, err
 }
 
@@ -252,6 +252,6 @@ func (c *Client) ReadRepoNotifications(owner, repo string, opt MarkNotificationO
 		resp, err := c.getParsedResponse("PUT", link.String(), nil, nil, &threads)
 		return threads, resp, err
 	}
-	_, resp, err := c.getResponse("PUT", link.String(), nil, nil)
+	resp, err := c.doRequestWithStatusHandle("PUT", link.String(), nil, nil)
 	return nil, resp, err
 }

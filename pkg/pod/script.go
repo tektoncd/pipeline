@@ -62,6 +62,12 @@ var (
 	debugScriptsVolumeMount = corev1.VolumeMount{
 		Name:      debugScriptsVolumeName,
 		MountPath: debugScriptsDir,
+		ReadOnly:  true,
+	}
+	writeDebugScriptsVolumeMount = corev1.VolumeMount{
+		Name:      debugScriptsVolumeName,
+		MountPath: debugScriptsDir,
+		ReadOnly:  false,
 	}
 	debugInfoVolume = corev1.Volume{
 		Name:         debugInfoVolumeName,
@@ -96,7 +102,7 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Ste
 	}
 
 	placeScriptsInit := corev1.Container{
-		Name:         "place-scripts",
+		Name:         ContainerNamePlaceScripts,
 		Image:        shellImage,
 		Command:      []string{shellCommand},
 		Args:         []string{shellArg, ""},
@@ -109,7 +115,7 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Ste
 
 	// Add mounts for debug
 	if debugConfig != nil && debugConfig.NeedsDebug() {
-		placeScriptsInit.VolumeMounts = append(placeScriptsInit.VolumeMounts, debugScriptsVolumeMount)
+		placeScriptsInit.VolumeMounts = append(placeScriptsInit.VolumeMounts, writeDebugScriptsVolumeMount)
 	}
 
 	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, debugConfig, "script")
@@ -173,9 +179,9 @@ func placeScriptInContainer(script, scriptFile string, c *corev1.Container, init
 	// script file in a known location in the scripts volume.
 	if requiresWindows {
 		command, args, script, scriptFile := extractWindowsScriptComponents(script, scriptFile)
-		initContainer.Args[1] += fmt.Sprintf(`@"
+		initContainer.Args[1] += fmt.Sprintf(`@'
 %s
-"@ | Out-File -FilePath %s
+'@ | Out-File -FilePath %s
 `, script, scriptFile)
 
 		c.Command = command

@@ -19,7 +19,7 @@ import (
 	"io"
 
 	ecr "github.com/awslabs/amazon-ecr-credential-helper/ecr-login"
-	"github.com/chrismellard/docker-credential-acr-env/pkg/credhelper"
+	acr "github.com/gaganhr94/docker-credential-acr/pkg/credhelper"
 	"github.com/google/go-containerregistry/pkg/authn"
 	kauth "github.com/google/go-containerregistry/pkg/authn/kubernetes"
 	"github.com/google/go-containerregistry/pkg/v1/google"
@@ -30,7 +30,7 @@ import (
 
 var (
 	amazonKeychain authn.Keychain = authn.NewKeychainFromHelper(ecr.NewECRHelper(ecr.WithLogger(io.Discard)))
-	azureKeychain  authn.Keychain = authn.NewKeychainFromHelper(credhelper.NewACRCredentialsHelper())
+	azureKeychain  authn.Keychain = authn.NewKeychainFromHelper(acr.NewACRCredentialsHelper())
 )
 
 // Options holds configuration data for guiding credential resolution.

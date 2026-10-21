@@ -149,7 +149,7 @@ func (c *wrapper) do(ctx context.Context, method, path string, in, out interface
 		req.Body = buf
 	}
 	// execute the http request
-	res, err := c.Client.Do(ctx, req)
+	res, err := c.Do(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func (c *wrapper) do(ctx context.Context, method, path string, in, out interface
 	)
 
 	// snapshot the request rate limit
-	c.Client.SetRate(res.Rate)
+	c.SetRate(res.Rate)
 
 	// if an error is encountered, unmarshal and return the
 	// error response.

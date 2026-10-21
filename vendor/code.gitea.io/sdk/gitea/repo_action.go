@@ -84,8 +84,7 @@ func (c *Client) DeleteRepoActionSecret(user, repo, secretName string) (*Respons
 		return nil, err
 	}
 
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/actions/secrets/%s", user, repo, secretName), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/actions/secrets/%s", user, repo, secretName), nil, nil)
 }
 
 // GetRepoActionVariable returns a repository variable in the Gitea Actions.
@@ -117,8 +116,7 @@ func (c *Client) CreateRepoActionVariable(user, repo, variableName, value string
 		return nil, err
 	}
 
-	_, resp, err := c.getResponse("POST", fmt.Sprintf("/repos/%s/%s/actions/variables/%s", user, repo, variableName), jsonHeader, bytes.NewReader(body))
-	return resp, err
+	return c.doRequestWithStatusHandle("POST", fmt.Sprintf("/repos/%s/%s/actions/variables/%s", user, repo, variableName), jsonHeader, bytes.NewReader(body))
 }
 
 // UpdateRepoActionVariable updates a repository variable in the Gitea Actions.
@@ -139,8 +137,7 @@ func (c *Client) UpdateRepoActionVariable(user, repo, variableName, value string
 		return nil, err
 	}
 
-	_, resp, err := c.getResponse("PUT", fmt.Sprintf("/repos/%s/%s/actions/variables/%s", user, repo, variableName), jsonHeader, bytes.NewReader(body))
-	return resp, err
+	return c.doRequestWithStatusHandle("PUT", fmt.Sprintf("/repos/%s/%s/actions/variables/%s", user, repo, variableName), jsonHeader, bytes.NewReader(body))
 }
 
 // DeleteRepoActionVariable deletes a repository variable in the Gitea Actions.
@@ -151,6 +148,5 @@ func (c *Client) DeleteRepoActionVariable(user, reponame, variableName string) (
 		return nil, err
 	}
 
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/actions/variables/%s", user, reponame, variableName), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/actions/variables/%s", user, reponame, variableName), nil, nil)
 }

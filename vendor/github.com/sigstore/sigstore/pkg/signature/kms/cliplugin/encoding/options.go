@@ -17,7 +17,7 @@
 package encoding
 
 // We have some type assertions that seem like they may panic, but this is just to satisfy
-// golanci-lint's forcetypeassert linter. If they were to ever fail, unit tests would also fail.
+// golangci-lint's forcetypeassert linter. If they were to ever fail, unit tests would also fail.
 // We know the asserted types are valid because otherwise we would have compiler failures.
 
 import (
@@ -55,9 +55,9 @@ func PackRPCOptions(opts []signature.RPCOption) *common.RPCOptions {
 func UnpackRPCOptions(commonOpts *common.RPCOptions) []signature.RPCOption {
 	opts := []signature.RPCOption{}
 	if commonOpts.CtxDeadline != nil {
-		// no need fot this package to cancel the context early,
+		// no need for this package to cancel the context early,
 		// and users may still check if the deadline is exceeded with ctx.Err().
-		ctx, _ := context.WithDeadline(context.Background(), *commonOpts.CtxDeadline) //nolint:govet
+		ctx, _ := context.WithDeadline(context.Background(), *commonOpts.CtxDeadline) //nolint:govet,gosec
 		opts = append(opts, options.WithContext(ctx))
 	}
 	if commonOpts.KeyVersion != nil {
@@ -90,7 +90,7 @@ func PackMessageOptions(opts []signature.MessageOption) *common.MessageOptions {
 
 // PackPublicKeyOptions extracts properties of all of opts into struct ready for serializing.
 func PackPublicKeyOptions(opts []signature.PublicKeyOption) *common.PublicKeyOptions {
-	rpcOpts := []signature.RPCOption{}
+	rpcOpts := make([]signature.RPCOption, 0, len(opts))
 	for _, opt := range opts {
 		rpcOpts = append(rpcOpts, opt)
 	}
@@ -101,8 +101,9 @@ func PackPublicKeyOptions(opts []signature.PublicKeyOption) *common.PublicKeyOpt
 
 // UnpackPublicKeyOptions builds the []signature.PublicKeyOption from common.PublicKeyOptions.
 func UnpackPublicKeyOptions(commonOpts *common.PublicKeyOptions) []signature.PublicKeyOption {
-	opts := []signature.PublicKeyOption{}
-	for _, opt := range UnpackRPCOptions(&commonOpts.RPCOptions) {
+	rpcOpts := UnpackRPCOptions(&commonOpts.RPCOptions)
+	opts := make([]signature.PublicKeyOption, 0, len(rpcOpts))
+	for _, opt := range rpcOpts {
 		opt, ok := opt.(signature.PublicKeyOption)
 		if !ok {
 			panic("cannot assert as PublicKeyOption")
@@ -124,13 +125,13 @@ func UnpackMessageOptions(commonOpts *common.MessageOptions) []signature.Message
 	return opts
 }
 
-// PackSignOptions extracts properties of all of opts into struct ready for serializing,
+// PackSignOptions extracts properties of all of opts into struct ready for serializing.
 func PackSignOptions(opts []signature.SignOption) *common.SignOptions {
-	rpcOpts := []signature.RPCOption{}
+	rpcOpts := make([]signature.RPCOption, 0, len(opts))
 	for _, opt := range opts {
 		rpcOpts = append(rpcOpts, opt)
 	}
-	messageOpts := []signature.MessageOption{}
+	messageOpts := make([]signature.MessageOption, 0, len(opts))
 	for _, opt := range opts {
 		messageOpts = append(messageOpts, opt)
 	}
@@ -140,17 +141,19 @@ func PackSignOptions(opts []signature.SignOption) *common.SignOptions {
 	}
 }
 
-// UnpackSignOptions builds the []]signature.SignOption from common.SignOptions.
+// UnpackSignOptions builds the []signature.SignOption from common.SignOptions.
 func UnpackSignOptions(commonOpts *common.SignOptions) []signature.SignOption {
-	opts := []signature.SignOption{}
-	for _, opt := range UnpackRPCOptions(&commonOpts.RPCOptions) {
+	rpcOpts := UnpackRPCOptions(&commonOpts.RPCOptions)
+	msgOpts := UnpackMessageOptions(&commonOpts.MessageOptions)
+	opts := make([]signature.SignOption, 0, len(rpcOpts)+len(msgOpts))
+	for _, opt := range rpcOpts {
 		opt, ok := opt.(signature.SignOption)
 		if !ok {
 			panic("cannot assert as SignOption")
 		}
 		opts = append(opts, opt)
 	}
-	for _, opt := range UnpackMessageOptions(&commonOpts.MessageOptions) {
+	for _, opt := range msgOpts {
 		opt, ok := opt.(signature.SignOption)
 		if !ok {
 			panic("cannot assert as SignOption")
@@ -160,13 +163,13 @@ func UnpackSignOptions(commonOpts *common.SignOptions) []signature.SignOption {
 	return opts
 }
 
-// PackVerifyOptions extracts properties of all of opts into struct ready for serializing,
+// PackVerifyOptions extracts properties of all of opts into struct ready for serializing.
 func PackVerifyOptions(opts []signature.VerifyOption) *common.VerifyOptions {
-	rpcOpts := []signature.RPCOption{}
+	rpcOpts := make([]signature.RPCOption, 0, len(opts))
 	for _, opt := range opts {
 		rpcOpts = append(rpcOpts, opt)
 	}
-	messageOpts := []signature.MessageOption{}
+	messageOpts := make([]signature.MessageOption, 0, len(opts))
 	for _, opt := range opts {
 		messageOpts = append(messageOpts, opt)
 	}
@@ -176,17 +179,19 @@ func PackVerifyOptions(opts []signature.VerifyOption) *common.VerifyOptions {
 	}
 }
 
-// UnpackVerifyOptions builds the []]signature.VerifyOption from common.VerifyOptions.
+// UnpackVerifyOptions builds the []signature.VerifyOption from common.VerifyOptions.
 func UnpackVerifyOptions(commonOpts *common.VerifyOptions) []signature.VerifyOption {
-	opts := []signature.VerifyOption{}
-	for _, opt := range UnpackRPCOptions(&commonOpts.RPCOptions) {
+	rpcOpts := UnpackRPCOptions(&commonOpts.RPCOptions)
+	msgOpts := UnpackMessageOptions(&commonOpts.MessageOptions)
+	opts := make([]signature.VerifyOption, 0, len(rpcOpts)+len(msgOpts))
+	for _, opt := range rpcOpts {
 		opt, ok := opt.(signature.VerifyOption)
 		if !ok {
 			panic("cannot assert as VerifyOption")
 		}
 		opts = append(opts, opt)
 	}
-	for _, opt := range UnpackMessageOptions(&commonOpts.MessageOptions) {
+	for _, opt := range msgOpts {
 		opt, ok := opt.(signature.VerifyOption)
 		if !ok {
 			panic("cannot assert as VerifyOption")

@@ -34,6 +34,7 @@ weight: 202
     - [Monitoring `Steps`](#monitoring-steps)
     - [Steps](#steps)
     - [Monitoring `Results`](#monitoring-results)
+- [Pending `TaskRun`s](#pending-taskruns)
 - [Cancelling a `TaskRun`](#cancelling-a-taskrun)
 - [Debugging a `TaskRun`](#debugging-a-taskrun)
     - [Breakpoint on Failure](#breakpoint-on-failure)
@@ -164,7 +165,7 @@ spec:
       value: Task
 ```
 
-A working example can be found [here](../examples/v1beta1/taskruns/no-ci/tekton-bundles.yaml).
+A working example can be found [here](../examples/v1/taskruns/beta/bundles-resolver.yaml).
 
 Any of the above options will fetch the image using the `ImagePullSecrets` attached to the
 `ServiceAccount` specified in the `TaskRun`. See the [Service Account](#service-account)
@@ -173,8 +174,7 @@ will then run that `Task` without registering it in the cluster allowing multipl
 of the same named `Task` to be run at once.
 
 `Tekton Bundles` may be constructed with any toolsets that produces valid OCI image artifacts so long as
-the artifact adheres to the [contract](tekton-bundle-contracts.md). Additionally, you may also use the `tkn`
-cli *(coming soon)*.
+the artifact adheres to the [contract](tekton-bundle-contracts.md). Additionally, you may also use the [`tkn bundle`](https://github.com/tektoncd/cli/blob/main/docs/cmd/tkn_bundle.md) CLI command.
 
 #### Remote Tasks
 
@@ -765,6 +765,24 @@ The `status` field defines the observed state of `TaskRun`
   - [`sidecars`](tasks.md#using-a-sidecar-in-a-task) - This field is a list. The list has one entry per `sidecar` in the manifest. Each entry represents the imageid of the corresponding sidecar.
   - `spanContext` - Contains tracing span context fields.
 
+### Pod Warning Event fallback
+
+When the `surface-pod-events` feature flag is enabled, Tekton can copy the
+latest Warning Event for a Pending TaskRun Pod into the TaskRun's `Succeeded`
+condition. This is a fallback: a useful current Pod or container diagnosis
+always takes precedence.
+
+The controller does not watch or cache Kubernetes Events. For an eligible Pod,
+it Lists Warning Events immediately and retries an empty result after 5 seconds
+and 30 seconds, for at most three Lists per Pod UID during one controller
+process lifetime. Events remain best-effort, so a warning created after the
+last attempt can be missed. A controller restart can start a new bounded set of
+attempts.
+
+Surfaced messages begin with `Last observed Pod warning:`. Internally, Tekton
+retains the message only while it can associate it with the current TaskRun UID
+and Pod UID. This prevents a replacement Pod with the same name from inheriting
+an older Pod's warning.
 
 
 ## Monitoring execution status
@@ -775,6 +793,20 @@ fully-qualified name of the container image, and the corresponding digest.
 
 **Note:** If any `Pods` have been [`OOMKilled`](https://kubernetes.io/docs/tasks/administer-cluster/out-of-resource/)
 by Kubernetes, the `TaskRun` is marked as failed even if its exit code is 0.
+
+When a `TaskRun` fails due to a pod-level issue, the `reason` field in the `Succeeded` condition
+indicates the specific failure type:
+
+| Reason | Description |
+|--------|-------------|
+| `PodEvicted` | The pod was evicted by Kubernetes (e.g. ephemeral storage limit exceeded). |
+| `InitContainerOOM` | An internal Tekton init container (`prepare`, `place-scripts`, `working-dir-initializer`) was terminated due to an out-of-memory condition. |
+| `InitContainerFailed` | An internal Tekton init container failed (e.g. node memory pressure caused the container runtime to kill it). |
+| `StepOOM` | A step container was terminated due to an out-of-memory condition (`OOMKilled`). |
+| `StepFailed` | A step container exited with a non-zero exit code (not OOM). |
+| `SidecarOOM` | A sidecar container was terminated due to an out-of-memory condition (`OOMKilled`). |
+| `SidecarFailed` | A sidecar container exited with a non-zero exit code (not OOM). |
+| `Failed` | Default fallback for other failures. |
 
 The following example shows the `status` field of a `TaskRun` that has executed successfully:
 
@@ -872,6 +904,42 @@ Status:
     Value:  1579796946
 
 ```
+
+## Pending `TaskRun`s
+
+You can create a `TaskRun` in a pending state so that it does not start execution immediately.
+This is useful for:
+
+- **External scheduling**: Create TaskRuns in advance and start them based on external triggers
+- **Approval workflows**: Require manual approval before task execution
+- **Resource management**: Queue tasks and start them when resources are available
+- **Batch operations**: Create multiple TaskRuns and start them simultaneously
+
+When pending:
+
+- The `TaskRun` is created but no Pod is created
+- `status.startTime` is not set
+- The condition is set to `Unknown` with reason `TaskRunPending`
+- Clearing `spec.status` (or setting it to empty) starts execution
+- Setting `spec.status: TaskRunCancelled` cancels without running
+- The timeout clock does not start while the TaskRun is pending because `HasTimedOut()` returns false when `status.startTime` is unset. The timeout begins only after pending is cleared and `status.startTime` is set.
+
+**Note:** A `TaskRun` can only be marked "pending" before it has started; this setting is invalid after the `TaskRun` has started.
+
+To create a pending `TaskRun`, set `.spec.status` to `TaskRunPending`:
+
+```yaml
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: my-taskrun
+spec:
+  taskRef:
+    name: my-task
+  status: "TaskRunPending"
+```
+
+To start the TaskRun, clear the `.spec.status` field. Alternatively, update the value to `TaskRunCancelled` to cancel it.
 
 ## Cancelling a `TaskRun`
 

@@ -192,8 +192,7 @@ func (c *Client) DeleteMilestone(owner, repo string, id int64) (*Response, error
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/milestones/%d", owner, repo, id), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/milestones/%d", owner, repo, id), nil, nil)
 }
 
 // DeleteMilestoneByName delete one milestone by name
@@ -209,8 +208,7 @@ func (c *Client) DeleteMilestoneByName(owner, repo, name string) (*Response, err
 	if err := escapeValidatePathSegments(&owner, &repo, &name); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s/milestones/%s", owner, repo, name), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s/milestones/%s", owner, repo, name), nil, nil)
 }
 
 // resolveMilestoneByName is a fallback method to find milestone id by name

@@ -1,14 +1,48 @@
 name: Tekton Integration
 # Adapted from https://github.com/mattmoor/mink/blob/master/.github/workflows/minkind.yaml
 
-on: [workflow_call]
+on:
+  workflow_call:
+    inputs:
+      is-draft:
+        description: 'Whether the PR is a draft'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
 
 defaults:
   run:
     shell: bash
 
 jobs:
+  compute-matrix:
+    name: compute e2e matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        sparse-checkout: .github
+        persist-credentials: false
+    - name: Select matrix
+      id: matrix
+      run: |
+        if [ "${IS_DRAFT}" = "true" ]; then
+          echo "Using draft matrix (amd64, k8s-latest, stable)"
+          echo "matrix=$(jq -c . .github/e2e-matrix-draft.json)" >> $GITHUB_OUTPUT
+        else
+          echo "Using full matrix"
+          echo "matrix=$(jq -c . .github/e2e-matrix-full.json)" >> $GITHUB_OUTPUT
+        fi
+      env:
+        IS_DRAFT: ${{ inputs.is-draft }}
+
   e2e-tests:
+    needs: [compute-matrix]
     concurrency:
       group: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.k8s-name }}-${{ matrix.feature-flags }}-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
@@ -16,36 +50,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false # Keep running if one leg fails.
-      matrix:
-        os:
-        - ubuntu-latest     # amd64
-        - ubuntu-24.04-arm  # arm64
-
-        k8s-name:
-        - k8s-oldest             # 1.28
-        - k8s-latest             # 1.34
-
-        feature-flags:
-        - stable
-        - beta
-        - alpha
-
-        include:
-        - k8s-name: k8s-oldest
-          k8s-version: v1.28.x
-        - k8s-name: k8s-latest
-          k8s-version: v1.34.x
-
-        # Limit arm64: only run k8s-latest on arm64 (alpha and beta), skip oldest on arm64
-        exclude:
-        - k8s-name: k8s-oldest
-          os: ubuntu-24.04-arm
-        - k8s-name: k8s-latest
-          os: ubuntu-24.04-arm
-          feature-flags: beta
-        - k8s-name: k8s-latest
-          os: ubuntu-24.04-arm
-          feature-flags: alpha
+      matrix: ${{ fromJSON(needs.compute-matrix.outputs.matrix) }}
     env:
       KO_DOCKER_REPO: registry.local:5000/tekton
       CLUSTER_DOMAIN: c${{ github.run_id }}.local
@@ -65,18 +70,22 @@ jobs:
         sudo docker image prune -a -f
         echo "--- Disk space after cleanup ---"
         df -h
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-    - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417  # v6.3.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
       with:
         go-version-file: "go.mod"
     - name: Cache ko build cache
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306  # v5.0.3
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
       with:
         path: /tmp/ko-cache
         key: ${{ runner.os }}-${{ runner.arch }}-ko-${{ hashFiles('go.sum') }}
         restore-keys: |
           ${{ runner.os }}-${{ runner.arch }}-ko-
-    - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
+    - uses: ko-build/setup-ko@61b4d1d396f5b2e7d6bb6fefdce3dc38d1a13445 # v0.10
+      with:
+        version: v0.18.1
 
     - name: Install Dependencies
       working-directory: ./
@@ -106,12 +115,12 @@ jobs:
           --e2e-env ./test/e2e-tests-kind-${{ matrix.feature-flags }}.env
 
     - name: Upload test results
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}
         path: ${{ env.ARTIFACTS }}
 
-    - uses: chainguard-dev/actions/kind-diag@71714a76c3df10b544595a2294c16649dc3472e5 # v1.6.5
+    - uses: chainguard-dev/actions/kind-diag@ec1df73a5b59652ce6862329ecc9a29ddaef9f46 # v1.6.39
       if: ${{ failure() }}
       with:
         artifact-name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-${{ matrix.os }}-logs
@@ -119,8 +128,8 @@ jobs:
     - name: Dump Artifacts
       if: ${{ failure() }}
       run: |
-        if [[ -d ${{ env.ARTIFACTS }} ]]; then
-          cd ${{ env.ARTIFACTS }}
+        if [[ -d ${ARTIFACTS} ]]; then
+          cd ${ARTIFACTS}
           for x in $(find . -type f); do
             echo "::group:: artifact $x"
             cat $x

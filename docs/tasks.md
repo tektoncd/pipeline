@@ -331,10 +331,15 @@ When a `step` in a `task` results in a failure, the rest of the steps in the `ta
 declared a failure. If you would like to ignore such step errors and continue executing the rest of the steps in
 the task, you can specify `onError` for such a `step`.
 
-`onError` can be set to either `continue` or `stopAndFail` as part of the step definition. If `onError` is
+`onError` can be set to `continue`, `stopAndFail`, or `continueAndFail` as part of the step definition. If `onError` is
 set to `continue`, the entrypoint sets the original failed exit code of the [script](#running-scripts-within-steps)
 in the container terminated state. A `step` with `onError` set to `continue` does not fail the `taskRun` and continues
 executing the rest of the steps in a task.
+
+If `onError` is set to `continueAndFail`, the remaining steps continue to execute, but the `taskRun` fails after they
+complete. When multiple steps fail with a non-zero exit code, the `taskRun` reports the first `continueAndFail` step
+that failed. Note that an OOM-killed step or sidecar always takes precedence over a `continueAndFail` step's exit
+code, regardless of execution order.
 
 To ignore a step error, set `onError` to `continue`:
 
@@ -345,6 +350,21 @@ steps:
     onError: continue
     script: |
       go test .
+```
+
+To continue executing subsequent steps while still failing the `taskRun`, set `onError` to `continueAndFail`:
+
+```yaml
+steps:
+  - image: docker.io/library/golang:latest
+    name: run-unit-tests
+    onError: continueAndFail
+    script: |
+      go test ./...
+  - image: registry.access.redhat.com/ubi9/ubi-minimal
+    name: publish-test-report
+    script: |
+      ./publish-report
 ```
 
 The original failed exit code of the [script](#running-scripts-within-steps) is available in the terminated state of
@@ -1293,7 +1313,7 @@ spec:
         type: Socket
 ```
 
-#### Mounting multiple `Volumes`
+### Mounting multiple `Volumes`
 
 The example below illustrates mounting multiple `Volumes`:
 
@@ -1321,7 +1341,7 @@ spec:
       emptyDir: {}
 ```
 
-#### Mounting a `ConfigMap` as a `Volume` source
+### Mounting a `ConfigMap` as a `Volume` source
 
 The example below illustrates how to mount a `ConfigMap` to act as a `Volume` source:
 
@@ -1349,10 +1369,12 @@ spec:
         name: "$(params.CFGNAME)"
 ```
 
-#### Using a `Secret` as an environment source
+### Using a `Secret` as an environment source
 
-The example below illustrates how to use a `Secret` as an environment source:
+The two examples below illustrate how to use a `Secret` as an environment source. 
 
+#### Using `env`
+The secret can be referenced in the `env` section of the `Container`-spec:
 ```yaml
 apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
 kind: Task
@@ -1386,8 +1408,45 @@ spec:
               name: $(params.github-token-secret)
               key: bot-token
 ```
+#### Using `envFrom` 
+All values present in a secret can be mounted in fewer lines by using `envFrom`.
 
-#### Using a `Sidecar` in a `Task`
+> Note: Using `envFrom` will inject _all_ variables directly as env-variables in the pod running the `Task`, and this may be a source of unexpected behavior.
+> Using `env` rather than `envFrom` will provide more fine-grained control when designing tasks for other developers to (re)use.
+```yaml
+apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: goreleaser
+spec:
+  params:
+    - name: package
+      type: string
+      description: base package to build in
+    - name: gitea-basic-auth-secret
+      type: string
+      description: name of the secret holding the github-token
+      default: gitea-basic-auth
+  workspaces:
+  - name: source
+  steps:
+    - name: release
+      image: goreleaser/goreleaser
+      workingDir: $(workspaces.source.path)/$(params.package)
+      command:
+        - goreleaser
+      args:
+        - release
+      envFrom:
+        - secretRef:
+            name: $(params.gitea-basic-auth-secret)
+      env:
+        - name: GOPATH
+          value: /workspace
+```
+
+
+### Using a `Sidecar` in a `Task`
 
 The example below illustrates how to use a `Sidecar` in your `Task`:
 

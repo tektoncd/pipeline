@@ -24,44 +24,84 @@ defaults:
 jobs:
   go-coverage:
     name: Go coverage
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest-8-cores
     permissions:
+      contents: read
+      actions: read
       pull-requests: write
 
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: ${{ github.workspace }}/src/github.com/tektoncd/pipeline
+          persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417  # v6.3.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
           go-version-file: "${{ github.workspace }}/src/github.com/tektoncd/pipeline/go.mod"
 
       - name: Generate coverage
         working-directory: ${{ github.workspace }}/src/github.com/tektoncd/pipeline
         run: |
-          go test -cover -coverprofile=coverage.txt ./... || true
+          PACKAGES=$(go list ./... | grep -vE '/cmd(/|$)|/vendor(/|$)|/hack(/|$)|/test(/|$)|/fake(/|$)|/pkg/client(/|$)|/examples(/|$)|/tekton(/|$)')
+          COVERPKG=$(echo $PACKAGES | tr ' ' ',')
+          go test -coverprofile=coverage_raw.out -covermode=atomic -coverpkg="$COVERPKG" $PACKAGES
+          grep -vE 'zz_generated\.deepcopy\.go|openapi_generated\.go' coverage_raw.out > coverage.out
+          rm -f coverage_raw.out
           echo "Generated coverage profile"
 
       - name: Archive coverage results
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: code-coverage
-          path: ${{ github.workspace }}/src/github.com/tektoncd/pipeline/coverage.txt
+          path: ${{ github.workspace }}/src/github.com/tektoncd/pipeline/coverage.out
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
-        uses: fgrosse/go-coverage-report@8c1d1a09864211d258937b1b1a5b849f7e4f2682 # v1.2.0
+        uses: fgrosse/go-coverage-report@c4bf7e78d1379325814b4dd42d80e526082e788b # v1.5.0
         continue-on-error: true # This may fail if artifact on main branch does not exist (first run or expired)
-        env:
-          GITHUB_TOKEN: ${{ secrets.CHATOPS_TOKEN }}
         with:
           coverage-artifact-name: "code-coverage"
-          coverage-file-name: "coverage.txt"
+          coverage-file-name: "coverage.out"
+
+  codecov-upload:
+    name: Upload coverage to Codecov
+    needs: go-coverage
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download coverage artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: code-coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5  # v7.1.1
+        continue-on-error: true
+        with:
+          files: coverage.out
+          flags: unit-tests
+          use_oidc: true
+          fail_ci_if_error: false
+          disable_search: true

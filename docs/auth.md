@@ -12,6 +12,18 @@ This document describes how Tekton handles authentication when executing
 apply to both of those entities in the same manner, this document collectively
 refers to `TaskRuns` and `PipelineRuns` as `Runs` for the sake of brevity.
 
+**What this document covers:** How to provide credentials to the processes that
+run *inside* the Pod created by a Run. These credentials allow Steps to perform
+actions such as cloning from a private Git repository, pushing images with `kaniko`,
+pulling images with `podman`, or performing OCI operations with `skopeo`.
+
+**What this document does NOT cover:** Pulling the Step container images themselves
+from a private registry. That happens on the Node when the Pod is scheduled, before
+any Step runs. Use Kubernetes
+[`imagePullSecrets`](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
+on the ServiceAccount for that. See the Kubernetes documentation:
+[Configure a Pod to Use a Private Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/).
+
 - [Overview](#overview)
 - [Understanding credential selection](#understanding-credential-selection)
 - [Using `Secrets` as a non-root user](#using-secrets-as-a-non-root-user)
@@ -20,6 +32,7 @@ refers to `TaskRuns` and `PipelineRuns` as `Runs` for the sake of brevity.
   - [Configuring `basic-auth` authentication for Git](#configuring-basic-auth-authentication-for-git)
   - [Configuring `ssh-auth` authentication for Git](#configuring-ssh-auth-authentication-for-git)
   - [Using a custom port for SSH authentication](#using-a-custom-port-for-ssh-authentication)
+  - [Using multiple SSH credentials for different repositories on the same host](#using-multiple-ssh-credentials-for-different-repositories-on-the-same-host)
   - [Using SSH authentication in `git` type `Tasks`](#using-ssh-authentication-in-git-type-tasks)
 - [Configuring authentication for Docker](#configuring-authentication-for-docker)
   - [Configuring `basic-auth` authentication for Docker](#configuring-basic-auth-authentication-for-docker)
@@ -75,8 +88,6 @@ To consume these `Secrets`, Tekton performs credential initialization within eve
 any `Steps` in the `Run`. During credential initialization, Tekton accesses each `Secret` associated with the `Run` and
 aggregates them into a `/tekton/creds` directory. Tekton then copies or symlinks files from this directory into the user's
 `$HOME` directory.
-
-TODO(#5357): Update docs to explain recommended methods of passing secrets in via workspaces
 
 ## Understanding credential selection
 
@@ -230,13 +241,91 @@ Note: Github deprecated basic authentication with username and password. You can
    kubectl apply --filename secret.yaml serviceaccount.yaml run.yaml
    ```
 
+#### Using multiple credentials for different repositories on the same host
+
+When you need to access multiple repositories on the same Git server (e.g., `github.com/org/repo1` and `github.com/org/repo2`) with different credentials, you must include the full repository path in the annotation URL:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: repo1-credentials
+  annotations:
+    tekton.dev/git-0: https://github.com/org/repo1  # Full path including repo
+type: kubernetes.io/basic-auth
+stringData:
+  username: <repo1-username>
+  password: <repo1-token>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: repo2-credentials
+  annotations:
+    tekton.dev/git-0: https://github.com/org/repo2  # Full path including repo
+type: kubernetes.io/basic-auth
+stringData:
+  username: <repo2-username>
+  password: <repo2-token>
+```
+
+When the annotation URL includes a path (e.g., `github.com/org/repo1`), Tekton sets `useHttpPath = true` in the Git configuration, which instructs Git to match credentials based on the full repository URL rather than just the hostname.
+
+You can also mix repo-specific credentials (with path) and host-wide credentials (without path). The host-wide credential will be used as a fallback for any repository on that host that doesn't have a specific credential:
+
+```yaml
+# Repo-specific credential for a private repository
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-specific-repo-secret
+  annotations:
+    tekton.dev/git-0: https://github.com/secret-org/private-repo
+type: kubernetes.io/basic-auth
+stringData:
+  username: <specific-repo-username>
+  password: <specific-repo-token>
+---
+# Host-wide credential for all other repositories on github.com
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-org-wide-secret
+  annotations:
+    tekton.dev/git-0: https://github.com  # No path = works for all repos
+type: kubernetes.io/basic-auth
+stringData:
+  username: <org-username>
+  password: <org-token>
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: build-bot
+secrets:
+  - name: github-specific-repo-secret
+  - name: github-org-wide-secret
+```
+
+**How it works:**
+- When cloning `github.com/secret-org/private-repo`, Git uses the repo-specific credential
+- When cloning any other repository on `github.com`, Git uses the host-wide credential as a fallback
+
+**Note:** The order of secrets in the ServiceAccount does not affect credential matching. Tekton automatically orders credentials in the `.git-credentials` file to ensure proper fallback behavior (host-wide credentials first, then repo-specific credentials).
+
+For a complete example, see [`git-basic-auth-multiple-repos.yaml`](../examples/v1/taskruns/no-ci/git-basic-auth-multiple-repos.yaml).
+
 ### Configuring `ssh-auth` authentication for Git
 
 This section describes how to configure an `ssh-auth` type `Secret` for use with Git. In the example below,
 before executing any `Steps` in the `Run`, Tekton creates a `~/.ssh/config` file containing the SSH key
 specified in the `Secret`.
 
-1. In `secret.yaml`, define a `Secret` that specifies your SSH private key:
+1. Generate a new SSH key with `ssh-keygen` command (optionally specify the file path in which the key will be saved, default is `~/.ssh/<key-name>`)
+
+1. View public key with `cat ~/.ssh/<key-name>.pub` and add it to GitHub (under Settings > SSH and GPG Keys > New SSH key)
+
+1. In `secret.yaml`, define a `Secret` containing your SSH private key:
 
    ```yaml
    apiVersion: v1
@@ -247,21 +336,24 @@ specified in the `Secret`.
        tekton.dev/git-0: github.com # Described below
    type: kubernetes.io/ssh-auth
    stringData:
-     ssh-privatekey: <private-key>
-     # This is non-standard, but its use is encouraged to make this more secure.
+     ssh-privatekey: |
+       -----BEGIN OPENSSH PRIVATE KEY-----
+       b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAA...
+       ...
+       -----END OPENSSH PRIVATE KEY-----
+     # known_hosts is not mandatory, but its use is strongly encouraged for security reasons.
      # If it is not provided then the git server's public key will be requested
      # when the repo is first fetched.
-     known_hosts: <known-hosts>
+     known_hosts: |
+       github.com ssh-rsa AAAAB3NzaC1yc2EA...
+       github.com ecdsa-sha2-nistp256 AAAAE2VjZHNh...
+       github.com ssh-ed25519 AAAAC3NzaC1l...
    ```
 
    In the above example, the value for `tekton.dev/git-0` specifies the URL for which Tekton will use this `Secret`,
    as described in [Understanding credential selection](#understanding-credential-selection).
 
-1. Generate the `ssh-privatekey` value. For example:
-
-   `cat ~/.ssh/id_rsa`
-
-1. Set the value of the `known_hosts` field to the generated `ssh-privatekey` value from the previous step.
+   You can view your private key with `cat ~/.ssh/<key-name>` and get GitHub's public key with `ssh-keyscan github.com`
 
 1. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
 
@@ -325,6 +417,94 @@ stringData:
   ssh-privatekey: <private-key>
   known_hosts: <known-hosts>
 ```
+
+#### Using multiple SSH credentials for different repositories on the same host
+
+When you need to access multiple repositories on the same Git server (e.g., `github.com/org/repo1` and `github.com/org/repo2`) with different SSH keys, you must include the repository path in the annotation URL:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: repo1-ssh-key
+  annotations:
+    tekton.dev/git-0: github.com/org/repo1  # Full path including repo
+type: kubernetes.io/ssh-auth
+stringData:
+  ssh-privatekey: <repo1-private-key>
+  known_hosts: <known-hosts>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: repo2-ssh-key
+  annotations:
+    tekton.dev/git-0: github.com/org/repo2  # Full path including repo
+type: kubernetes.io/ssh-auth
+stringData:
+  ssh-privatekey: <repo2-private-key>
+  known_hosts: <known-hosts>
+```
+
+When the annotation URL includes a path (e.g., `github.com/org/repo1`), Tekton creates an SSH `Host` alias in `~/.ssh/config` and adds `insteadOf` URL rewriting rules in `~/.gitconfig`. This ensures Git redirects the repository URL through the alias, selecting the correct SSH key.
+
+**Why host-only annotations don't work for this case:**
+
+Using the same host-only annotation (e.g., `tekton.dev/git-0: github.com`) for multiple secrets
+with different SSH keys will **fail**. In this configuration, all keys are listed under a single
+`Host github.com` block, and SSH tries them in order. Git hosting services like GitHub authenticate
+the *first valid key* and then check repository access. If the first key authenticates successfully
+but does not have access to the target repository, the server rejects with "Repository not found"
+instead of allowing SSH to try the next key. This means only the first repository will clone
+successfully, and subsequent repositories using different deploy keys will fail.
+
+To avoid this, include the repository path in the annotation URL for each secret. This instructs
+Tekton to create separate SSH Host aliases and Git URL rewriting rules, ensuring each repository
+uses its dedicated SSH key directly without relying on key ordering.
+
+You can also mix repo-specific credentials (with path) and host-wide credentials (without path). The host-wide credential will be used as a fallback for any repository on that host that doesn't have a specific SSH key:
+
+```yaml
+# Repo-specific SSH key for a private repository
+apiVersion: v1
+kind: Secret
+metadata:
+  name: private-repo-ssh-key
+  annotations:
+    tekton.dev/git-0: github.com/secret-org/private-repo
+type: kubernetes.io/ssh-auth
+stringData:
+  ssh-privatekey: <private-repo-key>
+  known_hosts: <known-hosts>
+---
+# Host-wide SSH key for all other repositories on github.com
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-default-ssh-key
+  annotations:
+    tekton.dev/git-0: github.com  # No path = works for all repos
+type: kubernetes.io/ssh-auth
+stringData:
+  ssh-privatekey: <default-key>
+  known_hosts: <known-hosts>
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: build-bot
+secrets:
+  - name: private-repo-ssh-key
+  - name: github-default-ssh-key
+```
+
+**How it works:**
+- When cloning `github.com/secret-org/private-repo`, Git rewrites the URL to use the repo-specific SSH Host alias and uses the dedicated SSH key
+- When cloning any other repository on `github.com`, Git uses the host-wide SSH key as a fallback
+
+**Note:** The order of secrets in the ServiceAccount does not affect credential matching. Tekton automatically orders SSH config entries so that host-wide credentials appear first (as fallbacks) and repo-specific credentials appear after.
+
+For a complete example, see [`git-ssh-auth-multiple-repos.yaml`](../examples/v1/taskruns/no-ci/git-ssh-auth-multiple-repos.yaml).
 
 ### Using SSH authentication in `git` type `Tasks`
 
@@ -420,10 +600,16 @@ the credentials specified in the `Secret`.
 ## Configuring `docker*` authentication for Docker
 
 This section describes how to configure authentication using the `dockercfg` and `dockerconfigjson` type
-`Secrets` for use with Docker. In the example below, before executing any `Steps` in the `Run`, Tekton creates
-a `~/.docker/config.json` file containing the credentials specified in the `Secret`. When the `Steps` execute,
-Tekton uses those credentials to access the target Docker registry.
-f
+`Secrets` for use with Docker. Before any `Steps` run, Tekton creates a `~/.docker/config.json` file
+in the Pod containing the credentials specified in the `Secret`. When the process *inside* each Step
+container runs (for example, `kaniko` pushing an image, `podman` pulling an image, or `skopeo` copying
+images), that process uses these credentials to authenticate with the Docker registry.
+
+**Note:** These credentials are for tools running *inside* the Step container. They do not affect how
+Kubernetes pulls the Step's container image. For pulling Step images from a private registry, use
+[`imagePullSecrets`](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
+on the ServiceAccount.
+
 **Note:** If you specify both the Tekton `basic-auth` and the above Kubernetes `Secrets`, Tekton merges all
 credentials from all specified `Secrets` but Tekton's `basic-auth` `Secret` overrides either of the
 Kubernetes `Secrets`.
@@ -509,6 +695,36 @@ https://user2:pass2@url2.com
 ...
 ```
 
+**Note:** If the annotation URL includes a path (e.g., `https://github.com/org/repo`), Tekton adds `useHttpPath = true` to the credential configuration:
+
+```
+=== ~/.gitconfig ===
+[credential]
+    helper = store
+[credential "https://github.com/org/repo1"]
+    username = "user1"
+    useHttpPath = true
+[credential "https://github.com/org/repo2"]
+    username = "user2"
+    useHttpPath = true
+...
+```
+
+This enables Git to match credentials based on the full repository URL, allowing different credentials for different repositories on the same host.
+
+**Credential ordering in `.git-credentials`:** When mixing host-wide and repo-specific credentials, Tekton automatically orders entries in `.git-credentials` to ensure proper fallback behavior:
+
+```
+=== ~/.git-credentials ===
+https://orguser:orgtoken@github.com           <-- Host-wide credentials FIRST
+https://user1:token1@github.com/org/repo1     <-- Repo-specific credentials LAST
+https://user2:token2@github.com/org/repo2
+```
+
+This ordering ensures that:
+1. When Git queries with a full path (for repo-specific credentials with `useHttpPath=true`), the host-wide entry doesn't match (wrong path), and the correct repo-specific entry is used.
+2. When Git queries without a path (for other repositories), the host-wide entry matches first and is used as a fallback.
+
 ### `ssh-auth` for Git
 
 Given hostnames, private keys, and `known_hosts` of the form: `url{n}.com`,
@@ -540,6 +756,39 @@ Host url2.com
 {contents of known_hosts2}
 ...
 ```
+
+**Note:** If the annotation URL includes a path (e.g., `github.com/org/repo`), Tekton creates SSH Host aliases and Git URL rewriting rules:
+
+```
+=== ~/.ssh/config ===
+Host github.com
+    HostName github.com
+    Port 22
+    IdentityFile ~/.ssh/id_host_wide_key
+Host github.com-org-repo1
+    HostName github.com
+    Port 22
+    IdentityFile ~/.ssh/id_repo1_key
+Host github.com-org-repo2
+    HostName github.com
+    Port 22
+    IdentityFile ~/.ssh/id_repo2_key
+...
+=== ~/.gitconfig (appended) ===
+[url "git@github.com-org-repo1:org/repo1"]
+    insteadOf = git@github.com:org/repo1
+[url "ssh://github.com-org-repo1/org/repo1"]
+    insteadOf = ssh://github.com/org/repo1
+[url "git@github.com-org-repo2:org/repo2"]
+    insteadOf = git@github.com:org/repo2
+[url "ssh://github.com-org-repo2/org/repo2"]
+    insteadOf = ssh://github.com/org/repo2
+...
+```
+
+This enables Git to redirect repository-specific SSH URLs through a Host alias that maps to the correct SSH key, while host-wide credentials serve as fallbacks.
+
+**SSH config ordering:** Host-wide entries (without path) are always placed before repo-specific entries (with path) to ensure proper fallback behavior. The order of secrets in the ServiceAccount does not affect this.
 
 ### `basic-auth` for Docker
 

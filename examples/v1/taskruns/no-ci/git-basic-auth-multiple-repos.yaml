@@ -1,0 +1,150 @@
+# This example demonstrates using multiple Git credentials for different repositories
+# on the same host.
+#
+# When the annotation URL includes a path (e.g., github.com/org/repo), Tekton:
+# 1. Sets useHttpPath=true in .gitconfig for that credential
+# 2. Automatically orders credentials in .git-credentials for proper fallback behavior
+#    (host-wide credentials first, repo-specific credentials last)
+#
+# Example use cases:
+# 1. Multiple repos on same host with different credentials (repo1-secret, repo2-secret)
+# 2. Mixed: one repo-specific credential + one host-wide credential (specific-secret, org-wide-secret)
+#
+# Note: The order of secrets in the ServiceAccount does NOT affect credential matching.
+---
+# Secret for a specific repository (repo-specific)
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/basic-auth
+metadata:
+  name: github-repo1-secret
+  annotations:
+    # Note: URL includes path (github.com/myorg/demo-repo-1) -> useHttpPath will be set to true
+    tekton.dev/git-0: https://github.com/myorg/demo-repo-1
+stringData:
+  username: <username>
+  password: <password>
+---
+# Secret for another specific repository (repo-specific)
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/basic-auth
+metadata:
+  name: github-repo2-secret
+  annotations:
+    # Note: URL includes path (github.com/myorg/demo-repo-2) -> useHttpPath will be set to true
+    tekton.dev/git-0: https://github.com/myorg/demo-repo-2
+stringData:
+  username: <username>
+  password: <password>
+---
+# ServiceAccount with multiple repo-specific secrets
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: git-multi-repo-sa
+secrets:
+  - name: github-repo1-secret
+  - name: github-repo2-secret
+---
+# TaskRun demonstrating cloning from multiple repos with different credentials
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: git-clone-multiple-repos
+spec:
+  serviceAccountName: git-multi-repo-sa
+  taskSpec:
+    steps:
+    - name: clone-repo1
+      image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+      script: |
+        #!/usr/bin/env sh
+        set -xe
+
+        echo "=== Checking Git config ==="
+        cat ~/.gitconfig || echo "No .gitconfig"
+
+        echo "=== Cloning demo-repo-1 ==="
+        # This will use credentials from github-repo1-secret
+        git clone https://github.com/myorg/demo-repo-1 /workspace/repo1
+
+        echo "Successfully cloned repo1"
+        ls -la /workspace/repo1
+
+    - name: clone-repo2
+      image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+      script: |
+        #!/usr/bin/env sh
+        set -xe
+        # This will use credentials from github-repo2-secret
+        git clone https://github.com/myorg/demo-repo-2 /workspace/repo2
+        ls -la /workspace/repo2
+---
+# Example 2: Mixed credentials - repo-specific + host-wide
+# This demonstrates using one specific repo credential alongside an org-wide credential.
+# Tekton automatically orders credentials in .git-credentials so host-wide works as fallback.
+---
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/basic-auth
+metadata:
+  name: github-specific-repo-secret
+  annotations:
+    # Note: URL includes path -> useHttpPath will be set to true
+    tekton.dev/git-0: https://github.com/secret-org/private-repo
+stringData:
+  username: <username>
+  password: <password>
+---
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/basic-auth
+metadata:
+  name: github-org-wide-secret
+  annotations:
+    # Note: URL does NOT include path -> useHttpPath will NOT be set
+    # This credential will work as fallback for any repo on github.com
+    tekton.dev/git-0: https://github.com
+stringData:
+  username: <username>
+  password: <password>
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: git-mixed-creds-sa
+secrets:
+  # Order does NOT matter - Tekton auto-orders credentials for fallback
+  - name: github-specific-repo-secret
+  - name: github-org-wide-secret
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: git-clone-mixed-credentials
+spec:
+  serviceAccountName: git-mixed-creds-sa
+  taskSpec:
+    steps:
+    - name: clone-specific-repo
+      image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+      script: |
+        #!/usr/bin/env sh
+        set -xe
+
+        # This will use github-specific-repo-secret (useHttpPath=true matches the path)
+        git clone https://github.com/secret-org/private-repo /workspace/specific
+
+        echo "Successfully cloned specific repo with dedicated credentials"
+
+    - name: clone-org-repo
+      image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+      script: |
+        #!/usr/bin/env sh
+        set -xe
+
+        # This will use github-org-wide-secret as fallback
+        git clone https://github.com/myorg/another-repo /workspace/org
+
+        echo "Successfully cloned org repo with org-wide credentials"

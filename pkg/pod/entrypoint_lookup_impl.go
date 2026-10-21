@@ -173,16 +173,17 @@ func imageInfo(img v1.Image, hasArgs bool) (cmd []string, platform string, err e
 		ep = append(ep, cf.Config.Cmd...)
 	}
 
-	platformObj := platforms.NewPlatform()
-	platformObj.OS = cf.OS
-	platformObj.Architecture = cf.Architecture
-	// A single image's config metadata doesn't include the CPU
-	// architecture variant, but we'll assume this is okay since
-	// the runtime node's image selection will also select the same
-	// image. This will only be a problem if the image is a
-	// single-platform image that happens to specify a variant, and
-	// the runtime node it gets assigned to has a value for
-	// runtime.GOARM.
+	// Build the platform string from the image's config metadata.
+	// We intentionally do NOT include the controller's CPU variant here:
+	// when the controller runs on a different architecture (e.g., ARM
+	// controller resolving an amd64 image), the controller's variant
+	// would leak into the key (e.g., "linux/amd64/v8"), causing the
+	// entrypoint to fail to find the command for "linux/amd64".
+	// See https://github.com/tektoncd/pipeline/issues/10073
+	platformObj := &platforms.Platform{
+		OS:           cf.OS,
+		Architecture: cf.Architecture,
+	}
 	platform = platformObj.Format()
 
 	return ep, platform, nil

@@ -148,6 +148,24 @@ func TestTaskRun_Invalidate(t *testing.T) {
 			Paths:   []string{"spec.task-words.properties"},
 		},
 	}, {
+		name: "taskrun pending while running",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{Name: "mytask"},
+				Status:  v1beta1.TaskRunSpecStatusPending,
+			},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					StartTime: &metav1.Time{Time: time.Now()},
+				},
+			},
+		},
+		want: &apis.FieldError{
+			Message: "invalid value: TaskRun cannot be Pending after it is started",
+			Paths:   []string{"spec.status"},
+		},
+	}, {
 		name: "uses bundle (deprecated) on creation is disallowed",
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -183,6 +201,15 @@ func TestTaskRun_Validate(t *testing.T) {
 		taskRun *v1beta1.TaskRun
 		wc      func(context.Context) context.Context
 	}{{
+		name: "valid pending taskrun",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{Name: "mytask"},
+				Status:  v1beta1.TaskRunSpecStatusPending,
+			},
+		},
+	}, {
 		name: "propagating params with taskrun",
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
@@ -574,7 +601,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 			Status: "TaskRunCancell",
 		},
-		wantErr: apis.ErrInvalidValue("TaskRunCancell should be TaskRunCancelled", "status"),
+		wantErr: apis.ErrInvalidValue("TaskRunCancell should be TaskRunCancelled or TaskRunPending", "status"),
 	}, {
 		name: "incorrectly set statusMesage",
 		spec: v1beta1.TaskRunSpec{

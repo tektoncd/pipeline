@@ -37,14 +37,16 @@ for the name, namespace and defaults that the resolver ships with.
 
 ### Options
 
-| Option Name          | Description                                                       | Example Values        |
-|----------------------|-------------------------------------------------------------------|-----------------------|
-| `backoff-duration`   | The initial duration for a backoff.                               | `500ms`, `2s`         |
-| `backoff-factor`     | The factor by which the sleep duration increases every step.      | `2.5`, `4.0`          |
-| `backoff-jitter`     | A random amount of additioan sleep between 0 andduration * jitter.| `0.1`, `0.5`          |
-| `backoff-steps`      | The number of backoffs to attempt.                                | `3`, `7`              |
-| `backoff-cap`        | The maxumum backoff duration. If reached, remaining steps are zeroed.| `10s`, `20s`       |
-| `default-kind`       | The default layer kind in the bundle image.                       | `task`, `pipeline`    |
+| Option Name                | Description                                                                  | Default Value | Required | Example Values         |
+|----------------------------|------------------------------------------------------------------------------|---------------|----------|------------------------|
+| `backoff-duration`         | The initial duration for backoff retries.                                    | `2s`          | false    | `500ms`, `2s`          |
+| `backoff-factor`           | The factor by which the sleep duration increases at each retry step.         | `2.0`         | false    | `2.5`, `4.0`           |
+| `backoff-jitter`           | Random jitter added to each backoff duration (`duration * jitter`).          | `0.1`         | false    | `0.1`, `0.5`           |
+| `backoff-steps`            | The number of backoff retries to attempt.                                    | `2`           | false    | `3`, `7`               |
+| `backoff-cap`              | The maximum backoff duration. If reached, remaining retry steps are capped.  | `10s`         | false    | `10s`, `20s`           |
+| `default-service-account`  | The default service account name to use for bundle requests.                 | `default`     | true     | `build-bot`, `default` |
+| `default-kind`             | The default layer kind in the bundle image.                                  | `task`        | true     | `task`, `pipeline`     |
+
 
 ### Caching Options
 
@@ -55,6 +57,8 @@ The bundle resolver supports caching of resolved resources to improve performanc
 | `always` | Always cache resolved resources. This is the most aggressive caching strategy and will cache all resolved resources regardless of their source. |
 | `never` | Never cache resolved resources. This disables caching completely. |
 | `auto` | Caching will only occur for bundles pulled by digest. (default) |
+
+**Note**: The cache parameter must be under `pipelineRef.params` or `taskRef.params`, not `spec.params`.
 
 ### Cache Configuration
 
@@ -105,6 +109,48 @@ spec:
       value: task
 ```
 
+### Task Resolution with Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: remote-task-reference
+spec:
+  taskRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: docker.io/ptasci67/example-oci@sha256:053a6cb9f3711d4527dd0d37ac610e8727ec0288a898d5dfbd79b25bcaa29828
+    - name: name
+      value: hello-world
+    - name: kind
+      value: task
+    - name: cache   # cache param under spec.taskRef.params
+      value: always
+```
+
+### Task Resolution without Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: remote-task-reference
+spec:
+  taskRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: docker.io/ptasci67/example-oci@sha256:053a6cb9f3711d4527dd0d37ac610e8727ec0288a898d5dfbd79b25bcaa29828
+    - name: name
+      value: hello-world
+    - name: kind
+      value: task
+    - name: cache   # cache param under spec.taskRef.params
+      value: never
+```
+
 ### Pipeline Resolution
 
 Unfortunately the Tekton Catalog does not publish pipelines at the
@@ -127,6 +173,54 @@ spec:
       value: hello-pipeline
     - name: kind
       value: pipeline
+  params:
+  - name: username
+    value: "tekton pipelines"
+```
+
+### Pipeline Resolution with Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: bundle-demo
+spec:
+  pipelineRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: 10.96.190.208:5000/simple/pipeline:latest
+    - name: name
+      value: hello-pipeline
+    - name: kind
+      value: pipeline
+    - name: cache   # cache param under spec.pipelineRef.params
+      value: always
+  params:
+  - name: username
+    value: "tekton pipelines"
+```
+
+### Pipeline Resolution without Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: bundle-demo
+spec:
+  pipelineRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: 10.96.190.208:5000/simple/pipeline:latest
+    - name: name
+      value: hello-pipeline
+    - name: kind
+      value: pipeline
+    - name: cache   # cache param under spec.pipelineRef.params
+      value: never
   params:
   - name: username
     value: "tekton pipelines"

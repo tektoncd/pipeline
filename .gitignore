@@ -69,3 +69,13 @@ kind.yaml
 
 # Profiling
 cpu.prof
+
+# AI assistant context files
+.assistant
+.claude
+.agentready/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key

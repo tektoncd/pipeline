@@ -78,11 +78,12 @@ type hookInput struct {
 }
 
 type status struct {
-	State string `json:"state"`
-	Key   string `json:"key"`
-	Name  string `json:"name"`
-	URL   string `json:"url"`
-	Desc  string `json:"description"`
+	State  string `json:"state"`
+	Key    string `json:"key"`
+	Name   string `json:"name"`
+	URL    string `json:"url"`
+	Parent string `json:"parent,omitempty"`
+	Desc   string `json:"description"`
 }
 
 type statuses struct {
@@ -290,7 +291,7 @@ func getRepoGroups(ctx context.Context, namespace, name string, client *wrapper,
 	if err != nil {
 		return nil, err
 	}
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -303,7 +304,7 @@ func (s *repositoryService) ListCollaborators(ctx context.Context, repo string, 
 	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/permissions/users?%s", namespace, name, encodeListOptions(opts))
 	out := new(participants)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -389,7 +390,7 @@ func (s *repositoryService) List(ctx context.Context, opts *scm.ListOptions) ([]
 	path := fmt.Sprintf("rest/api/1.0/repos?%s", encodeListRoleOptions(opts))
 	out := new(repositories)
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -400,7 +401,7 @@ func (s *repositoryService) ListOrganisation(ctx context.Context, org string, op
 	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos?%s", org, encodeListRoleOptions(opts))
 	out := new(repositories)
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -426,7 +427,7 @@ func (s *repositoryService) ListHooks(ctx context.Context, repo string, opts *sc
 	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/webhooks?%s", namespace, name, encodeListOptions(opts))
 	out := new(hooks)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -438,7 +439,7 @@ func (s *repositoryService) ListStatus(ctx context.Context, _, ref string, opts 
 	path := fmt.Sprintf("rest/build-status/1.0/commits/%s?%s", url.PathEscape(ref), encodeListOptions(opts))
 	out := new(statuses)
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -469,15 +470,29 @@ func (s *repositoryService) UpdateHook(ctx context.Context, repo string, input *
 }
 
 // CreateStatus creates a new commit status.
-// reference: https://developer.atlassian.com/server/bitbucket/how-tos/updating-build-status-for-commits/
+// reference (EOL Server): https://developer.atlassian.com/server/bitbucket/how-tos/updating-build-status-for-commits/
+// reference (Data Center): https://developer.atlassian.com/server/bitbucket/rest/v1004/api-group-builds-and-deployments/#api-api-latest-projects-projectkey-repos-repositoryslug-commits-commitid-builds-post
 func (s *repositoryService) CreateStatus(ctx context.Context, repo, ref string, input *scm.StatusInput) (*scm.Status, *scm.Response, error) {
 	path := fmt.Sprintf("rest/build-status/1.0/commits/%s", url.PathEscape(ref))
+	key := input.Label
+	if input.Parent != "" {
+		// bitbucket dc required builds only works if key format is: <parent>/<label>
+		key = fmt.Sprintf("%s/%s", input.Parent, input.Label)
+		projectKey, repositorySlug := scm.Split(repo)
+		path = fmt.Sprintf(
+			"rest/api/latest/projects/%s/repos/%s/commits/%s/builds",
+			url.PathEscape(projectKey),
+			url.PathEscape(repositorySlug),
+			url.PathEscape(ref),
+		)
+	}
 	in := status{
-		State: convertFromState(input.State),
-		Key:   input.Label,
-		Name:  input.Label,
-		URL:   input.Link,
-		Desc:  input.Desc,
+		State:  convertFromState(input.State),
+		Key:    key,
+		Name:   input.Label,
+		URL:    input.Link,
+		Parent: input.Parent,
+		Desc:   input.Desc,
 	}
 	res, err := s.client.do(ctx, "POST", path, in, nil)
 	return &scm.Status{

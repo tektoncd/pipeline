@@ -4,11 +4,8 @@ package kms
 
 import (
 	"context"
-	"fmt"
-	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 	"github.com/aws/smithy-go/middleware"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Creates a unique customer managed [KMS key] in your Amazon Web Services account and
@@ -75,12 +72,12 @@ import (
 // HMAC keys to generate (GenerateMac ) and verify (VerifyMac ) HMAC codes for messages up to 4096
 // bytes.
 //
-// Multi-Region primary keys Imported key material To create a multi-Region
-// primary key in the local Amazon Web Services Region, use the MultiRegion
-// parameter with a value of True . To create a multi-Region replica key, that is,
-// a KMS key with the same key ID and key material as a primary key, but in a
-// different Amazon Web Services Region, use the ReplicateKeyoperation. To change a replica
-// key to a primary key, and its primary key to a replica key, use the UpdatePrimaryRegionoperation.
+// Multi-Region primary keys To create a multi-Region primary key in the local
+// Amazon Web Services Region, use the MultiRegion parameter with a value of True .
+// To create a multi-Region replica key, that is, a KMS key with the same key ID
+// and key material as a primary key, but in a different Amazon Web Services
+// Region, use the ReplicateKeyoperation. To change a replica key to a primary key, and its
+// primary key to a replica key, use the UpdatePrimaryRegionoperation.
 //
 // You can create multi-Region KMS keys for all supported KMS key types: symmetric
 // encryption KMS keys, HMAC KMS keys, asymmetric encryption KMS keys, and
@@ -95,12 +92,12 @@ import (
 // re-encrypting the data or making a cross-Region call. For more information about
 // multi-Region keys, see [Multi-Region keys in KMS]in the Key Management Service Developer Guide.
 //
-// To import your own key material into a KMS key, begin by creating a KMS key
-// with no key material. To do this, use the Origin parameter of CreateKey with a
-// value of EXTERNAL . Next, use GetParametersForImport operation to get a public key and import token.
-// Use the wrapping public key to encrypt your key material. Then, use ImportKeyMaterialwith your
-// import token to import the key material. For step-by-step instructions, see [Importing Key Material]in
-// the Key Management Service Developer Guide .
+// Imported key material To import your own key material into a KMS key, begin by
+// creating a KMS key with no key material. To do this, use the Origin parameter
+// of CreateKey with a value of EXTERNAL . Next, use GetParametersForImport operation to get a public
+// key and import token. Use the wrapping public key to encrypt your key material.
+// Then, use ImportKeyMaterialwith your import token to import the key material. For step-by-step
+// instructions, see [Importing Key Material]in the Key Management Service Developer Guide .
 //
 // You can import key material into KMS keys of all supported KMS key types:
 // symmetric encryption KMS keys, HMAC KMS keys, asymmetric encryption KMS keys,
@@ -521,9 +518,6 @@ type CreateKeyOutput struct {
 }
 
 func (c *Client) addOperationCreateKeyMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateKey{}, middleware.After)
 	if err != nil {
 		return err
@@ -532,68 +526,20 @@ func (c *Client) addOperationCreateKeyMiddlewares(stack *middleware.Stack, optio
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateKey"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addSetLoggerMiddleware(stack, options); err != nil {
-		return err
-	}
-	if err = addClientRequestID(stack); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
-		return err
-	}
-	if err = addRawResponseToMetadata(stack); err != nil {
-		return err
-	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = addSpanRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addClientUserAgent(stack, options); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
-		return err
-	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateKeyValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateKey(options.Region), middleware.Before); err != nil {
-		return err
-	}
-	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -608,22 +554,8 @@ func (c *Client) addOperationCreateKeyMiddlewares(stack *middleware.Stack, optio
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAttempt(stack, options); err != nil {
-		return err
-	}
 	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
-}
-
-func newServiceMetadataMiddleware_opCreateKey(region string) *awsmiddleware.RegisterServiceMetadata {
-	return &awsmiddleware.RegisterServiceMetadata{
-		Region:        region,
-		ServiceID:     ServiceID,
-		OperationName: "CreateKey",
-	}
 }

@@ -19,6 +19,7 @@ type PublicKey struct {
 	Title       string    `json:"title,omitempty"`
 	Fingerprint string    `json:"fingerprint,omitempty"`
 	Created     time.Time `json:"created_at,omitempty"`
+	Updated     time.Time `json:"last_used_at,omitempty"`
 	Owner       *User     `json:"user,omitempty"`
 	ReadOnly    bool      `json:"read_only,omitempty"`
 	KeyType     string    `json:"key_type,omitempty"`
@@ -78,6 +79,5 @@ func (c *Client) CreatePublicKey(opt CreateKeyOption) (*PublicKey, *Response, er
 
 // DeletePublicKey delete public key with key id
 func (c *Client) DeletePublicKey(keyID int64) (*Response, error) {
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/user/keys/%d", keyID), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/user/keys/%d", keyID), nil, nil)
 }

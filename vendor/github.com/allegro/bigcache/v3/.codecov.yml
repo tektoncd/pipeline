@@ -1,0 +1,28 @@
+---
+codecov:
+  require_ci_to_pass: true
+comment:
+  behavior: default
+  layout: reach, diff, flags, files, footer
+  require_base: false
+  require_changes: false
+  require_head: true
+coverage:
+  precision: 2
+  range:
+    - 70
+    - 100
+  round: down
+  status:
+    changes: false
+    patch: true
+    project: true
+parsers:
+  gcov:
+    branch_detection:
+      conditional: true
+      loop: true
+      macro: false
+      method: false
+  javascript:
+    enable_partials: false

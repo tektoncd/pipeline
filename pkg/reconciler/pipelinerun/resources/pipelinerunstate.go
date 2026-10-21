@@ -19,6 +19,7 @@ package resources
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -76,6 +77,12 @@ type PipelineRunFacts struct {
 	// the case of failing at the validation is during CheckMissingResultReferences method
 	// Tasks in ValidationFailedTask is added in method runNextSchedulableTask
 	ValidationFailedTask []*ResolvedPipelineTask
+
+	// ValidationFailedErrors maps pipeline task name to the error message for tasks
+	// that failed validation. These messages are included in the PipelineRun status
+	// condition to help users understand why specific tasks were not executed
+	// (e.g. missing result references).
+	ValidationFailedErrors map[string]string
 }
 
 // PipelineRunTimeoutsState records information about start times and timeouts for the PipelineRun, so that the PipelineRunFacts
@@ -545,12 +552,18 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 	}
 
 	if pr.HaveTasksTimedOut(ctx, c) {
-		return &apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  v1.PipelineRunReasonTimedOut.String(),
-			Message: fmt.Sprintf("PipelineRun %q failed due to tasks failed to finish within %q", pr.Name, pr.TasksTimeout().Duration.String()),
+		// If there are finally tasks that haven't completed yet, allow the pipeline to keep
+		// running so that finally tasks can execute. Only fail immediately if there are no
+		// finally tasks or all finally tasks have already completed.
+		if !facts.hasFinalTasks() || facts.checkFinalTasksDone() {
+			return &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  v1.PipelineRunReasonTimedOut.String(),
+				Message: fmt.Sprintf("PipelineRun %q failed due to tasks failed to finish within %q", pr.Name, pr.TasksTimeout().Duration.String()),
+			}
 		}
+		logger.Infof("Tasks in PipelineRun %q have timed out but final tasks are not yet done", pr.Name)
 	}
 
 	// report the count in PipelineRun Status
@@ -577,9 +590,25 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 			message = fmt.Sprintf("Tasks Completed: %d (Failed: %d, Cancelled %d), Skipped: %d",
 				cmTasks, totalFailedTasks, s.Cancelled, s.Skipped)
 		}
-		// append validation failed count in the message
+		// append validation failed count and details in the message
 		if s.ValidationFailed > 0 {
 			message += fmt.Sprintf(", Failed Validation: %d", s.ValidationFailed)
+			if len(facts.ValidationFailedErrors) > 0 {
+				keys := make([]string, 0, len(facts.ValidationFailedErrors))
+				for k := range facts.ValidationFailedErrors {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
+				var errors []string
+				for _, k := range keys {
+					errors = append(errors, facts.ValidationFailedErrors[k])
+				}
+				errMsg := strings.Join(errors, "; ")
+				if len(errMsg) > 1024 {
+					errMsg = errMsg[:1024] + "..."
+				}
+				message += fmt.Sprintf(" (%s)", errMsg)
+			}
 		}
 		// Set reason to ReasonCompleted - At least one is skipped
 		if s.Skipped > 0 {
@@ -613,8 +642,11 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 		}
 	}
 
-	// Hasn't timed out; not all tasks have finished.... Must keep running then....
+	// Not all tasks (regular + finally) have finished.... Must keep running then....
 	switch {
+	case pr.HaveTasksTimedOut(ctx, c) && facts.hasFinalTasks() && !facts.checkFinalTasksDone():
+		// Tasks have timed out but finally tasks are still running
+		reason = v1.PipelineRunReasonTimedOutRunningFinally.String()
 	case pr.IsGracefullyCancelled():
 		// Transition pipeline into running finally state, when graceful cancel is in progress
 		reason = v1.PipelineRunReasonCancelledRunningFinally.String()
@@ -788,6 +820,11 @@ func (facts *PipelineRunFacts) checkDAGTasksDone() bool {
 // check if all finally tasks done executing (succeeded or failed)
 func (facts *PipelineRunFacts) checkFinalTasksDone() bool {
 	return facts.checkTasksDone(facts.FinalTasksGraph)
+}
+
+// hasFinalTasks returns true if the Pipeline has any finally tasks defined
+func (facts *PipelineRunFacts) hasFinalTasks() bool {
+	return facts.FinalTasksGraph.Nodes != nil && len(facts.FinalTasksGraph.Nodes) > 0
 }
 
 // getPipelineTasksCount returns the count of successful tasks, failed tasks, cancelled tasks, skipped task, and incomplete tasks

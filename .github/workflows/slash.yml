@@ -24,6 +24,9 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  contents: read
+
 jobs:
   check_comments:
     runs-on: ubuntu-latest

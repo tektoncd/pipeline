@@ -259,10 +259,10 @@ func (opt *SearchRepoOptions) QueryEncode() string {
 
 	// Repo Attributes
 	if opt.IsPrivate != nil {
-		query.Add("is_private", fmt.Sprintf("%v", opt.IsPrivate))
+		query.Add("is_private", fmt.Sprintf("%t", *opt.IsPrivate))
 	}
 	if opt.IsArchived != nil {
-		query.Add("archived", fmt.Sprintf("%v", opt.IsArchived))
+		query.Add("archived", fmt.Sprintf("%t", *opt.IsArchived))
 	}
 	if opt.ExcludeTemplate {
 		query.Add("template", "false")
@@ -506,8 +506,7 @@ func (c *Client) DeleteRepo(owner, repo string) (*Response, error) {
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("DELETE", fmt.Sprintf("/repos/%s/%s", owner, repo), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("DELETE", fmt.Sprintf("/repos/%s/%s", owner, repo), nil, nil)
 }
 
 // MirrorSync adds a mirrored repository to the mirror sync queue.
@@ -515,8 +514,7 @@ func (c *Client) MirrorSync(owner, repo string) (*Response, error) {
 	if err := escapeValidatePathSegments(&owner, &repo); err != nil {
 		return nil, err
 	}
-	_, resp, err := c.getResponse("POST", fmt.Sprintf("/repos/%s/%s/mirror-sync", owner, repo), nil, nil)
-	return resp, err
+	return c.doRequestWithStatusHandle("POST", fmt.Sprintf("/repos/%s/%s/mirror-sync", owner, repo), nil, nil)
 }
 
 // GetRepoLanguages return language stats of a repo

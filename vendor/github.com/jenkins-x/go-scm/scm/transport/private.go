@@ -9,6 +9,9 @@ import "net/http"
 // PrivateToken is an http.RoundTripper that makes HTTP
 // requests, wrapping a base RoundTripper and adding an
 // Private-Token header with the GitLab personal token.
+//
+// Deprecated: use Auth with PrivateTokenCredential, which resolves the token
+// from a scm.TokenSource per request rather than capturing it.
 type PrivateToken struct {
 	Base http.RoundTripper
 
