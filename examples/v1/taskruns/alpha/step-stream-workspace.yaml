@@ -43,26 +43,26 @@ spec:
           - wrong
         stderrConfig:
           path: $(results.error2.path)
-      - image: mirror.gcr.io/bash
+      - image: mirror.gcr.io/bash@sha256:e320b40b14abc61f053286705070342c46034a549a276b798e64541457c4af92
         workspaces:
           - name: data
         onError: continue
         args:
           - -c
           - "echo foobar >$(workspaces.data.path)/foobar.txt"
-      - image: mirror.gcr.io/bash
+      - image: mirror.gcr.io/bash@sha256:e320b40b14abc61f053286705070342c46034a549a276b798e64541457c4af92
         onError: continue
         args:
           - -c
           - "2>$(results.error.path) >&2 echo -n fooerr"
-      - image: mirror.gcr.io/bash
+      - image: mirror.gcr.io/bash@sha256:e320b40b14abc61f053286705070342c46034a549a276b798e64541457c4af92
         workspaces:
           - name: data
         workingDir: $(workspaces.data.path)
         onError: continue
         script: |
           echo local >out.txt
-      - image: mirror.gcr.io/bash
+      - image: mirror.gcr.io/bash@sha256:e320b40b14abc61f053286705070342c46034a549a276b798e64541457c4af92
         workspaces:
           - name: data
         onError: continue

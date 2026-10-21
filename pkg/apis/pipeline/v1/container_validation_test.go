@@ -209,6 +209,15 @@ func TestStepValidate(t *testing.T) {
 				MountPath: "/tekton/home",
 			}},
 		},
+	}, {
+		name: "valid step with volumeMount under /tekton/home subdirectory",
+		Step: v1.Step{
+			Image: "myimage",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "foo",
+				MountPath: "/tekton/home/subdir",
+			}},
+		},
 	}}
 	for _, st := range tests {
 		t.Run(st.name, func(t *testing.T) {
@@ -265,6 +274,45 @@ func TestStepValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/foo")`,
+			Paths:   []string{"volumeMounts[0].mountPath"},
+		},
+	}, {
+		name: "step volume mount path traversal to /tekton/results",
+		Step: v1.Step{
+			Image: "myimage",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "foo",
+				MountPath: "/tekton/home/../results",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/home/../results")`,
+			Paths:   []string{"volumeMounts[0].mountPath"},
+		},
+	}, {
+		name: "step volume mount path traversal to /tekton/scripts",
+		Step: v1.Step{
+			Image: "myimage",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "foo",
+				MountPath: "/tekton/home/../scripts",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/home/../scripts")`,
+			Paths:   []string{"volumeMounts[0].mountPath"},
+		},
+	}, {
+		name: "step volume mount nested path traversal to /tekton/run",
+		Step: v1.Step{
+			Image: "myimage",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "foo",
+				MountPath: "/tekton/home/../../tekton/run",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/home/../../tekton/run")`,
 			Paths:   []string{"volumeMounts[0].mountPath"},
 		},
 	}, {
@@ -668,6 +716,13 @@ func TestStepOnError(t *testing.T) {
 			Args:    []string{"arg"},
 		},
 	}, {
+		name: "valid step - valid onError usage - set to continueAndFail",
+		step: v1.Step{
+			OnError: v1.ContinueAndFail,
+			Image:   "image",
+			Args:    []string{"arg"},
+		},
+	}, {
 		name: "valid step - valid onError usage - set to a task parameter",
 		params: []v1.ParamSpec{{
 			Name:    "CONTINUE",
@@ -688,7 +743,7 @@ func TestStepOnError(t *testing.T) {
 		expectedError: &apis.FieldError{
 			Message: `invalid value: "onError"`,
 			Paths:   []string{"onError"},
-			Details: `Task step onError must be either "continue" or "stopAndFail"`,
+			Details: `Task step onError must be "continue", "stopAndFail" or "continueAndFail"`,
 		},
 	}}
 	for _, st := range tests {

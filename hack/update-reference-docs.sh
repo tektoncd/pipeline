@@ -18,9 +18,10 @@ set -o errexit
 set -o nounset
 
 echo "Generating API reference docs ..."
-go run github.com/ahmetb/gen-crd-api-reference-docs \
-    -config "./hack/reference-docs-gen-config.json" \
-    -api-dir "github.com/tektoncd/pipeline/pkg/apis" \
-    -template-dir "./hack/reference-docs-template" \
-    -out-file "./docs/pipeline-api.md"
+go run github.com/elastic/crd-ref-docs \
+    --config "./hack/reference-docs-gen-config.yaml" \
+    --source-path "./pkg/apis" \
+    --renderer markdown \
+    --max-depth 15 \
+    --output-path "./docs/pipeline-api.md"
 sed -i".backup" '1s/^/<!--\n---\ntitle: Pipeline API\nlinkTitle: Pipeline API\nweight: 404\n---\n-->\n\n/' ./docs/pipeline-api.md && rm docs/pipeline-api.md.backup

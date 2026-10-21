@@ -105,6 +105,9 @@ const (
 	// TaskRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
 	TaskRunSpecStatusCancelled = "TaskRunCancelled"
+	// TaskRunSpecStatusPending indicates that the user wants to postpone starting the task.
+	// When pending, no Pod is created and StartTime is not set.
+	TaskRunSpecStatusPending = "TaskRunPending"
 )
 
 // TaskRunSpecStatusMessage defines human readable status messages for the TaskRun.
@@ -230,6 +233,8 @@ const (
 	TaskRunReasonResultLargerThanAllowedLimit TaskRunReason = "TaskRunResultLargerThanAllowedLimit"
 	// TaskRunReasonStopSidecarFailed indicates that the sidecar is not properly stopped.
 	TaskRunReasonStopSidecarFailed = "TaskRunStopSidecarFailed"
+	// TaskRunReasonPending is the reason set when the TaskRun is in the pending state
+	TaskRunReasonPending TaskRunReason = "TaskRunPending"
 )
 
 func (t TaskRunReason) String() string {
@@ -297,7 +302,9 @@ type TaskRunStatusFields struct {
 	// CloudEvents describe the state of each cloud event requested via a
 	// CloudEventResource.
 	//
-	// Deprecated: Removed in v0.44.0.
+	// Deprecated: No content written to it. To be Removed (since v0.44.0).
+	// Use kubectl describe (CloudEventSent/CloudEventFailed k8s Events) or the
+	// tekton_events_sent_total Prometheus metric for delivery visibility instead.
 	//
 	// +optional
 	// +listType=atomic
@@ -455,6 +462,7 @@ type CloudEventDeliveryState struct {
 }
 
 // +genclient
+// +kubebuilder:object:root=true
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:openapi-gen=true
@@ -532,6 +540,11 @@ func (tr *TaskRun) IsFailure() bool {
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state
 func (tr *TaskRun) IsCancelled() bool {
 	return tr.Spec.Status == TaskRunSpecStatusCancelled
+}
+
+// IsPending returns true if the TaskRun's spec status is set to Pending state.
+func (tr *TaskRun) IsPending() bool {
+	return tr.Spec.Status == TaskRunSpecStatusPending
 }
 
 // IsTaskRunResultVerified returns true if the TaskRun's results have been validated by spire.

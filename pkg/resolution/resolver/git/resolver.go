@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -35,6 +36,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/cache"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/logging"
@@ -130,11 +132,37 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1.Param) (
 		KubeClient: r.kubeClient,
 	}
 
-	if params[UrlParam] != "" {
-		return g.ResolveGitClone(ctx)
-	}
+	return ResolveWithRetry(ctx, func() (framework.ResolvedResource, error) {
+		if params[UrlParam] != "" {
+			return g.ResolveGitClone(ctx)
+		}
+		return g.ResolveAPIGit(ctx, r.clientFunc)
+	})
+}
 
-	return g.ResolveAPIGit(ctx, r.clientFunc)
+// ResolveWithRetry wraps a resolution function with exponential backoff retry
+// logic. The backoff parameters are read from the git-resolver-config ConfigMap.
+// Invalid configuration values are logged and replaced with defaults so that
+// retry behavior is always preserved.
+func ResolveWithRetry(ctx context.Context, fn func() (framework.ResolvedResource, error)) (framework.ResolvedResource, error) {
+	backoff := GetGitResolverBackoff(ctx)
+
+	var result framework.ResolvedResource
+	var lastErr error
+	retryErr := wait.ExponentialBackoffWithContext(ctx, backoff, func(_ context.Context) (bool, error) {
+		result, lastErr = fn()
+		return lastErr == nil, nil
+	})
+	if retryErr != nil {
+		if errors.Is(retryErr, context.Canceled) || errors.Is(retryErr, context.DeadlineExceeded) {
+			return nil, retryErr
+		}
+		if lastErr != nil {
+			return nil, lastErr
+		}
+		return nil, retryErr
+	}
+	return result, nil
 }
 
 func ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
@@ -148,13 +176,41 @@ func ValidateParams(ctx context.Context, params []pipelinev1.Param) error {
 	return nil
 }
 
-// validateRepoURL validates if the given URL is a valid git, http, https URL or
-// starting with a / (a local repository).
-func validateRepoURL(url string) bool {
-	// Explanation:
-	pattern := `^(/|[^@]+@[^:]+|(git|https?)://)`
+// validateRepoURL validates if the given URL is a valid git, http, or https
+// URL, or an SSH-style remote (user@host:path). Local filesystem paths
+// (starting with "/" or "file://") are rejected to prevent argument
+// injection attacks via --upload-pack when combined with user-controlled
+// revision parameters.
+//
+// This is a variable so that integration tests can temporarily override
+// it when they need to use local filesystem paths.
+var validateRepoURL = defaultValidateRepoURL
+
+func defaultValidateRepoURL(url string) bool {
+	pattern := `^([^@]+@[^:]+|(git|ssh|ftps?|https?)://)`
 	re := regexp.MustCompile(pattern)
 	return re.MatchString(url)
+}
+
+// Deprecated: SetValidateRepoURLForTesting is test-only infrastructure.
+// It replaces the URL validation function and returns a restore function
+// that must be called (e.g. via t.Cleanup) to reset the original
+// validator. Do not depend on this in production code.
+func SetValidateRepoURLForTesting(fn func(string) bool) func() {
+	orig := validateRepoURL
+	validateRepoURL = fn
+	return func() { validateRepoURL = orig }
+}
+
+// containsDotDot checks if a path contains ".." components that could be
+// used for path traversal. It handles both Unix and Windows separators.
+func containsDotDot(path string) bool {
+	for _, part := range strings.Split(filepath.ToSlash(path), "/") {
+		if part == ".." {
+			return true
+		}
+	}
+	return false
 }
 
 type GitResolver struct {
@@ -271,6 +327,25 @@ func (g *GitResolver) ResolveAPIGit(ctx context.Context, clientFunc func(string,
 	} else {
 		secretRef = nil
 	}
+
+	// Security: when the user did not provide a token but specified a custom
+	// serverURL, reject the request to prevent sending the system-configured
+	// API token to an untrusted server.
+	if secretRef == nil {
+		userServerURL, hasUserServerURL := g.Params[ServerURLParam]
+		if hasUserServerURL && userServerURL != "" {
+			conf, confErr := GetScmConfigForParamConfigKey(ctx, g.Params)
+			if confErr != nil {
+				return nil, confErr
+			}
+			if userServerURL != conf.ServerURL {
+				return nil, fmt.Errorf("custom %s %q requires a %s parameter; "+
+					"the system token cannot be sent to a non-default server URL",
+					ServerURLParam, userServerURL, TokenParam)
+			}
+		}
+	}
+
 	apiToken, err := g.getAPIToken(ctx, secretRef, APISecretNameKey)
 	if err != nil {
 		return nil, err
@@ -394,12 +469,29 @@ func PopulateDefaultParams(ctx context.Context, params []pipelinev1.Param) (map[
 		return nil, fmt.Errorf("missing required git resolver params: %s", strings.Join(missingParams, ", "))
 	}
 
+	// Reject revision values that begin with "-" to prevent git argument
+	// injection (e.g. "--upload-pack=/path/to/binary"). Git parses flags
+	// from mixed positional arguments so a leading dash in the revision
+	// would be interpreted as a flag rather than a refspec.
+	if strings.HasPrefix(paramsMap[RevisionParam], "-") {
+		return nil, fmt.Errorf("invalid revision %q: must not begin with '-'", paramsMap[RevisionParam])
+	}
+
 	// validate the url params if we are not using the SCM API
 	if paramsMap[RepoParam] == "" && paramsMap[OrgParam] == "" && !validateRepoURL(paramsMap[UrlParam]) {
 		return nil, fmt.Errorf("invalid git repository url: %s", paramsMap[UrlParam])
 	}
 
-	// TODO(sbwsg): validate pathInRepo is valid relative pathInRepo
+	// Validate pathInRepo cannot escape the repository directory via
+	// traversal (e.g. "../../etc/passwd"). Leading slashes are stripped
+	// for backwards compatibility — filepath.Join already handles them
+	// safely by treating them as relative to the base directory.
+	pathValue := paramsMap[PathParam]
+	pathValue = strings.TrimLeft(pathValue, "/")
+	paramsMap[PathParam] = pathValue
+	if containsDotDot(pathValue) {
+		return nil, fmt.Errorf("invalid path %q: must not contain '..' components", pathValue)
+	}
 	return paramsMap, nil
 }
 

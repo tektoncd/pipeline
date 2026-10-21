@@ -76,7 +76,11 @@ func (p *Puller) fetcher(ctx context.Context, target resource) (*fetcher, error)
 		o:      p.o,
 	})
 	rr := v.(*reader)
-	return rr.f, rr.init(ctx)
+	if err := rr.init(ctx); err != nil {
+		p.readers.CompareAndDelete(target, rr)
+		return nil, err
+	}
+	return rr.f, nil
 }
 
 // Head is like remote.Head, but avoids re-authenticating when possible.
@@ -218,5 +222,5 @@ func (p *Puller) referrers(ctx context.Context, d name.Digest, filter map[string
 	if err != nil {
 		return nil, err
 	}
-	return f.fetchReferrers(ctx, filter, d)
+	return f.fetchReferrers(ctx, filter, d, p.o.referrersTagFallback)
 }

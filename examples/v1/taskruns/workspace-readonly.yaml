@@ -29,19 +29,19 @@ spec:
       readOnly: true
     steps:
     - name: write-allowed
-      image: mirror.gcr.io/ubuntu
+      image: mirror.gcr.io/ubuntu@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
       script: echo "hello" > $(workspaces.write-allowed.path)/foo
     - name: read-allowed
-      image: mirror.gcr.io/ubuntu
+      image: mirror.gcr.io/ubuntu@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
       script: cat $(workspaces.write-allowed.path)/foo | grep "hello"
     - name: write-disallowed
-      image: mirror.gcr.io/ubuntu
+      image: mirror.gcr.io/ubuntu@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
       script:
         echo "goodbye" > $(workspaces.write-disallowed.path)/foo || touch write-failed.txt
         test -f write-failed.txt
     - name: read-again
       # We should get "hello" when reading again because writing "goodbye" to
       # the file should have been disallowed.
-      image: mirror.gcr.io/ubuntu
+      image: mirror.gcr.io/ubuntu@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
       script:
         cat $(workspaces.write-disallowed.path)/foo | grep "hello"

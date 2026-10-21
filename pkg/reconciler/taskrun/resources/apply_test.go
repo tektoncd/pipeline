@@ -775,6 +775,46 @@ func TestApplyArrayParameters(t *testing.T) {
 	}
 }
 
+// TestApplyParametersDoesNotMutateObjectParamDefault is a deterministic regression test for
+// the same shared-map aliasing fixed in extendObjectReplacements, on the ApplyParameters
+// path: getTaskParameters merged the TaskRun object value into the param's shared default
+// map in place. This path is not concurrent (so it never panicked), but it still corrupted
+// the Task's object-param default; substitution must leave the default untouched.
+func TestApplyParametersDoesNotMutateObjectParamDefault(t *testing.T) {
+	spec := &v1.TaskSpec{
+		Params: v1.ParamSpecs{{
+			Name:       "obj",
+			Type:       v1.ParamTypeObject,
+			Properties: map[string]v1.PropertySpec{"key": {Type: v1.ParamTypeString}},
+			Default:    v1.NewObject(map[string]string{"key": "from-default"}),
+		}},
+		Steps: []v1.Step{{
+			Name:  "s",
+			Image: "img",
+			Args:  []string{"$(params.obj.key)"},
+		}},
+	}
+	tr := &v1.TaskRun{
+		Spec: v1.TaskRunSpec{
+			Params: v1.Params{{
+				Name:  "obj",
+				Value: *v1.NewObject(map[string]string{"key": "from-taskrun"}),
+			}},
+		},
+	}
+
+	applied := resources.ApplyParameters(spec, tr, spec.Params...)
+
+	// The TaskRun value is applied to the step args in the returned spec...
+	if got := applied.Steps[0].Args[0]; got != "from-taskrun" {
+		t.Errorf("step arg = %q, want %q", got, "from-taskrun")
+	}
+	// ...but the object-param default on the input spec must not be mutated in place.
+	if got := spec.Params[0].Default.ObjectVal["key"]; got != "from-default" {
+		t.Errorf("object param default was mutated: key = %q, want %q", got, "from-default")
+	}
+}
+
 func TestApplyParameters(t *testing.T) {
 	tr := &v1.TaskRun{
 		Spec: v1.TaskRunSpec{

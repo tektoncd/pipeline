@@ -648,6 +648,88 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		},
 		expectedCount:    1,
 		expectedDuration: 60,
+	}, {
+		name: "for succeeded taskrun in anonymous pipelinerun (no generateName)",
+		taskRun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "taskrun-1",
+				Namespace: "ns",
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey:    "anonymous",
+					pipeline.PipelineRunLabelKey: "pipelinerun-1",
+				},
+			},
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{Name: "task-1"},
+			},
+			Status: v1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
+		beforeCondition:  nil,
+		countWithReason:  false,
+		taskrunLevel:     config.TaskrunLevelAtTaskrun,
+		pipelinerunLevel: config.PipelinerunLevelAtPipelinerun,
+		expectedTags: map[string]string{
+			"pipeline":    "anonymous",
+			"pipelinerun": "pipelinerun-1",
+			"task":        "task-1",
+			"taskrun":     "taskrun-1",
+			"namespace":   "ns",
+			"status":      "success",
+		},
+		expectedCount:    1,
+		expectedDuration: 60,
+	}, {
+		name: "for succeeded taskrun in pipelinerun with generateName-derived pipeline label",
+		taskRun: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "taskrun-1",
+				Namespace: "ns",
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey:    "my-pipeline",
+					pipeline.PipelineRunLabelKey: "my-pipeline-abcde",
+				},
+			},
+			Spec: v1.TaskRunSpec{
+				TaskRef: &v1.TaskRef{Name: "task-1"},
+			},
+			Status: v1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
+		beforeCondition:  nil,
+		countWithReason:  false,
+		taskrunLevel:     config.TaskrunLevelAtTaskrun,
+		pipelinerunLevel: config.PipelinerunLevelAtPipelinerun,
+		expectedTags: map[string]string{
+			"pipeline":    "my-pipeline",
+			"pipelinerun": "my-pipeline-abcde",
+			"task":        "task-1",
+			"taskrun":     "taskrun-1",
+			"namespace":   "ns",
+			"status":      "success",
+		},
+		expectedCount:    1,
+		expectedDuration: 60,
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			resetMetrics()
@@ -1091,6 +1173,52 @@ func TestObserveRunningTaskRunsResolvingTaskRef(t *testing.T) {
 	t.Error("waiting_on_task_resolution metric not found")
 }
 
+func TestObserveRunningTaskRunsNoSucceededCondition(t *testing.T) {
+	resetMetrics()
+	ctx := getConfigContext(false, false)
+	reader := sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	otel.SetMeterProvider(provider)
+
+	r, err := NewRecorder(ctx)
+	if err != nil {
+		t.Fatalf("NewRecorder: %v", err)
+	}
+
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "taskrun-no-condition", Namespace: "ns"},
+		Status:     v1.TaskRunStatus{},
+	}
+	mockLister := &mockTaskRunLister{trs: []*v1.TaskRun{tr}}
+
+	_, err = r.meter.RegisterCallback(func(ctx context.Context, o metric.Observer) error {
+		return r.observeRunningTaskRuns(ctx, o, mockLister)
+	}, r.runningTRsGauge, r.runningTRsWaitingOnTaskResolutionGauge, r.runningTRsThrottledByQuotaGauge, r.runningTRsThrottledByNodeGauge)
+	if err != nil {
+		t.Fatalf("RegisterCallback: %v", err)
+	}
+
+	var rm metricdata.ResourceMetrics
+	if err := reader.Collect(ctx, &rm); err != nil {
+		t.Fatalf("Collect error: %v", err)
+	}
+
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name == "tekton_pipelines_controller_running_taskruns" {
+				gauge, ok := m.Data.(metricdata.Gauge[int64])
+				if !ok {
+					t.Fatalf("Expected Gauge[int64], got %T", m.Data)
+				}
+				if len(gauge.DataPoints) > 0 && gauge.DataPoints[0].Value != 0 {
+					t.Errorf("TaskRun with no Succeeded condition should not be counted as running, got %d", gauge.DataPoints[0].Value)
+				}
+				return
+			}
+		}
+	}
+}
+
 func TestObserveRunningTaskRunsListerError(t *testing.T) {
 	resetMetrics()
 	ctx := getConfigContext(false, false)
@@ -1196,6 +1324,10 @@ func TestRecordPodLatency(t *testing.T) {
 		t.Run(td.name, func(t *testing.T) {
 			resetMetrics()
 			ctx := getConfigContext(false, false)
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+			otel.SetMeterProvider(provider)
+
 			metrics, err := NewRecorder(ctx)
 			if err != nil {
 				t.Fatalf("NewRecorder: %v", err)
@@ -1205,8 +1337,52 @@ func TestRecordPodLatency(t *testing.T) {
 				t.Error("RecordPodLatency wanted error, got nil")
 			} else if !td.expectingError {
 				if err != nil {
-					t.Errorf("RecordPodLatency: %v", err)
+					t.Fatalf("RecordPodLatency: %v", err)
 				}
+
+				var rm metricdata.ResourceMetrics
+				if err := reader.Collect(ctx, &rm); err != nil {
+					t.Fatalf("Collect error: %v", err)
+				}
+
+				for _, sm := range rm.ScopeMetrics {
+					for _, m := range sm.Metrics {
+						if m.Name == "tekton_pipelines_controller_taskruns_pod_latency_milliseconds" {
+							hist, ok := m.Data.(metricdata.Histogram[float64])
+							if !ok {
+								t.Fatalf("Expected Histogram[float64], got %T", m.Data)
+							}
+							if len(hist.DataPoints) != 1 {
+								t.Fatalf("Expected 1 data point, got %d", len(hist.DataPoints))
+							}
+							dp := hist.DataPoints[0]
+
+							// Verify latency value (4 seconds = 4000 ms)
+							if dp.Sum != 4000 {
+								t.Errorf("Expected latency sum 4000ms, got %v", dp.Sum)
+							}
+
+							// Verify attributes: namespace, task, taskrun should be present; pod should NOT
+							gotAttrs := make(map[string]string)
+							for _, kv := range dp.Attributes.ToSlice() {
+								gotAttrs[string(kv.Key)] = kv.Value.AsString()
+							}
+							if _, hasPod := gotAttrs["pod"]; hasPod {
+								t.Error("pod label should not be present on pod latency metric")
+							}
+							expectedAttrs := map[string]string{
+								"namespace": "foo",
+								"task":      "task-1",
+								"taskrun":   "test-taskrun",
+							}
+							if d := cmp.Diff(expectedAttrs, gotAttrs); d != "" {
+								t.Errorf("Attributes diff (-want, +got): %s", d)
+							}
+							return
+						}
+					}
+				}
+				t.Error("pod latency metric not found")
 			}
 		})
 	}
@@ -1236,6 +1412,47 @@ func TestTaskRunIsOfPipelinerun(t *testing.T) {
 		name:          "no",
 		tr:            &v1.TaskRun{},
 		expectedValue: false,
+	}, {
+		name: "anonymous pipeline label",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey:    "anonymous",
+					pipeline.PipelineRunLabelKey: "pipelinerun-xyz",
+				},
+			},
+		},
+		expectedValue:         true,
+		expetectedPipeline:    "anonymous",
+		expetectedPipelineRun: "pipelinerun-xyz",
+	}, {
+		name: "pipeline label same as pipelinerun",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey:    "my-pipelinerun",
+					pipeline.PipelineRunLabelKey: "my-pipelinerun",
+				},
+			},
+		},
+		expectedValue:         true,
+		expetectedPipeline:    "anonymous",
+		expetectedPipelineRun: "my-pipelinerun",
+	}, {
+		// When the PipelineRun used generateName, the label is based on the
+		// generateName instead of "anonymous" or the pipelineRun name.
+		name: "generateName-derived pipeline label",
+		tr: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey:    "my-pipeline",
+					pipeline.PipelineRunLabelKey: "my-pipeline-abcde",
+				},
+			},
+		},
+		expectedValue:         true,
+		expetectedPipeline:    "my-pipeline",
+		expetectedPipelineRun: "my-pipeline-abcde",
 	}}
 
 	for _, test := range tests {

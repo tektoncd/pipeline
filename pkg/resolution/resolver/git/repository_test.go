@@ -20,7 +20,9 @@ package git
 import (
 	"context"
 	"encoding/base64"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"testing"
@@ -73,7 +75,7 @@ func TestClone(t *testing.T) {
 				expectedCmd = append(expectedCmd, "--config-env", "http.extraHeader=GIT_AUTH_HEADER")
 				expectedEnv = append(expectedEnv, "GIT_AUTH_HEADER=Authorization: Basic "+token)
 			}
-			expectedCmd = append(expectedCmd, "clone", test.url, repo.directory, "--depth=1", "--no-checkout")
+			expectedCmd = append(expectedCmd, "clone", "--depth=1", "--no-checkout", "--", test.url, repo.directory)
 
 			if len(executions) != 1 {
 				t.Fatalf("Expected 1 command execution during cloning, got %d: %v", len(executions), executions)
@@ -169,4 +171,322 @@ func TestCheckout(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestCheckout_ArgumentInjection_CommandStructure uses a mock executor
+// to verify that checkout() places the "--" separator before the
+// revision argument, preventing git from interpreting a malicious
+// revision (e.g. "--upload-pack=/bin/sh") as a flag.
+//
+// Regression test for GHSA-94jr-7pqp-xhcq.
+func TestCheckout_ArgumentInjection_CommandStructure(t *testing.T) {
+	testCases := []struct {
+		name     string
+		revision string
+	}{
+		{name: "upload-pack injection", revision: "--upload-pack=/bin/sh"},
+		{name: "single dash flag", revision: "-v"},
+		{name: "normal revision still works", revision: "main"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var allInvocations [][]string
+
+			executor := func(ctx context.Context, name string, args ...string) *exec.Cmd {
+				// Capture every invocation's full argument list.
+				invocation := append([]string{name}, args...)
+				allInvocations = append(allInvocations, invocation)
+				// Use "echo" to avoid actually running git.
+				return exec.CommandContext(ctx, "echo", invocation...)
+			}
+
+			repo := &repository{
+				directory: t.TempDir(),
+				executor:  executor,
+			}
+
+			_ = repo.checkout(t.Context(), tc.revision)
+
+			// checkout() calls execGit twice: first "fetch", then "checkout".
+			// We inspect the "fetch" invocation (first call).
+			if len(allInvocations) == 0 {
+				t.Fatal("expected at least one git invocation, got none")
+			}
+			fetchArgs := allInvocations[0]
+
+			// Find the position of "--" and the revision in the fetch args.
+			separatorIdx := -1
+			revisionIdx := -1
+			for i, arg := range fetchArgs {
+				if arg == "--" {
+					separatorIdx = i
+				}
+				if arg == tc.revision {
+					revisionIdx = i
+				}
+			}
+
+			if separatorIdx == -1 {
+				t.Fatalf("expected '--' separator in git fetch args, got: %v", fetchArgs)
+			}
+			if revisionIdx == -1 {
+				t.Fatalf("expected revision %q in git fetch args, got: %v", tc.revision, fetchArgs)
+			}
+			if revisionIdx < separatorIdx {
+				t.Fatalf("revision %q appears before '--' separator (index %d < %d), "+
+					"which means git could interpret it as a flag: %v",
+					tc.revision, revisionIdx, separatorIdx, fetchArgs)
+			}
+		})
+	}
+}
+
+// TestCheckout_ArgumentInjection_RealGit creates a real git repository
+// and verifies that a malicious revision containing "--upload-pack"
+// cannot execute a binary. With the "--" separator, git treats the
+// value as a refspec (which doesn't exist) rather than a flag.
+//
+// Regression test for GHSA-94jr-7pqp-xhcq.
+func TestCheckout_ArgumentInjection_RealGit(t *testing.T) {
+	// Create a local git repo to serve as the remote.
+	repoPath, _ := createTestRepo(t, []commitForRepo{
+		{Filename: "task.yaml", Content: "apiVersion: tekton.dev/v1\nkind: Task"},
+	})
+
+	// Create a marker file that would be written if the exploit succeeds.
+	markerFile := filepath.Join(t.TempDir(), "exploit-marker")
+
+	// Create an exploit script that writes the marker file.
+	exploitScript := filepath.Join(t.TempDir(), "exploit.sh")
+	if err := os.WriteFile(exploitScript, []byte("#!/bin/sh\necho EXPLOITED > "+markerFile+"\n"), 0o700); err != nil {
+		t.Fatalf("failed to create exploit script: %v", err)
+	}
+
+	ctx := t.Context()
+
+	// Clone the repo (as the resolver would).
+	repo, cleanup, err := remote{url: repoPath}.clone(ctx)
+	if err != nil {
+		t.Fatalf("failed to clone test repo: %v", err)
+	}
+	defer cleanup()
+
+	// Attempt checkout with a malicious revision that tries to inject
+	// --upload-pack. With the "--" separator, git should treat this as
+	// a refspec and fail with "couldn't find remote ref".
+	maliciousRevision := "--upload-pack=" + exploitScript
+	err = repo.checkout(ctx, maliciousRevision)
+
+	// We expect an error because the "refspec" doesn't exist.
+	if err == nil {
+		t.Fatal("expected checkout to fail with malicious revision, but it succeeded")
+	}
+
+	// The critical assertion: the exploit script must NOT have been executed.
+	if _, statErr := os.Stat(markerFile); statErr == nil {
+		t.Fatalf("SECURITY FAILURE: exploit script was executed! "+
+			"The '--upload-pack' argument was interpreted as a git flag "+
+			"instead of a refspec. Marker file exists at %s", markerFile)
+	}
+}
+
+func TestGetFileContent(t *testing.T) {
+	// Create a file outside any repo to simulate a sensitive target.
+	sensitiveDir := t.TempDir()
+	sensitiveFile := filepath.Join(sensitiveDir, "sa-token")
+	if err := os.WriteFile(sensitiveFile, []byte("stolen-credential"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a real git repository with a tracked file.
+	// Resolve the temp dir so filepath.Rel works on platforms where /tmp
+	// is a symlink (e.g. macOS /tmp -> /private/tmp).
+	repoDir, _ := createTestRepo(t, []commitForRepo{
+		{Dir: "tasks", Filename: "example.yaml", Content: "valid content"},
+	})
+	// Add a symlink that escapes and commit it.
+	gitCmd := getGitCmd(t, repoDir)
+	if err := os.Symlink(sensitiveFile, filepath.Join(repoDir, "escape-link")); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := gitCmd("add", "escape-link").Output(); err != nil {
+		t.Fatalf("git add symlink: %q: %v", out, err)
+	}
+	// Add a nested symlink escape.
+	nestedDir := filepath.Join(repoDir, "subdir")
+	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(sensitiveFile, filepath.Join(nestedDir, "nested-link")); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := gitCmd("add", "subdir/nested-link").Output(); err != nil {
+		t.Fatalf("git add nested symlink: %q: %v", out, err)
+	}
+	if out, err := gitCmd("commit", "-m", "add symlinks").Output(); err != nil {
+		t.Fatalf("git commit: %q: %v", out, err)
+	}
+
+	repo := &repository{directory: repoDir}
+
+	tests := []struct {
+		name    string
+		path    string
+		wantErr bool
+	}{
+		{
+			name: "valid relative path",
+			path: "tasks/example.yaml",
+		},
+		{
+			name:    "path traversal with dot-dot",
+			path:    "../../etc/passwd",
+			wantErr: true,
+		},
+		{
+			name:    "path traversal to parent",
+			path:    "../secret",
+			wantErr: true,
+		},
+		{
+			name:    "path traversal deeply nested",
+			path:    "../../../../var/run/secrets/kubernetes.io/serviceaccount/token",
+			wantErr: true,
+		},
+		{
+			name:    "path traversal embedded",
+			path:    "tasks/../../../../../../etc/passwd",
+			wantErr: true,
+		},
+		{
+			name:    "non-existent file",
+			path:    "does-not-exist.yaml",
+			wantErr: true,
+		},
+		{
+			name:    "symlink escaping repo directory",
+			path:    "escape-link",
+			wantErr: true,
+		},
+		{
+			name:    "symlink in subdirectory escaping repo",
+			path:    filepath.Join("subdir", "nested-link"),
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			content, err := repo.getFileContent(tc.path)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got nil (content: %q)", string(content))
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			}
+		})
+	}
+}
+
+// TestGetFileContent_SymlinkEscape_RealGitRepo creates a real git
+// repository with a committed symlink that points outside the repo,
+// clones it, checks out the revision, and verifies that getFileContent
+// rejects the symlink path. This exercises the full clone → checkout →
+// read flow with an actual git repository.
+func TestGetFileContent_SymlinkEscape_RealGitRepo(t *testing.T) {
+	// Create a sensitive file outside any repo to simulate a target.
+	sensitiveDir := t.TempDir()
+	sensitiveFile := filepath.Join(sensitiveDir, "sa-token")
+	if err := os.WriteFile(sensitiveFile, []byte("stolen-credential"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a git repository with a normal file and a symlink escape.
+	repoDir, _ := createTestRepo(t, []commitForRepo{
+		{Filename: "task.yaml", Content: "apiVersion: tekton.dev/v1\nkind: Task"},
+	})
+
+	// Add a symlink that points to the sensitive file and commit it.
+	gitCmd := getGitCmd(t, repoDir)
+	symlinkPath := filepath.Join(repoDir, "escape-link")
+	if err := os.Symlink(sensitiveFile, symlinkPath); err != nil {
+		t.Fatalf("failed to create symlink: %v", err)
+	}
+	if out, err := gitCmd("add", "escape-link").Output(); err != nil {
+		t.Fatalf("git add symlink failed: %q: %v", out, err)
+	}
+	if out, err := gitCmd("commit", "-m", "add symlink escape").Output(); err != nil {
+		t.Fatalf("git commit symlink failed: %q: %v", out, err)
+	}
+
+	// Also add a symlink in a subdirectory.
+	subdir := filepath.Join(repoDir, "configs")
+	if err := os.MkdirAll(subdir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	nestedSymlink := filepath.Join(subdir, "nested-escape")
+	if err := os.Symlink(sensitiveFile, nestedSymlink); err != nil {
+		t.Fatalf("failed to create nested symlink: %v", err)
+	}
+	if out, err := gitCmd("add", "configs/nested-escape").Output(); err != nil {
+		t.Fatalf("git add nested symlink failed: %q: %v", out, err)
+	}
+	if out, err := gitCmd("commit", "-m", "add nested symlink escape").Output(); err != nil {
+		t.Fatalf("git commit nested symlink failed: %q: %v", out, err)
+	}
+
+	// Clone the repo (as the resolver would) and checkout main.
+	ctx := t.Context()
+	repo, cleanup, err := remote{url: repoDir}.clone(ctx)
+	if err != nil {
+		t.Fatalf("failed to clone test repo: %v", err)
+	}
+	defer cleanup()
+
+	if err := repo.checkout(ctx, "main"); err != nil {
+		t.Fatalf("failed to checkout main: %v", err)
+	}
+
+	// Verify a normal file can be read.
+	content, err := repo.getFileContent("task.yaml")
+	if err != nil {
+		t.Fatalf("expected to read normal file, got error: %v", err)
+	}
+	if !contains(string(content), "tekton.dev") {
+		t.Fatalf("unexpected content: %s", content)
+	}
+
+	// Verify the symlink escape is blocked.
+	tests := []struct {
+		name string
+		path string
+	}{
+		{name: "top-level symlink escape", path: "escape-link"},
+		{name: "nested symlink escape", path: "configs/nested-escape"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			content, err := repo.getFileContent(tc.path)
+			if err == nil {
+				t.Fatalf("symlink escape was NOT blocked — read %d bytes: %q", len(content), string(content))
+			}
+		})
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && searchSubstring(s, substr)
+}
+
+func searchSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

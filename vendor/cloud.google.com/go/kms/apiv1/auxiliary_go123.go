@@ -1,4 +1,4 @@
-// Copyright 2025 Google LLC
+// Copyright 2026 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -65,5 +65,23 @@ func (it *KeyRingIterator) All() iter.Seq2[*kmspb.KeyRing, error] {
 // All returns an iterator. If an error is returned by the iterator, the
 // iterator will stop after that iteration.
 func (it *LocationIterator) All() iter.Seq2[*locationpb.Location, error] {
+	return iterator.RangeAdapter(it.Next)
+}
+
+// All returns an iterator. If an error is returned by the iterator, the
+// iterator will stop after that iteration.
+func (it *RetiredResourceIterator) All() iter.Seq2[*kmspb.RetiredResource, error] {
+	return iterator.RangeAdapter(it.Next)
+}
+
+// All returns an iterator. If an error is returned by the iterator, the
+// iterator will stop after that iteration.
+func (it *SingleTenantHsmInstanceIterator) All() iter.Seq2[*kmspb.SingleTenantHsmInstance, error] {
+	return iterator.RangeAdapter(it.Next)
+}
+
+// All returns an iterator. If an error is returned by the iterator, the
+// iterator will stop after that iteration.
+func (it *SingleTenantHsmInstanceProposalIterator) All() iter.Seq2[*kmspb.SingleTenantHsmInstanceProposal, error] {
 	return iterator.RangeAdapter(it.Next)
 }

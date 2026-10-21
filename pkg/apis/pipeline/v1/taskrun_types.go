@@ -100,6 +100,9 @@ const (
 	// TaskRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
 	TaskRunSpecStatusCancelled = "TaskRunCancelled"
+	// TaskRunSpecStatusPending indicates that the user wants to postpone starting the task.
+	// When pending, no Pod is created and StartTime is not set.
+	TaskRunSpecStatusPending = "TaskRunPending"
 )
 
 // TaskRunSpecStatusMessage defines human readable status messages for the TaskRun.
@@ -234,9 +237,34 @@ const (
 	// TaskRunReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,
 	// it could be the content has changed, signature is invalid or public key is invalid
 	TaskRunReasonResourceVerificationFailed TaskRunReason = "ResourceVerificationFailed"
+	// TaskRunReasonPodEvicted indicates that the TaskRun's pod was evicted
+	// (e.g., due to exceeding ephemeral storage limits or node pressure).
+	TaskRunReasonPodEvicted TaskRunReason = "PodEvicted"
+	// TaskRunReasonStepOOM indicates a step container was killed due to
+	// running out of memory (OOMKilled).
+	TaskRunReasonStepOOM TaskRunReason = "StepOOM"
+	// TaskRunReasonStepFailed indicates a step container failed (non-OOM),
+	// e.g., bad image, crash, or non-zero exit code.
+	TaskRunReasonStepFailed TaskRunReason = "StepFailed"
+	// TaskRunReasonSidecarOOM indicates a sidecar container was killed due
+	// to running out of memory (OOMKilled).
+	TaskRunReasonSidecarOOM TaskRunReason = "SidecarOOM"
+	// TaskRunReasonSidecarFailed indicates a sidecar container failed
+	// (non-OOM), e.g., bad image or crash.
+	TaskRunReasonSidecarFailed TaskRunReason = "SidecarFailed"
+	// TaskRunReasonInitContainerOOM indicates an internal Tekton init
+	// container (prepare, place-scripts, working-dir-initializer) was
+	// killed due to running out of memory (OOMKilled).
+	TaskRunReasonInitContainerOOM TaskRunReason = "InitContainerOOM"
+	// TaskRunReasonInitContainerFailed indicates an internal Tekton init
+	// container (prepare, place-scripts, working-dir-initializer) failed
+	// (non-OOM), e.g., due to node memory pressure or runtime errors.
+	TaskRunReasonInitContainerFailed TaskRunReason = "InitContainerFailed"
 	// TaskRunReasonFailureIgnored is the reason set when the Taskrun has failed due to pod execution error and the failure is ignored for the owning PipelineRun.
 	// TaskRuns failed due to reconciler/validation error should not use this reason.
 	TaskRunReasonFailureIgnored TaskRunReason = "FailureIgnored"
+	// TaskRunReasonPending is the reason set when the TaskRun is in the pending state
+	TaskRunReasonPending TaskRunReason = "TaskRunPending"
 )
 
 func (t TaskRunReason) String() string {
@@ -412,6 +440,7 @@ type SidecarState struct {
 }
 
 // +genclient
+// +kubebuilder:object:root=true
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -489,6 +518,11 @@ func (tr *TaskRun) IsFailure() bool {
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state
 func (tr *TaskRun) IsCancelled() bool {
 	return tr.Spec.Status == TaskRunSpecStatusCancelled
+}
+
+// IsPending returns true if the TaskRun's spec status is set to Pending state.
+func (tr *TaskRun) IsPending() bool {
+	return tr.Spec.Status == TaskRunSpecStatusPending
 }
 
 // IsRetriable returns true if the TaskRun's Retries is not exhausted.

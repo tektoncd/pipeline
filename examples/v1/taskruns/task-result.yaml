@@ -13,12 +13,12 @@ spec:
         description: The current date in human readable format
     steps:
       - name: print-date-unix-timestamp
-        image: mirror.gcr.io/bash
+        image: mirror.gcr.io/bash@sha256:e320b40b14abc61f053286705070342c46034a549a276b798e64541457c4af92
         script: |
           #!/usr/bin/env bash
           date +%s | tee $(results.current-date-unix-timestamp.path)
       - name: print-date-human-readable
-        image: mirror.gcr.io/bash
+        image: mirror.gcr.io/bash@sha256:e320b40b14abc61f053286705070342c46034a549a276b798e64541457c4af92
         script: |
           #!/usr/bin/env bash
           date | tee $(results.current-date-human-readable.path)

@@ -5,11 +5,11 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: mirror.gcr.io/ubuntu
+    - image: mirror.gcr.io/ubuntu@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
       name: print-uid
       script: |
         echo "TaskRunUID name: $(context.taskRun.uid)"
-    - image: mirror.gcr.io/ubuntu
+    - image: mirror.gcr.io/ubuntu@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
       name: print-names
       script: |
         echo "Task name: $(context.task.name)"

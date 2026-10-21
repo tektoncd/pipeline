@@ -283,7 +283,7 @@ spec:
         #!/bin/ash
         curl -X POST "http://gitea_admin:%s@%s:3000/api/v1/admin/users" -H "accept: application/json" -H "Content-Type: application/json" -d '%s'
         curl -X PATCH "http://gitea_admin:%s@%s:3000/api/v1/admin/users/tekton-bot" -H "accept: application/json" -H "Content-Type: application/json" -d '%s'
-        TOKEN=$(curl -X POST "http://%s:%s@%s:3000/api/v1/users/tekton-bot/tokens" -H "accept: application/json" -H "Content-Type: application/json" -d "{\"name\":\"bot_token_name\"}" | sed 's/.*"sha1":"\([^"]*\)".*/\1/')
+        TOKEN=$(curl -X POST "http://%s:%s@%s:3000/api/v1/users/tekton-bot/tokens" -H "accept: application/json" -H "Content-Type: application/json" -d "{\"name\":\"bot_token_name\",\"scopes\":[\"all\"]}" | sed 's/.*"sha1":"\([^"]*\)".*/\1/')
          # Make sure we don't add a trailing newline to the result!
          echo -n "$TOKEN" > $(results.token.path)
 `,

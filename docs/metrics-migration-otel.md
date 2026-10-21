@@ -243,7 +243,7 @@ kubectl edit configmap config-observability -n tekton-pipelines
 
 ```bash
 # Apply the new version containing the OTel migration
-kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+kubectl apply -f https://infra.tekton.dev/tekton-releases/pipeline/latest/release.yaml
 
 # Wait for rollout
 kubectl rollout status deployment/tekton-pipelines-controller -n tekton-pipelines

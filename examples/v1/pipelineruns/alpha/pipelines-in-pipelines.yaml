@@ -1,0 +1,27 @@
+# Pipelines-in-Pipelines example: a parent Pipeline that runs a single child
+# Pipeline defined inline with `pipelineSpec`. Requires the alpha feature
+# flag (enable-api-fields: alpha) to be set on the cluster.
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: pipelines-in-pipelines-spec
+spec:
+  description: Run a single inline child Pipeline via pipelineSpec.
+  tasks:
+    - name: child
+      pipelineSpec:
+        tasks:
+          - name: hello
+            taskSpec:
+              steps:
+                - name: echo
+                  image: mirror.gcr.io/busybox
+                  script: 'echo "hello from the inline child Pipeline"'
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipelines-in-pipelines-spec-run-
+spec:
+  pipelineRef:
+    name: pipelines-in-pipelines-spec

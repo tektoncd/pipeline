@@ -104,7 +104,7 @@ func (s *gitService) ListBranches(ctx context.Context, repo string, opts *scm.Li
 	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/branches?%s", namespace, name, encodeListOptions(opts))
 	out := new(branches)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -120,7 +120,7 @@ func (s *gitService) ListTags(ctx context.Context, repo string, opts *scm.ListOp
 	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/tags?%s", namespace, name, encodeListOptions(opts))
 	out := new(branches)
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -132,7 +132,7 @@ func (s *gitService) ListChanges(ctx context.Context, repo, ref string, opts *sc
 	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/commits/%s/changes?%s", namespace, name, url.PathEscape(ref), encodeListOptions(opts))
 	out := new(diffstats)
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -146,7 +146,7 @@ func (s *gitService) CompareCommits(ctx context.Context, repo, ref1, ref2 string
 	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/compare/changes?%s", namespace, name, encodeListOptions(opts))
 	out := new(diffstats)
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}

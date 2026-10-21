@@ -28,6 +28,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -509,6 +510,18 @@ func TestEntrypointer_OnError(t *testing.T) {
 		onError:       FailOnError,
 		expectedError: false,
 	}, {
+		desc:          "the step is exiting with 1, continue and preserve the step error when onError is set to continueAndFail",
+		runner:        &fakeExitErrorRunner{},
+		postFile:      "step-one",
+		onError:       ContinueAndFailOnError,
+		expectedError: true,
+	}, {
+		desc:          "the step is exiting with 0, succeed when onError is set to continueAndFail",
+		runner:        &fakeRunner{},
+		postFile:      "step-one",
+		onError:       ContinueAndFailOnError,
+		expectedError: false,
+	}, {
 		desc:            "the step set debug before step, and before step breakpoint fail-continue",
 		runner:          &fakeRunner{},
 		postFile:        "step-one",
@@ -572,6 +585,21 @@ func TestEntrypointer_OnError(t *testing.T) {
 					t.Error("Wanted post file written, got nil")
 				case c.expectedError && *fpw.wrote != c.postFile+".err":
 					t.Errorf("Wrote post file %q, want %q", *fpw.wrote, c.postFile+".err")
+				}
+			}
+
+			if c.onError == ContinueAndFailOnError {
+				switch {
+				case fpw.wrote == nil:
+					t.Error("Wanted post file written, got nil")
+				case fpw.exitCodeFile == nil:
+					t.Error("Wanted exitCode file written, got nil")
+				case *fpw.wrote != c.postFile:
+					t.Errorf("Wrote post file %q, want %q", *fpw.wrote, c.postFile)
+				case *fpw.exitCodeFile != "exitCode":
+					t.Errorf("Wrote exitCode file %q, want %q", *fpw.exitCodeFile, "exitCode")
+				case c.expectedError && *fpw.exitCode == "0":
+					t.Errorf("Wrote zero exit code but want non-zero when expecting an error")
 				}
 			}
 		})
@@ -2312,4 +2340,60 @@ func getMockSpireClient(ctx context.Context) (spire.EntrypointerAPIClient, spire
 
 func ptr[T any](value T) *T {
 	return &value
+}
+
+func TestWriteTerminationMessage_Compression(t *testing.T) {
+	results := []result.RunResult{
+		{Key: "foo", Value: "bar", ResultType: result.TaskRunResultType},
+		{Key: "baz", Value: "qux", ResultType: result.TaskRunResultType},
+	}
+
+	for _, tc := range []struct {
+		desc     string
+		compress bool
+	}{
+		{desc: "plain JSON", compress: false},
+		{desc: "compressed", compress: true},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			tmpFile := filepath.Join(t.TempDir(), "termination")
+			e := Entrypointer{
+				CompressTerminationMessage: tc.compress,
+			}
+			if err := e.writeTerminationMessage(tmpFile, results); err != nil {
+				t.Fatalf("writeTerminationMessage: %v", err)
+			}
+
+			fileContents, err := os.ReadFile(tmpFile)
+			if err != nil {
+				t.Fatalf("reading termination file: %v", err)
+			}
+
+			hasPrefix := strings.HasPrefix(string(fileContents), "tknz:")
+			if tc.compress {
+				// Compressed output may fall back to plain JSON if compression
+				// doesn't save space for small payloads, so we accept either.
+				// What matters is that the round-trip through parse works.
+				logger, _ := logging.NewLogger("", "status")
+				parsed, err := termination.ParseMessage(logger, string(fileContents))
+				if err != nil {
+					t.Fatalf("ParseMessage failed: %v", err)
+				}
+				if len(parsed) != len(results) {
+					t.Errorf("expected %d results, got %d", len(results), len(parsed))
+				}
+			} else {
+				if hasPrefix {
+					t.Errorf("expected plain JSON, got compressed output with tknz: prefix")
+				}
+				var parsed []result.RunResult
+				if err := json.Unmarshal(fileContents, &parsed); err != nil {
+					t.Fatalf("plain JSON unmarshal failed: %v", err)
+				}
+				if len(parsed) != len(results) {
+					t.Errorf("expected %d results, got %d", len(results), len(parsed))
+				}
+			}
+		})
+	}
 }

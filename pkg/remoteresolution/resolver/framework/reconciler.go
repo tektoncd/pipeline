@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"time"
 
+	pipelineapi "github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
@@ -31,7 +32,6 @@ import (
 	rrv1beta1 "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
 	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
-	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -60,6 +60,18 @@ type statusDataPatch struct {
 	RefSource   *pipelinev1.RefSource         `json:"refSource"`
 }
 
+// allowedResourceKinds lists the kinds of resources which
+// are allowed to be resolved by resolvers
+var allowedResourceKinds = []string{
+	pipelineapi.PipelineRunControllerName,
+	pipelineapi.PipelineControllerName,
+	pipelineapi.TaskRunControllerName,
+	pipelineapi.TaskControllerName,
+	pipelineapi.RunControllerName,
+	pipelineapi.CustomRunControllerName,
+	pipelinev1beta1.StepActionKind,
+}
+
 // Reconciler handles ResolutionRequest objects, performs functionality
 // common to all resolvers and delegates resolver-specific actions
 // to its embedded type-specific Resolver object.
@@ -76,7 +88,7 @@ type Reconciler struct {
 	resolutionRequestLister    rrv1beta1.ResolutionRequestLister
 	resolutionRequestClientSet rrclient.Interface
 
-	configStore *framework.ConfigStore
+	configStore *ConfigStore
 }
 
 var _ reconciler.LeaderAware = &Reconciler{}
@@ -93,13 +105,22 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return controller.NewPermanentError(err)
 	}
 
+	// Resolver controllers use controller.NewContext directly rather than a
+	// generated reconciler, so they must enforce bucket ownership here.
+	if !r.IsLeaderFor(types.NamespacedName{Namespace: namespace, Name: name}) {
+		return controller.NewSkipKey(key)
+	}
+
 	rr, err := r.resolutionRequestLister.ResolutionRequests(namespace).Get(name)
 	if err != nil {
 		err := &resolutioncommon.GetResourceError{ResolverName: "resolutionrequest", Key: key, Original: err}
 		return controller.NewPermanentError(err)
 	}
 
-	if rr.IsDone() {
+	// If the pipelines controller has a deep queue, resolvers may reprocess
+	// a ResolutionRequest before the pipelines controller marks the resolved
+	// request as Done.
+	if rr.IsResolved() || rr.IsDone() {
 		return nil
 	}
 
@@ -116,8 +137,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.ResolutionRequest) error {
-	errChan := make(chan error)
-	resourceChan := make(chan framework.ResolvedResource)
+	errChan := make(chan error, 1)
+	resourceChan := make(chan ResolvedResource, 1)
 
 	paramsMap := make(map[string]string)
 	for _, p := range rr.Spec.Params {
@@ -135,7 +156,7 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 	}
 
 	timeoutDuration := defaultMaximumResolutionDuration
-	if timed, ok := r.resolver.(framework.TimedResolution); ok {
+	if timed, ok := r.resolver.(TimedResolution); ok {
 		var err error
 		timeoutDuration, err = timed.GetResolutionTimeout(ctx, defaultMaximumResolutionDuration, paramsMap)
 		if err != nil {
@@ -164,6 +185,14 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 				ResolverName: r.resolver.GetName(resolutionCtx),
 				Key:          key,
 				Original:     resolveErr,
+			}
+			return
+		}
+		if err := ValidateResolvedResource(resource); err != nil {
+			errChan <- &resolutioncommon.GetResourceError{
+				ResolverName: r.resolver.GetName(resolutionCtx),
+				Key:          key,
+				Original:     fmt.Errorf("resolved resource validation error: %w", err),
 			}
 			return
 		}
@@ -225,7 +254,7 @@ func (r *Reconciler) MarkFailed(ctx context.Context, rr *v1beta1.ResolutionReque
 	return nil
 }
 
-func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.ResolutionRequest, resource framework.ResolvedResource) error {
+func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.ResolutionRequest, resource ResolvedResource) error {
 	encodedData := base64.StdEncoding.Strict().EncodeToString(resource.Data())
 	patchBytes, err := json.Marshal(map[string]statusDataPatch{
 		"status": {

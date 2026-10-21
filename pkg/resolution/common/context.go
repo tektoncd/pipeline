@@ -18,13 +18,16 @@ package common
 
 import "context"
 
-// contextKey is a unique type to map common request-scoped
-// context information.
-type contextKey struct{}
+// namespaceContextKey and nameContextKey must be distinct types.
+// context.WithValue uses interface equality (type + value) for key lookup.
+// Two zero-value empty structs of the same type are always equal in Go,
+// so using a single type would cause key collision.
+type namespaceContextKey struct{}
+type nameContextKey struct{}
 
 // requestNamespaceContextKey is the key stored in a context alongside
 // the string namespace of a resolution request.
-var requestNamespaceContextKey = contextKey{}
+var requestNamespaceContextKey = namespaceContextKey{}
 
 // InjectRequestNamespace returns a new context with a request-scoped
 // namespace. This value may only be set once per request; subsequent
@@ -51,7 +54,7 @@ func RequestNamespace(ctx context.Context) string {
 
 // requestNameContextKey is the key stored in a context alongside
 // the string name of a resolution request.
-var requestNameContextKey = contextKey{}
+var requestNameContextKey = nameContextKey{}
 
 // InjectRequestName returns a new context with a request-scoped
 // name. This value may only be set once per request; subsequent

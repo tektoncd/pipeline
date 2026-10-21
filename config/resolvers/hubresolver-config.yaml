@@ -32,3 +32,14 @@ data:
   default-kind: "task"
   # the default hub source to pull the resource from.
   default-type: "artifact"
+  # Ordered list of Artifact Hub API URLs to try. First successful response wins.
+  # If not set, the ARTIFACT_HUB_API env var or default (https://artifacthub.io) is used.
+  # URLs must use http or https scheme.
+  # artifact-hub-urls: |
+  #   - https://internal-hub.example.com/
+  #   - https://artifacthub.io/
+  # Ordered list of Tekton Hub API URLs to try. First successful response wins.
+  # If not set, the TEKTON_HUB_API env var is used.
+  # URLs must use http or https scheme.
+  # tekton-hub-urls: |
+  #   - https://api.hub.tekton.dev/

@@ -42,7 +42,7 @@ func (s *pullService) List(ctx context.Context, repo string, opts *scm.PullReque
 	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/pull-requests", namespace, name)
 	out := new(pullRequests)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -54,7 +54,7 @@ func (s *pullService) ListChanges(ctx context.Context, repo string, number int, 
 	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/changes?%s", namespace, name, number, encodeListOptions(opts))
 	out := new(diffstats)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}
@@ -102,7 +102,7 @@ func (s *pullService) ListComments(ctx context.Context, repo string, number int,
 	out := new(pullRequestActivities)
 	path := fmt.Sprintf("rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/activities?%s", projectName, repoName, number, encodeListOptions(opts))
 	res, err := s.client.do(ctx, "GET", path, nil, out)
-	if !out.pagination.LastPage.Bool {
+	if !out.LastPage.Bool {
 		res.Page.First = 1
 		res.Page.Next = opts.Page + 1
 	}

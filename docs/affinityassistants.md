@@ -151,3 +151,51 @@ the `taskRun` pods sharing a `workspace` is `cordoned` or disabled for schedulin
 `pipelineRun` controller deletes the placeholder pod. The `taskRun` pods on a `cordoned` node continues running
 until completion. The deletion of a placeholder pod triggers creating a new placeholder pod on any available node
 such that the rest of the `pipelineRun` can continue without any disruption until it finishes.
+
+## PVC Auto-Cleanup for Workspaces Mode
+
+By default, in `coschedule workspaces` mode, PVCs created from `volumeClaimTemplate` workspaces are NOT automatically
+deleted when the PipelineRun completes. The PVCs remain in the cluster and can be reused or manually cleaned up.
+
+To enable automatic PVC cleanup on PipelineRun completion, add the `tekton.dev/auto-cleanup-pvc` annotation to your
+PipelineRun:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: example-pipelinerun
+  annotations:
+    tekton.dev/auto-cleanup-pvc: "true"
+spec:
+  pipelineSpec:
+    workspaces:
+    - name: my-workspace
+    tasks:
+    - name: my-task
+      workspaces:
+      - name: my-workspace
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo "Hello, World!"
+  workspaces:
+  - name: my-workspace
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+```
+
+**Important notes:**
+
+- This annotation only affects `volumeClaimTemplate` workspaces. User-provided `persistentVolumeClaim` workspaces
+  are **never** deleted automatically, even with this annotation set.
+- The annotation value must be exactly `"true"` to enable auto-cleanup. Any other value (including `"false"`, `"yes"`, etc.)
+  will keep the default behavior of not deleting PVCs.
+- In `coschedule pipelineruns` and `isolate-pipelinerun` modes, PVCs are always deleted on completion regardless of this annotation.
+- In `disabled` mode, no Affinity Assistant is created and PVC lifecycle is managed by Kubernetes garbage collection
+  (PVCs with `ownerReference` to the PipelineRun will be deleted when the PipelineRun is deleted).

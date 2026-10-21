@@ -411,6 +411,17 @@ func TestTaskSpecValidate(t *testing.T) {
 			}},
 		},
 	}, {
+		name: "valid step with volumeMount under /tekton/home subdirectory",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "foo",
+					MountPath: "/tekton/home/subdir",
+				}},
+			}},
+		},
+	}, {
 		name: "valid workspace",
 		fields: fields{
 			Steps: []v1beta1.Step{{
@@ -554,6 +565,26 @@ func TestTaskSpecValidate(t *testing.T) {
 				Script: `
 				#!/usr/bin/env  bash
 				hello "$(context.taskRun.namespace)"`,
+			}},
+		},
+	}, {
+		name: "valid step script with both step results and task results",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Name:  "collect-data",
+				Image: "my-image",
+				Script: `
+				#!/usr/bin/env sh
+				echo -n "value" > $(step.results.stepResult.path)
+				echo -n "other" > $(results.taskResult.path)`,
+				Results: []v1.StepResult{{
+					Name: "stepResult",
+					Type: v1.ResultsTypeString,
+				}},
+			}},
+			Results: []v1beta1.TaskResult{{
+				Name: "taskResult",
+				Type: v1beta1.ResultsTypeString,
 			}},
 		},
 	}}
@@ -1262,6 +1293,51 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"steps[0].volumeMounts[0].mountPath"},
 		},
 	}, {
+		name: "step volume mount path traversal to /tekton/results",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "foo",
+					MountPath: "/tekton/home/../results",
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/home/../results")`,
+			Paths:   []string{"steps[0].volumeMounts[0].mountPath"},
+		},
+	}, {
+		name: "step volume mount path traversal to /tekton/scripts",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "foo",
+					MountPath: "/tekton/home/../scripts",
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/home/../scripts")`,
+			Paths:   []string{"steps[0].volumeMounts[0].mountPath"},
+		},
+	}, {
+		name: "step volume mount nested path traversal to /tekton/run",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "foo",
+					MountPath: "/tekton/home/../../tekton/run",
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/home/../../tekton/run")`,
+			Paths:   []string{"steps[0].volumeMounts[0].mountPath"},
+		},
+	}, {
 		name: "step volume mount name starts with tekton-internal-",
 		fields: fields{
 			Steps: []v1beta1.Step{{
@@ -1877,6 +1953,13 @@ func TestStepOnError(t *testing.T) {
 			Args:    []string{"arg"},
 		}},
 	}, {
+		name: "valid step - valid onError usage - set to continueAndFail",
+		steps: []v1beta1.Step{{
+			OnError: v1beta1.ContinueAndFail,
+			Image:   "image",
+			Args:    []string{"arg"},
+		}},
+	}, {
 		name: "valid step - valid onError usage - set to a task parameter",
 		params: []v1beta1.ParamSpec{{
 			Name:    "CONTINUE",
@@ -1897,7 +1980,7 @@ func TestStepOnError(t *testing.T) {
 		expectedError: &apis.FieldError{
 			Message: `invalid value: "onError"`,
 			Paths:   []string{"steps[0].onError"},
-			Details: `Task step onError must be either "continue" or "stopAndFail"`,
+			Details: `Task step onError must be "continue", "stopAndFail" or "continueAndFail"`,
 		},
 	}}
 	for _, tt := range tests {
@@ -2430,7 +2513,7 @@ func TestTaskSpecValidate_StepResults_Error(t *testing.T) {
 			Results: []v1.StepResult{{Name: "a-result"}},
 		},
 		expectedError: apis.FieldError{
-			Message: "non-existent variable `non-exist` in \"\\n\\t\\t\\t#!/usr/bin/env bash\\n\\t\\t\\tdate | tee $(results.non-exist.path)\": steps[0].script\nnon-existent variable in \"\\n\\t\\t\\t#!/usr/bin/env bash\\n\\t\\t\\tdate | tee $(results.non-exist.path)\"",
+			Message: "non-existent variable `non-exist` in \"\\n\\t\\t\\t#!/usr/bin/env bash\\n\\t\\t\\tdate | tee $(results.non-exist.path)\"",
 			Paths:   []string{"steps[0].script"},
 		},
 	}, {

@@ -92,15 +92,23 @@ data:
     # possible values could be 1m, 5m, 10s, 1h, etc
     # default-imagepullbackoff-timeout: "5m"
 
+    # default-create-container-error-timeout contains the default duration to wait
+    # before failing a TaskRun when a container fails with "context deadline exceeded"
+    # (e.g. CRI-O under heavy load). Specifying 0 here is equivalent to fail fast.
+    # possible values could be 1m, 5m, 10s, 1h, etc
+    # default-create-container-error-timeout: "5m"
+
     # default-maximum-resolution-timeout specifies the default duration used by the
     # resolution controller before timing out when exceeded.
     # Possible values include "1m", "5m", "10s", "1h", etc.
     # Example: default-maximum-resolution-timeout: "1m"
 
-    # default-container-resource-requirements allow users to update default resource requirements
-    # to a init-containers and containers of a pods create by the controller
-    # Onet: All the resource requirements are applied to init-containers and containers
-    # only if the existing resource requirements are empty.
+    # default-container-resource-requirements allow users to configure default resource
+    # requirements for init containers and containers in pods created by the controller.
+    # No resource requirements are applied by default when this key is unset.
+    # Note: All the resource requirements are applied to init-containers and containers
+    # only if the existing resource requirements are empty, except Tekton internal
+    # containers can be overridden by named entries such as prepare or place-scripts.
     # default-container-resource-requirements: |
     #   place-scripts: # updates resource requirements of a 'place-scripts' container
     #     requests:

@@ -61,6 +61,18 @@ func TestSelectCommandForPlatform(t *testing.T) {
 		},
 		plat: "linux/amd64/v8",
 		want: []string{"my", "command"},
+	}, {
+		// Regression test for https://github.com/tektoncd/pipeline/issues/10073
+		// When the controller resolves a single-platform image, the map key
+		// won't have a variant. The entrypoint on ARM will look up with
+		// its variant (e.g., "linux/arm64/v8") and should fall back to
+		// the key without variant.
+		desc: "arm64 entrypoint with variant looks up key without variant",
+		m: map[string][]string{
+			"linux/arm64": {"my", "command"},
+		},
+		plat: "linux/arm64/v8",
+		want: []string{"my", "command"},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			got, err := selectCommandForPlatform(c.m, c.plat)

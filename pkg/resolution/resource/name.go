@@ -17,11 +17,11 @@ limitations under the License.
 package resource
 
 import (
+	"errors"
 	"fmt"
 	"hash"
 	"hash/fnv"
 	"sort"
-	"strings"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
@@ -51,15 +51,18 @@ func GenerateDeterministicName(prefix, base string, params v1.Params) (string, e
 }
 
 // GetNameAndNamespace determines the name and namespace for a resource request.
-// It prioritizes explicit values, falling back to the owning object and "default" namespace.
+// If name is not provided, the name and namespace are taken from the owning object.
+// If no namespace is provided and the namespace was not taken from the owning object, an error is returned.
 // If needed, it generates a deterministic name to prevent duplicate requests within a context.
 func GetNameAndNamespace(resolverName string, owner kmeta.OwnerRefable, name string, namespace string, req *v1beta1.ResolutionRequestSpec) (string, string, error) {
 	if name == "" {
 		name = owner.GetObjectMeta().GetName()
+	}
+	if namespace == "" {
 		namespace = owner.GetObjectMeta().GetNamespace()
 	}
 	if namespace == "" {
-		namespace = "default"
+		return "", "", errors.New("namespace is required for resolution request but was empty (resolver: " + resolverName + ", resource: " + name + ")")
 	}
 	// Generating a deterministic name for the resource request
 	// prevents multiple requests being issued for the same
@@ -67,7 +70,7 @@ func GetNameAndNamespace(resolverName string, owner kmeta.OwnerRefable, name str
 	remoteResourceBaseName := namespace + "/" + name
 	name, err := GenerateDeterministicNameFromSpec(resolverName, remoteResourceBaseName, req)
 	if err != nil {
-		return "", "", fmt.Errorf("error generating name for taskrun %s/%s: %w", namespace, name, err)
+		return "", "", fmt.Errorf("error generating name for resource %s/%s: %w", namespace, name, err)
 	}
 	return name, namespace, nil
 }
@@ -75,6 +78,19 @@ func GetNameAndNamespace(resolverName string, owner kmeta.OwnerRefable, name str
 // nameHasher returns the hash.Hash to use when generating names.
 func nameHasher() hash.Hash {
 	return fnv.New128a()
+}
+
+// sanitizedName builds a "{prefix}-{hash}" string that fits within the
+// DNS-1123 label max length. If the prefix is too long, it is truncated
+// so that the full hash is always preserved, maintaining determinism and
+// uniqueness.
+func sanitizedName(prefix string, hasher hash.Hash) string {
+	hex := fmt.Sprintf("%x", hasher.Sum(nil))
+	maxPrefixLen := maxLength - len(hex) - 1 // 1 for the "-" separator
+	if len(prefix) > maxPrefixLen {
+		prefix = prefix[:maxPrefixLen]
+	}
+	return fmt.Sprintf("%s-%s", prefix, hex)
 }
 
 // GenerateDeterministicNameFromSpec makes a best-effort attempt to create a
@@ -89,7 +105,7 @@ func GenerateDeterministicNameFromSpec(prefix, base string, resolutionSpec *v1be
 	}
 
 	if resolutionSpec == nil {
-		return fmt.Sprintf("%s-%x", prefix, hasher.Sum(nil)), nil
+		return sanitizedName(prefix, hasher), nil
 	}
 	params := resolutionSpec.Params
 	sortedParams := make(v1.Params, len(params))
@@ -123,11 +139,7 @@ func GenerateDeterministicNameFromSpec(prefix, base string, resolutionSpec *v1be
 			return "", err
 		}
 	}
-	name := fmt.Sprintf("%s-%x", prefix, hasher.Sum(nil))
-	if maxLength > len(name) {
-		return name, nil
-	}
-	return name[:strings.LastIndex(name[:maxLength], " ")], nil
+	return sanitizedName(prefix, hasher), nil
 }
 
 // GenerateErrorLogString makes a best effort attempt to get the name of the task

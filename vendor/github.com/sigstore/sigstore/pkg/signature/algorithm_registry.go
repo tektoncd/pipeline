@@ -20,11 +20,13 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
+	"crypto/mldsa"
 	"crypto/rsa"
 	"errors"
 	"fmt"
 
 	v1 "github.com/sigstore/protobuf-specs/gen/pb-go/common/v1"
+	"github.com/sigstore/sigstore/pkg/cryptoutils"
 )
 
 // PublicKeyType represents the public key algorithm for a given signature algorithm.
@@ -37,6 +39,8 @@ const (
 	ECDSA
 	// ED25519 public key
 	ED25519
+	// MLDSA public key
+	MLDSA
 )
 
 // RSAKeySize represents the size of an RSA public key in bits.
@@ -62,7 +66,7 @@ type AlgorithmDetails struct {
 	// The underlying type of these parameters is dependent on the keyType.
 	// For example, ECDSA algorithms will store an elliptic curve here whereas, RSA keys will store the key size.
 	// Algorithms that don't require any extra parameters leave this set to nil.
-	extraKeyParams interface{}
+	extraKeyParams any
 
 	// flagValue is a string representation of the signature algorithm that follows the naming conventions of CLI
 	// arguments that are used for Sigstore services.
@@ -115,6 +119,19 @@ func (a AlgorithmDetails) GetECDSACurve() (*elliptic.Curve, error) {
 	return &ecdsaCurve, nil
 }
 
+// GetMLDSAParameters returns the ML-DSA parameters for the algorithm details, if the key type is MLDSA.
+func (a AlgorithmDetails) GetMLDSAParameters() (mldsa.Parameters, error) {
+	if a.keyType != MLDSA {
+		return mldsa.Parameters{}, fmt.Errorf("unable to retrieve ML-DSA parameters for key type: %T", a.keyType)
+	}
+	params, ok := a.extraKeyParams.(mldsa.Parameters)
+	if !ok {
+		// This should be unreachable.
+		return mldsa.Parameters{}, fmt.Errorf("unable to retrieve parameters for ML-DSA, malformed algorithm details?: %T", a.keyType)
+	}
+	return params, nil
+}
+
 func (a AlgorithmDetails) checkKey(pubKey crypto.PublicKey) (bool, error) {
 	switch a.keyType {
 	case RSA:
@@ -140,6 +157,23 @@ func (a AlgorithmDetails) checkKey(pubKey crypto.PublicKey) (bool, error) {
 	case ED25519:
 		_, ok := pubKey.(ed25519.PublicKey)
 		return ok, nil
+	case MLDSA:
+		mldsaKey, ok := pubKey.(*mldsa.PublicKey)
+		if !ok {
+			return false, nil
+		}
+		// Validate the ML-DSA key. If the key is a typed nil or uninitialized,
+		// return an error so the caller receives a meaningful diagnostic rather
+		// than a generic "unsupported algorithm" failure.
+		keyParams, err := cryptoutils.ValidateMLDSAPublicKey(mldsaKey)
+		if err != nil {
+			return false, err
+		}
+		params, err := a.GetMLDSAParameters()
+		if err != nil {
+			return false, err
+		}
+		return keyParams == params, nil
 	}
 	return false, fmt.Errorf("unrecognized key type: %T", a.keyType)
 }
@@ -157,7 +191,7 @@ var supportedAlgorithms = []AlgorithmDetails{
 	{v1.PublicKeyDetails_PKIX_RSA_PKCS1V15_4096_SHA256, RSA, crypto.SHA256, v1.HashAlgorithm_SHA2_256, RSAKeySize(4096), "rsa-sign-pkcs1-4096-sha256"},
 	{v1.PublicKeyDetails_PKIX_RSA_PSS_2048_SHA256, RSA, crypto.SHA256, v1.HashAlgorithm_SHA2_256, RSAKeySize(2048), "rsa-sign-pss-2048-sha256"},
 	{v1.PublicKeyDetails_PKIX_RSA_PSS_3072_SHA256, RSA, crypto.SHA256, v1.HashAlgorithm_SHA2_256, RSAKeySize(3072), "rsa-sign-pss-3072-sha256"},
-	{v1.PublicKeyDetails_PKIX_RSA_PSS_4096_SHA256, RSA, crypto.SHA256, v1.HashAlgorithm_SHA2_256, RSAKeySize(4096), "rsa-sign-pss-4092-sha256"},
+	{v1.PublicKeyDetails_PKIX_RSA_PSS_4096_SHA256, RSA, crypto.SHA256, v1.HashAlgorithm_SHA2_256, RSAKeySize(4096), "rsa-sign-pss-4096-sha256"},
 	{v1.PublicKeyDetails_PKIX_ECDSA_P256_SHA_256, ECDSA, crypto.SHA256, v1.HashAlgorithm_SHA2_256, elliptic.P256(), "ecdsa-sha2-256-nistp256"},
 	{v1.PublicKeyDetails_PKIX_ECDSA_P384_SHA_384, ECDSA, crypto.SHA384, v1.HashAlgorithm_SHA2_384, elliptic.P384(), "ecdsa-sha2-384-nistp384"},
 	{v1.PublicKeyDetails_PKIX_ECDSA_P384_SHA_256, ECDSA, crypto.SHA256, v1.HashAlgorithm_SHA2_256, elliptic.P384(), "ecdsa-sha2-256-nistp384"}, //nolint:staticcheck
@@ -165,6 +199,9 @@ var supportedAlgorithms = []AlgorithmDetails{
 	{v1.PublicKeyDetails_PKIX_ECDSA_P521_SHA_256, ECDSA, crypto.SHA256, v1.HashAlgorithm_SHA2_256, elliptic.P521(), "ecdsa-sha2-256-nistp521"}, //nolint:staticcheck
 	{v1.PublicKeyDetails_PKIX_ED25519, ED25519, crypto.Hash(0), v1.HashAlgorithm_HASH_ALGORITHM_UNSPECIFIED, nil, "ed25519"},
 	{v1.PublicKeyDetails_PKIX_ED25519_PH, ED25519, crypto.SHA512, v1.HashAlgorithm_SHA2_512, nil, "ed25519-ph"},
+	{v1.PublicKeyDetails_ML_DSA_44, MLDSA, crypto.Hash(0), v1.HashAlgorithm_HASH_ALGORITHM_UNSPECIFIED, mldsa.MLDSA44(), "mldsa-44"},
+	{v1.PublicKeyDetails_ML_DSA_65, MLDSA, crypto.Hash(0), v1.HashAlgorithm_HASH_ALGORITHM_UNSPECIFIED, mldsa.MLDSA65(), "mldsa-65"},
+	{v1.PublicKeyDetails_ML_DSA_87, MLDSA, crypto.Hash(0), v1.HashAlgorithm_HASH_ALGORITHM_UNSPECIFIED, mldsa.MLDSA87(), "mldsa-87"},
 }
 
 // AlgorithmRegistryConfig represents a set of permitted algorithms for a given Sigstore service or component.
@@ -244,6 +281,9 @@ func ParseSignatureAlgorithmFlag(flag string) (v1.PublicKeyDetails, error) {
 // ECDSA P384 => v1.PublicKeyDetails_PKIX_ECDSA_P384_SHA_384
 // ECDSA P521 => v1.PublicKeyDetails_PKIX_ECDSA_P521_SHA_512
 // ED25519 => v1.PublicKeyDetails_PKIX_ED25519_PH
+// MLDSA44 => v1.PublicKeyDetails_ML_DSA_44
+// MLDSA65 => v1.PublicKeyDetails_ML_DSA_65
+// MLDSA87 => v1.PublicKeyDetails_ML_DSA_87
 //
 // This function accepts LoadOptions, which are used to determine the default
 // public key details when there may be ambiguities. For example, RSA keys may
@@ -293,6 +333,19 @@ func GetDefaultPublicKeyDetails(publicKey crypto.PublicKey, opts ...LoadOption) 
 			return v1.PublicKeyDetails_PKIX_ED25519_PH, nil
 		}
 		return v1.PublicKeyDetails_PKIX_ED25519, nil
+	case *mldsa.PublicKey:
+		params, err := cryptoutils.ValidateMLDSAPublicKey(pk)
+		if err != nil {
+			return v1.PublicKeyDetails_PUBLIC_KEY_DETAILS_UNSPECIFIED, err
+		}
+		switch params {
+		case mldsa.MLDSA44():
+			return v1.PublicKeyDetails_ML_DSA_44, nil
+		case mldsa.MLDSA65():
+			return v1.PublicKeyDetails_ML_DSA_65, nil
+		case mldsa.MLDSA87():
+			return v1.PublicKeyDetails_ML_DSA_87, nil
+		}
 	}
 	return v1.PublicKeyDetails_PUBLIC_KEY_DETAILS_UNSPECIFIED, errors.New("unsupported public key type")
 }

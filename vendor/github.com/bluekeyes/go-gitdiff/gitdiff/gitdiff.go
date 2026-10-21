@@ -3,6 +3,7 @@ package gitdiff
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 )
@@ -204,9 +205,16 @@ func (op LineOp) String() string {
 
 // BinaryFragment describes changes to a binary file.
 type BinaryFragment struct {
+	// Method is the method used to create and apply this fragment.
 	Method BinaryPatchMethod
-	Size   int64
-	Data   []byte
+
+	// Size is the expected size of the uncompressed data in bytes.
+	Size int64
+
+	// RawData is the base85-decoded but otherwise unmodified binary content of
+	// the fragment. The contents must be decompressed with zlib before use,
+	// usually by calling [BinaryFragment.Data].
+	RawData []byte
 }
 
 // BinaryPatchMethod is the method used to create and apply the binary patch.
@@ -219,10 +227,19 @@ const (
 	BinaryPatchLiteral
 )
 
-// String returns a git diff format of this fragment. Due to differences in
-// zlib implementation between Go and Git, encoded binary data in the result
-// will likely differ from what Git produces for the same input. See
-// [File.String] for more details on this format.
+// Data returns an io.Reader for the decompressed data in the fragment. Clients
+// should read until the reader returns an error or io.EOF. The reader returns
+// an error if the data cannot be decompressed or if the length of the
+// decompressed data does not equal the expected size.
+//
+// Reading all data may return up to Size+1 bytes. Clients reading data from
+// untrusted sources should check the value of Size or limit their reads.
+func (f *BinaryFragment) Data() io.Reader {
+	return newBinaryReader(f)
+}
+
+// String returns a git diff format of this fragment. See [File.String] for
+// more details on this format.
 func (f *BinaryFragment) String() string {
 	var diff strings.Builder
 	newFormatter(&diff).FormatBinaryFragment(f)

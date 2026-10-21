@@ -20,7 +20,7 @@ spec:
       - "--help"
     steps:
       - name: echo-cli
-        image: cgr.dev/chainguard/busybox
+        image: cgr.dev/chainguard/busybox@sha256:6202d571cc9c86302d4bd1eef6d2235d2b81b7dfc509cf7eee621f4d73175807
         workingDir: /tekton/home
         args:
         - "$(params.ARGS)"

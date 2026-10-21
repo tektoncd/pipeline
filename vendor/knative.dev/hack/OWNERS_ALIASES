@@ -14,7 +14,6 @@ aliases:
   - skonto
   eventing-reviewers:
   - Leo6Leo
-  - aslom
   - cali0707
   - creydr
   eventing-wg-leads:
@@ -35,10 +34,8 @@ aliases:
   - lkingland
   - matejvasek
   - matzew
-  - salaboy
   functions-wg-leads:
   - lkingland
-  - salaboy
   knative-admin:
   - aliok
   - arsenetar
@@ -77,7 +74,6 @@ aliases:
   - upodroid
   productivity-reviewers:
   - evankanderson
-  - mgencur
   productivity-wg-leads:
   - cardil
   - upodroid

@@ -526,6 +526,26 @@ func TestTaskSpecValidate(t *testing.T) {
 				hello "$(context.taskRun.namespace)"`,
 			}},
 		},
+	}, {
+		name: "valid step script with both step results and task results",
+		fields: fields{
+			Steps: []v1.Step{{
+				Name:  "collect-data",
+				Image: "my-image",
+				Script: `
+				#!/usr/bin/env sh
+				echo -n "value" > $(step.results.stepResult.path)
+				echo -n "other" > $(results.taskResult.path)`,
+				Results: []v1.StepResult{{
+					Name: "stepResult",
+					Type: v1.ResultsTypeString,
+				}},
+			}},
+			Results: []v1.TaskResult{{
+				Name: "taskResult",
+				Type: v1.ResultsTypeString,
+			}},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -1,0 +1,179 @@
+# This example demonstrates using multiple SSH credentials for different
+# repositories on the same host.
+#
+# When the annotation URL includes a path (e.g., github.com/org/repo), Tekton:
+# 1. Creates an SSH Host alias in ~/.ssh/config for that credential
+# 2. Adds insteadOf URL rewriting rules in ~/.gitconfig so Git redirects
+#    the repo URL through the alias, selecting the correct SSH key
+# 3. Automatically orders SSH config entries for proper fallback behavior
+#    (host-wide credentials first, repo-specific credentials after)
+#
+# Example use cases:
+# 1. Multiple repos on same host with different deploy keys (repo1-key, repo2-key)
+# 2. Mixed: one repo-specific SSH key + one host-wide SSH key
+#
+# Note: The order of secrets in the ServiceAccount does NOT affect credential matching.
+---
+# SSH key for a specific repository (repo-specific)
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/ssh-auth
+metadata:
+  name: github-repo1-ssh-key
+  annotations:
+    # Note: URL includes path (github.com/myorg/demo-repo-1) -> Host alias will be created
+    tekton.dev/git-0: github.com/myorg/demo-repo-1
+stringData:
+  ssh-privatekey: <private-key-for-repo1>
+  known_hosts: <known-hosts>
+---
+# SSH key for another specific repository (repo-specific)
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/ssh-auth
+metadata:
+  name: github-repo2-ssh-key
+  annotations:
+    # Note: URL includes path (github.com/myorg/demo-repo-2) -> Host alias will be created
+    tekton.dev/git-0: github.com/myorg/demo-repo-2
+stringData:
+  ssh-privatekey: <private-key-for-repo2>
+  known_hosts: <known-hosts>
+---
+# ServiceAccount with multiple repo-specific SSH secrets
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: git-ssh-multi-repo-sa
+secrets:
+  - name: github-repo1-ssh-key
+  - name: github-repo2-ssh-key
+---
+# TaskRun demonstrating cloning from multiple repos with different SSH keys
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: git-ssh-clone-multiple-repos
+spec:
+  serviceAccountName: git-ssh-multi-repo-sa
+  taskSpec:
+    steps:
+    - name: clone-repo1
+      image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+      securityContext:
+        runAsUser: 0
+      script: |
+        #!/usr/bin/env sh
+        set -xe
+
+        if [ -d /tekton/home/.ssh ]; then
+          ln -sf /tekton/home/.ssh /root/.ssh
+        fi
+
+        echo "=== Checking SSH config ==="
+        cat ~/.ssh/config || echo "No SSH config"
+
+        echo "=== Checking .gitconfig (insteadOf entries) ==="
+        cat ~/.gitconfig || echo "No .gitconfig"
+
+        echo "=== Cloning demo-repo-1 ==="
+        # This will use SSH key from github-repo1-ssh-key
+        git clone git@github.com:myorg/demo-repo-1.git /workspace/repo1
+
+        echo "Successfully cloned repo1"
+        ls -la /workspace/repo1
+
+    - name: clone-repo2
+      image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+      securityContext:
+        runAsUser: 0
+      script: |
+        #!/usr/bin/env sh
+        set -xe
+
+        if [ -d /tekton/home/.ssh ]; then
+          ln -sf /tekton/home/.ssh /root/.ssh
+        fi
+
+        # This will use SSH key from github-repo2-ssh-key
+        git clone git@github.com:myorg/demo-repo-2.git /workspace/repo2
+        ls -la /workspace/repo2
+---
+# Example 2: Mixed credentials - repo-specific + host-wide
+# This demonstrates using one specific SSH key alongside a host-wide SSH key.
+# Tekton automatically orders SSH config entries so host-wide works as fallback.
+---
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/ssh-auth
+metadata:
+  name: github-specific-repo-ssh-key
+  annotations:
+    # Note: URL includes path -> Host alias will be created
+    tekton.dev/git-0: github.com/secret-org/private-repo
+stringData:
+  ssh-privatekey: <private-key-for-specific-repo>
+  known_hosts: <known-hosts>
+---
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/ssh-auth
+metadata:
+  name: github-default-ssh-key
+  annotations:
+    # Note: URL does NOT include path -> standard Host entry, works as fallback
+    tekton.dev/git-0: github.com
+stringData:
+  ssh-privatekey: <default-private-key>
+  known_hosts: <known-hosts>
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: git-ssh-mixed-creds-sa
+secrets:
+  # Order does NOT matter - Tekton auto-orders SSH config for fallback
+  - name: github-specific-repo-ssh-key
+  - name: github-default-ssh-key
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: git-ssh-clone-mixed-credentials
+spec:
+  serviceAccountName: git-ssh-mixed-creds-sa
+  taskSpec:
+    steps:
+    - name: clone-specific-repo
+      image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+      securityContext:
+        runAsUser: 0
+      script: |
+        #!/usr/bin/env sh
+        set -xe
+
+        if [ -d /tekton/home/.ssh ]; then
+          ln -sf /tekton/home/.ssh /root/.ssh
+        fi
+
+        # This will use github-specific-repo-ssh-key (via Host alias + insteadOf)
+        git clone git@github.com:secret-org/private-repo.git /workspace/specific
+
+        echo "Successfully cloned specific repo with dedicated SSH key"
+
+    - name: clone-org-repo
+      image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+      securityContext:
+        runAsUser: 0
+      script: |
+        #!/usr/bin/env sh
+        set -xe
+
+        if [ -d /tekton/home/.ssh ]; then
+          ln -sf /tekton/home/.ssh /root/.ssh
+        fi
+
+        # This will use github-default-ssh-key as fallback
+        git clone git@github.com:myorg/another-repo.git /workspace/org
+
+        echo "Successfully cloned org repo with host-wide SSH key"

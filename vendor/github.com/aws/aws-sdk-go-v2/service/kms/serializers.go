@@ -1542,6 +1542,67 @@ func (m *awsAwsjson11_serializeOpGenerateRandom) HandleSerialize(ctx context.Con
 	return next.HandleSerialize(ctx, in)
 }
 
+type awsAwsjson11_serializeOpGetKeyLastUsage struct {
+}
+
+func (*awsAwsjson11_serializeOpGetKeyLastUsage) ID() string {
+	return "OperationSerializer"
+}
+
+func (m *awsAwsjson11_serializeOpGetKeyLastUsage) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
+) {
+	_, span := tracing.StartSpan(ctx, "OperationSerializer")
+	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
+	defer endTimer()
+	defer span.End()
+	request, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
+	}
+
+	input, ok := in.Parameters.(*GetKeyLastUsageInput)
+	_ = input
+	if !ok {
+		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+	}
+
+	operationPath := "/"
+	if len(request.Request.URL.Path) == 0 {
+		request.Request.URL.Path = operationPath
+	} else {
+		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
+		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
+			request.Request.URL.Path += "/"
+		}
+	}
+	request.Request.Method = "POST"
+	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
+	if err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+	httpBindingEncoder.SetHeader("Content-Type").String("application/x-amz-json-1.1")
+	httpBindingEncoder.SetHeader("X-Amz-Target").String("TrentService.GetKeyLastUsage")
+
+	jsonEncoder := smithyjson.NewEncoder()
+	if err := awsAwsjson11_serializeOpDocumentGetKeyLastUsageInput(input, jsonEncoder.Value); err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	if request, err = request.SetStream(bytes.NewReader(jsonEncoder.Bytes())); err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+
+	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
+		return out, metadata, &smithy.SerializationError{Err: err}
+	}
+	in.Request = request
+
+	endTimer()
+	span.End()
+	return next.HandleSerialize(ctx, in)
+}
+
 type awsAwsjson11_serializeOpGetKeyPolicy struct {
 }
 
@@ -3249,6 +3310,17 @@ func (m *awsAwsjson11_serializeOpVerifyMac) HandleSerialize(ctx context.Context,
 	span.End()
 	return next.HandleSerialize(ctx, in)
 }
+func awsAwsjson11_serializeDocumentDryRunModifierList(v []types.DryRunModifierType, value smithyjson.Value) error {
+	array := value.Array()
+	defer array.Close()
+
+	for i := range v {
+		av := array.Value()
+		av.String(string(v[i]))
+	}
+	return nil
+}
+
 func awsAwsjson11_serializeDocumentEncryptionContextType(v map[string]string, value smithyjson.Value) error {
 	object := value.Object()
 	defer object.Close()
@@ -3276,6 +3348,11 @@ func awsAwsjson11_serializeDocumentGrantConstraints(v *types.GrantConstraints, v
 		if err := awsAwsjson11_serializeDocumentEncryptionContextType(v.EncryptionContextSubset, ok); err != nil {
 			return err
 		}
+	}
+
+	if v.SourceArn != nil {
+		ok := object.Key("SourceArn")
+		ok.String(*v.SourceArn)
 	}
 
 	return nil
@@ -3504,6 +3581,11 @@ func awsAwsjson11_serializeOpDocumentCreateGrantInput(v *CreateGrantInput, value
 		ok.String(*v.GranteePrincipal)
 	}
 
+	if v.GranteeServicePrincipal != nil {
+		ok := object.Key("GranteeServicePrincipal")
+		ok.String(*v.GranteeServicePrincipal)
+	}
+
 	if v.GrantTokens != nil {
 		ok := object.Key("GrantTokens")
 		if err := awsAwsjson11_serializeDocumentGrantTokenList(v.GrantTokens, ok); err != nil {
@@ -3531,6 +3613,11 @@ func awsAwsjson11_serializeOpDocumentCreateGrantInput(v *CreateGrantInput, value
 	if v.RetiringPrincipal != nil {
 		ok := object.Key("RetiringPrincipal")
 		ok.String(*v.RetiringPrincipal)
+	}
+
+	if v.RetiringServicePrincipal != nil {
+		ok := object.Key("RetiringServicePrincipal")
+		ok.String(*v.RetiringServicePrincipal)
 	}
 
 	return nil
@@ -3612,6 +3699,13 @@ func awsAwsjson11_serializeOpDocumentDecryptInput(v *DecryptInput, value smithyj
 	if v.DryRun != nil {
 		ok := object.Key("DryRun")
 		ok.Boolean(*v.DryRun)
+	}
+
+	if v.DryRunModifiers != nil {
+		ok := object.Key("DryRunModifiers")
+		if err := awsAwsjson11_serializeDocumentDryRunModifierList(v.DryRunModifiers, ok); err != nil {
+			return err
+		}
 	}
 
 	if len(v.EncryptionAlgorithm) > 0 {
@@ -4108,6 +4202,18 @@ func awsAwsjson11_serializeOpDocumentGenerateRandomInput(v *GenerateRandomInput,
 	return nil
 }
 
+func awsAwsjson11_serializeOpDocumentGetKeyLastUsageInput(v *GetKeyLastUsageInput, value smithyjson.Value) error {
+	object := value.Object()
+	defer object.Close()
+
+	if v.KeyId != nil {
+		ok := object.Key("KeyId")
+		ok.String(*v.KeyId)
+	}
+
+	return nil
+}
+
 func awsAwsjson11_serializeOpDocumentGetKeyPolicyInput(v *GetKeyPolicyInput, value smithyjson.Value) error {
 	object := value.Object()
 	defer object.Close()
@@ -4256,6 +4362,11 @@ func awsAwsjson11_serializeOpDocumentListGrantsInput(v *ListGrantsInput, value s
 		ok.String(*v.GranteePrincipal)
 	}
 
+	if v.GranteeServicePrincipal != nil {
+		ok := object.Key("GranteeServicePrincipal")
+		ok.String(*v.GranteeServicePrincipal)
+	}
+
 	if v.GrantId != nil {
 		ok := object.Key("GrantId")
 		ok.String(*v.GrantId)
@@ -4386,6 +4497,11 @@ func awsAwsjson11_serializeOpDocumentListRetirableGrantsInput(v *ListRetirableGr
 		ok.String(*v.RetiringPrincipal)
 	}
 
+	if v.RetiringServicePrincipal != nil {
+		ok := object.Key("RetiringServicePrincipal")
+		ok.String(*v.RetiringServicePrincipal)
+	}
+
 	return nil
 }
 
@@ -4445,6 +4561,13 @@ func awsAwsjson11_serializeOpDocumentReEncryptInput(v *ReEncryptInput, value smi
 	if v.DryRun != nil {
 		ok := object.Key("DryRun")
 		ok.Boolean(*v.DryRun)
+	}
+
+	if v.DryRunModifiers != nil {
+		ok := object.Key("DryRunModifiers")
+		if err := awsAwsjson11_serializeDocumentDryRunModifierList(v.DryRunModifiers, ok); err != nil {
+			return err
+		}
 	}
 
 	if v.GrantTokens != nil {

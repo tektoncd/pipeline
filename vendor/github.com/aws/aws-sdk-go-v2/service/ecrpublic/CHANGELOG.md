@@ -1,3 +1,329 @@
+# v1.38.10 (2026-02-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.38.9 (2026-01-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.38.8 (2025-12-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.38.7 (2025-12-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.24.0. Notably this version of the library reduces the allocation footprint of the middleware system. We observe a ~10% reduction in allocations per SDK call with this change.
+
+# v1.38.6 (2025-11-25)
+
+* **Bug Fix**: Add error check for endpoint param binding during auth scheme resolution to fix panic reported in #3234
+
+# v1.38.5 (2025-11-19.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.38.4 (2025-11-12)
+
+* **Bug Fix**: Further reduce allocation overhead when the metrics system isn't in-use.
+* **Bug Fix**: Reduce allocation overhead when the client doesn't have any HTTP interceptors configured.
+* **Bug Fix**: Remove blank trace spans towards the beginning of the request that added no additional information. This conveys a slight reduction in overall allocations.
+
+# v1.38.3 (2025-11-11)
+
+* **Bug Fix**: Return validation error if input region is not a valid host label.
+
+# v1.38.2 (2025-11-04)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.23.2 which should convey some passive reduction of overall allocations, especially when not using the metrics system.
+
+# v1.38.1 (2025-10-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.38.0 (2025-10-23)
+
+* **Feature**: Update endpoint ruleset parameters casing
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.37.7 (2025-10-16)
+
+* **Dependency Update**: Bump minimum Go version to 1.23.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.37.6 (2025-09-26)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.37.5 (2025-09-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.37.4 (2025-09-10)
+
+* No change notes available for this release.
+
+# v1.37.3 (2025-09-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.37.2 (2025-08-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.37.1 (2025-08-27)
+
+* **Dependency Update**: Update to smithy-go v1.23.0.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.37.0 (2025-08-21)
+
+* **Feature**: Remove incorrect endpoint tests
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.36.1 (2025-08-20)
+
+* **Bug Fix**: Remove unused deserialization code.
+
+# v1.36.0 (2025-08-11)
+
+* **Feature**: Add support for configuring per-service Options via callback on global config.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.35.0 (2025-08-04)
+
+* **Feature**: Support configurable auth scheme preferences in service clients via AWS_AUTH_SCHEME_PREFERENCE in the environment, auth_scheme_preference in the config file, and through in-code settings on LoadDefaultConfig and client constructor methods.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.34.1 (2025-07-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.34.0 (2025-07-28)
+
+* **Feature**: Add support for HTTP interceptors.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.33.3 (2025-07-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.33.2 (2025-06-17)
+
+* **Dependency Update**: Update to smithy-go v1.22.4.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.33.1 (2025-06-10)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.33.0 (2025-04-30)
+
+* **Feature**: Adds dualstack support for Amazon Elastic Container Registry Public (Amazon ECR Public).
+
+# v1.32.2 (2025-04-03)
+
+* No change notes available for this release.
+
+# v1.32.1 (2025-03-04.2)
+
+* **Bug Fix**: Add assurance test for operation order.
+
+# v1.32.0 (2025-02-27)
+
+* **Feature**: Track credential providers via User-Agent Feature ids
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.31.3 (2025-02-18)
+
+* **Bug Fix**: Bump go version to 1.22
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.31.2 (2025-02-05)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.31.1 (2025-01-31)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.31.0 (2025-01-30)
+
+* **Feature**: Temporarily updating dualstack endpoint support
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.30.0 (2025-01-29)
+
+* **Feature**: Add support for Dualstack Endpoints
+
+# v1.29.5 (2025-01-24)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.22.2.
+
+# v1.29.4 (2025-01-17)
+
+* **Bug Fix**: Fix bug where credentials weren't refreshed during retry loop.
+
+# v1.29.3 (2025-01-15)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.29.2 (2025-01-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.29.1 (2025-01-03)
+
+* No change notes available for this release.
+
+# v1.29.0 (2024-12-28)
+
+* **Feature**: Restoring custom endpoint functionality for ECR Public
+
+# v1.28.1 (2024-12-26)
+
+* No change notes available for this release.
+
+# v1.28.0 (2024-12-23)
+
+* **Feature**: Add support for Dualstack endpoints
+
+# v1.27.8 (2024-12-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.27.7 (2024-12-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.27.6 (2024-11-18)
+
+* **Dependency Update**: Update to smithy-go v1.22.1.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.27.5 (2024-11-07)
+
+* **Bug Fix**: Adds case-insensitive handling of error message fields in service responses
+
+# v1.27.4 (2024-11-06)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.27.3 (2024-10-28)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.27.2 (2024-10-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.27.1 (2024-10-07)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.27.0 (2024-10-04)
+
+* **Feature**: Add support for HTTP client metrics.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.26.4 (2024-10-03)
+
+* No change notes available for this release.
+
+# v1.26.3 (2024-09-27)
+
+* No change notes available for this release.
+
+# v1.26.2 (2024-09-25)
+
+* No change notes available for this release.
+
+# v1.26.1 (2024-09-23)
+
+* No change notes available for this release.
+
+# v1.26.0 (2024-09-20)
+
+* **Feature**: Add tracing and metrics support to service clients.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.25.7 (2024-09-17)
+
+* **Bug Fix**: **BREAKFIX**: Only generate AccountIDEndpointMode config for services that use it. This is a compiler break, but removes no actual functionality, as no services currently use the account ID in endpoint resolution.
+
+# v1.25.6 (2024-09-04)
+
+* No change notes available for this release.
+
+# v1.25.5 (2024-09-03)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.25.4 (2024-08-15)
+
+* **Dependency Update**: Bump minimum Go version to 1.21.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.25.3 (2024-07-10.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.25.2 (2024-07-10)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.25.1 (2024-06-28)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.25.0 (2024-06-26)
+
+* **Feature**: Support list-of-string endpoint parameter.
+
+# v1.24.1 (2024-06-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.24.0 (2024-06-18)
+
+* **Feature**: Track usage of various AWS SDK features in user-agent string.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.23.11 (2024-06-17)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.23.10 (2024-06-07)
+
+* **Bug Fix**: Add clock skew correction on all service clients
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.23.9 (2024-06-03)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.23.8 (2024-05-23)
+
+* No change notes available for this release.
+
+# v1.23.7 (2024-05-16)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.23.6 (2024-05-15)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.23.5 (2024-05-08)
+
+* **Bug Fix**: GoDoc improvement
+
+# v1.23.4 (2024-03-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.23.3 (2024-03-18)
 
 * **Dependency Update**: Updated to the latest SDK module versions

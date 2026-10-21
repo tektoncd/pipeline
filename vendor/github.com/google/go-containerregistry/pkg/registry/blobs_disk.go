@@ -17,6 +17,7 @@ package registry
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -35,17 +36,28 @@ func (m *diskHandler) blobHashPath(h v1.Hash) string {
 }
 
 func (m *diskHandler) Stat(_ context.Context, _ string, h v1.Hash) (int64, error) {
-	fi, err := os.Stat(m.blobHashPath(h))
+	f, err := os.Open(m.blobHashPath(h))
 	if errors.Is(err, os.ErrNotExist) {
-		return 0, errNotFound
+		return 0, ErrNotFound
 	} else if err != nil {
 		return 0, err
 	}
-	return fi.Size(), nil
+	defer f.Close()
+
+	got, size, err := v1.SHA256(f)
+	if err != nil {
+		return 0, err
+	}
+	if got != h {
+		return 0, fmt.Errorf("%w: blob %s has digest %s", ErrNotFound, h, got)
+	}
+	return size, nil
 }
+
 func (m *diskHandler) Get(_ context.Context, _ string, h v1.Hash) (io.ReadCloser, error) {
 	return os.Open(m.blobHashPath(h))
 }
+
 func (m *diskHandler) Put(_ context.Context, _ string, h v1.Hash, rc io.ReadCloser) error {
 	// Put the temp file in the same directory to avoid cross-device problems
 	// during the os.Rename.  The filenames cannot conflict.
@@ -66,6 +78,7 @@ func (m *diskHandler) Put(_ context.Context, _ string, h v1.Hash, rc io.ReadClos
 	}
 	return os.Rename(f.Name(), m.blobHashPath(h))
 }
+
 func (m *diskHandler) Delete(_ context.Context, _ string, h v1.Hash) error {
 	return os.Remove(m.blobHashPath(h))
 }

@@ -54,10 +54,14 @@ function setup_test_cluster() {
   header "Setting up test cluster"
   kubectl get nodes
 
-  # Set the actual project the test cluster resides in
-  # It will be a project assigned by Boskos if test is running on Prow,
-  # otherwise will be ${E2E_GCP_PROJECT_ID} set up by user.
-  E2E_PROJECT_ID="$(gcloud config get-value project)"
+  # Set the actual project the test cluster resides in. For GKE this
+  # comes from the Boskos-configured gcloud context; for other
+  # providers (e.g. kind) it is not meaningful and is left empty.
+  if [[ "${CLOUD_PROVIDER}" == "gke" ]]; then
+    E2E_PROJECT_ID="$(gcloud config get-value project)"
+  else
+    E2E_PROJECT_ID=""
+  fi
   export E2E_PROJECT_ID
   readonly E2E_PROJECT_ID
 

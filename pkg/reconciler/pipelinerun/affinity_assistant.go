@@ -47,12 +47,21 @@ const (
 	// ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSet indicates that a PipelineRun uses workspaces with PersistentVolumeClaim
 	// as a volume source and expect an Assistant StatefulSet in AffinityAssistantPerWorkspace behavior, but couldn't create a StatefulSet.
 	ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSet = "ReasonCouldntCreateOrUpdateAffinityAssistantStatefulSet"
+
+	// AutoCleanupPVCAnnotation enables optional PVC cleanup in AffinityAssistantPerWorkspace mode.
+	// When set to "true", PVCs created from volumeClaimTemplates are deleted on PipelineRun completion.
+	// This annotation only affects volumeClaimTemplate workspaces; user-provided persistentVolumeClaim
+	// workspaces are never deleted.
+	AutoCleanupPVCAnnotation = "tekton.dev/auto-cleanup-pvc"
+
+	// volumeNameMaxLength is the maximum length for a Kubernetes volume name.
+	volumeNameMaxLength = 63
 )
 
 var (
-	// Deprecated: use volumeclain.ErrPvcCreationFailed instead
+	// Deprecated: use volumeclaim.ErrPvcCreationFailed instead
 	ErrPvcCreationFailed = volumeclaim.ErrPvcCreationFailed
-	// Deprecated: use volumeclaim.ErrAffinityAssistantCreationFailed instead
+	// Deprecated: use volumeclaim.ErrPvcCreationFailedRetryable instead
 	ErrPvcCreationFailedRetryable      = volumeclaim.ErrPvcCreationFailedRetryable
 	ErrAffinityAssistantCreationFailed = errors.New("Affinity Assistant creation error")
 )
@@ -211,12 +220,23 @@ func (c *Reconciler) cleanupAffinityAssistantsAndPVCs(ctx context.Context, pr *v
 	var errs []error
 	switch aaBehavior {
 	case aa.AffinityAssistantPerWorkspace:
-		// TODO (#5776): support optional PVC deletion behavior for per-workspace mode
+		// Check if auto-cleanup annotation is enabled
+		autoCleanup := pr.Annotations != nil && pr.Annotations[AutoCleanupPVCAnnotation] == "true"
+
 		for _, w := range pr.Spec.Workspaces {
 			if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
 				affinityAssistantName := GetAffinityAssistantName(w.Name, pr.Name)
 				if err := c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Delete(ctx, affinityAssistantName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 					errs = append(errs, fmt.Errorf("failed to delete StatefulSet %s: %w", affinityAssistantName, err))
+				}
+			}
+
+			// Delete PVCs from volumeClaimTemplate if auto-cleanup is enabled.
+			// User-provided persistentVolumeClaim workspaces are never deleted.
+			if w.VolumeClaimTemplate != nil && autoCleanup {
+				pvcName := volumeclaim.GeneratePVCNameFromWorkspaceBinding(w.VolumeClaimTemplate.Name, w, *kmeta.NewControllerRef(pr))
+				if err := c.pvcHandler.PurgeFinalizerAndDeletePVCForWorkspace(ctx, pvcName, pr.Namespace); err != nil {
+					errs = append(errs, err)
 				}
 			}
 		}
@@ -246,7 +266,7 @@ func (c *Reconciler) cleanupAffinityAssistantsAndPVCs(ctx context.Context, pr *v
 // created by the Affinity Assistant StatefulSet VolumeClaimTemplate when Affinity Assistant is enabled.
 // The PVCs created by StatefulSet VolumeClaimTemplates follow the format `<pvcName>-<affinityAssistantName>-0`
 func getPersistentVolumeClaimNameWithAffinityAssistant(pipelineWorkspaceName, prName string, wb v1.WorkspaceBinding, owner metav1.OwnerReference) string {
-	pvcName := volumeclaim.GeneratePVCNameFromWorkspaceBinding(wb.VolumeClaimTemplate.Name, wb, owner)
+	pvcName := sanitizeVolumeName(volumeclaim.GeneratePVCNameFromWorkspaceBinding(wb.VolumeClaimTemplate.Name, wb, owner))
 	affinityAssistantName := GetAffinityAssistantName(pipelineWorkspaceName, prName)
 	return fmt.Sprintf("%s-%s-0", pvcName, affinityAssistantName)
 }
@@ -290,6 +310,20 @@ func getStatefulSetLabels(pr *v1.PipelineRun, affinityAssistantName string) map[
 	return labels
 }
 
+// sanitizeVolumeName returns a volume-safe name that is at most volumeNameMaxLength characters.
+// If the name is already short enough, it is returned as-is.
+// Otherwise, it is truncated and a short hash is appended to preserve uniqueness.
+func sanitizeVolumeName(name string) string {
+	if len(name) <= volumeNameMaxLength {
+		return name
+	}
+	hashBytes := sha256.Sum256([]byte(name))
+	hashStr := hex.EncodeToString(hashBytes[:])[:10]
+	// truncate prefix to leave room for "-" + 10-char hash = 11 chars
+	prefix := name[:volumeNameMaxLength-11]
+	return fmt.Sprintf("%s-%s", prefix, hashStr)
+}
+
 // affinityAssistantStatefulSet returns an Affinity Assistant as a StatefulSet based on the AffinityAssistantBehavior
 // with the given AffinityAssistantTemplate applied to the StatefulSet PodTemplateSpec.
 // The VolumeClaimTemplates and Volume of StatefulSet reference the PipelineRun WorkspaceBinding VolumeClaimTempalte and the PVCs respectively.
@@ -302,6 +336,11 @@ func affinityAssistantStatefulSet(aaBehavior aa.AffinityAssistantBehavior, name 
 	// merge pod template from spec and default if any of them are defined
 	if pr.Spec.TaskRunTemplate.PodTemplate != nil || defaultAATpl != nil {
 		tpl = pod.MergeAAPodTemplateWithDefault(pr.Spec.TaskRunTemplate.PodTemplate.ToAffinityAssistantTemplate(), defaultAATpl)
+	}
+
+	// Sanitize VolumeClaimTemplate names to stay within Kubernetes' 63-char volume name limit.
+	for i := range claimTemplates {
+		claimTemplates[i].Name = sanitizeVolumeName(claimTemplates[i].Name)
 	}
 
 	var mounts []corev1.VolumeMount

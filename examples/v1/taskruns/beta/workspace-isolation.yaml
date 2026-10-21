@@ -18,7 +18,7 @@ spec:
     - name: signals
     steps:
     - name: await-sidecar-signal
-      image: mirror.gcr.io/alpine
+      image: mirror.gcr.io/alpine@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
       workspaces:
       - name: signals
       script: |
@@ -32,7 +32,7 @@ spec:
         done
         echo "Saw ready file"
     - name: check-signals-access
-      image: mirror.gcr.io/alpine
+      image: mirror.gcr.io/alpine@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
       script: |
         #!/usr/bin/env ash
         if [ -f "$(workspaces.signals.path)"/start ] ; then
@@ -41,7 +41,7 @@ spec:
         fi
     sidecars:
     - name: await-step-signal
-      image: mirror.gcr.io/alpine
+      image: mirror.gcr.io/alpine@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
       workspaces:
       - name: signals
       script: |
