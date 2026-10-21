@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/internal/resolution/retry"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
@@ -469,6 +470,8 @@ func toParams(m map[string]string) []pipelinev1.Param {
 func contextWithConfig(timeout string) context.Context {
 	config := map[string]string{
 		httpresolution.TimeoutKey: timeout,
+		// Keep the retries of failing fetches fast.
+		retry.ConfigBackoffDuration: "1ms",
 	}
 	return resolutionframework.InjectResolverConfigToContext(context.Background(), config)
 }
