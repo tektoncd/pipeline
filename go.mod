@@ -1,6 +1,6 @@
 module github.com/tektoncd/pipeline
 
-go 1.27.0
+go 1.27.3
 
 require (
 	code.gitea.io/sdk/gitea v0.22.1
