@@ -756,7 +756,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				},
 			},
 		},
-		wc:      cfgtesting.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "duplicate stepOverride names",
 		spec: v1beta1.TaskRunSpec{

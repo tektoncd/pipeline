@@ -762,7 +762,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				},
 			},
 		},
-		wc:      cfgtesting.EnableAlphaAPIFields,
+		wc: cfgtesting.EnableAlphaAPIFields,
 	}, {
 		name: "stepSpecs disallowed without beta feature gate",
 		spec: v1.TaskRunSpec{
