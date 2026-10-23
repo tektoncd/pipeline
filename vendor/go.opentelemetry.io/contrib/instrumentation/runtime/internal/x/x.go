@@ -5,7 +5,7 @@
 //
 // This package should only be used for features defined in the specification.
 // It should not be used for experiments or new project ideas.
-package x // import "go.opentelemetry.io/contrib/instrumentation/runtime/internal/x"
+package x
 
 import (
 	"os"
