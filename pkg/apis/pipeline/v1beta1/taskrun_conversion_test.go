@@ -236,6 +236,12 @@ func TestTaskRunConversion(t *testing.T) {
 								},
 								VolumeAttributes: map[string]string{"key": "attribute-val"},
 							},
+						}, {
+							Name: "workspace-image",
+							Image: &corev1.ImageVolumeSource{
+								Reference:  "quay.io/example/my-tools:latest",
+								PullPolicy: corev1.PullIfNotPresent,
+							},
 						},
 					},
 					StepOverrides: []v1beta1.TaskRunStepOverride{{
