@@ -130,7 +130,7 @@ Environment variables can be configured in the following ways, mentioned in orde
 3. Environment variables specified via a `default` `PodTemplate`.
 4. Environment variables specified via a `PodTemplate`.
 
-The environment variables specified by a `PodTemplate` supercedes all other ways of specifying environment variables. However, there exists a configuration i.e. `default-forbidden-env`, the environment variable specified in this list cannot be updated via a `PodTemplate`.
+The environment variables specified by a `PodTemplate` supersedes all other ways of specifying environment variables. However, there exists a configuration i.e. `default-forbidden-env`, the environment variable specified in this list cannot be updated via a `PodTemplate`.
 
 For example:
 
@@ -174,7 +174,7 @@ spec:
           value: "false"
 ```
 
-_In the above example the environment variable `TEST_TEKTON` will not be overriden by value specified in podTemplate, because the `config-default` option `default-forbidden-env` is configured with value `TEST_TEKTON`._
+_In the above example the environment variable `TEST_TEKTON` will not be overridden by value specified in podTemplate, because the `config-default` option `default-forbidden-env` is configured with value `TEST_TEKTON`._
 
 
 ## Configuring default resources requirements
@@ -542,7 +542,7 @@ kubectl patch cm feature-flags -n tekton-pipelines -p '{"data":{"max-result-size
 
 ## Configuring High Availability
 
-If you want to run Tekton Pipelines in a way so that webhooks are resiliant against failures and support
+If you want to run Tekton Pipelines in a way so that webhooks are resilient against failures and support
 high concurrency scenarios, you need to run a [Metrics Server](https://github.com/kubernetes-sigs/metrics-server) in
 your Kubernetes cluster. This is required by the [Horizontal Pod Autoscalers](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)
 to compute replica count.
@@ -551,7 +551,7 @@ See [HA Support for Tekton Pipeline Controllers](./enabling-ha.md) for instructi
 High Availability in the Tekton Pipelines Controller.
 
 The default configuration is defined in [webhook-hpa.yaml](./../config/webhook-hpa.yaml) which can be customized
-to better fit specific usecases.
+to better fit specific use cases.
 
 ## Configuring tekton pipeline controller performance
 
@@ -898,7 +898,7 @@ data:
 
 ### Default Behavior
 
-If `enable-wait-exponential-backoff` is not set or is set to `"false"`, the controller will rely on its standard reconcilation loop to retry TaskRun or CustomRun creation after a short delay when failures occur due to webhook or network errors.
+If `enable-wait-exponential-backoff` is not set or is set to `"false"`, the controller will rely on its standard reconciliation loop to retry TaskRun or CustomRun creation after a short delay when failures occur due to webhook or network errors.
 
 ---
 
