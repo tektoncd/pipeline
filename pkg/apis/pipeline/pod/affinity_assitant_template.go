@@ -17,6 +17,7 @@ limitations under the License.
 package pod
 
 import (
+	"fmt"
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
@@ -63,6 +64,29 @@ type AffinityAssistantTemplate struct {
 	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// Resources are the compute resource requirements for the affinity assistant container.
+	// If not specified, default values of 50m CPU and 100Mi memory (requests and limits) are used.
+	// This allows customization in environments with ResourceQuota or LimitRange policies.
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+}
+
+// ValidateResources checks that resource requests do not exceed limits.
+func (tpl *AffinityAssistantTemplate) ValidateResources() []error {
+	if tpl == nil || tpl.Resources == nil {
+		return nil
+	}
+	var errs []error
+	for resourceName, request := range tpl.Resources.Requests {
+		if limit, ok := tpl.Resources.Limits[resourceName]; ok {
+			if request.Cmp(limit) > 0 {
+				errs = append(errs, fmt.Errorf("request %s (%s) must be less than or equal to limit (%s)",
+					resourceName, request.String(), limit.String()))
+			}
+		}
+	}
+	return errs
 }
 
 // Equals checks if this Template is identical to the given Template.
