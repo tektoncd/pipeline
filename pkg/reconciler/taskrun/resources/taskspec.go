@@ -142,9 +142,14 @@ func resolveStepRef(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.TaskR
 		return nil, nil, err
 	}
 
-	// Merge fields from the resolved StepAction into the step
+	// Merge fields from the resolved StepAction into the step.
+	// Only overwrite fields that the StepAction actually set, so a
+	// StepAction that leaves e.g. SecurityContext unset does not wipe
+	// the one the Step already had.
 	resolvedStep.Image = stepFromStepAction.Image
-	resolvedStep.SecurityContext = stepFromStepAction.SecurityContext
+	if stepFromStepAction.SecurityContext != nil {
+		resolvedStep.SecurityContext = stepFromStepAction.SecurityContext
+	}
 	if len(stepFromStepAction.Command) > 0 {
 		resolvedStep.Command = stepFromStepAction.Command
 	}
