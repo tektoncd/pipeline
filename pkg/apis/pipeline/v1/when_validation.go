@@ -63,7 +63,7 @@ func (we *WhenExpression) validateWhenExpressionFields(ctx context.Context) *api
 		env, _ := cel.NewEnv()
 		_, iss := env.Compile(we.CEL)
 		if iss.Err() != nil {
-			return apis.ErrGeneric("invalid cel expression: %s with err: %s", we.CEL, iss.Err().Error())
+			return apis.ErrGeneric(fmt.Sprintf("invalid cel expression: %s with err: %s", we.CEL, iss.Err().Error()))
 		}
 		return nil
 	}
