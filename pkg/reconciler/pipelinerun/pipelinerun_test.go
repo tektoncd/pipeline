@@ -10188,11 +10188,11 @@ metadata:
 	}
 }
 
-// TestReconcileWithTaskResolver checks that a PipelineRun with a populated Resolver
-// field for a Task creates a ResolutionRequest object for that Resolver's type, and
-// that when the request is successfully resolved the PipelineRun begins running.
-func TestReconcileWithTaskResolver(t *testing.T) {
-	resolverName := "foobar"
+// TestReconcileWithClusterTaskResolver checks that a PipelineRun with a cluster-resolved
+// Task preserves the resolver on its child TaskRun so the TaskRun reconciler can retain
+// the resolved Task namespace for local StepAction lookups.
+func TestReconcileWithClusterTaskResolver(t *testing.T) {
+	resolverName := "cluster"
 	pr := parse.MustParseV1PipelineRun(t, `
 metadata:
   name: pr
@@ -10202,7 +10202,7 @@ spec:
     tasks:
     - name: some-task
       taskRef:
-        resolver: foobar
+        resolver: cluster
         params:
         - name: foo
           value: bar
@@ -10263,12 +10263,12 @@ kind: Task
 apiVersion: tekton.dev/v1
 metadata:
   name: foo
+  namespace: task-ns
 spec:
   steps:
   - name: step1
-    image: ubuntu
-    script: |
-      echo "hello world!"
+    ref:
+      name: local-action
 `)
 
 	resreq.Status.ResolutionRequestStatusFields.Data = base64.StdEncoding.Strict().EncodeToString(taskBytes)
@@ -10281,8 +10281,19 @@ spec:
 	// Check that the resolved pipeline was recognized by the
 	// PipelineRun reconciler and that the PipelineRun has now
 	// started executing.
-	updatedPipelineRun, _ := prt.reconcileRun("default", "pr", nil, false)
+	updatedPipelineRun, clients := prt.reconcileRun("default", "pr", nil, false)
 	th.CheckPipelineRunConditionStatusAndReason(t, updatedPipelineRun.Status, corev1.ConditionUnknown, v1.PipelineRunReasonRunning.String())
+
+	child, err := clients.Pipeline.TektonV1().TaskRuns("default").Get(prt.TestAssets.Ctx, "pr-some-task", metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if child.Spec.TaskRef == nil || string(child.Spec.TaskRef.Resolver) != resolverName {
+		t.Fatalf("child TaskRun TaskRef = %#v, want cluster resolver", child.Spec.TaskRef)
+	}
+	if child.Spec.TaskSpec != nil {
+		t.Fatal("child TaskRun inlined the resolved Task instead of preserving its cluster resolver")
+	}
 }
 
 func getTaskRunWithTaskSpec(tr, pr, p, t string, labels, annotations map[string]string) *v1.TaskRun {
