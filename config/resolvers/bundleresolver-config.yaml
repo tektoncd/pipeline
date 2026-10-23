@@ -31,3 +31,9 @@ data:
   # "never"  - Never cache resolved resources
   # "auto"   - Only cache bundles with digest references (@sha256:...)
   # default-cache-mode: "auto"
+  # Refuse to dial private network address classes (loopback, RFC1918/
+  # RFC4193, link-local, multicast, CGNAT, unspecified) when fetching
+  # bundle images. Defaults to "true". Set to "false" if you need the
+  # bundle resolver to reach an in-cluster registry (a Service ClusterIP,
+  # a sidecar, etc.) or another intentionally-private endpoint.
+  # block-private-ips: "true"
