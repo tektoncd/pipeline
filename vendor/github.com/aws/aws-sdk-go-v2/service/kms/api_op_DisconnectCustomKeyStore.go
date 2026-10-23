@@ -4,6 +4,8 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -80,6 +82,18 @@ type DisconnectCustomKeyStoreInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DisconnectCustomKeyStoreInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DisconnectCustomKeyStoreRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DisconnectCustomKeyStoreInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CustomKeyStoreId != nil {
+		s.WriteString(schemas.DisconnectCustomKeyStoreRequest_CustomKeyStoreId, *v.CustomKeyStoreId)
+	}
+}
+
 type DisconnectCustomKeyStoreOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -87,13 +101,26 @@ type DisconnectCustomKeyStoreOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DisconnectCustomKeyStoreOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DisconnectCustomKeyStoreResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DisconnectCustomKeyStoreOutput) SerializeMembers(s smithy.ShapeSerializer) {
+}
+func (v *DisconnectCustomKeyStoreOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DisconnectCustomKeyStoreResponse, func(s *smithy.Schema) error {
+		switch s {
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDisconnectCustomKeyStoreMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDisconnectCustomKeyStore{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DisconnectCustomKeyStore, schemas.DisconnectCustomKeyStoreRequest, schemas.DisconnectCustomKeyStoreResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDisconnectCustomKeyStore{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DisconnectCustomKeyStore, schemas.DisconnectCustomKeyStoreRequest, schemas.DisconnectCustomKeyStoreResponse), output: &DisconnectCustomKeyStoreOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

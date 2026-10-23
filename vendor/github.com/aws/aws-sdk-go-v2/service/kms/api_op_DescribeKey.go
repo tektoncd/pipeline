@@ -4,7 +4,9 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -134,6 +136,19 @@ type DescribeKeyInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeKeyInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeKeyRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeKeyInput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeGrantTokenList(s, schemas.DescribeKeyRequest_GrantTokens, v.GrantTokens)
+	if v.KeyId != nil {
+		s.WriteString(schemas.DescribeKeyRequest_KeyId, *v.KeyId)
+	}
+}
+
 type DescribeKeyOutput struct {
 
 	// Metadata associated with the key.
@@ -145,13 +160,34 @@ type DescribeKeyOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeKeyOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeKeyResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeKeyOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyMetadata != nil {
+		s.WriteStruct(schemas.DescribeKeyResponse_KeyMetadata)
+		v.KeyMetadata.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *DescribeKeyOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeKeyResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeKeyResponse_KeyMetadata:
+			v.KeyMetadata = &types.KeyMetadata{}
+			return v.KeyMetadata.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeKeyMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeKey{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeKey, schemas.DescribeKeyRequest, schemas.DescribeKeyResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeKey{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeKey, schemas.DescribeKeyRequest, schemas.DescribeKeyResponse), output: &DescribeKeyOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

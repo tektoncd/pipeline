@@ -4,7 +4,9 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -189,6 +191,29 @@ type EncryptInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *EncryptInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.EncryptRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *EncryptInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DryRun != nil {
+		s.WriteBool(schemas.EncryptRequest_DryRun, *v.DryRun)
+	}
+	if v.EncryptionAlgorithm != "" {
+		s.WriteString(schemas.EncryptRequest_EncryptionAlgorithm, string(v.EncryptionAlgorithm))
+	}
+	serializeEncryptionContextType(s, schemas.EncryptRequest_EncryptionContext, v.EncryptionContext)
+	serializeGrantTokenList(s, schemas.EncryptRequest_GrantTokens, v.GrantTokens)
+	if v.KeyId != nil {
+		s.WriteString(schemas.EncryptRequest_KeyId, *v.KeyId)
+	}
+	if v.Plaintext != nil {
+		s.WriteBlob(schemas.EncryptRequest_Plaintext, v.Plaintext)
+	}
+}
+
 type EncryptOutput struct {
 
 	// The encrypted plaintext. When you use the HTTP API or the Amazon Web Services
@@ -210,13 +235,47 @@ type EncryptOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *EncryptOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.EncryptResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *EncryptOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CiphertextBlob != nil {
+		s.WriteBlob(schemas.EncryptResponse_CiphertextBlob, v.CiphertextBlob)
+	}
+	if v.EncryptionAlgorithm != "" {
+		s.WriteString(schemas.EncryptResponse_EncryptionAlgorithm, string(v.EncryptionAlgorithm))
+	}
+	if v.KeyId != nil {
+		s.WriteString(schemas.EncryptResponse_KeyId, *v.KeyId)
+	}
+}
+func (v *EncryptOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.EncryptResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.EncryptResponse_CiphertextBlob:
+			return d.ReadBlob(schemas.EncryptResponse_CiphertextBlob, &v.CiphertextBlob)
+		case schemas.EncryptResponse_EncryptionAlgorithm:
+			var ev string
+			if err := d.ReadString(schemas.EncryptResponse_EncryptionAlgorithm, &ev); err != nil {
+				return err
+			}
+			v.EncryptionAlgorithm = types.EncryptionAlgorithmSpec(ev)
+			return nil
+		case schemas.EncryptResponse_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.EncryptResponse_KeyId, v.KeyId)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationEncryptMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpEncrypt{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.Encrypt, schemas.EncryptRequest, schemas.EncryptResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpEncrypt{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.Encrypt, schemas.EncryptRequest, schemas.EncryptResponse), output: &EncryptOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
