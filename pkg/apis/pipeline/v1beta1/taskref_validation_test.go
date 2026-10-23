@@ -38,6 +38,12 @@ func TestTaskRef_Valid(t *testing.T) {
 		name:    "simple taskref",
 		taskRef: &v1beta1.TaskRef{Name: "taskrefname"},
 	}, {
+		name:    "explicit default kind without apiversion",
+		taskRef: &v1beta1.TaskRef{Name: "taskrefname", Kind: v1beta1.NamespacedTaskKind},
+	}, {
+		name:    "custom task with kind and apiversion",
+		taskRef: &v1beta1.TaskRef{Name: "taskrefname", Kind: "Example", APIVersion: "example.dev/v1"},
+	}, {
 		name:    "beta feature: valid resolver",
 		taskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
 		wc:      cfgtesting.EnableBetaAPIFields,
@@ -84,6 +90,10 @@ func TestTaskRef_Invalid(t *testing.T) {
 		name:    "missing taskref name",
 		taskRef: &v1beta1.TaskRef{},
 		wantErr: apis.ErrMissingField("name"),
+	}, {
+		name:    "custom task kind without apiversion",
+		taskRef: &v1beta1.TaskRef{Name: "foo", Kind: "Example"},
+		wantErr: apis.ErrInvalidValue("custom task ref must specify apiVersion", "apiVersion"),
 	}, {
 		name: "taskRef with resolver and k8s style name",
 		taskRef: &v1beta1.TaskRef{
