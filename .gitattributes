@@ -7,3 +7,4 @@
 /third_party/** linguist-generated=true
 /vendor/** linguist-generated=true
 go.sum linguist-generated=true
+/hack/patches/*.patch -whitespace

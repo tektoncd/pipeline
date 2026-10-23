@@ -1,0 +1,11 @@
+diff --git a/vendor/knative.dev/pkg/observability/semconv/semconv.go b/vendor/knative.dev/pkg/observability/semconv/semconv.go
+--- a/vendor/knative.dev/pkg/observability/semconv/semconv.go
++++ b/vendor/knative.dev/pkg/observability/semconv/semconv.go
+@@ -19,6 +19,6 @@ package semconv
+ import (
+ 	"go.opentelemetry.io/otel/attribute"
+-	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
++	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
+ )
+ 
+ const (
