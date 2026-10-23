@@ -28,7 +28,6 @@ import (
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature/kms"
 
-	// TODO(#5976): consider move these registration to cmd/controller/main.go
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/aws"        // imported to execute init function to register aws kms
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/azure"      // imported to execute init function to register azure kms
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/gcp"        // imported to execute init function to register gcp kms
