@@ -1,0 +1,195 @@
+# This example demonstrates how default result values interact with Matrix.
+# It requires the alpha feature flag "enable-default-results" to be set to "true".
+#
+# It covers both directions:
+#   1. A Matrix fans out over a default value declared by a producing Task that
+#      never emits the result (get-platforms -> test-platforms).
+#   2. A fanned out PipelineTask falls back to a declared default when none of its
+#      TaskRuns emit the result (matrix-emitting-defaults -> consume-report-urls).
+#      The same aggregated default values are also surfaced as a PipelineRun result.
+#   3. A fanned out PipelineTask that is skipped falls back to its declared default
+#      once per matrix combination it would have fanned out into
+#      (skipped-matrix-with-defaults -> skipped-report-urls PipelineRun result).
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: matrix-with-default-results-
+spec:
+  pipelineSpec:
+    # report-urls aggregates the report-url result of every fanned out TaskRun of
+    # matrix-emitting-defaults. None of them emit it, so the PipelineRun result is an
+    # array holding the declared default once per combination:
+    # ["https://example.com/default-report", "https://example.com/default-report",
+    #  "https://example.com/default-report"]
+    results:
+      - name: report-urls
+        description: Report URLs from every matrix combination, falling back to the default
+        value: $(tasks.matrix-emitting-defaults.results.report-url[*])
+      # skipped-report-urls references a matrixed PipelineTask that is skipped, so none
+      # of its TaskRuns are created. The declared default is expected once per matrix
+      # combination: ["https://example.com/skipped-report",
+      # "https://example.com/skipped-report", "https://example.com/skipped-report"]
+      - name: skipped-report-urls
+        description: Report URLs from a skipped matrixed task, falling back to the default
+        value: $(tasks.skipped-matrix-with-defaults.results.report-url[*])
+    tasks:
+      # get-platforms declares an array result with a default value but never emits
+      # it, so the default ["linux","mac","windows"] is used by consumers.
+      - name: get-platforms
+        taskSpec:
+          results:
+            - name: platforms
+              type: array
+              description: Platforms to test; falls back to its default when not emitted
+              default:
+                - linux
+                - mac
+                - windows
+          steps:
+            - name: skip-emitting-platforms
+              image: mirror.gcr.io/bash
+              onError: continue
+              script: |
+                #!/usr/bin/env bash
+                echo "not emitting platforms, the default value is used instead"
+                exit 1
+                # This won't execute; the default ["linux","mac","windows"] is used.
+                echo -n "[\"freebsd\"]" | tee $(results.platforms.path)
+
+      # get-browser declares a string result with a default value but never emits it,
+      # so the default "chrome" is used by consumers.
+      - name: get-browser
+        taskSpec:
+          results:
+            - name: browser
+              description: Browser to test with; falls back to its default when not emitted
+              default: chrome
+          steps:
+            - name: skip-emitting-browser
+              image: mirror.gcr.io/bash
+              onError: continue
+              script: |
+                #!/usr/bin/env bash
+                echo "not emitting browser, the default value is used instead"
+                exit 1
+                # This won't execute; the default "chrome" is used.
+                echo -n "firefox" | tee $(results.browser.path)
+
+      # test-platforms fans out over the default array result of get-platforms,
+      # producing one TaskRun per element: linux, mac and windows. The browser param
+      # is a regular param, so the default string result of get-browser is passed to
+      # every combination.
+      - name: test-platforms
+        params:
+          - name: browser
+            value: $(tasks.get-browser.results.browser)
+        matrix:
+          params:
+            - name: platform
+              value: $(tasks.get-platforms.results.platforms[*])
+        taskSpec:
+          params:
+            - name: platform
+            - name: browser
+          steps:
+            - name: verify-defaults
+              image: mirror.gcr.io/bash
+              script: |
+                #!/usr/bin/env bash
+                echo "testing $(params.platform) with $(params.browser)"
+                case "$(params.platform)" in
+                  linux|mac|windows) ;;
+                  *)
+                    echo "expected a platform from the default result, got $(params.platform)"
+                    exit 1
+                    ;;
+                esac
+                if [ "$(params.browser)" != "chrome" ]; then
+                  echo "expected the default browser \"chrome\", got $(params.browser)"
+                  exit 1
+                fi
+
+      # matrix-emitting-defaults is itself fanned out over the default platforms. None
+      # of its TaskRuns emit report-url, so each TaskRun reports the declared default
+      # instead. Only string results can be consumed from a fanned out PipelineTask;
+      # they are aggregated into one array element per combination.
+      - name: matrix-emitting-defaults
+        matrix:
+          params:
+            - name: platform
+              value: $(tasks.get-platforms.results.platforms[*])
+        taskSpec:
+          params:
+            - name: platform
+          results:
+            - name: report-url
+              description: Report URL; falls back to its default when not emitted
+              default: https://example.com/default-report
+          steps:
+            - name: skip-emitting-report-url
+              image: mirror.gcr.io/bash
+              onError: continue
+              script: |
+                #!/usr/bin/env bash
+                echo "not emitting report-url for $(params.platform)"
+                exit 1
+                # This won't execute; the default report URL is used.
+                echo -n "https://example.com/$(params.platform)" | tee $(results.report-url.path)
+
+      # consume-report-urls receives one array element per fanned out combination,
+      # each holding the default report URL.
+      - name: consume-report-urls
+        params:
+          - name: urls
+            value: $(tasks.matrix-emitting-defaults.results.report-url[*])
+        taskSpec:
+          params:
+            - name: urls
+              type: array
+          steps:
+            - name: verify-default-report-url
+              image: mirror.gcr.io/bash
+              args: ["$(params.urls[*])"]
+              script: |
+                #!/usr/bin/env bash
+                echo "received $# report url(s): $@"
+                if [ "$#" != "3" ]; then
+                  echo "expected one element per combination (3), got $# element(s)"
+                  exit 1
+                fi
+                for url in "$@"; do
+                  if [ "${url}" != "https://example.com/default-report" ]; then
+                    echo "expected the default report url, got ${url}"
+                    exit 1
+                  fi
+                done
+
+      # skipped-matrix-with-defaults is never run because its when expression is false.
+      # The matrix fans out over a literal array so the number of combinations (3) is
+      # known even though no TaskRuns are created.
+      - name: skipped-matrix-with-defaults
+        when:
+          - input: "skip"
+            operator: in
+            values: ["run"]
+        matrix:
+          params:
+            - name: platform
+              value:
+                - linux
+                - mac
+                - windows
+        taskSpec:
+          params:
+            - name: platform
+          results:
+            - name: report-url
+              description: Report URL; falls back to its default when the task is skipped
+              default: https://example.com/skipped-report
+          steps:
+            - name: emit-report-url
+              image: mirror.gcr.io/bash
+              script: |
+                #!/usr/bin/env bash
+                # This won't execute; the task is skipped by its when expression.
+                echo -n "https://example.com/$(params.platform)" | tee $(results.report-url.path)
