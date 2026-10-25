@@ -89,6 +89,8 @@ data:
 
     # default-imagepullbackoff-timeout contains the default duration to wait
     # before requeuing the TaskRun to retry, specifying 0 here is equivalent to fail fast
+    # consider a non-zero value when many pods start at once (e.g. HA controller with a high
+    # threads-per-controller), as the container runtime can then fail pulls transiently
     # possible values could be 1m, 5m, 10s, 1h, etc
     # default-imagepullbackoff-timeout: "5m"
 
