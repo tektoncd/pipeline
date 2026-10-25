@@ -56,7 +56,7 @@ You can also set `THREADS_PER_CONTROLLER`, `KUBE_API_QPS` and `KUBE_API_BURST` e
 If flags and environment variables are set, command line args will take precedence.
 
 A high `threads-per-controller` value, especially combined with several controller replicas, lets the controller
-create many pods at once. This can exceed the container runtime's image pull rate limit on a node and fail TaskRuns
+create many pods at once. This can exceed the kubelet's image pull rate limit on a node and fail TaskRuns
 with `TaskRunImagePullFailed`. See [TaskRuns with `imagePullBackOff` Timeout](./additional-configs.md#taskruns-with-imagepullbackoff-timeout)
 for how to let the kubelet retry those pulls.
 

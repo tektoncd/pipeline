@@ -810,8 +810,9 @@ data:
 The default value of `default-imagepullbackoff-timeout` is `0`, which means the TaskRun fails on the first
 `imagePullBackOff`, even when the pull error is transient and the kubelet would succeed on its next retry. This
 matters when many pods start on the same node at once, for example with several [controller replicas](enabling-ha.md)
-and a high [`threads-per-controller`](tekton-controller-performance-configuration.md) value: the container runtime
-can reject pulls above its rate limit (for example `ErrImagePull: pull QPS exceeded` with CRI-O), and those TaskRuns
+and a high [`threads-per-controller`](tekton-controller-performance-configuration.md) value: the kubelet throttles
+image pulls per node (`registryPullQPS` and `registryBurst` in the kubelet configuration, independent of the
+container runtime) and rejects pulls above that limit with `ErrImagePull: pull QPS exceeded`, so those TaskRuns
 fail with `TaskRunImagePullFailed`. In such deployments, set `default-imagepullbackoff-timeout` to a non-zero
 duration such as "1m" so that the kubelet has time to retry the pull.
 
