@@ -4,7 +4,9 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -111,6 +113,31 @@ type VerifyMacInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *VerifyMacInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.VerifyMacRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *VerifyMacInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DryRun != nil {
+		s.WriteBool(schemas.VerifyMacRequest_DryRun, *v.DryRun)
+	}
+	serializeGrantTokenList(s, schemas.VerifyMacRequest_GrantTokens, v.GrantTokens)
+	if v.KeyId != nil {
+		s.WriteString(schemas.VerifyMacRequest_KeyId, *v.KeyId)
+	}
+	if v.Mac != nil {
+		s.WriteBlob(schemas.VerifyMacRequest_Mac, v.Mac)
+	}
+	if v.MacAlgorithm != "" {
+		s.WriteString(schemas.VerifyMacRequest_MacAlgorithm, string(v.MacAlgorithm))
+	}
+	if v.Message != nil {
+		s.WriteBlob(schemas.VerifyMacRequest_Message, v.Message)
+	}
+}
+
 type VerifyMacOutput struct {
 
 	// The HMAC KMS key used in the verification.
@@ -134,13 +161,47 @@ type VerifyMacOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *VerifyMacOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.VerifyMacResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *VerifyMacOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyId != nil {
+		s.WriteString(schemas.VerifyMacResponse_KeyId, *v.KeyId)
+	}
+	if v.MacAlgorithm != "" {
+		s.WriteString(schemas.VerifyMacResponse_MacAlgorithm, string(v.MacAlgorithm))
+	}
+	if v.MacValid != false {
+		s.WriteBool(schemas.VerifyMacResponse_MacValid, v.MacValid)
+	}
+}
+func (v *VerifyMacOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.VerifyMacResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.VerifyMacResponse_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.VerifyMacResponse_KeyId, v.KeyId)
+		case schemas.VerifyMacResponse_MacAlgorithm:
+			var ev string
+			if err := d.ReadString(schemas.VerifyMacResponse_MacAlgorithm, &ev); err != nil {
+				return err
+			}
+			v.MacAlgorithm = types.MacAlgorithmSpec(ev)
+			return nil
+		case schemas.VerifyMacResponse_MacValid:
+			return d.ReadBool(schemas.VerifyMacResponse_MacValid, &v.MacValid)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationVerifyMacMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpVerifyMac{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.VerifyMac, schemas.VerifyMacRequest, schemas.VerifyMacResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpVerifyMac{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.VerifyMac, schemas.VerifyMacRequest, schemas.VerifyMacResponse), output: &VerifyMacOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

@@ -4,6 +4,8 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -66,6 +68,18 @@ type CancelKeyDeletionInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CancelKeyDeletionInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CancelKeyDeletionRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CancelKeyDeletionInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyId != nil {
+		s.WriteString(schemas.CancelKeyDeletionRequest_KeyId, *v.KeyId)
+	}
+}
+
 type CancelKeyDeletionOutput struct {
 
 	// The Amazon Resource Name ([key ARN] ) of the KMS key whose deletion is canceled.
@@ -79,13 +93,32 @@ type CancelKeyDeletionOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CancelKeyDeletionOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CancelKeyDeletionResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CancelKeyDeletionOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyId != nil {
+		s.WriteString(schemas.CancelKeyDeletionResponse_KeyId, *v.KeyId)
+	}
+}
+func (v *CancelKeyDeletionOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CancelKeyDeletionResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CancelKeyDeletionResponse_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.CancelKeyDeletionResponse_KeyId, v.KeyId)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationCancelKeyDeletionMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCancelKeyDeletion{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CancelKeyDeletion, schemas.CancelKeyDeletionRequest, schemas.CancelKeyDeletionResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpCancelKeyDeletion{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CancelKeyDeletion, schemas.CancelKeyDeletionRequest, schemas.CancelKeyDeletionResponse), output: &CancelKeyDeletionOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

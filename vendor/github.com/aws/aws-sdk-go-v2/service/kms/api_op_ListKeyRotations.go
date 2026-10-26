@@ -5,7 +5,9 @@ package kms
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -102,6 +104,27 @@ type ListKeyRotationsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListKeyRotationsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListKeyRotationsRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListKeyRotationsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.IncludeKeyMaterial != "" {
+		s.WriteString(schemas.ListKeyRotationsRequest_IncludeKeyMaterial, string(v.IncludeKeyMaterial))
+	}
+	if v.KeyId != nil {
+		s.WriteString(schemas.ListKeyRotationsRequest_KeyId, *v.KeyId)
+	}
+	if v.Limit != nil {
+		s.WriteInt32(schemas.ListKeyRotationsRequest_Limit, *v.Limit)
+	}
+	if v.Marker != nil {
+		s.WriteString(schemas.ListKeyRotationsRequest_Marker, *v.Marker)
+	}
+}
+
 type ListKeyRotationsOutput struct {
 
 	// When Truncated is true, this element is present and contains the value to use
@@ -125,13 +148,40 @@ type ListKeyRotationsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListKeyRotationsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListKeyRotationsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListKeyRotationsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.NextMarker != nil {
+		s.WriteString(schemas.ListKeyRotationsResponse_NextMarker, *v.NextMarker)
+	}
+	serializeRotationsList(s, schemas.ListKeyRotationsResponse_Rotations, v.Rotations)
+	if v.Truncated != false {
+		s.WriteBool(schemas.ListKeyRotationsResponse_Truncated, v.Truncated)
+	}
+}
+func (v *ListKeyRotationsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ListKeyRotationsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ListKeyRotationsResponse_NextMarker:
+			v.NextMarker = new(string)
+			return d.ReadString(schemas.ListKeyRotationsResponse_NextMarker, v.NextMarker)
+		case schemas.ListKeyRotationsResponse_Rotations:
+			return deserializeRotationsList(d, schemas.ListKeyRotationsResponse_Rotations, &v.Rotations)
+		case schemas.ListKeyRotationsResponse_Truncated:
+			return d.ReadBool(schemas.ListKeyRotationsResponse_Truncated, &v.Truncated)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationListKeyRotationsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpListKeyRotations{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListKeyRotations, schemas.ListKeyRotationsRequest, schemas.ListKeyRotationsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpListKeyRotations{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListKeyRotations, schemas.ListKeyRotationsRequest, schemas.ListKeyRotationsResponse), output: &ListKeyRotationsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

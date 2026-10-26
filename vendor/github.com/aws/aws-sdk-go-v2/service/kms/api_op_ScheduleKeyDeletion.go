@@ -4,7 +4,9 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 	"time"
 )
@@ -122,6 +124,21 @@ type ScheduleKeyDeletionInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ScheduleKeyDeletionInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ScheduleKeyDeletionRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ScheduleKeyDeletionInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyId != nil {
+		s.WriteString(schemas.ScheduleKeyDeletionRequest_KeyId, *v.KeyId)
+	}
+	if v.PendingWindowInDays != nil {
+		s.WriteInt32(schemas.ScheduleKeyDeletionRequest_PendingWindowInDays, *v.PendingWindowInDays)
+	}
+}
+
 type ScheduleKeyDeletionOutput struct {
 
 	// The date and time after which KMS deletes the KMS key.
@@ -157,13 +174,54 @@ type ScheduleKeyDeletionOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ScheduleKeyDeletionOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ScheduleKeyDeletionResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ScheduleKeyDeletionOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DeletionDate != nil {
+		s.WriteTime(schemas.ScheduleKeyDeletionResponse_DeletionDate, *v.DeletionDate)
+	}
+	if v.KeyId != nil {
+		s.WriteString(schemas.ScheduleKeyDeletionResponse_KeyId, *v.KeyId)
+	}
+	if v.KeyState != "" {
+		s.WriteString(schemas.ScheduleKeyDeletionResponse_KeyState, string(v.KeyState))
+	}
+	if v.PendingWindowInDays != nil {
+		s.WriteInt32(schemas.ScheduleKeyDeletionResponse_PendingWindowInDays, *v.PendingWindowInDays)
+	}
+}
+func (v *ScheduleKeyDeletionOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ScheduleKeyDeletionResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ScheduleKeyDeletionResponse_DeletionDate:
+			v.DeletionDate = new(time.Time)
+			return d.ReadTime(schemas.ScheduleKeyDeletionResponse_DeletionDate, v.DeletionDate)
+		case schemas.ScheduleKeyDeletionResponse_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.ScheduleKeyDeletionResponse_KeyId, v.KeyId)
+		case schemas.ScheduleKeyDeletionResponse_KeyState:
+			var ev string
+			if err := d.ReadString(schemas.ScheduleKeyDeletionResponse_KeyState, &ev); err != nil {
+				return err
+			}
+			v.KeyState = types.KeyState(ev)
+			return nil
+		case schemas.ScheduleKeyDeletionResponse_PendingWindowInDays:
+			v.PendingWindowInDays = new(int32)
+			return d.ReadInt32(schemas.ScheduleKeyDeletionResponse_PendingWindowInDays, v.PendingWindowInDays)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationScheduleKeyDeletionMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpScheduleKeyDeletion{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ScheduleKeyDeletion, schemas.ScheduleKeyDeletionRequest, schemas.ScheduleKeyDeletionResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpScheduleKeyDeletion{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ScheduleKeyDeletion, schemas.ScheduleKeyDeletionRequest, schemas.ScheduleKeyDeletionResponse), output: &ScheduleKeyDeletionOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
