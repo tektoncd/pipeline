@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/mldsa"
 	"crypto/rsa"
 	"errors"
 	"fmt"
@@ -67,6 +68,9 @@ const (
 	AlgorithmRSAPSS3072SHA256      = "rsa-pss-3072-sha256"
 	AlgorithmRSAPSS4096SHA256      = "rsa-pss-4096-sha256"
 	AlgorithmRSAPSS4096SHA512      = "rsa-pss-4096-sha512"
+	AlgorithmPQSignMLDSA44         = "pq-sign-ml-dsa-44"
+	AlgorithmPQSignMLDSA65         = "pq-sign-ml-dsa-65"
+	AlgorithmPQSignMLDSA87         = "pq-sign-ml-dsa-87"
 )
 
 var algorithmMap = map[string]kmspb.CryptoKeyVersion_CryptoKeyVersionAlgorithm{
@@ -80,6 +84,9 @@ var algorithmMap = map[string]kmspb.CryptoKeyVersion_CryptoKeyVersionAlgorithm{
 	AlgorithmRSAPSS3072SHA256:      kmspb.CryptoKeyVersion_RSA_SIGN_PSS_3072_SHA256,
 	AlgorithmRSAPSS4096SHA256:      kmspb.CryptoKeyVersion_RSA_SIGN_PSS_4096_SHA256,
 	AlgorithmRSAPSS4096SHA512:      kmspb.CryptoKeyVersion_RSA_SIGN_PSS_4096_SHA512,
+	AlgorithmPQSignMLDSA44:         kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_44,
+	AlgorithmPQSignMLDSA65:         kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_65,
+	AlgorithmPQSignMLDSA87:         kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_87,
 }
 
 type gcpClient struct {
@@ -262,6 +269,15 @@ func (g *gcpClient) keyVersionName(ctx context.Context) (*cryptoKeyVersion, erro
 		}
 		crv.Verifier, err = signature.LoadRSAPSSVerifier(pk, crypto.SHA512, nil)
 		crv.HashFunc = crypto.SHA512
+	case kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_44,
+		kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_65,
+		kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_87:
+		pk, ok := pubKey.(*mldsa.PublicKey)
+		if !ok {
+			return nil, fmt.Errorf("asserting public key type mldsa.PublicKey")
+		}
+		crv.Verifier, err = signature.LoadMLDSAVerifier(pk)
+		crv.HashFunc = crypto.Hash(0)
 	default:
 		return nil, errors.New("unknown algorithm specified by KMS")
 	}
@@ -329,29 +345,40 @@ func (g *gcpClient) sign(ctx context.Context, digest []byte, alg crypto.Hash, cr
 	}
 
 	gcpSignReq := kmspb.AsymmetricSignRequest{
-		Name:   ckv.CryptoKeyVersion.Name,
-		Digest: &kmspb.Digest{},
-	}
-
-	if crc != 0 {
-		gcpSignReq.DigestCrc32C = wrapperspb.Int64(int64(crc))
+		Name: ckv.CryptoKeyVersion.Name,
 	}
 
 	switch alg {
 	case crypto.SHA256:
-		gcpSignReq.Digest.Digest = &kmspb.Digest_Sha256{
-			Sha256: digest,
+		gcpSignReq.Digest = &kmspb.Digest{
+			Digest: &kmspb.Digest_Sha256{
+				Sha256: digest,
+			},
 		}
 	case crypto.SHA384:
-		gcpSignReq.Digest.Digest = &kmspb.Digest_Sha384{
-			Sha384: digest,
+		gcpSignReq.Digest = &kmspb.Digest{
+			Digest: &kmspb.Digest_Sha384{
+				Sha384: digest,
+			},
 		}
 	case crypto.SHA512:
-		gcpSignReq.Digest.Digest = &kmspb.Digest_Sha512{
-			Sha512: digest,
+		gcpSignReq.Digest = &kmspb.Digest{
+			Digest: &kmspb.Digest_Sha512{
+				Sha512: digest,
+			},
 		}
+	case crypto.Hash(0):
+		gcpSignReq.Data = digest
 	default:
 		return nil, errors.New("unsupported hash function")
+	}
+
+	if crc != 0 {
+		if alg == crypto.Hash(0) {
+			gcpSignReq.DataCrc32C = wrapperspb.Int64(int64(crc))
+		} else {
+			gcpSignReq.DigestCrc32C = wrapperspb.Int64(int64(crc))
+		}
 	}
 
 	resp, err := g.kmsClient.AsymmetricSign(ctx, &gcpSignReq)

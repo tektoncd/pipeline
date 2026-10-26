@@ -4,7 +4,9 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -228,6 +230,34 @@ type GenerateDataKeyInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GenerateDataKeyInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GenerateDataKeyRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GenerateDataKeyInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DryRun != nil {
+		s.WriteBool(schemas.GenerateDataKeyRequest_DryRun, *v.DryRun)
+	}
+	serializeEncryptionContextType(s, schemas.GenerateDataKeyRequest_EncryptionContext, v.EncryptionContext)
+	serializeGrantTokenList(s, schemas.GenerateDataKeyRequest_GrantTokens, v.GrantTokens)
+	if v.KeyId != nil {
+		s.WriteString(schemas.GenerateDataKeyRequest_KeyId, *v.KeyId)
+	}
+	if v.KeySpec != "" {
+		s.WriteString(schemas.GenerateDataKeyRequest_KeySpec, string(v.KeySpec))
+	}
+	if v.NumberOfBytes != nil {
+		s.WriteInt32(schemas.GenerateDataKeyRequest_NumberOfBytes, *v.NumberOfBytes)
+	}
+	if v.Recipient != nil {
+		s.WriteStruct(schemas.GenerateDataKeyRequest_Recipient)
+		v.Recipient.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+
 type GenerateDataKeyOutput struct {
 
 	// The encrypted copy of the data key. When you use the HTTP API or the Amazon Web
@@ -271,13 +301,53 @@ type GenerateDataKeyOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GenerateDataKeyOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GenerateDataKeyResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GenerateDataKeyOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CiphertextBlob != nil {
+		s.WriteBlob(schemas.GenerateDataKeyResponse_CiphertextBlob, v.CiphertextBlob)
+	}
+	if v.CiphertextForRecipient != nil {
+		s.WriteBlob(schemas.GenerateDataKeyResponse_CiphertextForRecipient, v.CiphertextForRecipient)
+	}
+	if v.KeyId != nil {
+		s.WriteString(schemas.GenerateDataKeyResponse_KeyId, *v.KeyId)
+	}
+	if v.KeyMaterialId != nil {
+		s.WriteString(schemas.GenerateDataKeyResponse_KeyMaterialId, *v.KeyMaterialId)
+	}
+	if v.Plaintext != nil {
+		s.WriteBlob(schemas.GenerateDataKeyResponse_Plaintext, v.Plaintext)
+	}
+}
+func (v *GenerateDataKeyOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.GenerateDataKeyResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.GenerateDataKeyResponse_CiphertextBlob:
+			return d.ReadBlob(schemas.GenerateDataKeyResponse_CiphertextBlob, &v.CiphertextBlob)
+		case schemas.GenerateDataKeyResponse_CiphertextForRecipient:
+			return d.ReadBlob(schemas.GenerateDataKeyResponse_CiphertextForRecipient, &v.CiphertextForRecipient)
+		case schemas.GenerateDataKeyResponse_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.GenerateDataKeyResponse_KeyId, v.KeyId)
+		case schemas.GenerateDataKeyResponse_KeyMaterialId:
+			v.KeyMaterialId = new(string)
+			return d.ReadString(schemas.GenerateDataKeyResponse_KeyMaterialId, v.KeyMaterialId)
+		case schemas.GenerateDataKeyResponse_Plaintext:
+			return d.ReadBlob(schemas.GenerateDataKeyResponse_Plaintext, &v.Plaintext)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGenerateDataKeyMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpGenerateDataKey{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GenerateDataKey, schemas.GenerateDataKeyRequest, schemas.GenerateDataKeyResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpGenerateDataKey{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GenerateDataKey, schemas.GenerateDataKeyRequest, schemas.GenerateDataKeyResponse), output: &GenerateDataKeyOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

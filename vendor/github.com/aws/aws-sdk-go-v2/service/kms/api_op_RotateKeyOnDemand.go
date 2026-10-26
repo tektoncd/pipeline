@@ -4,6 +4,8 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -121,6 +123,18 @@ type RotateKeyOnDemandInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *RotateKeyOnDemandInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.RotateKeyOnDemandRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *RotateKeyOnDemandInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyId != nil {
+		s.WriteString(schemas.RotateKeyOnDemandRequest_KeyId, *v.KeyId)
+	}
+}
+
 type RotateKeyOnDemandOutput struct {
 
 	// Identifies the symmetric encryption KMS key that you initiated on-demand
@@ -133,13 +147,32 @@ type RotateKeyOnDemandOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *RotateKeyOnDemandOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.RotateKeyOnDemandResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *RotateKeyOnDemandOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyId != nil {
+		s.WriteString(schemas.RotateKeyOnDemandResponse_KeyId, *v.KeyId)
+	}
+}
+func (v *RotateKeyOnDemandOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.RotateKeyOnDemandResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.RotateKeyOnDemandResponse_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.RotateKeyOnDemandResponse_KeyId, v.KeyId)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationRotateKeyOnDemandMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpRotateKeyOnDemand{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.RotateKeyOnDemand, schemas.RotateKeyOnDemandRequest, schemas.RotateKeyOnDemandResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpRotateKeyOnDemand{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.RotateKeyOnDemand, schemas.RotateKeyOnDemandRequest, schemas.RotateKeyOnDemandResponse), output: &RotateKeyOnDemandOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

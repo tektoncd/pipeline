@@ -5,7 +5,9 @@ package kms
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -112,6 +114,27 @@ type DescribeCustomKeyStoresInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeCustomKeyStoresInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeCustomKeyStoresRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeCustomKeyStoresInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CustomKeyStoreId != nil {
+		s.WriteString(schemas.DescribeCustomKeyStoresRequest_CustomKeyStoreId, *v.CustomKeyStoreId)
+	}
+	if v.CustomKeyStoreName != nil {
+		s.WriteString(schemas.DescribeCustomKeyStoresRequest_CustomKeyStoreName, *v.CustomKeyStoreName)
+	}
+	if v.Limit != nil {
+		s.WriteInt32(schemas.DescribeCustomKeyStoresRequest_Limit, *v.Limit)
+	}
+	if v.Marker != nil {
+		s.WriteString(schemas.DescribeCustomKeyStoresRequest_Marker, *v.Marker)
+	}
+}
+
 type DescribeCustomKeyStoresOutput struct {
 
 	// Contains metadata about each custom key store.
@@ -133,13 +156,40 @@ type DescribeCustomKeyStoresOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DescribeCustomKeyStoresOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DescribeCustomKeyStoresResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DescribeCustomKeyStoresOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeCustomKeyStoresList(s, schemas.DescribeCustomKeyStoresResponse_CustomKeyStores, v.CustomKeyStores)
+	if v.NextMarker != nil {
+		s.WriteString(schemas.DescribeCustomKeyStoresResponse_NextMarker, *v.NextMarker)
+	}
+	if v.Truncated != false {
+		s.WriteBool(schemas.DescribeCustomKeyStoresResponse_Truncated, v.Truncated)
+	}
+}
+func (v *DescribeCustomKeyStoresOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DescribeCustomKeyStoresResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DescribeCustomKeyStoresResponse_CustomKeyStores:
+			return deserializeCustomKeyStoresList(d, schemas.DescribeCustomKeyStoresResponse_CustomKeyStores, &v.CustomKeyStores)
+		case schemas.DescribeCustomKeyStoresResponse_NextMarker:
+			v.NextMarker = new(string)
+			return d.ReadString(schemas.DescribeCustomKeyStoresResponse_NextMarker, v.NextMarker)
+		case schemas.DescribeCustomKeyStoresResponse_Truncated:
+			return d.ReadBool(schemas.DescribeCustomKeyStoresResponse_Truncated, &v.Truncated)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDescribeCustomKeyStoresMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeCustomKeyStores{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeCustomKeyStores, schemas.DescribeCustomKeyStoresRequest, schemas.DescribeCustomKeyStoresResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDescribeCustomKeyStores{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DescribeCustomKeyStores, schemas.DescribeCustomKeyStoresRequest, schemas.DescribeCustomKeyStoresResponse), output: &DescribeCustomKeyStoresOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

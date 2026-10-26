@@ -4,7 +4,9 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -212,6 +214,33 @@ type DeriveSharedSecretInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeriveSharedSecretInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DeriveSharedSecretRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeriveSharedSecretInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DryRun != nil {
+		s.WriteBool(schemas.DeriveSharedSecretRequest_DryRun, *v.DryRun)
+	}
+	serializeGrantTokenList(s, schemas.DeriveSharedSecretRequest_GrantTokens, v.GrantTokens)
+	if v.KeyAgreementAlgorithm != "" {
+		s.WriteString(schemas.DeriveSharedSecretRequest_KeyAgreementAlgorithm, string(v.KeyAgreementAlgorithm))
+	}
+	if v.KeyId != nil {
+		s.WriteString(schemas.DeriveSharedSecretRequest_KeyId, *v.KeyId)
+	}
+	if v.PublicKey != nil {
+		s.WriteBlob(schemas.DeriveSharedSecretRequest_PublicKey, v.PublicKey)
+	}
+	if v.Recipient != nil {
+		s.WriteStruct(schemas.DeriveSharedSecretRequest_Recipient)
+		v.Recipient.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+
 type DeriveSharedSecretOutput struct {
 
 	// The plaintext shared secret encrypted with the public key from the attestation
@@ -257,13 +286,62 @@ type DeriveSharedSecretOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DeriveSharedSecretOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DeriveSharedSecretResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DeriveSharedSecretOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CiphertextForRecipient != nil {
+		s.WriteBlob(schemas.DeriveSharedSecretResponse_CiphertextForRecipient, v.CiphertextForRecipient)
+	}
+	if v.KeyAgreementAlgorithm != "" {
+		s.WriteString(schemas.DeriveSharedSecretResponse_KeyAgreementAlgorithm, string(v.KeyAgreementAlgorithm))
+	}
+	if v.KeyId != nil {
+		s.WriteString(schemas.DeriveSharedSecretResponse_KeyId, *v.KeyId)
+	}
+	if v.KeyOrigin != "" {
+		s.WriteString(schemas.DeriveSharedSecretResponse_KeyOrigin, string(v.KeyOrigin))
+	}
+	if v.SharedSecret != nil {
+		s.WriteBlob(schemas.DeriveSharedSecretResponse_SharedSecret, v.SharedSecret)
+	}
+}
+func (v *DeriveSharedSecretOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DeriveSharedSecretResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DeriveSharedSecretResponse_CiphertextForRecipient:
+			return d.ReadBlob(schemas.DeriveSharedSecretResponse_CiphertextForRecipient, &v.CiphertextForRecipient)
+		case schemas.DeriveSharedSecretResponse_KeyAgreementAlgorithm:
+			var ev string
+			if err := d.ReadString(schemas.DeriveSharedSecretResponse_KeyAgreementAlgorithm, &ev); err != nil {
+				return err
+			}
+			v.KeyAgreementAlgorithm = types.KeyAgreementAlgorithmSpec(ev)
+			return nil
+		case schemas.DeriveSharedSecretResponse_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.DeriveSharedSecretResponse_KeyId, v.KeyId)
+		case schemas.DeriveSharedSecretResponse_KeyOrigin:
+			var ev string
+			if err := d.ReadString(schemas.DeriveSharedSecretResponse_KeyOrigin, &ev); err != nil {
+				return err
+			}
+			v.KeyOrigin = types.OriginType(ev)
+			return nil
+		case schemas.DeriveSharedSecretResponse_SharedSecret:
+			return d.ReadBlob(schemas.DeriveSharedSecretResponse_SharedSecret, &v.SharedSecret)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDeriveSharedSecretMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDeriveSharedSecret{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeriveSharedSecret, schemas.DeriveSharedSecretRequest, schemas.DeriveSharedSecretResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDeriveSharedSecret{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DeriveSharedSecret, schemas.DeriveSharedSecretRequest, schemas.DeriveSharedSecretResponse), output: &DeriveSharedSecretOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

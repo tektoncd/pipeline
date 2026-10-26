@@ -5,7 +5,9 @@ package kms
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -113,6 +115,27 @@ type ListRetirableGrantsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListRetirableGrantsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListRetirableGrantsRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListRetirableGrantsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Limit != nil {
+		s.WriteInt32(schemas.ListRetirableGrantsRequest_Limit, *v.Limit)
+	}
+	if v.Marker != nil {
+		s.WriteString(schemas.ListRetirableGrantsRequest_Marker, *v.Marker)
+	}
+	if v.RetiringPrincipal != nil {
+		s.WriteString(schemas.ListRetirableGrantsRequest_RetiringPrincipal, *v.RetiringPrincipal)
+	}
+	if v.RetiringServicePrincipal != nil {
+		s.WriteString(schemas.ListRetirableGrantsRequest_RetiringServicePrincipal, *v.RetiringServicePrincipal)
+	}
+}
+
 type ListRetirableGrantsOutput struct {
 
 	// A list of grants.
@@ -134,13 +157,40 @@ type ListRetirableGrantsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListRetirableGrantsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListGrantsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListRetirableGrantsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeGrantList(s, schemas.ListGrantsResponse_Grants, v.Grants)
+	if v.NextMarker != nil {
+		s.WriteString(schemas.ListGrantsResponse_NextMarker, *v.NextMarker)
+	}
+	if v.Truncated != false {
+		s.WriteBool(schemas.ListGrantsResponse_Truncated, v.Truncated)
+	}
+}
+func (v *ListRetirableGrantsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ListGrantsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ListGrantsResponse_Grants:
+			return deserializeGrantList(d, schemas.ListGrantsResponse_Grants, &v.Grants)
+		case schemas.ListGrantsResponse_NextMarker:
+			v.NextMarker = new(string)
+			return d.ReadString(schemas.ListGrantsResponse_NextMarker, v.NextMarker)
+		case schemas.ListGrantsResponse_Truncated:
+			return d.ReadBool(schemas.ListGrantsResponse_Truncated, &v.Truncated)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationListRetirableGrantsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpListRetirableGrants{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListRetirableGrants, schemas.ListRetirableGrantsRequest, schemas.ListGrantsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpListRetirableGrants{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListRetirableGrants, schemas.ListRetirableGrantsRequest, schemas.ListGrantsResponse), output: &ListRetirableGrantsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
