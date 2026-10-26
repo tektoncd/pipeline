@@ -87,7 +87,9 @@ const (
 
 const (
 	oomKilled = "OOMKilled"
-	evicted   = "Evicted"
+	// externalSigKillCode is the exit code for a SIGKILL (128 + 9), from an external kill or an OOM kill not reported as OOMKilled.
+	externalSigKillCode = 137
+	evicted             = "Evicted"
 )
 
 // SidecarsReady returns true if all of the Pod's sidecars are Ready or
@@ -125,12 +127,15 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 
 	sortPodContainerStatuses(pod.Status.ContainerStatuses, pod.Spec.Containers)
 
+	fatalStep := hasFatalStepTermination(pod)
 	complete := areContainersCompleted(ctx, pod) || isPodCompleted(pod)
 
 	// When EnableKubernetesSidecar is true, we need to ensure all init containers
 	// are completed before considering the taskRun complete, in addition to the regular containers.
 	// This is because sidecars in Kubernetes can keep running after the main containers complete.
-	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar {
+	// A fatal step termination means the following steps will never run, so native
+	// sidecars (which keep running) must not be waited for.
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableKubernetesSidecar && !fatalStep {
 		complete = complete && areInitContainersDone(ctx, pod)
 	}
 
@@ -675,12 +680,24 @@ func isPodCompleted(pod *corev1.Pod) bool {
 	if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
 		return true
 	}
+	return hasFatalStepTermination(pod)
+}
+
+// hasFatalStepTermination returns true if a step container was killed before
+// its entrypoint could write its post file, so later steps will never start.
+func hasFatalStepTermination(pod *corev1.Pod) bool {
 	for _, s := range pod.Status.ContainerStatuses {
-		if IsContainerStep(s.Name) {
-			if s.State.Terminated != nil {
-				if isOOMKilled(s) {
-					return true
-				}
+		if IsContainerStep(s.Name) && s.State.Terminated != nil {
+			// Depending on how the container is killed during an OOM, kubernetes may not report the container as
+			// explicitly OOM-killed. External SIGKILL and OOM both stop the container before the post file can be
+			// written, preventing the next steps from starting.
+			// Exit code 137 only means the entrypoint was killed if the termination message is empty; a non-empty
+			// message means the entrypoint survived and wrote its results, so we must not short-circuit
+			// areContainersCompleted (the sidecar-log results wait). This relies on the default
+			// terminationMessagePolicy (File), so logs never backfill the message.
+			// Other step failures are handled through the normal post-file coordination (areContainersCompleted).
+			if isOOMKilled(s) || (s.State.Terminated.ExitCode == externalSigKillCode && s.State.Terminated.Message == "") {
+				return true
 			}
 		}
 	}
