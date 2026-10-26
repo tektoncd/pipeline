@@ -43,3 +43,10 @@ data:
   # URLs must use http or https scheme.
   # tekton-hub-urls: |
   #   - https://api.hub.tekton.dev/
+  # Optional: Backoff configuration for retrying failed hub resolution requests.
+  # These settings control the exponential backoff used when a resolution attempt fails.
+  # backoff-duration: "2s"
+  # backoff-factor: "2.0"
+  # backoff-jitter: "0.1"
+  # backoff-steps: "2"  # total number of resolution attempts (must be >= 1)
+  # backoff-cap: "10s"
