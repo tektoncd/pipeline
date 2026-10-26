@@ -5187,7 +5187,27 @@ spec:
 // TestReconcileValidDefaultWorkspace tests a reconcile of a TaskRun that does
 // not include a Workspace that the Task is expecting and it uses the default Workspace instead.
 func TestReconcileValidDefaultWorkspace(t *testing.T) {
-	taskWithWorkspace := parse.MustParseV1Task(t, `
+	for _, tc := range []struct {
+		name       string
+		binding    string
+		wantVolume corev1.VolumeSource
+	}{
+		{
+			name:       "emptyDir",
+			binding:    "emptyDir: {}",
+			wantVolume: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
+		{
+			name:    "image",
+			binding: "image:\n  reference: registry.example.com/tools:v1\n  pullPolicy: IfNotPresent",
+			wantVolume: corev1.VolumeSource{Image: &corev1.ImageVolumeSource{
+				Reference:  "registry.example.com/tools:v1",
+				PullPolicy: corev1.PullIfNotPresent,
+			}},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			taskWithWorkspace := parse.MustParseV1Task(t, `
 metadata:
   name: test-task-with-workspace
   namespace: foo
@@ -5202,7 +5222,7 @@ spec:
     name: ws1
     readOnly: true
 `)
-	taskRun := parse.MustParseV1TaskRun(t, `
+			taskRun := parse.MustParseV1TaskRun(t, `
 metadata:
   name: test-taskrun-default-workspace
   namespace: foo
@@ -5211,38 +5231,58 @@ spec:
     apiVersion: v1
     name: test-task-with-workspace
 `)
-	d := test.Data{
-		Tasks:    []*v1.Task{taskWithWorkspace},
-		TaskRuns: []*v1.TaskRun{taskRun},
-	}
+			d := test.Data{
+				Tasks:    []*v1.Task{taskWithWorkspace},
+				TaskRuns: []*v1.TaskRun{taskRun},
+			}
 
-	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-		Data: map[string]string{
-			"default-task-run-workspace-binding": "emptyDir: {}",
-		},
-	})
-	testAssets, cancel := getTaskRunController(t, d)
-	defer cancel()
-	clients := testAssets.Clients
+			d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+				Data: map[string]string{
+					"default-task-run-workspace-binding": tc.binding,
+				},
+			}, &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+				Data: map[string]string{
+					"enable-image-workspace": strconv.FormatBool(tc.wantVolume.Image != nil),
+				},
+			})
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			clients := testAssets.Clients
 
-	createServiceAccount(t, testAssets, "default", "foo")
+			createServiceAccount(t, testAssets, "default", "foo")
 
-	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
-		// No error is ok.
-	} else if ok, _ := controller.IsRequeueKey(err); !ok {
-		t.Errorf("Expected no error reconciling valid TaskRun but got %v", err)
-	}
+			if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+				// No error is ok.
+			} else if ok, _ := controller.IsRequeueKey(err); !ok {
+				t.Errorf("Expected no error reconciling valid TaskRun but got %v", err)
+			}
 
-	tr, err := clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
-	}
+			tr, err := clients.Pipeline.TektonV1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+			}
 
-	for _, c := range tr.Status.Conditions {
-		if c.Type == apis.ConditionSucceeded && c.Status == corev1.ConditionFalse && c.Reason == v1.TaskRunReasonFailedValidation.String() {
-			t.Errorf("Expected TaskRun to pass Validation by using the default workspace but it did not. Final conditions were:\n%#v", tr.Status.Conditions)
-		}
+			for _, c := range tr.Status.Conditions {
+				if c.Type == apis.ConditionSucceeded && c.Status == corev1.ConditionFalse && c.Reason == v1.TaskRunReasonFailedValidation.String() {
+					t.Errorf("Expected TaskRun to pass Validation by using the default workspace but it did not. Final conditions were:\n%#v", tr.Status.Conditions)
+				}
+			}
+			pod, err := clients.Kube.CoreV1().Pods(tr.Namespace).Get(testAssets.Ctx, tr.Status.PodName, metav1.GetOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, volume := range pod.Spec.Volumes {
+				if strings.HasPrefix(volume.Name, "ws-") {
+					if d := cmp.Diff(tc.wantVolume, volume.VolumeSource); d != "" {
+						t.Errorf("Workspace volume mismatch: %s", diff.PrintWantGot(d))
+					}
+					return
+				}
+			}
+			t.Fatal("Pod is missing the default workspace volume")
+		})
 	}
 }
 
