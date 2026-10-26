@@ -39,9 +39,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
+
+const resolutionWaitMetricName = "tekton_pipelines_controller_taskrun_resolution_wait_seconds"
 
 var (
 	startTime      = metav1.Now()
@@ -1570,4 +1573,204 @@ func TestInsertTags(t *testing.T) {
 			t.Errorf("Expected 0 tags, got %d", len(tags))
 		}
 	})
+}
+
+func findHistogramMetric(t *testing.T, rm metricdata.ResourceMetrics, name string) (metricdata.Histogram[float64], bool) {
+	t.Helper()
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name == name {
+				hist, ok := m.Data.(metricdata.Histogram[float64])
+				if !ok {
+					t.Fatalf("metric %s data is not Histogram[float64]: %T", name, m.Data)
+				}
+				return hist, true
+			}
+		}
+	}
+	return metricdata.Histogram[float64]{}, false
+}
+
+func TestObserveResolutionWaitInlineTask(t *testing.T) {
+	// A TaskRun that never enters the ResolvingTaskRef reason (e.g. an inline
+	// Task spec) should record a resolution wait of 0 when it completes.
+	resetMetrics()
+	ctx := getConfigContext(false, false)
+	reader := sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	otel.SetMeterProvider(provider)
+
+	rec, err := NewRecorder(ctx)
+	if err != nil {
+		t.Fatalf("NewRecorder: %v", err)
+	}
+
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns", UID: types.UID("uid-inline")},
+		Spec: v1.TaskRunSpec{
+			TaskSpec: &v1.TaskSpec{},
+		},
+		Status: v1.TaskRunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionUnknown,
+					Reason: "Running",
+				}},
+			},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				StartTime: &startTime,
+			},
+		},
+	}
+	rec.ObserveResolutionWait(tr)
+
+	completed := tr.DeepCopy()
+	completed.Status.Conditions = duckv1.Conditions{{
+		Type:   apis.ConditionSucceeded,
+		Status: corev1.ConditionTrue,
+	}}
+	completed.Status.CompletionTime = &completionTime
+
+	if err := rec.DurationAndCount(ctx, completed, nil); err != nil {
+		t.Fatalf("DurationAndCount: %v", err)
+	}
+
+	var rm metricdata.ResourceMetrics
+	if err := reader.Collect(ctx, &rm); err != nil {
+		t.Fatalf("Collect error: %v", err)
+	}
+
+	hist, found := findHistogramMetric(t, rm, resolutionWaitMetricName)
+	if !found {
+		t.Fatal("resolution wait metric not found")
+	}
+	if len(hist.DataPoints) != 1 {
+		t.Fatalf("expected 1 data point, got %d", len(hist.DataPoints))
+	}
+	if sum := hist.DataPoints[0].Sum; sum != 0 {
+		t.Errorf("expected resolution wait 0 for inline task, got %v", sum)
+	}
+}
+
+func TestObserveResolutionWaitRecordsElapsedTime(t *testing.T) {
+	// A TaskRun that spends time with reason ResolvingTaskRef should have
+	// that wait time recorded once it moves past resolving and subsequently
+	// completes.
+	resetMetrics()
+	ctx := getConfigContext(false, false)
+	reader := sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	otel.SetMeterProvider(provider)
+
+	rec, err := NewRecorder(ctx)
+	if err != nil {
+		t.Fatalf("NewRecorder: %v", err)
+	}
+
+	uid := types.UID("uid-resolving")
+	resolvingSince := metav1.NewTime(time.Now().Add(-5 * time.Second))
+
+	resolvingTR := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns", UID: uid},
+		Spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{Name: "task-1"},
+		},
+		Status: v1.TaskRunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{{
+					Type:               apis.ConditionSucceeded,
+					Status:             corev1.ConditionUnknown,
+					Reason:             v1.TaskRunReasonResolvingTaskRef,
+					LastTransitionTime: apis.VolatileTime{Inner: resolvingSince},
+				}},
+			},
+		},
+	}
+	// Simulate a reconcile while still resolving: this records resolvingSince
+	// but should not yet stash a wait duration.
+	rec.ObserveResolutionWait(resolvingTR)
+	if _, ok := rec.resolutionWaitSeconds[uid]; ok {
+		t.Error("resolutionWaitSeconds should not be populated while still resolving")
+	}
+
+	runningTR := resolvingTR.DeepCopy()
+	runningTR.Status.Conditions = duckv1.Conditions{{
+		Type:   apis.ConditionSucceeded,
+		Status: corev1.ConditionUnknown,
+		Reason: "Running",
+	}}
+	// Simulate the reconcile where resolution finished: this should stash the
+	// elapsed wait and clear resolvingSince.
+	rec.ObserveResolutionWait(runningTR)
+	if _, ok := rec.resolvingSince[uid]; ok {
+		t.Error("resolvingSince should be cleared once resolution finishes")
+	}
+	if waitSeconds := rec.resolutionWaitSeconds[uid]; waitSeconds <= 0 {
+		t.Errorf("expected a positive stashed wait duration, got %v", waitSeconds)
+	}
+
+	completed := runningTR.DeepCopy()
+	completed.Status.Conditions = duckv1.Conditions{{
+		Type:   apis.ConditionSucceeded,
+		Status: corev1.ConditionTrue,
+	}}
+	completed.Status.StartTime = &startTime
+	completed.Status.CompletionTime = &completionTime
+
+	if err := rec.DurationAndCount(ctx, completed, nil); err != nil {
+		t.Fatalf("DurationAndCount: %v", err)
+	}
+
+	// The stashed entry should be consumed (and removed) by DurationAndCount.
+	if _, ok := rec.resolutionWaitSeconds[uid]; ok {
+		t.Error("resolutionWaitSeconds entry should be cleared after DurationAndCount consumes it")
+	}
+
+	var rm metricdata.ResourceMetrics
+	if err := reader.Collect(ctx, &rm); err != nil {
+		t.Fatalf("Collect error: %v", err)
+	}
+
+	hist, found := findHistogramMetric(t, rm, resolutionWaitMetricName)
+	if !found {
+		t.Fatal("resolution wait metric not found")
+	}
+	if len(hist.DataPoints) != 1 {
+		t.Fatalf("expected 1 data point, got %d", len(hist.DataPoints))
+	}
+	if sum := hist.DataPoints[0].Sum; sum <= 0 {
+		t.Errorf("expected a positive resolution wait duration, got %v", sum)
+	}
+}
+
+func TestObserveResolutionWaitNilSafety(t *testing.T) {
+	resetMetrics()
+
+	// A nil *Recorder — e.g. a Reconciler under test that never had a
+	// metrics recorder wired up — must be a no-op, not a panic. This
+	// mirrors a real regression: ObserveResolutionWait is called
+	// unconditionally on every reconcile (unlike DurationAndCount, which is
+	// only reached once a run IsDone()), so some reconciler tests exercise
+	// it with c.metrics == nil.
+	var nilRec *Recorder
+	nilRec.ObserveResolutionWait(&v1.TaskRun{})
+
+	// Uninitialized (but non-nil) recorder: should also be a no-op.
+	rec := &Recorder{}
+	rec.ObserveResolutionWait(&v1.TaskRun{})
+
+	ctx := getConfigContext(false, false)
+	reader := sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	otel.SetMeterProvider(provider)
+
+	rec, err := NewRecorder(ctx)
+	if err != nil {
+		t.Fatalf("NewRecorder: %v", err)
+	}
+	// Nil TaskRun and a TaskRun with no Succeeded condition should also be
+	// no-ops.
+	rec.ObserveResolutionWait(nil)
+	rec.ObserveResolutionWait(&v1.TaskRun{})
 }
