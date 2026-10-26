@@ -20,10 +20,12 @@ for sending metrics to an OpenTelemetry Collector or compatible backend.
 | Name | Type | Labels/Tags | Status |
 |---|---|---|---|
 | `tekton_pipelines_controller_pipelinerun_duration_seconds_[bucket, sum, count]` | Histogram/LastValue(Gauge) | `*pipeline`=&lt;pipeline_name&gt; <br> `*pipelinerun`=&lt;pipelinerun_name&gt; <br> `status`=&lt;status&gt; <br> `namespace`=&lt;pipelinerun-namespace&gt; <br> `*reason`=&lt;reason&gt; | experimental |
+| `tekton_pipelines_controller_pipelinerun_scheduled_duration_seconds_[bucket, sum, count]` | Histogram | `*pipeline`=&lt;pipeline_name&gt; <br> `*pipelinerun`=&lt;pipelinerun_name&gt; <br> `status`=&lt;status&gt; <br> `namespace`=&lt;pipelinerun-namespace&gt; <br> `*reason`=&lt;reason&gt; | experimental |
 | `tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds_[bucket, sum, count]` | Histogram/LastValue(Gauge) | `*pipeline`=&lt;pipeline_name&gt; <br> `*pipelinerun`=&lt;pipelinerun_name&gt; <br> `status`=&lt;status&gt; <br> `*task`=&lt;task_name&gt; <br> `*taskrun`=&lt;taskrun_name&gt;<br> `namespace`=&lt;pipelineruns-taskruns-namespace&gt; <br> `*reason`=&lt;reason&gt; | experimental |
 | `tekton_pipelines_controller_pipelinerun_total` | Counter | `status`=&lt;status&gt; | experimental |
 | `tekton_pipelines_controller_running_pipelineruns` | Gauge | | experimental |
 | `tekton_pipelines_controller_taskrun_duration_seconds_[bucket, sum, count]` | Histogram/LastValue(Gauge) | `status`=&lt;status&gt; <br> `*task`=&lt;task_name&gt; <br> `*taskrun`=&lt;taskrun_name&gt;<br> `namespace`=&lt;pipelineruns-taskruns-namespace&gt; <br> `*reason`=&lt;reason&gt; | experimental |
+| `tekton_pipelines_controller_taskrun_scheduled_duration_seconds_[bucket, sum, count]` | Histogram | `status`=&lt;status&gt; <br> `*task`=&lt;task_name&gt; <br> `*taskrun`=&lt;taskrun_name&gt; <br> `namespace`=&lt;pipelineruns-taskruns-namespace&gt; <br> `*reason`=&lt;reason&gt; | experimental |
 | `tekton_pipelines_controller_taskrun_total` | Counter | `status`=&lt;status&gt; | experimental |
 | `tekton_pipelines_controller_running_taskruns` | Gauge | | experimental |
 | `tekton_pipelines_controller_running_taskruns_throttled_by_quota` | Gauge | `namespace`=&lt;pipelinerun-namespace&gt; | experimental |
@@ -34,6 +36,10 @@ for sending metrics to an OpenTelemetry Collector or compatible backend.
 | `tekton_pipelines_controller_taskruns_pod_latency_milliseconds` | Histogram | `namespace`=&lt;namespace&gt; `*task`=&lt;task_name&gt; `*taskrun`=&lt;taskrun_name&gt; (unbounded cardinality, see [#9393](https://github.com/tektoncd/pipeline/issues/9393)) | experimental |
 
 The Labels/Tags marked as "\*" are optional. There is a choice between Histogram and LastValue(Gauge) for pipelinerun and taskrun duration metrics.
+
+The `_scheduled_duration_seconds` metrics measure **controller scheduling latency** — time from `ObjectMeta.CreationTimestamp` (when the object was created in Kubernetes) to `Status.StartTime` (when the controller first reconciled the run). A large value here indicates controller back-pressure or queue buildup, not slow execution. This is distinct from `_duration_seconds` (execution time) and `taskruns_pod_latency_milliseconds` (Kubernetes pod scheduling time).
+
+When a TaskRun is retried, each retry clears `Status.StartTime` and archives the previous attempt under `Status.RetriesStatus`. `tekton_pipelines_controller_taskrun_scheduled_duration_seconds` therefore reports the first attempt's start time, so that time spent executing earlier attempts is not counted as scheduling latency.
 
 > **Note:** All metrics now carry an `otel_scope_name` label identifying the
 > instrumentation package. This label is informational and transparent to

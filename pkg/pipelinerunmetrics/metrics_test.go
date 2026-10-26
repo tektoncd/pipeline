@@ -1275,6 +1275,126 @@ func TestGetPipelineTagName(t *testing.T) {
 	}
 }
 
+func TestScheduledDurationPipelineRun(t *testing.T) {
+	creationTime := metav1.Now()
+	scheduledStart := metav1.NewTime(creationTime.Add(30 * time.Second))
+	completionT := metav1.NewTime(scheduledStart.Time.Add(time.Minute))
+
+	for _, tc := range []struct {
+		name             string
+		conditionStatus  corev1.ConditionStatus
+		conditionReason  string
+		startTime        *metav1.Time
+		expectedStatus   string
+		expectedSchedule float64
+		expectScheduled  bool
+	}{{
+		name:             "success",
+		conditionStatus:  corev1.ConditionTrue,
+		startTime:        &scheduledStart,
+		expectedStatus:   "success",
+		expectedSchedule: 30,
+		expectScheduled:  true,
+	}, {
+		name:             "failed",
+		conditionStatus:  corev1.ConditionFalse,
+		startTime:        &scheduledStart,
+		expectedStatus:   "failed",
+		expectedSchedule: 30,
+		expectScheduled:  true,
+	}, {
+		name:             "cancelled",
+		conditionStatus:  corev1.ConditionFalse,
+		conditionReason:  v1.PipelineRunReasonCancelled.String(),
+		startTime:        &scheduledStart,
+		expectedStatus:   "cancelled",
+		expectedSchedule: 30,
+		expectScheduled:  true,
+	}, {
+		name:            "nil StartTime — no scheduled metric",
+		conditionStatus: corev1.ConditionTrue,
+		startTime:       nil,
+		expectScheduled: false,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			resetMetrics()
+			ctx := getConfigContext(false)
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+			otel.SetMeterProvider(provider)
+
+			r, err := NewRecorder(ctx)
+			if err != nil {
+				t.Fatalf("NewRecorder: %v", err)
+			}
+
+			pr := &v1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "pr-1",
+					Namespace:         "ns",
+					CreationTimestamp: creationTime,
+				},
+				Spec: v1.PipelineRunSpec{PipelineRef: &v1.PipelineRef{Name: "pipeline-1"}},
+				Status: v1.PipelineRunStatus{
+					Status: duckv1.Status{Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: tc.conditionStatus,
+						Reason: tc.conditionReason,
+					}}},
+					PipelineRunStatusFields: v1.PipelineRunStatusFields{
+						StartTime:      tc.startTime,
+						CompletionTime: &completionT,
+					},
+				},
+			}
+
+			if err := r.DurationAndCount(ctx, pr, nil); err != nil {
+				t.Fatalf("DurationAndCount: %v", err)
+			}
+
+			var rm metricdata.ResourceMetrics
+			if err := reader.Collect(ctx, &rm); err != nil {
+				t.Fatalf("Collect: %v", err)
+			}
+
+			var found bool
+			for _, sm := range rm.ScopeMetrics {
+				for _, m := range sm.Metrics {
+					if m.Name != "tekton_pipelines_controller_pipelinerun_scheduled_duration_seconds" {
+						continue
+					}
+					found = true
+					hist, ok := m.Data.(metricdata.Histogram[float64])
+					if !ok {
+						t.Fatalf("expected Histogram[float64], got %T", m.Data)
+					}
+					if len(hist.DataPoints) != 1 {
+						t.Fatalf("expected 1 data point, got %d", len(hist.DataPoints))
+					}
+					if hist.DataPoints[0].Sum != tc.expectedSchedule {
+						t.Errorf("expected scheduled sum %v, got %v", tc.expectedSchedule, hist.DataPoints[0].Sum)
+					}
+					gotStatus := ""
+					for _, kv := range hist.DataPoints[0].Attributes.ToSlice() {
+						if kv.Key == "status" {
+							gotStatus = kv.Value.AsString()
+						}
+					}
+					if gotStatus != tc.expectedStatus {
+						t.Errorf("expected status=%s, got %s", tc.expectedStatus, gotStatus)
+					}
+				}
+			}
+			if tc.expectScheduled && !found {
+				t.Error("scheduled_duration metric not found but was expected")
+			}
+			if !tc.expectScheduled && found {
+				t.Error("scheduled_duration metric found but was not expected (nil StartTime)")
+			}
+		})
+	}
+}
+
 func getRunningPRsMetric(t *testing.T, rm metricdata.ResourceMetrics) metricdata.Metrics {
 	t.Helper()
 	if len(rm.ScopeMetrics) == 0 {
