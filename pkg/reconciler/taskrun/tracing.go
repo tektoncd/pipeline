@@ -23,6 +23,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"knative.dev/pkg/logging"
@@ -77,4 +78,11 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, tr *v
 	span.AddEvent("updating TaskRun status with SpanContext")
 	tr.Status.SpanContext = spanContext
 	return ctxWithTrace, span
+}
+
+func recordSpanError(span trace.Span, err error) {
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+	}
 }
