@@ -24,7 +24,7 @@ of Wikipedia WikiURL. It filters names that have been used already,
 based on the GitHub API GitHubReleasesURL
 
 To use, run:
-	go run release_names.go
+	THECATAPIKEY=<api-key> go run release_names.go
 
 
 Example output:
@@ -46,6 +46,7 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -78,9 +79,26 @@ func httpGet(url string) (*http.Response, error) {
 	return http.DefaultClient.Do(req)
 }
 
+func catHttpGet(url string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	apiKey := os.Getenv("THECATAPIKEY")
+	if apiKey == "" {
+		return nil, errors.New("No API key for thecatapi.com in env THECATAPIKEY")
+	}
+
+	req.Header.Set("User-Agent", "golang-tekton-bot/0.1")
+	req.Header.Set("X-Api-Key", apiKey)
+
+	return http.DefaultClient.Do(req)
+}
+
 // Fetch cat breeds and organize them by first letter
 func getCatBreeds() (map[string][]string, error) {
-	resp, err := httpGet(CatAPIURL)
+	resp, err := catHttpGet(CatAPIURL)
 	if err != nil {
 		return nil, err
 	}
