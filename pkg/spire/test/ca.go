@@ -29,9 +29,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-jose/go-jose/v3"
-	"github.com/go-jose/go-jose/v3/cryptosigner"
-	"github.com/go-jose/go-jose/v3/jwt"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/spiffe/go-spiffe/v2/bundle/jwtbundle"
 	"github.com/spiffe/go-spiffe/v2/bundle/spiffebundle"
 	"github.com/spiffe/go-spiffe/v2/bundle/x509bundle"
@@ -116,7 +115,7 @@ func (ca *CA) CreateJWTSVID(id spiffeid.ID, audience []string) *jwtsvid.SVID {
 		jose.SigningKey{
 			Algorithm: jose.ES256,
 			Key: jose.JSONWebKey{
-				Key:   cryptosigner.Opaque(ca.jwtKey),
+				Key:   ca.jwtKey,
 				KeyID: ca.jwtKid,
 			},
 		},
@@ -126,7 +125,7 @@ func (ca *CA) CreateJWTSVID(id spiffeid.ID, audience []string) *jwtsvid.SVID {
 		ca.tb.Fatalf("failed to convert claims to Struct: %v", err)
 	}
 
-	signedToken, err := jwt.Signed(jwtSigner).Claims(claims).CompactSerialize()
+	signedToken, err := jwt.Signed(jwtSigner).Claims(claims).Serialize()
 	if err != nil {
 		ca.tb.Fatalf("failed to convert claims to Struct: %v", err)
 	}
