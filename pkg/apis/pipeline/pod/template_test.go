@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func TestMergeByName(t *testing.T) {
@@ -179,6 +180,27 @@ func TestMergeAAPodTemplateWithDefault(t *testing.T) {
 		expected   *AAPodTemplate
 	}
 
+	specResources := &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+			corev1.ResourceMemory: resource.MustParse("256Mi"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("200m"),
+			corev1.ResourceMemory: resource.MustParse("512Mi"),
+		},
+	}
+	defaultResources := &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("50m"),
+			corev1.ResourceMemory: resource.MustParse("100Mi"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("50m"),
+			corev1.ResourceMemory: resource.MustParse("100Mi"),
+		},
+	}
+
 	testCases := []testCase{
 		{
 			name: "defaultTpl is nil",
@@ -212,6 +234,43 @@ func TestMergeAAPodTemplateWithDefault(t *testing.T) {
 				PriorityClassName: &priority2,
 			},
 		},
+		{
+			name: "resources from spec override default",
+			tpl: &AAPodTemplate{
+				Resources: specResources,
+			},
+			defaultTpl: &AAPodTemplate{
+				Resources: defaultResources,
+			},
+			expected: &AAPodTemplate{
+				Resources: specResources,
+			},
+		},
+		{
+			name: "resources from default when spec is nil",
+			tpl: &AAPodTemplate{
+				NodeSelector: map[string]string{"foo": "bar"},
+			},
+			defaultTpl: &AAPodTemplate{
+				Resources: defaultResources,
+			},
+			expected: &AAPodTemplate{
+				NodeSelector: map[string]string{"foo": "bar"},
+				Resources:    defaultResources,
+			},
+		},
+		{
+			name: "no resources when neither set",
+			tpl: &AAPodTemplate{
+				NodeSelector: map[string]string{"foo": "bar"},
+			},
+			defaultTpl: &AAPodTemplate{
+				NodeSelector: map[string]string{"baz": "qux"},
+			},
+			expected: &AAPodTemplate{
+				NodeSelector: map[string]string{"foo": "bar"},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -219,6 +278,145 @@ func TestMergeAAPodTemplateWithDefault(t *testing.T) {
 			result := MergeAAPodTemplateWithDefault(tc.tpl, tc.defaultTpl)
 			if !reflect.DeepEqual(result, tc.expected) {
 				t.Errorf("mergeAAPodTemplateWithDefault(%v, %v) = %v, want %v", tc.tpl, tc.defaultTpl, result, tc.expected)
+			}
+		})
+	}
+}
+
+func TestToAffinityAssistantTemplate_PropagatesResources(t *testing.T) {
+	resources := &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+			corev1.ResourceMemory: resource.MustParse("256Mi"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("200m"),
+			corev1.ResourceMemory: resource.MustParse("512Mi"),
+		},
+	}
+
+	tpl := &Template{
+		NodeSelector: map[string]string{"foo": "bar"},
+		Resources:    resources,
+	}
+
+	aaTpl := tpl.ToAffinityAssistantTemplate()
+	if aaTpl.Resources == nil {
+		t.Fatal("expected Resources to be propagated, got nil")
+	}
+	if !reflect.DeepEqual(aaTpl.Resources, resources) {
+		t.Errorf("ToAffinityAssistantTemplate() Resources = %v, want %v", aaTpl.Resources, resources)
+	}
+}
+
+func TestToAffinityAssistantTemplate_NilResources(t *testing.T) {
+	tpl := &Template{
+		NodeSelector: map[string]string{"foo": "bar"},
+	}
+
+	aaTpl := tpl.ToAffinityAssistantTemplate()
+	if aaTpl.Resources != nil {
+		t.Errorf("expected Resources to be nil when not set on Template, got %v", aaTpl.Resources)
+	}
+}
+
+func TestValidateResources(t *testing.T) {
+	tests := []struct {
+		name      string
+		tpl       *AffinityAssistantTemplate
+		expectErr bool
+	}{
+		{
+			name:      "nil template",
+			tpl:       nil,
+			expectErr: false,
+		},
+		{
+			name:      "nil resources",
+			tpl:       &AffinityAssistantTemplate{},
+			expectErr: false,
+		},
+		{
+			name: "valid: requests equal limits",
+			tpl: &AffinityAssistantTemplate{
+				Resources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("100m"),
+						corev1.ResourceMemory: resource.MustParse("256Mi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("100m"),
+						corev1.ResourceMemory: resource.MustParse("256Mi"),
+					},
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "valid: requests less than limits",
+			tpl: &AffinityAssistantTemplate{
+				Resources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("50m"),
+						corev1.ResourceMemory: resource.MustParse("100Mi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
+					},
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "invalid: CPU request exceeds limit",
+			tpl: &AffinityAssistantTemplate{
+				Resources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("500m"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("100m"),
+					},
+				},
+			},
+			expectErr: true,
+		},
+		{
+			name: "invalid: memory request exceeds limit",
+			tpl: &AffinityAssistantTemplate{
+				Resources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceMemory: resource.MustParse("256Mi"),
+					},
+				},
+			},
+			expectErr: true,
+		},
+		{
+			name: "valid: requests only, no limits",
+			tpl: &AffinityAssistantTemplate{
+				Resources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("100m"),
+					},
+				},
+			},
+			expectErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := tt.tpl.ValidateResources()
+			if tt.expectErr && len(errs) == 0 {
+				t.Errorf("expected validation errors but got none")
+			}
+			if !tt.expectErr && len(errs) > 0 {
+				t.Errorf("expected no validation errors but got: %v", errs)
 			}
 		})
 	}
