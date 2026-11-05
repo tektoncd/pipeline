@@ -46,6 +46,7 @@ for the name, namespace and defaults that the resolver ships with.
 | `backoff-cap`              | The maximum backoff duration. If reached, remaining retry steps are capped.  | `10s`         | false    | `10s`, `20s`           |
 | `default-service-account`  | The default service account name to use for bundle requests.                 | `default`     | true     | `build-bot`, `default` |
 | `default-kind`             | The default layer kind in the bundle image.                                  | `task`        | true     | `task`, `pipeline`     |
+| `insecure-skip-tls-verify` | Skip TLS certificate verification when pulling bundles. **Warning:** this disables protection against man-in-the-middle attacks; only use for trusted registries with self-signed certs. | `false` | false | `true`, `false` |
 
 
 ### Caching Options
