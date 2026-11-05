@@ -646,6 +646,11 @@ func TestPipelineTaskResultRefs(t *testing.T) {
 				Params: v1beta1.Params{{
 					Name: "a-param", Value: *v1beta1.NewStructuredValues("$(tasks.pt9.results.r9)"),
 				}},
+				When: v1beta1.WhenExpressions{{
+					Input:    "$(tasks.pt15.results.r15)",
+					Operator: selection.In,
+					Values:   []string{"$(tasks.pt16.results.r16)"},
+				}},
 			}},
 			Params: v1beta1.Params{{
 				Value: *v1beta1.NewStructuredValues("$(tasks.pt5.results.r5)", "$(tasks.pt6.results.r6)"),
@@ -682,6 +687,12 @@ func TestPipelineTaskResultRefs(t *testing.T) {
 	}, {
 		PipelineTask: "pt9",
 		Result:       "r9",
+	}, {
+		PipelineTask: "pt15",
+		Result:       "r15",
+	}, {
+		PipelineTask: "pt16",
+		Result:       "r16",
 	}}
 	if d := cmp.Diff(refs, expectedRefs, cmpopts.SortSlices(lessResultRef)); d != "" {
 		t.Errorf("%v", d)
