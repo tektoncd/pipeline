@@ -39,3 +39,6 @@ var EmitCloudEvents = cloudevent.EmitCloudEvents
 
 // EmitError is refactored to k8sevent, this is to avoid breaking change
 var EmitError = k8sevent.EmitError
+
+// EmitErrorWithContext emits an error event with trace context annotations when available.
+var EmitErrorWithContext = k8sevent.EmitErrorWithContext
