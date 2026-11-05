@@ -19,15 +19,22 @@ package testing
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	bc "github.com/allegro/bigcache/v3"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	rtesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/names"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
+	k8stesting "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -99,4 +106,72 @@ func InitializeTestAssets(t *testing.T, d *test.Data) (test.Assets, func()) {
 
 func GetTestResourceName(run metav1.ObjectMetaAccessor) string {
 	return strings.Join([]string{run.GetObjectMeta().GetNamespace(), run.GetObjectMeta().GetName()}, "/")
+}
+
+// RunInformer starts the informer for resource and waits until both its
+// initial list has synced and its watch is registered with the fake
+// clientset, so that later writes through the clientset reach the informer
+// as watch events, as they would from a real API server.
+//
+// The fake informers set up by InitializeTestAssets are otherwise never
+// started, and test.SeedTestData installs reactors that write objects
+// directly into the informer's indexer; those are bypassed for resource so
+// that the informer sees genuine add and update notifications.
+func RunInformer(t *testing.T, ctx context.Context, client *fakepipelineclientset.Clientset, resource string, informer cache.SharedIndexInformer) {
+	t.Helper()
+	client.PrependReactor("*", resource, k8stesting.ObjectReaction(client.Tracker()))
+	watching := make(chan struct{})
+	var once sync.Once
+	client.PrependWatchReactor(resource, func(action k8stesting.Action) (bool, watch.Interface, error) {
+		w, err := client.Tracker().Watch(action.GetResource(), action.GetNamespace())
+		if err != nil {
+			return true, nil, err
+		}
+		once.Do(func() { close(watching) })
+		return true, w, nil
+	})
+	ctx, cancel := context.WithCancel(ctx)
+	stopped := make(chan struct{})
+	go func() {
+		defer close(stopped)
+		informer.Run(ctx.Done())
+	}()
+	// Stop the informer before the test completes, so that its goroutines
+	// do not log to a finished test.
+	t.Cleanup(func() {
+		cancel()
+		<-stopped
+	})
+	if !cache.WaitForCacheSync(ctx.Done(), informer.HasSynced) {
+		t.Fatal("timed out waiting for the informer to sync")
+	}
+	select {
+	case <-watching:
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for the informer to watch")
+	}
+}
+
+// NextQueueKey returns the next key added to the controller work queue and
+// marks it done. It fails the test if no key arrives within 10 seconds.
+func NextQueueKey(t *testing.T, impl *controller.Impl) types.NamespacedName {
+	t.Helper()
+	queue := impl.WorkQueue()
+	keys := make(chan interface{}, 1)
+	go func() {
+		key, shutdown := queue.Get()
+		if shutdown {
+			return
+		}
+		queue.Done(key)
+		keys <- key
+	}()
+	select {
+	case key := <-keys:
+		return key.(types.NamespacedName)
+	case <-time.After(10 * time.Second):
+		queue.ShutDown()
+		t.Fatal("timed out waiting for a key in the work queue")
+		return types.NamespacedName{}
+	}
 }

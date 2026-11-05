@@ -23,6 +23,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	cacheclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/client-go/tools/cache"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -60,4 +63,74 @@ func ControllerOptions(name string, store *config.Store) func(impl *controller.I
 			SkipStatusUpdates: true,
 		}
 	}
+}
+
+// EventHandler returns the informer event handler used by the notification
+// controllers. Adds and deletes are always enqueued. Updates are enqueued only
+// when the Succeeded condition (Status, Reason, Message) differs between the
+// previous and the new version of the object.
+//
+// The notification controllers are read-only and their only side effect is
+// sending CloudEvents, which are derived solely from the Succeeded condition.
+// Deduplication otherwise relies on an in-memory cache whose entries expire
+// (see pkg/reconciler/events/cache). Without this filter, an update that does
+// not change the condition — such as the updates informers deliver for every
+// object on periodic resync and relist, or a metadata-only change to a label,
+// annotation, finalizer or deletionTimestamp — would re-send the events of the
+// object once its cache entry has been evicted.
+//
+// The comparison uses the same condition fields as cache.ObjectKey, so an
+// update that is enqueued is one the cache would also have treated as new.
+// Objects that do not expose a status condition fall back to comparing their
+// resourceVersion.
+func EventHandler(enqueue func(interface{})) cache.ResourceEventHandler {
+	return cache.ResourceEventHandlerFuncs{
+		AddFunc: enqueue,
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			if !conditionChanged(oldObj, newObj) {
+				return
+			}
+			enqueue(newObj)
+		},
+		DeleteFunc: enqueue,
+	}
+}
+
+// statusConditionGetter is implemented by all run objects (v1beta1.RunObject).
+type statusConditionGetter interface {
+	GetStatusCondition() apis.ConditionAccessor
+}
+
+// conditionChanged reports whether an informer update could produce a new
+// CloudEvent for the object.
+func conditionChanged(oldObj, newObj interface{}) bool {
+	oldRun, oldOK := oldObj.(statusConditionGetter)
+	newRun, newOK := newObj.(statusConditionGetter)
+	if oldOK && newOK {
+		oldCond, newCond := succeededCondition(oldRun), succeededCondition(newRun)
+		return oldCond.Status != newCond.Status ||
+			oldCond.Reason != newCond.Reason ||
+			oldCond.Message != newCond.Message
+	}
+	oldMeta, err := meta.Accessor(oldObj)
+	if err != nil {
+		return true
+	}
+	newMeta, err := meta.Accessor(newObj)
+	if err != nil {
+		return true
+	}
+	rv := newMeta.GetResourceVersion()
+	return rv == "" || rv != oldMeta.GetResourceVersion()
+}
+
+// succeededCondition returns the Succeeded condition of a run, or an empty
+// condition when it is not set, mirroring cache.ObjectKey.
+func succeededCondition(run statusConditionGetter) apis.Condition {
+	if accessor := run.GetStatusCondition(); accessor != nil {
+		if c := accessor.GetCondition(apis.ConditionSucceeded); c != nil {
+			return *c
+		}
+	}
+	return apis.Condition{}
 }
