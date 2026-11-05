@@ -41,7 +41,7 @@ func NewController() func(context.Context, configmap.Watcher) *controller.Impl {
 		impl := taskrunreconciler.NewImpl(ctx, c, notifications.ControllerOptions(controllerName, configStore))
 
 		taskRunInformer := taskruninformer.Get(ctx)
-		if _, err := taskRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
+		if _, err := taskRunInformer.Informer().AddEventHandler(notifications.EventHandler(impl.Enqueue)); err != nil {
 			logging.FromContext(ctx).Panicf("Couldn't register TaskRun informer event handler: %v", err)
 		}
 
