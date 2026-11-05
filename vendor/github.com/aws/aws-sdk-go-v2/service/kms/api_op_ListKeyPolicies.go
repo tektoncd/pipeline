@@ -5,6 +5,8 @@ package kms
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -80,6 +82,24 @@ type ListKeyPoliciesInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListKeyPoliciesInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListKeyPoliciesRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListKeyPoliciesInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyId != nil {
+		s.WriteString(schemas.ListKeyPoliciesRequest_KeyId, *v.KeyId)
+	}
+	if v.Limit != nil {
+		s.WriteInt32(schemas.ListKeyPoliciesRequest_Limit, *v.Limit)
+	}
+	if v.Marker != nil {
+		s.WriteString(schemas.ListKeyPoliciesRequest_Marker, *v.Marker)
+	}
+}
+
 type ListKeyPoliciesOutput struct {
 
 	// When Truncated is true, this element is present and contains the value to use
@@ -101,13 +121,40 @@ type ListKeyPoliciesOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListKeyPoliciesOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListKeyPoliciesResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListKeyPoliciesOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.NextMarker != nil {
+		s.WriteString(schemas.ListKeyPoliciesResponse_NextMarker, *v.NextMarker)
+	}
+	serializePolicyNameList(s, schemas.ListKeyPoliciesResponse_PolicyNames, v.PolicyNames)
+	if v.Truncated != false {
+		s.WriteBool(schemas.ListKeyPoliciesResponse_Truncated, v.Truncated)
+	}
+}
+func (v *ListKeyPoliciesOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ListKeyPoliciesResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ListKeyPoliciesResponse_NextMarker:
+			v.NextMarker = new(string)
+			return d.ReadString(schemas.ListKeyPoliciesResponse_NextMarker, v.NextMarker)
+		case schemas.ListKeyPoliciesResponse_PolicyNames:
+			return deserializePolicyNameList(d, schemas.ListKeyPoliciesResponse_PolicyNames, &v.PolicyNames)
+		case schemas.ListKeyPoliciesResponse_Truncated:
+			return d.ReadBool(schemas.ListKeyPoliciesResponse_Truncated, &v.Truncated)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationListKeyPoliciesMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpListKeyPolicies{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListKeyPolicies, schemas.ListKeyPoliciesRequest, schemas.ListKeyPoliciesResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpListKeyPolicies{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListKeyPolicies, schemas.ListKeyPoliciesRequest, schemas.ListKeyPoliciesResponse), output: &ListKeyPoliciesOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

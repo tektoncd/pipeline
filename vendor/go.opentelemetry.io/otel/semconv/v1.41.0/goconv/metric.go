@@ -9,16 +9,11 @@ package goconv
 
 import (
 	"context"
-	"sync"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/noop"
-)
-
-var (
-	addOptPool = &sync.Pool{New: func() any { return &[]metric.AddOption{} }}
-	recOptPool = &sync.Pool{New: func() any { return &[]metric.RecordOption{} }}
+	"go.opentelemetry.io/otel/semconv/internal/metricpool"
 )
 
 // CPUStateAttr is an attribute conforming to the go.cpu.state semantic
@@ -192,12 +187,8 @@ func (m CPUTime) Add(
 		return
 	}
 
-	o := addOptPool.Get().(*[]metric.AddOption)
-	defer func() {
-		clear(*o)
-		*o = (*o)[:0]
-		addOptPool.Put(o)
-	}()
+	o := metricpool.AddOptions()
+	defer metricpool.PutAddOptions(o)
 
 	*o = append(
 		*o,
@@ -226,12 +217,8 @@ func (m CPUTime) AddSet(ctx context.Context, incr float64, set attribute.Set) {
 		return
 	}
 
-	o := addOptPool.Get().(*[]metric.AddOption)
-	defer func() {
-		clear(*o)
-		*o = (*o)[:0]
-		addOptPool.Put(o)
-	}()
+	o := metricpool.AddOptions()
+	defer metricpool.PutAddOptions(o)
 
 	*o = append(*o, metric.WithAttributeSet(set))
 	m.Float64Counter.Add(ctx, incr, *o...)
@@ -559,12 +546,8 @@ func (m MemoryGCCycles) Add(ctx context.Context, incr int64, attrs ...attribute.
 		return
 	}
 
-	o := addOptPool.Get().(*[]metric.AddOption)
-	defer func() {
-		clear(*o)
-		*o = (*o)[:0]
-		addOptPool.Put(o)
-	}()
+	o := metricpool.AddOptions()
+	defer metricpool.PutAddOptions(o)
 
 	*o = append(*o, metric.WithAttributes(attrs...))
 	m.Int64Counter.Add(ctx, incr, *o...)
@@ -582,12 +565,8 @@ func (m MemoryGCCycles) AddSet(ctx context.Context, incr int64, set attribute.Se
 		return
 	}
 
-	o := addOptPool.Get().(*[]metric.AddOption)
-	defer func() {
-		clear(*o)
-		*o = (*o)[:0]
-		addOptPool.Put(o)
-	}()
+	o := metricpool.AddOptions()
+	defer metricpool.PutAddOptions(o)
 
 	*o = append(*o, metric.WithAttributeSet(set))
 	m.Int64Counter.Add(ctx, incr, *o...)
@@ -781,12 +760,8 @@ func (m MemoryGCPauseDuration) Record(ctx context.Context, val float64, attrs ..
 		return
 	}
 
-	o := recOptPool.Get().(*[]metric.RecordOption)
-	defer func() {
-		clear(*o)
-		*o = (*o)[:0]
-		recOptPool.Put(o)
-	}()
+	o := metricpool.RecordOptions()
+	defer metricpool.PutRecordOptions(o)
 
 	*o = append(*o, metric.WithAttributes(attrs...))
 	m.Float64Histogram.Record(ctx, val, *o...)
@@ -805,12 +780,8 @@ func (m MemoryGCPauseDuration) RecordSet(ctx context.Context, val float64, set a
 		return
 	}
 
-	o := recOptPool.Get().(*[]metric.RecordOption)
-	defer func() {
-		clear(*o)
-		*o = (*o)[:0]
-		recOptPool.Put(o)
-	}()
+	o := metricpool.RecordOptions()
+	defer metricpool.PutRecordOptions(o)
 
 	*o = append(*o, metric.WithAttributeSet(set))
 	m.Float64Histogram.Record(ctx, val, *o...)
@@ -1075,12 +1046,8 @@ func (m ScheduleDuration) Record(ctx context.Context, val float64, attrs ...attr
 		return
 	}
 
-	o := recOptPool.Get().(*[]metric.RecordOption)
-	defer func() {
-		clear(*o)
-		*o = (*o)[:0]
-		recOptPool.Put(o)
-	}()
+	o := metricpool.RecordOptions()
+	defer metricpool.PutRecordOptions(o)
 
 	*o = append(*o, metric.WithAttributes(attrs...))
 	m.Float64Histogram.Record(ctx, val, *o...)
@@ -1099,12 +1066,8 @@ func (m ScheduleDuration) RecordSet(ctx context.Context, val float64, set attrib
 		return
 	}
 
-	o := recOptPool.Get().(*[]metric.RecordOption)
-	defer func() {
-		clear(*o)
-		*o = (*o)[:0]
-		recOptPool.Put(o)
-	}()
+	o := metricpool.RecordOptions()
+	defer metricpool.PutRecordOptions(o)
 
 	*o = append(*o, metric.WithAttributeSet(set))
 	m.Float64Histogram.Record(ctx, val, *o...)

@@ -2268,16 +2268,24 @@ func (x *ImportJob) GetCryptoKeyBackend() string {
 // levels.
 type ExternalProtectionLevelOptions struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The URI for an external resource that this
+	// Optional. The URI for an external resource that this
 	// [CryptoKeyVersion][google.cloud.kms.v1.CryptoKeyVersion] represents.
 	ExternalKeyUri string `protobuf:"bytes,1,opt,name=external_key_uri,json=externalKeyUri,proto3" json:"external_key_uri,omitempty"`
-	// The path to the external key material on the EKM when using
+	// Optional. The path to the external key material on the EKM when using
 	// [EkmConnection][google.cloud.kms.v1.EkmConnection] e.g., "v0/my/key". Set
 	// this field instead of external_key_uri when using an
 	// [EkmConnection][google.cloud.kms.v1.EkmConnection].
 	EkmConnectionKeyPath string `protobuf:"bytes,2,opt,name=ekm_connection_key_path,json=ekmConnectionKeyPath,proto3" json:"ekm_connection_key_path,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Optional. The resource name of the backend environment where the key
+	// material of [CryptoKeyVersions][google.cloud.kms.v1.CryptoKeyVersion] is
+	// associated with. Setting this field overrides the [CryptoKeyBackend][].
+	// This field may be set when
+	// [CryptoKeyVersions][google.cloud.kms.v1.CryptoKeyVersion] is set to
+	// [EXTERNAL_VPC][google.cloud.kms.v1.ProtectionLevel.EXTERNAL_VPC]. Format:
+	// `projects/*/locations/*/ekmConnections/*`.
+	EkmConnectionBackendOverride string `protobuf:"bytes,3,opt,name=ekm_connection_backend_override,json=ekmConnectionBackendOverride,proto3" json:"ekm_connection_backend_override,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *ExternalProtectionLevelOptions) Reset() {
@@ -2320,6 +2328,13 @@ func (x *ExternalProtectionLevelOptions) GetExternalKeyUri() string {
 func (x *ExternalProtectionLevelOptions) GetEkmConnectionKeyPath() string {
 	if x != nil {
 		return x.EkmConnectionKeyPath
+	}
+	return ""
+}
+
+func (x *ExternalProtectionLevelOptions) GetEkmConnectionBackendOverride() string {
+	if x != nil {
+		return x.EkmConnectionBackendOverride
 	}
 	return ""
 }
@@ -2810,10 +2825,12 @@ const file_google_cloud_kms_v1_resources_proto_rawDesc = "" +
 	"\n" +
 	"\x06ACTIVE\x10\x02\x12\v\n" +
 	"\aEXPIRED\x10\x03:{\xeaAx\n" +
-	"!cloudkms.googleapis.com/ImportJob\x12Sprojects/{project}/locations/{location}/keyRings/{key_ring}/importJobs/{import_job}\"\x81\x01\n" +
-	"\x1eExternalProtectionLevelOptions\x12(\n" +
-	"\x10external_key_uri\x18\x01 \x01(\tR\x0eexternalKeyUri\x125\n" +
-	"\x17ekm_connection_key_path\x18\x02 \x01(\tR\x14ekmConnectionKeyPath\"x\n" +
+	"!cloudkms.googleapis.com/ImportJob\x12Sprojects/{project}/locations/{location}/keyRings/{key_ring}/importJobs/{import_job}\"\x81\x02\n" +
+	"\x1eExternalProtectionLevelOptions\x12-\n" +
+	"\x10external_key_uri\x18\x01 \x01(\tB\x03\xe0A\x01R\x0eexternalKeyUri\x12:\n" +
+	"\x17ekm_connection_key_path\x18\x02 \x01(\tB\x03\xe0A\x01R\x14ekmConnectionKeyPath\x12t\n" +
+	"\x1fekm_connection_backend_override\x18\x03 \x01(\tB-\xe0A\x01\xfaA'\n" +
+	"%cloudkms.googleapis.com/EkmConnectionR\x1cekmConnectionBackendOverride\"x\n" +
 	"\x1dKeyAccessJustificationsPolicy\x12W\n" +
 	"\x16allowed_access_reasons\x18\x01 \x03(\x0e2!.google.cloud.kms.v1.AccessReasonR\x14allowedAccessReasons\"\xeb\x02\n" +
 	"\x0fRetiredResource\x12\x1a\n" +
