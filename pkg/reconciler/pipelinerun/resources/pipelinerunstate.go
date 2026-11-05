@@ -458,9 +458,9 @@ func (facts *PipelineRunFacts) IsGracefullyStopped() bool {
 // DAGExecutionQueue returns a list of DAG tasks which needs to be scheduled next
 func (facts *PipelineRunFacts) DAGExecutionQueue() (PipelineRunState, error) {
 	var tasks PipelineRunState
-	// when pipelinerun is cancelled or gracefully cancelled, do not schedule any new tasks,
+	// when pipelinerun is cancelled, gracefully cancelled, or gracefully stopped, do not schedule any new tasks,
 	// and only wait for all running tasks to complete (without exhausting retries).
-	if facts.IsCancelled() || facts.IsGracefullyCancelled() {
+	if facts.IsCancelled() || facts.IsGracefullyCancelled() || facts.IsGracefullyStopped() {
 		return tasks, nil
 	}
 	// candidateTasks is initialized to DAG root nodes to start pipeline execution

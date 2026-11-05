@@ -1109,6 +1109,38 @@ func TestDAGExecutionQueue(t *testing.T) {
 	}
 }
 
+func TestDAGExecutionQueueGracefullyStoppedWithRunningAncestor(t *testing.T) {
+	state := PipelineRunState{
+		&ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{Name: "running", TaskRef: &v1.TaskRef{Name: "task"}},
+			TaskRunNames: []string{"running"},
+			TaskRuns:     []*v1.TaskRun{newTaskRun(trs[0])},
+			ResolvedTask: &resources.ResolvedTask{TaskSpec: &task.Spec},
+		},
+		&ResolvedPipelineTask{
+			PipelineTask: &v1.PipelineTask{Name: "successor", RunAfter: []string{"running"}, TaskRef: &v1.TaskRef{Name: "task"}},
+			ResolvedTask: &resources.ResolvedTask{TaskSpec: &task.Spec},
+		},
+	}
+	d, err := dagFromState(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	facts := PipelineRunFacts{
+		State: state, SpecStatus: v1.PipelineRunSpecStatusStoppedRunFinally,
+		TasksGraph: d, FinalTasksGraph: &dag.Graph{},
+		SkipCache: map[string]TaskSkipStatus{"successor": {IsSkipped: true, SkippingReason: v1.GracefullyStoppedSkip}},
+	}
+
+	queue, err := facts.DAGExecutionQueue()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(queue) != 0 {
+		t.Fatalf("expected no tasks to be queued while gracefully stopped, got %v", queue)
+	}
+}
+
 // TestDAGExecutionQueueSequentialTasks tests the DAGExecutionQueue function for sequential TaskRuns
 // in different states for a running or stopping PipelineRun.
 func TestDAGExecutionQueueSequentialTasks(t *testing.T) {
