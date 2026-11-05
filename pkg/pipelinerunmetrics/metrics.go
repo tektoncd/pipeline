@@ -55,6 +55,7 @@ type Recorder struct {
 
 	prDurationHistogram                        metric.Float64Histogram
 	prDurationGauge                            metric.Float64Gauge
+	prScheduledDurationHistogram               metric.Float64Histogram
 	prTotalCounter                             metric.Int64Counter
 	runningPRsGauge                            metric.Int64ObservableGauge
 	runningPRsWaitingOnPipelineResolutionGauge metric.Int64ObservableGauge
@@ -134,6 +135,19 @@ func (r *Recorder) configure(cfg *config.Metrics) error {
 			r.prDurationHistogram = prDurationHistogram
 		}
 		r.prDurationGauge = nil
+	}
+
+	if r.prScheduledDurationHistogram == nil {
+		prScheduledDurationHistogram, err := r.meter.Float64Histogram(
+			"tekton_pipelines_controller_pipelinerun_scheduled_duration_seconds",
+			metric.WithDescription("Time from PipelineRun creation to first reconcile (controller scheduling latency)"),
+			metric.WithUnit("s"),
+			metric.WithExplicitBucketBoundaries(10, 30, 60, 300, 900, 1800, 3600, 5400, 10800, 21600, 43200, 86400),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create pipelinerun scheduled duration histogram: %w", err)
+		}
+		r.prScheduledDurationHistogram = prScheduledDurationHistogram
 	}
 
 	prTotalCounter, err := r.meter.Int64Counter(
@@ -227,6 +241,10 @@ func (r *Recorder) DurationAndCount(ctx context.Context, pr *v1.PipelineRun, bef
 		r.prDurationGauge.Record(ctx, duration.Seconds(), metric.WithAttributes(attrs...))
 	} else if r.prDurationHistogram != nil {
 		r.prDurationHistogram.Record(ctx, duration.Seconds(), metric.WithAttributes(attrs...))
+	}
+	if pr.Status.StartTime != nil && r.prScheduledDurationHistogram != nil {
+		scheduled := pr.Status.StartTime.Time.Sub(pr.CreationTimestamp.Time)
+		r.prScheduledDurationHistogram.Record(ctx, scheduled.Seconds(), metric.WithAttributes(attrs...))
 	}
 	r.prTotalCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("status", status)))
 

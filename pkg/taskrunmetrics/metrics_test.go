@@ -1529,6 +1529,260 @@ func TestGetTaskTagName(t *testing.T) {
 	}
 }
 
+func TestScheduledDurationTaskRun(t *testing.T) {
+	creationTime := metav1.Now()
+	scheduledStart := metav1.NewTime(creationTime.Add(30 * time.Second))
+	completionT := metav1.NewTime(scheduledStart.Time.Add(time.Minute))
+
+	for _, tc := range []struct {
+		name             string
+		conditionStatus  corev1.ConditionStatus
+		conditionReason  string
+		startTime        *metav1.Time
+		expectedStatus   string
+		expectedSchedule float64
+		expectScheduled  bool
+	}{{
+		name:             "success",
+		conditionStatus:  corev1.ConditionTrue,
+		startTime:        &scheduledStart,
+		expectedStatus:   "success",
+		expectedSchedule: 30,
+		expectScheduled:  true,
+	}, {
+		name:             "failed",
+		conditionStatus:  corev1.ConditionFalse,
+		startTime:        &scheduledStart,
+		expectedStatus:   "failed",
+		expectedSchedule: 30,
+		expectScheduled:  true,
+	}, {
+		name:             "cancelled",
+		conditionStatus:  corev1.ConditionFalse,
+		conditionReason:  v1.TaskRunReasonCancelled.String(),
+		startTime:        &scheduledStart,
+		expectedStatus:   "cancelled",
+		expectedSchedule: 30,
+		expectScheduled:  true,
+	}, {
+		name:            "nil StartTime — no scheduled metric",
+		conditionStatus: corev1.ConditionTrue,
+		startTime:       nil,
+		expectScheduled: false,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			resetMetrics()
+			ctx := getConfigContext(false, false)
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+			otel.SetMeterProvider(provider)
+
+			r, err := NewRecorder(ctx)
+			if err != nil {
+				t.Fatalf("NewRecorder: %v", err)
+			}
+
+			tr := &v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "tr-1",
+					Namespace:         "ns",
+					CreationTimestamp: creationTime,
+				},
+				Spec: v1.TaskRunSpec{TaskRef: &v1.TaskRef{Name: "task-1"}},
+				Status: v1.TaskRunStatus{
+					Status: duckv1.Status{Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: tc.conditionStatus,
+						Reason: tc.conditionReason,
+					}}},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						StartTime:      tc.startTime,
+						CompletionTime: &completionT,
+					},
+				},
+			}
+
+			if err := r.DurationAndCount(ctx, tr, nil); err != nil {
+				t.Fatalf("DurationAndCount: %v", err)
+			}
+
+			var rm metricdata.ResourceMetrics
+			if err := reader.Collect(ctx, &rm); err != nil {
+				t.Fatalf("Collect: %v", err)
+			}
+
+			var found bool
+			for _, sm := range rm.ScopeMetrics {
+				for _, m := range sm.Metrics {
+					if m.Name != "tekton_pipelines_controller_taskrun_scheduled_duration_seconds" {
+						continue
+					}
+					found = true
+					hist, ok := m.Data.(metricdata.Histogram[float64])
+					if !ok {
+						t.Fatalf("expected Histogram[float64], got %T", m.Data)
+					}
+					if len(hist.DataPoints) != 1 {
+						t.Fatalf("expected 1 data point, got %d", len(hist.DataPoints))
+					}
+					if hist.DataPoints[0].Sum != tc.expectedSchedule {
+						t.Errorf("expected scheduled sum %v, got %v", tc.expectedSchedule, hist.DataPoints[0].Sum)
+					}
+					gotStatus := ""
+					for _, kv := range hist.DataPoints[0].Attributes.ToSlice() {
+						if kv.Key == "status" {
+							gotStatus = kv.Value.AsString()
+						}
+					}
+					if gotStatus != tc.expectedStatus {
+						t.Errorf("expected status=%s, got %s", tc.expectedStatus, gotStatus)
+					}
+				}
+			}
+			if tc.expectScheduled && !found {
+				t.Error("scheduled_duration metric not found but was expected")
+			}
+			if !tc.expectScheduled && found {
+				t.Error("scheduled_duration metric found but was not expected (nil StartTime)")
+			}
+		})
+	}
+}
+
+// A retried TaskRun reports the scheduling latency of its first attempt. The
+// retry resets Status.StartTime, so reading it directly would charge the time
+// spent executing earlier attempts to controller scheduling latency.
+func TestScheduledDurationTaskRunWithRetries(t *testing.T) {
+	creationTime := metav1.Now()
+	// The controller picked up the first attempt promptly.
+	firstAttemptStart := metav1.NewTime(creationTime.Add(5 * time.Second))
+	// That attempt then ran for ten minutes before failing, so the retry's own
+	// StartTime sits far from CreationTimestamp.
+	secondAttemptStart := metav1.NewTime(firstAttemptStart.Add(10 * time.Minute))
+	completionT := metav1.NewTime(secondAttemptStart.Add(time.Minute))
+
+	resetMetrics()
+	ctx := getConfigContext(false, false)
+	reader := sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	otel.SetMeterProvider(provider)
+
+	r, err := NewRecorder(ctx)
+	if err != nil {
+		t.Fatalf("NewRecorder: %v", err)
+	}
+
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "tr-retried",
+			Namespace:         "ns",
+			CreationTimestamp: creationTime,
+		},
+		Spec: v1.TaskRunSpec{TaskRef: &v1.TaskRef{Name: "task-1"}, Retries: 1},
+		Status: v1.TaskRunStatus{
+			Status: duckv1.Status{Conditions: duckv1.Conditions{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
+			}}},
+			TaskRunStatusFields: v1.TaskRunStatusFields{
+				StartTime:      &secondAttemptStart,
+				CompletionTime: &completionT,
+				RetriesStatus: []v1.TaskRunStatus{{
+					Status: duckv1.Status{Conditions: duckv1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}}},
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						StartTime: &firstAttemptStart,
+					},
+				}},
+			},
+		},
+	}
+
+	if err := r.DurationAndCount(ctx, tr, nil); err != nil {
+		t.Fatalf("DurationAndCount: %v", err)
+	}
+
+	var rm metricdata.ResourceMetrics
+	if err := reader.Collect(ctx, &rm); err != nil {
+		t.Fatalf("Collect: %v", err)
+	}
+
+	wantScheduled := firstAttemptStart.Time.Sub(creationTime.Time).Seconds()
+
+	var found bool
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name != "tekton_pipelines_controller_taskrun_scheduled_duration_seconds" {
+				continue
+			}
+			found = true
+			hist, ok := m.Data.(metricdata.Histogram[float64])
+			if !ok {
+				t.Fatalf("expected Histogram[float64], got %T", m.Data)
+			}
+			if len(hist.DataPoints) != 1 {
+				t.Fatalf("expected 1 data point, got %d", len(hist.DataPoints))
+			}
+			if hist.DataPoints[0].Sum != wantScheduled {
+				t.Errorf("expected scheduled sum %v from the first attempt, got %v", wantScheduled, hist.DataPoints[0].Sum)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("scheduled_duration metric not found")
+	}
+}
+
+func TestGetFirstAttemptStartTime(t *testing.T) {
+	latestStart := metav1.Now()
+	firstAttemptStart := metav1.NewTime(latestStart.Add(-time.Hour))
+
+	tests := []struct {
+		name     string
+		tr       *v1.TaskRun
+		expected *metav1.Time
+	}{{
+		name: "no retries, uses Status.StartTime",
+		tr: &v1.TaskRun{
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{StartTime: &latestStart},
+			},
+		},
+		expected: &latestStart,
+	}, {
+		name: "retried, uses the first attempt's StartTime",
+		tr: &v1.TaskRun{
+			Status: v1.TaskRunStatus{
+				TaskRunStatusFields: v1.TaskRunStatusFields{
+					StartTime: &latestStart,
+					RetriesStatus: []v1.TaskRunStatus{{
+						TaskRunStatusFields: v1.TaskRunStatusFields{StartTime: &firstAttemptStart},
+					}},
+				},
+			},
+		},
+		expected: &firstAttemptStart,
+	}, {
+		name:     "never started",
+		tr:       &v1.TaskRun{},
+		expected: nil,
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getFirstAttemptStartTime(tt.tr)
+			if (got == nil) != (tt.expected == nil) {
+				t.Fatalf("got %v, want %v", got, tt.expected)
+			}
+			if got != nil && !got.Equal(tt.expected) {
+				t.Errorf("got %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestInsertTags(t *testing.T) {
 	resetMetrics()
 	pipelineName := "test-pipeline"
