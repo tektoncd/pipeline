@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 )
@@ -25,10 +26,19 @@ import (
 // stepResultNameRegex matches the format $(steps.<stepName>.results.<resultName>).
 var stepResultNameRegex = regexp.MustCompile(`\$\(steps\.(.*?)\.results\.(.*?)\)`)
 
+// reservedResultNames are the result names entrypointer.go writes as internal bookkeeping
+// entries (ExitCode, StartedAt, Reason) alongside user-declared results, distinguished only
+// by ResultType. A user-declared result sharing one of these names collides with the
+// internal entry, so Task and StepAction results are validated against them here.
+var reservedResultNames = sets.NewString("ExitCode", "StartedAt", "Reason")
+
 // Validate implements apis.Validatable
 func (tr TaskResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if !resultNameFormatRegex.MatchString(tr.Name) {
 		return apis.ErrInvalidKeyName(tr.Name, "name", fmt.Sprintf("Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '%s')", ResultNameFormat))
+	}
+	if reservedResultNames.Has(tr.Name) {
+		return apis.ErrInvalidValue(tr.Name, "name", fmt.Sprintf("%q is a reserved result name", tr.Name))
 	}
 
 	switch {
@@ -114,6 +124,9 @@ func (tr TaskResult) validateValue(ctx context.Context) (errs *apis.FieldError) 
 func (sr StepResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if !resultNameFormatRegex.MatchString(sr.Name) {
 		return apis.ErrInvalidKeyName(sr.Name, "name", fmt.Sprintf("Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '%s')", ResultNameFormat))
+	}
+	if reservedResultNames.Has(sr.Name) {
+		return apis.ErrInvalidValue(sr.Name, "name", fmt.Sprintf("%q is a reserved result name", sr.Name))
 	}
 
 	switch {
