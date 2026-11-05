@@ -10040,6 +10040,51 @@ spec:
 	th.CheckPipelineRunConditionStatusAndReason(t, updatedPipelineRun.Status, corev1.ConditionFalse, v1.PipelineRunReasonCouldntGetPipeline.String())
 }
 
+// TestReconcileWithTransientPipelineResolutionError checks that a transient error
+// while creating the ResolutionRequest for a remote PipelineRef is returned for
+// retry, instead of permanently failing the PipelineRun.
+func TestReconcileWithTransientPipelineResolutionError(t *testing.T) {
+	pr := parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineRef:
+    resolver: bar
+  serviceAccountName: default
+`)
+
+	d := test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+		ServiceAccounts: []*corev1.ServiceAccount{{
+			ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.TaskRunTemplate.ServiceAccountName, Namespace: "foo"},
+		}},
+	}
+
+	prt := newPipelineRunTest(t, d)
+	defer prt.Cancel()
+
+	prt.TestAssets.Clients.ResolutionRequests.PrependReactor("create", "resolutionrequests", func(ktesting.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.New("rpc error: code = Unknown desc = exec (try: 500): database is locked")
+	})
+
+	err := prt.TestAssets.Controller.Reconciler.Reconcile(prt.TestAssets.Ctx, pr.Namespace+"/"+pr.Name)
+	if err == nil {
+		t.Fatal("expected Reconcile to return the transient error, got nil")
+	}
+	if controller.IsPermanentError(err) {
+		t.Fatalf("expected a retryable error, got permanent error: %v", err)
+	}
+
+	got, err := prt.TestAssets.Clients.Pipeline.TektonV1().PipelineRuns(pr.Namespace).Get(prt.TestAssets.Ctx, pr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting PipelineRun: %v", err)
+	}
+	if got.IsDone() {
+		t.Errorf("PipelineRun should not be done after a transient resolution error, status: %v", got.Status.GetCondition(apis.ConditionSucceeded))
+	}
+}
+
 // TestReconcileWithFailingTaskResolver checks that a PipelineRun with a failing Resolver
 // field for a Task creates a ResolutionRequest object for that Resolver's type, and
 // that when the request fails, the PipelineRun fails.
