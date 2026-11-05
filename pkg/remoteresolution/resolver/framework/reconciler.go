@@ -32,6 +32,7 @@ import (
 	rrv1beta1 "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
 	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	"github.com/tektoncd/pipeline/pkg/resolutionrequestmetrics"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -89,6 +90,11 @@ type Reconciler struct {
 	resolutionRequestClientSet rrclient.Interface
 
 	configStore *ConfigStore
+
+	// metrics records ResolutionRequest lifecycle histograms. It may be nil
+	// (e.g. in tests that don't wire one up), in which case recording is a
+	// no-op.
+	metrics *resolutionrequestmetrics.Recorder
 }
 
 var _ reconciler.LeaderAware = &Reconciler{}
@@ -251,6 +257,14 @@ func (r *Reconciler) MarkFailed(ctx context.Context, rr *v1beta1.ResolutionReque
 		logging.FromContext(ctx).Warnf("error marking resolutionrequest %q as failed: %v", key, err)
 		return err
 	}
+	// The resolver itself has terminated this ResolutionRequest as failed
+	// (e.g. invalid request, resolve() error, or per-attempt timeout). This is
+	// distinct from the pipelines controller's own ResolutionRequest
+	// reconciler marking a request Failed on a global resolution timeout — see
+	// pkg/reconciler/resolutionrequest.reconcile, which records its own
+	// completion separately and never re-processes a request this reconciler
+	// has already marked Done.
+	r.metrics.RecordCompletion(ctx, latestGeneration, resolutionrequestmetrics.Cached(latestGeneration.Status.Annotations))
 	return nil
 }
 
@@ -279,6 +293,12 @@ func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.Resoluti
 			Original:             err,
 		})
 	}
+
+	// Measures the full time it took this resolver to produce resolved data,
+	// from the ResolutionRequest's creation. Complementary to (and distinct
+	// from) per-attempt resolver metrics, which time a single resolve() call
+	// and exclude queueing/retry time.
+	r.metrics.RecordResolution(ctx, rr, resolutionrequestmetrics.Cached(resource.Annotations()))
 
 	return nil
 }

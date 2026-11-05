@@ -34,6 +34,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 )
@@ -55,12 +56,33 @@ type Recorder struct {
 
 	prDurationHistogram                        metric.Float64Histogram
 	prDurationGauge                            metric.Float64Gauge
+	prResolutionWaitHistogram                  metric.Float64Histogram
 	prTotalCounter                             metric.Int64Counter
 	runningPRsGauge                            metric.Int64ObservableGauge
 	runningPRsWaitingOnPipelineResolutionGauge metric.Int64ObservableGauge
 	runningPRsWaitingOnTaskResolutionGauge     metric.Int64ObservableGauge
 
 	insertTag func(pipeline, pipelinerun string) []attribute.KeyValue
+
+	// resolvingSince and resolutionWaitSeconds track, per PipelineRun UID, how
+	// long a run has been waiting on resolution of its Pipeline reference.
+	//
+	// Status.Conditions only ever holds the *current* reason for a given
+	// condition type (see knative.dev/pkg/apis ConditionSet.SetCondition) — once
+	// the Succeeded condition's reason moves past
+	// PipelineRunReasonResolvingPipelineRef, the LastTransitionTime at which
+	// resolution started is gone. ObserveResolutionWait is called on every
+	// reconcile to capture that timestamp while it is still visible, and to
+	// compute+stash the elapsed wait once the run leaves the resolving reason.
+	// DurationAndCount consumes (and clears) the stashed value when the run
+	// finishes, so the metric can carry the run's final status label.
+	//
+	// Entries are removed as soon as they're consumed. A run that is deleted
+	// while still resolving (and thus never reaches DurationAndCount) leaves a
+	// small, bounded leak in resolvingSince; this is an accepted trade-off to
+	// avoid writing bookkeeping data onto the PipelineRun object itself.
+	resolvingSince        map[types.UID]time.Time
+	resolutionWaitSeconds map[types.UID]float64
 }
 
 var (
@@ -74,8 +96,10 @@ func NewRecorder(ctx context.Context) (*Recorder, error) {
 	once.Do(func() {
 		cfg := config.FromContextOrDefaults(ctx)
 		r = &Recorder{
-			initialized: true,
-			cfg:         cfg.Metrics,
+			initialized:           true,
+			cfg:                   cfg.Metrics,
+			resolvingSince:        make(map[types.UID]time.Time),
+			resolutionWaitSeconds: make(map[types.UID]float64),
 		}
 
 		errRegistering = r.configure(cfg.Metrics)
@@ -134,6 +158,19 @@ func (r *Recorder) configure(cfg *config.Metrics) error {
 			r.prDurationHistogram = prDurationHistogram
 		}
 		r.prDurationGauge = nil
+	}
+
+	if r.prResolutionWaitHistogram == nil {
+		prResolutionWaitHistogram, err := r.meter.Float64Histogram(
+			"tekton_pipelines_controller_pipelinerun_resolution_wait_seconds",
+			metric.WithDescription("The time a pipelinerun spent waiting on resolution of its Pipeline reference, in seconds. Runs that never entered the resolving state (e.g. inline Pipeline specs) record 0."),
+			metric.WithUnit("s"),
+			metric.WithExplicitBucketBoundaries(0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create pipelinerun resolution wait histogram: %w", err)
+		}
+		r.prResolutionWaitHistogram = prResolutionWaitHistogram
 	}
 
 	prTotalCounter, err := r.meter.Int64Counter(
@@ -228,9 +265,50 @@ func (r *Recorder) DurationAndCount(ctx context.Context, pr *v1.PipelineRun, bef
 	} else if r.prDurationHistogram != nil {
 		r.prDurationHistogram.Record(ctx, duration.Seconds(), metric.WithAttributes(attrs...))
 	}
+
+	if r.prResolutionWaitHistogram != nil {
+		waitSeconds := r.resolutionWaitSeconds[pr.UID]
+		delete(r.resolutionWaitSeconds, pr.UID)
+		r.prResolutionWaitHistogram.Record(ctx, waitSeconds, metric.WithAttributes(attrs...))
+	}
+
 	r.prTotalCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("status", status)))
 
 	return nil
+}
+
+// ObserveResolutionWait tracks how long pr has been waiting on resolution of
+// its Pipeline reference. It should be called on every reconcile of pr,
+// after the reconcile logic has run (so it observes the up-to-date
+// condition). While the Succeeded condition's reason is
+// PipelineRunReasonResolvingPipelineRef, it records the point in time
+// resolution started (idempotently — LastTransitionTime does not change
+// while the reason is unchanged). Once the reason moves past resolving, it
+// computes the elapsed wait and stashes it for DurationAndCount to consume
+// when the run finishes. Runs that never enter the resolving state never
+// populate an entry, so DurationAndCount records 0 for them.
+func (r *Recorder) ObserveResolutionWait(pr *v1.PipelineRun) {
+	if r == nil || !r.initialized || pr == nil {
+		return
+	}
+
+	cond := pr.Status.GetCondition(apis.ConditionSucceeded)
+	if cond == nil {
+		return
+	}
+
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if cond.Reason == v1.PipelineRunReasonResolvingPipelineRef.String() {
+		r.resolvingSince[pr.UID] = cond.LastTransitionTime.Inner.Time
+		return
+	}
+
+	if startedAt, ok := r.resolvingSince[pr.UID]; ok {
+		r.resolutionWaitSeconds[pr.UID] = time.Since(startedAt).Seconds()
+		delete(r.resolvingSince, pr.UID)
+	}
 }
 
 // observeRunningPipelineRuns logs the number of PipelineRuns running right now
