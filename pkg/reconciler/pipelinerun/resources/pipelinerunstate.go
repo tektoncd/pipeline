@@ -83,6 +83,27 @@ type PipelineRunFacts struct {
 	// condition to help users understand why specific tasks were not executed
 	// (e.g. missing result references).
 	ValidationFailedErrors map[string]string
+
+	// RunCreationFailedTask are the tasks whose child run could not be created because the
+	// API server permanently rejected the request, e.g. an admission webhook denied it.
+	// Like ValidationFailedTask, such a task has no child run at all, yet it must still count
+	// as done so that the DAG can converge and finally tasks get a chance to execute.
+	// Tasks in RunCreationFailedTask are added in method runNextSchedulableTask
+	RunCreationFailedTask []*ResolvedPipelineTask
+
+	// RunCreationFailedErrors maps pipeline task name to the error returned by the API server
+	// when creating its child run. These messages are included in the PipelineRun status
+	// condition so that the rejection reason (e.g. the admission policy message) reaches users,
+	// who otherwise have no child resource to inspect.
+	RunCreationFailedErrors map[string]string
+
+	// RunCreationFailedMessage carries a rejection recorded by an earlier reconcile, read back
+	// from the CreateRunFailedRunningFinally condition the PipelineRun was left in. A rejected
+	// creation leaves no child resource behind, so this condition is the only record of it: it
+	// keeps the PipelineRun stopping - no DAG task is scheduled again, which would otherwise
+	// retry a rejected creation on every reconcile - and it keeps the rejection message until
+	// the finally tasks are done and the PipelineRun reports its final condition.
+	RunCreationFailedMessage string
 }
 
 // PipelineRunTimeoutsState records information about start times and timeouts for the PipelineRun, so that the PipelineRunFacts
@@ -418,8 +439,19 @@ func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*Resolv
 // IsStopping returns true if the PipelineRun won't be scheduling any new Task because
 // at least one task already failed (with onError: stopAndFail) or was cancelled in the specified dag
 func (facts *PipelineRunFacts) IsStopping() bool {
+	// A rejection recorded by an earlier reconcile keeps the PipelineRun stopping: the task it hit
+	// has no child run and never will, so no DAG task may be scheduled anymore.
+	if facts.RunCreationFailedMessage != "" {
+		return true
+	}
 	for _, t := range facts.State {
 		if facts.isDAGTask(t.PipelineTask.Name) {
+			// onError: continue covers a task that ran and failed. A task whose child run the API
+			// server refused never ran at all and cannot be retried into running, so the
+			// PipelineRun stops for it either way.
+			if t.isRunCreationFailed(facts.RunCreationFailedTask) {
+				return true
+			}
 			if (t.isFailure() || t.isValidationFailed(facts.ValidationFailedTask)) && t.PipelineTask.OnError != v1.PipelineTaskContinue {
 				return true
 			}
@@ -593,22 +625,14 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 		// append validation failed count and details in the message
 		if s.ValidationFailed > 0 {
 			message += fmt.Sprintf(", Failed Validation: %d", s.ValidationFailed)
-			if len(facts.ValidationFailedErrors) > 0 {
-				keys := make([]string, 0, len(facts.ValidationFailedErrors))
-				for k := range facts.ValidationFailedErrors {
-					keys = append(keys, k)
-				}
-				sort.Strings(keys)
-				var errors []string
-				for _, k := range keys {
-					errors = append(errors, facts.ValidationFailedErrors[k])
-				}
-				errMsg := strings.Join(errors, "; ")
-				if len(errMsg) > 1024 {
-					errMsg = errMsg[:1024] + "..."
-				}
+			if errMsg := joinTaskErrors(facts.ValidationFailedErrors); errMsg != "" {
 				message += fmt.Sprintf(" (%s)", errMsg)
 			}
+		}
+		// append the rejected run creation in the message. Those tasks have no child resource for
+		// users to inspect, so the rejection reason is only visible here.
+		if detail := facts.runCreationFailedDetail(); detail != "" {
+			message += fmt.Sprintf(", Failed Run Creation: (%s)", detail)
 		}
 		// Set reason to ReasonCompleted - At least one is skipped
 		if s.Skipped > 0 {
@@ -618,6 +642,11 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 		switch {
 		case s.ValidationFailed > 0:
 			reason = v1.PipelineRunReasonFailedValidation.String()
+			status = corev1.ConditionFalse
+		// Set reason to ReasonCreateRunFailed - the API server permanently rejected the creation
+		// of at least one child run, so that task never ran
+		case facts.runCreationFailedDetail() != "":
+			reason = v1.PipelineRunReasonCreateRunFailed.String()
 			status = corev1.ConditionFalse
 		case s.Failed > 0 || s.SkippedDueToTimeout > 0:
 			// Set reason to ReasonFailed - At least one failed
@@ -639,6 +668,18 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 			Status:  status,
 			Reason:  reason,
 			Message: message,
+		}
+	}
+
+	// A rejected child run creation leaves no resource of its own behind, so this condition is what
+	// records it: the message is the rejection itself and the next reconcile reads it back from
+	// here, which keeps the PipelineRun stopping instead of retrying a creation that is refused.
+	if record := facts.runCreationFailedRecord(); record != "" {
+		return &apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  v1.PipelineRunReasonCreateRunFailedRunningFinally.String(),
+			Message: record,
 		}
 	}
 
@@ -707,6 +748,7 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 	for _, t := range facts.State {
 		if facts.isDAGTask(t.PipelineTask.Name) {
 			var s string
+			reason := t.getReason()
 			switch {
 			// execution status is Succeeded when a task has succeeded condition with status set to true
 			case t.isSuccessful():
@@ -714,12 +756,17 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 			// execution status is Failed when a task has succeeded condition with status set to false
 			case t.haveAnyRunsFailed():
 				s = v1.TaskRunReasonFailed.String()
+			// A task whose child run the API server refused has no run to read a status from, yet
+			// it did fail: a finally task branching on tasks.<name>.status has to see that.
+			case t.isRunCreationFailed(facts.RunCreationFailedTask):
+				s = v1.TaskRunReasonFailed.String()
+				reason = v1.PipelineRunReasonCreateRunFailed.String()
 			default:
 				// None includes skipped as well
 				s = PipelineTaskStateNone
 			}
 			tStatus[PipelineTaskStatusPrefix+t.PipelineTask.Name+PipelineTaskStatusSuffix] = s
-			tStatus[PipelineTaskStatusPrefix+t.PipelineTask.Name+PipelineTaskReasonSuffix] = t.getReason()
+			tStatus[PipelineTaskStatusPrefix+t.PipelineTask.Name+PipelineTaskReasonSuffix] = reason
 		}
 	}
 
@@ -731,6 +778,13 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 		aggregateStatus = v1.PipelineRunReasonSuccessful.String()
 		for _, t := range facts.State {
 			if facts.isDAGTask(t.PipelineTask.Name) {
+				// a task whose child run the API server refused never ran, but the DAG failed all
+				// the same, and that is what tasks.status has to report
+				if t.isRunCreationFailed(facts.RunCreationFailedTask) {
+					aggregateStatus = v1.PipelineRunReasonFailed.String()
+					break
+				}
+
 				// if any of the dag pipeline tasks failed, change the aggregate status to failed and return
 				if t.IsChildPipeline() && t.haveAnyChildPipelineRunsFailed() {
 					aggregateStatus = v1.PipelineRunReasonFailed.String()
@@ -812,6 +866,104 @@ func (facts *PipelineRunFacts) checkTasksDone(d *dag.Graph) bool {
 	return true
 }
 
+// The CreateRunFailedRunningFinally condition is the only record of a rejected child run
+// creation, so it has to carry the names of the pipeline tasks it hit as well as the reason: a
+// later reconcile has to rebuild the same task level state from it, otherwise those tasks would
+// look merely unscheduled and end up reported as skipped instead of failed. Pipeline task names
+// are DNS labels, so neither separator below can occur in them and the rejection detail, which
+// is written by whoever refused the request, only ever follows the first separator.
+const (
+	runCreationFailedTasksPrefix = "Rejected PipelineTasks: "
+	runCreationFailedDetailSep   = "; rejected because: "
+)
+
+// SetRunCreationFailureRecord rebuilds the rejected run creations an earlier reconcile recorded
+// in the CreateRunFailedRunningFinally condition. A record written by an older version of this
+// controller has no task names in it: the rejection is then still reported, but only as the
+// PipelineRun level message it already was.
+func (facts *PipelineRunFacts) SetRunCreationFailureRecord(record string) {
+	names, detail, ok := parseRunCreationFailedRecord(record)
+	facts.RunCreationFailedMessage = detail
+	if !ok {
+		return
+	}
+	rejected := sets.NewString(names...)
+	for _, t := range facts.State {
+		if t.PipelineTask != nil && rejected.Has(t.PipelineTask.Name) {
+			facts.RunCreationFailedTask = append(facts.RunCreationFailedTask, t)
+		}
+	}
+}
+
+// parseRunCreationFailedRecord splits a record back into the rejected pipeline task names and the
+// rejection detail. It reports false for anything that is not a record this controller wrote, in
+// which case the whole input is the detail.
+func parseRunCreationFailedRecord(record string) ([]string, string, bool) {
+	rest, found := strings.CutPrefix(record, runCreationFailedTasksPrefix)
+	if !found {
+		return nil, record, false
+	}
+	names, detail, found := strings.Cut(rest, runCreationFailedDetailSep)
+	if !found {
+		return nil, record, false
+	}
+	return strings.Split(names, ","), detail, true
+}
+
+// runCreationFailedRecord renders the rejected run creations into the message of the transient
+// condition the PipelineRun is left in while its finally tasks run, see
+// SetRunCreationFailureRecord for the way back.
+func (facts *PipelineRunFacts) runCreationFailedRecord() string {
+	detail := facts.runCreationFailedDetail()
+	if detail == "" {
+		return ""
+	}
+	names := make([]string, 0, len(facts.RunCreationFailedTask))
+	for _, t := range facts.RunCreationFailedTask {
+		if t.PipelineTask != nil {
+			names = append(names, t.PipelineTask.Name)
+		}
+	}
+	if len(names) == 0 {
+		return detail
+	}
+	sort.Strings(names)
+	return runCreationFailedTasksPrefix + strings.Join(names, ",") + runCreationFailedDetailSep + detail
+}
+
+// runCreationFailedDetail returns the rejection recorded for this PipelineRun: the one this
+// reconcile hit, or else the one an earlier reconcile left in the PipelineRun condition. It is
+// empty when no child run creation was permanently rejected.
+func (facts *PipelineRunFacts) runCreationFailedDetail() string {
+	if errMsg := joinTaskErrors(facts.RunCreationFailedErrors); errMsg != "" {
+		return errMsg
+	}
+	return facts.RunCreationFailedMessage
+}
+
+// joinTaskErrors renders per pipeline task error messages into a single deterministic string.
+// The result is truncated so that a verbose message - an admission webhook response, for
+// instance - cannot blow up the PipelineRun status condition.
+func joinTaskErrors(taskErrors map[string]string) string {
+	if len(taskErrors) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(taskErrors))
+	for k := range taskErrors {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	messages := make([]string, 0, len(keys))
+	for _, k := range keys {
+		messages = append(messages, taskErrors[k])
+	}
+	errMsg := strings.Join(messages, "; ")
+	if len(errMsg) > 1024 {
+		errMsg = errMsg[:1024] + "..."
+	}
+	return errMsg
+}
+
 // check if all DAG tasks done executing (succeeded, failed, or skipped)
 func (facts *PipelineRunFacts) checkDAGTasksDone() bool {
 	return facts.checkTasksDone(facts.TasksGraph)
@@ -841,6 +993,12 @@ func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
 	}
 	for _, t := range facts.State {
 		switch {
+		// the child run of this task was permanently rejected at creation, so the task never ran:
+		// it counts as a failure of that task, onError: continue included - see IsStopping. This
+		// is checked before isSuccessful because a matrix fan-out may have created - and succeeded
+		// - some child runs before the rejection, which must not mask the failure.
+		case t.isRunCreationFailed(facts.RunCreationFailedTask):
+			s.Failed++
 		// increment success counter since the task is successful
 		case t.isSuccessful():
 			s.Succeeded++
