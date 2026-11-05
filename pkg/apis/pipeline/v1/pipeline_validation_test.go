@@ -4060,6 +4060,25 @@ func TestContextInvalid(t *testing.T) {
 			Message: `non-existent variable in "$(context.pipelineTask.missing)"`,
 			Paths:   []string{"value"},
 		}),
+	}, {
+		name: "invalid context variable in a task that is not the last one",
+		tasks: []PipelineTask{{
+			Name:    "first",
+			TaskRef: &TaskRef{Name: "first-task"},
+			Params: Params{{
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineRun.missing)"},
+			}},
+		}, {
+			Name:    "second",
+			TaskRef: &TaskRef{Name: "second-task"},
+			Params: Params{{
+				Name: "b-param", Value: ParamValue{StringVal: "static"},
+			}},
+		}},
+		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
+			Message: `non-existent variable in "$(context.pipelineRun.missing)"`,
+			Paths:   []string{"value"},
+		}),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
