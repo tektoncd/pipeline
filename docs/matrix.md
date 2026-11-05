@@ -24,6 +24,9 @@ weight: 406
     - [Results in Matrix.Params](#results-in-matrixparams)
     - [Results in Matrix.Include.Params](#results-in-matrixincludeparams)
   - [Results from fanned out PipelineTasks](#results-from-fanned-out-pipelinetasks)
+  - [Default Result Values](#default-result-values)
+    - [Fanning out over a Default Result Value](#fanning-out-over-a-default-result-value)
+    - [Default Result Values from fanned out PipelineTasks](#default-result-values-from-fanned-out-pipelinetasks)
 - [Retries](#retries)
 - [Examples](#examples)
   - [`Matrix` Combinations with `Matrix.Params` only](#-matrix--combinations-with--matrixparams--only)
@@ -518,6 +521,133 @@ spec:
 ```
 See the full example [pr-with-matrix-emitting-results]
 
+### Default Result Values
+
+> :seedling: **`Default Result Values` is an [alpha](additional-configs.md#alpha-features) feature.** The
+> `enable-default-results` feature flag must be set to `"true"` to enable this feature.
+
+A `Result` declaration can carry a `default` value that is used when the producing `Task` does not emit that
+`Result` - see [Emitting `Results` with Default Value](tasks.md#default-value) for the declaration syntax. Within a
+`Matrix`, defaults apply in two directions: a `Matrix` can fan out over a default value, and a fanned out
+`PipelineTask` can fall back to a default when none of its `TaskRuns` emit the `Result`.
+
+#### Fanning out over a Default Result Value
+
+When `matrix.params` consumes a `Result` whose producing `Task` declares a `default` but never emits it, the default
+value is substituted and the `Matrix` fans out over it. An `array` default fans out into one `TaskRun` per element,
+exactly as an emitted `array` `Result` would.
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: platforms-with-default
+spec:
+  tasks:
+    - name: get-platforms
+      taskSpec:
+        results:
+          - name: platforms
+            type: array
+            default:
+              - linux
+              - mac
+        steps:
+          - name: skip-emitting-the-result
+            image: alpine
+            script: echo "no platforms detected"
+    - name: test
+      matrix:
+        params:
+          - name: platform
+            value: $(tasks.get-platforms.results.platforms[*])
+      taskRef:
+        name: test-platform
+```
+
+`get-platforms` never writes to `$(results.platforms.path)`, so the declared default is used and `test` fans out into
+two `TaskRuns`, one for `linux` and one for `mac`.
+
+`matrix.include.params` support string replacements, so they consume a `string` default, or a single element an `array`
+default or a key of an `object` default:
+
+```yaml
+    - name: test
+      matrix:
+        include:
+          - name: build-1
+            params:
+              - name: platform
+                value: $(tasks.get-platforms.results.platforms[0]) # first element of the array default
+              - name: branch
+                value: $(tasks.get-branch.results.branch)          # string default
+```
+
+#### Default Result Values from fanned out PipelineTasks
+
+Only `string` `Results` can be consumed from a fanned out `PipelineTask` - `array` and `object` `Results` are not
+supported, as described in
+[Results from fanned out Matrixed PipelineTasks](#results-from-fanned-out-matrixed-pipelinetasks). Default values
+follow that same restriction, so only a `default` on a `string` `Result` is consumable from a fanned out
+`PipelineTask`:
+
+| `Result` type in `taskRef` or `taskSpec` | Default consumable from a fanned out `PipelineTask` |
+|------------------------------------------|-----------------------------------------------------|
+| string                                   | Supported                                           |
+| array                                    | Not Supported                                       |
+| object                                   | Not Supported                                       |
+
+`Results` emitted by a fanned out `PipelineTask` are aggregated into an `array`, one element per fanned out `TaskRun`.
+When a fanned out `TaskRun` runs without emitting a `Result` that declares a `default`, that `TaskRun` reports the
+default in its status, so the default participates in the aggregation like any emitted value. A consumer of
+`$(tasks.<pipelineTaskName>.results.<resultName>[*])` therefore receives **one element per combination**, each holding
+the default:
+
+```yaml
+    - name: matrix-emitting-defaults
+      matrix:
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+      taskSpec:
+        params:
+          - name: platform
+        results:
+          - name: report-url
+            default: https://example.com/default-report
+        steps:
+          - name: skip-emitting-report-url
+            image: mirror.gcr.io/bash
+            onError: continue
+            script: exit 1
+    - name: consume-report-urls
+      params:
+        - name: urls
+          # resolves to three elements, each https://example.com/default-report
+          value: $(tasks.matrix-emitting-defaults.results.report-url[*])
+```
+
+**Note:** A matrixed `PipelineTask` that never ran at all - for example, one skipped by its `when` expressions - has no
+`TaskRuns` to aggregate, so its declared `string` default is repeated once per combination instead. Consumers see the
+same shape either way, whether the matrixed `PipelineTask` ran without emitting the `Result` or never ran:
+
+| Expression                                               | Value for the skipped matrixed `PipelineTask` above |
+|----------------------------------------------------------|-----------------------------------------------------|
+| `$(tasks.<pipelineTaskName>.matrix.length)`              | `3`, the combinations the `Matrix` declares         |
+| `$(tasks.<pipelineTaskName>.matrix.<resultName>.length)` | `3`, one default per combination                    |
+| `$(tasks.<pipelineTaskName>.results.<resultName>[*])`    | `3` element array, each holding the default         |
+
+Only a `string` default resolves this way. An `array` or `object` default cannot be resolved for a matrixed
+`PipelineTask`, and the `PipelineRun` fails to resolve the reference.
+
+Because a skipped matrixed `PipelineTask` still resolves its declared `string` defaults, `Tasks` later in the `DAG`
+and in `finally` can consume them instead of being skipped for a missing result reference.
+
+For a complete example, see
+[`PipelineRun` with `Matrix` and default `Results`](../examples/v1/pipelineruns/alpha/pipelinerun-with-matrix-and-default-results.yaml).
 
 ## Retries
 
