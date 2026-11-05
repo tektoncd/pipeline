@@ -28,6 +28,7 @@ import (
 
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/factory"
+	"github.com/tektoncd/pipeline/internal/resolution/retry"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	common "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -36,7 +37,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/cache"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/logging"
@@ -145,24 +145,7 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1.Param) (
 // Invalid configuration values are logged and replaced with defaults so that
 // retry behavior is always preserved.
 func ResolveWithRetry(ctx context.Context, fn func() (framework.ResolvedResource, error)) (framework.ResolvedResource, error) {
-	backoff := GetGitResolverBackoff(ctx)
-
-	var result framework.ResolvedResource
-	var lastErr error
-	retryErr := wait.ExponentialBackoffWithContext(ctx, backoff, func(_ context.Context) (bool, error) {
-		result, lastErr = fn()
-		return lastErr == nil, nil
-	})
-	if retryErr != nil {
-		if errors.Is(retryErr, context.Canceled) || errors.Is(retryErr, context.DeadlineExceeded) {
-			return nil, retryErr
-		}
-		if lastErr != nil {
-			return nil, lastErr
-		}
-		return nil, retryErr
-	}
-	return result, nil
+	return retry.Resolve(ctx, fn)
 }
 
 func ValidateParams(ctx context.Context, params []pipelinev1.Param) error {

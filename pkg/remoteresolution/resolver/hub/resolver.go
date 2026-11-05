@@ -17,10 +17,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
 	goversion "github.com/hashicorp/go-version"
+	"github.com/tektoncd/pipeline/internal/resolution/retry"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
@@ -127,6 +129,14 @@ func (r *Resolver) Resolve(ctx context.Context, req *v1beta1.ResolutionRequestSp
 		return nil, fmt.Errorf("no hub URL configured for type %s", paramsMap[hub.ParamType])
 	}
 
+	return retry.Resolve(ctx, func() (framework.ResolvedResource, error) {
+		return resolveFromHubs(ctx, maps.Clone(paramsMap), urls)
+	})
+}
+
+// resolveFromHubs makes one resolution attempt against the given hub URLs.
+// It resolves the version constraint, if any, and then fetches the resource.
+func resolveFromHubs(ctx context.Context, paramsMap map[string]string, urls []string) (framework.ResolvedResource, error) {
 	if constraint, err := goversion.NewConstraint(paramsMap[hub.ParamVersion]); err == nil {
 		chosen, constraintURL, err := resolveVersionConstraintWithFallback(ctx, paramsMap, constraint, urls)
 		if err != nil {

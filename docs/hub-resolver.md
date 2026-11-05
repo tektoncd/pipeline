@@ -47,6 +47,20 @@ for the name, namespace and defaults that the resolver ships with.
 | `default-type`              | The default hub from where to pull the resource.     | `artifact`, `tekton`   |
 | `artifact-hub-urls`         | Ordered YAML list of Artifact Hub API URLs to try. First successful response wins. If not set, the `ARTIFACT_HUB_API` env var or default is used. URLs must use `http` or `https` scheme. | See [below](#configuring-multiple-hub-urls) |
 | `tekton-hub-urls`           | Ordered YAML list of Tekton Hub API URLs to try. First successful response wins. If not set, the `TEKTON_HUB_API` env var is used. URLs must use `http` or `https` scheme. | See [below](#configuring-multiple-hub-urls) |
+| `backoff-duration`          | The initial duration for a backoff when a resolution attempt fails. Default: `2s`. | `500ms`, `2s` |
+| `backoff-factor`            | The factor by which the sleep duration increases every step. Default: `2.0`. | `2.5`, `4.0` |
+| `backoff-jitter`            | A random amount of additional sleep between 0 and duration * jitter. Default: `0.1`. | `0.1`, `0.5` |
+| `backoff-steps`             | The total number of resolution attempts. Set to `1` to disable retries. Default: `2`. | `3`, `7` |
+| `backoff-cap`               | The maximum backoff duration. If reached, remaining steps are zeroed. Default: `10s`. | `10s`, `20s` |
+
+When a resolution attempt fails, the resolver tries again after a backoff, up to
+`backoff-steps` attempts in total. Any failure is retried, including a response
+status other than `200`. One attempt tries every configured hub URL in order
+(see [Configuring Multiple Hub URLs](#configuring-multiple-hub-urls)), so the
+resolver moves on to the next URL right away and only backs off when all of
+them have failed. With a [version constraint](#version-constraint), each attempt
+looks up the available versions again. All attempts must finish within the
+global resolution timeout.
 
 ### Configuring the Hub API endpoint
 
