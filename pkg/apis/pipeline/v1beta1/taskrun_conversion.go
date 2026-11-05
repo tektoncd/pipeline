@@ -343,6 +343,9 @@ func (trs *TaskRunStatus) ConvertFrom(ctx context.Context, source v1.TaskRunStat
 		new.convertFrom(ctx, *source.Provenance)
 		trs.Provenance = &new
 	}
+	// Note: source.ResolvedTaskNamespace is intentionally not converted to v1beta1.
+	// v1beta1 is deprecated and has no corresponding field. The value is re-derived
+	// by the controller on fresh reconcile if needed.
 	return nil
 }
 
