@@ -3,7 +3,7 @@ module github.com/tektoncd/pipeline
 go 1.27.3
 
 require (
-	cel.dev/cel-go v0.32.0
+	cel.dev/cel-go v0.33.1
 	code.gitea.io/sdk/gitea v0.22.1
 	github.com/allegro/bigcache/v3 v3.2.0
 	github.com/cloudevents/sdk-go/v2 v2.16.2
