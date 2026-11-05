@@ -4,7 +4,9 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -197,6 +199,34 @@ type VerifyInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *VerifyInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.VerifyRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *VerifyInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DryRun != nil {
+		s.WriteBool(schemas.VerifyRequest_DryRun, *v.DryRun)
+	}
+	serializeGrantTokenList(s, schemas.VerifyRequest_GrantTokens, v.GrantTokens)
+	if v.KeyId != nil {
+		s.WriteString(schemas.VerifyRequest_KeyId, *v.KeyId)
+	}
+	if v.Message != nil {
+		s.WriteBlob(schemas.VerifyRequest_Message, v.Message)
+	}
+	if v.MessageType != "" {
+		s.WriteString(schemas.VerifyRequest_MessageType, string(v.MessageType))
+	}
+	if v.Signature != nil {
+		s.WriteBlob(schemas.VerifyRequest_Signature, v.Signature)
+	}
+	if v.SigningAlgorithm != "" {
+		s.WriteString(schemas.VerifyRequest_SigningAlgorithm, string(v.SigningAlgorithm))
+	}
+}
+
 type VerifyOutput struct {
 
 	// The Amazon Resource Name ([key ARN] ) of the asymmetric KMS key that was used to verify
@@ -220,13 +250,47 @@ type VerifyOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *VerifyOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.VerifyResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *VerifyOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyId != nil {
+		s.WriteString(schemas.VerifyResponse_KeyId, *v.KeyId)
+	}
+	if v.SignatureValid != false {
+		s.WriteBool(schemas.VerifyResponse_SignatureValid, v.SignatureValid)
+	}
+	if v.SigningAlgorithm != "" {
+		s.WriteString(schemas.VerifyResponse_SigningAlgorithm, string(v.SigningAlgorithm))
+	}
+}
+func (v *VerifyOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.VerifyResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.VerifyResponse_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.VerifyResponse_KeyId, v.KeyId)
+		case schemas.VerifyResponse_SignatureValid:
+			return d.ReadBool(schemas.VerifyResponse_SignatureValid, &v.SignatureValid)
+		case schemas.VerifyResponse_SigningAlgorithm:
+			var ev string
+			if err := d.ReadString(schemas.VerifyResponse_SigningAlgorithm, &ev); err != nil {
+				return err
+			}
+			v.SigningAlgorithm = types.SigningAlgorithmSpec(ev)
+			return nil
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationVerifyMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpVerify{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.Verify, schemas.VerifyRequest, schemas.VerifyResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpVerify{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.Verify, schemas.VerifyRequest, schemas.VerifyResponse), output: &VerifyOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

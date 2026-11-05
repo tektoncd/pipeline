@@ -4,6 +4,7 @@ package types
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	smithy "github.com/aws/smithy-go"
 )
 
@@ -33,6 +34,27 @@ func (e *AlreadyExistsException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *AlreadyExistsException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *AlreadyExistsException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.AlreadyExistsException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *AlreadyExistsException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.AlreadyExistsException_message, *v.Message)
+	}
+}
+func (v *AlreadyExistsException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.AlreadyExistsException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.AlreadyExistsException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.AlreadyExistsException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the specified CloudHSM cluster is already
 // associated with an CloudHSM key store in the account, or it shares a backup
@@ -68,6 +90,27 @@ func (e *CloudHsmClusterInUseException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *CloudHsmClusterInUseException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *CloudHsmClusterInUseException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CloudHsmClusterInUseException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CloudHsmClusterInUseException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.CloudHsmClusterInUseException_message, *v.Message)
+	}
+}
+func (v *CloudHsmClusterInUseException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CloudHsmClusterInUseException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CloudHsmClusterInUseException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.CloudHsmClusterInUseException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the associated CloudHSM cluster did not meet
 // the configuration requirements for an CloudHSM key store.
@@ -128,6 +171,27 @@ func (e *CloudHsmClusterInvalidConfigurationException) ErrorCode() string {
 func (e *CloudHsmClusterInvalidConfigurationException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
 }
+func (v *CloudHsmClusterInvalidConfigurationException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CloudHsmClusterInvalidConfigurationException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CloudHsmClusterInvalidConfigurationException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.CloudHsmClusterInvalidConfigurationException_message, *v.Message)
+	}
+}
+func (v *CloudHsmClusterInvalidConfigurationException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CloudHsmClusterInvalidConfigurationException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CloudHsmClusterInvalidConfigurationException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.CloudHsmClusterInvalidConfigurationException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the CloudHSM cluster associated with the
 // CloudHSM key store is not active. Initialize and activate the cluster and try
@@ -158,6 +222,27 @@ func (e *CloudHsmClusterNotActiveException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *CloudHsmClusterNotActiveException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *CloudHsmClusterNotActiveException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CloudHsmClusterNotActiveException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CloudHsmClusterNotActiveException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.CloudHsmClusterNotActiveException_message, *v.Message)
+	}
+}
+func (v *CloudHsmClusterNotActiveException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CloudHsmClusterNotActiveException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CloudHsmClusterNotActiveException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.CloudHsmClusterNotActiveException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because KMS cannot find the CloudHSM cluster with the
 // specified cluster ID. Retry the request with a different cluster ID.
@@ -185,6 +270,27 @@ func (e *CloudHsmClusterNotFoundException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *CloudHsmClusterNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *CloudHsmClusterNotFoundException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CloudHsmClusterNotFoundException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CloudHsmClusterNotFoundException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.CloudHsmClusterNotFoundException_message, *v.Message)
+	}
+}
+func (v *CloudHsmClusterNotFoundException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CloudHsmClusterNotFoundException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CloudHsmClusterNotFoundException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.CloudHsmClusterNotFoundException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the specified CloudHSM cluster has a different
 // cluster certificate than the original cluster. You cannot use the operation to
@@ -226,6 +332,27 @@ func (e *CloudHsmClusterNotRelatedException) ErrorCode() string {
 func (e *CloudHsmClusterNotRelatedException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
 }
+func (v *CloudHsmClusterNotRelatedException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CloudHsmClusterNotRelatedException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CloudHsmClusterNotRelatedException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.CloudHsmClusterNotRelatedException_message, *v.Message)
+	}
+}
+func (v *CloudHsmClusterNotRelatedException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CloudHsmClusterNotRelatedException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CloudHsmClusterNotRelatedException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.CloudHsmClusterNotRelatedException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because an automatic rotation of this key is currently
 // in progress or scheduled to begin within the next 20 minutes.
@@ -253,6 +380,27 @@ func (e *ConflictException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *ConflictException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *ConflictException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ConflictException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ConflictException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.ConflictException_message, *v.Message)
+	}
+}
+func (v *ConflictException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ConflictException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ConflictException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.ConflictException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the custom key store contains KMS keys. After
 // verifying that you do not need to use the KMS keys, use the ScheduleKeyDeletionoperation to delete
@@ -281,6 +429,27 @@ func (e *CustomKeyStoreHasCMKsException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *CustomKeyStoreHasCMKsException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *CustomKeyStoreHasCMKsException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CustomKeyStoreHasCMKsException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CustomKeyStoreHasCMKsException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.CustomKeyStoreHasCMKsException_message, *v.Message)
+	}
+}
+func (v *CustomKeyStoreHasCMKsException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CustomKeyStoreHasCMKsException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CustomKeyStoreHasCMKsException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.CustomKeyStoreHasCMKsException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because of the ConnectionState of the custom key
 // store. To get the ConnectionState of a custom key store, use the DescribeCustomKeyStores operation.
@@ -334,6 +503,27 @@ func (e *CustomKeyStoreInvalidStateException) ErrorCode() string {
 func (e *CustomKeyStoreInvalidStateException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
 }
+func (v *CustomKeyStoreInvalidStateException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CustomKeyStoreInvalidStateException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CustomKeyStoreInvalidStateException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.CustomKeyStoreInvalidStateException_message, *v.Message)
+	}
+}
+func (v *CustomKeyStoreInvalidStateException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CustomKeyStoreInvalidStateException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CustomKeyStoreInvalidStateException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.CustomKeyStoreInvalidStateException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the specified custom key store name is already
 // assigned to another custom key store in the account. Try again with a custom key
@@ -362,6 +552,27 @@ func (e *CustomKeyStoreNameInUseException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *CustomKeyStoreNameInUseException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *CustomKeyStoreNameInUseException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CustomKeyStoreNameInUseException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CustomKeyStoreNameInUseException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.CustomKeyStoreNameInUseException_message, *v.Message)
+	}
+}
+func (v *CustomKeyStoreNameInUseException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CustomKeyStoreNameInUseException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CustomKeyStoreNameInUseException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.CustomKeyStoreNameInUseException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because KMS cannot find a custom key store with the
 // specified key store name or ID.
@@ -389,6 +600,27 @@ func (e *CustomKeyStoreNotFoundException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *CustomKeyStoreNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *CustomKeyStoreNotFoundException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CustomKeyStoreNotFoundException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CustomKeyStoreNotFoundException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.CustomKeyStoreNotFoundException_message, *v.Message)
+	}
+}
+func (v *CustomKeyStoreNotFoundException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CustomKeyStoreNotFoundException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CustomKeyStoreNotFoundException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.CustomKeyStoreNotFoundException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The system timed out while trying to fulfill the request. You can retry the
 // request.
@@ -416,6 +648,27 @@ func (e *DependencyTimeoutException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *DependencyTimeoutException) ErrorFault() smithy.ErrorFault { return smithy.FaultServer }
+func (v *DependencyTimeoutException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DependencyTimeoutException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DependencyTimeoutException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.DependencyTimeoutException_message, *v.Message)
+	}
+}
+func (v *DependencyTimeoutException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DependencyTimeoutException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DependencyTimeoutException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.DependencyTimeoutException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the specified KMS key is not enabled.
 type DisabledException struct {
@@ -442,6 +695,27 @@ func (e *DisabledException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *DisabledException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *DisabledException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DisabledException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DisabledException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.DisabledException_message, *v.Message)
+	}
+}
+func (v *DisabledException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DisabledException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DisabledException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.DisabledException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the DryRun parameter was specified.
 type DryRunOperationException struct {
@@ -468,6 +742,27 @@ func (e *DryRunOperationException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *DryRunOperationException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *DryRunOperationException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DryRunOperationException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DryRunOperationException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.DryRunOperationException_message, *v.Message)
+	}
+}
+func (v *DryRunOperationException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DryRunOperationException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DryRunOperationException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.DryRunOperationException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the specified import token is expired. Use GetParametersForImport to
 // get a new import token and public key, use the new public key to encrypt the key
@@ -496,6 +791,27 @@ func (e *ExpiredImportTokenException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *ExpiredImportTokenException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *ExpiredImportTokenException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ExpiredImportTokenException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ExpiredImportTokenException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.ExpiredImportTokenException_message, *v.Message)
+	}
+}
+func (v *ExpiredImportTokenException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ExpiredImportTokenException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ExpiredImportTokenException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.ExpiredImportTokenException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the specified KMS key cannot decrypt the data.
 // The KeyId in a Decrypt request and the SourceKeyId in a ReEncrypt request must identify the
@@ -524,6 +840,27 @@ func (e *IncorrectKeyException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *IncorrectKeyException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *IncorrectKeyException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.IncorrectKeyException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *IncorrectKeyException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.IncorrectKeyException_message, *v.Message)
+	}
+}
+func (v *IncorrectKeyException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.IncorrectKeyException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.IncorrectKeyException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.IncorrectKeyException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the key material in the request is, expired,
 // invalid, or does not meet expectations. For example, it is not the same key
@@ -553,6 +890,27 @@ func (e *IncorrectKeyMaterialException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *IncorrectKeyMaterialException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *IncorrectKeyMaterialException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.IncorrectKeyMaterialException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *IncorrectKeyMaterialException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.IncorrectKeyMaterialException_message, *v.Message)
+	}
+}
+func (v *IncorrectKeyMaterialException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.IncorrectKeyMaterialException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.IncorrectKeyMaterialException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.IncorrectKeyMaterialException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the trust anchor certificate in the request to
 // create an CloudHSM key store is not the trust anchor certificate for the
@@ -586,6 +944,27 @@ func (e *IncorrectTrustAnchorException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *IncorrectTrustAnchorException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *IncorrectTrustAnchorException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.IncorrectTrustAnchorException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *IncorrectTrustAnchorException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.IncorrectTrustAnchorException_message, *v.Message)
+	}
+}
+func (v *IncorrectTrustAnchorException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.IncorrectTrustAnchorException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.IncorrectTrustAnchorException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.IncorrectTrustAnchorException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the specified alias name is not valid.
 type InvalidAliasNameException struct {
@@ -612,6 +991,27 @@ func (e *InvalidAliasNameException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *InvalidAliasNameException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *InvalidAliasNameException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.InvalidAliasNameException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *InvalidAliasNameException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.InvalidAliasNameException_message, *v.Message)
+	}
+}
+func (v *InvalidAliasNameException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.InvalidAliasNameException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.InvalidAliasNameException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.InvalidAliasNameException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because a specified ARN, or an ARN in a key policy, is
 // not valid.
@@ -639,6 +1039,27 @@ func (e *InvalidArnException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *InvalidArnException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *InvalidArnException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.InvalidArnException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *InvalidArnException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.InvalidArnException_message, *v.Message)
+	}
+}
+func (v *InvalidArnException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.InvalidArnException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.InvalidArnException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.InvalidArnException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // From the Decrypt or ReEncrypt operation, the request was rejected because the specified
 // ciphertext, or additional authenticated data incorporated into the ciphertext,
@@ -670,6 +1091,27 @@ func (e *InvalidCiphertextException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *InvalidCiphertextException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *InvalidCiphertextException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.InvalidCiphertextException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *InvalidCiphertextException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.InvalidCiphertextException_message, *v.Message)
+	}
+}
+func (v *InvalidCiphertextException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.InvalidCiphertextException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.InvalidCiphertextException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.InvalidCiphertextException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the specified GrantId is not valid.
 type InvalidGrantIdException struct {
@@ -696,6 +1138,27 @@ func (e *InvalidGrantIdException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *InvalidGrantIdException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *InvalidGrantIdException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.InvalidGrantIdException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *InvalidGrantIdException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.InvalidGrantIdException_message, *v.Message)
+	}
+}
+func (v *InvalidGrantIdException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.InvalidGrantIdException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.InvalidGrantIdException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.InvalidGrantIdException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the specified grant token is not valid.
 type InvalidGrantTokenException struct {
@@ -722,6 +1185,27 @@ func (e *InvalidGrantTokenException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *InvalidGrantTokenException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *InvalidGrantTokenException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.InvalidGrantTokenException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *InvalidGrantTokenException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.InvalidGrantTokenException_message, *v.Message)
+	}
+}
+func (v *InvalidGrantTokenException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.InvalidGrantTokenException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.InvalidGrantTokenException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.InvalidGrantTokenException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the provided import token is invalid or is
 // associated with a different KMS key.
@@ -749,6 +1233,27 @@ func (e *InvalidImportTokenException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *InvalidImportTokenException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *InvalidImportTokenException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.InvalidImportTokenException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *InvalidImportTokenException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.InvalidImportTokenException_message, *v.Message)
+	}
+}
+func (v *InvalidImportTokenException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.InvalidImportTokenException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.InvalidImportTokenException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.InvalidImportTokenException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected for one of the following reasons:
 //
@@ -790,6 +1295,27 @@ func (e *InvalidKeyUsageException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *InvalidKeyUsageException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *InvalidKeyUsageException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.InvalidKeyUsageException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *InvalidKeyUsageException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.InvalidKeyUsageException_message, *v.Message)
+	}
+}
+func (v *InvalidKeyUsageException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.InvalidKeyUsageException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.InvalidKeyUsageException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.InvalidKeyUsageException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the marker that specifies where pagination
 // should next begin is not valid.
@@ -817,6 +1343,27 @@ func (e *InvalidMarkerException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *InvalidMarkerException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *InvalidMarkerException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.InvalidMarkerException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *InvalidMarkerException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.InvalidMarkerException_message, *v.Message)
+	}
+}
+func (v *InvalidMarkerException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.InvalidMarkerException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.InvalidMarkerException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.InvalidMarkerException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the specified KMS key was not available. You
 // can retry the request.
@@ -844,6 +1391,27 @@ func (e *KeyUnavailableException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *KeyUnavailableException) ErrorFault() smithy.ErrorFault { return smithy.FaultServer }
+func (v *KeyUnavailableException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.KeyUnavailableException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *KeyUnavailableException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.KeyUnavailableException_message, *v.Message)
+	}
+}
+func (v *KeyUnavailableException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.KeyUnavailableException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.KeyUnavailableException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.KeyUnavailableException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because an internal exception occurred. The request
 // can be retried.
@@ -871,6 +1439,27 @@ func (e *KMSInternalException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *KMSInternalException) ErrorFault() smithy.ErrorFault { return smithy.FaultServer }
+func (v *KMSInternalException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.KMSInternalException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *KMSInternalException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.KMSInternalException_message, *v.Message)
+	}
+}
+func (v *KMSInternalException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.KMSInternalException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.KMSInternalException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.KMSInternalException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the HMAC verification failed. HMAC
 // verification fails when the HMAC computed by using the specified message, HMAC
@@ -899,6 +1488,27 @@ func (e *KMSInvalidMacException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *KMSInvalidMacException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *KMSInvalidMacException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.KMSInvalidMacException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *KMSInvalidMacException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.KMSInvalidMacException_message, *v.Message)
+	}
+}
+func (v *KMSInvalidMacException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.KMSInvalidMacException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.KMSInvalidMacException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.KMSInvalidMacException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the signature verification failed. Signature
 // verification fails when it cannot confirm that signature was produced by signing
@@ -927,6 +1537,27 @@ func (e *KMSInvalidSignatureException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *KMSInvalidSignatureException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *KMSInvalidSignatureException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.KMSInvalidSignatureException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *KMSInvalidSignatureException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.KMSInvalidSignatureException_message, *v.Message)
+	}
+}
+func (v *KMSInvalidSignatureException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.KMSInvalidSignatureException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.KMSInvalidSignatureException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.KMSInvalidSignatureException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the state of the specified resource is not
 // valid for this request.
@@ -969,6 +1600,27 @@ func (e *KMSInvalidStateException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *KMSInvalidStateException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *KMSInvalidStateException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.KMSInvalidStateException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *KMSInvalidStateException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.KMSInvalidStateException_message, *v.Message)
+	}
+}
+func (v *KMSInvalidStateException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.KMSInvalidStateException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.KMSInvalidStateException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.KMSInvalidStateException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because a length constraint or quota was exceeded. For
 // more information, see [Quotas]in the Key Management Service Developer Guide.
@@ -998,6 +1650,27 @@ func (e *LimitExceededException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *LimitExceededException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *LimitExceededException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.LimitExceededException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *LimitExceededException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.LimitExceededException_message, *v.Message)
+	}
+}
+func (v *LimitExceededException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.LimitExceededException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.LimitExceededException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.LimitExceededException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the specified policy is not syntactically or
 // semantically correct.
@@ -1025,6 +1698,27 @@ func (e *MalformedPolicyDocumentException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *MalformedPolicyDocumentException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *MalformedPolicyDocumentException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.MalformedPolicyDocumentException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *MalformedPolicyDocumentException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.MalformedPolicyDocumentException_message, *v.Message)
+	}
+}
+func (v *MalformedPolicyDocumentException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.MalformedPolicyDocumentException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.MalformedPolicyDocumentException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.MalformedPolicyDocumentException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the specified entity or resource could not be
 // found.
@@ -1052,6 +1746,27 @@ func (e *NotFoundException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *NotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *NotFoundException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.NotFoundException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *NotFoundException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.NotFoundException_message, *v.Message)
+	}
+}
+func (v *NotFoundException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.NotFoundException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.NotFoundException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.NotFoundException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because one or more tags are not valid.
 type TagException struct {
@@ -1078,6 +1793,27 @@ func (e *TagException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *TagException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *TagException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.TagException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *TagException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.TagException_message, *v.Message)
+	}
+}
+func (v *TagException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.TagException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.TagException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.TagException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because a specified parameter is not supported or a
 // specified resource is not valid for this operation.
@@ -1105,6 +1841,27 @@ func (e *UnsupportedOperationException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *UnsupportedOperationException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *UnsupportedOperationException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.UnsupportedOperationException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *UnsupportedOperationException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.UnsupportedOperationException_message, *v.Message)
+	}
+}
+func (v *UnsupportedOperationException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.UnsupportedOperationException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.UnsupportedOperationException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.UnsupportedOperationException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the ( XksKeyId ) is already associated with
 // another KMS key in this external key store. Each KMS key in an external key
@@ -1133,6 +1890,27 @@ func (e *XksKeyAlreadyInUseException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *XksKeyAlreadyInUseException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *XksKeyAlreadyInUseException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.XksKeyAlreadyInUseException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *XksKeyAlreadyInUseException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.XksKeyAlreadyInUseException_message, *v.Message)
+	}
+}
+func (v *XksKeyAlreadyInUseException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.XksKeyAlreadyInUseException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.XksKeyAlreadyInUseException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.XksKeyAlreadyInUseException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the external key specified by the XksKeyId
 // parameter did not meet the configuration requirements for an external key store.
@@ -1164,6 +1942,27 @@ func (e *XksKeyInvalidConfigurationException) ErrorCode() string {
 }
 func (e *XksKeyInvalidConfigurationException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
+}
+func (v *XksKeyInvalidConfigurationException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.XksKeyInvalidConfigurationException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *XksKeyInvalidConfigurationException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.XksKeyInvalidConfigurationException_message, *v.Message)
+	}
+}
+func (v *XksKeyInvalidConfigurationException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.XksKeyInvalidConfigurationException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.XksKeyInvalidConfigurationException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.XksKeyInvalidConfigurationException_message, v.Message)
+		}
+		return nil
+	})
 }
 
 // The request was rejected because the external key store proxy could not find
@@ -1199,6 +1998,27 @@ func (e *XksKeyNotFoundException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *XksKeyNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *XksKeyNotFoundException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.XksKeyNotFoundException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *XksKeyNotFoundException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.XksKeyNotFoundException_message, *v.Message)
+	}
+}
+func (v *XksKeyNotFoundException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.XksKeyNotFoundException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.XksKeyNotFoundException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.XksKeyNotFoundException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the proxy credentials failed to authenticate
 // to the specified external key store proxy. The specified external key store
@@ -1231,6 +2051,27 @@ func (e *XksProxyIncorrectAuthenticationCredentialException) ErrorCode() string 
 func (e *XksProxyIncorrectAuthenticationCredentialException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
 }
+func (v *XksProxyIncorrectAuthenticationCredentialException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.XksProxyIncorrectAuthenticationCredentialException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *XksProxyIncorrectAuthenticationCredentialException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.XksProxyIncorrectAuthenticationCredentialException_message, *v.Message)
+	}
+}
+func (v *XksProxyIncorrectAuthenticationCredentialException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.XksProxyIncorrectAuthenticationCredentialException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.XksProxyIncorrectAuthenticationCredentialException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.XksProxyIncorrectAuthenticationCredentialException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the external key store proxy is not configured
 // correctly. To identify the cause, see the error message that accompanies the
@@ -1261,6 +2102,27 @@ func (e *XksProxyInvalidConfigurationException) ErrorCode() string {
 func (e *XksProxyInvalidConfigurationException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
 }
+func (v *XksProxyInvalidConfigurationException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.XksProxyInvalidConfigurationException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *XksProxyInvalidConfigurationException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.XksProxyInvalidConfigurationException_message, *v.Message)
+	}
+}
+func (v *XksProxyInvalidConfigurationException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.XksProxyInvalidConfigurationException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.XksProxyInvalidConfigurationException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.XksProxyInvalidConfigurationException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // KMS cannot interpret the response it received from the external key store
 // proxy. The problem might be a poorly constructed response, but it could also be
@@ -1290,6 +2152,27 @@ func (e *XksProxyInvalidResponseException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *XksProxyInvalidResponseException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *XksProxyInvalidResponseException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.XksProxyInvalidResponseException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *XksProxyInvalidResponseException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.XksProxyInvalidResponseException_message, *v.Message)
+	}
+}
+func (v *XksProxyInvalidResponseException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.XksProxyInvalidResponseException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.XksProxyInvalidResponseException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.XksProxyInvalidResponseException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the XksProxyUriEndpoint is already associated
 // with another external key store in this Amazon Web Services Region. To identify
@@ -1318,6 +2201,27 @@ func (e *XksProxyUriEndpointInUseException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *XksProxyUriEndpointInUseException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *XksProxyUriEndpointInUseException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.XksProxyUriEndpointInUseException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *XksProxyUriEndpointInUseException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.XksProxyUriEndpointInUseException_message, *v.Message)
+	}
+}
+func (v *XksProxyUriEndpointInUseException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.XksProxyUriEndpointInUseException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.XksProxyUriEndpointInUseException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.XksProxyUriEndpointInUseException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the concatenation of the XksProxyUriEndpoint
 // and XksProxyUriPath is already associated with another external key store in
@@ -1347,6 +2251,27 @@ func (e *XksProxyUriInUseException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *XksProxyUriInUseException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *XksProxyUriInUseException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.XksProxyUriInUseException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *XksProxyUriInUseException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.XksProxyUriInUseException_message, *v.Message)
+	}
+}
+func (v *XksProxyUriInUseException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.XksProxyUriInUseException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.XksProxyUriInUseException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.XksProxyUriInUseException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // KMS was unable to reach the specified XksProxyUriPath . The path must be
 // reachable before you create the external key store or update its settings.
@@ -1378,6 +2303,27 @@ func (e *XksProxyUriUnreachableException) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *XksProxyUriUnreachableException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+func (v *XksProxyUriUnreachableException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.XksProxyUriUnreachableException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *XksProxyUriUnreachableException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.XksProxyUriUnreachableException_message, *v.Message)
+	}
+}
+func (v *XksProxyUriUnreachableException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.XksProxyUriUnreachableException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.XksProxyUriUnreachableException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.XksProxyUriUnreachableException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because the specified Amazon VPC endpoint service is
 // already associated with another external key store in this Amazon Web Services
@@ -1408,6 +2354,27 @@ func (e *XksProxyVpcEndpointServiceInUseException) ErrorCode() string {
 }
 func (e *XksProxyVpcEndpointServiceInUseException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
+}
+func (v *XksProxyVpcEndpointServiceInUseException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.XksProxyVpcEndpointServiceInUseException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *XksProxyVpcEndpointServiceInUseException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.XksProxyVpcEndpointServiceInUseException_message, *v.Message)
+	}
+}
+func (v *XksProxyVpcEndpointServiceInUseException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.XksProxyVpcEndpointServiceInUseException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.XksProxyVpcEndpointServiceInUseException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.XksProxyVpcEndpointServiceInUseException_message, v.Message)
+		}
+		return nil
+	})
 }
 
 // The request was rejected because the Amazon VPC endpoint service configuration
@@ -1442,6 +2409,27 @@ func (e *XksProxyVpcEndpointServiceInvalidConfigurationException) ErrorCode() st
 func (e *XksProxyVpcEndpointServiceInvalidConfigurationException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
 }
+func (v *XksProxyVpcEndpointServiceInvalidConfigurationException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.XksProxyVpcEndpointServiceInvalidConfigurationException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *XksProxyVpcEndpointServiceInvalidConfigurationException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.XksProxyVpcEndpointServiceInvalidConfigurationException_message, *v.Message)
+	}
+}
+func (v *XksProxyVpcEndpointServiceInvalidConfigurationException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.XksProxyVpcEndpointServiceInvalidConfigurationException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.XksProxyVpcEndpointServiceInvalidConfigurationException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.XksProxyVpcEndpointServiceInvalidConfigurationException_message, v.Message)
+		}
+		return nil
+	})
+}
 
 // The request was rejected because KMS could not find the specified VPC endpoint
 // service. Use DescribeCustomKeyStoresto verify the VPC endpoint service name for the external key
@@ -1473,4 +2461,25 @@ func (e *XksProxyVpcEndpointServiceNotFoundException) ErrorCode() string {
 }
 func (e *XksProxyVpcEndpointServiceNotFoundException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
+}
+func (v *XksProxyVpcEndpointServiceNotFoundException) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.XksProxyVpcEndpointServiceNotFoundException)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *XksProxyVpcEndpointServiceNotFoundException) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Message != nil {
+		s.WriteString(schemas.XksProxyVpcEndpointServiceNotFoundException_message, *v.Message)
+	}
+}
+func (v *XksProxyVpcEndpointServiceNotFoundException) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.XksProxyVpcEndpointServiceNotFoundException, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.XksProxyVpcEndpointServiceNotFoundException_message:
+			v.Message = new(string)
+			return d.ReadString(schemas.XksProxyVpcEndpointServiceNotFoundException_message, v.Message)
+		}
+		return nil
+	})
 }

@@ -4,7 +4,9 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -236,6 +238,35 @@ type DecryptInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DecryptInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DecryptRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DecryptInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CiphertextBlob != nil {
+		s.WriteBlob(schemas.DecryptRequest_CiphertextBlob, v.CiphertextBlob)
+	}
+	if v.DryRun != nil {
+		s.WriteBool(schemas.DecryptRequest_DryRun, *v.DryRun)
+	}
+	serializeDryRunModifierList(s, schemas.DecryptRequest_DryRunModifiers, v.DryRunModifiers)
+	if v.EncryptionAlgorithm != "" {
+		s.WriteString(schemas.DecryptRequest_EncryptionAlgorithm, string(v.EncryptionAlgorithm))
+	}
+	serializeEncryptionContextType(s, schemas.DecryptRequest_EncryptionContext, v.EncryptionContext)
+	serializeGrantTokenList(s, schemas.DecryptRequest_GrantTokens, v.GrantTokens)
+	if v.KeyId != nil {
+		s.WriteString(schemas.DecryptRequest_KeyId, *v.KeyId)
+	}
+	if v.Recipient != nil {
+		s.WriteStruct(schemas.DecryptRequest_Recipient)
+		v.Recipient.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+
 type DecryptOutput struct {
 
 	// The plaintext data encrypted with the public key from the attestation document.
@@ -278,13 +309,58 @@ type DecryptOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DecryptOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DecryptResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DecryptOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CiphertextForRecipient != nil {
+		s.WriteBlob(schemas.DecryptResponse_CiphertextForRecipient, v.CiphertextForRecipient)
+	}
+	if v.EncryptionAlgorithm != "" {
+		s.WriteString(schemas.DecryptResponse_EncryptionAlgorithm, string(v.EncryptionAlgorithm))
+	}
+	if v.KeyId != nil {
+		s.WriteString(schemas.DecryptResponse_KeyId, *v.KeyId)
+	}
+	if v.KeyMaterialId != nil {
+		s.WriteString(schemas.DecryptResponse_KeyMaterialId, *v.KeyMaterialId)
+	}
+	if v.Plaintext != nil {
+		s.WriteBlob(schemas.DecryptResponse_Plaintext, v.Plaintext)
+	}
+}
+func (v *DecryptOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DecryptResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DecryptResponse_CiphertextForRecipient:
+			return d.ReadBlob(schemas.DecryptResponse_CiphertextForRecipient, &v.CiphertextForRecipient)
+		case schemas.DecryptResponse_EncryptionAlgorithm:
+			var ev string
+			if err := d.ReadString(schemas.DecryptResponse_EncryptionAlgorithm, &ev); err != nil {
+				return err
+			}
+			v.EncryptionAlgorithm = types.EncryptionAlgorithmSpec(ev)
+			return nil
+		case schemas.DecryptResponse_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.DecryptResponse_KeyId, v.KeyId)
+		case schemas.DecryptResponse_KeyMaterialId:
+			v.KeyMaterialId = new(string)
+			return d.ReadString(schemas.DecryptResponse_KeyMaterialId, v.KeyMaterialId)
+		case schemas.DecryptResponse_Plaintext:
+			return d.ReadBlob(schemas.DecryptResponse_Plaintext, &v.Plaintext)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDecryptMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDecrypt{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.Decrypt, schemas.DecryptRequest, schemas.DecryptResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDecrypt{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.Decrypt, schemas.DecryptRequest, schemas.DecryptResponse), output: &DecryptOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

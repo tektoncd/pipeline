@@ -5,7 +5,9 @@ package kms
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -122,6 +124,33 @@ type ListGrantsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListGrantsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListGrantsRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListGrantsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.GrantId != nil {
+		s.WriteString(schemas.ListGrantsRequest_GrantId, *v.GrantId)
+	}
+	if v.GranteePrincipal != nil {
+		s.WriteString(schemas.ListGrantsRequest_GranteePrincipal, *v.GranteePrincipal)
+	}
+	if v.GranteeServicePrincipal != nil {
+		s.WriteString(schemas.ListGrantsRequest_GranteeServicePrincipal, *v.GranteeServicePrincipal)
+	}
+	if v.KeyId != nil {
+		s.WriteString(schemas.ListGrantsRequest_KeyId, *v.KeyId)
+	}
+	if v.Limit != nil {
+		s.WriteInt32(schemas.ListGrantsRequest_Limit, *v.Limit)
+	}
+	if v.Marker != nil {
+		s.WriteString(schemas.ListGrantsRequest_Marker, *v.Marker)
+	}
+}
+
 type ListGrantsOutput struct {
 
 	// A list of grants.
@@ -143,13 +172,40 @@ type ListGrantsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListGrantsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListGrantsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListGrantsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeGrantList(s, schemas.ListGrantsResponse_Grants, v.Grants)
+	if v.NextMarker != nil {
+		s.WriteString(schemas.ListGrantsResponse_NextMarker, *v.NextMarker)
+	}
+	if v.Truncated != false {
+		s.WriteBool(schemas.ListGrantsResponse_Truncated, v.Truncated)
+	}
+}
+func (v *ListGrantsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ListGrantsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ListGrantsResponse_Grants:
+			return deserializeGrantList(d, schemas.ListGrantsResponse_Grants, &v.Grants)
+		case schemas.ListGrantsResponse_NextMarker:
+			v.NextMarker = new(string)
+			return d.ReadString(schemas.ListGrantsResponse_NextMarker, v.NextMarker)
+		case schemas.ListGrantsResponse_Truncated:
+			return d.ReadBool(schemas.ListGrantsResponse_Truncated, &v.Truncated)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationListGrantsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpListGrants{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListGrants, schemas.ListGrantsRequest, schemas.ListGrantsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpListGrants{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListGrants, schemas.ListGrantsRequest, schemas.ListGrantsResponse), output: &ListGrantsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

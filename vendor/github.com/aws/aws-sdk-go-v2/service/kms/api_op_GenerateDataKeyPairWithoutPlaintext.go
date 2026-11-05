@@ -4,7 +4,9 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -166,6 +168,26 @@ type GenerateDataKeyPairWithoutPlaintextInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GenerateDataKeyPairWithoutPlaintextInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GenerateDataKeyPairWithoutPlaintextRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GenerateDataKeyPairWithoutPlaintextInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DryRun != nil {
+		s.WriteBool(schemas.GenerateDataKeyPairWithoutPlaintextRequest_DryRun, *v.DryRun)
+	}
+	serializeEncryptionContextType(s, schemas.GenerateDataKeyPairWithoutPlaintextRequest_EncryptionContext, v.EncryptionContext)
+	serializeGrantTokenList(s, schemas.GenerateDataKeyPairWithoutPlaintextRequest_GrantTokens, v.GrantTokens)
+	if v.KeyId != nil {
+		s.WriteString(schemas.GenerateDataKeyPairWithoutPlaintextRequest_KeyId, *v.KeyId)
+	}
+	if v.KeyPairSpec != "" {
+		s.WriteString(schemas.GenerateDataKeyPairWithoutPlaintextRequest_KeyPairSpec, string(v.KeyPairSpec))
+	}
+}
+
 type GenerateDataKeyPairWithoutPlaintextOutput struct {
 
 	// The Amazon Resource Name ([key ARN] ) of the KMS key that encrypted the private key.
@@ -194,13 +216,58 @@ type GenerateDataKeyPairWithoutPlaintextOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GenerateDataKeyPairWithoutPlaintextOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GenerateDataKeyPairWithoutPlaintextResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GenerateDataKeyPairWithoutPlaintextOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyId != nil {
+		s.WriteString(schemas.GenerateDataKeyPairWithoutPlaintextResponse_KeyId, *v.KeyId)
+	}
+	if v.KeyMaterialId != nil {
+		s.WriteString(schemas.GenerateDataKeyPairWithoutPlaintextResponse_KeyMaterialId, *v.KeyMaterialId)
+	}
+	if v.KeyPairSpec != "" {
+		s.WriteString(schemas.GenerateDataKeyPairWithoutPlaintextResponse_KeyPairSpec, string(v.KeyPairSpec))
+	}
+	if v.PrivateKeyCiphertextBlob != nil {
+		s.WriteBlob(schemas.GenerateDataKeyPairWithoutPlaintextResponse_PrivateKeyCiphertextBlob, v.PrivateKeyCiphertextBlob)
+	}
+	if v.PublicKey != nil {
+		s.WriteBlob(schemas.GenerateDataKeyPairWithoutPlaintextResponse_PublicKey, v.PublicKey)
+	}
+}
+func (v *GenerateDataKeyPairWithoutPlaintextOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.GenerateDataKeyPairWithoutPlaintextResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.GenerateDataKeyPairWithoutPlaintextResponse_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.GenerateDataKeyPairWithoutPlaintextResponse_KeyId, v.KeyId)
+		case schemas.GenerateDataKeyPairWithoutPlaintextResponse_KeyMaterialId:
+			v.KeyMaterialId = new(string)
+			return d.ReadString(schemas.GenerateDataKeyPairWithoutPlaintextResponse_KeyMaterialId, v.KeyMaterialId)
+		case schemas.GenerateDataKeyPairWithoutPlaintextResponse_KeyPairSpec:
+			var ev string
+			if err := d.ReadString(schemas.GenerateDataKeyPairWithoutPlaintextResponse_KeyPairSpec, &ev); err != nil {
+				return err
+			}
+			v.KeyPairSpec = types.DataKeyPairSpec(ev)
+			return nil
+		case schemas.GenerateDataKeyPairWithoutPlaintextResponse_PrivateKeyCiphertextBlob:
+			return d.ReadBlob(schemas.GenerateDataKeyPairWithoutPlaintextResponse_PrivateKeyCiphertextBlob, &v.PrivateKeyCiphertextBlob)
+		case schemas.GenerateDataKeyPairWithoutPlaintextResponse_PublicKey:
+			return d.ReadBlob(schemas.GenerateDataKeyPairWithoutPlaintextResponse_PublicKey, &v.PublicKey)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGenerateDataKeyPairWithoutPlaintextMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpGenerateDataKeyPairWithoutPlaintext{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GenerateDataKeyPairWithoutPlaintext, schemas.GenerateDataKeyPairWithoutPlaintextRequest, schemas.GenerateDataKeyPairWithoutPlaintextResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpGenerateDataKeyPairWithoutPlaintext{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GenerateDataKeyPairWithoutPlaintext, schemas.GenerateDataKeyPairWithoutPlaintextRequest, schemas.GenerateDataKeyPairWithoutPlaintextResponse), output: &GenerateDataKeyPairWithoutPlaintextOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

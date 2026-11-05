@@ -5,7 +5,9 @@ package kms
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -89,6 +91,24 @@ type ListResourceTagsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListResourceTagsInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListResourceTagsRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListResourceTagsInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyId != nil {
+		s.WriteString(schemas.ListResourceTagsRequest_KeyId, *v.KeyId)
+	}
+	if v.Limit != nil {
+		s.WriteInt32(schemas.ListResourceTagsRequest_Limit, *v.Limit)
+	}
+	if v.Marker != nil {
+		s.WriteString(schemas.ListResourceTagsRequest_Marker, *v.Marker)
+	}
+}
+
 type ListResourceTagsOutput struct {
 
 	// When Truncated is true, this element is present and contains the value to use
@@ -117,13 +137,40 @@ type ListResourceTagsOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListResourceTagsOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListResourceTagsResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListResourceTagsOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.NextMarker != nil {
+		s.WriteString(schemas.ListResourceTagsResponse_NextMarker, *v.NextMarker)
+	}
+	serializeTagList(s, schemas.ListResourceTagsResponse_Tags, v.Tags)
+	if v.Truncated != false {
+		s.WriteBool(schemas.ListResourceTagsResponse_Truncated, v.Truncated)
+	}
+}
+func (v *ListResourceTagsOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ListResourceTagsResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ListResourceTagsResponse_NextMarker:
+			v.NextMarker = new(string)
+			return d.ReadString(schemas.ListResourceTagsResponse_NextMarker, v.NextMarker)
+		case schemas.ListResourceTagsResponse_Tags:
+			return deserializeTagList(d, schemas.ListResourceTagsResponse_Tags, &v.Tags)
+		case schemas.ListResourceTagsResponse_Truncated:
+			return d.ReadBool(schemas.ListResourceTagsResponse_Truncated, &v.Truncated)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationListResourceTagsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpListResourceTags{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListResourceTags, schemas.ListResourceTagsRequest, schemas.ListResourceTagsResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpListResourceTags{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListResourceTags, schemas.ListResourceTagsRequest, schemas.ListResourceTagsResponse), output: &ListResourceTagsOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

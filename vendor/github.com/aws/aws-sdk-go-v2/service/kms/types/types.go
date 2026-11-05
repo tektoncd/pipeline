@@ -3,6 +3,8 @@
 package types
 
 import (
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
+	smithy "github.com/aws/smithy-go"
 	smithydocument "github.com/aws/smithy-go/document"
 	"time"
 )
@@ -29,6 +31,52 @@ type AliasListEntry struct {
 	TargetKeyId *string
 
 	noSmithyDocumentSerde
+}
+
+func (v *AliasListEntry) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.AliasListEntry)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *AliasListEntry) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.AliasArn != nil {
+		s.WriteString(schemas.AliasListEntry_AliasArn, *v.AliasArn)
+	}
+	if v.AliasName != nil {
+		s.WriteString(schemas.AliasListEntry_AliasName, *v.AliasName)
+	}
+	if v.CreationDate != nil {
+		s.WriteTime(schemas.AliasListEntry_CreationDate, *v.CreationDate)
+	}
+	if v.LastUpdatedDate != nil {
+		s.WriteTime(schemas.AliasListEntry_LastUpdatedDate, *v.LastUpdatedDate)
+	}
+	if v.TargetKeyId != nil {
+		s.WriteString(schemas.AliasListEntry_TargetKeyId, *v.TargetKeyId)
+	}
+}
+func (v *AliasListEntry) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.AliasListEntry, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.AliasListEntry_AliasArn:
+			v.AliasArn = new(string)
+			return d.ReadString(schemas.AliasListEntry_AliasArn, v.AliasArn)
+		case schemas.AliasListEntry_AliasName:
+			v.AliasName = new(string)
+			return d.ReadString(schemas.AliasListEntry_AliasName, v.AliasName)
+		case schemas.AliasListEntry_CreationDate:
+			v.CreationDate = new(time.Time)
+			return d.ReadTime(schemas.AliasListEntry_CreationDate, v.CreationDate)
+		case schemas.AliasListEntry_LastUpdatedDate:
+			v.LastUpdatedDate = new(time.Time)
+			return d.ReadTime(schemas.AliasListEntry_LastUpdatedDate, v.LastUpdatedDate)
+		case schemas.AliasListEntry_TargetKeyId:
+			v.TargetKeyId = new(string)
+			return d.ReadString(schemas.AliasListEntry_TargetKeyId, v.TargetKeyId)
+		}
+		return nil
+	})
 }
 
 // Contains information about each custom key store in the custom key store list.
@@ -235,6 +283,90 @@ type CustomKeyStoresListEntry struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CustomKeyStoresListEntry) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CustomKeyStoresListEntry)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CustomKeyStoresListEntry) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CloudHsmClusterId != nil {
+		s.WriteString(schemas.CustomKeyStoresListEntry_CloudHsmClusterId, *v.CloudHsmClusterId)
+	}
+	if v.ConnectionErrorCode != "" {
+		s.WriteString(schemas.CustomKeyStoresListEntry_ConnectionErrorCode, string(v.ConnectionErrorCode))
+	}
+	if v.ConnectionState != "" {
+		s.WriteString(schemas.CustomKeyStoresListEntry_ConnectionState, string(v.ConnectionState))
+	}
+	if v.CreationDate != nil {
+		s.WriteTime(schemas.CustomKeyStoresListEntry_CreationDate, *v.CreationDate)
+	}
+	if v.CustomKeyStoreId != nil {
+		s.WriteString(schemas.CustomKeyStoresListEntry_CustomKeyStoreId, *v.CustomKeyStoreId)
+	}
+	if v.CustomKeyStoreName != nil {
+		s.WriteString(schemas.CustomKeyStoresListEntry_CustomKeyStoreName, *v.CustomKeyStoreName)
+	}
+	if v.CustomKeyStoreType != "" {
+		s.WriteString(schemas.CustomKeyStoresListEntry_CustomKeyStoreType, string(v.CustomKeyStoreType))
+	}
+	if v.TrustAnchorCertificate != nil {
+		s.WriteString(schemas.CustomKeyStoresListEntry_TrustAnchorCertificate, *v.TrustAnchorCertificate)
+	}
+	if v.XksProxyConfiguration != nil {
+		s.WriteStruct(schemas.CustomKeyStoresListEntry_XksProxyConfiguration)
+		v.XksProxyConfiguration.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *CustomKeyStoresListEntry) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CustomKeyStoresListEntry, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CustomKeyStoresListEntry_CloudHsmClusterId:
+			v.CloudHsmClusterId = new(string)
+			return d.ReadString(schemas.CustomKeyStoresListEntry_CloudHsmClusterId, v.CloudHsmClusterId)
+		case schemas.CustomKeyStoresListEntry_ConnectionErrorCode:
+			var ev string
+			if err := d.ReadString(schemas.CustomKeyStoresListEntry_ConnectionErrorCode, &ev); err != nil {
+				return err
+			}
+			v.ConnectionErrorCode = ConnectionErrorCodeType(ev)
+			return nil
+		case schemas.CustomKeyStoresListEntry_ConnectionState:
+			var ev string
+			if err := d.ReadString(schemas.CustomKeyStoresListEntry_ConnectionState, &ev); err != nil {
+				return err
+			}
+			v.ConnectionState = ConnectionStateType(ev)
+			return nil
+		case schemas.CustomKeyStoresListEntry_CreationDate:
+			v.CreationDate = new(time.Time)
+			return d.ReadTime(schemas.CustomKeyStoresListEntry_CreationDate, v.CreationDate)
+		case schemas.CustomKeyStoresListEntry_CustomKeyStoreId:
+			v.CustomKeyStoreId = new(string)
+			return d.ReadString(schemas.CustomKeyStoresListEntry_CustomKeyStoreId, v.CustomKeyStoreId)
+		case schemas.CustomKeyStoresListEntry_CustomKeyStoreName:
+			v.CustomKeyStoreName = new(string)
+			return d.ReadString(schemas.CustomKeyStoresListEntry_CustomKeyStoreName, v.CustomKeyStoreName)
+		case schemas.CustomKeyStoresListEntry_CustomKeyStoreType:
+			var ev string
+			if err := d.ReadString(schemas.CustomKeyStoresListEntry_CustomKeyStoreType, &ev); err != nil {
+				return err
+			}
+			v.CustomKeyStoreType = CustomKeyStoreType(ev)
+			return nil
+		case schemas.CustomKeyStoresListEntry_TrustAnchorCertificate:
+			v.TrustAnchorCertificate = new(string)
+			return d.ReadString(schemas.CustomKeyStoresListEntry_TrustAnchorCertificate, v.TrustAnchorCertificate)
+		case schemas.CustomKeyStoresListEntry_XksProxyConfiguration:
+			v.XksProxyConfiguration = &XksProxyConfigurationType{}
+			return v.XksProxyConfiguration.Deserialize(d)
+		}
+		return nil
+	})
+}
+
 // Use this structure to allow [cryptographic operations] in the grant only when the operation request meets
 // the specified constraints.
 //
@@ -304,6 +436,34 @@ type GrantConstraints struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GrantConstraints) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GrantConstraints)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GrantConstraints) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeEncryptionContextType(s, schemas.GrantConstraints_EncryptionContextEquals, v.EncryptionContextEquals)
+	serializeEncryptionContextType(s, schemas.GrantConstraints_EncryptionContextSubset, v.EncryptionContextSubset)
+	if v.SourceArn != nil {
+		s.WriteString(schemas.GrantConstraints_SourceArn, *v.SourceArn)
+	}
+}
+func (v *GrantConstraints) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.GrantConstraints, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.GrantConstraints_EncryptionContextEquals:
+			return deserializeEncryptionContextType(d, schemas.GrantConstraints_EncryptionContextEquals, &v.EncryptionContextEquals)
+		case schemas.GrantConstraints_EncryptionContextSubset:
+			return deserializeEncryptionContextType(d, schemas.GrantConstraints_EncryptionContextSubset, &v.EncryptionContextSubset)
+		case schemas.GrantConstraints_SourceArn:
+			v.SourceArn = new(string)
+			return d.ReadString(schemas.GrantConstraints_SourceArn, v.SourceArn)
+		}
+		return nil
+	})
+}
+
 // Contains information about a grant.
 type GrantListEntry struct {
 
@@ -358,6 +518,87 @@ type GrantListEntry struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GrantListEntry) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GrantListEntry)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GrantListEntry) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Constraints != nil {
+		s.WriteStruct(schemas.GrantListEntry_Constraints)
+		v.Constraints.SerializeMembers(s)
+		s.CloseStruct()
+	}
+	if v.CreationDate != nil {
+		s.WriteTime(schemas.GrantListEntry_CreationDate, *v.CreationDate)
+	}
+	if v.GrantId != nil {
+		s.WriteString(schemas.GrantListEntry_GrantId, *v.GrantId)
+	}
+	if v.GranteePrincipal != nil {
+		s.WriteString(schemas.GrantListEntry_GranteePrincipal, *v.GranteePrincipal)
+	}
+	if v.GranteeServicePrincipal != nil {
+		s.WriteString(schemas.GrantListEntry_GranteeServicePrincipal, *v.GranteeServicePrincipal)
+	}
+	if v.IssuingAccount != nil {
+		s.WriteString(schemas.GrantListEntry_IssuingAccount, *v.IssuingAccount)
+	}
+	if v.KeyId != nil {
+		s.WriteString(schemas.GrantListEntry_KeyId, *v.KeyId)
+	}
+	if v.Name != nil {
+		s.WriteString(schemas.GrantListEntry_Name, *v.Name)
+	}
+	serializeGrantOperationList(s, schemas.GrantListEntry_Operations, v.Operations)
+	if v.RetiringPrincipal != nil {
+		s.WriteString(schemas.GrantListEntry_RetiringPrincipal, *v.RetiringPrincipal)
+	}
+	if v.RetiringServicePrincipal != nil {
+		s.WriteString(schemas.GrantListEntry_RetiringServicePrincipal, *v.RetiringServicePrincipal)
+	}
+}
+func (v *GrantListEntry) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.GrantListEntry, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.GrantListEntry_Constraints:
+			v.Constraints = &GrantConstraints{}
+			return v.Constraints.Deserialize(d)
+		case schemas.GrantListEntry_CreationDate:
+			v.CreationDate = new(time.Time)
+			return d.ReadTime(schemas.GrantListEntry_CreationDate, v.CreationDate)
+		case schemas.GrantListEntry_GrantId:
+			v.GrantId = new(string)
+			return d.ReadString(schemas.GrantListEntry_GrantId, v.GrantId)
+		case schemas.GrantListEntry_GranteePrincipal:
+			v.GranteePrincipal = new(string)
+			return d.ReadString(schemas.GrantListEntry_GranteePrincipal, v.GranteePrincipal)
+		case schemas.GrantListEntry_GranteeServicePrincipal:
+			v.GranteeServicePrincipal = new(string)
+			return d.ReadString(schemas.GrantListEntry_GranteeServicePrincipal, v.GranteeServicePrincipal)
+		case schemas.GrantListEntry_IssuingAccount:
+			v.IssuingAccount = new(string)
+			return d.ReadString(schemas.GrantListEntry_IssuingAccount, v.IssuingAccount)
+		case schemas.GrantListEntry_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.GrantListEntry_KeyId, v.KeyId)
+		case schemas.GrantListEntry_Name:
+			v.Name = new(string)
+			return d.ReadString(schemas.GrantListEntry_Name, v.Name)
+		case schemas.GrantListEntry_Operations:
+			return deserializeGrantOperationList(d, schemas.GrantListEntry_Operations, &v.Operations)
+		case schemas.GrantListEntry_RetiringPrincipal:
+			v.RetiringPrincipal = new(string)
+			return d.ReadString(schemas.GrantListEntry_RetiringPrincipal, v.RetiringPrincipal)
+		case schemas.GrantListEntry_RetiringServicePrincipal:
+			v.RetiringServicePrincipal = new(string)
+			return d.ReadString(schemas.GrantListEntry_RetiringServicePrincipal, v.RetiringServicePrincipal)
+		}
+		return nil
+	})
+}
+
 // Contains usage information about the last time the KMS key was used for a
 // successful cryptographic operation.
 type KeyLastUsageData struct {
@@ -382,6 +623,50 @@ type KeyLastUsageData struct {
 	noSmithyDocumentSerde
 }
 
+func (v *KeyLastUsageData) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.KeyLastUsageData)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *KeyLastUsageData) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CloudTrailEventId != nil {
+		s.WriteString(schemas.KeyLastUsageData_CloudTrailEventId, *v.CloudTrailEventId)
+	}
+	if v.KmsRequestId != nil {
+		s.WriteString(schemas.KeyLastUsageData_KmsRequestId, *v.KmsRequestId)
+	}
+	if v.Operation != "" {
+		s.WriteString(schemas.KeyLastUsageData_Operation, string(v.Operation))
+	}
+	if v.Timestamp != nil {
+		s.WriteTime(schemas.KeyLastUsageData_Timestamp, *v.Timestamp)
+	}
+}
+func (v *KeyLastUsageData) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.KeyLastUsageData, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.KeyLastUsageData_CloudTrailEventId:
+			v.CloudTrailEventId = new(string)
+			return d.ReadString(schemas.KeyLastUsageData_CloudTrailEventId, v.CloudTrailEventId)
+		case schemas.KeyLastUsageData_KmsRequestId:
+			v.KmsRequestId = new(string)
+			return d.ReadString(schemas.KeyLastUsageData_KmsRequestId, v.KmsRequestId)
+		case schemas.KeyLastUsageData_Operation:
+			var ev string
+			if err := d.ReadString(schemas.KeyLastUsageData_Operation, &ev); err != nil {
+				return err
+			}
+			v.Operation = KeyLastUsageTrackingOperation(ev)
+			return nil
+		case schemas.KeyLastUsageData_Timestamp:
+			v.Timestamp = new(time.Time)
+			return d.ReadTime(schemas.KeyLastUsageData_Timestamp, v.Timestamp)
+		}
+		return nil
+	})
+}
+
 // Contains information about each entry in the key list.
 type KeyListEntry struct {
 
@@ -392,6 +677,34 @@ type KeyListEntry struct {
 	KeyId *string
 
 	noSmithyDocumentSerde
+}
+
+func (v *KeyListEntry) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.KeyListEntry)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *KeyListEntry) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyArn != nil {
+		s.WriteString(schemas.KeyListEntry_KeyArn, *v.KeyArn)
+	}
+	if v.KeyId != nil {
+		s.WriteString(schemas.KeyListEntry_KeyId, *v.KeyId)
+	}
+}
+func (v *KeyListEntry) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.KeyListEntry, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.KeyListEntry_KeyArn:
+			v.KeyArn = new(string)
+			return d.ReadString(schemas.KeyListEntry_KeyArn, v.KeyArn)
+		case schemas.KeyListEntry_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.KeyListEntry_KeyId, v.KeyId)
+		}
+		return nil
+	})
 }
 
 // Contains metadata about a KMS key.
@@ -576,6 +889,197 @@ type KeyMetadata struct {
 	noSmithyDocumentSerde
 }
 
+func (v *KeyMetadata) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.KeyMetadata)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *KeyMetadata) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.AWSAccountId != nil {
+		s.WriteString(schemas.KeyMetadata_AWSAccountId, *v.AWSAccountId)
+	}
+	if v.Arn != nil {
+		s.WriteString(schemas.KeyMetadata_Arn, *v.Arn)
+	}
+	if v.CloudHsmClusterId != nil {
+		s.WriteString(schemas.KeyMetadata_CloudHsmClusterId, *v.CloudHsmClusterId)
+	}
+	if v.CreationDate != nil {
+		s.WriteTime(schemas.KeyMetadata_CreationDate, *v.CreationDate)
+	}
+	if v.CurrentKeyMaterialId != nil {
+		s.WriteString(schemas.KeyMetadata_CurrentKeyMaterialId, *v.CurrentKeyMaterialId)
+	}
+	if v.CustomKeyStoreId != nil {
+		s.WriteString(schemas.KeyMetadata_CustomKeyStoreId, *v.CustomKeyStoreId)
+	}
+	if v.CustomerMasterKeySpec != "" {
+		s.WriteString(schemas.KeyMetadata_CustomerMasterKeySpec, string(v.CustomerMasterKeySpec))
+	}
+	if v.DeletionDate != nil {
+		s.WriteTime(schemas.KeyMetadata_DeletionDate, *v.DeletionDate)
+	}
+	if v.Description != nil {
+		s.WriteString(schemas.KeyMetadata_Description, *v.Description)
+	}
+	if v.Enabled != false {
+		s.WriteBool(schemas.KeyMetadata_Enabled, v.Enabled)
+	}
+	serializeEncryptionAlgorithmSpecList(s, schemas.KeyMetadata_EncryptionAlgorithms, v.EncryptionAlgorithms)
+	if v.ExpirationModel != "" {
+		s.WriteString(schemas.KeyMetadata_ExpirationModel, string(v.ExpirationModel))
+	}
+	serializeKeyAgreementAlgorithmSpecList(s, schemas.KeyMetadata_KeyAgreementAlgorithms, v.KeyAgreementAlgorithms)
+	if v.KeyId != nil {
+		s.WriteString(schemas.KeyMetadata_KeyId, *v.KeyId)
+	}
+	if v.KeyManager != "" {
+		s.WriteString(schemas.KeyMetadata_KeyManager, string(v.KeyManager))
+	}
+	if v.KeySpec != "" {
+		s.WriteString(schemas.KeyMetadata_KeySpec, string(v.KeySpec))
+	}
+	if v.KeyState != "" {
+		s.WriteString(schemas.KeyMetadata_KeyState, string(v.KeyState))
+	}
+	if v.KeyUsage != "" {
+		s.WriteString(schemas.KeyMetadata_KeyUsage, string(v.KeyUsage))
+	}
+	serializeMacAlgorithmSpecList(s, schemas.KeyMetadata_MacAlgorithms, v.MacAlgorithms)
+	if v.MultiRegion != nil {
+		s.WriteBool(schemas.KeyMetadata_MultiRegion, *v.MultiRegion)
+	}
+	if v.MultiRegionConfiguration != nil {
+		s.WriteStruct(schemas.KeyMetadata_MultiRegionConfiguration)
+		v.MultiRegionConfiguration.SerializeMembers(s)
+		s.CloseStruct()
+	}
+	if v.Origin != "" {
+		s.WriteString(schemas.KeyMetadata_Origin, string(v.Origin))
+	}
+	if v.PendingDeletionWindowInDays != nil {
+		s.WriteInt32(schemas.KeyMetadata_PendingDeletionWindowInDays, *v.PendingDeletionWindowInDays)
+	}
+	serializeSigningAlgorithmSpecList(s, schemas.KeyMetadata_SigningAlgorithms, v.SigningAlgorithms)
+	if v.ValidTo != nil {
+		s.WriteTime(schemas.KeyMetadata_ValidTo, *v.ValidTo)
+	}
+	if v.XksKeyConfiguration != nil {
+		s.WriteStruct(schemas.KeyMetadata_XksKeyConfiguration)
+		v.XksKeyConfiguration.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *KeyMetadata) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.KeyMetadata, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.KeyMetadata_AWSAccountId:
+			v.AWSAccountId = new(string)
+			return d.ReadString(schemas.KeyMetadata_AWSAccountId, v.AWSAccountId)
+		case schemas.KeyMetadata_Arn:
+			v.Arn = new(string)
+			return d.ReadString(schemas.KeyMetadata_Arn, v.Arn)
+		case schemas.KeyMetadata_CloudHsmClusterId:
+			v.CloudHsmClusterId = new(string)
+			return d.ReadString(schemas.KeyMetadata_CloudHsmClusterId, v.CloudHsmClusterId)
+		case schemas.KeyMetadata_CreationDate:
+			v.CreationDate = new(time.Time)
+			return d.ReadTime(schemas.KeyMetadata_CreationDate, v.CreationDate)
+		case schemas.KeyMetadata_CurrentKeyMaterialId:
+			v.CurrentKeyMaterialId = new(string)
+			return d.ReadString(schemas.KeyMetadata_CurrentKeyMaterialId, v.CurrentKeyMaterialId)
+		case schemas.KeyMetadata_CustomKeyStoreId:
+			v.CustomKeyStoreId = new(string)
+			return d.ReadString(schemas.KeyMetadata_CustomKeyStoreId, v.CustomKeyStoreId)
+		case schemas.KeyMetadata_CustomerMasterKeySpec:
+			var ev string
+			if err := d.ReadString(schemas.KeyMetadata_CustomerMasterKeySpec, &ev); err != nil {
+				return err
+			}
+			v.CustomerMasterKeySpec = CustomerMasterKeySpec(ev)
+			return nil
+		case schemas.KeyMetadata_DeletionDate:
+			v.DeletionDate = new(time.Time)
+			return d.ReadTime(schemas.KeyMetadata_DeletionDate, v.DeletionDate)
+		case schemas.KeyMetadata_Description:
+			v.Description = new(string)
+			return d.ReadString(schemas.KeyMetadata_Description, v.Description)
+		case schemas.KeyMetadata_Enabled:
+			return d.ReadBool(schemas.KeyMetadata_Enabled, &v.Enabled)
+		case schemas.KeyMetadata_EncryptionAlgorithms:
+			return deserializeEncryptionAlgorithmSpecList(d, schemas.KeyMetadata_EncryptionAlgorithms, &v.EncryptionAlgorithms)
+		case schemas.KeyMetadata_ExpirationModel:
+			var ev string
+			if err := d.ReadString(schemas.KeyMetadata_ExpirationModel, &ev); err != nil {
+				return err
+			}
+			v.ExpirationModel = ExpirationModelType(ev)
+			return nil
+		case schemas.KeyMetadata_KeyAgreementAlgorithms:
+			return deserializeKeyAgreementAlgorithmSpecList(d, schemas.KeyMetadata_KeyAgreementAlgorithms, &v.KeyAgreementAlgorithms)
+		case schemas.KeyMetadata_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.KeyMetadata_KeyId, v.KeyId)
+		case schemas.KeyMetadata_KeyManager:
+			var ev string
+			if err := d.ReadString(schemas.KeyMetadata_KeyManager, &ev); err != nil {
+				return err
+			}
+			v.KeyManager = KeyManagerType(ev)
+			return nil
+		case schemas.KeyMetadata_KeySpec:
+			var ev string
+			if err := d.ReadString(schemas.KeyMetadata_KeySpec, &ev); err != nil {
+				return err
+			}
+			v.KeySpec = KeySpec(ev)
+			return nil
+		case schemas.KeyMetadata_KeyState:
+			var ev string
+			if err := d.ReadString(schemas.KeyMetadata_KeyState, &ev); err != nil {
+				return err
+			}
+			v.KeyState = KeyState(ev)
+			return nil
+		case schemas.KeyMetadata_KeyUsage:
+			var ev string
+			if err := d.ReadString(schemas.KeyMetadata_KeyUsage, &ev); err != nil {
+				return err
+			}
+			v.KeyUsage = KeyUsageType(ev)
+			return nil
+		case schemas.KeyMetadata_MacAlgorithms:
+			return deserializeMacAlgorithmSpecList(d, schemas.KeyMetadata_MacAlgorithms, &v.MacAlgorithms)
+		case schemas.KeyMetadata_MultiRegion:
+			v.MultiRegion = new(bool)
+			return d.ReadBool(schemas.KeyMetadata_MultiRegion, v.MultiRegion)
+		case schemas.KeyMetadata_MultiRegionConfiguration:
+			v.MultiRegionConfiguration = &MultiRegionConfiguration{}
+			return v.MultiRegionConfiguration.Deserialize(d)
+		case schemas.KeyMetadata_Origin:
+			var ev string
+			if err := d.ReadString(schemas.KeyMetadata_Origin, &ev); err != nil {
+				return err
+			}
+			v.Origin = OriginType(ev)
+			return nil
+		case schemas.KeyMetadata_PendingDeletionWindowInDays:
+			v.PendingDeletionWindowInDays = new(int32)
+			return d.ReadInt32(schemas.KeyMetadata_PendingDeletionWindowInDays, v.PendingDeletionWindowInDays)
+		case schemas.KeyMetadata_SigningAlgorithms:
+			return deserializeSigningAlgorithmSpecList(d, schemas.KeyMetadata_SigningAlgorithms, &v.SigningAlgorithms)
+		case schemas.KeyMetadata_ValidTo:
+			v.ValidTo = new(time.Time)
+			return d.ReadTime(schemas.KeyMetadata_ValidTo, v.ValidTo)
+		case schemas.KeyMetadata_XksKeyConfiguration:
+			v.XksKeyConfiguration = &XksKeyConfigurationType{}
+			return v.XksKeyConfiguration.Deserialize(d)
+		}
+		return nil
+	})
+}
+
 // Describes the configuration of this multi-Region key. This field appears only
 // when the KMS key is a primary or replica of a multi-Region key.
 //
@@ -596,6 +1100,43 @@ type MultiRegionConfiguration struct {
 	noSmithyDocumentSerde
 }
 
+func (v *MultiRegionConfiguration) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.MultiRegionConfiguration)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *MultiRegionConfiguration) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.MultiRegionKeyType != "" {
+		s.WriteString(schemas.MultiRegionConfiguration_MultiRegionKeyType, string(v.MultiRegionKeyType))
+	}
+	if v.PrimaryKey != nil {
+		s.WriteStruct(schemas.MultiRegionConfiguration_PrimaryKey)
+		v.PrimaryKey.SerializeMembers(s)
+		s.CloseStruct()
+	}
+	serializeMultiRegionKeyList(s, schemas.MultiRegionConfiguration_ReplicaKeys, v.ReplicaKeys)
+}
+func (v *MultiRegionConfiguration) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.MultiRegionConfiguration, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.MultiRegionConfiguration_MultiRegionKeyType:
+			var ev string
+			if err := d.ReadString(schemas.MultiRegionConfiguration_MultiRegionKeyType, &ev); err != nil {
+				return err
+			}
+			v.MultiRegionKeyType = MultiRegionKeyType(ev)
+			return nil
+		case schemas.MultiRegionConfiguration_PrimaryKey:
+			v.PrimaryKey = &MultiRegionKey{}
+			return v.PrimaryKey.Deserialize(d)
+		case schemas.MultiRegionConfiguration_ReplicaKeys:
+			return deserializeMultiRegionKeyList(d, schemas.MultiRegionConfiguration_ReplicaKeys, &v.ReplicaKeys)
+		}
+		return nil
+	})
+}
+
 // Describes the primary or replica key in a multi-Region key.
 type MultiRegionKey struct {
 
@@ -607,6 +1148,34 @@ type MultiRegionKey struct {
 	Region *string
 
 	noSmithyDocumentSerde
+}
+
+func (v *MultiRegionKey) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.MultiRegionKey)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *MultiRegionKey) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Arn != nil {
+		s.WriteString(schemas.MultiRegionKey_Arn, *v.Arn)
+	}
+	if v.Region != nil {
+		s.WriteString(schemas.MultiRegionKey_Region, *v.Region)
+	}
+}
+func (v *MultiRegionKey) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.MultiRegionKey, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.MultiRegionKey_Arn:
+			v.Arn = new(string)
+			return d.ReadString(schemas.MultiRegionKey_Arn, v.Arn)
+		case schemas.MultiRegionKey_Region:
+			v.Region = new(string)
+			return d.ReadString(schemas.MultiRegionKey_Region, v.Region)
+		}
+		return nil
+	})
 }
 
 // Contains information about the party that receives the response from the API
@@ -631,6 +1200,37 @@ type RecipientInfo struct {
 	KeyEncryptionAlgorithm KeyEncryptionMechanism
 
 	noSmithyDocumentSerde
+}
+
+func (v *RecipientInfo) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.RecipientInfo)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *RecipientInfo) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.AttestationDocument != nil {
+		s.WriteBlob(schemas.RecipientInfo_AttestationDocument, v.AttestationDocument)
+	}
+	if v.KeyEncryptionAlgorithm != "" {
+		s.WriteString(schemas.RecipientInfo_KeyEncryptionAlgorithm, string(v.KeyEncryptionAlgorithm))
+	}
+}
+func (v *RecipientInfo) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.RecipientInfo, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.RecipientInfo_AttestationDocument:
+			return d.ReadBlob(schemas.RecipientInfo_AttestationDocument, &v.AttestationDocument)
+		case schemas.RecipientInfo_KeyEncryptionAlgorithm:
+			var ev string
+			if err := d.ReadString(schemas.RecipientInfo_KeyEncryptionAlgorithm, &ev); err != nil {
+				return err
+			}
+			v.KeyEncryptionAlgorithm = KeyEncryptionMechanism(ev)
+			return nil
+		}
+		return nil
+	})
 }
 
 // Each entry contains information about one of the key materials associated with
@@ -699,6 +1299,92 @@ type RotationsListEntry struct {
 	noSmithyDocumentSerde
 }
 
+func (v *RotationsListEntry) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.RotationsListEntry)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *RotationsListEntry) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.ExpirationModel != "" {
+		s.WriteString(schemas.RotationsListEntry_ExpirationModel, string(v.ExpirationModel))
+	}
+	if v.ImportState != "" {
+		s.WriteString(schemas.RotationsListEntry_ImportState, string(v.ImportState))
+	}
+	if v.KeyId != nil {
+		s.WriteString(schemas.RotationsListEntry_KeyId, *v.KeyId)
+	}
+	if v.KeyMaterialDescription != nil {
+		s.WriteString(schemas.RotationsListEntry_KeyMaterialDescription, *v.KeyMaterialDescription)
+	}
+	if v.KeyMaterialId != nil {
+		s.WriteString(schemas.RotationsListEntry_KeyMaterialId, *v.KeyMaterialId)
+	}
+	if v.KeyMaterialState != "" {
+		s.WriteString(schemas.RotationsListEntry_KeyMaterialState, string(v.KeyMaterialState))
+	}
+	if v.RotationDate != nil {
+		s.WriteTime(schemas.RotationsListEntry_RotationDate, *v.RotationDate)
+	}
+	if v.RotationType != "" {
+		s.WriteString(schemas.RotationsListEntry_RotationType, string(v.RotationType))
+	}
+	if v.ValidTo != nil {
+		s.WriteTime(schemas.RotationsListEntry_ValidTo, *v.ValidTo)
+	}
+}
+func (v *RotationsListEntry) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.RotationsListEntry, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.RotationsListEntry_ExpirationModel:
+			var ev string
+			if err := d.ReadString(schemas.RotationsListEntry_ExpirationModel, &ev); err != nil {
+				return err
+			}
+			v.ExpirationModel = ExpirationModelType(ev)
+			return nil
+		case schemas.RotationsListEntry_ImportState:
+			var ev string
+			if err := d.ReadString(schemas.RotationsListEntry_ImportState, &ev); err != nil {
+				return err
+			}
+			v.ImportState = ImportState(ev)
+			return nil
+		case schemas.RotationsListEntry_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.RotationsListEntry_KeyId, v.KeyId)
+		case schemas.RotationsListEntry_KeyMaterialDescription:
+			v.KeyMaterialDescription = new(string)
+			return d.ReadString(schemas.RotationsListEntry_KeyMaterialDescription, v.KeyMaterialDescription)
+		case schemas.RotationsListEntry_KeyMaterialId:
+			v.KeyMaterialId = new(string)
+			return d.ReadString(schemas.RotationsListEntry_KeyMaterialId, v.KeyMaterialId)
+		case schemas.RotationsListEntry_KeyMaterialState:
+			var ev string
+			if err := d.ReadString(schemas.RotationsListEntry_KeyMaterialState, &ev); err != nil {
+				return err
+			}
+			v.KeyMaterialState = KeyMaterialState(ev)
+			return nil
+		case schemas.RotationsListEntry_RotationDate:
+			v.RotationDate = new(time.Time)
+			return d.ReadTime(schemas.RotationsListEntry_RotationDate, v.RotationDate)
+		case schemas.RotationsListEntry_RotationType:
+			var ev string
+			if err := d.ReadString(schemas.RotationsListEntry_RotationType, &ev); err != nil {
+				return err
+			}
+			v.RotationType = RotationType(ev)
+			return nil
+		case schemas.RotationsListEntry_ValidTo:
+			v.ValidTo = new(time.Time)
+			return d.ReadTime(schemas.RotationsListEntry_ValidTo, v.ValidTo)
+		}
+		return nil
+	})
+}
+
 // A key-value pair. A tag consists of a tag key and a tag value. Tag keys and tag
 // values are both required, but tag values can be empty (null) strings.
 //
@@ -724,6 +1410,34 @@ type Tag struct {
 	noSmithyDocumentSerde
 }
 
+func (v *Tag) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.Tag)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *Tag) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.TagKey != nil {
+		s.WriteString(schemas.Tag_TagKey, *v.TagKey)
+	}
+	if v.TagValue != nil {
+		s.WriteString(schemas.Tag_TagValue, *v.TagValue)
+	}
+}
+func (v *Tag) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.Tag, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.Tag_TagKey:
+			v.TagKey = new(string)
+			return d.ReadString(schemas.Tag_TagKey, v.TagKey)
+		case schemas.Tag_TagValue:
+			v.TagValue = new(string)
+			return d.ReadString(schemas.Tag_TagValue, v.TagValue)
+		}
+		return nil
+	})
+}
+
 // Information about the [external key]that is associated with a KMS key in an external key
 // store.
 //
@@ -747,6 +1461,28 @@ type XksKeyConfigurationType struct {
 	noSmithyDocumentSerde
 }
 
+func (v *XksKeyConfigurationType) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.XksKeyConfigurationType)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *XksKeyConfigurationType) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.Id != nil {
+		s.WriteString(schemas.XksKeyConfigurationType_Id, *v.Id)
+	}
+}
+func (v *XksKeyConfigurationType) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.XksKeyConfigurationType, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.XksKeyConfigurationType_Id:
+			v.Id = new(string)
+			return d.ReadString(schemas.XksKeyConfigurationType_Id, v.Id)
+		}
+		return nil
+	})
+}
+
 // KMS uses the authentication credential to sign requests that it sends to the
 // external key store proxy (XKS proxy) on your behalf. You establish these
 // credentials on your external key store proxy and report them to KMS.
@@ -766,6 +1502,34 @@ type XksProxyAuthenticationCredentialType struct {
 	RawSecretAccessKey *string
 
 	noSmithyDocumentSerde
+}
+
+func (v *XksProxyAuthenticationCredentialType) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.XksProxyAuthenticationCredentialType)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *XksProxyAuthenticationCredentialType) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.AccessKeyId != nil {
+		s.WriteString(schemas.XksProxyAuthenticationCredentialType_AccessKeyId, *v.AccessKeyId)
+	}
+	if v.RawSecretAccessKey != nil {
+		s.WriteString(schemas.XksProxyAuthenticationCredentialType_RawSecretAccessKey, *v.RawSecretAccessKey)
+	}
+}
+func (v *XksProxyAuthenticationCredentialType) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.XksProxyAuthenticationCredentialType, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.XksProxyAuthenticationCredentialType_AccessKeyId:
+			v.AccessKeyId = new(string)
+			return d.ReadString(schemas.XksProxyAuthenticationCredentialType_AccessKeyId, v.AccessKeyId)
+		case schemas.XksProxyAuthenticationCredentialType_RawSecretAccessKey:
+			v.RawSecretAccessKey = new(string)
+			return d.ReadString(schemas.XksProxyAuthenticationCredentialType_RawSecretAccessKey, v.RawSecretAccessKey)
+		}
+		return nil
+	})
 }
 
 // Detailed information about the external key store proxy (XKS proxy). Your
@@ -806,6 +1570,62 @@ type XksProxyConfigurationType struct {
 	VpcEndpointServiceOwner *string
 
 	noSmithyDocumentSerde
+}
+
+func (v *XksProxyConfigurationType) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.XksProxyConfigurationType)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *XksProxyConfigurationType) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.AccessKeyId != nil {
+		s.WriteString(schemas.XksProxyConfigurationType_AccessKeyId, *v.AccessKeyId)
+	}
+	if v.Connectivity != "" {
+		s.WriteString(schemas.XksProxyConfigurationType_Connectivity, string(v.Connectivity))
+	}
+	if v.UriEndpoint != nil {
+		s.WriteString(schemas.XksProxyConfigurationType_UriEndpoint, *v.UriEndpoint)
+	}
+	if v.UriPath != nil {
+		s.WriteString(schemas.XksProxyConfigurationType_UriPath, *v.UriPath)
+	}
+	if v.VpcEndpointServiceName != nil {
+		s.WriteString(schemas.XksProxyConfigurationType_VpcEndpointServiceName, *v.VpcEndpointServiceName)
+	}
+	if v.VpcEndpointServiceOwner != nil {
+		s.WriteString(schemas.XksProxyConfigurationType_VpcEndpointServiceOwner, *v.VpcEndpointServiceOwner)
+	}
+}
+func (v *XksProxyConfigurationType) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.XksProxyConfigurationType, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.XksProxyConfigurationType_AccessKeyId:
+			v.AccessKeyId = new(string)
+			return d.ReadString(schemas.XksProxyConfigurationType_AccessKeyId, v.AccessKeyId)
+		case schemas.XksProxyConfigurationType_Connectivity:
+			var ev string
+			if err := d.ReadString(schemas.XksProxyConfigurationType_Connectivity, &ev); err != nil {
+				return err
+			}
+			v.Connectivity = XksProxyConnectivityType(ev)
+			return nil
+		case schemas.XksProxyConfigurationType_UriEndpoint:
+			v.UriEndpoint = new(string)
+			return d.ReadString(schemas.XksProxyConfigurationType_UriEndpoint, v.UriEndpoint)
+		case schemas.XksProxyConfigurationType_UriPath:
+			v.UriPath = new(string)
+			return d.ReadString(schemas.XksProxyConfigurationType_UriPath, v.UriPath)
+		case schemas.XksProxyConfigurationType_VpcEndpointServiceName:
+			v.VpcEndpointServiceName = new(string)
+			return d.ReadString(schemas.XksProxyConfigurationType_VpcEndpointServiceName, v.VpcEndpointServiceName)
+		case schemas.XksProxyConfigurationType_VpcEndpointServiceOwner:
+			v.VpcEndpointServiceOwner = new(string)
+			return d.ReadString(schemas.XksProxyConfigurationType_VpcEndpointServiceOwner, v.VpcEndpointServiceOwner)
+		}
+		return nil
+	})
 }
 
 type noSmithyDocumentSerde = smithydocument.NoSerde
