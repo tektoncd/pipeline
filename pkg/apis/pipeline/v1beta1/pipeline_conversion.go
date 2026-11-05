@@ -146,7 +146,7 @@ func (ps *PipelineSpec) ConvertFrom(ctx context.Context, source *v1.PipelineSpec
 	return nil
 }
 
-func (pt PipelineTask) convertTo(ctx context.Context, sink *v1.PipelineTask, meta *metav1.ObjectMeta) error {
+func (pt *PipelineTask) convertTo(ctx context.Context, sink *v1.PipelineTask, meta *metav1.ObjectMeta) error {
 	sink.Name = pt.Name
 	sink.DisplayName = pt.DisplayName
 	sink.Description = pt.Description
