@@ -106,6 +106,16 @@ func TestPipelineRef_Invalid(t *testing.T) {
 			Message: `feature flag enable-concise-resolver-syntax should be set to true to use concise resolver syntax`,
 		}),
 	}, {
+		name: "pipelineRef with resolver and k8s style name without enable-concise-resolver-syntax",
+		ref: &v1beta1.PipelineRef{
+			Name: "foo",
+			ResolverRef: v1beta1.ResolverRef{
+				Resolver: "git",
+			},
+		},
+		wantErr:     apis.ErrMultipleOneOf("name", "resolver"),
+		withContext: cfgtesting.EnableBetaAPIFields,
+	}, {
 		name: "pipelineRef without enable-concise-resolver-syntax",
 		ref:  &v1beta1.PipelineRef{Name: "https://foo.com/bar", ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
 		wantErr: &apis.FieldError{

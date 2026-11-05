@@ -676,6 +676,17 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 		},
 		configMap: map[string]string{"enable-concise-resolver-syntax": "true"},
 	}, {
+		name: "pipeline task - taskRef with resolver and k8s style name without enable-concise-resolver-syntax",
+		task: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo", ResolverRef: ResolverRef{Resolver: "git"}},
+		},
+		expectedError: apis.FieldError{
+			Message: `expected exactly one, got both`,
+			Paths:   []string{"taskRef.name", "taskRef.resolver"},
+		},
+		configMap: map[string]string{"enable-api-fields": "beta"},
+	}, {
 		name: "pipeline task - taskRef with url-like name without enable-concise-resolver-syntax",
 		task: PipelineTask{
 			Name:    "foo",
