@@ -30,6 +30,7 @@ on the shared Tekton infrastructure cluster.
 
 1. On successful completion, a draft GitHub release is created automatically.
    Visit https://github.com/tektoncd/pipeline/releases and review the draft:
+   - Set the [release name](#release-names)
    - Manually add upgrade and deprecation notices
    - Double-check the list of commits matches expectations
    - Un-check "This is a pre-release"
@@ -116,11 +117,13 @@ git push <your-fork> HEAD:<new-branch>
 
 ## Release Names
 
+Get an API key from [thecatapi.com](https://thecatapi.com).
+
 Choose a name following the pattern "< cat breed > < famous robot >".
 For LTS releases, add "LTS" suffix. Generate a name:
 
 ```bash
-go run tekton/release_names.go
+THECATAPIKEY=<api key> go run tekton/release_names.go
 ```
 
 ## Infrastructure
