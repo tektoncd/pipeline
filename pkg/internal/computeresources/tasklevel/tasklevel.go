@@ -23,8 +23,8 @@ import (
 )
 
 // ApplyTaskLevelComputeResources applies the task-level compute resource requirements to each Step.
-func ApplyTaskLevelComputeResources(steps []v1.Step, computeResources *corev1.ResourceRequirements) {
-	if computeResources == nil {
+func ApplyTaskLevelComputeResources(steps []v1.Step, computeResources *v1.ComputeResourceRequirements) {
+	if computeResources == nil || computeResources.IsZero() {
 		return
 	}
 	if computeResources.Requests == nil && computeResources.Limits == nil {
