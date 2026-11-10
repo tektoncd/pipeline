@@ -37,6 +37,7 @@ type Config struct {
 	Events                 *Events
 	Tracing                *Tracing
 	WaitExponentialBackoff *WaitExponentialBackoff
+	ArtifactStorage        *ArtifactStorage
 }
 
 // FromContext extracts a Config from the provided context.
@@ -63,6 +64,12 @@ func FromContextOrDefaults(ctx context.Context) *Config {
 		Events:                 DefaultEvents.DeepCopy(),
 		Tracing:                DefaultTracing.DeepCopy(),
 		WaitExponentialBackoff: DefaultWaitExponentialBackoff.DeepCopy(),
+		ArtifactStorage: &ArtifactStorage{
+			Backend:            DefaultBackend,
+			InlineThreshold:    DefaultInlineThreshold,
+			OCIAttachReferrers: true,
+			OCITagPattern:      DefaultTagPattern,
+		},
 	}
 }
 
@@ -92,6 +99,7 @@ func NewStore(logger configmap.Logger, onAfterStore ...func(name string, value i
 				GetEventsConfigName():                 NewEventsFromConfigMap,
 				GetTracingConfigName():                NewTracingFromConfigMap,
 				GetWaitExponentialBackoffConfigName(): NewWaitExponentialBackoffFromConfigMap,
+				GetArtifactStorageConfigName():        NewArtifactStorageFromConfigMap,
 			},
 			onAfterStore...,
 		),
@@ -136,6 +144,15 @@ func (s *Store) Load() *Config {
 	if waitExponentialBackoff == nil {
 		waitExponentialBackoff = DefaultWaitExponentialBackoff.DeepCopy()
 	}
+	artifactStorage := s.UntypedLoad(GetArtifactStorageConfigName())
+	if artifactStorage == nil {
+		artifactStorage = &ArtifactStorage{
+			Backend:            DefaultBackend,
+			InlineThreshold:    DefaultInlineThreshold,
+			OCIAttachReferrers: true,
+			OCITagPattern:      DefaultTagPattern,
+		}
+	}
 
 	return &Config{
 		Defaults:               defaults.(*Defaults).DeepCopy(),
@@ -145,5 +162,6 @@ func (s *Store) Load() *Config {
 		SpireConfig:            spireconfig.(*sc.SpireConfig).DeepCopy(),
 		Events:                 events.(*Events).DeepCopy(),
 		WaitExponentialBackoff: waitExponentialBackoff.(*WaitExponentialBackoff).DeepCopy(),
+		ArtifactStorage:        artifactStorage.(*ArtifactStorage).DeepCopy(),
 	}
 }
