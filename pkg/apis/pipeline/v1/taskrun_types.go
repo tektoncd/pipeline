@@ -352,6 +352,9 @@ type TaskRunStatusFields struct {
 
 	// TaskSpec contains the Task spec used to instantiate the run, without documentation-only descriptions by default.
 	// Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation.
+	// See Task.spec (API version: tekton.dev/v1)
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 
 	// Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).
