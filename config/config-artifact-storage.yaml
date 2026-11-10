@@ -1,0 +1,71 @@
+# Copyright 2026 The Tekton Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-artifact-storage
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+data:
+  _example: |
+    ################################
+    #                              #
+    #    EXAMPLE CONFIGURATION     #
+    #                              #
+    ################################
+
+    # Enable content artifact storage (default: "false").
+    # When disabled, content artifacts are digested and recorded in TaskRun
+    # status but not uploaded to a backend.
+    # NOTE: If oci-repository is set, enabled must be "true". Creating or
+    # updating Tasks/Pipelines that use artifacts will be rejected when
+    # oci-repository is non-empty and enabled is "false".
+    # enabled: "true"
+
+    # Backend type (default: "oci").
+    # backend: "oci"
+
+    # Artifacts smaller than this (in bytes, tar.gz size) may be stored
+    # inline in the step termination message / TaskRun status instead of
+    # being uploaded to the backend (default: "512", ceiling: "1024").
+    # inline-threshold: "512"
+
+    # --- OCI-specific configuration ---
+
+    # Default OCI repository for artifact staging (task-to-task passing).
+    # Required when backend is "oci"
+    # oci-repository: "registry.example.com/tekton/artifacts"
+
+    # Allow plain HTTP for the OCI registry (for local/dev registries) (default: "false").
+    # insecure: "false"
+
+    # Secret containing OCI registry credentials (kubernetes.io/dockerconfigjson).
+    # If not set, ServiceAccount imagePullSecrets are used.
+    # oci.credentialsSecret: "tekton-artifact-oci-creds"
+
+    # Attach output artifacts as OCI referrers to subject artifacts.
+    # Referrers are pushed to the subject's repository (same-repo constraint) (default: "true").
+    # oci.attachReferrers: "true"
+
+    # Tag pattern for artifact manifests in oci-repository.
+    # Variables: {{namespace}}, {{pipelinerun}}, {{taskrun}}, {{artifact}}
+    # Default: "{{namespace}}.{{taskrun}}.{{artifact}}"
+    # oci.tagPattern: "{{namespace}}.{{taskrun}}.{{artifact}}"
+
+    # Create a root OCI Index per PipelineRun and attach all artifacts
+    # as referrers to it. Useful when there is no subject artifact (default: "false").
+    # oci.groupByPipelineRun: "false"

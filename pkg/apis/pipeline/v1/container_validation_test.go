@@ -678,6 +678,22 @@ func TestStepValidateErrorWithStepActionRef(t *testing.T) {
 				Message: "results cannot be used with Ref",
 				Paths:   []string{"results"},
 			},
+		}, {
+			name: "Cannot use artifacts with Ref",
+			Step: v1.Step{
+				Ref: &v1.Ref{
+					Name: "stepAction",
+				},
+				Artifacts: &v1.StepArtifacts{
+					Outputs: []v1.ArtifactDeclaration{
+						{Name: "image", Type: v1.ArtifactTypeReference},
+					},
+				},
+			},
+			expectedError: apis.FieldError{
+				Message: "artifacts cannot be used with Ref",
+				Paths:   []string{"artifacts"},
+			},
 		},
 	}
 	for _, st := range tests {

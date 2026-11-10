@@ -746,6 +746,27 @@ spec:
                       Params and from the output of previous tasks.
                     type: object
                     properties:
+                      artifacts:
+                        description: Artifacts configures artifact bindings for this task.
+                        type: object
+                        properties:
+                          inputs:
+                            description: Inputs binds artifact inputs from other tasks' outputs.
+                            type: array
+                            items:
+                              description: PipelineTaskArtifactBinding binds an artifact input to an output from another task.
+                              type: object
+                              required:
+                                - from
+                                - name
+                              properties:
+                                from:
+                                  description: 'From references an output from another task: "tasks.<taskName>.outputs.<artifactName>"'
+                                  type: string
+                                name:
+                                  description: Name matches the artifact input name in the referenced Task.
+                                  type: string
+                            x-kubernetes-list-type: atomic
                       description:
                         description: |-
                           Description is the description of this task within the context of a Pipeline.
@@ -1089,6 +1110,27 @@ spec:
                       Params and from the output of previous tasks.
                     type: object
                     properties:
+                      artifacts:
+                        description: Artifacts configures artifact bindings for this task.
+                        type: object
+                        properties:
+                          inputs:
+                            description: Inputs binds artifact inputs from other tasks' outputs.
+                            type: array
+                            items:
+                              description: PipelineTaskArtifactBinding binds an artifact input to an output from another task.
+                              type: object
+                              required:
+                                - from
+                                - name
+                              properties:
+                                from:
+                                  description: 'From references an output from another task: "tasks.<taskName>.outputs.<artifactName>"'
+                                  type: string
+                                name:
+                                  description: Name matches the artifact input name in the referenced Task.
+                                  type: string
+                            x-kubernetes-list-type: atomic
                       description:
                         description: |-
                           Description is the description of this task within the context of a Pipeline.
