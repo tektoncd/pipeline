@@ -5319,6 +5319,61 @@ func TestPropagateArtifacts(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "propagate artifacts outputs uri and digest fields",
+			resolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Name:    "use-uri-and-digest",
+								Command: []string{"cosign", "verify", "$(tasks.pt1.outputs.image.uri)"},
+								Args:    []string{"--expected-digest", "$(tasks.pt1.outputs.image.digest)"},
+							},
+						},
+					},
+				},
+			},
+			runStates: resources.PipelineRunState{
+				{
+					PipelineTask: &v1.PipelineTask{
+						Name: "pt1",
+					},
+					TaskRuns: []*v1.TaskRun{
+						{
+							Status: v1.TaskRunStatus{
+								Status: duckv1.Status{
+									Conditions: duckv1.Conditions{
+										{
+											Type:   apis.ConditionSucceeded,
+											Status: corev1.ConditionTrue,
+										},
+									},
+								},
+								TaskRunStatusFields: v1.TaskRunStatusFields{
+									Artifacts: &v1.Artifacts{
+										Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha256": "b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"}, Uri: "registry.example.com/myapp@sha256:b35caccc"}}}},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Name:    "use-uri-and-digest",
+								Command: []string{"cosign", "verify", "registry.example.com/myapp@sha256:b35caccc"},
+								Args:    []string{"--expected-digest", "sha256:b35cacccfdb1e24dc497d15d553891345fd155713ffe647c281c583269eaaae0"},
+							},
+						},
+					},
+				},
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			err := resources.PropagateArtifacts(tt.resolvedTask, tt.runStates)

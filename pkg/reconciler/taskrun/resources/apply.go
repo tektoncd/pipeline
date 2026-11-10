@@ -18,6 +18,7 @@ package resources
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -641,7 +642,78 @@ func getTaskResultReplacements(spec *v1.TaskSpec) map[string]string {
 	return stringReplacements
 }
 
-// ApplyArtifacts replaces the occurrences of artifacts.path and step.artifacts.path with the absolute tekton internal path
+// ApplyArtifactDeclarationPaths replaces artifact variable references with their
+// resolved values based on TaskSpec.Artifacts declarations.
+//   - $(inputs.<name>.path)   → /tekton/artifacts/inputs/<name>
+//   - $(outputs.<name>.path)  → /tekton/artifacts/outputs/<name>       (content)
+//   - $(outputs.<name>.uri)   → /tekton/artifacts/outputs/<name>.uri   (reference)
+//   - $(inputs.<name>.uri)    → resolved URI from upstream artifact output
+//   - $(inputs.<name>.digest) → resolved digest from upstream artifact output
+//
+// The resolvedInputsJSON is the serialized []ArtifactInput from the
+// "tekton.dev/artifact-inputs" TaskRun annotation, populated by the
+// PipelineRun reconciler when wiring artifact bindings. It may be empty
+// for standalone TaskRuns or tasks without artifact input bindings.
+func ApplyArtifactDeclarationPaths(spec *v1.TaskSpec, resolvedInputsJSON string) *v1.TaskSpec {
+	if spec.Artifacts == nil {
+		return spec
+	}
+
+	stepArtifactIndex := map[string]v1.ArtifactDeclaration{}
+	for i := range spec.Steps {
+		if spec.Steps[i].Artifacts != nil {
+			for _, ao := range spec.Steps[i].Artifacts.Outputs {
+				key := spec.Steps[i].Name + "." + ao.Name
+				stepArtifactIndex[key] = ao
+			}
+		}
+	}
+
+	stringReplacements := map[string]string{}
+	for _, input := range spec.Artifacts.Inputs {
+		stringReplacements[fmt.Sprintf("inputs.%s.path", input.Name)] = filepath.Join(pipeline.ArtifactsDir, "inputs", input.Name)
+	}
+	for _, output := range spec.Artifacts.Outputs {
+		outputType := output.Type
+		if output.Value != "" {
+			if matches := artifactref.StepArtifactValueRegex.FindStringSubmatch(output.Value); len(matches) == 3 {
+				key := matches[1] + "." + matches[2]
+				if stepArt, ok := stepArtifactIndex[key]; ok {
+					if outputType == "" {
+						outputType = stepArt.Type
+					}
+				}
+			}
+		}
+		if outputType == v1.ArtifactTypeReference {
+			stringReplacements[fmt.Sprintf("outputs.%s.uri", output.Name)] = filepath.Join(pipeline.ArtifactsDir, "outputs", output.Name+".uri")
+		} else {
+			stringReplacements[fmt.Sprintf("outputs.%s.path", output.Name)] = filepath.Join(pipeline.ArtifactsDir, "outputs", output.Name)
+		}
+	}
+
+	if resolvedInputsJSON != "" {
+		type artifactInput struct {
+			Name   string            `json:"name"`
+			URI    string            `json:"uri,omitempty"`
+			Digest map[string]string `json:"digest,omitempty"`
+		}
+		var inputs []artifactInput
+		if err := json.Unmarshal([]byte(resolvedInputsJSON), &inputs); err == nil {
+			for _, input := range inputs {
+				if input.URI != "" {
+					stringReplacements[fmt.Sprintf("inputs.%s.uri", input.Name)] = input.URI
+				}
+				if sha, ok := input.Digest["sha256"]; ok {
+					stringReplacements[fmt.Sprintf("inputs.%s.digest", input.Name)] = "sha256:" + sha
+				}
+			}
+		}
+	}
+
+	return ApplyReplacements(spec, stringReplacements, map[string][]string{}, map[string]map[string]string{})
+}
+
 func ApplyArtifacts(spec *v1.TaskSpec) *v1.TaskSpec {
 	for i := range spec.Steps {
 		stringReplacements := getArtifactReplacements(spec.Steps[i], i)
@@ -655,6 +727,16 @@ func getArtifactReplacements(step v1.Step, idx int) map[string]string {
 	stepName := pod.StepName(step.Name, idx)
 	stringReplacements[artifactref.StepArtifactPathPattern] = filepath.Join(pipeline.StepsDir, stepName, "artifacts", "provenance.json")
 	stringReplacements[artifactref.TaskArtifactPathPattern] = filepath.Join(pipeline.ArtifactsDir, "provenance.json")
+
+	if step.Artifacts != nil {
+		for _, sao := range step.Artifacts.Outputs {
+			if sao.Type == v1.ArtifactTypeReference {
+				stringReplacements[fmt.Sprintf("step.artifacts.outputs.%s.uri", sao.Name)] = filepath.Join(pipeline.ArtifactsDir, "outputs", sao.Name+".uri")
+			} else {
+				stringReplacements[fmt.Sprintf("step.artifacts.outputs.%s.path", sao.Name)] = filepath.Join(pipeline.ArtifactsDir, "outputs", sao.Name)
+			}
+		}
+	}
 
 	return stringReplacements
 }
