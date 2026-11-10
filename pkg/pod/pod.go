@@ -45,6 +45,7 @@ import (
 	"knative.dev/pkg/changeset"
 	"knative.dev/pkg/kmap"
 	"knative.dev/pkg/kmeta"
+	"knative.dev/pkg/system"
 )
 
 const (
@@ -89,6 +90,7 @@ const (
 	ContainerNamePrepare               = "prepare"
 	ContainerNamePlaceScripts          = "place-scripts"
 	ContainerNameWorkingDirInitializer = "working-dir-initializer"
+	ContainerNameArtifactFetch         = "artifact-fetch"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -146,6 +148,7 @@ func IsInternalContainer(name string) bool {
 	return name == ContainerNamePrepare ||
 		name == ContainerNamePlaceScripts ||
 		name == ContainerNameWorkingDirInitializer ||
+		name == ContainerNameArtifactFetch ||
 		name == pipeline.ReservedResultsSidecarContainerName
 }
 
@@ -233,6 +236,57 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		}
 	}
 
+	// Inject artifact transport args when artifacts are enabled and the Task
+	// declares any. Reference-type outputs need no storage backend at all
+	// (TEP-0192: "a Task is therefore always valid on its own"), so this must
+	// not be gated on OCIRepository being configured -- only content-type
+	// uploads actually need a repository, and that's handled per-artifact in
+	// artifactEntrypointArgs.
+	var artifactFetchInitContainer *corev1.Container
+	if featureFlags.EnableArtifacts && taskSpec.Artifacts != nil {
+		artifactStorageCfg := config.FromContextOrDefaults(ctx).ArtifactStorage
+		backend, ociRepository, insecure := "", "", false
+		inlineThreshold := 0
+		if artifactStorageCfg != nil && artifactStorageCfg.Enabled {
+			backend = artifactStorageCfg.Backend
+			ociRepository = artifactStorageCfg.OCIRepository
+			insecure = artifactStorageCfg.Insecure
+			inlineThreshold = artifactStorageCfg.InlineThreshold
+		}
+		provenance := ArtifactProvenance{
+			TaskRun:   taskRun.Name,
+			Namespace: taskRun.Namespace,
+		}
+		if prName, ok := taskRun.Labels[pipeline.PipelineRunLabelKey]; ok {
+			provenance.PipelineRun = prName
+		}
+		artifactArgs := artifactEntrypointArgs(&taskSpec, backend, ociRepository, insecure, inlineThreshold, provenance)
+
+		var dockerCfgJSON []byte
+		if artifactStorageCfg != nil && artifactStorageCfg.Enabled && artifactStorageCfg.OCICredentialsSecret != "" {
+			var err error
+			dockerCfgJSON, err = readArtifactCredentials(ctx, b.KubeClient, artifactStorageCfg.OCICredentialsSecret)
+			if err != nil {
+				log.Printf("warning: failed to read artifact credentials secret: %v", err)
+			}
+		}
+
+		// If the pipeline reconciler resolved artifact input URIs, use an init
+		// container to fetch them once before any Step runs (TEP-0192).
+		// Steps themselves no longer download — they detect the marker file.
+		// Strip -artifact_inputs from the step args since the init container
+		// handles all input fetching.
+		if inputsJSON, ok := taskRun.Annotations["tekton.dev/artifact-inputs"]; ok && inputsJSON != "" {
+			artifactFetchInitContainer = artifactFetchInit(b.Images.EntrypointImage, inputsJSON, backend, insecure, string(dockerCfgJSON), securityContextConfig, windows)
+			artifactArgs = stripArtifactInputArgs(artifactArgs)
+		}
+
+		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, artifactArgs...)
+		if len(dockerCfgJSON) > 0 {
+			commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-artifact_docker_config", string(dockerCfgJSON))
+		}
+	}
+
 	if featureFlags.EnableTerminationMessageCompression && !sidecarLogsResultsEnabled {
 		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-compress_termination_message=true")
 	}
@@ -267,6 +321,13 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	// Initialize any workingDirs under /workspace.
 	if workingDirInit := workingDirInit(b.Images.WorkingDirInitImage, stepContainers, securityContextConfig, windows); workingDirInit != nil {
 		initContainers = append(initContainers, *workingDirInit)
+	}
+
+	// Inject the artifact-fetch init container to download all content input
+	// artifacts once before any Step runs (TEP-0192). This runs after all
+	// other init containers so the entrypoint binary and scripts are in place.
+	if artifactFetchInitContainer != nil {
+		initContainers = append(initContainers, *artifactFetchInitContainer)
 	}
 
 	// By default, use an empty pod template and take the one defined in the task run spec if any
@@ -655,6 +716,40 @@ func entrypointInitContainer(image string, steps []v1.Step, securityContext Secu
 	return prepareInitContainer
 }
 
+// artifactFetchInit builds an init container that downloads all content input
+// artifacts into /tekton/artifacts before any Step runs. It uses the same
+// entrypoint image with the "artifact-fetch" subcommand.
+func artifactFetchInit(image, inputsJSON, backend string, insecure bool, dockerConfig string, securityContext SecurityContextConfig, windows bool) *corev1.Container {
+	command := []string{entrypointBinary, "artifact-fetch", inputsJSON}
+	if insecure {
+		command = append(command, "--insecure")
+	}
+	if backend != "" {
+		command = append(command, "--backend="+backend)
+	}
+	if dockerConfig != "" {
+		command = append(command, "--docker-config="+dockerConfig)
+	}
+
+	c := &corev1.Container{
+		Name:       ContainerNameArtifactFetch,
+		Image:      image,
+		WorkingDir: "/",
+		Command:    command,
+		VolumeMounts: []corev1.VolumeMount{
+			binROMount,
+			{
+				Name:      "tekton-internal-artifacts",
+				MountPath: pipeline.ArtifactsDir,
+			},
+		},
+	}
+	if securityContext.SetSecurityContext {
+		c.SecurityContext = securityContext.GetSecurityContext(windows)
+	}
+	return c
+}
+
 // createResultsSidecar creates a sidecar that will run the sidecarlogresults binary,
 // based on the spec of the Task, the image that should run in the results sidecar,
 // whether it will run on a windows node, and whether the sidecar should include a security context
@@ -782,4 +877,23 @@ func IsNativeSidecarSupport(serverVersion *version.Info) bool {
 		return true
 	}
 	return false
+}
+
+// readArtifactCredentials reads the named secret from the system namespace.
+// The returned data can be passed directly to the entrypoint to authenticate
+// without needing the secret in the TaskRun's namespace.
+func readArtifactCredentials(ctx context.Context, kubeclient kubernetes.Interface, secretName string) ([]byte, error) {
+	src, err := kubeclient.CoreV1().Secrets(system.Namespace()).Get(ctx, secretName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("reading artifact credentials secret %s/%s: %w", system.Namespace(), secretName, err)
+	}
+	// kubernetes.io/dockerconfigjson secrets store creds under this key
+	if data, ok := src.Data[corev1.DockerConfigJsonKey]; ok && len(data) > 0 {
+		return data, nil
+	}
+	// Fallback for kubernetes.io/dockercfg secrets
+	if data, ok := src.Data[corev1.DockerConfigKey]; ok && len(data) > 0 {
+		return data, nil
+	}
+	return nil, fmt.Errorf("secret %s/%s has no docker config data", system.Namespace(), secretName)
 }

@@ -88,18 +88,33 @@ type PipelineArtifactDeclarations struct {
 	Outputs []PipelineArtifactOutput `json:"outputs,omitempty"`
 }
 
-// PipelineArtifactOutput exposes a Task artifact as a Pipeline output.
+// PipelineArtifactOutput exposes a Task artifact as a Pipeline
 type PipelineArtifactOutput struct {
+	// Name of the artifact output. Must be unique within Pipeline outputs.
 	Name string `json:"name"`
+	// Description of the artifact.
+	// +optional
+	Description string `json:"description,omitempty"`
+	// From references the producing Task's output:
+	// "tasks.<taskName>.outputs.<artifactName>"
 	From string `json:"from"`
 }
 
-// PipelineRunArtifacts supplies artifacts to a PipelineRun.
+// PipelineRunArtifacts holds artifact inputs provided at PipelineRun creation
+// and artifact outputs populated at PipelineRun completion.
 type PipelineRunArtifacts struct {
+	// Inputs provides artifact values to satisfy Pipeline.spec.artifacts.inputs.
+	// Each input MUST match a name declared in the Pipeline.
 	// +listType=atomic
 	Inputs []Artifact `json:"inputs,omitempty"`
+	// Outputs holds artifact values resolved from child TaskRuns at
+	// PipelineRun completion. This field is read-only and populated by
+	// the controller.
+	// +listType=atomic
+	Outputs []Artifact `json:"outputs,omitempty"`
 }
 
+// PipelineTaskArtifacts configures artifact bindings for a PipelineTask.
 type PipelineTaskArtifacts struct {
 	// Inputs binds artifact inputs from other tasks' outputs.
 	// +listType=atomic
@@ -121,12 +136,7 @@ type Artifact struct {
 	Name string `json:"name,omitempty"`
 	// A collection of values related to the artifact
 	Values []ArtifactValue `json:"values,omitempty"`
-	// Indicate if the artifact is a build output or a by-product.
-	// This is the legacy form of Subject, still populated from the legacy
-	// provenance format.
-	BuildOutput bool `json:"buildOutput,omitempty"`
-	// Subject marks this artifact as the primary build output (the SLSA
-	// attestation subject), as declared in the Task's artifact outputs.
+	// Indicate if the artifact is a build output or a by-product
 	Subject bool `json:"subject,omitempty"`
 }
 
@@ -214,18 +224,13 @@ func (a *Artifacts) Merge(another *Artifacts) {
 		for _, v := range another.Outputs {
 			_, ok := outputMap[v.Name]
 			if !ok {
-				outputMap[v.Name] = Artifact{Name: v.Name, Values: []ArtifactValue{}, BuildOutput: v.BuildOutput, Subject: v.Subject}
+				outputMap[v.Name] = Artifact{Name: v.Name, Values: []ArtifactValue{}, Subject: v.Subject}
 			}
-			// only update buildOutput to true.
+			// only update subject to true.
 			// Do not convert to false if it was true before.
-			if v.BuildOutput {
-				art := outputMap[v.Name]
-				art.BuildOutput = v.BuildOutput
-				outputMap[v.Name] = art
-			}
 			if v.Subject {
 				art := outputMap[v.Name]
-				art.Subject = true
+				art.Subject = v.Subject
 				outputMap[v.Name] = art
 			}
 			for _, vv := range v.Values {
@@ -247,10 +252,9 @@ func (a *Artifacts) Merge(another *Artifacts) {
 
 	for _, v := range outputMap {
 		newOutputs = append(newOutputs, Artifact{
-			Name:        v.Name,
-			Values:      v.Values,
-			BuildOutput: v.BuildOutput,
-			Subject:     v.Subject,
+			Name:    v.Name,
+			Values:  v.Values,
+			Subject: v.Subject,
 		})
 	}
 	a.Inputs = newInputs

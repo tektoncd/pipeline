@@ -270,9 +270,6 @@ type PipelineRunSpec struct {
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
 	// Params is a list of parameter names and values.
 	Params Params `json:"params,omitempty"`
-	// Artifacts supplies values for declared Pipeline artifact inputs.
-	// +optional
-	Artifacts *PipelineRunArtifacts `json:"artifacts,omitempty"`
 
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
@@ -297,6 +294,10 @@ type PipelineRunSpec struct {
 	// +optional
 	// +listType=atomic
 	TaskRunSpecs []PipelineTaskRunSpec `json:"taskRunSpecs,omitempty"`
+	// Artifacts provides artifact inputs for the Pipeline at run time.
+	// Each input MUST match a name declared in Pipeline.spec.artifacts.inputs.
+	// +optional
+	Artifacts *PipelineRunArtifacts `json:"artifacts,omitempty"`
 	// ManagedBy indicates which controller is responsible for reconciling
 	// this resource. If unset or set to "tekton.dev/pipeline", the default
 	// Tekton controller will manage this resource.
@@ -539,12 +540,8 @@ type PipelineRunStatusFields struct {
 	// +listType=atomic
 	Results []PipelineRunResult `json:"results,omitempty"`
 
-	// Artifacts are the declared outputs produced by the Pipeline.
-	// +optional
-	Artifacts *Artifacts `json:"artifacts,omitempty"`
-
-        // PipelineSpec contains the Pipeline spec used to instantiate the run, without documentation-only descriptions by default.
-        // Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation.
+	// PipelineSpec contains the Pipeline spec used to instantiate the run, without documentation-only descriptions by default.
+	// Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation.
 	// See Pipeline.spec (API version: tekton.dev/v1)
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
@@ -567,6 +564,12 @@ type PipelineRunStatusFields struct {
 	// Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).
 	// +optional
 	Provenance *Provenance `json:"provenance,omitempty"`
+
+	// Artifacts holds pipeline-level artifact outputs resolved from child
+	// TaskRuns. Populated once when the PipelineRun completes (including
+	// finally tasks).
+	// +optional
+	Artifacts *PipelineRunArtifacts `json:"artifacts,omitempty"`
 
 	// SpanContext contains tracing span context fields
 	SpanContext map[string]string `json:"spanContext,omitempty"`

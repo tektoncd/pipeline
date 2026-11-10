@@ -25,6 +25,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -32,6 +33,30 @@ import (
 
 // stepArtifactValuePattern matches $(steps.<step>.artifacts.<name>)
 var stepArtifactValuePattern = regexp.MustCompile(`^\$\(steps\.([^.]+)\.artifacts\.([^.)]+)\)$`)
+
+var artifactNamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)
+
+// validateArtifactName validates whether the name is safe to use.
+// It rejects empty names, path traversal sequences, path separators,
+// and names that don't match the allowed character set.
+func validateArtifactName(name, fieldPath string) *apis.FieldError {
+	if name == "" {
+		return apis.ErrMissingField(fieldPath)
+	}
+	if strings.Contains(name, "/") || strings.Contains(name, "\\") {
+		return apis.ErrInvalidValue(
+			fmt.Sprintf("artifact name %q must not contain path separators", name), fieldPath)
+	}
+	if name == "." || name == ".." || strings.Contains(name, "..") {
+		return apis.ErrInvalidValue(
+			fmt.Sprintf("artifact name %q must not contain path traversal sequences", name), fieldPath)
+	}
+	if !artifactNamePattern.MatchString(name) {
+		return apis.ErrInvalidValue(
+			fmt.Sprintf("artifact name %q must start with an alphanumeric character and contain only alphanumerics, hyphens, underscores, or dots", name), fieldPath)
+	}
+	return nil
+}
 
 // resolveArtifactStorageForValidation resolves the 4-level artifact storage
 // hierarchy and returns a context with the resolved config. When a KubeClient
@@ -41,6 +66,10 @@ var stepArtifactValuePattern = regexp.MustCompile(`^\$\(steps\.([^.]+)\.artifact
 func resolveArtifactStorageForValidation(ctx context.Context, namespace string, annotations map[string]string) context.Context {
 	cfg := config.FromContextOrDefaults(ctx)
 	if cfg == nil || cfg.ArtifactStorage == nil {
+		return ctx
+	}
+
+	if cfg.FeatureFlags == nil || !cfg.FeatureFlags.EnableArtifacts {
 		return ctx
 	}
 
@@ -87,12 +116,10 @@ func ValidateArtifactStorageAnnotations(annotations map[string]string) *apis.Fie
 
 	var errs *apis.FieldError
 
-	if v, ok := annotations[config.ArtifactStorageEnabledAnnotation]; ok {
-		if _, err := strconv.ParseBool(v); err != nil {
-			errs = errs.Also(apis.ErrInvalidValue(
-				fmt.Sprintf("invalid boolean %q", v),
-				"metadata.annotations["+config.ArtifactStorageEnabledAnnotation+"]"))
-		}
+	if v, ok := annotations[config.ArtifactStorageOCIRepositoryAnnotation]; ok && v == "" {
+		errs = errs.Also(apis.ErrInvalidValue(
+			"must not be empty",
+			"metadata.annotations["+config.ArtifactStorageOCIRepositoryAnnotation+"]"))
 	}
 
 	if v, ok := annotations[config.ArtifactStorageInlineThresholdAnnotation]; ok {
@@ -107,31 +134,6 @@ func ValidateArtifactStorageAnnotations(annotations map[string]string) *apis.Fie
 				"metadata.annotations["+config.ArtifactStorageInlineThresholdAnnotation+"]"))
 		}
 	}
-
-	if v, ok := annotations[config.ArtifactStorageInsecureAnnotation]; ok {
-		if _, err := strconv.ParseBool(v); err != nil {
-			errs = errs.Also(apis.ErrInvalidValue(
-				fmt.Sprintf("invalid boolean %q", v),
-				"metadata.annotations["+config.ArtifactStorageInsecureAnnotation+"]"))
-		}
-	}
-
-	if v, ok := annotations[config.ArtifactStorageOCIAttachReferrersAnnotation]; ok {
-		if _, err := strconv.ParseBool(v); err != nil {
-			errs = errs.Also(apis.ErrInvalidValue(
-				fmt.Sprintf("invalid boolean %q", v),
-				"metadata.annotations["+config.ArtifactStorageOCIAttachReferrersAnnotation+"]"))
-		}
-	}
-
-	if v, ok := annotations[config.ArtifactStorageOCIGroupByPipelineRunAnnotation]; ok {
-		if _, err := strconv.ParseBool(v); err != nil {
-			errs = errs.Also(apis.ErrInvalidValue(
-				fmt.Sprintf("invalid boolean %q", v),
-				"metadata.annotations["+config.ArtifactStorageOCIGroupByPipelineRunAnnotation+"]"))
-		}
-	}
-
 	return errs
 }
 
@@ -154,8 +156,8 @@ func ValidateArtifactDeclarations(ctx context.Context, decls *ArtifactDeclaratio
 	// Validate inputs
 	inputNames := map[string]bool{}
 	for i, input := range decls.Inputs {
-		if input.Name == "" {
-			errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("inputs[%d].name", i)))
+		if err := validateArtifactName(input.Name, fmt.Sprintf("inputs[%d].name", i)); err != nil {
+			errs = errs.Also(err)
 		} else if inputNames[input.Name] {
 			errs = errs.Also(&apis.FieldError{
 				Message: fmt.Sprintf("duplicate artifact input name %q", input.Name),
@@ -186,8 +188,8 @@ func ValidateArtifactDeclarations(ctx context.Context, decls *ArtifactDeclaratio
 	// Validate outputs
 	outputNames := map[string]bool{}
 	for i, output := range decls.Outputs {
-		if output.Name == "" {
-			errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("outputs[%d].name", i)))
+		if err := validateArtifactName(output.Name, fmt.Sprintf("outputs[%d].name", i)); err != nil {
+			errs = errs.Also(err)
 		} else if outputNames[output.Name] {
 			errs = errs.Also(&apis.FieldError{
 				Message: fmt.Sprintf("duplicate artifact output name %q", output.Name),
@@ -229,8 +231,8 @@ func ValidateStepArtifacts(ctx context.Context, artifacts *StepArtifacts) *apis.
 	var errs *apis.FieldError
 	outputNames := map[string]bool{}
 	for i, output := range artifacts.Outputs {
-		if output.Name == "" {
-			errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("outputs[%d].name", i)))
+		if err := validateArtifactName(output.Name, fmt.Sprintf("outputs[%d].name", i)); err != nil {
+			errs = errs.Also(err)
 		} else if outputNames[output.Name] {
 			errs = errs.Also(&apis.FieldError{
 				Message: fmt.Sprintf("duplicate artifact output name %q", output.Name),
@@ -261,57 +263,6 @@ func ValidateStepArtifacts(ctx context.Context, artifacts *StepArtifacts) *apis.
 	return errs
 }
 
-func validatePipelineArtifacts(ctx context.Context, ps *PipelineSpec) *apis.FieldError {
-	if ps.Artifacts == nil {
-		return nil
-	}
-	if cfg := config.FromContextOrDefaults(ctx); cfg == nil || !cfg.FeatureFlags.EnableArtifacts {
-		return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature", config.EnableArtifacts), "")
-	}
-	var errs *apis.FieldError
-	inputNames := map[string]bool{}
-	for i, in := range ps.Artifacts.Inputs {
-		if in.Name == "" {
-			errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("inputs[%d].name", i)))
-		}
-		if inputNames[in.Name] {
-			errs = errs.Also(apis.ErrInvalidValue(in.Name, fmt.Sprintf("inputs[%d].name", i)))
-		}
-		inputNames[in.Name] = true
-	}
-	outputNames := map[string]bool{}
-	allTasks := append(append([]PipelineTask{}, ps.Tasks...), ps.Finally...)
-	for i, out := range ps.Artifacts.Outputs {
-		if out.Name == "" {
-			errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("outputs[%d].name", i)))
-		}
-		if outputNames[out.Name] {
-			errs = errs.Also(apis.ErrInvalidValue(out.Name, fmt.Sprintf("outputs[%d].name", i)))
-		}
-		outputNames[out.Name] = true
-		parts := strings.Split(out.From, ".")
-		if len(parts) != 4 || parts[0] != "tasks" || parts[2] != "outputs" {
-			errs = errs.Also(apis.ErrInvalidValue(out.From, fmt.Sprintf("outputs[%d].from", i)))
-			continue
-		}
-		for _, task := range allTasks {
-			if task.Name == parts[1] && task.TaskSpec != nil {
-				found := false
-				for _, a := range task.TaskSpec.Artifacts.Outputs {
-					if a.Name == parts[3] {
-						found = true
-						break
-					}
-				}
-				if !found {
-					errs = errs.Also(apis.ErrInvalidValue(out.From, fmt.Sprintf("outputs[%d].from", i)))
-				}
-			}
-		}
-	}
-	return errs
-}
-
 // ValidatePipelineTaskArtifactBindings validates artifact bindings on a PipelineTask.
 func ValidatePipelineTaskArtifactBindings(ctx context.Context, bindings *PipelineTaskArtifacts) *apis.FieldError {
 	if bindings == nil {
@@ -319,21 +270,127 @@ func ValidatePipelineTaskArtifactBindings(ctx context.Context, bindings *Pipelin
 	}
 
 	var errs *apis.FieldError
+
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg == nil || cfg.FeatureFlags == nil || !cfg.FeatureFlags.EnableArtifacts {
+		return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature", config.EnableArtifacts), "")
+	}
+
 	errs = errs.Also(validateArtifactStorageConfig(ctx))
 	for i, binding := range bindings.Inputs {
-		if binding.Name == "" {
-			errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("inputs[%d].name", i)))
+		if err := validateArtifactName(binding.Name, fmt.Sprintf("inputs[%d].name", i)); err != nil {
+			errs = errs.Also(err)
 		}
 		if binding.From == "" {
 			errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("inputs[%d].from", i)))
 		} else {
-			// Validate format: tasks.<taskName>.outputs.<artifactName>
 			parts := strings.Split(binding.From, ".")
-			if len(parts) != 4 || parts[0] != PipelineTasks || parts[2] != "outputs" { //nolint:goconst
+			switch {
+			case len(parts) == 4 && parts[0] == PipelineTasks && parts[2] == PipelineTaskOutputs:
+				// tasks.<taskName>.outputs.<artifactName>
+			case len(parts) == 3 && parts[0] == PipelineArtifacts && parts[1] == PipelineTaskInputs:
+				// artifacts.inputs.<name> — PipelineRun-provided input
+			default:
 				errs = errs.Also(&apis.FieldError{
-					Message: fmt.Sprintf("invalid from format %q, expected 'tasks.<taskName>.outputs.<artifactName>'", binding.From),
+					Message: fmt.Sprintf("invalid from format %q, expected 'tasks.<taskName>.outputs.<artifactName>' or 'artifacts.inputs.<name>'", binding.From),
 					Paths:   []string{fmt.Sprintf("inputs[%d].from", i)},
 				})
+			}
+		}
+	}
+
+	return errs
+}
+
+// validatePipelineArtifacts validates Pipeline.spec.artifacts declarations.
+func validatePipelineArtifacts(ctx context.Context, artifacts *PipelineArtifactDeclarations, tasks []PipelineTask, finally []PipelineTask) (errs *apis.FieldError) {
+	if artifacts == nil {
+		return nil
+	}
+	if cfg := config.FromContextOrDefaults(ctx); cfg == nil || !cfg.FeatureFlags.EnableArtifacts {
+		return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature", config.EnableArtifacts), "")
+	}
+	inputNames := sets.NewString()
+	for idx, in := range artifacts.Inputs {
+		if err := validateArtifactName(in.Name, fmt.Sprintf("artifacts.inputs[%d].name", idx)); err != nil {
+			errs = errs.Also(err)
+		}
+		if inputNames.Has(in.Name) {
+			errs = errs.Also(apis.ErrMultipleOneOf("name").ViaFieldIndex("inputs", idx).ViaField("artifacts"))
+		}
+		inputNames.Insert(in.Name)
+		if in.Type != "" && in.Type != ArtifactTypeContent && in.Type != ArtifactTypeReference {
+			errs = errs.Also(&apis.FieldError{
+				Message: fmt.Sprintf("invalid artifact type %q, must be %q or %q", in.Type, ArtifactTypeContent, ArtifactTypeReference),
+				Paths:   []string{fmt.Sprintf("artifacts.inputs[%d].type", idx)},
+			})
+		}
+		if in.Subject {
+			errs = errs.Also(&apis.FieldError{
+				Message: "subject is not allowed on pipeline artifact inputs",
+				Paths:   []string{fmt.Sprintf("artifacts.inputs[%d].subject", idx)},
+			})
+		}
+		if in.Value != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "value is not allowed on pipeline artifact inputs",
+				Paths:   []string{fmt.Sprintf("artifacts.inputs[%d].value", idx)},
+			})
+		}
+	}
+
+	pipelineTaskNames := getPipelineTasksNames(tasks)
+	pipelineFinallyTaskNames := getPipelineTasksNames(finally)
+
+	outputNames := sets.NewString()
+	for idx, out := range artifacts.Outputs {
+		if err := validateArtifactName(out.Name, fmt.Sprintf("artifacts.outputs[%d].name", idx)); err != nil {
+			errs = errs.Also(err)
+		}
+		if outputNames.Has(out.Name) {
+			errs = errs.Also(apis.ErrMultipleOneOf("name").ViaFieldIndex(PipelineTaskOutputs, idx).ViaField("artifacts"))
+		}
+		outputNames.Insert(out.Name)
+
+		if out.From == "" {
+			errs = errs.Also(apis.ErrMissingField("from").ViaFieldIndex(PipelineTaskOutputs, idx).ViaField("artifacts"))
+			continue
+		}
+		parts := strings.Split(out.From, ".")
+		if len(parts) != 4 || (parts[0] != PipelineTasks && parts[0] != PipelineFinallyTasks) || parts[2] != PipelineTaskOutputs {
+			errs = errs.Also(apis.ErrInvalidValue(
+				fmt.Sprintf("invalid from reference %q, expected tasks.<taskName>.outputs.<artifactName>", out.From),
+				"from").ViaFieldIndex(PipelineTaskOutputs, idx).ViaField("artifacts"))
+			continue
+		}
+		taskName := parts[1]
+		if parts[0] == PipelineTasks && !pipelineTaskNames.Has(taskName) {
+			errs = errs.Also(apis.ErrInvalidValue(
+				fmt.Sprintf("referencing nonexistent task %q", taskName),
+				"from").ViaFieldIndex(PipelineTaskOutputs, idx).ViaField("artifacts"))
+		}
+		if parts[0] == PipelineFinallyTasks && !pipelineFinallyTaskNames.Has(taskName) {
+			errs = errs.Also(apis.ErrInvalidValue(
+				fmt.Sprintf("referencing nonexistent finally task %q", taskName),
+				"from").ViaFieldIndex(PipelineTaskOutputs, idx).ViaField("artifacts"))
+		}
+	}
+
+	allTasks := make([]PipelineTask, 0, len(tasks)+len(finally))
+	allTasks = append(allTasks, tasks...)
+	allTasks = append(allTasks, finally...)
+	for _, pt := range allTasks {
+		if pt.Artifacts == nil {
+			continue
+		}
+		for i, binding := range pt.Artifacts.Inputs {
+			parts := strings.Split(binding.From, ".")
+			if len(parts) == 3 && parts[0] == PipelineArtifacts && parts[1] == PipelineTaskInputs {
+				if !inputNames.Has(parts[2]) {
+					errs = errs.Also(apis.ErrInvalidValue(
+						fmt.Sprintf("referencing undeclared pipeline artifact input %q", parts[2]),
+						"from").ViaFieldIndex("inputs", i).ViaField("artifacts").ViaField(pt.Name))
+				}
 			}
 		}
 	}

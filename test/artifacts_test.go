@@ -118,7 +118,7 @@ spec:
 			}}, taskrun.Status.Steps[0].Inputs); d != "" {
 				t.Fatalf(`The expected stepState Inputs does not match created taskrun stepState Inputs. Here is the diff: %v`, d)
 			}
-			if d := cmp.Diff([]v1.TaskRunStepArtifact{{Name: "image", BuildOutput: true,
+			if d := cmp.Diff([]v1.TaskRunStepArtifact{{Name: "image", Subject: true,
 				Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2", "sha256": "df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48"},
 					Uri: "pkg:balba",
 				}},
@@ -194,7 +194,7 @@ spec:
 	}}, taskrun.Status.Steps[0].Inputs); d != "" {
 		t.Fatalf(`The expected stepState Inputs does not match created taskrun stepState Inputs. Here is the diff: %v`, d)
 	}
-	if d := cmp.Diff([]v1.TaskRunStepArtifact{{Name: "build-result", BuildOutput: false,
+	if d := cmp.Diff([]v1.TaskRunStepArtifact{{Name: "build-result", Subject: false,
 		Values: []v1.ArtifactValue{{Digest: map[v1.Algorithm]string{"sha1": "95588b8f34c31eb7d62c92aaa4e6506639b06ef2", "sha256": "df85b9e3983fe2ce20ef76ad675ecf435cc99fc9350adc54fa230bae8c32ce48"},
 			Uri: "pkg:balba",
 		}},
@@ -430,7 +430,7 @@ spec:
             "outputs":[
               {
                 "name":"image",
-                "buildOutput":true,
+                "subject":true,
                 "values":[
                   {
                     "uri":"pkg:balba",
@@ -529,7 +529,7 @@ spec:
             "outputs":[
               {
                 "name":"build-result",
-                "buildOutput":false,
+                "subject":false,
                 "values":[
                   {
                     "uri":"pkg:balba",

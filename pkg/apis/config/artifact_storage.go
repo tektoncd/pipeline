@@ -43,15 +43,11 @@ const (
 	DefaultTagPattern      = "{{namespace}}.{{taskrun}}.{{artifact}}"
 
 	// Annotation keys for Pipeline/PipelineRun-level overrides (levels 1 & 2).
-	ArtifactStorageEnabledAnnotation               = "tekton.dev/artifact-storage-enabled"
-	ArtifactStorageOCIRepositoryAnnotation         = "tekton.dev/artifact-storage-oci-repository"
-	ArtifactStorageBackendAnnotation               = "tekton.dev/artifact-storage-backend"
-	ArtifactStorageInlineThresholdAnnotation       = "tekton.dev/artifact-storage-inline-threshold"
-	ArtifactStorageInsecureAnnotation              = "tekton.dev/artifact-storage-insecure"
-	ArtifactStorageOCICredentialsSecretAnnotation  = "tekton.dev/artifact-storage-oci-credentials-secret" //nolint:gosec // annotation key, not a credential
-	ArtifactStorageOCIAttachReferrersAnnotation    = "tekton.dev/artifact-storage-oci-attach-referrers"
-	ArtifactStorageOCITagPatternAnnotation         = "tekton.dev/artifact-storage-oci-tag-pattern"
-	ArtifactStorageOCIGroupByPipelineRunAnnotation = "tekton.dev/artifact-storage-oci-group-by-pipelinerun"
+	// Only oci-repository and inline-threshold are configurable at this level;
+	// all other settings (backend, insecure, credentials, etc.) are set at the
+	// cluster or namespace level via ConfigMaps.
+	ArtifactStorageOCIRepositoryAnnotation   = "tekton.dev/artifact-storage-oci-repository"
+	ArtifactStorageInlineThresholdAnnotation = "tekton.dev/artifact-storage-inline-threshold"
 
 	// MaxInlineThreshold is the upper bound for the inline-threshold
 	// config value. CRI runtimes share the 4KB termination message
@@ -281,20 +277,8 @@ func applyAnnotationOverrides(base *ArtifactStorage, annotations map[string]stri
 		return nil
 	}
 
-	if v, ok := annotations[ArtifactStorageEnabledAnnotation]; ok {
-		b, err := strconv.ParseBool(v)
-		if err != nil {
-			return fmt.Errorf("failed parsing annotation %s value %q: %w", ArtifactStorageEnabledAnnotation, v, err)
-		}
-		base.Enabled = b
-	}
-
 	if v, ok := annotations[ArtifactStorageOCIRepositoryAnnotation]; ok {
 		base.OCIRepository = v
-	}
-
-	if v, ok := annotations[ArtifactStorageBackendAnnotation]; ok && v != "" {
-		base.Backend = v
 	}
 
 	if v, ok := annotations[ArtifactStorageInlineThresholdAnnotation]; ok {
@@ -306,38 +290,6 @@ func applyAnnotationOverrides(base *ArtifactStorage, annotations map[string]stri
 			return fmt.Errorf("invalid annotation %s: must be 0..%d, got %d", ArtifactStorageInlineThresholdAnnotation, MaxInlineThreshold, n)
 		}
 		base.InlineThreshold = n
-	}
-
-	if v, ok := annotations[ArtifactStorageInsecureAnnotation]; ok {
-		b, err := strconv.ParseBool(v)
-		if err != nil {
-			return fmt.Errorf("failed parsing annotation %s value %q: %w", ArtifactStorageInsecureAnnotation, v, err)
-		}
-		base.Insecure = b
-	}
-
-	if v, ok := annotations[ArtifactStorageOCICredentialsSecretAnnotation]; ok {
-		base.OCICredentialsSecret = v
-	}
-
-	if v, ok := annotations[ArtifactStorageOCIAttachReferrersAnnotation]; ok {
-		b, err := strconv.ParseBool(v)
-		if err != nil {
-			return fmt.Errorf("failed parsing annotation %s value %q: %w", ArtifactStorageOCIAttachReferrersAnnotation, v, err)
-		}
-		base.OCIAttachReferrers = b
-	}
-
-	if v, ok := annotations[ArtifactStorageOCITagPatternAnnotation]; ok && v != "" {
-		base.OCITagPattern = v
-	}
-
-	if v, ok := annotations[ArtifactStorageOCIGroupByPipelineRunAnnotation]; ok {
-		b, err := strconv.ParseBool(v)
-		if err != nil {
-			return fmt.Errorf("failed parsing annotation %s value %q: %w", ArtifactStorageOCIGroupByPipelineRunAnnotation, v, err)
-		}
-		base.OCIGroupByPipelineRun = b
 	}
 
 	return nil
@@ -353,10 +305,10 @@ func applyAnnotationOverrides(base *ArtifactStorage, annotations map[string]stri
 // The base is deep-copied before mutation so the caller's original is
 // not modified.
 func ResolveArtifactStorage(base *ArtifactStorage, namespaceOverrides map[string]string, annotations map[string]string) (*ArtifactStorage, error) {
-	resolved := base.DeepCopy()
-	if resolved == nil {
-		return nil, nil //nolint:nilnil // nil base means artifact storage is not configured
+	if base == nil {
+		return &ArtifactStorage{}, nil
 	}
+	resolved := base.DeepCopy()
 
 	if len(namespaceOverrides) > 0 {
 		if err := ApplyOverridesFromMap(resolved, namespaceOverrides); err != nil {
