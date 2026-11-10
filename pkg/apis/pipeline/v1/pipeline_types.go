@@ -17,6 +17,8 @@ limitations under the License.
 package v1
 
 import (
+	"strings"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/internal/checksum"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
@@ -232,6 +234,10 @@ type PipelineTask struct {
 	// +optional
 	Matrix *Matrix `json:"matrix,omitempty"`
 
+	// Artifacts configures artifact bindings for this task.
+	// +optional
+	Artifacts *PipelineTaskArtifacts `json:"artifacts,omitempty"`
+
 	// Workspaces maps workspaces from the pipeline spec to the workspaces
 	// declared in the Task.
 	// +optional
@@ -303,6 +309,18 @@ func (pt PipelineTask) Deps() []string {
 	// add any new dependents from runAfter - order dependency
 	for _, runAfter := range pt.RunAfter {
 		deps.Insert(runAfter)
+	}
+
+	// add any new dependents from artifact bindings - the producing task
+	// must complete, and its artifacts be recorded, before this task runs.
+	if pt.Artifacts != nil {
+		for _, in := range pt.Artifacts.Inputs {
+			// Expected format: tasks.<taskName>.outputs.<artifactName>
+			parts := strings.Split(in.From, ".")
+			if len(parts) == 4 && parts[0] == PipelineTasks && parts[2] == "outputs" { //nolint:goconst
+				deps.Insert(parts[1])
+			}
+		}
 	}
 
 	return deps.List()

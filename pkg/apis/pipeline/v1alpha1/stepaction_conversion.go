@@ -48,6 +48,7 @@ func (ss *StepActionSpec) ConvertTo(ctx context.Context, sink *v1beta1.StepActio
 	sink.WorkingDir = ss.WorkingDir
 	sink.Params = ss.Params
 	sink.Results = ss.Results
+	sink.Artifacts = ss.Artifacts
 	sink.SecurityContext = ss.SecurityContext
 	sink.VolumeMounts = ss.VolumeMounts
 
@@ -80,6 +81,7 @@ func (ss *StepActionSpec) ConvertFrom(ctx context.Context, source *v1beta1.StepA
 
 	ss.Params = source.Params
 	ss.Results = source.Results
+	ss.Artifacts = source.Artifacts
 	ss.SecurityContext = source.SecurityContext
 	ss.VolumeMounts = source.VolumeMounts
 
