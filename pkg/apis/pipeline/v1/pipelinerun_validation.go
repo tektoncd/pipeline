@@ -60,6 +60,9 @@ func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
+	ctx = resolveArtifactStorageForValidation(ctx, pr.Namespace, pr.Annotations)
+	errs = errs.Also(ValidateArtifactStorageAnnotations(pr.Annotations))
+
 	return errs.Also(pr.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 
