@@ -4128,3 +4128,229 @@ func TestPodBuild_CompressTerminationMessage(t *testing.T) {
 		})
 	}
 }
+
+func TestReadArtifactCredentials_DockerConfigJSON(t *testing.T) {
+	dockerCfg := []byte(`{"auths":{"quay.io":{"auth":"dXNlcjpwYXNz"}}}`)
+	kubeclient := fakek8s.NewSimpleClientset(
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "artifact-creds",
+				Namespace: system.Namespace(),
+			},
+			Type: corev1.SecretTypeDockerConfigJson,
+			Data: map[string][]byte{
+				corev1.DockerConfigJsonKey: dockerCfg,
+			},
+		},
+	)
+
+	got, err := readArtifactCredentials(t.Context(), kubeclient, "artifact-creds")
+	if err != nil {
+		t.Fatalf("readArtifactCredentials: %v", err)
+	}
+	if string(got) != string(dockerCfg) {
+		t.Errorf("got %q, want %q", string(got), string(dockerCfg))
+	}
+}
+
+func TestReadArtifactCredentials_LegacyDockerCfg(t *testing.T) {
+	dockerCfg := []byte(`{"quay.io":{"auth":"dXNlcjpwYXNz"}}`)
+	kubeclient := fakek8s.NewSimpleClientset(
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "artifact-creds",
+				Namespace: system.Namespace(),
+			},
+			Type: corev1.SecretTypeDockercfg,
+			Data: map[string][]byte{
+				corev1.DockerConfigKey: dockerCfg,
+			},
+		},
+	)
+
+	got, err := readArtifactCredentials(t.Context(), kubeclient, "artifact-creds")
+	if err != nil {
+		t.Fatalf("readArtifactCredentials: %v", err)
+	}
+	if string(got) != string(dockerCfg) {
+		t.Errorf("got %q, want %q", string(got), string(dockerCfg))
+	}
+}
+
+func TestReadArtifactCredentials_SecretNotFound(t *testing.T) {
+	kubeclient := fakek8s.NewSimpleClientset()
+
+	_, err := readArtifactCredentials(t.Context(), kubeclient, "nonexistent")
+	if err == nil {
+		t.Error("expected error for missing secret")
+	}
+}
+
+func TestReadArtifactCredentials_EmptyData(t *testing.T) {
+	kubeclient := fakek8s.NewSimpleClientset(
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "artifact-creds",
+				Namespace: system.Namespace(),
+			},
+			Type: corev1.SecretTypeOpaque,
+			Data: map[string][]byte{},
+		},
+	)
+
+	_, err := readArtifactCredentials(t.Context(), kubeclient, "artifact-creds")
+	if err == nil {
+		t.Error("expected error for secret with no docker config data")
+	}
+}
+
+func TestPodBuild_ArtifactDockerConfig(t *testing.T) {
+	dockerCfg := []byte(`{"auths":{"quay.io":{"auth":"dXNlcjpwYXNz"}}}`)
+	kubeclient := fakek8s.NewSimpleClientset(
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "oci-creds",
+				Namespace: system.Namespace(),
+			},
+			Type: corev1.SecretTypeDockerConfigJson,
+			Data: map[string][]byte{
+				corev1.DockerConfigJsonKey: dockerCfg,
+			},
+		},
+	)
+
+	store := config.NewStore(logtesting.TestLogger(t))
+	store.OnConfigChanged(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+		Data: map[string]string{
+			"enable-artifacts": "true",
+		},
+	})
+	store.OnConfigChanged(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+	})
+	store.OnConfigChanged(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactStorageConfigName(), Namespace: system.Namespace()},
+		Data: map[string]string{
+			"enabled":               "true",
+			"oci-repository":        "quay.io/test/artifacts",
+			"oci.credentialsSecret": "oci-creds",
+		},
+	})
+
+	names.TestingSeed()
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test-taskrun",
+			Namespace:   "default",
+			Annotations: map[string]string{ReleaseAnnotation: fakeVersion},
+		},
+	}
+	ts := v1.TaskSpec{
+		Steps: []v1.Step{{
+			Name:    "write",
+			Image:   "bash",
+			Command: []string{"echo", "hello"},
+		}},
+		Artifacts: &v1.ArtifactDeclarations{
+			Outputs: []v1.ArtifactDeclaration{
+				{Name: "data", Type: v1.ArtifactTypeContent},
+			},
+		},
+	}
+
+	builder := Builder{
+		Images:          images,
+		KubeClient:      kubeclient,
+		EntrypointCache: fakeCache{},
+	}
+	got, err := builder.Build(store.ToContext(t.Context()), tr, ts)
+	if err != nil {
+		t.Fatalf("builder.Build: %v", err)
+	}
+
+	foundDockerConfig := false
+	for _, c := range got.Spec.Containers {
+		if !strings.HasPrefix(c.Name, "step-") {
+			continue
+		}
+		for i, arg := range c.Args {
+			if arg == "-artifact_docker_config" && i+1 < len(c.Args) {
+				foundDockerConfig = true
+				if c.Args[i+1] != string(dockerCfg) {
+					t.Errorf("artifact_docker_config value = %q, want %q", c.Args[i+1], string(dockerCfg))
+				}
+			}
+		}
+	}
+	if !foundDockerConfig {
+		t.Error("expected -artifact_docker_config in step args but not found")
+	}
+}
+
+func TestPodBuild_ArtifactNoCredentialsSecret(t *testing.T) {
+	kubeclient := fakek8s.NewSimpleClientset(
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
+	)
+
+	store := config.NewStore(logtesting.TestLogger(t))
+	store.OnConfigChanged(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+		Data: map[string]string{
+			"enable-artifacts": "true",
+		},
+	})
+	store.OnConfigChanged(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+	})
+	store.OnConfigChanged(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactStorageConfigName(), Namespace: system.Namespace()},
+		Data: map[string]string{
+			"enabled":        "true",
+			"oci-repository": "quay.io/test/artifacts",
+		},
+	})
+
+	names.TestingSeed()
+	tr := &v1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test-taskrun",
+			Namespace:   "default",
+			Annotations: map[string]string{ReleaseAnnotation: fakeVersion},
+		},
+	}
+	ts := v1.TaskSpec{
+		Steps: []v1.Step{{
+			Name:    "write",
+			Image:   "bash",
+			Command: []string{"echo", "hello"},
+		}},
+		Artifacts: &v1.ArtifactDeclarations{
+			Outputs: []v1.ArtifactDeclaration{
+				{Name: "data", Type: v1.ArtifactTypeContent},
+			},
+		},
+	}
+
+	builder := Builder{
+		Images:          images,
+		KubeClient:      kubeclient,
+		EntrypointCache: fakeCache{},
+	}
+	got, err := builder.Build(store.ToContext(t.Context()), tr, ts)
+	if err != nil {
+		t.Fatalf("builder.Build: %v", err)
+	}
+
+	for _, c := range got.Spec.Containers {
+		if !strings.HasPrefix(c.Name, "step-") {
+			continue
+		}
+		for _, arg := range c.Args {
+			if arg == "-artifact_docker_config" {
+				t.Error("unexpected -artifact_docker_config in step args when no credentials secret configured")
+			}
+		}
+	}
+}
