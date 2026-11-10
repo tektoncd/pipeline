@@ -1,0 +1,41 @@
+# This example demonstrates the artifact storage configuration hierarchy.
+#
+# The PipelineRun annotation below overrides both the cluster and
+# namespace ConfigMap values for oci-repository (highest priority).
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: artifact-hierarchy-
+  annotations:
+    tekton.dev/artifact-storage-enabled: "true"
+spec:
+  pipelineSpec:
+    tasks:
+      - name: produce
+        taskSpec:
+          artifacts:
+            outputs:
+              - name: data
+                type: content
+          steps:
+            - name: write
+              image: mirror.gcr.io/bash
+              script: |
+                #!/usr/bin/env bash
+                echo "hello from producer" > $(outputs.data.path)/message.txt
+      - name: consume
+        taskSpec:
+          artifacts:
+            inputs:
+              - name: data
+          steps:
+            - name: read
+              image: mirror.gcr.io/bash
+              script: |
+                #!/usr/bin/env bash
+                echo "Consumer received:"
+                cat $(inputs.data.path)/message.txt
+        artifacts:
+          inputs:
+            - name: data
+              from: tasks.produce.outputs.data

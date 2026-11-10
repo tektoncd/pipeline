@@ -8,6 +8,13 @@ weight: 201
 # Artifacts
 
 - [Overview](#overview)
+- [Artifact Storage Configuration Hierarchy](#artifact-storage-configuration-hierarchy)
+  - [Level 4: Cluster ConfigMap (lowest priority)](#level-4-cluster-configmap-lowest-priority)
+  - [Level 3: Namespace ConfigMap](#level-3-namespace-configmap)
+  - [Level 2: Pipeline Annotations](#level-2-pipeline-annotations)
+  - [Level 1: PipelineRun Annotations (highest priority)](#level-1-pipelinerun-annotations-highest-priority)
+  - [Annotation Reference](#annotation-reference)
+  - [Validation](#validation)
 - [Artifact Provenance Data](#artifact-provenance-data)
   - [Passing Artifacts between Steps](#passing-artifacts-between-steps)
   - [Passing Artifacts between Tasks](#passing-artifacts-between-tasks)
@@ -19,6 +26,129 @@ weight: 201
 > The `enable-artifacts` feature flag must be set to `"true"` to read or write artifacts in a step.
 
 Artifacts provide a way to track the origin of data produced and consumed within your Tekton Tasks.
+
+## Artifact Storage Configuration Hierarchy
+
+Artifact storage is configured through a 4-level hierarchy. Each level inherits unset fields from the level below it, so you only need to specify the fields you want to override.
+
+| Priority | Source | Scope |
+|----------|--------|-------|
+| 1 (highest) | PipelineRun annotations | Per-PipelineRun |
+| 2 | Pipeline annotations | Per-Pipeline |
+| 3 | Namespace ConfigMap `config-artifact-storage` | Per-namespace |
+| 4 (lowest) | Cluster ConfigMap `config-artifact-storage` in `tekton-pipelines` | Cluster-wide |
+
+### Level 4: Cluster ConfigMap (lowest priority)
+
+The cluster-wide default. Install a `config-artifact-storage` ConfigMap in the `tekton-pipelines` namespace:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-artifact-storage
+  namespace: tekton-pipelines
+data:
+  enabled: "true"
+  backend: "oci"
+  oci-repository: "registry.example.com/tekton-artifacts"
+  inline-threshold: "512"
+  insecure: "false"
+  oci.credentialsSecret: "registry-creds"
+  oci.attachReferrers: "true"
+  oci.tagPattern: "{{namespace}}.{{taskrun}}.{{artifact}}"
+  oci.groupByPipelineRun: "false"
+```
+
+### Level 3: Namespace ConfigMap
+
+Override cluster defaults for all TaskRuns/PipelineRuns in a specific namespace. Create a `config-artifact-storage` ConfigMap in the target namespace with only the fields you want to override:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-artifact-storage
+  namespace: team-a
+data:
+  oci-repository: "registry.example.com/team-a/artifacts"
+  insecure: "true"
+```
+
+In this example, `team-a` gets its own OCI repository with insecure access, but inherits `enabled`, `backend`, `inline-threshold`, and all other fields from the cluster ConfigMap.
+
+### Level 2: Pipeline Annotations
+
+Override storage config for all runs of a specific Pipeline by adding `tekton.dev/artifact-storage-*` annotations to the Pipeline:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: release-pipeline
+  annotations:
+    tekton.dev/artifact-storage-oci-repository: "registry.example.com/releases"
+    tekton.dev/artifact-storage-oci-attach-referrers: "true"
+spec:
+  tasks:
+    - name: build
+      taskSpec:
+        # ...
+```
+
+### Level 1: PipelineRun Annotations (highest priority)
+
+Override storage config for a single PipelineRun. These annotations take the highest priority:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: release-
+  annotations:
+    tekton.dev/artifact-storage-oci-repository: "registry.example.com/staging"
+    tekton.dev/artifact-storage-enabled: "true"
+spec:
+  pipelineRef:
+    name: release-pipeline
+```
+
+The same annotations work on TaskRuns:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: build-
+  annotations:
+    tekton.dev/artifact-storage-oci-repository: "registry.example.com/dev"
+    tekton.dev/artifact-storage-enabled: "true"
+spec:
+  taskRef:
+    name: build-task
+```
+
+### Annotation Reference
+
+| Annotation | ConfigMap Key | Type | Description |
+|------------|---------------|------|-------------|
+| `tekton.dev/artifact-storage-enabled` | `enabled` | boolean | Enable/disable artifact storage |
+| `tekton.dev/artifact-storage-backend` | `backend` | string | Storage backend (e.g. `oci`) |
+| `tekton.dev/artifact-storage-oci-repository` | `oci-repository` | string | Base OCI repository URL |
+| `tekton.dev/artifact-storage-inline-threshold` | `inline-threshold` | integer (0-1024) | Max bytes for inline storage |
+| `tekton.dev/artifact-storage-insecure` | `insecure` | boolean | Allow plain HTTP / skip TLS verify |
+| `tekton.dev/artifact-storage-oci-credentials-secret` | `oci.credentialsSecret` | string | Name of dockerconfigjson Secret |
+| `tekton.dev/artifact-storage-oci-attach-referrers` | `oci.attachReferrers` | boolean | Attach artifacts as OCI referrers |
+| `tekton.dev/artifact-storage-oci-tag-pattern` | `oci.tagPattern` | string | Tag pattern for artifact manifests |
+| `tekton.dev/artifact-storage-oci-group-by-pipelinerun` | `oci.groupByPipelineRun` | boolean | Group artifacts per PipelineRun |
+
+### Validation
+
+Invalid configurations are rejected at admission time (when you create the resource), not at runtime. For example:
+
+- Setting `oci-repository` without `enabled: true` is rejected
+- Invalid boolean or integer annotation values are rejected
+- The error message includes the full field path (e.g. `spec.pipelineSpec.tasks[0].taskSpec.artifacts`)
 
 ## Artifact Provenance Data
 Artifacts fall into two categories:
