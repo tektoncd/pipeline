@@ -29,6 +29,9 @@ const (
 	// StepsDir is the directory used for a step to store any metadata related to the step
 	StepsDir = "/tekton/steps"
 
+	// RunDir contains runtime metadata used for ordering steps and recording status.
+	RunDir = "/tekton/run"
+
 	ScriptDir = "/tekton/scripts"
 
 	ArtifactsDir = "/tekton/artifacts"

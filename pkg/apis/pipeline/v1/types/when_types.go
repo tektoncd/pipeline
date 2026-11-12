@@ -19,7 +19,7 @@ package types
 import (
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/substitution"
+	"github.com/tektoncd/pipeline/internal/substitution"
 	"k8s.io/apimachinery/pkg/selection"
 )
 
