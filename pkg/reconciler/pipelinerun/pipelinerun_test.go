@@ -242,9 +242,8 @@ func getTaskRuns(ctx context.Context, t *testing.T, clients test.Clients, namesp
 	return outputs
 }
 
-// runTestReconcile runs "Reconcile" on a PipelineRun with one
-// Task that has not been started yet.  It verifies that the TaskRun is created,
-// it checks the resulting API actions, status and events.
+// TestReconcile verifies that a PipelineRun starts its ready Tasks and records
+// the expected TaskRuns, status, and events.
 func TestReconcile(t *testing.T) {
 	namespace := "foo"
 	prName := "test-pipeline-run-success"
@@ -365,25 +364,10 @@ spec:
 `),
 	}
 
-	configMaps := th.NewFeatureFlagsConfigMapInSlice()
-	configMaps[0].Data["per-namespace-configuration"] = "true"
-	configMaps = append(configMaps, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "tekton-config-defaults",
-			Namespace: namespace,
-			Labels: map[string]string{
-				"app.kubernetes.io/part-of":  "tekton-pipelines",
-				"tekton.dev/pipeline-config": "true",
-			},
-		},
-		Data: map[string]string{"default-timeout-minutes": "invalid"},
-	})
-	// An invalid namespace override must not prevent reconciliation with global defaults.
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
-		ConfigMaps:   configMaps,
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -2453,6 +2437,45 @@ spec:
 	}
 }
 
+func TestReconcileWithInvalidPerNamespaceConfig(t *testing.T) {
+	pr := parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: invalid-namespace-config
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+`)
+	configMaps := th.NewPerNamespaceConfigInSlice("foo", map[string]string{
+		"default-timeout-minutes": "invalid",
+		"default-service-account": "namespace-sa",
+	})
+	globalDefaults := th.NewDefaultsCofigMapInSlice()
+	globalDefaults[0].Data["default-service-account"] = "global-sa"
+	configMaps = append(configMaps, globalDefaults...)
+	prt := newPipelineRunTest(t, test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+		Pipelines:    []*v1.Pipeline{simpleHelloWorldPipeline},
+		Tasks:        []*v1.Task{simpleHelloWorldTask},
+		ConfigMaps:   configMaps,
+	})
+	defer prt.Cancel()
+
+	reconciledRun, clients := prt.reconcileRun("foo", pr.Name, []string{
+		"Normal Started",
+		"Normal Running Tasks Completed: 0",
+	}, false)
+
+	th.CheckPipelineRunConditionStatusAndReason(t, reconciledRun.Status, corev1.ConditionUnknown, v1.PipelineRunReasonRunning.String())
+	taskRuns := getTaskRunsForPipelineRun(prt.TestAssets.Ctx, t, clients, "foo", pr.Name)
+	validateTaskRunsCount(t, taskRuns, 1)
+	for _, tr := range taskRuns {
+		if tr.Spec.ServiceAccountName != "global-sa" {
+			t.Errorf("service account = %q, want global-sa after invalid namespace config", tr.Spec.ServiceAccountName)
+		}
+	}
+}
+
 func TestReconcileWithPerNamespaceDefaultTimeout(t *testing.T) {
 	// Verify that a namespace default timeout changes PipelineRun reconciliation and cancels an existing TaskRun.
 	ps := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
@@ -2495,19 +2518,7 @@ spec:
     kind: Task
 `)}
 
-	configMaps := th.NewFeatureFlagsConfigMapInSlice()
-	configMaps[0].Data[config.PerNamespaceConfigurationKey] = "true"
-	configMaps = append(configMaps, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "tekton-config-defaults",
-			Namespace: "foo",
-			Labels: map[string]string{
-				"app.kubernetes.io/part-of":  "tekton-pipelines",
-				"tekton.dev/pipeline-config": "true",
-			},
-		},
-		Data: map[string]string{"default-timeout-minutes": "1"},
-	})
+	configMaps := th.NewPerNamespaceConfigInSlice("foo", map[string]string{"default-timeout-minutes": "1"})
 
 	d := test.Data{
 		PipelineRuns: prs,

@@ -466,8 +466,7 @@ spec:
 	taskruns := []*v1.TaskRun{taskRunSuccess, taskRunWithSaSuccess}
 	defaultSAName := "pipelines"
 	namespaceSAName := "namespace-pipelines"
-	configMaps := ttesting.NewFeatureFlagsConfigMapInSlice()
-	configMaps[0].Data["per-namespace-configuration"] = "true"
+	configMaps := ttesting.NewPerNamespaceConfigInSlice("foo", map[string]string{"default-service-account": namespaceSAName})
 	configMaps = append(configMaps,
 		&corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
@@ -476,17 +475,6 @@ spec:
 				"default-timeout-minutes":        "60",
 				"default-managed-by-label-value": "tekton-pipelines",
 			},
-		},
-		&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "tekton-config-defaults",
-				Namespace: "foo",
-				Labels: map[string]string{
-					"app.kubernetes.io/part-of":  "tekton-pipelines",
-					"tekton.dev/pipeline-config": "true",
-				},
-			},
-			Data: map[string]string{"default-service-account": namespaceSAName},
 		},
 	)
 	// The namespace default applies unless the TaskRun names a service account explicitly.

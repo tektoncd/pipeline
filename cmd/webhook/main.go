@@ -90,7 +90,8 @@ func newDefaultingAdmissionController(name string) func(context.Context, configm
 		// Decorate contexts with the current state of the config.
 		store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
 		store.WatchConfigs(cmw)
-		perNamespaceConfig := nsconfig.NewPerNamespaceConfig(ctx, kubeclient.Get(ctx))
+		// Admission serves all namespaces, unlike the webhook's namespace-scoped secret informer.
+		perNamespaceConfig := nsconfig.NewPerNamespaceConfig(injection.WithNamespaceScope(ctx, ""), kubeclient.Get(ctx))
 
 		return defaulting.NewAdmissionController(ctx,
 
@@ -106,7 +107,11 @@ func newDefaultingAdmissionController(name string) func(context.Context, configm
 
 			// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 			func(ctx context.Context) context.Context {
-				return withPerNamespaceConfig(store.ToContext(ctx), perNamespaceConfig)
+				merged, err := withPerNamespaceConfig(store.ToContext(ctx), perNamespaceConfig)
+				if err != nil {
+					logging.FromContext(ctx).Warnf("namespace config: %v", err)
+				}
+				return merged
 			},
 
 			// Whether to disallow unknown fields.
@@ -115,38 +120,38 @@ func newDefaultingAdmissionController(name string) func(context.Context, configm
 	}
 }
 
-func withPerNamespaceConfig(ctx context.Context, perNamespaceConfig *nsconfig.PerNamespaceConfig) context.Context {
+func withPerNamespaceConfig(ctx context.Context, perNamespaceConfig *nsconfig.PerNamespaceConfig) (context.Context, error) {
+	namespace := admissionRequestNamespace(ctx)
+	if namespace == "" {
+		return ctx, nil
+	}
+	return perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, namespace)
+}
+
+// admissionRequestNamespace returns an empty namespace for requests that do not
+// support namespace configuration. Admission handles malformed requests itself.
+func admissionRequestNamespace(ctx context.Context) string {
 	req := apis.GetHTTPRequest(ctx)
 	if req == nil || req.Body == nil {
-		return ctx
+		return ""
 	}
 
 	body, err := io.ReadAll(req.Body)
 	_ = req.Body.Close()
 	req.Body = io.NopCloser(bytes.NewReader(body))
 	if err != nil {
-		return ctx
+		return ""
 	}
 
 	review := &admissionv1.AdmissionReview{}
 	if err := json.Unmarshal(body, review); err != nil || review.Request == nil {
-		return ctx
-	}
-	namespace := review.Request.Namespace
-	if namespace == "" {
-		return ctx
+		return ""
 	}
 	kind := review.Request.Kind.Kind
 	if kind != taskRunKind && kind != pipelineRunKind {
-		return ctx
+		return ""
 	}
-
-	merged, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, namespace)
-	if err != nil {
-		logging.FromContext(ctx).Warnf("namespace config for %q: %v", namespace, err)
-		return ctx
-	}
-	return merged
+	return review.Request.Namespace
 }
 
 func newValidationAdmissionController(name string) func(context.Context, configmap.Watcher) *controller.Impl {
@@ -154,7 +159,8 @@ func newValidationAdmissionController(name string) func(context.Context, configm
 		// Decorate contexts with the current state of the config.
 		store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
 		store.WatchConfigs(cmw)
-		perNamespaceConfig := nsconfig.NewPerNamespaceConfig(ctx, kubeclient.Get(ctx))
+		// Admission serves all namespaces, unlike the webhook's namespace-scoped secret informer.
+		perNamespaceConfig := nsconfig.NewPerNamespaceConfig(injection.WithNamespaceScope(ctx, ""), kubeclient.Get(ctx))
 		return validation.NewAdmissionController(ctx,
 
 			// Name of the validation webhook, it is based on the value of the environment variable WEBHOOK_ADMISSION_CONTROLLER_NAME
@@ -169,7 +175,11 @@ func newValidationAdmissionController(name string) func(context.Context, configm
 
 			// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 			func(ctx context.Context) context.Context {
-				return withPerNamespaceConfig(store.ToContext(ctx), perNamespaceConfig)
+				merged, err := withPerNamespaceConfig(store.ToContext(ctx), perNamespaceConfig)
+				if err != nil {
+					logging.FromContext(ctx).Warnf("namespace config: %v", err)
+				}
+				return merged
 			},
 
 			// Whether to disallow unknown fields.

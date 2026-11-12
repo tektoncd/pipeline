@@ -23,9 +23,11 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,6 +35,7 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	corev1listers "k8s.io/client-go/listers/core/v1"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/system"
 	"sigs.k8s.io/yaml"
@@ -176,11 +179,15 @@ func newPerNamespaceConfig(ctx context.Context, kubeClient kubernetes.Interface)
 		namespaceConfigLabel: configValueTrue,
 		partOfLabel:          partOfValue,
 	}.AsSelector().String()
-	factory := informers.NewSharedInformerFactoryWithOptions(kubeClient, 0,
+	options := []informers.SharedInformerOption{
 		informers.WithTweakListOptions(func(opts *metav1.ListOptions) {
 			opts.LabelSelector = selector
 		}),
-	)
+	}
+	if injection.HasNamespaceScope(ctx) {
+		options = append(options, informers.WithNamespace(injection.GetNamespaceScope(ctx)))
+	}
+	factory := informers.NewSharedInformerFactoryWithOptions(kubeClient, 0, options...)
 	configMaps := factory.Core().V1().ConfigMaps()
 	_ = configMaps.Informer()
 	factory.Start(ctx.Done())
@@ -217,6 +224,15 @@ func (p *PerNamespaceConfig) MergeGlobalConfigWithLocal(ctx context.Context, nam
 		mergedDefaults, err := config.NewDefaultsFromMap(mergedConfig)
 		if err != nil {
 			return ctx, fmt.Errorf("parse namespace defaults for %q: %w", namespace, err)
+		}
+		if mergedDefaults.DefaultTimeoutMinutes < 0 || int64(mergedDefaults.DefaultTimeoutMinutes) > int64((1<<63-1)/time.Minute) {
+			return ctx, fmt.Errorf("parse namespace defaults for %q: %s must be non-negative and fit in a time.Duration", namespace, defaultTimeoutMinutesKey)
+		}
+		if mergedDefaults.DefaultTaskRunWorkspaceBinding != "" {
+			var binding v1.WorkspaceBinding
+			if err := yaml.Unmarshal([]byte(mergedDefaults.DefaultTaskRunWorkspaceBinding), &binding); err != nil {
+				return ctx, fmt.Errorf("parse namespace defaults for %q: %s: %w", namespace, defaultTaskRunWorkspaceBindingKey, err)
+			}
 		}
 		merged.Defaults = mergedDefaults
 	}

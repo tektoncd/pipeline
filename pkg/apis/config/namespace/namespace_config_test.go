@@ -18,14 +18,17 @@ package namespace_test
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	namespaceconfig "github.com/tektoncd/pipeline/pkg/apis/config/namespace"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
+	th "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
@@ -34,6 +37,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing"
@@ -49,20 +53,6 @@ func newPerNamespaceConfig(t *testing.T, configMaps ...*corev1.ConfigMap) (*name
 	ctx, cancel := context.WithCancel(logging.WithLogger(t.Context(), zaptest.NewLogger(t).Sugar()))
 	t.Cleanup(cancel)
 	return namespaceconfig.NewPerNamespaceConfig(ctx, client), client, ctx
-}
-
-func labeledConfigMap(namespace, name string, data map[string]string) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"app.kubernetes.io/part-of":  "tekton-pipelines",
-				"tekton.dev/pipeline-config": "true",
-			},
-		},
-		Data: data,
-	}
 }
 
 func enabledConfigContext(ctx context.Context) (context.Context, *config.Config) {
@@ -86,14 +76,62 @@ func TestNewPerNamespaceConfigSharesContextInstance(t *testing.T) {
 	}
 }
 
+func TestNewPerNamespaceConfigRespectsNamespaceScope(t *testing.T) {
+	for _, scope := range []string{"", "team-a"} {
+		for _, enabled := range []bool{false, true} {
+			t.Run(scope+"/enabled="+strconv.FormatBool(enabled), func(t *testing.T) {
+				synctest.Test(t, func(t *testing.T) {
+					client := fakek8s.NewSimpleClientset(
+						th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{"default-timeout-minutes": "120"}),
+						th.NewNamespaceDefaultsConfigMap("team-b", map[string]string{"default-timeout-minutes": "240"}),
+					)
+					ctx, cancel := context.WithCancel(logging.WithLogger(t.Context(), zaptest.NewLogger(t).Sugar()))
+					t.Cleanup(cancel)
+					ctx = injection.WithNamespaceScope(ctx, scope)
+					ctx, cfg := enabledConfigContext(ctx)
+					cfg.FeatureFlags.PerNamespaceConfiguration = enabled
+
+					perNamespaceConfig := namespaceconfig.NewPerNamespaceConfig(ctx, client)
+					synctest.Wait()
+
+					seen := map[string]bool{}
+					for _, action := range client.Actions() {
+						if action.GetResource().Resource == "configmaps" && (action.GetVerb() == "list" || action.GetVerb() == "watch") {
+							seen[action.GetVerb()] = true
+							if action.GetNamespace() != scope {
+								t.Errorf("%s namespace = %q, want %q", action.GetVerb(), action.GetNamespace(), scope)
+							}
+						}
+					}
+					if !seen["list"] || !seen["watch"] {
+						t.Fatalf("expected ConfigMap list and watch, got %v", seen)
+					}
+					for namespace, timeout := range map[string]int{"team-a": 120, "team-b": 240} {
+						merged, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, namespace)
+						if err != nil {
+							t.Fatal(err)
+						}
+						if !enabled || (scope != "" && scope != namespace) {
+							timeout = cfg.Defaults.DefaultTimeoutMinutes
+						}
+						if got := config.FromContext(merged).Defaults.DefaultTimeoutMinutes; got != timeout {
+							t.Errorf("%s timeout = %d, want %d", namespace, got, timeout)
+						}
+					}
+				})
+			})
+		}
+	}
+}
+
 func TestMergeGlobalConfigWithLocal(t *testing.T) {
-	defaults := labeledConfigMap("team-a", "tekton-config-defaults", map[string]string{
+	defaults := th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{
 		"default-timeout-minutes": "120",
 		"default-service-account": "team-a-sa",
 		"default-resolver-type":   "ignored",
 		"unknown-default":         "ignored",
 	})
-	flags := labeledConfigMap("team-a", "tekton-feature-flags", map[string]string{
+	flags := th.NewNamespaceFeatureFlagsConfigMap("team-a", map[string]string{
 		"enable-cel-in-whenexpression": "true",
 		"coschedule":                   "isolate-pipelinerun",
 		"set-security-context":         "true",
@@ -154,7 +192,7 @@ func TestMergeGlobalConfigWithLocal(t *testing.T) {
 }
 
 func TestMergeGlobalConfigWithLocalNoOp(t *testing.T) {
-	valid := labeledConfigMap("team-a", "tekton-config-defaults", map[string]string{"default-timeout-minutes": "120"})
+	valid := th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{"default-timeout-minutes": "120"})
 	missingPartOf := valid.DeepCopy()
 	missingPartOf.Namespace = "missing-label"
 	delete(missingPartOf.Labels, "app.kubernetes.io/part-of")
@@ -163,7 +201,7 @@ func TestMergeGlobalConfigWithLocalNoOp(t *testing.T) {
 	delete(missingSelector.Labels, "tekton.dev/pipeline-config")
 	systemConfig := valid.DeepCopy()
 	systemConfig.Namespace = system.Namespace()
-	example := labeledConfigMap("example", "tekton-config-defaults", map[string]string{"_example": "ignored"})
+	example := th.NewNamespaceDefaultsConfigMap("example", map[string]string{"_example": "ignored"})
 	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, valid, missingPartOf, missingSelector, systemConfig, example)
 
 	tests := []struct {
@@ -204,7 +242,7 @@ func TestMergeGlobalConfigWithLocalNoOp(t *testing.T) {
 }
 
 func TestMergeGlobalConfigWithLocalWithNilGlobalDefaults(t *testing.T) {
-	defaults := labeledConfigMap("team-a", "tekton-config-defaults", map[string]string{"default-timeout-minutes": "120"})
+	defaults := th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{"default-timeout-minutes": "120"})
 	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, defaults)
 	ctx, cfg := enabledConfigContext(baseCtx)
 	cfg.Defaults = nil
@@ -225,14 +263,38 @@ func TestMergeGlobalConfigWithLocalReturnsParseErrors(t *testing.T) {
 	}{
 		{
 			name: "defaults",
-			configMap: labeledConfigMap("team-a", "tekton-config-defaults", map[string]string{
+			configMap: th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{
 				"default-timeout-minutes": "not-an-int",
 			}),
 		},
 		{
 			name: "feature flags",
-			configMap: labeledConfigMap("team-a", "tekton-feature-flags", map[string]string{
+			configMap: th.NewNamespaceFeatureFlagsConfigMap("team-a", map[string]string{
 				"enable-cel-in-whenexpression": "not-a-bool",
+			}),
+		},
+		{
+			name: "negative timeout",
+			configMap: th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{
+				"default-timeout-minutes": "-1",
+			}),
+		},
+		{
+			name: "overflowing timeout",
+			configMap: th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{
+				"default-timeout-minutes": strconv.FormatInt(int64((1<<63-1)/time.Minute)+1, 10),
+			}),
+		},
+		{
+			name: "malformed workspace binding",
+			configMap: th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{
+				"default-task-run-workspace-binding": "[",
+			}),
+		},
+		{
+			name: "invalid workspace field type",
+			configMap: th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{
+				"default-task-run-workspace-binding": "emptyDir: []",
 			}),
 		},
 	}
@@ -251,9 +313,51 @@ func TestMergeGlobalConfigWithLocalReturnsParseErrors(t *testing.T) {
 	}
 }
 
+func TestMergeGlobalConfigWithLocalValidDefaults(t *testing.T) {
+	for _, timeout := range []int{0, 120, int((1<<63 - 1) / time.Minute)} {
+		t.Run(strconv.Itoa(timeout), func(t *testing.T) {
+			defaults := th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{
+				"default-timeout-minutes":            strconv.Itoa(timeout),
+				"default-task-run-workspace-binding": "emptyDir: {}",
+			})
+			perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, defaults)
+			ctx, cfg := enabledConfigContext(baseCtx)
+			expected := cfg.DeepCopy()
+			expected.Defaults.DefaultTimeoutMinutes = timeout
+			expected.Defaults.DefaultTaskRunWorkspaceBinding = "emptyDir: {}"
+
+			merged, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, "team-a")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(expected, config.FromContext(merged)); diff != "" {
+				t.Errorf("merged config (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestMergeGlobalConfigWithLocalIgnoresLockedInvalidDefaults(t *testing.T) {
+	defaults := th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{
+		"default-timeout-minutes":            "-1",
+		"default-task-run-workspace-binding": "[",
+	})
+	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, defaults)
+	ctx, cfg := enabledConfigContext(baseCtx)
+	cfg.FeatureFlags.NonOverridableFields = "default-timeout-minutes,default-task-run-workspace-binding"
+
+	merged, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, "team-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(cfg, config.FromContext(merged)); diff != "" {
+		t.Errorf("locked config changed (-want +got):\n%s", diff)
+	}
+}
+
 func TestMergeGlobalConfigWithLocalLogsOnlyAfterSuccessfulMerge(t *testing.T) {
-	defaults := labeledConfigMap("team-a", "tekton-config-defaults", map[string]string{"default-timeout-minutes": "120"})
-	flags := labeledConfigMap("team-a", "tekton-feature-flags", map[string]string{"enable-cel-in-whenexpression": "not-a-bool"})
+	defaults := th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{"default-timeout-minutes": "120"})
+	flags := th.NewNamespaceFeatureFlagsConfigMap("team-a", map[string]string{"enable-cel-in-whenexpression": "not-a-bool"})
 	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, defaults, flags)
 
 	var messages []string
@@ -274,36 +378,35 @@ func TestMergeGlobalConfigWithLocalLogsOnlyAfterSuccessfulMerge(t *testing.T) {
 }
 
 func TestPerNamespaceConfigTracksUpdatesAndNamespaces(t *testing.T) {
-	alpha := labeledConfigMap("team-alpha", "tekton-config-defaults", map[string]string{"default-timeout-minutes": "90"})
-	beta := labeledConfigMap("team-beta", "tekton-config-defaults", map[string]string{
-		"default-timeout-minutes": "240",
-		"default-service-account": "beta-sa",
+	synctest.Test(t, func(t *testing.T) {
+		alpha := th.NewNamespaceDefaultsConfigMap("team-alpha", map[string]string{"default-timeout-minutes": "90"})
+		beta := th.NewNamespaceDefaultsConfigMap("team-beta", map[string]string{
+			"default-timeout-minutes": "240",
+			"default-service-account": "beta-sa",
+		})
+		perNamespaceConfig, client, baseCtx := newPerNamespaceConfig(t, alpha, beta)
+
+		assertConfig := func(namespace string, timeout int, serviceAccount string) bool {
+			ctx, _ := enabledConfigContext(baseCtx)
+			mergedCtx, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, namespace)
+			if err != nil {
+				return false
+			}
+			merged := config.FromContext(mergedCtx)
+			return merged.Defaults.DefaultTimeoutMinutes == timeout && merged.Defaults.DefaultServiceAccount == serviceAccount
+		}
+		if !assertConfig("team-alpha", 90, config.DefaultServiceAccountValue) || !assertConfig("team-beta", 240, "beta-sa") {
+			t.Fatal("namespace configs were not isolated")
+		}
+
+		updated := alpha.DeepCopy()
+		updated.Data["default-timeout-minutes"] = "200"
+		if _, err := client.CoreV1().ConfigMaps("team-alpha").Update(baseCtx, updated, metav1.UpdateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		synctest.Wait()
+		if !assertConfig("team-alpha", 200, config.DefaultServiceAccountValue) {
+			t.Fatal("ConfigMap update was not applied")
+		}
 	})
-	perNamespaceConfig, client, baseCtx := newPerNamespaceConfig(t, alpha, beta)
-
-	assertConfig := func(namespace string, timeout int, serviceAccount string) bool {
-		ctx, _ := enabledConfigContext(baseCtx)
-		mergedCtx, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, namespace)
-		if err != nil {
-			return false
-		}
-		merged := config.FromContext(mergedCtx)
-		return merged.Defaults.DefaultTimeoutMinutes == timeout && merged.Defaults.DefaultServiceAccount == serviceAccount
-	}
-	if !assertConfig("team-alpha", 90, config.DefaultServiceAccountValue) || !assertConfig("team-beta", 240, "beta-sa") {
-		t.Fatal("namespace configs were not isolated")
-	}
-
-	updated := alpha.DeepCopy()
-	updated.Data["default-timeout-minutes"] = "200"
-	if _, err := client.CoreV1().ConfigMaps("team-alpha").Update(baseCtx, updated, metav1.UpdateOptions{}); err != nil {
-		t.Fatal(err)
-	}
-	deadline := time.Now().Add(5 * time.Second)
-	for !assertConfig("team-alpha", 200, config.DefaultServiceAccountValue) {
-		if time.Now().After(deadline) {
-			t.Fatal("timed out waiting for ConfigMap update")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
 }
