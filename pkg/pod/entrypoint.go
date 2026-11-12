@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	entrypointpaths "github.com/tektoncd/pipeline/pkg/entrypoint/pipeline"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -48,7 +49,7 @@ const (
 	// This includes files for handling container ordering, exit status codes, and more.
 	// See [https://github.com/tektoncd/pipeline/blob/main/docs/developers/taskruns.md#tekton]
 	// for more details.
-	RunDir = "/tekton/run"
+	RunDir = entrypointpaths.RunDir
 
 	downwardVolumeName     = "tekton-internal-downward"
 	downwardMountPoint     = "/tekton/downward"

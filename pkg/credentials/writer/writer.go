@@ -25,7 +25,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/entrypoint/pipeline"
 )
 
 const (

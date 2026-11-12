@@ -26,8 +26,7 @@ import (
 	"syscall"
 
 	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/pod"
+	"github.com/tektoncd/pipeline/pkg/entrypoint/pipeline"
 )
 
 func main() {
@@ -75,7 +74,7 @@ func main() {
 	if err := json.Unmarshal([]byte(stepResultsStr), &expectedStepResults); err != nil {
 		log.Fatal(err)
 	}
-	err := sidecarlogresults.LookForResults(os.Stdout, pod.RunDir, resultsDir, expectedResults, pipeline.StepsDir, expectedStepResults)
+	err := sidecarlogresults.LookForResults(os.Stdout, pipeline.RunDir, resultsDir, expectedResults, pipeline.StepsDir, expectedStepResults)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -84,7 +83,7 @@ func main() {
 	if len(stepNames) > 0 {
 		names = strings.Split(stepNames, ",")
 	}
-	err = sidecarlogresults.LookForArtifacts(os.Stdout, names, pod.RunDir)
+	err = sidecarlogresults.LookForArtifacts(os.Stdout, names, pipeline.RunDir)
 	if err != nil {
 		log.Fatal(err)
 	}
