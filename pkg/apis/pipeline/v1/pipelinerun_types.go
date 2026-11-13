@@ -270,6 +270,9 @@ type PipelineRunSpec struct {
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
 	// Params is a list of parameter names and values.
 	Params Params `json:"params,omitempty"`
+	// Artifacts supplies values for declared Pipeline artifact inputs.
+	// +optional
+	Artifacts *PipelineRunArtifacts `json:"artifacts,omitempty"`
 
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
@@ -536,8 +539,12 @@ type PipelineRunStatusFields struct {
 	// +listType=atomic
 	Results []PipelineRunResult `json:"results,omitempty"`
 
-	// PipelineSpec contains the Pipeline spec used to instantiate the run, without documentation-only descriptions by default.
-	// Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation.
+	// Artifacts are the declared outputs produced by the Pipeline.
+	// +optional
+	Artifacts *Artifacts `json:"artifacts,omitempty"`
+
+        // PipelineSpec contains the Pipeline spec used to instantiate the run, without documentation-only descriptions by default.
+        // Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation.
 	// See Pipeline.spec (API version: tekton.dev/v1)
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
