@@ -261,6 +261,57 @@ func ValidateStepArtifacts(ctx context.Context, artifacts *StepArtifacts) *apis.
 	return errs
 }
 
+func validatePipelineArtifacts(ctx context.Context, ps *PipelineSpec) *apis.FieldError {
+	if ps.Artifacts == nil {
+		return nil
+	}
+	if cfg := config.FromContextOrDefaults(ctx); cfg == nil || !cfg.FeatureFlags.EnableArtifacts {
+		return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature", config.EnableArtifacts), "")
+	}
+	var errs *apis.FieldError
+	inputNames := map[string]bool{}
+	for i, in := range ps.Artifacts.Inputs {
+		if in.Name == "" {
+			errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("inputs[%d].name", i)))
+		}
+		if inputNames[in.Name] {
+			errs = errs.Also(apis.ErrInvalidValue(in.Name, fmt.Sprintf("inputs[%d].name", i)))
+		}
+		inputNames[in.Name] = true
+	}
+	outputNames := map[string]bool{}
+	allTasks := append(append([]PipelineTask{}, ps.Tasks...), ps.Finally...)
+	for i, out := range ps.Artifacts.Outputs {
+		if out.Name == "" {
+			errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("outputs[%d].name", i)))
+		}
+		if outputNames[out.Name] {
+			errs = errs.Also(apis.ErrInvalidValue(out.Name, fmt.Sprintf("outputs[%d].name", i)))
+		}
+		outputNames[out.Name] = true
+		parts := strings.Split(out.From, ".")
+		if len(parts) != 4 || parts[0] != "tasks" || parts[2] != "outputs" {
+			errs = errs.Also(apis.ErrInvalidValue(out.From, fmt.Sprintf("outputs[%d].from", i)))
+			continue
+		}
+		for _, task := range allTasks {
+			if task.Name == parts[1] && task.TaskSpec != nil {
+				found := false
+				for _, a := range task.TaskSpec.Artifacts.Outputs {
+					if a.Name == parts[3] {
+						found = true
+						break
+					}
+				}
+				if !found {
+					errs = errs.Also(apis.ErrInvalidValue(out.From, fmt.Sprintf("outputs[%d].from", i)))
+				}
+			}
+		}
+	}
+	return errs
+}
+
 // ValidatePipelineTaskArtifactBindings validates artifact bindings on a PipelineTask.
 func ValidatePipelineTaskArtifactBindings(ctx context.Context, bindings *PipelineTaskArtifacts) *apis.FieldError {
 	if bindings == nil {

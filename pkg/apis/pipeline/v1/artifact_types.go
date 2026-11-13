@@ -80,7 +80,26 @@ type StepArtifacts struct {
 	Outputs []ArtifactDeclaration `json:"outputs,omitempty"`
 }
 
-// PipelineTaskArtifacts configures artifact bindings for a PipelineTask.
+// PipelineArtifactDeclarations declares artifacts at the Pipeline boundary.
+type PipelineArtifactDeclarations struct {
+	// +listType=atomic
+	Inputs []ArtifactDeclaration `json:"inputs,omitempty"`
+	// +listType=atomic
+	Outputs []PipelineArtifactOutput `json:"outputs,omitempty"`
+}
+
+// PipelineArtifactOutput exposes a Task artifact as a Pipeline output.
+type PipelineArtifactOutput struct {
+	Name string `json:"name"`
+	From string `json:"from"`
+}
+
+// PipelineRunArtifacts supplies artifacts to a PipelineRun.
+type PipelineRunArtifacts struct {
+	// +listType=atomic
+	Inputs []Artifact `json:"inputs,omitempty"`
+}
+
 type PipelineTaskArtifacts struct {
 	// Inputs binds artifact inputs from other tasks' outputs.
 	// +listType=atomic

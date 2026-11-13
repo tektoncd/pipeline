@@ -128,6 +128,9 @@ type PipelineSpec struct {
 	// +optional
 	// +listType=atomic
 	Results []PipelineResult `json:"results,omitempty"`
+	// Artifacts declares artifacts entering and leaving the Pipeline.
+	// +optional
+	Artifacts *PipelineArtifactDeclarations `json:"artifacts,omitempty"`
 	// Finally declares the list of Tasks that execute just before leaving the Pipeline
 	// i.e. either after all Tasks are finished executing successfully
 	// or after a failure which would result in ending the Pipeline

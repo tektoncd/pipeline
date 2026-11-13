@@ -93,6 +93,30 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		errs = errs.Also(ps.PipelineSpec.Validate(ctx).ViaField("pipelineSpec"))
 	}
 
+	// Validate PipelineRun artifact inputs
+	if ps.Artifacts != nil {
+		declared := map[string]bool{}
+		if ps.PipelineSpec != nil && ps.PipelineSpec.Artifacts != nil {
+			for _, a := range ps.PipelineSpec.Artifacts.Inputs {
+				declared[a.Name] = true
+			}
+		}
+		for i, a := range ps.Artifacts.Inputs {
+			if !declared[a.Name] {
+				errs = errs.Also(apis.ErrInvalidValue(a.Name, fmt.Sprintf("artifacts.inputs[%d].name", i)))
+			}
+			for j, v := range a.Values {
+				if v.Ref == nil && v.Inline == "" {
+					if len(v.Digest) == 0 {
+						errs = errs.Also(apis.ErrInvalidValue("missing digest", fmt.Sprintf("artifacts.inputs[%d].values[%d]", i, j)))
+					}
+				} else if v.Ref == nil && len(v.Digest) == 0 {
+					errs = errs.Also(apis.ErrInvalidValue("missing digest", fmt.Sprintf("artifacts.inputs[%d].values[%d]", i, j)))
+				}
+			}
+		}
+	}
+
 	// Validate PipelineRun parameters
 	errs = errs.Also(ps.validatePipelineRunParameters(ctx))
 

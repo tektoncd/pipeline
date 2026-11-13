@@ -90,6 +90,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineWorkspacesDeclarations(ps.Workspaces))
 	// Validate the pipeline's results
 	errs = errs.Also(validatePipelineResults(ps.Results, ps.Tasks, ps.Finally))
+	errs = errs.Also(validatePipelineArtifacts(ctx, ps).ViaField("artifacts"))
 	// Reject result references to PipelineTasks that use pipelineRef or pipelineSpec.
 	// Result propagation from a child Pipeline is not implemented in the initial
 	// Pipelines-in-Pipelines alpha; see docs/pipelines-in-pipelines.md#limitations.
