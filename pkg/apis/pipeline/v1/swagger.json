@@ -577,6 +577,44 @@
         }
       }
     },
+    "v1.PipelineArtifactDeclarations": {
+      "description": "PipelineArtifactDeclarations declares artifacts at the Pipeline boundary.",
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.ArtifactDeclaration"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.PipelineArtifactOutput"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.PipelineArtifactOutput": {
+      "description": "PipelineArtifactOutput exposes a Task artifact as a Pipeline output.",
+      "type": "object",
+      "required": [
+        "name",
+        "from"
+      ],
+      "properties": {
+        "from": {
+          "type": "string",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
     "v1.PipelineList": {
       "description": "PipelineList contains a list of Pipeline",
       "type": "object",
@@ -683,6 +721,19 @@
         }
       }
     },
+    "v1.PipelineRunArtifacts": {
+      "description": "PipelineRunArtifacts supplies artifacts to a PipelineRun.",
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.Artifact"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
     "v1.PipelineRunList": {
       "description": "PipelineRunList contains a list of PipelineRun",
       "type": "object",
@@ -755,6 +806,10 @@
       "description": "PipelineRunSpec defines the desired state of PipelineRun",
       "type": "object",
       "properties": {
+        "artifacts": {
+          "description": "Artifacts supplies values for declared Pipeline artifact inputs.",
+          "$ref": "#/definitions/v1.PipelineRunArtifacts"
+        },
         "managedBy": {
           "description": "ManagedBy indicates which controller is responsible for reconciling this resource. If unset or set to \"tekton.dev/pipeline\", the default Tekton controller will manage this resource. This field is immutable.",
           "type": "string"
@@ -814,6 +869,10 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "artifacts": {
+          "description": "Artifacts are the declared outputs produced by the Pipeline.",
+          "$ref": "#/definitions/v1.Artifacts"
         },
         "childReferences": {
           "description": "list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun.",
@@ -886,6 +945,10 @@
       "description": "PipelineRunStatusFields holds the fields of PipelineRunStatus' status. This is defined separately and inlined so that other types can readily consume these fields via duck typing.",
       "type": "object",
       "properties": {
+        "artifacts": {
+          "description": "Artifacts are the declared outputs produced by the Pipeline.",
+          "$ref": "#/definitions/v1.Artifacts"
+        },
         "childReferences": {
           "description": "list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun.",
           "type": "array",
@@ -965,6 +1028,10 @@
       "description": "PipelineSpec defines the desired state of Pipeline.",
       "type": "object",
       "properties": {
+        "artifacts": {
+          "description": "Artifacts declares artifacts entering and leaving the Pipeline.",
+          "$ref": "#/definitions/v1.PipelineArtifactDeclarations"
+        },
         "description": {
           "description": "Description is a user-facing description of the pipeline that may be used to populate a UI.",
           "type": "string"
@@ -1120,7 +1187,6 @@
       }
     },
     "v1.PipelineTaskArtifacts": {
-      "description": "PipelineTaskArtifacts configures artifact bindings for a PipelineTask.",
       "type": "object",
       "properties": {
         "inputs": {
