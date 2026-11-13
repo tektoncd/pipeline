@@ -31,6 +31,8 @@ on the ServiceAccount for that. See the Kubernetes documentation:
 - [Configuring authentication for Git](#configuring-authentication-for-git)
   - [Configuring `basic-auth` authentication for Git](#configuring-basic-auth-authentication-for-git)
   - [Configuring `ssh-auth` authentication for Git](#configuring-ssh-auth-authentication-for-git)
+    - [Quickstart](#quickstart)
+    - [Overview](#overview)
   - [Using a custom port for SSH authentication](#using-a-custom-port-for-ssh-authentication)
   - [Using multiple SSH credentials for different repositories on the same host](#using-multiple-ssh-credentials-for-different-repositories-on-the-same-host)
   - [Using SSH authentication in `git` type `Tasks`](#using-ssh-authentication-in-git-type-tasks)
@@ -88,66 +90,6 @@ To consume these `Secrets`, Tekton performs credential initialization within eve
 any `Steps` in the `Run`. During credential initialization, Tekton accesses each `Secret` associated with the `Run` and
 aggregates them into a `/tekton/creds` directory. Tekton then copies or symlinks files from this directory into the user's
 `$HOME` directory.
-
-## Quick Start: SSH authentication for Git
-
-If you only need SSH access to a private Git repository, follow these steps.
-
-1. Generate an SSH key and add the public key to your Git host (for example GitHub under Settings > SSH and GPG Keys):
-
-   ```shell
-   ssh-keygen -t ed25519 -f ~/.ssh/tekton-git -N ""
-   cat ~/.ssh/tekton-git.pub
-   ```
-
-2. Create a `known_hosts` file for your Git host:
-
-   ```shell
-   ssh-keyscan github.com > ssh_known_hosts
-   ```
-
-3. Create a Kubernetes `Secret` with your private key and known hosts:
-
-   ```yaml
-   apiVersion: v1
-   kind: Secret
-   metadata:
-     name: git-ssh
-     annotations:
-       tekton.dev/git-0: github.com
-   type: kubernetes.io/ssh-auth
-   stringData:
-     ssh-privatekey: |
-       <paste contents of ~/.ssh/tekton-git>
-     known_hosts: |
-       <paste contents of ssh_known_hosts>
-   ```
-
-4. Attach the `Secret` to a `ServiceAccount`:
-
-   ```yaml
-   apiVersion: v1
-   kind: ServiceAccount
-   metadata:
-     name: git-clone-sa
-   secrets:
-     - name: git-ssh
-   ```
-
-5. Reference the `ServiceAccount` in your `TaskRun` or `PipelineRun`:
-
-   ```yaml
-   spec:
-     serviceAccountName: git-clone-sa
-   ```
-
-6. Apply the manifests:
-
-   ```shell
-   kubectl apply -f secret.yaml -f serviceaccount.yaml -f run.yaml
-   ```
-
-For more detail, see [Configuring `ssh-auth` authentication for Git](#configuring-ssh-auth-authentication-for-git).
 
 ## Understanding credential selection
 
@@ -376,6 +318,55 @@ secrets:
 For a complete example, see [`git-basic-auth-multiple-repos.yaml`](../examples/v1/taskruns/no-ci/git-basic-auth-multiple-repos.yaml).
 
 ### Configuring `ssh-auth` authentication for Git
+
+#### Quickstart
+
+For a minimal SSH-only setup against GitHub:
+
+1. Generate a key and register the public key with your Git host:
+
+   ```shell
+   ssh-keygen -t ed25519 -f ~/.ssh/tekton-git -N ""
+   cat ~/.ssh/tekton-git.pub
+   ```
+
+2. Capture the host key:
+
+   ```shell
+   ssh-keyscan github.com > ssh_known_hosts
+   ```
+
+3. Create a `Secret`, attach it to a `ServiceAccount`, and set `serviceAccountName` on your `TaskRun` or `PipelineRun`. The example below uses `stringData`; paste your key and `known_hosts` contents there.
+
+   ```yaml
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: git-ssh
+     annotations:
+       tekton.dev/git-0: github.com
+   type: kubernetes.io/ssh-auth
+   stringData:
+     ssh-privatekey: |
+       <paste contents of ~/.ssh/tekton-git>
+     known_hosts: |
+       <paste contents of ssh_known_hosts>
+   ---
+   apiVersion: v1
+   kind: ServiceAccount
+   metadata:
+     name: git-clone-sa
+   secrets:
+     - name: git-ssh
+   ```
+
+4. Apply your manifests:
+
+   ```shell
+   kubectl apply -f secret.yaml -f serviceaccount.yaml -f run.yaml
+   ```
+
+#### Overview
 
 This section describes how to configure an `ssh-auth` type `Secret` for use with Git. In the example below,
 before executing any `Steps` in the `Run`, Tekton creates a `~/.ssh/config` file containing the SSH key
