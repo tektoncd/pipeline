@@ -25,7 +25,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/result"
@@ -141,7 +140,7 @@ func TestSetTaskRunStatusBasedOnStepStatus_sidecar_logs(t *testing.T) {
 			},
 		},
 		maxResultSize: 1,
-		wantErr:       fmt.Errorf("%d bytes %w of %d bytes", 9, sidecarlogresults.ErrSizeExceeded, 1),
+		wantErr:       fmt.Errorf("%d bytes %w of %d bytes", 9, ErrSizeExceeded, 1),
 	}, {
 		desc: "test result with sidecar logs bad format",
 		tr: v1.TaskRun{
@@ -177,7 +176,7 @@ func TestSetTaskRunStatusBasedOnStepStatus_sidecar_logs(t *testing.T) {
 			},
 		},
 		maxResultSize:   1,
-		wantErr:         fmt.Errorf("%d bytes %w of %d bytes", 9, sidecarlogresults.ErrSizeExceeded, 1),
+		wantErr:         fmt.Errorf("%d bytes %w of %d bytes", 9, ErrSizeExceeded, 1),
 		enableArtifacts: true,
 	}, {
 		desc: "test artifact with sidecar logs bad format",

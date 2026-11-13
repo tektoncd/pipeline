@@ -25,7 +25,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -211,7 +210,7 @@ func getStepResultsFromSidecarLogs(sidecarLogResults []result.RunResult, contain
 	stepResultsFromSidecarLogs := []result.RunResult{}
 	for _, slr := range sidecarLogResults {
 		if slr.ResultType == result.StepResultType {
-			stepName, resultName, err := sidecarlogresults.ExtractStepAndResultFromSidecarResultName(slr.Key)
+			stepName, resultName, err := extractStepAndResultFromSidecarResultName(slr.Key)
 			if err != nil {
 				return []result.RunResult{}, err
 			}
@@ -246,7 +245,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 	if sidecarLogsResultsEnabled {
 		// extraction of results from sidecar logs
 		if tr.Status.TaskSpec.Results != nil || artifactsSidecarCreated {
-			slr, err := sidecarlogresults.GetResultsFromSidecarLogs(ctx, kubeclient, tr.Namespace, tr.Status.PodName, pipeline.ReservedResultsSidecarContainerName, podPhase)
+			slr, err := getResultsFromSidecarLogs(ctx, kubeclient, tr.Namespace, tr.Status.PodName, pipeline.ReservedResultsSidecarContainerName, podPhase)
 			if err != nil {
 				errs = append(errs, err)
 			}

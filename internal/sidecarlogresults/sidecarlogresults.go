@@ -14,43 +14,36 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package sidecarlogresults emits results from files without depending on the
+// controller's Kubernetes log reader in pkg/pod.
 package sidecarlogresults
 
 import (
-	"bufio"
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"github.com/tektoncd/pipeline/pkg/result"
+	"github.com/tektoncd/pipeline/pkg/entrypoint/pipeline"
 	"golang.org/x/sync/errgroup"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
-// ErrSizeExceeded indicates that the result exceeded its maximum allowed size
-var (
-	ErrSizeExceeded = errors.New("results size exceeds configured limit")
-	stepDir         = pipeline.StepsDir
-)
+var stepDir = pipeline.StepsDir
 
 type SidecarLogResultType string
 
 const (
-	taskResultType SidecarLogResultType = "task"
-	stepResultType SidecarLogResultType = "step"
-
-	stepArtifactType           SidecarLogResultType = "stepArtifact"
-	taskArtifactType           SidecarLogResultType = "taskArtifact"
+	// TaskResultType identifies task results in sidecar logs.
+	TaskResultType SidecarLogResultType = "task"
+	// StepResultType identifies step results in sidecar logs.
+	StepResultType SidecarLogResultType = "step"
+	// StepArtifactType identifies step artifacts in sidecar logs.
+	StepArtifactType SidecarLogResultType = "stepArtifact"
+	// TaskArtifactType identifies task artifacts in sidecar logs.
+	TaskArtifactType           SidecarLogResultType = "taskArtifact"
 	sidecarResultNameSeparator string               = "."
 )
 
@@ -115,16 +108,6 @@ func createSidecarResultName(stepName, resultName string) string {
 	return fmt.Sprintf("%s%s%s", stepName, sidecarResultNameSeparator, resultName)
 }
 
-// ExtractStepAndResultFromSidecarResultName splits the result name to extract the step
-// and result name from it. It only works if the format is <stepName>.<resultName>
-func ExtractStepAndResultFromSidecarResultName(sidecarResultName string) (string, string, error) {
-	splitString := strings.SplitN(sidecarResultName, sidecarResultNameSeparator, 2)
-	if len(splitString) != 2 {
-		return "", "", fmt.Errorf("invalid string %s : expected somtthing that looks like <stepName>.<resultName>", sidecarResultName)
-	}
-	return splitString[0], splitString[1], nil
-}
-
 func readResults(resultsDir, resultFile, stepName string, resultType SidecarLogResultType) (SidecarLogResult, error) {
 	value, err := os.ReadFile(filepath.Join(resultsDir, resultFile))
 	if os.IsNotExist(err) {
@@ -133,7 +116,7 @@ func readResults(resultsDir, resultFile, stepName string, resultType SidecarLogR
 		return SidecarLogResult{}, fmt.Errorf("error reading the results file %w", err)
 	}
 	resultName := resultFile
-	if resultType == stepResultType {
+	if resultType == StepResultType {
 		resultName = createSidecarResultName(stepName, resultFile)
 	}
 	return SidecarLogResult{
@@ -158,7 +141,7 @@ func LookForResults(w io.Writer, runDir string, resultsDir string, resultNames [
 	g := new(errgroup.Group)
 	for _, resultFile := range resultNames {
 		g.Go(func() error {
-			newResult, err := readResults(resultsDir, resultFile, "", taskResultType)
+			newResult, err := readResults(resultsDir, resultFile, "", TaskResultType)
 			if err != nil {
 				return err
 			}
@@ -175,7 +158,7 @@ func LookForResults(w io.Writer, runDir string, resultsDir string, resultNames [
 			stepResultsDir := filepath.Join(stepResultsDir, sName, "results")
 
 			g.Go(func() error {
-				newResult, err := readResults(stepResultsDir, resultName, sName, stepResultType)
+				newResult, err := readResults(stepResultsDir, resultName, sName, StepResultType)
 				if err != nil {
 					return err
 				}
@@ -236,105 +219,11 @@ func LookForArtifacts(w io.Writer, names []string, runDir string) error {
 		if err != nil {
 			return err
 		}
-		if err := encode(w, SidecarLogResult{Name: name, Value: string(values), Type: stepArtifactType}); err != nil {
+		if err := encode(w, SidecarLogResult{Name: name, Value: string(values), Type: StepArtifactType}); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-// GetResultsFromSidecarLogs extracts results from the logs of the results sidecar
-func GetResultsFromSidecarLogs(ctx context.Context, clientset kubernetes.Interface, namespace string, name string, container string, podPhase corev1.PodPhase) ([]result.RunResult, error) {
-	sidecarLogResults := []result.RunResult{}
-	if podPhase == corev1.PodPending {
-		return sidecarLogResults, nil
-	}
-	podLogOpts := corev1.PodLogOptions{Container: container}
-	req := clientset.CoreV1().Pods(namespace).GetLogs(name, &podLogOpts)
-	sidecarLogs, err := req.Stream(ctx)
-	if err != nil {
-		return sidecarLogResults, err
-	}
-	defer sidecarLogs.Close()
-	maxResultLimit := config.FromContextOrDefaults(ctx).FeatureFlags.MaxResultSize
-	return extractResultsFromLogs(sidecarLogs, sidecarLogResults, maxResultLimit)
-}
-
-func extractResultsFromLogs(logs io.Reader, sidecarLogResults []result.RunResult, maxResultLimit int) ([]result.RunResult, error) {
-	reader := bufio.NewReaderSize(logs, maxResultLimit)
-	for {
-		line, isPrefix, err := reader.ReadLine()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return nil, err
-		}
-
-		if isPrefix {
-			// Take ownership of the buffer before further ReadLine calls,
-			// since ReadLine's returned slice is only valid until the next call.
-			line = append([]byte(nil), line...)
-		}
-		lineLength := len(line)
-		for isPrefix {
-			more, nextPrefix, err := reader.ReadLine()
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					break
-				}
-				return nil, err
-			}
-			lineLength += len(more)
-
-			if lineLength <= maxResultLimit {
-				line = append(line, more...)
-			}
-			isPrefix = nextPrefix
-		}
-
-		if lineLength > maxResultLimit {
-			return sidecarLogResults, fmt.Errorf("%d bytes %w of %d bytes", lineLength, ErrSizeExceeded, maxResultLimit)
-		}
-
-		result, err := parseResults(line, maxResultLimit)
-		if err != nil {
-			return nil, err
-		}
-		sidecarLogResults = append(sidecarLogResults, result)
-	}
-
-	return sidecarLogResults, nil
-}
-
-func parseResults(resultBytes []byte, maxResultLimit int) (result.RunResult, error) {
-	runResult := result.RunResult{}
-	var res SidecarLogResult
-	if err := json.Unmarshal(resultBytes, &res); err != nil {
-		return runResult, fmt.Errorf("invalid result \"%s\": %w", res.Name, err)
-	}
-	if len(resultBytes) > maxResultLimit {
-		return runResult, fmt.Errorf("invalid result \"%s\": %w of %d", res.Name, ErrSizeExceeded, maxResultLimit)
-	}
-	var resultType result.ResultType
-	switch res.Type {
-	case taskResultType:
-		resultType = result.TaskRunResultType
-	case stepResultType:
-		resultType = result.StepResultType
-	case stepArtifactType:
-		resultType = result.StepArtifactsResultType
-	case taskArtifactType:
-		resultType = result.TaskRunArtifactsResultType
-	default:
-		return result.RunResult{}, fmt.Errorf("invalid sidecar result type %v. Must be %v or %v or %v", res.Type, taskResultType, stepResultType, stepArtifactType)
-	}
-	runResult = result.RunResult{
-		Key:        res.Name,
-		Value:      res.Value,
-		ResultType: resultType,
-	}
-	return runResult, nil
 }
 
 func parseArtifacts(fileContent []byte) (v1.Artifacts, error) {
