@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package spire provides workload identity and result signing without controller
+// dependencies, keeping the entrypoint binary small.
 package spire
 
 import (
