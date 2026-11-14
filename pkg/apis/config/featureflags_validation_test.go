@@ -113,3 +113,21 @@ func TestValidateEnabledAPIFieldsError(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateEnabledAPIFieldsInvalidWantVersion(t *testing.T) {
+	ctx := config.ToContext(t.Context(), &config.Config{
+		FeatureFlags: &config.FeatureFlags{EnableAPIFields: config.StableAPIFields},
+	})
+
+	err := config.ValidateEnabledAPIFields(ctx, "a feature", "bogus")
+	if err == nil {
+		t.Fatal("ValidateEnabledAPIFields() did not return error for an invalid wantVersion")
+	}
+	want := "invalid wantVersion bogus, must be one of (alpha, beta, stable)"
+	if err.Message != want {
+		t.Errorf("error message got %q, want %q", err.Message, want)
+	}
+	if len(err.Paths) != 0 {
+		t.Errorf("error message arguments were used as field paths, got %v", err.Paths)
+	}
+}
