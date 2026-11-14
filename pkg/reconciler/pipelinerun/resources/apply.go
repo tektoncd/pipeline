@@ -707,6 +707,15 @@ func PropagateArtifacts(rpt *ResolvedPipelineTask, runStates PipelineRunState) e
 				if i == 0 {
 					stringReplacements[fmt.Sprintf("tasks.%s.outputs", taskName)] = string(ob)
 				}
+				if len(output.Values) > 0 {
+					v := output.Values[0]
+					if v.Uri != "" {
+						stringReplacements[fmt.Sprintf("tasks.%s.outputs.%s.uri", taskName, output.Name)] = v.Uri
+					}
+					if sha, ok := v.Digest["sha256"]; ok {
+						stringReplacements[fmt.Sprintf("tasks.%s.outputs.%s.digest", taskName, output.Name)] = "sha256:" + sha
+					}
+				}
 			}
 		}
 	}

@@ -45,6 +45,7 @@ import (
 	"knative.dev/pkg/changeset"
 	"knative.dev/pkg/kmap"
 	"knative.dev/pkg/kmeta"
+	"knative.dev/pkg/system"
 )
 
 const (
@@ -230,6 +231,53 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 			}
 			taskSpec.Sidecars = append(taskSpec.Sidecars, resultsSidecar)
 			commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-result_from", config.ResultExtractionMethodSidecarLogs)
+		}
+	}
+
+	// Inject artifact transport args when artifacts are enabled and the Task
+	// declares any. Reference-type outputs need no storage backend at all
+	// (TEP-0192: "a Task is therefore always valid on its own"), so this must
+	// not be gated on OCIRepository being configured -- only content-type
+	// uploads actually need a repository, and that's handled per-artifact in
+	// artifactEntrypointArgs.
+	if featureFlags.EnableArtifacts && taskSpec.Artifacts != nil {
+		artifactStorageCfg := config.FromContextOrDefaults(ctx).ArtifactStorage
+		backend, ociRepository, insecure := "", "", false
+		inlineThreshold := 0
+		if artifactStorageCfg != nil && artifactStorageCfg.Enabled {
+			backend = artifactStorageCfg.Backend
+			ociRepository = artifactStorageCfg.OCIRepository
+			insecure = artifactStorageCfg.Insecure
+			inlineThreshold = artifactStorageCfg.InlineThreshold
+		}
+		artifactArgs := artifactEntrypointArgs(&taskSpec, backend, ociRepository, insecure, inlineThreshold)
+		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, artifactArgs...)
+		// If the pipeline reconciler resolved artifact input URIs, inject them
+		if inputsJSON, ok := taskRun.Annotations["tekton.dev/artifact-inputs"]; ok && inputsJSON != "" {
+			commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-artifact_inputs", inputsJSON)
+			if insecure {
+				// Ensure insecure flag is set (may already be set by artifactEntrypointArgs)
+				hasInsecure := false
+				for _, a := range commonExtraEntrypointArgs {
+					if a == "-artifact_insecure" {
+						hasInsecure = true
+						break
+					}
+				}
+				if !hasInsecure {
+					commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-artifact_insecure")
+				}
+			}
+		}
+		// Get secret for OCI credentials from the system namespace (ex: tekton-pipelines)and inject
+		// the docker config JSON as an entrypoint arg.
+		if artifactStorageCfg != nil && artifactStorageCfg.Enabled && artifactStorageCfg.OCICredentialsSecret != "" {
+			dockerCfgJSON, err := readArtifactCredentials(ctx, b.KubeClient, artifactStorageCfg.OCICredentialsSecret)
+			if err != nil {
+				log.Printf("warning: failed to read artifact credentials secret: %v", err)
+			} else if len(dockerCfgJSON) > 0 {
+				commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-artifact_docker_config", string(dockerCfgJSON))
+			}
 		}
 	}
 
@@ -782,4 +830,23 @@ func IsNativeSidecarSupport(serverVersion *version.Info) bool {
 		return true
 	}
 	return false
+}
+
+// readArtifactCredentials reads the named secret from the system namespace.
+// The returned data can be passed directly to the entrypoint to authenticate
+// without needing the secret in the TaskRun's namespace.
+func readArtifactCredentials(ctx context.Context, kubeclient kubernetes.Interface, secretName string) ([]byte, error) {
+	src, err := kubeclient.CoreV1().Secrets(system.Namespace()).Get(ctx, secretName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("reading artifact credentials secret %s/%s: %w", system.Namespace(), secretName, err)
+	}
+	// kubernetes.io/dockerconfigjson secrets store creds under this key
+	if data, ok := src.Data[corev1.DockerConfigJsonKey]; ok && len(data) > 0 {
+		return data, nil
+	}
+	// Fallback for kubernetes.io/dockercfg secrets
+	if data, ok := src.Data[corev1.DockerConfigKey]; ok && len(data) > 0 {
+		return data, nil
+	}
+	return nil, fmt.Errorf("secret %s/%s has no docker config data", system.Namespace(), secretName)
 }

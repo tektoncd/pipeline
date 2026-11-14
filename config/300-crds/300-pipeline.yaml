@@ -724,6 +724,56 @@ spec:
               description: Spec holds the desired state of the Pipeline from the client
               type: object
               properties:
+                artifacts:
+                  description: Artifacts declares artifacts entering and leaving the Pipeline.
+                  type: object
+                  properties:
+                    inputs:
+                      type: array
+                      items:
+                        description: ArtifactDeclaration describes a single artifact input or output.
+                        type: object
+                        required:
+                          - name
+                        properties:
+                          description:
+                            description: Description of the artifact.
+                            type: string
+                          mediaType:
+                            description: MediaType hint for the artifact (e.g., application/vnd.tekton.artifact.junit.v1+xml)
+                            type: string
+                          name:
+                            description: Name of the artifact (used in path substitution and pipeline bindings)
+                            type: string
+                          subject:
+                            description: |-
+                              Subject marks this artifact as the primary build output — the SLSA
+                              attestation subject. Multiple artifacts can be subjects.
+                            type: boolean
+                          type:
+                            description: 'Type of the artifact: "reference" or "content". Defaults to "content".'
+                            type: string
+                          value:
+                            description: |-
+                              Value surfaces an artifact produced by a Step, using
+                              $(steps.<step>.artifacts.<name>). Mirrors TaskResult.Value. When set,
+                              Type and MediaType are inherited from the referenced step artifact.
+                            type: string
+                      x-kubernetes-list-type: atomic
+                    outputs:
+                      type: array
+                      items:
+                        description: PipelineArtifactOutput exposes a Task artifact as a Pipeline output.
+                        type: object
+                        required:
+                          - from
+                          - name
+                        properties:
+                          from:
+                            type: string
+                          name:
+                            type: string
+                      x-kubernetes-list-type: atomic
                 description:
                   description: |-
                     Description is a user-facing description of the pipeline that may be
@@ -746,6 +796,27 @@ spec:
                       Params and from the output of previous tasks.
                     type: object
                     properties:
+                      artifacts:
+                        description: Artifacts configures artifact bindings for this task.
+                        type: object
+                        properties:
+                          inputs:
+                            description: Inputs binds artifact inputs from other tasks' outputs.
+                            type: array
+                            items:
+                              description: PipelineTaskArtifactBinding binds an artifact input to an output from another task.
+                              type: object
+                              required:
+                                - from
+                                - name
+                              properties:
+                                from:
+                                  description: 'From references an output from another task: "tasks.<taskName>.outputs.<artifactName>"'
+                                  type: string
+                                name:
+                                  description: Name matches the artifact input name in the referenced Task.
+                                  type: string
+                            x-kubernetes-list-type: atomic
                       description:
                         description: |-
                           Description is the description of this task within the context of a Pipeline.
@@ -1089,6 +1160,27 @@ spec:
                       Params and from the output of previous tasks.
                     type: object
                     properties:
+                      artifacts:
+                        description: Artifacts configures artifact bindings for this task.
+                        type: object
+                        properties:
+                          inputs:
+                            description: Inputs binds artifact inputs from other tasks' outputs.
+                            type: array
+                            items:
+                              description: PipelineTaskArtifactBinding binds an artifact input to an output from another task.
+                              type: object
+                              required:
+                                - from
+                                - name
+                              properties:
+                                from:
+                                  description: 'From references an output from another task: "tasks.<taskName>.outputs.<artifactName>"'
+                                  type: string
+                                name:
+                                  description: Name matches the artifact input name in the referenced Task.
+                                  type: string
+                            x-kubernetes-list-type: atomic
                       description:
                         description: |-
                           Description is the description of this task within the context of a Pipeline.

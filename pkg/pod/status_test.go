@@ -4880,3 +4880,104 @@ func Test_getFailureMessage_consistent_with_reason(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyArtifactSubjectFromSpec(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		artifacts *v1.Artifacts
+		taskSpec  *v1.TaskSpec
+		want      *v1.Artifacts
+	}{
+		{
+			name:      "nil artifacts",
+			artifacts: nil,
+			taskSpec: &v1.TaskSpec{
+				Artifacts: &v1.ArtifactDeclarations{
+					Outputs: []v1.ArtifactDeclaration{{Name: "image", Subject: true}},
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "nil taskspec",
+			artifacts: &v1.Artifacts{
+				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Uri: "gcr.io/img@sha256:abc"}}}},
+			},
+			taskSpec: nil,
+			want: &v1.Artifacts{
+				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Uri: "gcr.io/img@sha256:abc"}}}},
+			},
+		},
+		{
+			name: "taskspec with no artifacts declaration",
+			artifacts: &v1.Artifacts{
+				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Uri: "gcr.io/img@sha256:abc"}}}},
+			},
+			taskSpec: &v1.TaskSpec{},
+			want: &v1.Artifacts{
+				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Uri: "gcr.io/img@sha256:abc"}}}},
+			},
+		},
+		{
+			name: "no subject declarations",
+			artifacts: &v1.Artifacts{
+				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Uri: "gcr.io/img@sha256:abc"}}}},
+			},
+			taskSpec: &v1.TaskSpec{
+				Artifacts: &v1.ArtifactDeclarations{
+					Outputs: []v1.ArtifactDeclaration{{Name: "image"}},
+				},
+			},
+			want: &v1.Artifacts{
+				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Uri: "gcr.io/img@sha256:abc"}}}},
+			},
+		},
+		{
+			name: "subject applied to matching artifact",
+			artifacts: &v1.Artifacts{
+				Outputs: []v1.Artifact{{Name: "image", Values: []v1.ArtifactValue{{Uri: "gcr.io/img@sha256:abc"}}}},
+			},
+			taskSpec: &v1.TaskSpec{
+				Artifacts: &v1.ArtifactDeclarations{
+					Outputs: []v1.ArtifactDeclaration{{Name: "image", Subject: true}},
+				},
+			},
+			want: &v1.Artifacts{
+				Outputs: []v1.Artifact{{Name: "image", Subject: true, Values: []v1.ArtifactValue{{Uri: "gcr.io/img@sha256:abc"}}}},
+			},
+		},
+		{
+			name: "multiple outputs only matching one is subject",
+			artifacts: &v1.Artifacts{
+				Outputs: []v1.Artifact{
+					{Name: "source", Values: []v1.ArtifactValue{{Uri: "oci://registry/source@sha256:def"}}},
+					{Name: "image", Values: []v1.ArtifactValue{{Uri: "gcr.io/img@sha256:abc"}}},
+					{Name: "sbom", Values: []v1.ArtifactValue{{Uri: "oci://registry/sbom@sha256:ghi"}}},
+				},
+			},
+			taskSpec: &v1.TaskSpec{
+				Artifacts: &v1.ArtifactDeclarations{
+					Outputs: []v1.ArtifactDeclaration{
+						{Name: "source"},
+						{Name: "image", Subject: true},
+						{Name: "sbom"},
+					},
+				},
+			},
+			want: &v1.Artifacts{
+				Outputs: []v1.Artifact{
+					{Name: "source", Values: []v1.ArtifactValue{{Uri: "oci://registry/source@sha256:def"}}},
+					{Name: "image", Subject: true, Values: []v1.ArtifactValue{{Uri: "gcr.io/img@sha256:abc"}}},
+					{Name: "sbom", Values: []v1.ArtifactValue{{Uri: "oci://registry/sbom@sha256:ghi"}}},
+				},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			applyArtifactSubjectFromSpec(tc.artifacts, tc.taskSpec)
+			if d := cmp.Diff(tc.want, tc.artifacts); d != "" {
+				t.Errorf("applyArtifactSubjectFromSpec() mismatch (-want +got):\n%s", d)
+			}
+		})
+	}
+}

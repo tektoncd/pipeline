@@ -4172,6 +4172,12 @@ func schema_pkg_apis_pipeline_v1beta1_StepActionSpec(ref common.ReferenceCallbac
 							},
 						},
 					},
+					"artifacts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Artifacts declares artifact outputs this StepAction produces. Only outputs are supported — inputs are declared at Task scope.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepArtifacts"),
+						},
+					},
 					"securityContext": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SecurityContext defines the security options the Step should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/ The value set in StepAction will take precedence over the value from Task.",
@@ -4202,7 +4208,7 @@ func schema_pkg_apis_pipeline_v1beta1_StepActionSpec(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepResult", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.VolumeMount"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepArtifacts", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepResult", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.VolumeMount"},
 	}
 }
 

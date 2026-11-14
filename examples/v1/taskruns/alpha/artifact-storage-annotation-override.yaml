@@ -1,0 +1,41 @@
+# This example demonstrates overriding artifact storage config
+# via TaskRun annotations.
+#
+# Prerequisites:
+#   1. Enable artifacts feature flag:
+#      kubectl patch configmap feature-flags -n tekton-pipelines \
+#        -p '{"data":{"enable-artifacts":"true"}}'
+#
+#   2. Create cluster-level artifact storage config:
+#      kubectl apply -f - <<EOF
+#      apiVersion: v1
+#      kind: ConfigMap
+#      metadata:
+#        name: config-artifact-storage
+#        namespace: tekton-pipelines
+#      data:
+#        enabled: "true"
+#        backend: "oci"
+#        oci-repository: "registry.example.com/cluster-artifacts"
+#      EOF
+#
+# The TaskRun annotations below override the cluster config's
+# oci-repository and enable insecure (plain HTTP) registry access.
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: artifact-override-
+  annotations:
+    tekton.dev/artifact-storage-enabled: "true"
+spec:
+  taskSpec:
+    artifacts:
+      outputs:
+        - name: report
+          type: content
+    steps:
+      - name: generate
+        image: mirror.gcr.io/bash
+        script: |
+          #!/usr/bin/env bash
+          echo '{"status": "ok"}' > $(outputs.report.path)/report.json

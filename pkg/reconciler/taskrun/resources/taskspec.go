@@ -164,6 +164,9 @@ func resolveStepRef(ctx context.Context, taskSpec v1.TaskSpec, taskRun *v1.TaskR
 	if len(stepFromStepAction.Results) > 0 {
 		resolvedStep.Results = stepFromStepAction.Results
 	}
+	if stepFromStepAction.Artifacts != nil && len(stepFromStepAction.Artifacts.Outputs) > 0 {
+		resolvedStep.Artifacts = stepFromStepAction.Artifacts
+	}
 
 	// Finalize by clearing Ref and Params, as they have been resolved
 	resolvedStep.Ref = nil

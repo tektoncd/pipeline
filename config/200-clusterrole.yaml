@@ -125,6 +125,11 @@ rules:
     # When there are changes to the configs or secrets, knative updates the validatingwebhook config
     # with the updated certificates or the refreshed set of rules.
     verbs: ["get", "update", "delete"]
+  # The webhook needs to read namespace-scoped configmap
+  # ConfigMaps during admission to validate the artifact storage hierarchy.
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get"]
   - apiGroups: [""]
     resources: ["namespaces"]
     verbs: ["get"]

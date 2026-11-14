@@ -125,6 +125,11 @@ type TaskSpec struct {
 	// Results are values that this Task can output
 	// +listType=atomic
 	Results []TaskResult `json:"results,omitempty"`
+
+	// Artifacts declares the inputs and outputs of the task for OCI-based transport.
+	// Requires enable-artifacts feature flag.
+	// +optional
+	Artifacts *ArtifactDeclarations `json:"artifacts,omitempty"`
 }
 
 // TaskList contains a list of Task

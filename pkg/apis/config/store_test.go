@@ -34,6 +34,7 @@ func TestStoreLoadWithContext(t *testing.T) {
 	eventsConfig := test.ConfigMapFromTestFile(t, "config-events")
 	tracingConfig := test.ConfigMapFromTestFile(t, "config-tracing")
 	waitExponentialBackoffConfig := test.ConfigMapFromTestFile(t, "config-wait-exponential-backoff")
+	artifactStorageConfig := test.ConfigMapFromTestFile(t, "config-artifact-storage")
 
 	expectedDefaults, _ := config.NewDefaultsFromConfigMap(defaultConfig)
 	expectedFeatures, _ := config.NewFeatureFlagsFromConfigMap(featuresConfig)
@@ -42,6 +43,7 @@ func TestStoreLoadWithContext(t *testing.T) {
 	expectedEventsConfig, _ := config.NewEventsFromConfigMap(eventsConfig)
 	expectedTracingConfig, _ := config.NewTracingFromConfigMap(tracingConfig)
 	expectedWaitExponentialBackoffConfig, _ := config.NewWaitExponentialBackoffFromConfigMap(waitExponentialBackoffConfig)
+	expectedArtifactStorageConfig, _ := config.NewArtifactStorageFromConfigMap(artifactStorageConfig)
 
 	expected := &config.Config{
 		Defaults:               expectedDefaults,
@@ -51,6 +53,7 @@ func TestStoreLoadWithContext(t *testing.T) {
 		Events:                 expectedEventsConfig,
 		Tracing:                expectedTracingConfig,
 		WaitExponentialBackoff: expectedWaitExponentialBackoffConfig,
+		ArtifactStorage:        expectedArtifactStorageConfig,
 	}
 
 	store := config.NewStore(logtesting.TestLogger(t))
@@ -61,6 +64,7 @@ func TestStoreLoadWithContext(t *testing.T) {
 	store.OnConfigChanged(eventsConfig)
 	store.OnConfigChanged(tracingConfig)
 	store.OnConfigChanged(waitExponentialBackoffConfig)
+	store.OnConfigChanged(artifactStorageConfig)
 
 	cfg := config.FromContext(store.ToContext(t.Context()))
 
@@ -78,6 +82,12 @@ func TestStoreLoadWithContext_Empty(t *testing.T) {
 		Events:                 config.DefaultEvents.DeepCopy(),
 		Tracing:                config.DefaultTracing.DeepCopy(),
 		WaitExponentialBackoff: config.DefaultWaitExponentialBackoff.DeepCopy(),
+		ArtifactStorage: &config.ArtifactStorage{
+			Backend:            config.DefaultBackend,
+			InlineThreshold:    config.DefaultInlineThreshold,
+			OCIAttachReferrers: true,
+			OCITagPattern:      config.DefaultTagPattern,
+		},
 	}
 
 	store := config.NewStore(logtesting.TestLogger(t))

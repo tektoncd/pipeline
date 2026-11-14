@@ -394,6 +394,8 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 		trs.Steps = orderedStepStates
 	}
 
+	applyArtifactSubjectFromSpec(trs.Artifacts, ts)
+
 	return errors.Join(errs...)
 }
 
@@ -409,10 +411,49 @@ func setStepArtifactsValueFromSidecarLogResult(results []result.RunResult, name 
 func setStepArtifactsValueFromTerminationMessageRunResult(results []result.RunResult, artifacts *v1.Artifacts) error {
 	for _, r := range results {
 		if r.ResultType == result.StepArtifactsResultType {
+			// Handle TEP-0164 uploaded artifacts: key is "artifact-<name>", value is a URI
+			if strings.HasPrefix(r.Key, "artifact-") {
+				name := strings.TrimPrefix(r.Key, "artifact-")
+				var av v1.ArtifactValue
+				if err := json.Unmarshal([]byte(r.Value), &av); err != nil {
+					// Fallback: treat as plain URI for backward compatibility
+					av = v1.ArtifactValue{Uri: r.Value}
+				}
+				artifacts.Outputs = append(artifacts.Outputs, v1.Artifact{
+					Name:   name,
+					Values: []v1.ArtifactValue{av},
+				})
+				continue
+			}
+			// Legacy provenance.json format
 			return json.Unmarshal([]byte(r.Value), artifacts)
 		}
 	}
 	return nil
+}
+
+// applyArtifactSubjectFromSpec copies the Subject key from the TaskSpec's
+// artifact output declarations onto the corresponding status artifacts.
+// The entrypoint does not include Subject in the termination message, so the
+// reconciler must recover it from the spec.
+func applyArtifactSubjectFromSpec(artifacts *v1.Artifacts, ts *v1.TaskSpec) {
+	if artifacts == nil || ts == nil || ts.Artifacts == nil {
+		return
+	}
+	subjects := make(map[string]bool, len(ts.Artifacts.Outputs))
+	for _, decl := range ts.Artifacts.Outputs {
+		if decl.Subject {
+			subjects[decl.Name] = true
+		}
+	}
+	if len(subjects) == 0 {
+		return
+	}
+	for i := range artifacts.Outputs {
+		if subjects[artifacts.Outputs[i].Name] {
+			artifacts.Outputs[i].Subject = true
+		}
+	}
 }
 
 func setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses []corev1.ContainerStatus, trs *v1.TaskRunStatus) {

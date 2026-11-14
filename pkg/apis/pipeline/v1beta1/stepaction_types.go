@@ -159,6 +159,10 @@ type StepActionSpec struct {
 	// +optional
 	// +listType=atomic
 	Results []v1.StepResult `json:"results,omitempty"`
+	// Artifacts declares artifact outputs this StepAction produces.
+	// Only outputs are supported — inputs are declared at Task scope.
+	// +optional
+	Artifacts *v1.StepArtifacts `json:"artifacts,omitempty"`
 	// SecurityContext defines the security options the Step should be run with.
 	// If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
 	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
@@ -186,6 +190,7 @@ func (ss *StepActionSpec) ToStep() *v1.Step {
 		VolumeMounts:    ss.VolumeMounts,
 		SecurityContext: ss.SecurityContext,
 		Results:         ss.Results,
+		Artifacts:       ss.Artifacts,
 	}
 }
 

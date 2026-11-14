@@ -1029,6 +1029,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	}
 
 	if pod == nil {
+		ctx = c.resolveArtifactStorageHierarchy(ctx, logger, tr)
 		pod, err = c.createPod(ctx, ts, tr, rtr, workspaceVolumes)
 		if err != nil {
 			newErr := c.handlePodCreationError(tr, err)
@@ -1499,6 +1500,7 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tracer trace.T
 
 	// Apply step Artifacts substitution
 	ts = resources.ApplyArtifacts(ts)
+	ts = resources.ApplyArtifactDeclarationPaths(ts, tr.Annotations["tekton.dev/artifact-inputs"])
 	// Apply step exitCode path substitution
 	ts = resources.ApplyStepExitCodePath(ts)
 
@@ -1685,6 +1687,36 @@ func isConcurrentModificationError(err error) bool {
 }
 
 // retryTaskRun archives taskRun.Status to taskRun.Status.RetriesStatus, and set
+// resolveArtifactStorageHierarchy resolves the 4-level artifact storage
+// configuration hierarchy (cluster → namespace ConfigMap → Pipeline/PipelineRun
+// annotations) and returns a context with the resolved config attached.
+func (c *Reconciler) resolveArtifactStorageHierarchy(ctx context.Context, logger *zap.SugaredLogger, tr *v1.TaskRun) context.Context {
+	cfg := config.FromContextOrDefaults(ctx)
+	if !cfg.FeatureFlags.EnableArtifacts || cfg.ArtifactStorage == nil {
+		return ctx
+	}
+
+	var nsOverrides map[string]string
+	cm, err := c.KubeClientSet.CoreV1().ConfigMaps(tr.Namespace).Get(ctx, config.ArtifactStorageConfigName, metav1.GetOptions{})
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			logger.Warnf("Failed to read namespace artifact storage config for %s: %v", tr.Namespace, err)
+		}
+	} else {
+		nsOverrides = cm.Data
+	}
+
+	resolved, err := config.ResolveArtifactStorage(cfg.ArtifactStorage, nsOverrides, tr.Annotations)
+	if err != nil {
+		logger.Warnf("Failed to resolve artifact storage hierarchy for TaskRun %s: %v", tr.Name, err)
+		return ctx
+	}
+
+	cfgCopy := *cfg
+	cfgCopy.ArtifactStorage = resolved
+	return config.ToContext(ctx, &cfgCopy)
+}
+
 // taskRun status to Unknown with Reason v1.TaskRunReasonToBeRetried.
 func retryTaskRun(tr *v1.TaskRun, message string) {
 	newStatus := tr.Status.DeepCopy()
