@@ -123,6 +123,20 @@ Following values are available in the ConfigMap:
 
 Histogram value isn't available when pipelinerun or taskrun labels are selected. The Lastvalue or Gauge will be provided. Histogram would serve no purpose because it would generate a single bar. TaskRun and PipelineRun level metrics aren't recommended because they lead to an unbounded cardinality which degrades the observability database.
 
+### Exemplars
+
+The duration and count metrics carry exemplars that link a data point to the
+trace of the reconcile that recorded it, so you can go from a spike in
+`tekton_pipelines_controller_pipelinerun_duration_seconds` to the matching
+trace. Exemplars use the OpenTelemetry SDK default `trace_based` filter: they
+are only recorded when [tracing](developers/tracing.md) is enabled and the
+reconcile's span is sampled, so they add nothing when tracing is off.
+
+Exemplars are exported with the OTLP protocols (`grpc` and `http/protobuf`).
+The `prometheus` endpoint serves the classic text format, which has no
+exemplars. To turn exemplars off, set the `OTEL_METRICS_EXEMPLAR_FILTER`
+environment variable to `always_off` on the controller.
+
 ### Verifying metrics
 
 ```shell
