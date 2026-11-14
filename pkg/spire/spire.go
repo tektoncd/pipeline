@@ -28,6 +28,7 @@ import (
 	"context"
 	"time"
 
+	spiresigning "github.com/tektoncd/pipeline/internal/spire"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/result"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
@@ -46,11 +47,11 @@ const (
 	// not set if spire checks pass
 	VerifiedAnnotation = "tekton.dev/spire-verified"
 	// KeySVID key used by TaskRun SVID
-	KeySVID = "SVID"
+	KeySVID = spiresigning.KeySVID
 	// KeySignatureSuffix is the suffix of the keys that contain signatures
-	KeySignatureSuffix = ".sig"
+	KeySignatureSuffix = spiresigning.KeySignatureSuffix
 	// KeyResultManifest key used to get the result manifest from the results
-	KeyResultManifest = "RESULT_MANIFEST"
+	KeyResultManifest = spiresigning.KeyResultManifest
 	// WorkloadAPI is the name of the SPIFFE/SPIRE CSI Driver volume
 	WorkloadAPI = "spiffe-workload-api"
 	// VolumeMountPath is the volume mount in the pods to access the SPIFFE/SPIRE agent workload API

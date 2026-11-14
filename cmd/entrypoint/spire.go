@@ -22,7 +22,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/tektoncd/pipeline/pkg/spire"
+	"github.com/tektoncd/pipeline/internal/spire"
 	"github.com/tektoncd/pipeline/pkg/spire/config"
 )
 
