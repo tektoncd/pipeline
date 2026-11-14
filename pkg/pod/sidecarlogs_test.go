@@ -588,6 +588,68 @@ func TestGetResultsFromSidecarLogs_StreamError(t *testing.T) {
 	}
 }
 
+func TestGetTaskResultsFromSidecarLogs(t *testing.T) {
+	sidecarLogResults := []result.RunResult{{
+		Key:        "step-foo.step-res",
+		Value:      "bar",
+		ResultType: result.StepResultType,
+	}, {
+		Key:        "task-res",
+		Value:      "task-bar",
+		ResultType: result.TaskRunResultType,
+	}}
+	want := []result.RunResult{{
+		Key:        "task-res",
+		Value:      "task-bar",
+		ResultType: result.TaskRunResultType,
+	}}
+	got := getTaskResultsFromSidecarLogs(sidecarLogResults)
+	if d := cmp.Diff(want, got); d != "" {
+		t.Error(diff.PrintWantGot(d))
+	}
+}
+
+func TestGetStepResultsFromSidecarLogs(t *testing.T) {
+	stepName := "step-foo"
+	resultName := "step-res"
+	sidecarLogResults := []result.RunResult{{
+		Key:        fmt.Sprintf("%s.%s", stepName, resultName),
+		Value:      "bar",
+		ResultType: result.StepResultType,
+	}, {
+		Key:        "task-res",
+		Value:      "task-bar",
+		ResultType: result.TaskRunResultType,
+	}}
+	want := []result.RunResult{{
+		Key:        resultName,
+		Value:      "bar",
+		ResultType: result.StepResultType,
+	}}
+	got, err := getStepResultsFromSidecarLogs(sidecarLogResults, stepName)
+	if err != nil {
+		t.Errorf("did not expect an error but got: %v", err)
+	}
+	if d := cmp.Diff(want, got); d != "" {
+		t.Error(diff.PrintWantGot(d))
+	}
+}
+
+func TestGetStepResultsFromSidecarLogs_Error(t *testing.T) {
+	stepName := "step-foo"
+	resultName := "step-res"
+	sidecarLogResults := []result.RunResult{{
+		Key:        fmt.Sprintf("%s-%s", stepName, resultName),
+		Value:      "bar",
+		ResultType: result.StepResultType,
+	}}
+	_, err := getStepResultsFromSidecarLogs(sidecarLogResults, stepName)
+	wantErr := fmt.Errorf("invalid string %s-%s; expected format <stepName>.<resultName>", stepName, resultName)
+	if d := cmp.Diff(wantErr.Error(), err.Error()); d != "" {
+		t.Error(diff.PrintWantGot(d))
+	}
+}
+
 func TestExtractStepAndResultFromSidecarResultName(t *testing.T) {
 	sidecarResultName := "step-foo.resultName"
 	wantResult := "resultName"
@@ -607,7 +669,7 @@ func TestExtractStepAndResultFromSidecarResultName(t *testing.T) {
 func TestExtractStepAndResultFromSidecarResultName_Error(t *testing.T) {
 	sidecarResultName := "step-foo-resultName"
 	_, _, err := extractStepAndResultFromSidecarResultName(sidecarResultName)
-	wantErr := errors.New("invalid string step-foo-resultName : expected somtthing that looks like <stepName>.<resultName>")
+	wantErr := errors.New("invalid string step-foo-resultName; expected format <stepName>.<resultName>")
 	if d := cmp.Diff(wantErr.Error(), err.Error()); d != "" {
 		t.Fatal(diff.PrintWantGot(d))
 	}

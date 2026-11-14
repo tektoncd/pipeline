@@ -196,33 +196,6 @@ func setTaskRunArtifactsFromRunResult(runResults []result.RunResult, artifacts *
 	return nil
 }
 
-func getTaskResultsFromSidecarLogs(runResults []result.RunResult) []result.RunResult {
-	taskResultsFromSidecarLogs := []result.RunResult{}
-	for _, slr := range runResults {
-		if slr.ResultType == result.TaskRunResultType {
-			taskResultsFromSidecarLogs = append(taskResultsFromSidecarLogs, slr)
-		}
-	}
-	return taskResultsFromSidecarLogs
-}
-
-func getStepResultsFromSidecarLogs(sidecarLogResults []result.RunResult, containerName string) ([]result.RunResult, error) {
-	stepResultsFromSidecarLogs := []result.RunResult{}
-	for _, slr := range sidecarLogResults {
-		if slr.ResultType == result.StepResultType {
-			stepName, resultName, err := extractStepAndResultFromSidecarResultName(slr.Key)
-			if err != nil {
-				return []result.RunResult{}, err
-			}
-			if stepName == containerName {
-				slr.Key = resultName
-				stepResultsFromSidecarLogs = append(stepResultsFromSidecarLogs, slr)
-			}
-		}
-	}
-	return stepResultsFromSidecarLogs, nil
-}
-
 func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface, ts *v1.TaskSpec) error {
 	trs := &tr.Status
 	var errs []error

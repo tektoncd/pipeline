@@ -52,6 +52,33 @@ func getResultsFromSidecarLogs(ctx context.Context, clientset kubernetes.Interfa
 	return extractResultsFromLogs(sidecarLogs, sidecarLogResults, maxResultLimit)
 }
 
+func getTaskResultsFromSidecarLogs(runResults []result.RunResult) []result.RunResult {
+	taskResultsFromSidecarLogs := []result.RunResult{}
+	for _, slr := range runResults {
+		if slr.ResultType == result.TaskRunResultType {
+			taskResultsFromSidecarLogs = append(taskResultsFromSidecarLogs, slr)
+		}
+	}
+	return taskResultsFromSidecarLogs
+}
+
+func getStepResultsFromSidecarLogs(sidecarLogResults []result.RunResult, containerName string) ([]result.RunResult, error) {
+	stepResultsFromSidecarLogs := []result.RunResult{}
+	for _, slr := range sidecarLogResults {
+		if slr.ResultType == result.StepResultType {
+			stepName, resultName, err := extractStepAndResultFromSidecarResultName(slr.Key)
+			if err != nil {
+				return []result.RunResult{}, err
+			}
+			if stepName == containerName {
+				slr.Key = resultName
+				stepResultsFromSidecarLogs = append(stepResultsFromSidecarLogs, slr)
+			}
+		}
+	}
+	return stepResultsFromSidecarLogs, nil
+}
+
 func extractResultsFromLogs(logs io.Reader, sidecarLogResults []result.RunResult, maxResultLimit int) ([]result.RunResult, error) {
 	reader := bufio.NewReaderSize(logs, maxResultLimit)
 	for {
@@ -134,7 +161,7 @@ func parseResults(resultBytes []byte, maxResultLimit int) (result.RunResult, err
 func extractStepAndResultFromSidecarResultName(sidecarResultName string) (string, string, error) {
 	splitString := strings.SplitN(sidecarResultName, ".", 2)
 	if len(splitString) != 2 {
-		return "", "", fmt.Errorf("invalid string %s : expected somtthing that looks like <stepName>.<resultName>", sidecarResultName)
+		return "", "", fmt.Errorf("invalid string %s; expected format <stepName>.<resultName>", sidecarResultName)
 	}
 	return splitString[0], splitString[1], nil
 }

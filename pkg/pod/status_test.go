@@ -27,7 +27,6 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -3509,47 +3508,6 @@ func TestSortPodContainerStatuses(t *testing.T) {
 	}
 }
 
-func TestGetStepResultsFromSidecarLogs(t *testing.T) {
-	stepName := "step-foo"
-	resultName := "step-res"
-	sidecarLogResults := []result.RunResult{{
-		Key:        fmt.Sprintf("%s.%s", stepName, resultName),
-		Value:      "bar",
-		ResultType: result.StepResultType,
-	}, {
-		Key:        "task-res",
-		Value:      "task-bar",
-		ResultType: result.TaskRunResultType,
-	}}
-	want := []result.RunResult{{
-		Key:        resultName,
-		Value:      "bar",
-		ResultType: result.StepResultType,
-	}}
-	got, err := getStepResultsFromSidecarLogs(sidecarLogResults, stepName)
-	if err != nil {
-		t.Errorf("did not expect an error but got: %v", err)
-	}
-	if d := cmp.Diff(want, got); d != "" {
-		t.Error(diff.PrintWantGot(d))
-	}
-}
-
-func TestGetStepResultsFromSidecarLogs_Error(t *testing.T) {
-	stepName := "step-foo"
-	resultName := "step-res"
-	sidecarLogResults := []result.RunResult{{
-		Key:        fmt.Sprintf("%s-%s", stepName, resultName),
-		Value:      "bar",
-		ResultType: result.StepResultType,
-	}}
-	_, err := getStepResultsFromSidecarLogs(sidecarLogResults, stepName)
-	wantErr := fmt.Errorf("invalid string %s-%s : expected somtthing that looks like <stepName>.<resultName>", stepName, resultName)
-	if d := cmp.Diff(wantErr.Error(), err.Error()); d != "" {
-		t.Error(diff.PrintWantGot(d))
-	}
-}
-
 func TestGetStepTerminationReasonFromContainerStatus(t *testing.T) {
 	tests := []struct {
 		desc                      string
@@ -3750,27 +3708,6 @@ func TestGetStepTerminationReasonFromContainerStatus(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestGetTaskResultsFromSidecarLogs(t *testing.T) {
-	sidecarLogResults := []result.RunResult{{
-		Key:        "step-foo.step-res",
-		Value:      "bar",
-		ResultType: result.StepResultType,
-	}, {
-		Key:        "task-res",
-		Value:      "task-bar",
-		ResultType: result.TaskRunResultType,
-	}}
-	want := []result.RunResult{{
-		Key:        "task-res",
-		Value:      "task-bar",
-		ResultType: result.TaskRunResultType,
-	}}
-	got := getTaskResultsFromSidecarLogs(sidecarLogResults)
-	if d := cmp.Diff(want, got); d != "" {
-		t.Error(diff.PrintWantGot(d))
 	}
 }
 
