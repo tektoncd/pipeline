@@ -29,6 +29,7 @@ import (
 
 	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	nsconfig "github.com/tektoncd/pipeline/pkg/apis/config/namespace"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -96,6 +97,7 @@ type Reconciler struct {
 	pvcHandler               volumeclaim.PvcHandler
 	resolutionRequester      resolution.Requester
 	tracerProvider           trace.TracerProvider
+	perNamespaceConfig       *nsconfig.PerNamespaceConfig
 
 	// Native-sidecar detection (ServerVersion + IsNativeSidecarSupport) when EnableKubernetesSidecar
 	// is set is memoized via sync.OnceValues after lazy init guarded by nativeSidecarOnce (#9755).
@@ -320,13 +322,17 @@ var (
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1.TaskRun) (reconcileErr pkgreconciler.Event) {
 	logger := logging.FromContext(ctx)
-
 	// initTracing can persist span context into the status, a real write. Hold
 	// the prior value so that write is not lost when the baseline is taken
 	// after. Holding the map rather than copying it is safe because initTracing
 	// assigns a whole new map, and never writes through the one already there.
 	oldSpanContext := tr.Status.SpanContext
 
+	if mergedCtx, err := c.perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, tr.Namespace); err != nil {
+		logger.Warnf("namespace config for %q: %v", tr.Namespace, err)
+	} else {
+		ctx = mergedCtx
+	}
 	ctx, rootSpan := initTracing(ctx, c.tracerProvider, tr)
 	defer rootSpan.End()
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:ReconcileKind")

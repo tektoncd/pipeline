@@ -17,13 +17,17 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 
 	defaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
+	nsconfig "github.com/tektoncd/pipeline/pkg/apis/config/namespace"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -31,7 +35,10 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution"
 	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"knative.dev/pkg/apis"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
@@ -49,22 +56,27 @@ import (
 	"knative.dev/pkg/webhook/resourcesemantics/validation"
 )
 
+const (
+	taskRunKind     = "TaskRun"
+	pipelineRunKind = "PipelineRun"
+)
+
 var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	// v1alpha1
 	v1alpha1.SchemeGroupVersion.WithKind("VerificationPolicy"): &v1alpha1.VerificationPolicy{},
 	v1alpha1.SchemeGroupVersion.WithKind("StepAction"):         &v1alpha1.StepAction{},
 	// v1beta1
-	v1beta1.SchemeGroupVersion.WithKind("Pipeline"):    &v1beta1.Pipeline{},
-	v1beta1.SchemeGroupVersion.WithKind("Task"):        &v1beta1.Task{},
-	v1beta1.SchemeGroupVersion.WithKind("TaskRun"):     &v1beta1.TaskRun{},
-	v1beta1.SchemeGroupVersion.WithKind("PipelineRun"): &v1beta1.PipelineRun{},
-	v1beta1.SchemeGroupVersion.WithKind("CustomRun"):   &v1beta1.CustomRun{},
-	v1beta1.SchemeGroupVersion.WithKind("StepAction"):  &v1beta1.StepAction{},
+	v1beta1.SchemeGroupVersion.WithKind("Pipeline"):      &v1beta1.Pipeline{},
+	v1beta1.SchemeGroupVersion.WithKind("Task"):          &v1beta1.Task{},
+	v1beta1.SchemeGroupVersion.WithKind(taskRunKind):     &v1beta1.TaskRun{},
+	v1beta1.SchemeGroupVersion.WithKind(pipelineRunKind): &v1beta1.PipelineRun{},
+	v1beta1.SchemeGroupVersion.WithKind("CustomRun"):     &v1beta1.CustomRun{},
+	v1beta1.SchemeGroupVersion.WithKind("StepAction"):    &v1beta1.StepAction{},
 	// v1
-	v1.SchemeGroupVersion.WithKind("Task"):        &v1.Task{},
-	v1.SchemeGroupVersion.WithKind("Pipeline"):    &v1.Pipeline{},
-	v1.SchemeGroupVersion.WithKind("TaskRun"):     &v1.TaskRun{},
-	v1.SchemeGroupVersion.WithKind("PipelineRun"): &v1.PipelineRun{},
+	v1.SchemeGroupVersion.WithKind("Task"):          &v1.Task{},
+	v1.SchemeGroupVersion.WithKind("Pipeline"):      &v1.Pipeline{},
+	v1.SchemeGroupVersion.WithKind(taskRunKind):     &v1.TaskRun{},
+	v1.SchemeGroupVersion.WithKind(pipelineRunKind): &v1.PipelineRun{},
 
 	// resolution
 	// v1alpha1
@@ -78,6 +90,9 @@ func newDefaultingAdmissionController(name string) func(context.Context, configm
 		// Decorate contexts with the current state of the config.
 		store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
 		store.WatchConfigs(cmw)
+		// Admission serves all namespaces, unlike the webhook's namespace-scoped secret informer.
+		perNamespaceConfig := nsconfig.NewPerNamespaceConfig(injection.WithNamespaceScope(ctx, ""), kubeclient.Get(ctx))
+
 		return defaulting.NewAdmissionController(ctx,
 
 			// Name of the resource webhook, it is the value of the environment variable WEBHOOK_ADMISSION_CONTROLLER_NAME
@@ -92,7 +107,11 @@ func newDefaultingAdmissionController(name string) func(context.Context, configm
 
 			// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 			func(ctx context.Context) context.Context {
-				return store.ToContext(ctx)
+				merged, err := withPerNamespaceConfig(store.ToContext(ctx), perNamespaceConfig)
+				if err != nil {
+					logging.FromContext(ctx).Warnf("namespace config: %v", err)
+				}
+				return merged
 			},
 
 			// Whether to disallow unknown fields.
@@ -101,11 +120,47 @@ func newDefaultingAdmissionController(name string) func(context.Context, configm
 	}
 }
 
+func withPerNamespaceConfig(ctx context.Context, perNamespaceConfig *nsconfig.PerNamespaceConfig) (context.Context, error) {
+	namespace := admissionRequestNamespace(ctx)
+	if namespace == "" {
+		return ctx, nil
+	}
+	return perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, namespace)
+}
+
+// admissionRequestNamespace returns an empty namespace for requests that do not
+// support namespace configuration. Admission handles malformed requests itself.
+func admissionRequestNamespace(ctx context.Context) string {
+	req := apis.GetHTTPRequest(ctx)
+	if req == nil || req.Body == nil {
+		return ""
+	}
+
+	body, err := io.ReadAll(req.Body)
+	_ = req.Body.Close()
+	req.Body = io.NopCloser(bytes.NewReader(body))
+	if err != nil {
+		return ""
+	}
+
+	review := &admissionv1.AdmissionReview{}
+	if err := json.Unmarshal(body, review); err != nil || review.Request == nil {
+		return ""
+	}
+	kind := review.Request.Kind.Kind
+	if kind != taskRunKind && kind != pipelineRunKind {
+		return ""
+	}
+	return review.Request.Namespace
+}
+
 func newValidationAdmissionController(name string) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		// Decorate contexts with the current state of the config.
 		store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
 		store.WatchConfigs(cmw)
+		// Admission serves all namespaces, unlike the webhook's namespace-scoped secret informer.
+		perNamespaceConfig := nsconfig.NewPerNamespaceConfig(injection.WithNamespaceScope(ctx, ""), kubeclient.Get(ctx))
 		return validation.NewAdmissionController(ctx,
 
 			// Name of the validation webhook, it is based on the value of the environment variable WEBHOOK_ADMISSION_CONTROLLER_NAME
@@ -120,7 +175,11 @@ func newValidationAdmissionController(name string) func(context.Context, configm
 
 			// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 			func(ctx context.Context) context.Context {
-				return store.ToContext(ctx)
+				merged, err := withPerNamespaceConfig(store.ToContext(ctx), perNamespaceConfig)
+				if err != nil {
+					logging.FromContext(ctx).Warnf("namespace config: %v", err)
+				}
+				return merged
 			},
 
 			// Whether to disallow unknown fields.
@@ -270,6 +329,8 @@ func main() {
 		log.Printf("Readiness and health check server listening on port %s", port)
 		log.Fatal(http.ListenAndServe(":"+port, mux)) // #nosec G114 -- see https://github.com/securego/gosec#available-rules
 	}()
+
+	ctx = nsconfig.WithSharedPerNamespaceConfig(ctx)
 
 	sharedmain.MainWithContext(ctx, serviceName,
 		certificates.NewController,
