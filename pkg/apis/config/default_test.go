@@ -545,6 +545,51 @@ func TestSidecarLogPollingIntervalParsing(t *testing.T) {
 	}
 }
 
+func TestNewDefaultsFromMapValidation(t *testing.T) {
+	cases := []struct {
+		name    string
+		data    map[string]string
+		wantErr bool
+	}{
+		{name: "negative timeout minutes", data: map[string]string{"default-timeout-minutes": "-1"}, wantErr: true},
+		{name: "timeout minutes overflowing time.Duration", data: map[string]string{"default-timeout-minutes": "153722868"}, wantErr: true},
+		{name: "zero timeout minutes", data: map[string]string{"default-timeout-minutes": "0"}},
+		{name: "largest timeout minutes", data: map[string]string{"default-timeout-minutes": "153722867"}},
+		{name: "invalid workspace binding", data: map[string]string{"default-task-run-workspace-binding": "emptyDir: {"}, wantErr: true},
+		{name: "workspace binding that is not a mapping", data: map[string]string{"default-task-run-workspace-binding": "- emptyDir: {}"}, wantErr: true},
+		{name: "valid workspace binding", data: map[string]string{"default-task-run-workspace-binding": "emptyDir: {}"}},
+		{name: "empty workspace binding", data: map[string]string{"default-task-run-workspace-binding": ""}},
+		{name: "negative step ref concurrency limit", data: map[string]string{"default-step-ref-concurrency-limit": "-1"}, wantErr: true},
+		{name: "zero step ref concurrency limit", data: map[string]string{"default-step-ref-concurrency-limit": "0"}, wantErr: true},
+		{name: "negative max matrix combinations count", data: map[string]string{"default-max-matrix-combinations-count": "-1"}, wantErr: true},
+		{name: "zero max matrix combinations count", data: map[string]string{"default-max-matrix-combinations-count": "0"}},
+		{name: "negative imagepullbackoff timeout", data: map[string]string{"default-imagepullbackoff-timeout": "-5m"}, wantErr: true},
+		{name: "zero imagepullbackoff timeout", data: map[string]string{"default-imagepullbackoff-timeout": "0"}},
+		{name: "negative create container error timeout", data: map[string]string{"default-create-container-error-timeout": "-5m"}, wantErr: true},
+		{name: "zero create container error timeout", data: map[string]string{"default-create-container-error-timeout": "0"}},
+		{name: "negative maximum resolution timeout", data: map[string]string{"default-maximum-resolution-timeout": "-1m"}, wantErr: true},
+		{name: "zero maximum resolution timeout", data: map[string]string{"default-maximum-resolution-timeout": "0"}, wantErr: true},
+		{name: "negative sidecar log polling interval", data: map[string]string{"default-sidecar-log-polling-interval": "-100ms"}, wantErr: true},
+		{name: "zero sidecar log polling interval", data: map[string]string{"default-sidecar-log-polling-interval": "0"}},
+		{name: "invalid managed-by label value", data: map[string]string{"default-managed-by-label-value": "not a label!"}, wantErr: true},
+		{name: "empty managed-by label value", data: map[string]string{"default-managed-by-label-value": ""}},
+		{name: "invalid cloud events sink", data: map[string]string{"default-cloud-events-sink": "http://[::1"}, wantErr: true},
+		{name: "valid cloud events sink", data: map[string]string{"default-cloud-events-sink": "http://sink.example.com:8080/events"}},
+		{name: "empty cloud events sink", data: map[string]string{"default-cloud-events-sink": ""}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := config.NewDefaultsFromMap(tc.data)
+			if tc.wantErr && err == nil {
+				t.Errorf("expected error for %v, got nil", tc.data)
+			}
+			if !tc.wantErr && err != nil {
+				t.Errorf("unexpected error for %v: %v", tc.data, err)
+			}
+		})
+	}
+}
+
 func verifyConfigFileWithExpectedConfig(t *testing.T, fileName string, expectedConfig *config.Defaults) {
 	t.Helper()
 	cm := test.ConfigMapFromTestFile(t, fileName)

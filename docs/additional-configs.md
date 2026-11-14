@@ -918,7 +918,7 @@ If the `default-step-ref-concurrency-limit` key is not set in the `config-defaul
 
 #### Overriding the Default
 
-You can override this default to better suit your environment's capacity (e.g., a high-capacity, self-hosted git server might allow for a higher limit). To change the limit, set the `default-step-ref-concurrency-limit` key in your `config-defaults` `ConfigMap`.
+You can override this default to better suit your environment's capacity (e.g., a high-capacity, self-hosted git server might allow for a higher limit). To change the limit, set the `default-step-ref-concurrency-limit` key in your `config-defaults` `ConfigMap`. The value must be greater than 0.
 
 **Example**: To increase the concurrency limit to 20:
 ```yaml
