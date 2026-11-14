@@ -81,6 +81,10 @@ const (
 	// ReasonExceededNodeResources or isPodHitConfigError
 	ReasonPodPending = "Pending"
 
+	// ReasonContainerStatusUnknown indicates that the container status could not be determined
+	// by the kubelet, which writes a plain-text termination message
+	ReasonContainerStatusUnknown = "ContainerStatusUnknown"
+
 	// timeFormat is RFC3339 with millisecond
 	timeFormat = "2006-01-02T15:04:05.000Z07:00"
 )
@@ -146,6 +150,7 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 	}
 
 	trs.PodName = pod.Name
+	priorSidecars := trs.Sidecars
 	trs.Sidecars = []v1.SidecarState{}
 
 	var stepStatuses []corev1.ContainerStatus
@@ -163,9 +168,11 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.Tas
 		}
 	}
 
-	err := setTaskRunStatusBasedOnStepStatus(ctx, logger, stepStatuses, &tr, pod.Status.Phase, kubeclient, ts)
+	stepsStartTime := getPotentialStepsStartTime(pod)
 
-	setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses, trs)
+	err := setTaskRunStatusBasedOnStepStatus(ctx, logger, stepStatuses, &tr, pod.Status.Phase, kubeclient, ts, stepsStartTime)
+
+	setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses, trs, stepsStartTime, priorSidecars)
 
 	trs.Results = removeDuplicateResults(trs.Results)
 
@@ -224,7 +231,7 @@ func getStepResultsFromSidecarLogs(sidecarLogResults []result.RunResult, contain
 	return stepResultsFromSidecarLogs, nil
 }
 
-func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface, ts *v1.TaskSpec) error {
+func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface, ts *v1.TaskSpec, defaultStartTime metav1.Time) error {
 	trs := &tr.Status
 	var errs []error
 
@@ -268,14 +275,19 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 		}
 	}
 
-	// Build a lookup map for step state provenances.
+	// Build lookup maps for step state provenances and prior step states.
 	stepStateProvenances := make(map[string]*v1.Provenance)
+	priorStepTerminated := make(map[string]*corev1.ContainerStateTerminated)
 	for _, ss := range trs.Steps {
 		stepStateProvenances[ss.Name] = ss.Provenance
+		if ss.Terminated != nil {
+			priorStepTerminated[ss.Name] = ss.Terminated
+		}
 	}
 
 	// Continue with extraction of termination messages
 	orderedStepStates := make([]v1.StepState, len(stepStatuses))
+	lastFinishedAt := defaultStartTime
 	for i, s := range stepStatuses {
 		// Avoid changing the original value by modifying the pointer value.
 		state := s.State.DeepCopy()
@@ -317,63 +329,23 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 
 		// Parse termination messages
 		terminationReason := ""
-		if state.Terminated != nil && len(state.Terminated.Message) != 0 {
-			msg := state.Terminated.Message
-
-			results, err := termination.ParseMessage(logger, msg)
-			if err != nil {
-				logger.Errorf("termination message could not be parsed sas JSON: %v", err)
-				errs = append(errs, err)
-			} else {
-				err := setStepArtifactsValueFromTerminationMessageRunResult(results, &sas)
-				if err != nil {
-					logger.Errorf("error setting step artifacts of step %q in taskrun %q: %v", s.Name, tr.Name, err)
-					errs = append(errs, err)
-				}
-				time, err := extractStartedAtTimeFromResults(results)
-				if err != nil {
-					logger.Errorf("error setting the start time of step %q in taskrun %q: %v", s.Name, tr.Name, err)
-					errs = append(errs, err)
-				}
-				exitCode, err := extractExitCodeFromResults(results)
-				if err != nil {
-					logger.Errorf("error extracting the exit code of step %q in taskrun %q: %v", s.Name, tr.Name, err)
-					errs = append(errs, err)
-				}
-
-				taskResults, stepRunRes, filteredResults := filterResults(results, specResults, stepResults)
-				if tr.IsDone() {
-					taskRunStepResults = append(taskRunStepResults, stepRunRes...)
-					// Set TaskResults from StepResults
-					taskResults = append(taskResults, createTaskResultsFromStepResults(stepRunRes, neededStepResults)...)
-					trs.Results = append(trs.Results, taskResults...)
-
-					var tras v1.Artifacts
-					err := setTaskRunArtifactsFromRunResult(filteredResults, &tras)
-					if err != nil {
-						logger.Errorf("error setting step artifacts in taskrun %q: %v", tr.Name, err)
-						errs = append(errs, err)
-					}
-					trs.Artifacts.Merge(&tras)
-					trs.Artifacts.Merge(&sas)
-				}
-				msg, err = createMessageFromResults(filteredResults)
-				if err != nil {
-					logger.Errorf("%v", err)
-					errs = append(errs, err)
-				} else {
-					state.Terminated.Message = msg
-				}
-				if time != nil {
-					state.Terminated.StartedAt = *time
-				}
-				if exitCode != nil {
-					state.Terminated.ExitCode = *exitCode
-				}
-
-				terminationFromResults := extractTerminationReasonFromResults(results)
-				terminationReason = getTerminationReason(state.Terminated.Reason, terminationFromResults, exitCode)
-			}
+		if state.Terminated != nil {
+			var parseErrs []error
+			terminationReason, parseErrs = handleTerminatedStep(
+				logger,
+				state.Terminated,
+				s.Name,
+				tr,
+				specResults,
+				stepResults,
+				neededStepResults,
+				lastFinishedAt,
+				&sas,
+				&taskRunStepResults,
+				priorStepTerminated[TrimStepPrefix(s.Name)],
+			)
+			errs = append(errs, parseErrs...)
+			lastFinishedAt = state.Terminated.FinishedAt
 		}
 		stepState := v1.StepState{
 			ContainerState:    *state.DeepCopy(),
@@ -415,10 +387,45 @@ func setStepArtifactsValueFromTerminationMessageRunResult(results []result.RunRe
 	return nil
 }
 
-func setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses []corev1.ContainerStatus, trs *v1.TaskRunStatus) {
+// repairTerminatedTimestamps ensures a terminated container state has valid, deterministic
+// StartedAt and FinishedAt timestamps. Reuses prior timestamps when available to prevent
+// unnecessary writes.
+func repairTerminatedTimestamps(currTerminated *corev1.ContainerStateTerminated, defaultStartTime metav1.Time, priorTerminated *corev1.ContainerStateTerminated) {
+	if currTerminated.FinishedAt.IsZero() {
+		if priorTerminated != nil && !priorTerminated.FinishedAt.IsZero() {
+			currTerminated.FinishedAt = priorTerminated.FinishedAt
+		} else {
+			currTerminated.FinishedAt = metav1.Time{Time: time.Now()}
+		}
+	}
+	if currTerminated.StartedAt.IsZero() {
+		if priorTerminated != nil && !priorTerminated.StartedAt.IsZero() {
+			currTerminated.StartedAt = priorTerminated.StartedAt
+		} else {
+			currTerminated.StartedAt = defaultStartTime
+		}
+		// ensure we do not end up with start time after finish time when start time is absent
+		if currTerminated.StartedAt.Time.After(currTerminated.FinishedAt.Time) {
+			currTerminated.StartedAt = currTerminated.FinishedAt
+		}
+	}
+}
+
+func setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses []corev1.ContainerStatus, trs *v1.TaskRunStatus, defaultStartTime metav1.Time, priorSidecars []v1.SidecarState) {
+	priorSidecarTerminated := make(map[string]*corev1.ContainerStateTerminated)
+	for _, sc := range priorSidecars {
+		if sc.Terminated != nil {
+			priorSidecarTerminated[sc.Name] = sc.Terminated
+		}
+	}
+
 	for _, s := range sidecarStatuses {
+		state := s.State.DeepCopy()
+		if state.Terminated != nil {
+			repairTerminatedTimestamps(state.Terminated, defaultStartTime, priorSidecarTerminated[TrimSidecarPrefix(s.Name)])
+		}
 		trs.Sidecars = append(trs.Sidecars, v1.SidecarState{
-			ContainerState: *s.State.DeepCopy(),
+			ContainerState: *state,
 			Name:           TrimSidecarPrefix(s.Name),
 			Container:      s.Name,
 			ImageID:        s.ImageID,
@@ -1118,4 +1125,124 @@ func isSubPathDirectoryError(pod *corev1.Pod) bool {
 		}
 	}
 	return false
+}
+
+// isRestartableInitContainer returns true if the container has restartPolicy set to Always.
+func isRestartableInitContainer(container corev1.Container) bool {
+	return container.RestartPolicy != nil && *container.RestartPolicy == corev1.ContainerRestartPolicyAlways
+}
+
+func getPotentialStepsStartTime(pod *corev1.Pod) metav1.Time {
+	if pod.Status.StartTime == nil {
+		return pod.CreationTimestamp
+	}
+	restartableInitContainers := make(map[string]bool)
+	for _, c := range pod.Spec.InitContainers {
+		if isRestartableInitContainer(c) {
+			restartableInitContainers[c.Name] = true
+		}
+	}
+	startTime := *pod.Status.StartTime
+	for i := range pod.Status.InitContainerStatuses {
+		s := &pod.Status.InitContainerStatuses[i]
+		// Exclude restartable init containers. Native sidecars can finish after the steps,
+		// so their finish time is not a valid estimate of when the steps started.
+		if restartableInitContainers[s.Name] {
+			continue
+		}
+		if s.State.Terminated != nil {
+			if s.State.Terminated.FinishedAt.After(startTime.Time) {
+				startTime = s.State.Terminated.FinishedAt
+			}
+		}
+	}
+	return startTime
+}
+
+func handleTerminatedStep(
+	logger *zap.SugaredLogger,
+	stateTerminated *corev1.ContainerStateTerminated,
+	stepName string,
+	tr *v1.TaskRun,
+	specResults []v1.TaskResult,
+	stepResults []v1.StepResult,
+	neededStepResults map[string]string,
+	lastFinishedAt metav1.Time,
+	sas *v1.Artifacts,
+	taskRunStepResults *[]v1.TaskRunStepResult,
+	priorTerminated *corev1.ContainerStateTerminated,
+) (string, []error) {
+	var errs []error
+	terminationReason := ""
+
+	if len(stateTerminated.Message) != 0 {
+		results, err := termination.ParseMessage(logger, stateTerminated.Message)
+		if err != nil {
+			var syntaxErr *json.SyntaxError
+			if errors.As(err, &syntaxErr) && stateTerminated.Reason == ReasonContainerStatusUnknown {
+				// Handle unexpected pod termination by Kubernetes, when
+				// termination message is set by kubelet and is just a string.
+				terminationReason = stateTerminated.Reason
+			} else {
+				logger.Errorf("termination message could not be parsed as JSON: %v", err)
+				errs = append(errs, err)
+			}
+		} else {
+			err := setStepArtifactsValueFromTerminationMessageRunResult(results, sas)
+			if err != nil {
+				logger.Errorf("error setting step artifacts of step %q in taskrun %q: %v", stepName, tr.Name, err)
+				errs = append(errs, err)
+			}
+			time, err := extractStartedAtTimeFromResults(results)
+			if err != nil {
+				logger.Errorf("error setting the start time of step %q in taskrun %q: %v", stepName, tr.Name, err)
+				errs = append(errs, err)
+			}
+			exitCode, err := extractExitCodeFromResults(results)
+			if err != nil {
+				logger.Errorf("error extracting the exit code of step %q in taskrun %q: %v", stepName, tr.Name, err)
+				errs = append(errs, err)
+			}
+
+			taskResults, stepRunRes, filteredResults := filterResults(results, specResults, stepResults)
+			if tr.IsDone() {
+				*taskRunStepResults = append(*taskRunStepResults, stepRunRes...)
+				// Set TaskResults from StepResults
+				taskResults = append(taskResults, createTaskResultsFromStepResults(stepRunRes, neededStepResults)...)
+				tr.Status.Results = append(tr.Status.Results, taskResults...)
+
+				var tras v1.Artifacts
+				err := setTaskRunArtifactsFromRunResult(filteredResults, &tras)
+				if err != nil {
+					logger.Errorf("error setting step artifacts in taskrun %q: %v", tr.Name, err)
+					errs = append(errs, err)
+				}
+				if tr.Status.Artifacts == nil {
+					tr.Status.Artifacts = &v1.Artifacts{}
+				}
+				tr.Status.Artifacts.Merge(&tras)
+				tr.Status.Artifacts.Merge(sas)
+			}
+			msg, err := createMessageFromResults(filteredResults)
+			if err != nil {
+				logger.Errorf("%v", err)
+				errs = append(errs, err)
+			} else {
+				stateTerminated.Message = msg
+			}
+			if time != nil {
+				stateTerminated.StartedAt = *time
+			}
+			if exitCode != nil {
+				stateTerminated.ExitCode = *exitCode
+			}
+
+			terminationFromResults := extractTerminationReasonFromResults(results)
+			terminationReason = getTerminationReason(stateTerminated.Reason, terminationFromResults, exitCode)
+		}
+	}
+
+	repairTerminatedTimestamps(stateTerminated, lastFinishedAt, priorTerminated)
+
+	return terminationReason, errs
 }
