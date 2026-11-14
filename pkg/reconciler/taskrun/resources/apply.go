@@ -297,7 +297,9 @@ func findArrayIndexParamUsage(s string, paramName string, stepName string, resul
 	return stringReplacements
 }
 
-// replacementsArrayIdxStepResults looks for Step Result array usage with index in the Step's command, args, env and script.
+// replacementsArrayIdxStepResults looks for Step Result array usage with index in every field of the
+// Step that container.ApplyStepReplacements later interpolates: command, args, env, script, image,
+// workingDir and volumeMounts.
 func replacementsArrayIdxStepResults(step *v1.Step, paramName string, stepName string, resultName string) map[string]string {
 	stringReplacements := map[string]string{}
 	for _, c := range step.Command {
@@ -308,6 +310,24 @@ func replacementsArrayIdxStepResults(step *v1.Step, paramName string, stepName s
 	}
 	for _, e := range step.Env {
 		stringReplacements = findArrayIndexParamUsage(e.Value, paramName, stepName, resultName, stringReplacements)
+		if e.ValueFrom != nil {
+			if s := e.ValueFrom.SecretKeyRef; s != nil {
+				stringReplacements = findArrayIndexParamUsage(s.Name, paramName, stepName, resultName, stringReplacements)
+				stringReplacements = findArrayIndexParamUsage(s.Key, paramName, stepName, resultName, stringReplacements)
+			}
+			if c := e.ValueFrom.ConfigMapKeyRef; c != nil {
+				stringReplacements = findArrayIndexParamUsage(c.Name, paramName, stepName, resultName, stringReplacements)
+				stringReplacements = findArrayIndexParamUsage(c.Key, paramName, stepName, resultName, stringReplacements)
+			}
+		}
+	}
+	stringReplacements = findArrayIndexParamUsage(step.Script, paramName, stepName, resultName, stringReplacements)
+	stringReplacements = findArrayIndexParamUsage(step.Image, paramName, stepName, resultName, stringReplacements)
+	stringReplacements = findArrayIndexParamUsage(step.WorkingDir, paramName, stepName, resultName, stringReplacements)
+	for _, vm := range step.VolumeMounts {
+		stringReplacements = findArrayIndexParamUsage(vm.Name, paramName, stepName, resultName, stringReplacements)
+		stringReplacements = findArrayIndexParamUsage(vm.MountPath, paramName, stepName, resultName, stringReplacements)
+		stringReplacements = findArrayIndexParamUsage(vm.SubPath, paramName, stepName, resultName, stringReplacements)
 	}
 	return stringReplacements
 }
