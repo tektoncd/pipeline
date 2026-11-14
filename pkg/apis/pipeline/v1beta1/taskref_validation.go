@@ -35,6 +35,14 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if apis.IsInCreate(ctx) && ref.Bundle != "" {
 		errs = errs.Also(apis.ErrDisallowedFields("bundle"))
 	}
+	// A non-default Kind is only meaningful for a Custom Task reference, which
+	// requires APIVersion to be set as well (see TaskRef.IsCustomTask). Without
+	// APIVersion the kind is silently ignored at resolution: the ref resolves
+	// as an ordinary namespaced Task when one exists, or fails with a
+	// confusing not-found error.
+	if ref.Kind != "" && ref.Kind != NamespacedTaskKind && ref.APIVersion == "" {
+		errs = errs.Also(apis.ErrInvalidValue("custom task ref must specify apiVersion", "apiVersion"))
+	}
 	switch {
 	case ref.Resolver != "" || ref.Params != nil:
 		if ref.Params != nil {
