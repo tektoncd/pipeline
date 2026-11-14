@@ -27,6 +27,7 @@ import (
 	rrlister "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
 	rrcache "github.com/tektoncd/pipeline/pkg/remoteresolution/resolver/framework/cache"
 	"github.com/tektoncd/pipeline/pkg/resolution/common"
+	"github.com/tektoncd/pipeline/pkg/resolutionrequestmetrics"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
@@ -60,6 +61,11 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 			panic(err.Error())
 		}
 
+		metricsRecorder, err := resolutionrequestmetrics.NewRecorder(ctx)
+		if err != nil {
+			logger.Errorf("failed to create ResolutionRequest metrics recorder: %v", err)
+		}
+
 		// The promote path and the informer's event handler below must filter
 		// ResolutionRequests with the same selector, or a resolver reconciles
 		// requests that are not addressed to it.
@@ -80,6 +86,7 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 			resolutionRequestLister:    rrInformer.Lister(),
 			resolutionRequestClientSet: rrclientset,
 			resolver:                   resolver,
+			metrics:                    metricsRecorder,
 		}
 
 		watchConfigChanges(ctx, r, cmw)
@@ -97,7 +104,7 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 			Logger:        logger,
 		})
 
-		_, err := rrInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		_, err = rrInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: FilterResolutionRequestsBySelector(selector),
 			Handler: cache.ResourceEventHandlerFuncs{
 				AddFunc: impl.Enqueue,
