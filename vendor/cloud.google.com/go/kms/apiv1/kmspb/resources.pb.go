@@ -2268,16 +2268,24 @@ func (x *ImportJob) GetCryptoKeyBackend() string {
 // levels.
 type ExternalProtectionLevelOptions struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The URI for an external resource that this
+	// Optional. The URI for an external resource that this
 	// [CryptoKeyVersion][google.cloud.kms.v1.CryptoKeyVersion] represents.
 	ExternalKeyUri string `protobuf:"bytes,1,opt,name=external_key_uri,json=externalKeyUri,proto3" json:"external_key_uri,omitempty"`
-	// The path to the external key material on the EKM when using
+	// Optional. The path to the external key material on the EKM when using
 	// [EkmConnection][google.cloud.kms.v1.EkmConnection] e.g., "v0/my/key". Set
 	// this field instead of external_key_uri when using an
 	// [EkmConnection][google.cloud.kms.v1.EkmConnection].
 	EkmConnectionKeyPath string `protobuf:"bytes,2,opt,name=ekm_connection_key_path,json=ekmConnectionKeyPath,proto3" json:"ekm_connection_key_path,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Optional. The resource name of the backend environment where the key
+	// material of [CryptoKeyVersions][google.cloud.kms.v1.CryptoKeyVersion] is
+	// associated with. Setting this field overrides the [CryptoKeyBackend][].
+	// This field may be set when
+	// [CryptoKeyVersions][google.cloud.kms.v1.CryptoKeyVersion] is set to
+	// [EXTERNAL_VPC][google.cloud.kms.v1.ProtectionLevel.EXTERNAL_VPC]. Format:
+	// `projects/*/locations/*/ekmConnections/*`.
+	EkmConnectionBackendOverride string `protobuf:"bytes,3,opt,name=ekm_connection_backend_override,json=ekmConnectionBackendOverride,proto3" json:"ekm_connection_backend_override,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *ExternalProtectionLevelOptions) Reset() {
@@ -2320,6 +2328,13 @@ func (x *ExternalProtectionLevelOptions) GetExternalKeyUri() string {
 func (x *ExternalProtectionLevelOptions) GetEkmConnectionKeyPath() string {
 	if x != nil {
 		return x.EkmConnectionKeyPath
+	}
+	return ""
+}
+
+func (x *ExternalProtectionLevelOptions) GetEkmConnectionBackendOverride() string {
+	if x != nil {
+		return x.EkmConnectionBackendOverride
 	}
 	return ""
 }
@@ -2604,29 +2619,31 @@ var File_google_cloud_kms_v1_resources_proto protoreflect.FileDescriptor
 
 const file_google_cloud_kms_v1_resources_proto_rawDesc = "" +
 	"\n" +
-	"#google/cloud/kms/v1/resources.proto\x12\x13google.cloud.kms.v1\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xc7\x01\n" +
-	"\aKeyRing\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x03R\x04name\x12@\n" +
-	"\vcreate_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
+	"#google/cloud/kms/v1/resources.proto\x12\x13google.cloud.kms.v1\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xc9\x01\n" +
+	"\aKeyRing\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\tB\x04\xe2A\x01\x03R\x04name\x12A\n" +
+	"\vcreate_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\n" +
 	"createTime:a\xeaA^\n" +
-	"\x1fcloudkms.googleapis.com/KeyRing\x12;projects/{project}/locations/{location}/keyRings/{key_ring}\"\xfd\t\n" +
-	"\tCryptoKey\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x03R\x04name\x12D\n" +
-	"\aprimary\x18\x02 \x01(\v2%.google.cloud.kms.v1.CryptoKeyVersionB\x03\xe0A\x03R\aprimary\x12N\n" +
-	"\apurpose\x18\x03 \x01(\x0e2/.google.cloud.kms.v1.CryptoKey.CryptoKeyPurposeB\x03\xe0A\x05R\apurpose\x12@\n" +
-	"\vcreate_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
+	"\x1fcloudkms.googleapis.com/KeyRing\x12;projects/{project}/locations/{location}/keyRings/{key_ring}\"\x85\n" +
+	"\n" +
+	"\tCryptoKey\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\tB\x04\xe2A\x01\x03R\x04name\x12E\n" +
+	"\aprimary\x18\x02 \x01(\v2%.google.cloud.kms.v1.CryptoKeyVersionB\x04\xe2A\x01\x03R\aprimary\x12O\n" +
+	"\apurpose\x18\x03 \x01(\x0e2/.google.cloud.kms.v1.CryptoKey.CryptoKeyPurposeB\x04\xe2A\x01\x05R\apurpose\x12A\n" +
+	"\vcreate_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\n" +
 	"createTime\x12H\n" +
 	"\x12next_rotation_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x10nextRotationTime\x12D\n" +
 	"\x0frotation_period\x18\b \x01(\v2\x19.google.protobuf.DurationH\x00R\x0erotationPeriod\x12X\n" +
 	"\x10version_template\x18\v \x01(\v2-.google.cloud.kms.v1.CryptoKeyVersionTemplateR\x0fversionTemplate\x12B\n" +
 	"\x06labels\x18\n" +
-	" \x03(\v2*.google.cloud.kms.v1.CryptoKey.LabelsEntryR\x06labels\x12$\n" +
-	"\vimport_only\x18\r \x01(\bB\x03\xe0A\x05R\n" +
-	"importOnly\x12\\\n" +
-	"\x1adestroy_scheduled_duration\x18\x0e \x01(\v2\x19.google.protobuf.DurationB\x03\xe0A\x05R\x18destroyScheduledDuration\x127\n" +
-	"\x12crypto_key_backend\x18\x0f \x01(\tB\t\xe0A\x05\xfaA\x03\n" +
-	"\x01*R\x10cryptoKeyBackend\x12\x80\x01\n" +
-	" key_access_justifications_policy\x18\x11 \x01(\v22.google.cloud.kms.v1.KeyAccessJustificationsPolicyB\x03\xe0A\x01R\x1dkeyAccessJustificationsPolicy\x1a9\n" +
+	" \x03(\v2*.google.cloud.kms.v1.CryptoKey.LabelsEntryR\x06labels\x12%\n" +
+	"\vimport_only\x18\r \x01(\bB\x04\xe2A\x01\x05R\n" +
+	"importOnly\x12]\n" +
+	"\x1adestroy_scheduled_duration\x18\x0e \x01(\v2\x19.google.protobuf.DurationB\x04\xe2A\x01\x05R\x18destroyScheduledDuration\x128\n" +
+	"\x12crypto_key_backend\x18\x0f \x01(\tB\n" +
+	"\xe2A\x01\x05\xfaA\x03\n" +
+	"\x01*R\x10cryptoKeyBackend\x12\x81\x01\n" +
+	" key_access_justifications_policy\x18\x11 \x01(\v22.google.cloud.kms.v1.KeyAccessJustificationsPolicyB\x04\xe2A\x01\x01R\x1dkeyAccessJustificationsPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc3\x01\n" +
@@ -2641,14 +2658,14 @@ const file_google_cloud_kms_v1_resources_proto_rawDesc = "" +
 	"\x12\x10\n" +
 	"\fAES_WRAPPING\x10\v:{\xeaAx\n" +
 	"!cloudkms.googleapis.com/CryptoKey\x12Sprojects/{project}/locations/{location}/keyRings/{key_ring}/cryptoKeys/{crypto_key}B\x13\n" +
-	"\x11rotation_schedule\"\xcf\x01\n" +
+	"\x11rotation_schedule\"\xd0\x01\n" +
 	"\x18CryptoKeyVersionTemplate\x12O\n" +
-	"\x10protection_level\x18\x01 \x01(\x0e2$.google.cloud.kms.v1.ProtectionLevelR\x0fprotectionLevel\x12b\n" +
-	"\talgorithm\x18\x03 \x01(\x0e2?.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithmB\x03\xe0A\x02R\talgorithm\"\x83\x04\n" +
-	"\x17KeyOperationAttestation\x12[\n" +
-	"\x06format\x18\x04 \x01(\x0e2>.google.cloud.kms.v1.KeyOperationAttestation.AttestationFormatB\x03\xe0A\x03R\x06format\x12\x1d\n" +
-	"\acontent\x18\x05 \x01(\fB\x03\xe0A\x03R\acontent\x12d\n" +
-	"\vcert_chains\x18\x06 \x01(\v2>.google.cloud.kms.v1.KeyOperationAttestation.CertificateChainsB\x03\xe0A\x03R\n" +
+	"\x10protection_level\x18\x01 \x01(\x0e2$.google.cloud.kms.v1.ProtectionLevelR\x0fprotectionLevel\x12c\n" +
+	"\talgorithm\x18\x03 \x01(\x0e2?.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithmB\x04\xe2A\x01\x02R\talgorithm\"\x86\x04\n" +
+	"\x17KeyOperationAttestation\x12\\\n" +
+	"\x06format\x18\x04 \x01(\x0e2>.google.cloud.kms.v1.KeyOperationAttestation.AttestationFormatB\x04\xe2A\x01\x03R\x06format\x12\x1e\n" +
+	"\acontent\x18\x05 \x01(\fB\x04\xe2A\x01\x03R\acontent\x12e\n" +
+	"\vcert_chains\x18\x06 \x01(\v2>.google.cloud.kms.v1.KeyOperationAttestation.CertificateChainsB\x04\xe2A\x01\x03R\n" +
 	"certChains\x1a\x98\x01\n" +
 	"\x11CertificateChains\x12!\n" +
 	"\fcavium_certs\x18\x01 \x03(\tR\vcaviumCerts\x12*\n" +
@@ -2657,30 +2674,30 @@ const file_google_cloud_kms_v1_resources_proto_rawDesc = "" +
 	"\x11AttestationFormat\x12\"\n" +
 	"\x1eATTESTATION_FORMAT_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14CAVIUM_V1_COMPRESSED\x10\x03\x12\x18\n" +
-	"\x14CAVIUM_V2_COMPRESSED\x10\x04\"\xa7\x18\n" +
-	"\x10CryptoKeyVersion\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x03R\x04name\x12Q\n" +
-	"\x05state\x18\x03 \x01(\x0e2;.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionStateR\x05state\x12T\n" +
-	"\x10protection_level\x18\a \x01(\x0e2$.google.cloud.kms.v1.ProtectionLevelB\x03\xe0A\x03R\x0fprotectionLevel\x12b\n" +
+	"\x14CAVIUM_V2_COMPRESSED\x10\x04\"\xb7\x18\n" +
+	"\x10CryptoKeyVersion\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\tB\x04\xe2A\x01\x03R\x04name\x12Q\n" +
+	"\x05state\x18\x03 \x01(\x0e2;.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionStateR\x05state\x12U\n" +
+	"\x10protection_level\x18\a \x01(\x0e2$.google.cloud.kms.v1.ProtectionLevelB\x04\xe2A\x01\x03R\x0fprotectionLevel\x12c\n" +
 	"\talgorithm\x18\n" +
-	" \x01(\x0e2?.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithmB\x03\xe0A\x03R\talgorithm\x12S\n" +
-	"\vattestation\x18\b \x01(\v2,.google.cloud.kms.v1.KeyOperationAttestationB\x03\xe0A\x03R\vattestation\x12@\n" +
-	"\vcreate_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
-	"createTime\x12D\n" +
-	"\rgenerate_time\x18\v \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\fgenerateTime\x12B\n" +
-	"\fdestroy_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\vdestroyTime\x12M\n" +
-	"\x12destroy_event_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\x10destroyEventTime\x12\"\n" +
+	" \x01(\x0e2?.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithmB\x04\xe2A\x01\x03R\talgorithm\x12T\n" +
+	"\vattestation\x18\b \x01(\v2,.google.cloud.kms.v1.KeyOperationAttestationB\x04\xe2A\x01\x03R\vattestation\x12A\n" +
+	"\vcreate_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\n" +
+	"createTime\x12E\n" +
+	"\rgenerate_time\x18\v \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\fgenerateTime\x12C\n" +
+	"\fdestroy_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\vdestroyTime\x12N\n" +
+	"\x12destroy_event_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\x10destroyEventTime\x12#\n" +
 	"\n" +
-	"import_job\x18\x0e \x01(\tB\x03\xe0A\x03R\timportJob\x12@\n" +
-	"\vimport_time\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
-	"importTime\x127\n" +
-	"\x15import_failure_reason\x18\x10 \x01(\tB\x03\xe0A\x03R\x13importFailureReason\x12?\n" +
-	"\x19generation_failure_reason\x18\x13 \x01(\tB\x03\xe0A\x03R\x17generationFailureReason\x12R\n" +
-	"#external_destruction_failure_reason\x18\x14 \x01(\tB\x03\xe0A\x03R externalDestructionFailureReason\x12~\n" +
-	"!external_protection_level_options\x18\x11 \x01(\v23.google.cloud.kms.v1.ExternalProtectionLevelOptionsR\x1eexternalProtectionLevelOptions\x120\n" +
-	"\x11reimport_eligible\x18\x12 \x01(\bB\x03\xe0A\x03R\x10reimportEligible\x12=\n" +
-	"\x18trusted_wrapping_enabled\x18\x15 \x01(\bB\x03\xe0A\x05R\x16trustedWrappingEnabled\x12$\n" +
-	"\vhsm_trusted\x18\x17 \x01(\bB\x03\xe0A\x03R\n" +
+	"import_job\x18\x0e \x01(\tB\x04\xe2A\x01\x03R\timportJob\x12A\n" +
+	"\vimport_time\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\n" +
+	"importTime\x128\n" +
+	"\x15import_failure_reason\x18\x10 \x01(\tB\x04\xe2A\x01\x03R\x13importFailureReason\x12@\n" +
+	"\x19generation_failure_reason\x18\x13 \x01(\tB\x04\xe2A\x01\x03R\x17generationFailureReason\x12S\n" +
+	"#external_destruction_failure_reason\x18\x14 \x01(\tB\x04\xe2A\x01\x03R externalDestructionFailureReason\x12~\n" +
+	"!external_protection_level_options\x18\x11 \x01(\v23.google.cloud.kms.v1.ExternalProtectionLevelOptionsR\x1eexternalProtectionLevelOptions\x121\n" +
+	"\x11reimport_eligible\x18\x12 \x01(\bB\x04\xe2A\x01\x03R\x10reimportEligible\x12>\n" +
+	"\x18trusted_wrapping_enabled\x18\x15 \x01(\bB\x04\xe2A\x01\x05R\x16trustedWrappingEnabled\x12%\n" +
+	"\vhsm_trusted\x18\x17 \x01(\bB\x04\xe2A\x01\x03R\n" +
 	"hsmTrusted\"\x9b\n" +
 	"\n" +
 	"\x19CryptoKeyVersionAlgorithm\x12,\n" +
@@ -2770,28 +2787,29 @@ const file_google_cloud_kms_v1_resources_proto_rawDesc = "" +
 	"\x03DER\x10\x02\x12\f\n" +
 	"\bNIST_PQC\x10\x03\x12\x13\n" +
 	"\x0fXWING_RAW_BYTES\x10\x04:\xae\x01\xeaA\xaa\x01\n" +
-	"!cloudkms.googleapis.com/PublicKey\x12\x84\x01projects/{project}/locations/{location}/keyRings/{key_ring}/cryptoKeys/{crypto_key}/cryptoKeyVersions/{crypto_key_version}/publicKey\"\x96\f\n" +
-	"\tImportJob\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x03R\x04name\x12X\n" +
-	"\rimport_method\x18\x02 \x01(\x0e2+.google.cloud.kms.v1.ImportJob.ImportMethodB\x06\xe0A\x02\xe0A\x05R\fimportMethod\x12W\n" +
-	"\x10protection_level\x18\t \x01(\x0e2$.google.cloud.kms.v1.ProtectionLevelB\x06\xe0A\x02\xe0A\x05R\x0fprotectionLevel\x12@\n" +
-	"\vcreate_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
-	"createTime\x12D\n" +
-	"\rgenerate_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\fgenerateTime\x12@\n" +
-	"\vexpire_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
-	"expireTime\x12K\n" +
+	"!cloudkms.googleapis.com/PublicKey\x12\x84\x01projects/{project}/locations/{location}/keyRings/{key_ring}/cryptoKeys/{crypto_key}/cryptoKeyVersions/{crypto_key_version}/publicKey\"\x9f\f\n" +
+	"\tImportJob\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\tB\x04\xe2A\x01\x03R\x04name\x12W\n" +
+	"\rimport_method\x18\x02 \x01(\x0e2+.google.cloud.kms.v1.ImportJob.ImportMethodB\x05\xe2A\x02\x02\x05R\fimportMethod\x12V\n" +
+	"\x10protection_level\x18\t \x01(\x0e2$.google.cloud.kms.v1.ProtectionLevelB\x05\xe2A\x02\x02\x05R\x0fprotectionLevel\x12A\n" +
+	"\vcreate_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\n" +
+	"createTime\x12E\n" +
+	"\rgenerate_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\fgenerateTime\x12A\n" +
+	"\vexpire_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\n" +
+	"expireTime\x12L\n" +
 	"\x11expire_event_time\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\x0fexpireEventTime\x12H\n" +
-	"\x05state\x18\x06 \x01(\x0e2-.google.cloud.kms.v1.ImportJob.ImportJobStateB\x03\xe0A\x03R\x05state\x12T\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\x0fexpireEventTime\x12I\n" +
+	"\x05state\x18\x06 \x01(\x0e2-.google.cloud.kms.v1.ImportJob.ImportJobStateB\x04\xe2A\x01\x03R\x05state\x12U\n" +
 	"\n" +
-	"public_key\x18\a \x01(\v20.google.cloud.kms.v1.ImportJob.WrappingPublicKeyB\x03\xe0A\x03R\tpublicKey\x12_\n" +
-	"\x11public_key_format\x18\f \x01(\x0e2..google.cloud.kms.v1.PublicKey.PublicKeyFormatB\x03\xe0A\x03R\x0fpublicKeyFormat\x12S\n" +
-	"\vattestation\x18\b \x01(\v2,.google.cloud.kms.v1.KeyOperationAttestationB\x03\xe0A\x03R\vattestation\x127\n" +
-	"\x12crypto_key_backend\x18\v \x01(\tB\t\xe0A\x05\xfaA\x03\n" +
-	"\x01*R\x10cryptoKeyBackend\x1a>\n" +
+	"public_key\x18\a \x01(\v20.google.cloud.kms.v1.ImportJob.WrappingPublicKeyB\x04\xe2A\x01\x03R\tpublicKey\x12`\n" +
+	"\x11public_key_format\x18\f \x01(\x0e2..google.cloud.kms.v1.PublicKey.PublicKeyFormatB\x04\xe2A\x01\x03R\x0fpublicKeyFormat\x12T\n" +
+	"\vattestation\x18\b \x01(\v2,.google.cloud.kms.v1.KeyOperationAttestationB\x04\xe2A\x01\x03R\vattestation\x128\n" +
+	"\x12crypto_key_backend\x18\v \x01(\tB\n" +
+	"\xe2A\x01\x05\xfaA\x03\n" +
+	"\x01*R\x10cryptoKeyBackend\x1a?\n" +
 	"\x11WrappingPublicKey\x12\x10\n" +
-	"\x03pem\x18\x01 \x01(\tR\x03pem\x12\x17\n" +
-	"\x04data\x18\x02 \x01(\fB\x03\xe0A\x03R\x04data\"\xf4\x02\n" +
+	"\x03pem\x18\x01 \x01(\tR\x03pem\x12\x18\n" +
+	"\x04data\x18\x02 \x01(\fB\x04\xe2A\x01\x03R\x04data\"\xf4\x02\n" +
 	"\fImportMethod\x12\x1d\n" +
 	"\x19IMPORT_METHOD_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aRSA_OAEP_3072_SHA1_AES_256\x10\x01\x12\x1e\n" +
@@ -2810,17 +2828,19 @@ const file_google_cloud_kms_v1_resources_proto_rawDesc = "" +
 	"\n" +
 	"\x06ACTIVE\x10\x02\x12\v\n" +
 	"\aEXPIRED\x10\x03:{\xeaAx\n" +
-	"!cloudkms.googleapis.com/ImportJob\x12Sprojects/{project}/locations/{location}/keyRings/{key_ring}/importJobs/{import_job}\"\x81\x01\n" +
-	"\x1eExternalProtectionLevelOptions\x12(\n" +
-	"\x10external_key_uri\x18\x01 \x01(\tR\x0eexternalKeyUri\x125\n" +
-	"\x17ekm_connection_key_path\x18\x02 \x01(\tR\x14ekmConnectionKeyPath\"x\n" +
+	"!cloudkms.googleapis.com/ImportJob\x12Sprojects/{project}/locations/{location}/keyRings/{key_ring}/importJobs/{import_job}\"\x84\x02\n" +
+	"\x1eExternalProtectionLevelOptions\x12.\n" +
+	"\x10external_key_uri\x18\x01 \x01(\tB\x04\xe2A\x01\x01R\x0eexternalKeyUri\x12;\n" +
+	"\x17ekm_connection_key_path\x18\x02 \x01(\tB\x04\xe2A\x01\x01R\x14ekmConnectionKeyPath\x12u\n" +
+	"\x1fekm_connection_backend_override\x18\x03 \x01(\tB.\xe2A\x01\x01\xfaA'\n" +
+	"%cloudkms.googleapis.com/EkmConnectionR\x1cekmConnectionBackendOverride\"x\n" +
 	"\x1dKeyAccessJustificationsPolicy\x12W\n" +
-	"\x16allowed_access_reasons\x18\x01 \x03(\x0e2!.google.cloud.kms.v1.AccessReasonR\x14allowedAccessReasons\"\xeb\x02\n" +
-	"\x0fRetiredResource\x12\x1a\n" +
-	"\x04name\x18\x01 \x01(\tB\x06\xe0A\x03\xe0A\bR\x04name\x120\n" +
-	"\x11original_resource\x18\x02 \x01(\tB\x03\xe0A\x03R\x10originalResource\x12(\n" +
-	"\rresource_type\x18\x03 \x01(\tB\x03\xe0A\x03R\fresourceType\x12@\n" +
-	"\vdelete_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
+	"\x16allowed_access_reasons\x18\x01 \x03(\x0e2!.google.cloud.kms.v1.AccessReasonR\x14allowedAccessReasons\"\xed\x02\n" +
+	"\x0fRetiredResource\x12\x19\n" +
+	"\x04name\x18\x01 \x01(\tB\x05\xe2A\x02\x03\bR\x04name\x121\n" +
+	"\x11original_resource\x18\x02 \x01(\tB\x04\xe2A\x01\x03R\x10originalResource\x12)\n" +
+	"\rresource_type\x18\x03 \x01(\tB\x04\xe2A\x01\x03R\fresourceType\x12A\n" +
+	"\vdelete_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\n" +
 	"deleteTime:\x9d\x01\xeaA\x99\x01\n" +
 	"'cloudkms.googleapis.com/RetiredResource\x12Kprojects/{project}/locations/{location}/retiredResources/{retired_resource}*\x10retiredResources2\x0fretiredResource*\x81\x01\n" +
 	"\x0fProtectionLevel\x12 \n" +

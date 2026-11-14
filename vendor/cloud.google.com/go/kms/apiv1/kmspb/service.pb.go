@@ -5011,46 +5011,46 @@ var File_google_cloud_kms_v1_service_proto protoreflect.FileDescriptor
 
 const file_google_cloud_kms_v1_service_proto_rawDesc = "" +
 	"\n" +
-	"!google/cloud/kms/v1/service.proto\x12\x13google.cloud.kms.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a#google/cloud/kms/v1/resources.proto\x1a#google/longrunning/operations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xdb\x01\n" +
-	"\x13ListKeyRingsRequest\x12A\n" +
-	"\x06parent\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!locations.googleapis.com/LocationR\x06parent\x12 \n" +
-	"\tpage_size\x18\x02 \x01(\x05B\x03\xe0A\x01R\bpageSize\x12\"\n" +
+	"!google/cloud/kms/v1/service.proto\x12\x13google.cloud.kms.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a#google/cloud/kms/v1/resources.proto\x1a#google/longrunning/operations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xe0\x01\n" +
+	"\x13ListKeyRingsRequest\x12B\n" +
+	"\x06parent\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!locations.googleapis.com/LocationR\x06parent\x12!\n" +
+	"\tpage_size\x18\x02 \x01(\x05B\x04\xe2A\x01\x01R\bpageSize\x12#\n" +
 	"\n" +
-	"page_token\x18\x03 \x01(\tB\x03\xe0A\x01R\tpageToken\x12\x1b\n" +
-	"\x06filter\x18\x04 \x01(\tB\x03\xe0A\x01R\x06filter\x12\x1e\n" +
-	"\border_by\x18\x05 \x01(\tB\x03\xe0A\x01R\aorderBy\"\xba\x02\n" +
-	"\x15ListCryptoKeysRequest\x12?\n" +
-	"\x06parent\x18\x01 \x01(\tB'\xe0A\x02\xfaA!\n" +
-	"\x1fcloudkms.googleapis.com/KeyRingR\x06parent\x12 \n" +
-	"\tpage_size\x18\x02 \x01(\x05B\x03\xe0A\x01R\bpageSize\x12\"\n" +
+	"page_token\x18\x03 \x01(\tB\x04\xe2A\x01\x01R\tpageToken\x12\x1c\n" +
+	"\x06filter\x18\x04 \x01(\tB\x04\xe2A\x01\x01R\x06filter\x12\x1f\n" +
+	"\border_by\x18\x05 \x01(\tB\x04\xe2A\x01\x01R\aorderBy\"\xbf\x02\n" +
+	"\x15ListCryptoKeysRequest\x12@\n" +
+	"\x06parent\x18\x01 \x01(\tB(\xe2A\x01\x02\xfaA!\n" +
+	"\x1fcloudkms.googleapis.com/KeyRingR\x06parent\x12!\n" +
+	"\tpage_size\x18\x02 \x01(\x05B\x04\xe2A\x01\x01R\bpageSize\x12#\n" +
 	"\n" +
-	"page_token\x18\x03 \x01(\tB\x03\xe0A\x01R\tpageToken\x12]\n" +
-	"\fversion_view\x18\x04 \x01(\x0e2:.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionViewR\vversionView\x12\x1b\n" +
-	"\x06filter\x18\x05 \x01(\tB\x03\xe0A\x01R\x06filter\x12\x1e\n" +
-	"\border_by\x18\x06 \x01(\tB\x03\xe0A\x01R\aorderBy\"\xb4\x02\n" +
-	"\x1cListCryptoKeyVersionsRequest\x12A\n" +
-	"\x06parent\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!cloudkms.googleapis.com/CryptoKeyR\x06parent\x12 \n" +
-	"\tpage_size\x18\x02 \x01(\x05B\x03\xe0A\x01R\bpageSize\x12\"\n" +
+	"page_token\x18\x03 \x01(\tB\x04\xe2A\x01\x01R\tpageToken\x12]\n" +
+	"\fversion_view\x18\x04 \x01(\x0e2:.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionViewR\vversionView\x12\x1c\n" +
+	"\x06filter\x18\x05 \x01(\tB\x04\xe2A\x01\x01R\x06filter\x12\x1f\n" +
+	"\border_by\x18\x06 \x01(\tB\x04\xe2A\x01\x01R\aorderBy\"\xb9\x02\n" +
+	"\x1cListCryptoKeyVersionsRequest\x12B\n" +
+	"\x06parent\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!cloudkms.googleapis.com/CryptoKeyR\x06parent\x12!\n" +
+	"\tpage_size\x18\x02 \x01(\x05B\x04\xe2A\x01\x01R\bpageSize\x12#\n" +
 	"\n" +
-	"page_token\x18\x03 \x01(\tB\x03\xe0A\x01R\tpageToken\x12N\n" +
-	"\x04view\x18\x04 \x01(\x0e2:.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionViewR\x04view\x12\x1b\n" +
-	"\x06filter\x18\x05 \x01(\tB\x03\xe0A\x01R\x06filter\x12\x1e\n" +
-	"\border_by\x18\x06 \x01(\tB\x03\xe0A\x01R\aorderBy\"\xdb\x01\n" +
-	"\x15ListImportJobsRequest\x12?\n" +
-	"\x06parent\x18\x01 \x01(\tB'\xe0A\x02\xfaA!\n" +
-	"\x1fcloudkms.googleapis.com/KeyRingR\x06parent\x12 \n" +
-	"\tpage_size\x18\x02 \x01(\x05B\x03\xe0A\x01R\bpageSize\x12\"\n" +
+	"page_token\x18\x03 \x01(\tB\x04\xe2A\x01\x01R\tpageToken\x12N\n" +
+	"\x04view\x18\x04 \x01(\x0e2:.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionViewR\x04view\x12\x1c\n" +
+	"\x06filter\x18\x05 \x01(\tB\x04\xe2A\x01\x01R\x06filter\x12\x1f\n" +
+	"\border_by\x18\x06 \x01(\tB\x04\xe2A\x01\x01R\aorderBy\"\xe0\x01\n" +
+	"\x15ListImportJobsRequest\x12@\n" +
+	"\x06parent\x18\x01 \x01(\tB(\xe2A\x01\x02\xfaA!\n" +
+	"\x1fcloudkms.googleapis.com/KeyRingR\x06parent\x12!\n" +
+	"\tpage_size\x18\x02 \x01(\x05B\x04\xe2A\x01\x01R\bpageSize\x12#\n" +
 	"\n" +
-	"page_token\x18\x03 \x01(\tB\x03\xe0A\x01R\tpageToken\x12\x1b\n" +
-	"\x06filter\x18\x04 \x01(\tB\x03\xe0A\x01R\x06filter\x12\x1e\n" +
-	"\border_by\x18\x05 \x01(\tB\x03\xe0A\x01R\aorderBy\"\xac\x01\n" +
-	"\x1bListRetiredResourcesRequest\x12G\n" +
-	"\x06parent\x18\x01 \x01(\tB/\xe0A\x02\xfaA)\x12'cloudkms.googleapis.com/RetiredResourceR\x06parent\x12 \n" +
-	"\tpage_size\x18\x02 \x01(\x05B\x03\xe0A\x01R\bpageSize\x12\"\n" +
+	"page_token\x18\x03 \x01(\tB\x04\xe2A\x01\x01R\tpageToken\x12\x1c\n" +
+	"\x06filter\x18\x04 \x01(\tB\x04\xe2A\x01\x01R\x06filter\x12\x1f\n" +
+	"\border_by\x18\x05 \x01(\tB\x04\xe2A\x01\x01R\aorderBy\"\xaf\x01\n" +
+	"\x1bListRetiredResourcesRequest\x12H\n" +
+	"\x06parent\x18\x01 \x01(\tB0\xe2A\x01\x02\xfaA)\x12'cloudkms.googleapis.com/RetiredResourceR\x06parent\x12!\n" +
+	"\tpage_size\x18\x02 \x01(\x05B\x04\xe2A\x01\x01R\bpageSize\x12#\n" +
 	"\n" +
-	"page_token\x18\x03 \x01(\tB\x03\xe0A\x01R\tpageToken\"\x98\x01\n" +
+	"page_token\x18\x03 \x01(\tB\x04\xe2A\x01\x01R\tpageToken\"\x98\x01\n" +
 	"\x14ListKeyRingsResponse\x129\n" +
 	"\tkey_rings\x18\x01 \x03(\v2\x1c.google.cloud.kms.v1.KeyRingR\bkeyRings\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1d\n" +
@@ -5077,177 +5077,178 @@ const file_google_cloud_kms_v1_service_proto_rawDesc = "" +
 	"\x11retired_resources\x18\x01 \x03(\v2$.google.cloud.kms.v1.RetiredResourceR\x10retiredResources\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1d\n" +
 	"\n" +
-	"total_size\x18\x03 \x01(\x03R\ttotalSize\"P\n" +
-	"\x11GetKeyRingRequest\x12;\n" +
-	"\x04name\x18\x01 \x01(\tB'\xe0A\x02\xfaA!\n" +
-	"\x1fcloudkms.googleapis.com/KeyRingR\x04name\"T\n" +
-	"\x13GetCryptoKeyRequest\x12=\n" +
-	"\x04name\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!cloudkms.googleapis.com/CryptoKeyR\x04name\"b\n" +
-	"\x1aGetCryptoKeyVersionRequest\x12D\n" +
-	"\x04name\x18\x01 \x01(\tB0\xe0A\x02\xfaA*\n" +
-	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\"\xbc\x01\n" +
-	"\x13GetPublicKeyRequest\x12D\n" +
-	"\x04name\x18\x01 \x01(\tB0\xe0A\x02\xfaA*\n" +
-	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\x12_\n" +
-	"\x11public_key_format\x18\x02 \x01(\x0e2..google.cloud.kms.v1.PublicKey.PublicKeyFormatB\x03\xe0A\x01R\x0fpublicKeyFormat\"\xb5\x01\n" +
-	"\x13GetImportJobRequest\x12=\n" +
-	"\x04name\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!cloudkms.googleapis.com/ImportJobR\x04name\x12_\n" +
-	"\x11public_key_format\x18\x02 \x01(\x0e2..google.cloud.kms.v1.PublicKey.PublicKeyFormatB\x03\xe0A\x01R\x0fpublicKeyFormat\"`\n" +
-	"\x19GetRetiredResourceRequest\x12C\n" +
-	"\x04name\x18\x01 \x01(\tB/\xe0A\x02\xfaA)\n" +
-	"'cloudkms.googleapis.com/RetiredResourceR\x04name\"\xbc\x01\n" +
-	"\x14CreateKeyRingRequest\x12A\n" +
-	"\x06parent\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!locations.googleapis.com/LocationR\x06parent\x12#\n" +
-	"\vkey_ring_id\x18\x02 \x01(\tB\x03\xe0A\x02R\tkeyRingId\x12<\n" +
-	"\bkey_ring\x18\x03 \x01(\v2\x1c.google.cloud.kms.v1.KeyRingB\x03\xe0A\x02R\akeyRing\"\xc8\x02\n" +
-	"\x16CreateCryptoKeyRequest\x12?\n" +
-	"\x06parent\x18\x01 \x01(\tB'\xe0A\x02\xfaA!\n" +
-	"\x1fcloudkms.googleapis.com/KeyRingR\x06parent\x12'\n" +
-	"\rcrypto_key_id\x18\x02 \x01(\tB\x03\xe0A\x02R\vcryptoKeyId\x12B\n" +
+	"total_size\x18\x03 \x01(\x03R\ttotalSize\"Q\n" +
+	"\x11GetKeyRingRequest\x12<\n" +
+	"\x04name\x18\x01 \x01(\tB(\xe2A\x01\x02\xfaA!\n" +
+	"\x1fcloudkms.googleapis.com/KeyRingR\x04name\"U\n" +
+	"\x13GetCryptoKeyRequest\x12>\n" +
+	"\x04name\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!cloudkms.googleapis.com/CryptoKeyR\x04name\"c\n" +
+	"\x1aGetCryptoKeyVersionRequest\x12E\n" +
+	"\x04name\x18\x01 \x01(\tB1\xe2A\x01\x02\xfaA*\n" +
+	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\"\xbe\x01\n" +
+	"\x13GetPublicKeyRequest\x12E\n" +
+	"\x04name\x18\x01 \x01(\tB1\xe2A\x01\x02\xfaA*\n" +
+	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\x12`\n" +
+	"\x11public_key_format\x18\x02 \x01(\x0e2..google.cloud.kms.v1.PublicKey.PublicKeyFormatB\x04\xe2A\x01\x01R\x0fpublicKeyFormat\"\xb7\x01\n" +
+	"\x13GetImportJobRequest\x12>\n" +
+	"\x04name\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!cloudkms.googleapis.com/ImportJobR\x04name\x12`\n" +
+	"\x11public_key_format\x18\x02 \x01(\x0e2..google.cloud.kms.v1.PublicKey.PublicKeyFormatB\x04\xe2A\x01\x01R\x0fpublicKeyFormat\"a\n" +
+	"\x19GetRetiredResourceRequest\x12D\n" +
+	"\x04name\x18\x01 \x01(\tB0\xe2A\x01\x02\xfaA)\n" +
+	"'cloudkms.googleapis.com/RetiredResourceR\x04name\"\xbf\x01\n" +
+	"\x14CreateKeyRingRequest\x12B\n" +
+	"\x06parent\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!locations.googleapis.com/LocationR\x06parent\x12$\n" +
+	"\vkey_ring_id\x18\x02 \x01(\tB\x04\xe2A\x01\x02R\tkeyRingId\x12=\n" +
+	"\bkey_ring\x18\x03 \x01(\v2\x1c.google.cloud.kms.v1.KeyRingB\x04\xe2A\x01\x02R\akeyRing\"\xcc\x02\n" +
+	"\x16CreateCryptoKeyRequest\x12@\n" +
+	"\x06parent\x18\x01 \x01(\tB(\xe2A\x01\x02\xfaA!\n" +
+	"\x1fcloudkms.googleapis.com/KeyRingR\x06parent\x12(\n" +
+	"\rcrypto_key_id\x18\x02 \x01(\tB\x04\xe2A\x01\x02R\vcryptoKeyId\x12C\n" +
 	"\n" +
-	"crypto_key\x18\x03 \x01(\v2\x1e.google.cloud.kms.v1.CryptoKeyB\x03\xe0A\x02R\tcryptoKey\x12A\n" +
-	"\x1dskip_initial_version_creation\x18\x05 \x01(\bR\x1askipInitialVersionCreation\x12=\n" +
-	"\x18trusted_wrapping_enabled\x18\x06 \x01(\bB\x03\xe0A\x01R\x16trustedWrappingEnabled\"\xbc\x01\n" +
-	"\x1dCreateCryptoKeyVersionRequest\x12A\n" +
-	"\x06parent\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!cloudkms.googleapis.com/CryptoKeyR\x06parent\x12X\n" +
-	"\x12crypto_key_version\x18\x02 \x01(\v2%.google.cloud.kms.v1.CryptoKeyVersionB\x03\xe0A\x02R\x10cryptoKeyVersion\"W\n" +
-	"\x16DeleteCryptoKeyRequest\x12=\n" +
-	"\x04name\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!cloudkms.googleapis.com/CryptoKeyR\x04name\"e\n" +
-	"\x1dDeleteCryptoKeyVersionRequest\x12D\n" +
-	"\x04name\x18\x01 \x01(\tB0\xe0A\x02\xfaA*\n" +
-	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\"\xfd\x03\n" +
-	"\x1dImportCryptoKeyVersionRequest\x12A\n" +
-	"\x06parent\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!cloudkms.googleapis.com/CryptoKeyR\x06parent\x12^\n" +
-	"\x12crypto_key_version\x18\x06 \x01(\tB0\xe0A\x01\xfaA*\n" +
-	"(cloudkms.googleapis.com/CryptoKeyVersionR\x10cryptoKeyVersion\x12b\n" +
-	"\talgorithm\x18\x02 \x01(\x0e2?.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithmB\x03\xe0A\x02R\talgorithm\x12\"\n" +
+	"crypto_key\x18\x03 \x01(\v2\x1e.google.cloud.kms.v1.CryptoKeyB\x04\xe2A\x01\x02R\tcryptoKey\x12A\n" +
+	"\x1dskip_initial_version_creation\x18\x05 \x01(\bR\x1askipInitialVersionCreation\x12>\n" +
+	"\x18trusted_wrapping_enabled\x18\x06 \x01(\bB\x04\xe2A\x01\x01R\x16trustedWrappingEnabled\"\xbe\x01\n" +
+	"\x1dCreateCryptoKeyVersionRequest\x12B\n" +
+	"\x06parent\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!cloudkms.googleapis.com/CryptoKeyR\x06parent\x12Y\n" +
+	"\x12crypto_key_version\x18\x02 \x01(\v2%.google.cloud.kms.v1.CryptoKeyVersionB\x04\xe2A\x01\x02R\x10cryptoKeyVersion\"X\n" +
+	"\x16DeleteCryptoKeyRequest\x12>\n" +
+	"\x04name\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!cloudkms.googleapis.com/CryptoKeyR\x04name\"f\n" +
+	"\x1dDeleteCryptoKeyVersionRequest\x12E\n" +
+	"\x04name\x18\x01 \x01(\tB1\xe2A\x01\x02\xfaA*\n" +
+	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\"\x84\x04\n" +
+	"\x1dImportCryptoKeyVersionRequest\x12B\n" +
+	"\x06parent\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!cloudkms.googleapis.com/CryptoKeyR\x06parent\x12_\n" +
+	"\x12crypto_key_version\x18\x06 \x01(\tB1\xe2A\x01\x01\xfaA*\n" +
+	"(cloudkms.googleapis.com/CryptoKeyVersionR\x10cryptoKeyVersion\x12c\n" +
+	"\talgorithm\x18\x02 \x01(\x0e2?.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithmB\x04\xe2A\x01\x02R\talgorithm\x12#\n" +
 	"\n" +
-	"import_job\x18\x04 \x01(\tB\x03\xe0A\x02R\timportJob\x12$\n" +
-	"\vwrapped_key\x18\b \x01(\fB\x03\xe0A\x01R\n" +
-	"wrappedKey\x124\n" +
-	"\x13rsa_aes_wrapped_key\x18\x05 \x01(\fB\x03\xe0A\x01H\x00R\x10rsaAesWrappedKey\x12=\n" +
-	"\x18trusted_wrapping_enabled\x18\t \x01(\bB\x03\xe0A\x01R\x16trustedWrappingEnabledB\x16\n" +
-	"\x14wrapped_key_material\"\xb4\x02\n" +
-	".ImportTrustedKeyWrappedCryptoKeyVersionRequest\x12\x1b\n" +
-	"\x06parent\x18\x01 \x01(\tB\x03\xe0A\x02R\x06parent\x12(\n" +
-	"\rimporting_key\x18\x02 \x01(\tB\x03\xe0A\x02R\fimportingKey\x121\n" +
-	"\x12crypto_key_version\x18\x03 \x01(\tB\x03\xe0A\x01R\x10cryptoKeyVersion\x12$\n" +
-	"\vwrapped_key\x18\x04 \x01(\fB\x03\xe0A\x02R\n" +
-	"wrappedKey\x12b\n" +
-	"\talgorithm\x18\x05 \x01(\x0e2?.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithmB\x03\xe0A\x02R\talgorithm\"\xcb\x01\n" +
-	".ExportTrustedKeyWrappedCryptoKeyVersionRequest\x12D\n" +
-	"\x04name\x18\x01 \x01(\tB0\xe0A\x02\xfaA*\n" +
-	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\x12S\n" +
-	"\fwrapping_key\x18\x02 \x01(\tB0\xe0A\x02\xfaA*\n" +
+	"import_job\x18\x04 \x01(\tB\x04\xe2A\x01\x02R\timportJob\x12%\n" +
+	"\vwrapped_key\x18\b \x01(\fB\x04\xe2A\x01\x01R\n" +
+	"wrappedKey\x125\n" +
+	"\x13rsa_aes_wrapped_key\x18\x05 \x01(\fB\x04\xe2A\x01\x01H\x00R\x10rsaAesWrappedKey\x12>\n" +
+	"\x18trusted_wrapping_enabled\x18\t \x01(\bB\x04\xe2A\x01\x01R\x16trustedWrappingEnabledB\x16\n" +
+	"\x14wrapped_key_material\"\xb9\x02\n" +
+	".ImportTrustedKeyWrappedCryptoKeyVersionRequest\x12\x1c\n" +
+	"\x06parent\x18\x01 \x01(\tB\x04\xe2A\x01\x02R\x06parent\x12)\n" +
+	"\rimporting_key\x18\x02 \x01(\tB\x04\xe2A\x01\x02R\fimportingKey\x122\n" +
+	"\x12crypto_key_version\x18\x03 \x01(\tB\x04\xe2A\x01\x01R\x10cryptoKeyVersion\x12%\n" +
+	"\vwrapped_key\x18\x04 \x01(\fB\x04\xe2A\x01\x02R\n" +
+	"wrappedKey\x12c\n" +
+	"\talgorithm\x18\x05 \x01(\x0e2?.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithmB\x04\xe2A\x01\x02R\talgorithm\"\xcd\x01\n" +
+	".ExportTrustedKeyWrappedCryptoKeyVersionRequest\x12E\n" +
+	"\x04name\x18\x01 \x01(\tB1\xe2A\x01\x02\xfaA*\n" +
+	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\x12T\n" +
+	"\fwrapping_key\x18\x02 \x01(\tB1\xe2A\x01\x02\xfaA*\n" +
 	"(cloudkms.googleapis.com/CryptoKeyVersionR\vwrappingKey\"\x9d\x01\n" +
 	"/ExportTrustedKeyWrappedCryptoKeyVersionResponse\x12\x1f\n" +
 	"\vwrapped_key\x18\x01 \x01(\fR\n" +
 	"wrappedKey\x12I\n" +
-	"\x12wrapped_key_crc32c\x18\x02 \x01(\v2\x1b.google.protobuf.Int64ValueR\x10wrappedKeyCrc32c\"\xc6\x01\n" +
-	"\x16CreateImportJobRequest\x12?\n" +
-	"\x06parent\x18\x01 \x01(\tB'\xe0A\x02\xfaA!\n" +
-	"\x1fcloudkms.googleapis.com/KeyRingR\x06parent\x12'\n" +
-	"\rimport_job_id\x18\x02 \x01(\tB\x03\xe0A\x02R\vimportJobId\x12B\n" +
+	"\x12wrapped_key_crc32c\x18\x02 \x01(\v2\x1b.google.protobuf.Int64ValueR\x10wrappedKeyCrc32c\"\xc9\x01\n" +
+	"\x16CreateImportJobRequest\x12@\n" +
+	"\x06parent\x18\x01 \x01(\tB(\xe2A\x01\x02\xfaA!\n" +
+	"\x1fcloudkms.googleapis.com/KeyRingR\x06parent\x12(\n" +
+	"\rimport_job_id\x18\x02 \x01(\tB\x04\xe2A\x01\x02R\vimportJobId\x12C\n" +
 	"\n" +
-	"import_job\x18\x03 \x01(\v2\x1e.google.cloud.kms.v1.ImportJobB\x03\xe0A\x02R\timportJob\"\x9e\x01\n" +
-	"\x16UpdateCryptoKeyRequest\x12B\n" +
+	"import_job\x18\x03 \x01(\v2\x1e.google.cloud.kms.v1.ImportJobB\x04\xe2A\x01\x02R\timportJob\"\xa0\x01\n" +
+	"\x16UpdateCryptoKeyRequest\x12C\n" +
 	"\n" +
-	"crypto_key\x18\x01 \x01(\v2\x1e.google.cloud.kms.v1.CryptoKeyB\x03\xe0A\x02R\tcryptoKey\x12@\n" +
-	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x03\xe0A\x02R\n" +
-	"updateMask\"\xbb\x01\n" +
-	"\x1dUpdateCryptoKeyVersionRequest\x12X\n" +
-	"\x12crypto_key_version\x18\x01 \x01(\v2%.google.cloud.kms.v1.CryptoKeyVersionB\x03\xe0A\x02R\x10cryptoKeyVersion\x12@\n" +
-	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x03\xe0A\x02R\n" +
-	"updateMask\"\x9d\x01\n" +
-	"$UpdateCryptoKeyPrimaryVersionRequest\x12=\n" +
-	"\x04name\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!cloudkms.googleapis.com/CryptoKeyR\x04name\x126\n" +
-	"\x15crypto_key_version_id\x18\x02 \x01(\tB\x03\xe0A\x02R\x12cryptoKeyVersionId\"f\n" +
-	"\x1eDestroyCryptoKeyVersionRequest\x12D\n" +
-	"\x04name\x18\x01 \x01(\tB0\xe0A\x02\xfaA*\n" +
-	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\"f\n" +
-	"\x1eRestoreCryptoKeyVersionRequest\x12D\n" +
-	"\x04name\x18\x01 \x01(\tB0\xe0A\x02\xfaA*\n" +
-	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\"\xdb\x02\n" +
-	"\x0eEncryptRequest\x12\x1d\n" +
-	"\x04name\x18\x01 \x01(\tB\t\xe0A\x02\xfaA\x03\n" +
-	"\x01*R\x04name\x12!\n" +
-	"\tplaintext\x18\x02 \x01(\fB\x03\xe0A\x02R\tplaintext\x12G\n" +
-	"\x1dadditional_authenticated_data\x18\x03 \x01(\fB\x03\xe0A\x01R\x1badditionalAuthenticatedData\x12K\n" +
-	"\x10plaintext_crc32c\x18\a \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R\x0fplaintextCrc32c\x12q\n" +
-	"$additional_authenticated_data_crc32c\x18\b \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R!additionalAuthenticatedDataCrc32c\"\xff\x02\n" +
-	"\x0eDecryptRequest\x12=\n" +
-	"\x04name\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!cloudkms.googleapis.com/CryptoKeyR\x04name\x12#\n" +
+	"crypto_key\x18\x01 \x01(\v2\x1e.google.cloud.kms.v1.CryptoKeyB\x04\xe2A\x01\x02R\tcryptoKey\x12A\n" +
+	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x04\xe2A\x01\x02R\n" +
+	"updateMask\"\xbd\x01\n" +
+	"\x1dUpdateCryptoKeyVersionRequest\x12Y\n" +
+	"\x12crypto_key_version\x18\x01 \x01(\v2%.google.cloud.kms.v1.CryptoKeyVersionB\x04\xe2A\x01\x02R\x10cryptoKeyVersion\x12A\n" +
+	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x04\xe2A\x01\x02R\n" +
+	"updateMask\"\x9f\x01\n" +
+	"$UpdateCryptoKeyPrimaryVersionRequest\x12>\n" +
+	"\x04name\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!cloudkms.googleapis.com/CryptoKeyR\x04name\x127\n" +
+	"\x15crypto_key_version_id\x18\x02 \x01(\tB\x04\xe2A\x01\x02R\x12cryptoKeyVersionId\"g\n" +
+	"\x1eDestroyCryptoKeyVersionRequest\x12E\n" +
+	"\x04name\x18\x01 \x01(\tB1\xe2A\x01\x02\xfaA*\n" +
+	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\"g\n" +
+	"\x1eRestoreCryptoKeyVersionRequest\x12E\n" +
+	"\x04name\x18\x01 \x01(\tB1\xe2A\x01\x02\xfaA*\n" +
+	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\"\xe0\x02\n" +
+	"\x0eEncryptRequest\x12\x1e\n" +
+	"\x04name\x18\x01 \x01(\tB\n" +
+	"\xe2A\x01\x02\xfaA\x03\n" +
+	"\x01*R\x04name\x12\"\n" +
+	"\tplaintext\x18\x02 \x01(\fB\x04\xe2A\x01\x02R\tplaintext\x12H\n" +
+	"\x1dadditional_authenticated_data\x18\x03 \x01(\fB\x04\xe2A\x01\x01R\x1badditionalAuthenticatedData\x12L\n" +
+	"\x10plaintext_crc32c\x18\a \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R\x0fplaintextCrc32c\x12r\n" +
+	"$additional_authenticated_data_crc32c\x18\b \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R!additionalAuthenticatedDataCrc32c\"\x84\x03\n" +
+	"\x0eDecryptRequest\x12>\n" +
+	"\x04name\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!cloudkms.googleapis.com/CryptoKeyR\x04name\x12$\n" +
 	"\n" +
-	"ciphertext\x18\x02 \x01(\fB\x03\xe0A\x02R\n" +
-	"ciphertext\x12G\n" +
-	"\x1dadditional_authenticated_data\x18\x03 \x01(\fB\x03\xe0A\x01R\x1badditionalAuthenticatedData\x12M\n" +
-	"\x11ciphertext_crc32c\x18\x05 \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R\x10ciphertextCrc32c\x12q\n" +
-	"$additional_authenticated_data_crc32c\x18\x06 \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R!additionalAuthenticatedDataCrc32c\"\xf6\x03\n" +
-	"\x11RawEncryptRequest\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x02R\x04name\x12!\n" +
-	"\tplaintext\x18\x02 \x01(\fB\x03\xe0A\x02R\tplaintext\x12G\n" +
-	"\x1dadditional_authenticated_data\x18\x03 \x01(\fB\x03\xe0A\x01R\x1badditionalAuthenticatedData\x12K\n" +
-	"\x10plaintext_crc32c\x18\x04 \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R\x0fplaintextCrc32c\x12q\n" +
-	"$additional_authenticated_data_crc32c\x18\x05 \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R!additionalAuthenticatedDataCrc32c\x128\n" +
-	"\x15initialization_vector\x18\x06 \x01(\fB\x03\xe0A\x01R\x14initializationVector\x12b\n" +
-	"\x1cinitialization_vector_crc32c\x18\a \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R\x1ainitializationVectorCrc32c\"\x99\x04\n" +
-	"\x11RawDecryptRequest\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x02R\x04name\x12#\n" +
+	"ciphertext\x18\x02 \x01(\fB\x04\xe2A\x01\x02R\n" +
+	"ciphertext\x12H\n" +
+	"\x1dadditional_authenticated_data\x18\x03 \x01(\fB\x04\xe2A\x01\x01R\x1badditionalAuthenticatedData\x12N\n" +
+	"\x11ciphertext_crc32c\x18\x05 \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R\x10ciphertextCrc32c\x12r\n" +
+	"$additional_authenticated_data_crc32c\x18\x06 \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R!additionalAuthenticatedDataCrc32c\"\xfd\x03\n" +
+	"\x11RawEncryptRequest\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\tB\x04\xe2A\x01\x02R\x04name\x12\"\n" +
+	"\tplaintext\x18\x02 \x01(\fB\x04\xe2A\x01\x02R\tplaintext\x12H\n" +
+	"\x1dadditional_authenticated_data\x18\x03 \x01(\fB\x04\xe2A\x01\x01R\x1badditionalAuthenticatedData\x12L\n" +
+	"\x10plaintext_crc32c\x18\x04 \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R\x0fplaintextCrc32c\x12r\n" +
+	"$additional_authenticated_data_crc32c\x18\x05 \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R!additionalAuthenticatedDataCrc32c\x129\n" +
+	"\x15initialization_vector\x18\x06 \x01(\fB\x04\xe2A\x01\x01R\x14initializationVector\x12c\n" +
+	"\x1cinitialization_vector_crc32c\x18\a \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R\x1ainitializationVectorCrc32c\"\xa0\x04\n" +
+	"\x11RawDecryptRequest\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\tB\x04\xe2A\x01\x02R\x04name\x12$\n" +
 	"\n" +
-	"ciphertext\x18\x02 \x01(\fB\x03\xe0A\x02R\n" +
-	"ciphertext\x12G\n" +
-	"\x1dadditional_authenticated_data\x18\x03 \x01(\fB\x03\xe0A\x01R\x1badditionalAuthenticatedData\x128\n" +
-	"\x15initialization_vector\x18\x04 \x01(\fB\x03\xe0A\x02R\x14initializationVector\x12\x1d\n" +
+	"ciphertext\x18\x02 \x01(\fB\x04\xe2A\x01\x02R\n" +
+	"ciphertext\x12H\n" +
+	"\x1dadditional_authenticated_data\x18\x03 \x01(\fB\x04\xe2A\x01\x01R\x1badditionalAuthenticatedData\x129\n" +
+	"\x15initialization_vector\x18\x04 \x01(\fB\x04\xe2A\x01\x02R\x14initializationVector\x12\x1d\n" +
 	"\n" +
-	"tag_length\x18\x05 \x01(\x05R\ttagLength\x12M\n" +
-	"\x11ciphertext_crc32c\x18\x06 \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R\x10ciphertextCrc32c\x12q\n" +
-	"$additional_authenticated_data_crc32c\x18\a \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R!additionalAuthenticatedDataCrc32c\x12b\n" +
-	"\x1cinitialization_vector_crc32c\x18\b \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R\x1ainitializationVectorCrc32c\"\xba\x02\n" +
-	"\x15AsymmetricSignRequest\x12D\n" +
-	"\x04name\x18\x01 \x01(\tB0\xe0A\x02\xfaA*\n" +
-	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\x128\n" +
-	"\x06digest\x18\x03 \x01(\v2\x1b.google.cloud.kms.v1.DigestB\x03\xe0A\x01R\x06digest\x12E\n" +
-	"\rdigest_crc32c\x18\x04 \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R\fdigestCrc32c\x12\x17\n" +
-	"\x04data\x18\x06 \x01(\fB\x03\xe0A\x01R\x04data\x12A\n" +
-	"\vdata_crc32c\x18\a \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R\n" +
-	"dataCrc32c\"\xd4\x01\n" +
-	"\x18AsymmetricDecryptRequest\x12D\n" +
-	"\x04name\x18\x01 \x01(\tB0\xe0A\x02\xfaA*\n" +
-	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\x12#\n" +
+	"tag_length\x18\x05 \x01(\x05R\ttagLength\x12N\n" +
+	"\x11ciphertext_crc32c\x18\x06 \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R\x10ciphertextCrc32c\x12r\n" +
+	"$additional_authenticated_data_crc32c\x18\a \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R!additionalAuthenticatedDataCrc32c\x12c\n" +
+	"\x1cinitialization_vector_crc32c\x18\b \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R\x1ainitializationVectorCrc32c\"\xbf\x02\n" +
+	"\x15AsymmetricSignRequest\x12E\n" +
+	"\x04name\x18\x01 \x01(\tB1\xe2A\x01\x02\xfaA*\n" +
+	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\x129\n" +
+	"\x06digest\x18\x03 \x01(\v2\x1b.google.cloud.kms.v1.DigestB\x04\xe2A\x01\x01R\x06digest\x12F\n" +
+	"\rdigest_crc32c\x18\x04 \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R\fdigestCrc32c\x12\x18\n" +
+	"\x04data\x18\x06 \x01(\fB\x04\xe2A\x01\x01R\x04data\x12B\n" +
+	"\vdata_crc32c\x18\a \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R\n" +
+	"dataCrc32c\"\xd7\x01\n" +
+	"\x18AsymmetricDecryptRequest\x12E\n" +
+	"\x04name\x18\x01 \x01(\tB1\xe2A\x01\x02\xfaA*\n" +
+	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\x12$\n" +
 	"\n" +
-	"ciphertext\x18\x03 \x01(\fB\x03\xe0A\x02R\n" +
-	"ciphertext\x12M\n" +
-	"\x11ciphertext_crc32c\x18\x04 \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R\x10ciphertextCrc32c\"\xb2\x01\n" +
-	"\x0eMacSignRequest\x12D\n" +
-	"\x04name\x18\x01 \x01(\tB0\xe0A\x02\xfaA*\n" +
-	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\x12\x17\n" +
-	"\x04data\x18\x02 \x01(\fB\x03\xe0A\x02R\x04data\x12A\n" +
-	"\vdata_crc32c\x18\x03 \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R\n" +
-	"dataCrc32c\"\x8c\x02\n" +
-	"\x10MacVerifyRequest\x12D\n" +
-	"\x04name\x18\x01 \x01(\tB0\xe0A\x02\xfaA*\n" +
-	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\x12\x17\n" +
-	"\x04data\x18\x02 \x01(\fB\x03\xe0A\x02R\x04data\x12A\n" +
-	"\vdata_crc32c\x18\x03 \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R\n" +
-	"dataCrc32c\x12\x15\n" +
-	"\x03mac\x18\x04 \x01(\fB\x03\xe0A\x02R\x03mac\x12?\n" +
+	"ciphertext\x18\x03 \x01(\fB\x04\xe2A\x01\x02R\n" +
+	"ciphertext\x12N\n" +
+	"\x11ciphertext_crc32c\x18\x04 \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R\x10ciphertextCrc32c\"\xb5\x01\n" +
+	"\x0eMacSignRequest\x12E\n" +
+	"\x04name\x18\x01 \x01(\tB1\xe2A\x01\x02\xfaA*\n" +
+	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\x12\x18\n" +
+	"\x04data\x18\x02 \x01(\fB\x04\xe2A\x01\x02R\x04data\x12B\n" +
+	"\vdata_crc32c\x18\x03 \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R\n" +
+	"dataCrc32c\"\x91\x02\n" +
+	"\x10MacVerifyRequest\x12E\n" +
+	"\x04name\x18\x01 \x01(\tB1\xe2A\x01\x02\xfaA*\n" +
+	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\x12\x18\n" +
+	"\x04data\x18\x02 \x01(\fB\x04\xe2A\x01\x02R\x04data\x12B\n" +
+	"\vdata_crc32c\x18\x03 \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R\n" +
+	"dataCrc32c\x12\x16\n" +
+	"\x03mac\x18\x04 \x01(\fB\x04\xe2A\x01\x02R\x03mac\x12@\n" +
 	"\n" +
-	"mac_crc32c\x18\x05 \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R\tmacCrc32c\"\xce\x01\n" +
-	"\x12DecapsulateRequest\x12D\n" +
-	"\x04name\x18\x01 \x01(\tB0\xe0A\x02\xfaA*\n" +
-	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\x12#\n" +
+	"mac_crc32c\x18\x05 \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R\tmacCrc32c\"\xd1\x01\n" +
+	"\x12DecapsulateRequest\x12E\n" +
+	"\x04name\x18\x01 \x01(\tB1\xe2A\x01\x02\xfaA*\n" +
+	"(cloudkms.googleapis.com/CryptoKeyVersionR\x04name\x12$\n" +
 	"\n" +
-	"ciphertext\x18\x02 \x01(\fB\x03\xe0A\x02R\n" +
-	"ciphertext\x12M\n" +
-	"\x11ciphertext_crc32c\x18\x03 \x01(\v2\x1b.google.protobuf.Int64ValueB\x03\xe0A\x01R\x10ciphertextCrc32c\"\xac\x01\n" +
+	"ciphertext\x18\x02 \x01(\fB\x04\xe2A\x01\x02R\n" +
+	"ciphertext\x12N\n" +
+	"\x11ciphertext_crc32c\x18\x03 \x01(\v2\x1b.google.protobuf.Int64ValueB\x04\xe2A\x01\x01R\x10ciphertextCrc32c\"\xac\x01\n" +
 	"\x1aGenerateRandomBytesRequest\x12\x1a\n" +
 	"\blocation\x18\x01 \x01(\tR\blocation\x12!\n" +
 	"\flength_bytes\x18\x02 \x01(\x05R\vlengthBytes\x12O\n" +
@@ -5335,9 +5336,9 @@ const file_google_cloud_kms_v1_service_proto_rawDesc = "" +
 	"\x10LocationMetadata\x12#\n" +
 	"\rhsm_available\x18\x01 \x01(\bR\fhsmAvailable\x12#\n" +
 	"\rekm_available\x18\x02 \x01(\bR\fekmAvailable\x12=\n" +
-	"\x1bhsm_single_tenant_available\x18\x03 \x01(\bR\x18hsmSingleTenantAvailable\"u\n" +
-	"\x17DeleteCryptoKeyMetadata\x12Z\n" +
-	"\x10retired_resource\x18\x01 \x01(\tB/\xe0A\x03\xfaA)\n" +
+	"\x1bhsm_single_tenant_available\x18\x03 \x01(\bR\x18hsmSingleTenantAvailable\"v\n" +
+	"\x17DeleteCryptoKeyMetadata\x12[\n" +
+	"\x10retired_resource\x18\x01 \x01(\tB0\xe2A\x01\x03\xfaA)\n" +
 	"'cloudkms.googleapis.com/RetiredResourceR\x0fretiredResource\" \n" +
 	"\x1eDeleteCryptoKeyVersionMetadata2\x85;\n" +
 	"\x14KeyManagementService\x12\xa2\x01\n" +

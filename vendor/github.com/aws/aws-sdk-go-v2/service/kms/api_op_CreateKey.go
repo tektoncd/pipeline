@@ -4,7 +4,9 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -314,6 +316,16 @@ type CreateKeyInput struct {
 	//
 	//   - ML_DSA_87
 	//
+	//   - Asymmetric ML-KEM key pairs (establishing shared secrets)
+	//
+	//   - ML_KEM_512
+	//
+	//   - ML_KEM_768
+	//
+	//   - ML_KEM_1024
+	//
+	// The ML-KEM key specs are not available in China Regions.
+	//
 	//   - SM2 key pairs (encryption and decryption -or- signing and verification -or-
 	//   deriving shared secrets)
 	//
@@ -349,6 +361,9 @@ type CreateKeyInput struct {
 	//   - For asymmetric KMS keys with ECC_SECG_P256K1 key pairs, specify SIGN_VERIFY .
 	//
 	//   - For asymmetric KMS keys with ML-DSA key pairs, specify SIGN_VERIFY .
+	//
+	//   - For asymmetric KMS keys with ML-KEM key pairs, specify
+	//   ENCAPSULATE_DECAPSULATE .
 	//
 	//   - For asymmetric KMS keys with SM2 key pairs (China Regions only), specify
 	//   ENCRYPT_DECRYPT , SIGN_VERIFY , or KEY_AGREEMENT .
@@ -506,6 +521,48 @@ type CreateKeyInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateKeyInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateKeyRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateKeyInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.BypassPolicyLockoutSafetyCheck != false {
+		s.WriteBool(schemas.CreateKeyRequest_BypassPolicyLockoutSafetyCheck, v.BypassPolicyLockoutSafetyCheck)
+	}
+	if v.CustomKeyStoreId != nil {
+		s.WriteString(schemas.CreateKeyRequest_CustomKeyStoreId, *v.CustomKeyStoreId)
+	}
+	if v.CustomerMasterKeySpec != "" {
+		s.WriteString(schemas.CreateKeyRequest_CustomerMasterKeySpec, string(v.CustomerMasterKeySpec))
+	}
+	if v.Description != nil {
+		s.WriteString(schemas.CreateKeyRequest_Description, *v.Description)
+	}
+	if v.KeySpec != "" {
+		s.WriteString(schemas.CreateKeyRequest_KeySpec, string(v.KeySpec))
+	}
+	if v.KeyUsage != "" {
+		s.WriteString(schemas.CreateKeyRequest_KeyUsage, string(v.KeyUsage))
+	}
+	if v.MultiRegion != nil {
+		s.WriteBool(schemas.CreateKeyRequest_MultiRegion, *v.MultiRegion)
+	}
+	if v.Origin != "" {
+		s.WriteString(schemas.CreateKeyRequest_Origin, string(v.Origin))
+	}
+	if v.Policy != nil {
+		s.WriteString(schemas.CreateKeyRequest_Policy, *v.Policy)
+	}
+	if v.Tags != nil {
+		serializeTagList(s, schemas.CreateKeyRequest_Tags, v.Tags)
+	}
+	if v.XksKeyId != nil {
+		s.WriteString(schemas.CreateKeyRequest_XksKeyId, *v.XksKeyId)
+	}
+}
+
 type CreateKeyOutput struct {
 
 	// Metadata associated with the KMS key.
@@ -517,13 +574,34 @@ type CreateKeyOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *CreateKeyOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.CreateKeyResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *CreateKeyOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyMetadata != nil {
+		s.WriteStruct(schemas.CreateKeyResponse_KeyMetadata)
+		v.KeyMetadata.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+func (v *CreateKeyOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.CreateKeyResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.CreateKeyResponse_KeyMetadata:
+			v.KeyMetadata = &types.KeyMetadata{}
+			return v.KeyMetadata.Deserialize(d)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationCreateKeyMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateKey{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateKey, schemas.CreateKeyRequest, schemas.CreateKeyResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpCreateKey{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.CreateKey, schemas.CreateKeyRequest, schemas.CreateKeyResponse), output: &CreateKeyOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
