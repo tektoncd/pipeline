@@ -121,37 +121,26 @@ func newDefaultingAdmissionController(name string) func(context.Context, configm
 }
 
 func withPerNamespaceConfig(ctx context.Context, perNamespaceConfig *nsconfig.PerNamespaceConfig) (context.Context, error) {
-	namespace := admissionRequestNamespace(ctx)
-	if namespace == "" {
-		return ctx, nil
-	}
-	return perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, namespace)
-}
-
-// admissionRequestNamespace returns an empty namespace for requests that do not
-// support namespace configuration. Admission handles malformed requests itself.
-func admissionRequestNamespace(ctx context.Context) string {
 	req := apis.GetHTTPRequest(ctx)
 	if req == nil || req.Body == nil {
-		return ""
+		return ctx, nil
 	}
 
 	body, err := io.ReadAll(req.Body)
 	_ = req.Body.Close()
 	req.Body = io.NopCloser(bytes.NewReader(body))
-	if err != nil {
-		return ""
+	// Admission handles malformed requests; only config merge failures propagate.
+	if err == nil {
+		review := &admissionv1.AdmissionReview{}
+		if json.Unmarshal(body, review) == nil && review.Request != nil {
+			namespace := review.Request.Namespace
+			kind := review.Request.Kind.Kind
+			if namespace != "" && (kind == taskRunKind || kind == pipelineRunKind) {
+				return perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, namespace)
+			}
+		}
 	}
-
-	review := &admissionv1.AdmissionReview{}
-	if err := json.Unmarshal(body, review); err != nil || review.Request == nil {
-		return ""
-	}
-	kind := review.Request.Kind.Kind
-	if kind != taskRunKind && kind != pipelineRunKind {
-		return ""
-	}
-	return review.Request.Namespace
+	return ctx, nil
 }
 
 func newValidationAdmissionController(name string) func(context.Context, configmap.Watcher) *controller.Impl {

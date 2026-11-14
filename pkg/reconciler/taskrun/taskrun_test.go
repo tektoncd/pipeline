@@ -467,16 +467,11 @@ spec:
 	defaultSAName := "pipelines"
 	namespaceSAName := "namespace-pipelines"
 	configMaps := ttesting.NewPerNamespaceConfigInSlice("foo", map[string]string{"default-service-account": namespaceSAName})
-	configMaps = append(configMaps,
-		&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"default-service-account":        defaultSAName,
-				"default-timeout-minutes":        "60",
-				"default-managed-by-label-value": "tekton-pipelines",
-			},
-		},
-	)
+	configMaps = append(configMaps, ttesting.NewDefaultsConfigMapWithValuesInSlice(map[string]string{
+		"default-service-account":        defaultSAName,
+		"default-timeout-minutes":        "60",
+		"default-managed-by-label-value": "tekton-pipelines",
+	})...)
 	// The namespace default applies unless the TaskRun names a service account explicitly.
 	d := test.Data{
 		TaskRuns:   taskruns,
@@ -3086,14 +3081,9 @@ status:
 			if tc.imagePullBackOffTimeout != "" {
 				timeout, _ = time.ParseDuration(tc.imagePullBackOffTimeout)
 				if timeout.Seconds() != 0 {
-					d.ConfigMaps = []*corev1.ConfigMap{
-						{
-							ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-							Data: map[string]string{
-								"default-imagepullbackoff-timeout": tc.imagePullBackOffTimeout,
-							},
-						},
-					}
+					d.ConfigMaps = ttesting.NewDefaultsConfigMapWithValuesInSlice(map[string]string{
+						"default-imagepullbackoff-timeout": tc.imagePullBackOffTimeout,
+					})
 				}
 			}
 			if !tc.podNotFound {
@@ -3366,14 +3356,9 @@ status:
 			}
 
 			if tc.timeout != "" {
-				d.ConfigMaps = []*corev1.ConfigMap{
-					{
-						ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-						Data: map[string]string{
-							"default-create-container-error-timeout": tc.timeout,
-						},
-					},
-				}
+				d.ConfigMaps = ttesting.NewDefaultsConfigMapWithValuesInSlice(map[string]string{
+					"default-create-container-error-timeout": tc.timeout,
+				})
 			}
 
 			d.Pods = []*corev1.Pod{{
@@ -4538,14 +4523,9 @@ spec:
 		TaskRuns: []*v1.TaskRun{taskRun},
 		Tasks:    []*v1.Task{simpleTask},
 	}
-	d.ConfigMaps = []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"default-cloud-events-sink": "http://synk:8080",
-			},
-		},
-	}
+	d.ConfigMaps = ttesting.NewDefaultsConfigMapWithValuesInSlice(map[string]string{
+		"default-cloud-events-sink": "http://synk:8080",
+	})
 
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
@@ -4646,14 +4626,9 @@ spec:
 		Tasks:    []*v1.Task{simpleTask},
 	}
 
-	d.ConfigMaps = []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"default-cloud-events-sink": "http://synk:8080",
-			},
-		},
-	}
+	d.ConfigMaps = ttesting.NewDefaultsConfigMapWithValuesInSlice(map[string]string{
+		"default-cloud-events-sink": "http://synk:8080",
+	})
 
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
@@ -4846,14 +4821,11 @@ spec:
 		},
 	}
 
-	defaultsConfig := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetDefaultsConfigName()},
-		Data: map[string]string{
-			"default-timeout-minutes":        "60",
-			"default-managed-by-label-value": "tekton-pipeline",
-			"default-forbidden-env":          "TEKTON_POWER_MODE",
-		},
-	}
+	defaultsConfig := ttesting.NewDefaultsConfigMapWithValuesInSlice(map[string]string{
+		"default-timeout-minutes":        "60",
+		"default-managed-by-label-value": "tekton-pipeline",
+		"default-forbidden-env":          "TEKTON_POWER_MODE",
+	})
 
 	type testCase struct {
 		name        string
@@ -4886,7 +4858,7 @@ spec:
 			d := test.Data{
 				TaskRuns:   []*v1.TaskRun{tr},
 				Tasks:      []*v1.Task{simpleTask},
-				ConfigMaps: []*corev1.ConfigMap{defaultsConfig, featureFlagsConfig, waitExponentialBackoffConfig},
+				ConfigMaps: append(defaultsConfig, featureFlagsConfig, waitExponentialBackoffConfig),
 			}
 			testAssets, cancel := getTaskRunController(t, d)
 			defer cancel()
@@ -5224,12 +5196,9 @@ spec:
 		TaskRuns: []*v1.TaskRun{taskRun},
 	}
 
-	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-		Data: map[string]string{
-			"default-task-run-workspace-binding": "emptyDir: {}",
-		},
-	})
+	d.ConfigMaps = append(d.ConfigMaps, ttesting.NewDefaultsConfigMapWithValuesInSlice(map[string]string{
+		"default-task-run-workspace-binding": "emptyDir: {}",
+	})...)
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 	clients := testAssets.Clients
@@ -5254,10 +5223,9 @@ spec:
 	}
 }
 
-// TestReconcileInvalidDefaultWorkspace tests a reconcile of a TaskRun that does
-// not include a Workspace that the Task is expecting, and gets an error updating
-// the TaskRun with an invalid default workspace.
-func TestReconcileInvalidDefaultWorkspace(t *testing.T) {
+// TestUpdateTaskRunWithInvalidDefaultWorkspace retains defensive parsing coverage
+// for invalid in-memory config, which the config constructor now rejects.
+func TestUpdateTaskRunWithInvalidDefaultWorkspace(t *testing.T) {
 	taskWithWorkspace := parse.MustParseV1Task(t, `
 metadata:
   name: test-task-with-workspace
@@ -5282,33 +5250,12 @@ spec:
     apiVersion: v1
     name: test-task-with-workspace
 `)
-	d := test.Data{
-		Tasks:    []*v1.Task{taskWithWorkspace},
-		TaskRuns: []*v1.TaskRun{taskRun},
-	}
-
-	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-		Data: map[string]string{
-			"default-task-run-workspace-binding": "emptyDir == {}",
-		},
-	})
-	testAssets, cancel := getTaskRunController(t, d)
-	defer cancel()
-	clients := testAssets.Clients
-
-	t.Logf("Creating SA %s in %s", "default", "foo")
-	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(testAssets.Ctx, &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "default",
-			Namespace: "foo",
-		},
-	}, metav1.CreateOptions{}); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := testAssets.Controller.Reconciler.Reconcile(t.Context(), getRunName(taskRun)); err == nil {
-		t.Errorf("Expected error reconciling invalid TaskRun due to invalid workspace but got %v", err)
+	cfg := config.FromContextOrDefaults(t.Context()).DeepCopy()
+	cfg.Defaults.DefaultTaskRunWorkspaceBinding = "emptyDir == {}"
+	ctx := config.ToContext(t.Context(), cfg)
+	r := &Reconciler{tracerProvider: trace.NewNoopTracerProvider()}
+	if err := r.updateTaskRunWithDefaultWorkspaces(ctx, taskRun, &taskWithWorkspace.Spec); err == nil || !strings.Contains(err.Error(), cfg.Defaults.DefaultTaskRunWorkspaceBinding) {
+		t.Errorf("expected invalid workspace parsing error, got %v", err)
 	}
 }
 
@@ -5347,12 +5294,9 @@ spec:
 		TaskRuns: []*v1.TaskRun{taskRunOmittingWorkspace},
 	}
 
-	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-		Data: map[string]string{
-			"default-task-run-workspace-binding": "emptyDir: {}",
-		},
-	})
+	d.ConfigMaps = append(d.ConfigMaps, ttesting.NewDefaultsConfigMapWithValuesInSlice(map[string]string{
+		"default-task-run-workspace-binding": "emptyDir: {}",
+	})...)
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 	clients := testAssets.Clients
@@ -8701,15 +8645,10 @@ spec:
 				Namespace: namespace,
 			},
 		}},
-		ConfigMaps: []*corev1.ConfigMap{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-				Data: map[string]string{
-					"default-timeout-minutes":        "60",
-					"default-managed-by-label-value": "tekton-pipelines",
-				},
-			},
-		},
+		ConfigMaps: ttesting.NewDefaultsConfigMapWithValuesInSlice(map[string]string{
+			"default-timeout-minutes":        "60",
+			"default-managed-by-label-value": "tekton-pipelines",
+		}),
 	}
 
 	// This data is filtered and simulates what the informer would pass to the reconciler.
@@ -8723,15 +8662,10 @@ spec:
 				Namespace: namespace,
 			},
 		}},
-		ConfigMaps: []*corev1.ConfigMap{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-				Data: map[string]string{
-					"default-timeout-minutes":        "60",
-					"default-managed-by-label-value": "tekton-pipelines",
-				},
-			},
-		},
+		ConfigMaps: ttesting.NewDefaultsConfigMapWithValuesInSlice(map[string]string{
+			"default-timeout-minutes":        "60",
+			"default-managed-by-label-value": "tekton-pipelines",
+		}),
 	}
 
 	// Initialize controller with filtered data for the listers

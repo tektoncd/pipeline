@@ -2450,9 +2450,9 @@ spec:
 		"default-timeout-minutes": "invalid",
 		"default-service-account": "namespace-sa",
 	})
-	globalDefaults := th.NewDefaultsCofigMapInSlice()
-	globalDefaults[0].Data["default-service-account"] = "global-sa"
-	configMaps = append(configMaps, globalDefaults...)
+	configMaps = append(configMaps, th.NewDefaultsConfigMapWithValuesInSlice(map[string]string{
+		"default-service-account": "global-sa",
+	})...)
 	prt := newPipelineRunTest(t, test.Data{
 		PipelineRuns: []*v1.PipelineRun{pr},
 		Pipelines:    []*v1.Pipeline{simpleHelloWorldPipeline},

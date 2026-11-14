@@ -137,6 +137,18 @@ func NewAlphaFeatureFlagsConfigMapWithMatrixInSlice(count int) []*corev1.ConfigM
 	)
 }
 
-func NewDefaultsCofigMapInSlice() []*corev1.ConfigMap {
+func NewDefaultsConfigMapInSlice() []*corev1.ConfigMap {
 	return []*corev1.ConfigMap{newDefaultsConfigMap()}
+}
+
+func NewDefaultsConfigMapWithValuesInSlice(data map[string]string) []*corev1.ConfigMap {
+	return []*corev1.ConfigMap{withDefaultsData(newDefaultsConfigMap(), data)}
+}
+
+func withDefaultsData(cm *corev1.ConfigMap, data map[string]string) *corev1.ConfigMap {
+	newCM := cm.DeepCopy()
+	for key, value := range data {
+		newCM.Data[key] = value
+	}
+	return newCM
 }

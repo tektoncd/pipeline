@@ -23,11 +23,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -225,15 +223,6 @@ func (p *PerNamespaceConfig) MergeGlobalConfigWithLocal(ctx context.Context, nam
 		if err != nil {
 			return ctx, fmt.Errorf("parse namespace defaults for %q: %w", namespace, err)
 		}
-		if mergedDefaults.DefaultTimeoutMinutes < 0 || int64(mergedDefaults.DefaultTimeoutMinutes) > int64((1<<63-1)/time.Minute) {
-			return ctx, fmt.Errorf("parse namespace defaults for %q: %s must be non-negative and fit in a time.Duration", namespace, defaultTimeoutMinutesKey)
-		}
-		if mergedDefaults.DefaultTaskRunWorkspaceBinding != "" {
-			var binding v1.WorkspaceBinding
-			if err := yaml.Unmarshal([]byte(mergedDefaults.DefaultTaskRunWorkspaceBinding), &binding); err != nil {
-				return ctx, fmt.Errorf("parse namespace defaults for %q: %s: %w", namespace, defaultTaskRunWorkspaceBindingKey, err)
-			}
-		}
 		merged.Defaults = mergedDefaults
 	}
 
@@ -244,8 +233,6 @@ func (p *PerNamespaceConfig) MergeGlobalConfigWithLocal(ctx context.Context, nam
 		if err != nil {
 			return ctx, fmt.Errorf("parse namespace feature flags for %q: %w", namespace, err)
 		}
-		mergedFlags.PerNamespaceConfiguration = cfg.FeatureFlags.PerNamespaceConfiguration
-		mergedFlags.NonOverridableFields = cfg.FeatureFlags.NonOverridableFields
 		merged.FeatureFlags = mergedFlags
 	}
 
