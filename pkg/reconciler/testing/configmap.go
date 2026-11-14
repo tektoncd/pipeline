@@ -69,6 +69,22 @@ func newFeatureFlagsConfigMap() *corev1.ConfigMap {
 	}
 }
 
+// NewFeatureFlagsConfigMapWithData creates a feature-flags ConfigMap with the
+// given data entries set.
+func NewFeatureFlagsConfigMapWithData(data map[string]string) *corev1.ConfigMap {
+	cm := newFeatureFlagsConfigMap()
+	for k, v := range data {
+		cm.Data[k] = v
+	}
+	return cm
+}
+
+// NewFeatureFlagsConfigMapWithDataInSlice creates a slice containing a single
+// feature-flags ConfigMap with the given data entries set.
+func NewFeatureFlagsConfigMapWithDataInSlice(data map[string]string) []*corev1.ConfigMap {
+	return []*corev1.ConfigMap{NewFeatureFlagsConfigMapWithData(data)}
+}
+
 func NewAlphaFeatureFlagsConfigMapInSlice() []*corev1.ConfigMap {
 	return []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 }
@@ -109,6 +125,6 @@ func NewAlphaFeatureFlagsConfigMapWithMatrixInSlice(count int) []*corev1.ConfigM
 	)
 }
 
-func NewDefaultsCofigMapInSlice() []*corev1.ConfigMap {
+func NewDefaultsConfigMapInSlice() []*corev1.ConfigMap {
 	return []*corev1.ConfigMap{newDefaultsConfigMap()}
 }
