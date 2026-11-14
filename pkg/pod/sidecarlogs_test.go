@@ -534,6 +534,43 @@ func TestGetResultsFromSidecarLogs(t *testing.T) {
 	}
 }
 
+func TestGetResultsFromSidecarLogs_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/v1/namespaces/test-namespace/pods/test-pod/log" || r.URL.Query().Get("container") != "results-sidecar" {
+			t.Errorf("unexpected log request: %s %s", r.Method, r.URL)
+			http.Error(w, "unexpected log request", http.StatusBadRequest)
+			return
+		}
+		if _, err := io.WriteString(w, "{\"name\":\"image\",\"value\":\"example/image:latest\",\"type\":\"task\"}\n"+
+			"{\"name\":\"build.digest\",\"value\":\"sha256:abc\",\"type\":\"step\"}\n"); err != nil {
+			t.Error(err)
+		}
+	}))
+	defer server.Close()
+
+	clientset, err := kubernetes.NewForConfig(&rest.Config{Host: server.URL, Timeout: 5 * time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := getResultsFromSidecarLogs(t.Context(), clientset, "test-namespace", "test-pod", "results-sidecar", corev1.PodRunning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []result.RunResult{{
+		Key:        "image",
+		Value:      "example/image:latest",
+		ResultType: result.TaskRunResultType,
+	}, {
+		Key:        "build.digest",
+		Value:      "sha256:abc",
+		ResultType: result.StepResultType,
+	}}
+	if d := cmp.Diff(want, got); d != "" {
+		t.Fatal(diff.PrintWantGot(d))
+	}
+}
+
 func TestGetResultsFromSidecarLogs_StreamError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "pod logs are forbidden", http.StatusForbidden)
