@@ -60,8 +60,6 @@ for file in "${FILES[@]}"; do
   TEMP_DIR=$(mktemp -d)
   cp -p "$file" "$TEMP_DIR"
   case "$(basename "$file" | tr '[:upper:]' '[:lower:]')" in
-    *customrun*)
-      API_SUBDIR="run" ;;
     *resolutionrequest*)
       API_SUBDIR="resolution" ;;
     *)
