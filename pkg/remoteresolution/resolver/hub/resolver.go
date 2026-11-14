@@ -213,6 +213,12 @@ func resolveCatalogName(paramsMap, conf map[string]string) (string, error) {
 				return configAHTaskCatalog, nil
 			case "pipeline":
 				return configAHPipelineCatalog, nil
+			case hub.StepActionKind:
+				configAHStepActionCatalog, ok := conf[hub.ConfigArtifactHubStepActionCatalog]
+				if !ok {
+					return "", errors.New("default Artifact Hub StepAction catalog was not set during installation of the hub resolver")
+				}
+				return configAHStepActionCatalog, nil
 			default:
 				return "", fmt.Errorf("failed to resolve catalog name with kind: %s", paramsMap[hub.ParamKind])
 			}
