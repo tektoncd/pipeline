@@ -31,6 +31,7 @@ import (
 	"knative.dev/pkg/observability/tracing"
 )
 
+// @test:execution=parallel
 func TestDefaultResource(t *testing.T) {
 	// Given the environment used by the controller processes.
 	t.Setenv("SYSTEM_NAMESPACE", "tekton-pipelines")
@@ -47,6 +48,7 @@ func TestDefaultResource(t *testing.T) {
 	}
 }
 
+// @test:execution=parallel
 func TestTracingHTTPEndpointPaths(t *testing.T) {
 	testHTTPEndpointPaths(t, "traces", func(ctx context.Context, endpoint string) error {
 		provider, err := tracing.NewTracerProvider(ctx, tracing.Config{
@@ -63,6 +65,7 @@ func TestTracingHTTPEndpointPaths(t *testing.T) {
 	})
 }
 
+// @test:execution=parallel
 func TestMetricsHTTPEndpointPaths(t *testing.T) {
 	testHTTPEndpointPaths(t, "metrics", func(ctx context.Context, endpoint string) error {
 		provider, err := metrics.NewMeterProvider(ctx, metrics.Config{
