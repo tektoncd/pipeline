@@ -394,6 +394,17 @@ func TestTaskSpecValidate(t *testing.T) {
 			}},
 		},
 	}, {
+		name: "valid workspace variable reference with property",
+		fields: fields{
+			Steps: []v1.Step{{
+				Image:  "my-image",
+				Script: "echo $(workspaces.myws.path)",
+			}},
+			Workspaces: []v1.WorkspaceDeclaration{{
+				Name: "myws",
+			}},
+		},
+	}, {
 		name: "valid step with displayName",
 		fields: fields{
 			Steps: []v1.Step{{
@@ -1350,6 +1361,38 @@ func TestTaskSpecValidateError(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: "workspace mount path \"/workspace/some-workspace\" must be unique",
 			Paths:   []string{"workspaces[0].mountpath"},
+		},
+	}, {
+		name: "bare workspace variable reference in step script",
+		fields: fields{
+			Steps: []v1.Step{{
+				Name:   "mystep",
+				Image:  "myimage",
+				Script: "echo $(workspaces.myws)",
+			}},
+			Workspaces: []v1.WorkspaceDeclaration{{
+				Name: "myws",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable $(workspaces.myws) must specify a property (path, bound, claim, or volume)`,
+			Paths:   []string{"steps[0].script"},
+		},
+	}, {
+		name: "bare workspace variable reference in step args",
+		fields: fields{
+			Steps: []v1.Step{{
+				Name:  "mystep",
+				Image: "myimage",
+				Args:  []string{"$(workspaces.myws)"},
+			}},
+			Workspaces: []v1.WorkspaceDeclaration{{
+				Name: "myws",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable $(workspaces.myws) must specify a property (path, bound, claim, or volume)`,
+			Paths:   []string{"steps[0].args[0]"},
 		},
 	}, {
 		name: "result name not valid",
