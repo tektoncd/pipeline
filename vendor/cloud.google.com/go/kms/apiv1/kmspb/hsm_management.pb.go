@@ -2692,24 +2692,24 @@ var File_google_cloud_kms_v1_hsm_management_proto protoreflect.FileDescriptor
 
 const file_google_cloud_kms_v1_hsm_management_proto_rawDesc = "" +
 	"\n" +
-	"(google/cloud/kms/v1/hsm_management.proto\x12\x13google.cloud.kms.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a#google/longrunning/operations.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8c\t\n" +
-	"\x17SingleTenantHsmInstance\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12@\n" +
-	"\vcreate_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
-	"createTime\x12M\n" +
-	"\x05state\x18\x03 \x01(\x0e22.google.cloud.kms.v1.SingleTenantHsmInstance.StateB\x03\xe0A\x03R\x05state\x12]\n" +
-	"\vquorum_auth\x18\x04 \x01(\v27.google.cloud.kms.v1.SingleTenantHsmInstance.QuorumAuthB\x03\xe0A\x02R\n" +
-	"quorumAuth\x12@\n" +
-	"\vdelete_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
-	"deleteTime\x12k\n" +
-	"\"unrefreshed_duration_until_disable\x18\x06 \x01(\v2\x19.google.protobuf.DurationB\x03\xe0A\x03R\x1funrefreshedDurationUntilDisable\x12B\n" +
-	"\fdisable_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\vdisableTime\x12>\n" +
-	"\x17key_portability_enabled\x18\b \x01(\bB\x06\xe0A\x01\xe0A\x05R\x15keyPortabilityEnabled\x1a\xc1\x01\n" +
+	"(google/cloud/kms/v1/hsm_management.proto\x12\x13google.cloud.kms.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a#google/longrunning/operations.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x95\t\n" +
+	"\x17SingleTenantHsmInstance\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\tB\x04\xe2A\x01\bR\x04name\x12A\n" +
+	"\vcreate_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\n" +
+	"createTime\x12N\n" +
+	"\x05state\x18\x03 \x01(\x0e22.google.cloud.kms.v1.SingleTenantHsmInstance.StateB\x04\xe2A\x01\x03R\x05state\x12^\n" +
+	"\vquorum_auth\x18\x04 \x01(\v27.google.cloud.kms.v1.SingleTenantHsmInstance.QuorumAuthB\x04\xe2A\x01\x02R\n" +
+	"quorumAuth\x12A\n" +
+	"\vdelete_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\n" +
+	"deleteTime\x12l\n" +
+	"\"unrefreshed_duration_until_disable\x18\x06 \x01(\v2\x19.google.protobuf.DurationB\x04\xe2A\x01\x03R\x1funrefreshedDurationUntilDisable\x12C\n" +
+	"\fdisable_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\vdisableTime\x12=\n" +
+	"\x17key_portability_enabled\x18\b \x01(\bB\x05\xe2A\x02\x01\x05R\x15keyPortabilityEnabled\x1a\xc4\x01\n" +
 	"\n" +
-	"QuorumAuth\x125\n" +
-	"\x14total_approver_count\x18\x01 \x01(\x05B\x03\xe0A\x02R\x12totalApproverCount\x12;\n" +
-	"\x17required_approver_count\x18\x02 \x01(\x05B\x03\xe0A\x03R\x15requiredApproverCount\x12?\n" +
-	"\x1atwo_factor_public_key_pems\x18\x03 \x03(\tB\x03\xe0A\x03R\x16twoFactorPublicKeyPems\"\xa6\x01\n" +
+	"QuorumAuth\x126\n" +
+	"\x14total_approver_count\x18\x01 \x01(\x05B\x04\xe2A\x01\x02R\x12totalApproverCount\x12<\n" +
+	"\x17required_approver_count\x18\x02 \x01(\x05B\x04\xe2A\x01\x03R\x15requiredApproverCount\x12@\n" +
+	"\x1atwo_factor_public_key_pems\x18\x03 \x03(\tB\x04\xe2A\x01\x03R\x16twoFactorPublicKeyPems\"\xa6\x01\n" +
 	"\x05State\x12\x15\n" +
 	"\x11STATE_UNSPECIFIED\x10\x00\x12\f\n" +
 	"\bCREATING\x10\x01\x12(\n" +
@@ -2722,22 +2722,22 @@ const file_google_cloud_kms_v1_hsm_management_proto_rawDesc = "" +
 	"\aDELETED\x10\a\x12\n" +
 	"\n" +
 	"\x06FAILED\x10\b:\xc7\x01\xeaA\xc3\x01\n" +
-	"/cloudkms.googleapis.com/SingleTenantHsmInstance\x12]projects/{project}/locations/{location}/singleTenantHsmInstances/{single_tenant_hsm_instance}*\x18singleTenantHsmInstances2\x17singleTenantHsmInstance\"\xb9\x1b\n" +
-	"\x1fSingleTenantHsmInstanceProposal\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12@\n" +
-	"\vcreate_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
-	"createTime\x12U\n" +
-	"\x05state\x18\x03 \x01(\x0e2:.google.cloud.kms.v1.SingleTenantHsmInstanceProposal.StateB\x03\xe0A\x03R\x05state\x12*\n" +
-	"\x0efailure_reason\x18\x04 \x01(\tB\x03\xe0A\x03R\rfailureReason\x12y\n" +
-	"\x11quorum_parameters\x18\x05 \x01(\v2E.google.cloud.kms.v1.SingleTenantHsmInstanceProposal.QuorumParametersB\x03\xe0A\x03H\x00R\x10quorumParameters\x12\xa5\x01\n" +
-	"!required_action_quorum_parameters\x18\x0e \x01(\v2S.google.cloud.kms.v1.SingleTenantHsmInstanceProposal.RequiredActionQuorumParametersB\x03\xe0A\x03H\x00R\x1erequiredActionQuorumParameters\x12=\n" +
+	"/cloudkms.googleapis.com/SingleTenantHsmInstance\x12]projects/{project}/locations/{location}/singleTenantHsmInstances/{single_tenant_hsm_instance}*\x18singleTenantHsmInstances2\x17singleTenantHsmInstance\"\xcf\x1b\n" +
+	"\x1fSingleTenantHsmInstanceProposal\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\tB\x04\xe2A\x01\bR\x04name\x12A\n" +
+	"\vcreate_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\n" +
+	"createTime\x12V\n" +
+	"\x05state\x18\x03 \x01(\x0e2:.google.cloud.kms.v1.SingleTenantHsmInstanceProposal.StateB\x04\xe2A\x01\x03R\x05state\x12+\n" +
+	"\x0efailure_reason\x18\x04 \x01(\tB\x04\xe2A\x01\x03R\rfailureReason\x12z\n" +
+	"\x11quorum_parameters\x18\x05 \x01(\v2E.google.cloud.kms.v1.SingleTenantHsmInstanceProposal.QuorumParametersB\x04\xe2A\x01\x03H\x00R\x10quorumParameters\x12\xa6\x01\n" +
+	"!required_action_quorum_parameters\x18\x0e \x01(\v2S.google.cloud.kms.v1.SingleTenantHsmInstanceProposal.RequiredActionQuorumParametersB\x04\xe2A\x01\x03H\x00R\x1erequiredActionQuorumParameters\x12=\n" +
 	"\vexpire_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampH\x01R\n" +
-	"expireTime\x122\n" +
-	"\x03ttl\x18\a \x01(\v2\x19.google.protobuf.DurationB\x03\xe0A\x04H\x01R\x03ttl\x12@\n" +
-	"\vdelete_time\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
-	"deleteTime\x12>\n" +
+	"expireTime\x123\n" +
+	"\x03ttl\x18\a \x01(\v2\x19.google.protobuf.DurationB\x04\xe2A\x01\x04H\x01R\x03ttl\x12A\n" +
+	"\vdelete_time\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\n" +
+	"deleteTime\x12?\n" +
 	"\n" +
-	"purge_time\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\tpurgeTime\x12\x92\x01\n" +
+	"purge_time\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\tpurgeTime\x12\x92\x01\n" +
 	"\x1dregister_two_factor_auth_keys\x18\b \x01(\v2N.google.cloud.kms.v1.SingleTenantHsmInstanceProposal.RegisterTwoFactorAuthKeysH\x02R\x19registerTwoFactorAuthKeys\x12\xa1\x01\n" +
 	"\"disable_single_tenant_hsm_instance\x18\t \x01(\v2S.google.cloud.kms.v1.SingleTenantHsmInstanceProposal.DisableSingleTenantHsmInstanceH\x02R\x1edisableSingleTenantHsmInstance\x12\x9e\x01\n" +
 	"!enable_single_tenant_hsm_instance\x18\n" +
@@ -2746,32 +2746,32 @@ const file_google_cloud_kms_v1_hsm_management_proto_rawDesc = "" +
 	"\x11add_quorum_member\x18\f \x01(\v2D.google.cloud.kms.v1.SingleTenantHsmInstanceProposal.AddQuorumMemberH\x02R\x0faddQuorumMember\x12{\n" +
 	"\x14remove_quorum_member\x18\r \x01(\v2G.google.cloud.kms.v1.SingleTenantHsmInstanceProposal.RemoveQuorumMemberH\x02R\x12removeQuorumMember\x12\xa1\x01\n" +
 	"\"refresh_single_tenant_hsm_instance\x18\x11 \x01(\v2S.google.cloud.kms.v1.SingleTenantHsmInstanceProposal.RefreshSingleTenantHsmInstanceH\x02R\x1erefreshSingleTenantHsmInstance\x12r\n" +
-	"\x11upgrade_key_trust\x18\x12 \x01(\v2D.google.cloud.kms.v1.SingleTenantHsmInstanceProposal.UpgradeKeyTrustH\x02R\x0fupgradeKeyTrust\x1a\xe6\x01\n" +
-	"\x10QuorumParameters\x12;\n" +
-	"\x17required_approver_count\x18\x01 \x01(\x05B\x03\xe0A\x03R\x15requiredApproverCount\x12C\n" +
+	"\x11upgrade_key_trust\x18\x12 \x01(\v2D.google.cloud.kms.v1.SingleTenantHsmInstanceProposal.UpgradeKeyTrustH\x02R\x0fupgradeKeyTrust\x1a\xe9\x01\n" +
+	"\x10QuorumParameters\x12<\n" +
+	"\x17required_approver_count\x18\x01 \x01(\x05B\x04\xe2A\x01\x03R\x15requiredApproverCount\x12D\n" +
 	"\n" +
-	"challenges\x18\x02 \x03(\v2\x1e.google.cloud.kms.v1.ChallengeB\x03\xe0A\x03R\n" +
-	"challenges\x12P\n" +
-	"#approved_two_factor_public_key_pems\x18\x03 \x03(\tB\x03\xe0A\x03R\x1eapprovedTwoFactorPublicKeyPems\x1a\xd7\x02\n" +
-	"\x1eRequiredActionQuorumParameters\x12T\n" +
-	"\x13required_challenges\x18\x01 \x03(\v2\x1e.google.cloud.kms.v1.ChallengeB\x03\xe0A\x03R\x12requiredChallenges\x12;\n" +
-	"\x17required_approver_count\x18\x02 \x01(\x05B\x03\xe0A\x03R\x15requiredApproverCount\x12P\n" +
-	"\x11quorum_challenges\x18\x03 \x03(\v2\x1e.google.cloud.kms.v1.ChallengeB\x03\xe0A\x03R\x10quorumChallenges\x12P\n" +
-	"#approved_two_factor_public_key_pems\x18\x04 \x03(\tB\x03\xe0A\x03R\x1eapprovedTwoFactorPublicKeyPems\x1a\x99\x01\n" +
-	"\x19RegisterTwoFactorAuthKeys\x12;\n" +
-	"\x17required_approver_count\x18\x01 \x01(\x05B\x03\xe0A\x02R\x15requiredApproverCount\x12?\n" +
-	"\x1atwo_factor_public_key_pems\x18\x02 \x03(\tB\x03\xe0A\x02R\x16twoFactorPublicKeyPems\x1a \n" +
+	"challenges\x18\x02 \x03(\v2\x1e.google.cloud.kms.v1.ChallengeB\x04\xe2A\x01\x03R\n" +
+	"challenges\x12Q\n" +
+	"#approved_two_factor_public_key_pems\x18\x03 \x03(\tB\x04\xe2A\x01\x03R\x1eapprovedTwoFactorPublicKeyPems\x1a\xdb\x02\n" +
+	"\x1eRequiredActionQuorumParameters\x12U\n" +
+	"\x13required_challenges\x18\x01 \x03(\v2\x1e.google.cloud.kms.v1.ChallengeB\x04\xe2A\x01\x03R\x12requiredChallenges\x12<\n" +
+	"\x17required_approver_count\x18\x02 \x01(\x05B\x04\xe2A\x01\x03R\x15requiredApproverCount\x12Q\n" +
+	"\x11quorum_challenges\x18\x03 \x03(\v2\x1e.google.cloud.kms.v1.ChallengeB\x04\xe2A\x01\x03R\x10quorumChallenges\x12Q\n" +
+	"#approved_two_factor_public_key_pems\x18\x04 \x03(\tB\x04\xe2A\x01\x03R\x1eapprovedTwoFactorPublicKeyPems\x1a\x9b\x01\n" +
+	"\x19RegisterTwoFactorAuthKeys\x12<\n" +
+	"\x17required_approver_count\x18\x01 \x01(\x05B\x04\xe2A\x01\x02R\x15requiredApproverCount\x12@\n" +
+	"\x1atwo_factor_public_key_pems\x18\x02 \x03(\tB\x04\xe2A\x01\x02R\x16twoFactorPublicKeyPems\x1a \n" +
 	"\x1eDisableSingleTenantHsmInstance\x1a\x1f\n" +
 	"\x1dEnableSingleTenantHsmInstance\x1a\x1f\n" +
-	"\x1dDeleteSingleTenantHsmInstance\x1aP\n" +
-	"\x0fAddQuorumMember\x12=\n" +
-	"\x19two_factor_public_key_pem\x18\x01 \x01(\tB\x03\xe0A\x02R\x15twoFactorPublicKeyPem\x1aS\n" +
-	"\x12RemoveQuorumMember\x12=\n" +
-	"\x19two_factor_public_key_pem\x18\x01 \x01(\tB\x03\xe0A\x02R\x15twoFactorPublicKeyPem\x1a \n" +
-	"\x1eRefreshSingleTenantHsmInstance\x1ai\n" +
-	"\x0fUpgradeKeyTrust\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x02R\x04name\x12=\n" +
-	"\x19two_factor_public_key_pem\x18\x02 \x01(\tB\x03\xe0A\x02R\x15twoFactorPublicKeyPem\"|\n" +
+	"\x1dDeleteSingleTenantHsmInstance\x1aQ\n" +
+	"\x0fAddQuorumMember\x12>\n" +
+	"\x19two_factor_public_key_pem\x18\x01 \x01(\tB\x04\xe2A\x01\x02R\x15twoFactorPublicKeyPem\x1aT\n" +
+	"\x12RemoveQuorumMember\x12>\n" +
+	"\x19two_factor_public_key_pem\x18\x01 \x01(\tB\x04\xe2A\x01\x02R\x15twoFactorPublicKeyPem\x1a \n" +
+	"\x1eRefreshSingleTenantHsmInstance\x1ak\n" +
+	"\x0fUpgradeKeyTrust\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\tB\x04\xe2A\x01\x02R\x04name\x12>\n" +
+	"\x19two_factor_public_key_pem\x18\x02 \x01(\tB\x04\xe2A\x01\x02R\x15twoFactorPublicKeyPem\"|\n" +
 	"\x05State\x12\x15\n" +
 	"\x11STATE_UNSPECIFIED\x10\x00\x12\f\n" +
 	"\bCREATING\x10\x01\x12\v\n" +
@@ -2786,78 +2786,78 @@ const file_google_cloud_kms_v1_hsm_management_proto_rawDesc = "" +
 	"\x13approval_parametersB\f\n" +
 	"\n" +
 	"expirationB\v\n" +
-	"\toperation\"Y\n" +
-	"\tChallenge\x12!\n" +
-	"\tchallenge\x18\x01 \x01(\fB\x03\xe0A\x03R\tchallenge\x12)\n" +
-	"\x0epublic_key_pem\x18\x02 \x01(\tB\x03\xe0A\x03R\fpublicKeyPem\"k\n" +
-	"\x0eChallengeReply\x12.\n" +
-	"\x10signed_challenge\x18\x01 \x01(\fB\x03\xe0A\x02R\x0fsignedChallenge\x12)\n" +
-	"\x0epublic_key_pem\x18\x02 \x01(\tB\x03\xe0A\x02R\fpublicKeyPem\"\x93\x02\n" +
-	"#ListSingleTenantHsmInstancesRequest\x12A\n" +
-	"\x06parent\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!locations.googleapis.com/LocationR\x06parent\x12 \n" +
-	"\tpage_size\x18\x02 \x01(\x05B\x03\xe0A\x01R\bpageSize\x12\"\n" +
+	"\toperation\"[\n" +
+	"\tChallenge\x12\"\n" +
+	"\tchallenge\x18\x01 \x01(\fB\x04\xe2A\x01\x03R\tchallenge\x12*\n" +
+	"\x0epublic_key_pem\x18\x02 \x01(\tB\x04\xe2A\x01\x03R\fpublicKeyPem\"m\n" +
+	"\x0eChallengeReply\x12/\n" +
+	"\x10signed_challenge\x18\x01 \x01(\fB\x04\xe2A\x01\x02R\x0fsignedChallenge\x12*\n" +
+	"\x0epublic_key_pem\x18\x02 \x01(\tB\x04\xe2A\x01\x02R\fpublicKeyPem\"\x99\x02\n" +
+	"#ListSingleTenantHsmInstancesRequest\x12B\n" +
+	"\x06parent\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!locations.googleapis.com/LocationR\x06parent\x12!\n" +
+	"\tpage_size\x18\x02 \x01(\x05B\x04\xe2A\x01\x01R\bpageSize\x12#\n" +
 	"\n" +
-	"page_token\x18\x03 \x01(\tB\x03\xe0A\x01R\tpageToken\x12\x1b\n" +
-	"\x06filter\x18\x04 \x01(\tB\x03\xe0A\x01R\x06filter\x12\x1e\n" +
-	"\border_by\x18\x05 \x01(\tB\x03\xe0A\x01R\aorderBy\x12&\n" +
-	"\fshow_deleted\x18\x06 \x01(\bB\x03\xe0A\x01R\vshowDeleted\"\xda\x01\n" +
+	"page_token\x18\x03 \x01(\tB\x04\xe2A\x01\x01R\tpageToken\x12\x1c\n" +
+	"\x06filter\x18\x04 \x01(\tB\x04\xe2A\x01\x01R\x06filter\x12\x1f\n" +
+	"\border_by\x18\x05 \x01(\tB\x04\xe2A\x01\x01R\aorderBy\x12'\n" +
+	"\fshow_deleted\x18\x06 \x01(\bB\x04\xe2A\x01\x01R\vshowDeleted\"\xda\x01\n" +
 	"$ListSingleTenantHsmInstancesResponse\x12k\n" +
 	"\x1bsingle_tenant_hsm_instances\x18\x01 \x03(\v2,.google.cloud.kms.v1.SingleTenantHsmInstanceR\x18singleTenantHsmInstances\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1d\n" +
 	"\n" +
-	"total_size\x18\x03 \x01(\x05R\ttotalSize\"p\n" +
-	"!GetSingleTenantHsmInstanceRequest\x12K\n" +
-	"\x04name\x18\x01 \x01(\tB7\xe0A\x02\xfaA1\n" +
-	"/cloudkms.googleapis.com/SingleTenantHsmInstanceR\x04name\"\xa0\x02\n" +
-	"$CreateSingleTenantHsmInstanceRequest\x12A\n" +
-	"\x06parent\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!locations.googleapis.com/LocationR\x06parent\x12E\n" +
-	"\x1dsingle_tenant_hsm_instance_id\x18\x02 \x01(\tB\x03\xe0A\x01R\x19singleTenantHsmInstanceId\x12n\n" +
-	"\x1asingle_tenant_hsm_instance\x18\x03 \x01(\v2,.google.cloud.kms.v1.SingleTenantHsmInstanceB\x03\xe0A\x02R\x17singleTenantHsmInstance\"'\n" +
-	"%CreateSingleTenantHsmInstanceMetadata\"\xe1\x02\n" +
-	",CreateSingleTenantHsmInstanceProposalRequest\x12O\n" +
-	"\x06parent\x18\x01 \x01(\tB7\xe0A\x02\xfaA1\n" +
-	"/cloudkms.googleapis.com/SingleTenantHsmInstanceR\x06parent\x12V\n" +
-	"&single_tenant_hsm_instance_proposal_id\x18\x02 \x01(\tB\x03\xe0A\x01R!singleTenantHsmInstanceProposalId\x12\x87\x01\n" +
-	"#single_tenant_hsm_instance_proposal\x18\x03 \x01(\v24.google.cloud.kms.v1.SingleTenantHsmInstanceProposalB\x03\xe0A\x02R\x1fsingleTenantHsmInstanceProposal\"/\n" +
-	"-CreateSingleTenantHsmInstanceProposalMetadata\"\x80\x01\n" +
-	")GetSingleTenantHsmInstanceProposalRequest\x12S\n" +
-	"\x04name\x18\x01 \x01(\tB?\xe0A\x02\xfaA9\n" +
-	"7cloudkms.googleapis.com/SingleTenantHsmInstanceProposalR\x04name\"\x89\x06\n" +
-	"-ApproveSingleTenantHsmInstanceProposalRequest\x12S\n" +
-	"\x04name\x18\x01 \x01(\tB?\xe0A\x02\xfaA9\n" +
-	"7cloudkms.googleapis.com/SingleTenantHsmInstanceProposalR\x04name\x12x\n" +
-	"\fquorum_reply\x18\x02 \x01(\v2N.google.cloud.kms.v1.ApproveSingleTenantHsmInstanceProposalRequest.QuorumReplyB\x03\xe0A\x02H\x00R\vquorumReply\x12\xa4\x01\n" +
-	"\x1crequired_action_quorum_reply\x18\x03 \x01(\v2\\.google.cloud.kms.v1.ApproveSingleTenantHsmInstanceProposalRequest.RequiredActionQuorumReplyB\x03\xe0A\x02H\x00R\x19requiredActionQuorumReply\x1ad\n" +
-	"\vQuorumReply\x12U\n" +
-	"\x11challenge_replies\x18\x01 \x03(\v2#.google.cloud.kms.v1.ChallengeReplyB\x03\xe0A\x02R\x10challengeReplies\x1a\xe7\x01\n" +
-	"\x19RequiredActionQuorumReply\x12f\n" +
-	"\x1arequired_challenge_replies\x18\x01 \x03(\v2#.google.cloud.kms.v1.ChallengeReplyB\x03\xe0A\x02R\x18requiredChallengeReplies\x12b\n" +
-	"\x18quorum_challenge_replies\x18\x02 \x03(\v2#.google.cloud.kms.v1.ChallengeReplyB\x03\xe0A\x02R\x16quorumChallengeRepliesB\x12\n" +
+	"total_size\x18\x03 \x01(\x05R\ttotalSize\"q\n" +
+	"!GetSingleTenantHsmInstanceRequest\x12L\n" +
+	"\x04name\x18\x01 \x01(\tB8\xe2A\x01\x02\xfaA1\n" +
+	"/cloudkms.googleapis.com/SingleTenantHsmInstanceR\x04name\"\xa3\x02\n" +
+	"$CreateSingleTenantHsmInstanceRequest\x12B\n" +
+	"\x06parent\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!locations.googleapis.com/LocationR\x06parent\x12F\n" +
+	"\x1dsingle_tenant_hsm_instance_id\x18\x02 \x01(\tB\x04\xe2A\x01\x01R\x19singleTenantHsmInstanceId\x12o\n" +
+	"\x1asingle_tenant_hsm_instance\x18\x03 \x01(\v2,.google.cloud.kms.v1.SingleTenantHsmInstanceB\x04\xe2A\x01\x02R\x17singleTenantHsmInstance\"'\n" +
+	"%CreateSingleTenantHsmInstanceMetadata\"\xe4\x02\n" +
+	",CreateSingleTenantHsmInstanceProposalRequest\x12P\n" +
+	"\x06parent\x18\x01 \x01(\tB8\xe2A\x01\x02\xfaA1\n" +
+	"/cloudkms.googleapis.com/SingleTenantHsmInstanceR\x06parent\x12W\n" +
+	"&single_tenant_hsm_instance_proposal_id\x18\x02 \x01(\tB\x04\xe2A\x01\x01R!singleTenantHsmInstanceProposalId\x12\x88\x01\n" +
+	"#single_tenant_hsm_instance_proposal\x18\x03 \x01(\v24.google.cloud.kms.v1.SingleTenantHsmInstanceProposalB\x04\xe2A\x01\x02R\x1fsingleTenantHsmInstanceProposal\"/\n" +
+	"-CreateSingleTenantHsmInstanceProposalMetadata\"\x81\x01\n" +
+	")GetSingleTenantHsmInstanceProposalRequest\x12T\n" +
+	"\x04name\x18\x01 \x01(\tB@\xe2A\x01\x02\xfaA9\n" +
+	"7cloudkms.googleapis.com/SingleTenantHsmInstanceProposalR\x04name\"\x8f\x06\n" +
+	"-ApproveSingleTenantHsmInstanceProposalRequest\x12T\n" +
+	"\x04name\x18\x01 \x01(\tB@\xe2A\x01\x02\xfaA9\n" +
+	"7cloudkms.googleapis.com/SingleTenantHsmInstanceProposalR\x04name\x12y\n" +
+	"\fquorum_reply\x18\x02 \x01(\v2N.google.cloud.kms.v1.ApproveSingleTenantHsmInstanceProposalRequest.QuorumReplyB\x04\xe2A\x01\x02H\x00R\vquorumReply\x12\xa5\x01\n" +
+	"\x1crequired_action_quorum_reply\x18\x03 \x01(\v2\\.google.cloud.kms.v1.ApproveSingleTenantHsmInstanceProposalRequest.RequiredActionQuorumReplyB\x04\xe2A\x01\x02H\x00R\x19requiredActionQuorumReply\x1ae\n" +
+	"\vQuorumReply\x12V\n" +
+	"\x11challenge_replies\x18\x01 \x03(\v2#.google.cloud.kms.v1.ChallengeReplyB\x04\xe2A\x01\x02R\x10challengeReplies\x1a\xe9\x01\n" +
+	"\x19RequiredActionQuorumReply\x12g\n" +
+	"\x1arequired_challenge_replies\x18\x01 \x03(\v2#.google.cloud.kms.v1.ChallengeReplyB\x04\xe2A\x01\x02R\x18requiredChallengeReplies\x12c\n" +
+	"\x18quorum_challenge_replies\x18\x02 \x03(\v2#.google.cloud.kms.v1.ChallengeReplyB\x04\xe2A\x01\x02R\x16quorumChallengeRepliesB\x12\n" +
 	"\x10approval_payload\"0\n" +
-	".ApproveSingleTenantHsmInstanceProposalResponse\"\x84\x01\n" +
-	"-ExecuteSingleTenantHsmInstanceProposalRequest\x12S\n" +
-	"\x04name\x18\x01 \x01(\tB?\xe0A\x02\xfaA9\n" +
+	".ApproveSingleTenantHsmInstanceProposalResponse\"\x85\x01\n" +
+	"-ExecuteSingleTenantHsmInstanceProposalRequest\x12T\n" +
+	"\x04name\x18\x01 \x01(\tB@\xe2A\x01\x02\xfaA9\n" +
 	"7cloudkms.googleapis.com/SingleTenantHsmInstanceProposalR\x04name\"0\n" +
 	".ExecuteSingleTenantHsmInstanceProposalResponse\"0\n" +
-	".ExecuteSingleTenantHsmInstanceProposalMetadata\"\xa9\x02\n" +
-	"+ListSingleTenantHsmInstanceProposalsRequest\x12O\n" +
-	"\x06parent\x18\x01 \x01(\tB7\xe0A\x02\xfaA1\n" +
-	"/cloudkms.googleapis.com/SingleTenantHsmInstanceR\x06parent\x12 \n" +
-	"\tpage_size\x18\x02 \x01(\x05B\x03\xe0A\x01R\bpageSize\x12\"\n" +
+	".ExecuteSingleTenantHsmInstanceProposalMetadata\"\xaf\x02\n" +
+	"+ListSingleTenantHsmInstanceProposalsRequest\x12P\n" +
+	"\x06parent\x18\x01 \x01(\tB8\xe2A\x01\x02\xfaA1\n" +
+	"/cloudkms.googleapis.com/SingleTenantHsmInstanceR\x06parent\x12!\n" +
+	"\tpage_size\x18\x02 \x01(\x05B\x04\xe2A\x01\x01R\bpageSize\x12#\n" +
 	"\n" +
-	"page_token\x18\x03 \x01(\tB\x03\xe0A\x01R\tpageToken\x12\x1b\n" +
-	"\x06filter\x18\x04 \x01(\tB\x03\xe0A\x01R\x06filter\x12\x1e\n" +
-	"\border_by\x18\x05 \x01(\tB\x03\xe0A\x01R\aorderBy\x12&\n" +
-	"\fshow_deleted\x18\x06 \x01(\bB\x03\xe0A\x01R\vshowDeleted\"\xfc\x01\n" +
+	"page_token\x18\x03 \x01(\tB\x04\xe2A\x01\x01R\tpageToken\x12\x1c\n" +
+	"\x06filter\x18\x04 \x01(\tB\x04\xe2A\x01\x01R\x06filter\x12\x1f\n" +
+	"\border_by\x18\x05 \x01(\tB\x04\xe2A\x01\x01R\aorderBy\x12'\n" +
+	"\fshow_deleted\x18\x06 \x01(\bB\x04\xe2A\x01\x01R\vshowDeleted\"\xfc\x01\n" +
 	",ListSingleTenantHsmInstanceProposalsResponse\x12\x84\x01\n" +
 	"$single_tenant_hsm_instance_proposals\x18\x01 \x03(\v24.google.cloud.kms.v1.SingleTenantHsmInstanceProposalR singleTenantHsmInstanceProposals\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1d\n" +
 	"\n" +
-	"total_size\x18\x03 \x01(\x05R\ttotalSize\"\x83\x01\n" +
-	",DeleteSingleTenantHsmInstanceProposalRequest\x12S\n" +
-	"\x04name\x18\x01 \x01(\tB?\xe0A\x02\xfaA9\n" +
+	"total_size\x18\x03 \x01(\x05R\ttotalSize\"\x84\x01\n" +
+	",DeleteSingleTenantHsmInstanceProposalRequest\x12T\n" +
+	"\x04name\x18\x01 \x01(\tB@\xe2A\x01\x02\xfaA9\n" +
 	"7cloudkms.googleapis.com/SingleTenantHsmInstanceProposalR\x04name2\xa3\x15\n" +
 	"\rHsmManagement\x12\xe2\x01\n" +
 	"\x1cListSingleTenantHsmInstances\x128.google.cloud.kms.v1.ListSingleTenantHsmInstancesRequest\x1a9.google.cloud.kms.v1.ListSingleTenantHsmInstancesResponse\"M\xdaA\x06parent\x82\xd3\xe4\x93\x02>\x12</v1/{parent=projects/*/locations/*}/singleTenantHsmInstances\x12\xcf\x01\n" +

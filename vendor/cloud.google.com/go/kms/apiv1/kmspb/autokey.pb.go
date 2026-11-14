@@ -422,31 +422,31 @@ var File_google_cloud_kms_v1_autokey_proto protoreflect.FileDescriptor
 
 const file_google_cloud_kms_v1_autokey_proto_rawDesc = "" +
 	"\n" +
-	"!google/cloud/kms/v1/autokey.proto\x12\x13google.cloud.kms.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a#google/longrunning/operations.proto\"\xc8\x01\n" +
-	"\x16CreateKeyHandleRequest\x12A\n" +
-	"\x06parent\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!locations.googleapis.com/LocationR\x06parent\x12'\n" +
-	"\rkey_handle_id\x18\x02 \x01(\tB\x03\xe0A\x01R\vkeyHandleId\x12B\n" +
+	"!google/cloud/kms/v1/autokey.proto\x12\x13google.cloud.kms.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a#google/longrunning/operations.proto\"\xcb\x01\n" +
+	"\x16CreateKeyHandleRequest\x12B\n" +
+	"\x06parent\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!locations.googleapis.com/LocationR\x06parent\x12(\n" +
+	"\rkey_handle_id\x18\x02 \x01(\tB\x04\xe2A\x01\x01R\vkeyHandleId\x12C\n" +
 	"\n" +
-	"key_handle\x18\x03 \x01(\v2\x1e.google.cloud.kms.v1.KeyHandleB\x03\xe0A\x02R\tkeyHandle\"T\n" +
-	"\x13GetKeyHandleRequest\x12=\n" +
-	"\x04name\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!cloudkms.googleapis.com/KeyHandleR\x04name\"\xa3\x02\n" +
-	"\tKeyHandle\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12B\n" +
-	"\akms_key\x18\x03 \x01(\tB)\xe0A\x03\xfaA#\n" +
-	"!cloudkms.googleapis.com/CryptoKeyR\x06kmsKey\x129\n" +
-	"\x16resource_type_selector\x18\x04 \x01(\tB\x03\xe0A\x02R\x14resourceTypeSelector:~\xeaA{\n" +
+	"key_handle\x18\x03 \x01(\v2\x1e.google.cloud.kms.v1.KeyHandleB\x04\xe2A\x01\x02R\tkeyHandle\"U\n" +
+	"\x13GetKeyHandleRequest\x12>\n" +
+	"\x04name\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!cloudkms.googleapis.com/KeyHandleR\x04name\"\xa6\x02\n" +
+	"\tKeyHandle\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\tB\x04\xe2A\x01\bR\x04name\x12C\n" +
+	"\akms_key\x18\x03 \x01(\tB*\xe2A\x01\x03\xfaA#\n" +
+	"!cloudkms.googleapis.com/CryptoKeyR\x06kmsKey\x12:\n" +
+	"\x16resource_type_selector\x18\x04 \x01(\tB\x04\xe2A\x01\x02R\x14resourceTypeSelector:~\xeaA{\n" +
 	"!cloudkms.googleapis.com/KeyHandle\x12?projects/{project}/locations/{location}/keyHandles/{key_handle}*\n" +
 	"keyHandles2\tkeyHandle\"\x19\n" +
-	"\x17CreateKeyHandleMetadata\"\xbd\x01\n" +
-	"\x15ListKeyHandlesRequest\x12A\n" +
-	"\x06parent\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!locations.googleapis.com/LocationR\x06parent\x12 \n" +
-	"\tpage_size\x18\x02 \x01(\x05B\x03\xe0A\x01R\bpageSize\x12\"\n" +
+	"\x17CreateKeyHandleMetadata\"\xc1\x01\n" +
+	"\x15ListKeyHandlesRequest\x12B\n" +
+	"\x06parent\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!locations.googleapis.com/LocationR\x06parent\x12!\n" +
+	"\tpage_size\x18\x02 \x01(\x05B\x04\xe2A\x01\x01R\bpageSize\x12#\n" +
 	"\n" +
-	"page_token\x18\x03 \x01(\tB\x03\xe0A\x01R\tpageToken\x12\x1b\n" +
-	"\x06filter\x18\x04 \x01(\tB\x03\xe0A\x01R\x06filter\"\x81\x01\n" +
+	"page_token\x18\x03 \x01(\tB\x04\xe2A\x01\x01R\tpageToken\x12\x1c\n" +
+	"\x06filter\x18\x04 \x01(\tB\x04\xe2A\x01\x01R\x06filter\"\x81\x01\n" +
 	"\x16ListKeyHandlesResponse\x12?\n" +
 	"\vkey_handles\x18\x01 \x03(\v2\x1e.google.cloud.kms.v1.KeyHandleR\n" +
 	"keyHandles\x12&\n" +

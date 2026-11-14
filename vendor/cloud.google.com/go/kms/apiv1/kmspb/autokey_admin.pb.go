@@ -482,21 +482,21 @@ var File_google_cloud_kms_v1_autokey_admin_proto protoreflect.FileDescriptor
 
 const file_google_cloud_kms_v1_autokey_admin_proto_rawDesc = "" +
 	"\n" +
-	"'google/cloud/kms/v1/autokey_admin.proto\x12\x13google.cloud.kms.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a google/protobuf/field_mask.proto\"\xae\x01\n" +
-	"\x1aUpdateAutokeyConfigRequest\x12N\n" +
-	"\x0eautokey_config\x18\x01 \x01(\v2\".google.cloud.kms.v1.AutokeyConfigB\x03\xe0A\x02R\rautokeyConfig\x12@\n" +
-	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x03\xe0A\x02R\n" +
-	"updateMask\"\\\n" +
-	"\x17GetAutokeyConfigRequest\x12A\n" +
-	"\x04name\x18\x01 \x01(\tB-\xe0A\x02\xfaA'\n" +
-	"%cloudkms.googleapis.com/AutokeyConfigR\x04name\"\xc0\x05\n" +
-	"\rAutokeyConfig\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12$\n" +
-	"\vkey_project\x18\x02 \x01(\tB\x03\xe0A\x01R\n" +
-	"keyProject\x12C\n" +
-	"\x05state\x18\x04 \x01(\x0e2(.google.cloud.kms.v1.AutokeyConfig.StateB\x03\xe0A\x03R\x05state\x12\x17\n" +
-	"\x04etag\x18\x06 \x01(\tB\x03\xe0A\x01R\x04etag\x12\x7f\n" +
-	"\x1bkey_project_resolution_mode\x18\b \x01(\x0e2;.google.cloud.kms.v1.AutokeyConfig.KeyProjectResolutionModeB\x03\xe0A\x01R\x18keyProjectResolutionMode\"y\n" +
+	"'google/cloud/kms/v1/autokey_admin.proto\x12\x13google.cloud.kms.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a google/protobuf/field_mask.proto\"\xb0\x01\n" +
+	"\x1aUpdateAutokeyConfigRequest\x12O\n" +
+	"\x0eautokey_config\x18\x01 \x01(\v2\".google.cloud.kms.v1.AutokeyConfigB\x04\xe2A\x01\x02R\rautokeyConfig\x12A\n" +
+	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x04\xe2A\x01\x02R\n" +
+	"updateMask\"]\n" +
+	"\x17GetAutokeyConfigRequest\x12B\n" +
+	"\x04name\x18\x01 \x01(\tB.\xe2A\x01\x02\xfaA'\n" +
+	"%cloudkms.googleapis.com/AutokeyConfigR\x04name\"\xc6\x05\n" +
+	"\rAutokeyConfig\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\tB\x04\xe2A\x01\bR\x04name\x12%\n" +
+	"\vkey_project\x18\x02 \x01(\tB\x04\xe2A\x01\x01R\n" +
+	"keyProject\x12D\n" +
+	"\x05state\x18\x04 \x01(\x0e2(.google.cloud.kms.v1.AutokeyConfig.StateB\x04\xe2A\x01\x03R\x05state\x12\x18\n" +
+	"\x04etag\x18\x06 \x01(\tB\x04\xe2A\x01\x01R\x04etag\x12\x80\x01\n" +
+	"\x1bkey_project_resolution_mode\x18\b \x01(\x0e2;.google.cloud.kms.v1.AutokeyConfig.KeyProjectResolutionModeB\x04\xe2A\x01\x01R\x18keyProjectResolutionMode\"y\n" +
 	"\x05State\x12\x15\n" +
 	"\x11STATE_UNSPECIFIED\x10\x00\x12\n" +
 	"\n" +
@@ -509,9 +509,9 @@ const file_google_cloud_kms_v1_autokey_admin_proto_rawDesc = "" +
 	"\x15DEDICATED_KEY_PROJECT\x10\x01\x12\x14\n" +
 	"\x10RESOURCE_PROJECT\x10\x02\x12\f\n" +
 	"\bDISABLED\x10\x03:\x8c\x01\xeaA\x88\x01\n" +
-	"%cloudkms.googleapis.com/AutokeyConfig\x12\x1efolders/{folder}/autokeyConfig\x12 projects/{project}/autokeyConfig*\x0eautokeyConfigs2\rautokeyConfig\"p\n" +
-	"!ShowEffectiveAutokeyConfigRequest\x12K\n" +
-	"\x06parent\x18\x01 \x01(\tB3\xe0A\x02\xfaA-\n" +
+	"%cloudkms.googleapis.com/AutokeyConfig\x12\x1efolders/{folder}/autokeyConfig\x12 projects/{project}/autokeyConfig*\x0eautokeyConfigs2\rautokeyConfig\"q\n" +
+	"!ShowEffectiveAutokeyConfigRequest\x12L\n" +
+	"\x06parent\x18\x01 \x01(\tB4\xe2A\x01\x02\xfaA-\n" +
 	"+cloudresourcemanager.googleapis.com/ProjectR\x06parent\"E\n" +
 	"\"ShowEffectiveAutokeyConfigResponse\x12\x1f\n" +
 	"\vkey_project\x18\x01 \x01(\tR\n" +
