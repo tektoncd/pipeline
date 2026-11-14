@@ -19,6 +19,8 @@ package config
 import (
 	"fmt"
 	"log"
+	"math"
+	"net/url"
 	"os"
 	"reflect"
 	"strconv"
@@ -28,6 +30,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/yaml"
 )
 
@@ -77,6 +80,9 @@ const (
 	defaultMaximumResolutionTimeout         = "default-maximum-resolution-timeout"
 	defaultSidecarLogPollingIntervalKey     = "default-sidecar-log-polling-interval"
 	DefaultStepRefConcurrencyLimitKey       = "default-step-ref-concurrency-limit"
+
+	// maxDefaultTimeoutMinutes is the largest timeout that fits in a time.Duration.
+	maxDefaultTimeoutMinutes = math.MaxInt64 / int64(time.Minute)
 )
 
 // DefaultConfig holds all the default configurations for the config.
@@ -163,6 +169,9 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing default config %q", defaultTimeoutMinutesKey)
 		}
+		if timeout < 0 || timeout > maxDefaultTimeoutMinutes {
+			return nil, fmt.Errorf("invalid default config %q: %d is not between 0 and %d", defaultTimeoutMinutesKey, timeout, maxDefaultTimeoutMinutes)
+		}
 		tc.DefaultTimeoutMinutes = int(timeout)
 	}
 
@@ -171,6 +180,9 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	}
 
 	if defaultManagedByLabelValue, ok := cfgMap[defaultManagedByLabelValueKey]; ok {
+		if errs := validation.IsValidLabelValue(defaultManagedByLabelValue); len(errs) > 0 {
+			return nil, fmt.Errorf("invalid default config %q: %s", defaultManagedByLabelValueKey, strings.Join(errs, "; "))
+		}
 		tc.DefaultManagedByLabelValue = defaultManagedByLabelValue
 	}
 
@@ -191,10 +203,17 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	}
 
 	if defaultCloudEventsSink, ok := cfgMap[defaultCloudEventsSinkKey]; ok {
+		if _, err := url.Parse(defaultCloudEventsSink); err != nil {
+			return nil, fmt.Errorf("invalid default config %q: %w", defaultCloudEventsSinkKey, err)
+		}
 		tc.DefaultCloudEventsSink = defaultCloudEventsSink
 	}
 
 	if bindingYAML, ok := cfgMap[defaultTaskRunWorkspaceBinding]; ok {
+		var binding map[string]interface{}
+		if err := yamlUnmarshal(bindingYAML, defaultTaskRunWorkspaceBinding, &binding); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal %v", bindingYAML)
+		}
 		tc.DefaultTaskRunWorkspaceBinding = bindingYAML
 	}
 
@@ -202,6 +221,9 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		matrixCombinationsCount, err := strconv.ParseInt(defaultMaxMatrixCombinationsCount, 10, 0)
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing default config %q", defaultMaxMatrixCombinationsCountKey)
+		}
+		if matrixCombinationsCount < 0 {
+			return nil, fmt.Errorf("invalid default config %q: %d must not be negative", defaultMaxMatrixCombinationsCountKey, matrixCombinationsCount)
 		}
 		tc.DefaultMaxMatrixCombinationsCount = int(matrixCombinationsCount)
 	}
@@ -231,6 +253,9 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing default config %q", defaultImagePullBackOffTimeout)
 		}
+		if timeout < 0 {
+			return nil, fmt.Errorf("invalid default config %q: %s must not be negative", defaultImagePullBackOffTimeout, timeout)
+		}
 		tc.DefaultImagePullBackOffTimeout = timeout
 	}
 
@@ -238,6 +263,9 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		timeout, err := time.ParseDuration(defaultCreateContainerError)
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing default config %q: %w", defaultCreateContainerErrorTimeout, err)
+		}
+		if timeout < 0 {
+			return nil, fmt.Errorf("invalid default config %q: %s must not be negative", defaultCreateContainerErrorTimeout, timeout)
 		}
 		tc.DefaultCreateContainerErrorTimeout = timeout
 	}
@@ -247,6 +275,9 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing default config %q", defaultMaximumResolutionTimeout)
 		}
+		if timeout <= 0 {
+			return nil, fmt.Errorf("invalid default config %q: %s must be greater than 0", defaultMaximumResolutionTimeout, timeout)
+		}
 		tc.DefaultMaximumResolutionTimeout = timeout
 	}
 
@@ -255,6 +286,9 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing default config %q", defaultSidecarPollingInterval)
 		}
+		if interval < 0 {
+			return nil, fmt.Errorf("invalid default config %q: %s must not be negative", defaultSidecarLogPollingIntervalKey, interval)
+		}
 		tc.DefaultSidecarLogPollingInterval = interval
 	}
 
@@ -262,6 +296,9 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		stepRefConcurrencyLimit, err := strconv.ParseInt(DefaultStepRefConcurrencyLimit, 10, 0)
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing default config %q", DefaultStepRefConcurrencyLimitKey)
+		}
+		if stepRefConcurrencyLimit <= 0 {
+			return nil, fmt.Errorf("invalid default config %q: %d must be greater than 0", DefaultStepRefConcurrencyLimitKey, stepRefConcurrencyLimit)
 		}
 		tc.DefaultStepRefConcurrencyLimit = int(stepRefConcurrencyLimit)
 	}
