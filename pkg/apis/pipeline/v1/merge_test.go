@@ -335,13 +335,13 @@ func TestMergeStepSpec(t *testing.T) {
 		name: "no spec overrides",
 		steps: []v1.Step{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 			},
 		}},
 		want: []v1.Step{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 			},
 		}},
@@ -349,29 +349,29 @@ func TestMergeStepSpec(t *testing.T) {
 		name: "not all steps overridden",
 		steps: []v1.Step{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 			},
 		}, {
 			Name: "bar",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 			},
 		}},
 		stepOverrides: []v1.TaskRunStepSpec{{
 			Name: "bar",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
 		}},
 		want: []v1.Step{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 			},
 		}, {
 			Name: "bar",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
 		}},
@@ -379,7 +379,7 @@ func TestMergeStepSpec(t *testing.T) {
 		name: "override memory but not CPU",
 		steps: []v1.Step{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceMemory: resource.MustParse("1Gi"),
 					corev1.ResourceCPU:    resource.MustParse("100m"),
@@ -388,13 +388,13 @@ func TestMergeStepSpec(t *testing.T) {
 		}},
 		stepOverrides: []v1.TaskRunStepSpec{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
 		}},
 		want: []v1.Step{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("100m"),
 					corev1.ResourceMemory: resource.MustParse("2Gi"),
@@ -405,20 +405,20 @@ func TestMergeStepSpec(t *testing.T) {
 		name: "override request but not limit",
 		steps: []v1.Step{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
 		}},
 		stepOverrides: []v1.TaskRunStepSpec{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
 			},
 		}},
 		want: []v1.Step{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
 				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
@@ -427,21 +427,21 @@ func TestMergeStepSpec(t *testing.T) {
 		name: "override request and limit",
 		steps: []v1.Step{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
 		}},
 		stepOverrides: []v1.TaskRunStepSpec{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
 				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
 			},
 		}},
 		want: []v1.Step{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
 				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
 			},
@@ -452,20 +452,20 @@ func TestMergeStepSpec(t *testing.T) {
 		name: "new request > old limit",
 		steps: []v1.Step{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
 		}},
 		stepOverrides: []v1.TaskRunStepSpec{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
 			},
 		}},
 		want: []v1.Step{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
 				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
@@ -494,13 +494,13 @@ func TestMergeSidecarSpec(t *testing.T) {
 		name: "no overrides",
 		sidecars: []v1.Sidecar{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 			},
 		}},
 		want: []v1.Sidecar{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 			},
 		}},
@@ -508,29 +508,29 @@ func TestMergeSidecarSpec(t *testing.T) {
 		name: "not all sidecars overridden",
 		sidecars: []v1.Sidecar{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 			},
 		}, {
 			Name: "bar",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 			},
 		}},
 		sidecarOverrides: []v1.TaskRunSidecarSpec{{
 			Name: "bar",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
 		}},
 		want: []v1.Sidecar{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 			},
 		}, {
 			Name: "bar",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
 		}},
@@ -538,7 +538,7 @@ func TestMergeSidecarSpec(t *testing.T) {
 		name: "override memory but not CPU",
 		sidecars: []v1.Sidecar{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceMemory: resource.MustParse("1Gi"),
 					corev1.ResourceCPU:    resource.MustParse("100m"),
@@ -547,13 +547,13 @@ func TestMergeSidecarSpec(t *testing.T) {
 		}},
 		sidecarOverrides: []v1.TaskRunSidecarSpec{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
 		}},
 		want: []v1.Sidecar{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("100m"),
 					corev1.ResourceMemory: resource.MustParse("2Gi"),
@@ -564,20 +564,20 @@ func TestMergeSidecarSpec(t *testing.T) {
 		name: "override request but not limit",
 		sidecars: []v1.Sidecar{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
 		}},
 		sidecarOverrides: []v1.TaskRunSidecarSpec{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
 			},
 		}},
 		want: []v1.Sidecar{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
 				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
@@ -586,21 +586,21 @@ func TestMergeSidecarSpec(t *testing.T) {
 		name: "override request and limit",
 		sidecars: []v1.Sidecar{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
 		}},
 		sidecarOverrides: []v1.TaskRunSidecarSpec{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
 				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
 			},
 		}},
 		want: []v1.Sidecar{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
 				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
 			},
@@ -611,20 +611,20 @@ func TestMergeSidecarSpec(t *testing.T) {
 		name: "new request > old limit",
 		sidecars: []v1.Sidecar{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
 		}},
 		sidecarOverrides: []v1.TaskRunSidecarSpec{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
 			},
 		}},
 		want: []v1.Sidecar{{
 			Name: "foo",
-			ComputeResources: corev1.ResourceRequirements{
+			ComputeResources: v1.ComputeResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
 				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
 			},
