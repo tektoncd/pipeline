@@ -557,6 +557,8 @@ const (
 	FinallyTimedOutSkip SkippingReason = "PipelineRun Finally timeout has been reached"
 	// EmptyArrayInMatrixParams means the task was skipped because Matrix parameters contain empty array.
 	EmptyArrayInMatrixParams SkippingReason = "Matrix Parameters have an empty array"
+	// MatrixIncludeWhenSkip means the task was skipped because all Matrix Include When Expressions evaluated to false.
+	MatrixIncludeWhenSkip SkippingReason = "Matrix Include When Expressions evaluated to false"
 	// None means the task was not skipped
 	None SkippingReason = "None"
 )
