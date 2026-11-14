@@ -300,6 +300,8 @@ func NewWebHookService(driver string) (scm.WebhookService, error) {
 	}
 	var service scm.WebhookService
 	switch driver {
+	case "azure":
+		service = azure.NewWebHookService()
 	case "bitbucket", "bitbucketcloud":
 		service = bitbucket.NewWebHookService()
 	case "fake", "fakegit":

@@ -71,6 +71,8 @@ The git resolver supports caching of resolved resources to improve performance. 
 | `never` | Never cache resolved resources. This disables caching completely. |
 | `auto` | Caching will only occur when revision is a commit hash. (default) |
 
+**Note**: The cache parameter must be under `pipelineRef.params` or `taskRef.params`, not `spec.params`.
+
 ### Cache Configuration
 
 The resolver cache can be configured globally using the `resolver-cache-config` ConfigMap. This ConfigMap controls the cache size and TTL (time-to-live) for all resolvers.
@@ -136,17 +138,69 @@ Gitea.
 apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
-  name: git-clone-demo-tr
+  name: git-resolver-demo-tr
 spec:
   taskRef:
     resolver: git
     params:
     - name: url
-      value: https://github.com/tektoncd/catalog.git
+      value: https://github.com/tektoncd/pipeline.git
     - name: revision
       value: main
     - name: pathInRepo
-      value: task/git-clone/0.6/git-clone.yaml
+      value: test/git-resolver/remote-task.yaml
+    # Uncomment the following lines to use a secret with a token
+    # - name: gitToken
+    #   value: "secret-with-token"
+    # - name: gitTokenKey (optional, defaults to "token")
+    #   value: "token"
+```
+
+#### Task Resolution with Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: git-resolver-demo-tr
+spec:
+  taskRef:
+    resolver: git
+    params:
+    - name: url
+      value: https://github.com/tektoncd/pipeline.git
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: test/git-resolver/remote-task.yaml
+    - name: cache   # cache param under spec.taskRef.params
+      value: always
+    # Uncomment the following lines to use a secret with a token
+    # - name: gitToken
+    #   value: "secret-with-token"
+    # - name: gitTokenKey (optional, defaults to "token")
+    #   value: "token"
+```
+
+#### Task Resolution without Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: git-resolver-demo-tr
+spec:
+  taskRef:
+    resolver: git
+    params:
+    - name: url
+      value: https://github.com/tektoncd/pipeline.git
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: test/git-resolver/remote-task.yaml
+    - name: cache   # cache param under spec.taskRef.params
+      value: never
     # Uncomment the following lines to use a secret with a token
     # - name: gitToken
     #   value: "secret-with-token"
@@ -160,25 +214,74 @@ spec:
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  name: git-clone-demo-pr
+  name: git-resolver-demo-pr
 spec:
   pipelineRef:
     resolver: git
     params:
     - name: url
-      value: https://github.com/tektoncd/catalog.git
+      value: https://github.com/tektoncd/pipeline.git
     - name: revision
       value: main
     - name: pathInRepo
-      value: pipeline/simple/0.1/simple.yaml
+      value: test/resolvers_yaml/pipeline-in-git.yaml
     # Uncomment the following lines to use a secret with a token
     # - name: gitToken
     #   value: "secret-with-token"
     # - name: gitTokenKey (optional, defaults to "token")
     #   value: "token"
-  params:
-  - name: name
-    value: Ranni
+```
+
+#### Pipeline Resolution with Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: git-resolver-demo-pr
+spec:
+  pipelineRef:
+    resolver: git
+    params:
+    - name: url
+      value: https://github.com/tektoncd/pipeline.git
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: test/resolvers_yaml/pipeline-in-git.yaml
+    - name: cache   # cache param under spec.pipelineRef.params
+      value: always
+    # Uncomment the following lines to use a secret with a token
+    # - name: gitToken
+    #   value: "secret-with-token"
+    # - name: gitTokenKey (optional, defaults to "token")
+    #   value: "token"
+```
+
+#### Pipeline Resolution without Caching
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: git-resolver-demo-pr
+spec:
+  pipelineRef:
+    resolver: git
+    params:
+    - name: url
+      value: https://github.com/tektoncd/pipeline.git
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: test/resolvers_yaml/pipeline-in-git.yaml
+    - name: cache   # cache param under spec.pipelineRef.params
+      value: never
+    # Uncomment the following lines to use a secret with a token
+    # - name: gitToken
+    #   value: "secret-with-token"
+    # - name: gitTokenKey (optional, defaults to "token")
+    #   value: "token"
 ```
 
 ### Authenticated API
@@ -261,14 +364,11 @@ spec:
     - name: org
       value: tektoncd
     - name: repo
-      value: catalog
+      value: pipeline
     - name: revision
       value: main
     - name: pathInRepo
-      value: pipeline/simple/0.1/simple.yaml
-  params:
-  - name: name
-    value: Ranni
+      value: test/resolvers_yaml/pipeline-in-git.yaml
 ```
 
 ### Specifying Configuration for Multiple Git Providers
@@ -371,16 +471,13 @@ spec:
     - name: org
       value: tektoncd
     - name: repo
-      value: catalog
+      value: pipeline
     - name: revision
       value: main
     - name: pathInRepo
-      value: pipeline/simple/0.1/simple.yaml
+      value: test/resolvers_yaml/pipeline-in-git.yaml
     - name: configKey
       value: test2
-  params:
-  - name: name
-    value: Ranni
 ```
 
 ## `ResolutionRequest` Status

@@ -439,6 +439,7 @@ _Appears in:_
 | --- | --- |
 | `stopAndFail` | StopAndFail indicates exit the taskRun if the container exits with non-zero exit code<br /> |
 | `continue` | Continue indicates continue executing the rest of the steps irrespective of the container exit code<br /> |
+| `continueAndFail` | ContinueAndFail indicates continue executing the rest of the steps irrespective of the container exit code and fail the TaskRun after all steps have completed<br /> |
 
 
 #### Param
@@ -1217,7 +1218,7 @@ _Appears in:_
 | `script` _string_ | Script is the contents of an executable file to execute.<br />If Script is not empty, the Step cannot have an Command and the Args will be passed to the Script. |  | Optional: \{\} <br /> |
 | `timeout` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#duration-v1-meta)_ | Timeout is the time after which the step times out. Defaults to never.<br />Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration |  | Optional: \{\} <br /> |
 | `workspaces` _[WorkspaceUsage](#workspaceusage) array_ | This is an alpha field. You must set the "enable-api-fields" feature flag to "alpha"<br />for this field to be supported.<br />Workspaces is a list of workspaces from the Task that this Step wants<br />exclusive access to. Adding a workspace to this list means that any<br />other Step or Sidecar that does not also request this Workspace will<br />not have access to it. |  | Optional: \{\} <br /> |
-| `onError` _[OnErrorType](#onerrortype)_ | OnError defines the exiting behavior of a container on error<br />can be set to [ continue \| stopAndFail ] |  |  |
+| `onError` _[OnErrorType](#onerrortype)_ | OnError defines the exiting behavior of a container on error<br />can be set to [ continue \| stopAndFail \| continueAndFail ] |  |  |
 | `stdoutConfig` _[StepOutputConfig](#stepoutputconfig)_ | Stores configuration for the stdout stream of the step. |  | Optional: \{\} <br /> |
 | `stderrConfig` _[StepOutputConfig](#stepoutputconfig)_ | Stores configuration for the stderr stream of the step. |  | Optional: \{\} <br /> |
 | `ref` _[Ref](#ref)_ | Contains the reference to an existing StepAction. |  | Optional: \{\} <br /> |
@@ -2606,6 +2607,7 @@ _Appears in:_
 | --- | --- |
 | `stopAndFail` | StopAndFail indicates exit the taskRun if the container exits with non-zero exit code<br /> |
 | `continue` | Continue indicates continue executing the rest of the steps irrespective of the container exit code<br /> |
+| `continueAndFail` | ContinueAndFail indicates continue executing the rest of the steps irrespective of the container exit code and fail the TaskRun after all steps have completed<br /> |
 
 
 #### Param
@@ -3568,7 +3570,7 @@ _Appears in:_
 | `script` _string_ | Script is the contents of an executable file to execute.<br />If Script is not empty, the Step cannot have an Command and the Args will be passed to the Script. |  | Optional: \{\} <br /> |
 | `timeout` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#duration-v1-meta)_ | Timeout is the time after which the step times out. Defaults to never.<br />Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration |  | Optional: \{\} <br /> |
 | `workspaces` _[WorkspaceUsage](#workspaceusage) array_ | This is an alpha field. You must set the "enable-api-fields" feature flag to "alpha"<br />for this field to be supported.<br />Workspaces is a list of workspaces from the Task that this Step wants<br />exclusive access to. Adding a workspace to this list means that any<br />other Step or Sidecar that does not also request this Workspace will<br />not have access to it. |  | Optional: \{\} <br /> |
-| `onError` _[OnErrorType](#onerrortype)_ | OnError defines the exiting behavior of a container on error<br />can be set to [ continue \| stopAndFail ] |  |  |
+| `onError` _[OnErrorType](#onerrortype)_ | OnError defines the exiting behavior of a container on error<br />can be set to [ continue \| stopAndFail \| continueAndFail ] |  |  |
 | `stdoutConfig` _[StepOutputConfig](#stepoutputconfig)_ | Stores configuration for the stdout stream of the step. |  | Optional: \{\} <br /> |
 | `stderrConfig` _[StepOutputConfig](#stepoutputconfig)_ | Stores configuration for the stderr stream of the step. |  | Optional: \{\} <br /> |
 | `ref` _[Ref](#ref)_ | Contains the reference to an existing StepAction. |  | Optional: \{\} <br /> |

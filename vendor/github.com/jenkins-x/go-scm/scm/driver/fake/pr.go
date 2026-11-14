@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
 	"github.com/jenkins-x/go-scm/scm"
-	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 type pullService struct {
@@ -152,10 +152,7 @@ func (s *pullService) ListLabels(ctx context.Context, repo string, number int, o
 	f := s.data
 	re := regexp.MustCompile(fmt.Sprintf(`^%s#%d:(.*)$`, repo, number))
 	la := []*scm.Label{}
-	allLabels := sets.NewString(f.PullRequestLabelsExisting...)
-	allLabels.Insert(f.PullRequestLabelsAdded...)
-	allLabels.Delete(f.PullRequestLabelsRemoved...)
-	for _, l := range allLabels.List() {
+	for _, l := range currentLabels(f.PullRequestLabelsExisting, f.PullRequestLabelsAdded, f.PullRequestLabelsRemoved) {
 		groups := re.FindStringSubmatch(l)
 		if groups != nil {
 			la = append(la, &scm.Label{Name: groups[1]})
@@ -187,7 +184,7 @@ func (s *pullService) AddLabel(ctx context.Context, repo string, number int, lab
 		}
 	}
 	labelString := fmt.Sprintf("%s#%d:%s", repo, number, label)
-	if sets.NewString(f.PullRequestLabelsAdded...).Has(labelString) {
+	if slices.Contains(f.PullRequestLabelsAdded, labelString) {
 		return nil, fmt.Errorf("cannot add %v to %s/#%d", label, repo, number)
 	}
 	if f.RepoLabelsExisting == nil {
@@ -207,7 +204,7 @@ func (s *pullService) AddLabel(ctx context.Context, repo string, number int, lab
 func (s *pullService) DeleteLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
 	f := s.data
 	labelString := fmt.Sprintf("%s#%d:%s", repo, number, label)
-	if !sets.NewString(f.PullRequestLabelsRemoved...).Has(labelString) {
+	if !slices.Contains(f.PullRequestLabelsRemoved, labelString) {
 		f.PullRequestLabelsRemoved = append(f.PullRequestLabelsRemoved, labelString)
 		return nil, nil
 	}

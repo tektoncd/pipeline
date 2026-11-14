@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 
 	"github.com/jenkins-x/go-scm/scm"
-	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 type issueService struct {
@@ -42,10 +42,7 @@ func (s *issueService) ListLabels(ctx context.Context, repo string, number int, 
 	f := s.data
 	re := regexp.MustCompile(fmt.Sprintf(`^%s#%d:(.*)$`, repo, number))
 	la := []*scm.Label{}
-	allLabels := sets.NewString(f.IssueLabelsExisting...)
-	allLabels.Insert(f.IssueLabelsAdded...)
-	allLabels.Delete(f.IssueLabelsRemoved...)
-	for _, l := range allLabels.List() {
+	for _, l := range currentLabels(f.IssueLabelsExisting, f.IssueLabelsAdded, f.IssueLabelsRemoved) {
 		groups := re.FindStringSubmatch(l)
 		if groups != nil {
 			la = append(la, &scm.Label{Name: groups[1]})
@@ -57,7 +54,7 @@ func (s *issueService) ListLabels(ctx context.Context, repo string, number int, 
 func (s *issueService) AddLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
 	f := s.data
 	labelString := fmt.Sprintf("%s#%d:%s", repo, number, label)
-	if sets.NewString(f.IssueLabelsAdded...).Has(labelString) {
+	if slices.Contains(f.IssueLabelsAdded, labelString) {
 		return nil, fmt.Errorf("cannot add %v to %s/#%d", label, repo, number)
 	}
 	if f.RepoLabelsExisting == nil {
@@ -77,7 +74,7 @@ func (s *issueService) AddLabel(ctx context.Context, repo string, number int, la
 func (s *issueService) DeleteLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
 	f := s.data
 	labelString := fmt.Sprintf("%s#%d:%s", repo, number, label)
-	if !sets.NewString(f.IssueLabelsRemoved...).Has(labelString) {
+	if !slices.Contains(f.IssueLabelsRemoved, labelString) {
 		f.IssueLabelsRemoved = append(f.IssueLabelsRemoved, labelString)
 		return nil, nil
 	}
@@ -187,4 +184,12 @@ func (s *issueService) SetMilestone(ctx context.Context, repo string, issueID, n
 
 func (s *issueService) ClearMilestone(ctx context.Context, repo string, id int) (*scm.Response, error) {
 	return nil, scm.ErrNotSupported
+}
+
+func currentLabels(existing, added, removed []string) []string {
+	labels := slices.DeleteFunc(slices.Concat(existing, added), func(l string) bool {
+		return slices.Contains(removed, l)
+	})
+	slices.Sort(labels)
+	return slices.Compact(labels)
 }

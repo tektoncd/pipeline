@@ -121,7 +121,7 @@ jobs:
       uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
       if: ${{ needs.changes.outputs.non-docs == 'true' }}
       with:
-        version: v2.12.2
+        version: v2.15.0
         install-mode: goinstall
         args: --new-from-merge-base=origin/${{ github.base_ref }} --timeout=10m
     - name: yamllint
