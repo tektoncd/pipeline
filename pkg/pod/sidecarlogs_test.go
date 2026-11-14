@@ -20,16 +20,24 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"testing/iotest"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
 	"github.com/tektoncd/pipeline/pkg/result"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/rest"
 )
 
 func TestExtractResultsFromLogs(t *testing.T) {
@@ -155,6 +163,57 @@ func TestExtractResultsFromLogs_Failure(t *testing.T) {
 	_, err := extractResultsFromLogs(logs, []result.RunResult{}, 4096)
 	if !errors.Is(err, ErrSizeExceeded) {
 		t.Fatalf("Expected error %v but got %v", ErrSizeExceeded, err)
+	}
+}
+
+func TestExtractResultsFromLogs_ReadError(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		logs io.Reader
+	}{{
+		name: "before any log data",
+		logs: iotest.ErrReader(io.ErrUnexpectedEOF),
+	}, {
+		name: "while reading a continued line",
+		logs: io.MultiReader(strings.NewReader(strings.Repeat("x", 4096)), iotest.ErrReader(io.ErrUnexpectedEOF)),
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := extractResultsFromLogs(tc.logs, nil, 4096)
+			if !errors.Is(err, io.ErrUnexpectedEOF) {
+				t.Fatalf("expected reader error %v, got %v", io.ErrUnexpectedEOF, err)
+			}
+		})
+	}
+}
+
+func TestExtractResultsFromLogs_BufferBoundary(t *testing.T) {
+	value := strings.Repeat("x", 4096)
+	entry := sidecarlogresults.SidecarLogResult{Name: "result", Value: value, Type: "task"}
+	line, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []result.RunResult{{Key: "result", Value: value, ResultType: result.TaskRunResultType}}
+
+	for _, tc := range []struct {
+		name   string
+		suffix string
+	}{{
+		name: "without trailing newline",
+	}, {
+		name:   "with trailing newline",
+		suffix: "\n",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			logs := strings.NewReader(string(line) + tc.suffix)
+			got, err := extractResultsFromLogs(logs, nil, len(line))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if d := cmp.Diff(want, got); d != "" {
+				t.Fatal(diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
@@ -472,6 +531,23 @@ func TestGetResultsFromSidecarLogs(t *testing.T) {
 				t.Fatal("expected to get an error but did not")
 			}
 		})
+	}
+}
+
+func TestGetResultsFromSidecarLogs_StreamError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "pod logs are forbidden", http.StatusForbidden)
+	}))
+	defer server.Close()
+
+	clientset, err := kubernetes.NewForConfig(&rest.Config{Host: server.URL, Timeout: 5 * time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = getResultsFromSidecarLogs(t.Context(), clientset, "namespace", "pod", "container", corev1.PodRunning)
+	if !apierrors.IsForbidden(err) {
+		t.Fatalf("expected forbidden pod log error, got %v", err)
 	}
 }
 
