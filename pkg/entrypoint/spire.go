@@ -21,8 +21,8 @@ package entrypoint
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/internal/spire"
 	"github.com/tektoncd/pipeline/pkg/result"
-	"github.com/tektoncd/pipeline/pkg/spire"
 )
 
 // EntrypointerAPIClient defines the interface for SPIRE operations

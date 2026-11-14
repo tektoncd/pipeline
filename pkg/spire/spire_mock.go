@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	spiresigning "github.com/tektoncd/pipeline/internal/spire"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/result"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
@@ -228,11 +229,11 @@ func (sc *MockClient) VerifyTaskRunResults(ctx context.Context, prs []result.Run
 		}
 
 		sigEntry, ok := resultMap[key+KeySignatureSuffix]
-		sigValue, err := getResultValue(sigEntry)
+		sigValue, err := spiresigning.ResultValue(sigEntry)
 		if err != nil {
 			return err
 		}
-		resultValue, err := getResultValue(r)
+		resultValue, err := spiresigning.ResultValue(r)
 		if err != nil {
 			return err
 		}
@@ -270,7 +271,7 @@ func (sc *MockClient) Sign(ctx context.Context, results []result.RunResult) ([]r
 
 	for _, r := range results {
 		if r.ResultType == result.TaskRunResultType {
-			resultValue, err := getResultValue(r)
+			resultValue, err := spiresigning.ResultValue(r)
 			if err != nil {
 				return nil, err
 			}
@@ -283,7 +284,7 @@ func (sc *MockClient) Sign(ctx context.Context, results []result.RunResult) ([]r
 		}
 	}
 	// get complete manifest of keys such that it can be verified
-	manifest := getManifest(results)
+	manifest := spiresigning.Manifest(results)
 	output = append(output, result.RunResult{
 		Key:        KeyResultManifest,
 		Value:      manifest,
