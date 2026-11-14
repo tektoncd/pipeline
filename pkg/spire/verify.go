@@ -28,11 +28,11 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
+	spiresigning "github.com/tektoncd/pipeline/internal/spire"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/result"
 	"go.uber.org/zap"
@@ -183,7 +183,7 @@ func getSVID(resultMap map[string]result.RunResult) (*x509.Certificate, error) {
 	if !ok {
 		return nil, errors.New("no SVID found")
 	}
-	svidValue, err := getResultValue(svid)
+	svidValue, err := spiresigning.ResultValue(svid)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +258,7 @@ func verifyManifest(results map[string]result.RunResult) error {
 	if !ok {
 		return errors.New("no manifest found in results")
 	}
-	manifestValue, err := getResultValue(manifest)
+	manifestValue, err := spiresigning.ResultValue(manifest)
 	if err != nil {
 		return err
 	}
@@ -289,11 +289,11 @@ func verifyResult(pub crypto.PublicKey, key string, results map[string]result.Ru
 	if !ok {
 		return fmt.Errorf("no signature found for %s", key)
 	}
-	sigValue, err := getResultValue(signature)
+	sigValue, err := spiresigning.ResultValue(signature)
 	if err != nil {
 		return err
 	}
-	resultValue, err := getResultValue(results[key])
+	resultValue, err := spiresigning.ResultValue(results[key])
 	if err != nil {
 		return err
 	}
@@ -323,32 +323,4 @@ func verifySignature(pub crypto.PublicKey, signature string, value string) error
 	default:
 		return fmt.Errorf("unsupported key type: %s", t)
 	}
-}
-
-func getResultValue(result result.RunResult) (string, error) {
-	aos := v1beta1.ArrayOrString{}
-	err := aos.UnmarshalJSON([]byte(result.Value))
-	valList := []string{}
-	if err != nil {
-		return "", fmt.Errorf("unmarshal error for key: %s", result.Key)
-	}
-	switch aos.Type {
-	case v1beta1.ParamTypeString:
-		return aos.StringVal, nil
-	case v1beta1.ParamTypeArray:
-		valList = append(valList, aos.ArrayVal...)
-		return strings.Join(valList, ","), nil
-	case v1beta1.ParamTypeObject:
-		keys := make([]string, 0, len(aos.ObjectVal))
-		for k := range aos.ObjectVal {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			valList = append(valList, k)
-			valList = append(valList, aos.ObjectVal[k])
-		}
-		return strings.Join(valList, ","), nil
-	}
-	return "", fmt.Errorf("invalid result type for key: %s", result.Key)
 }
