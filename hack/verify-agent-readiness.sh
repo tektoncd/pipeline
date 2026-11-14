@@ -8,11 +8,12 @@ max_agents_lines=60
 agents_file="AGENTS.md"
 skill_dir="skills/tekton-pipeline-discovery"
 skill_file="${skill_dir}/SKILL.md"
-expected_link_target="../../skills/tekton-pipeline-discovery"
+expected_link_target="../skills"
 skill_links=(
-  ".agents/skills/tekton-pipeline-discovery"
-  ".claude/skills/tekton-pipeline-discovery"
-  ".codex/skills/tekton-pipeline-discovery"
+  ".agents/skills"
+  ".claude/skills"
+  ".codex/skills"
+  ".cursor/skills"
 )
 
 if [[ ! -f "${agents_file}" ]]; then
