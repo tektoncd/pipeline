@@ -55,8 +55,10 @@ executed successfully or a failure occurs.
 
 The `Status` field tracks the current state of a `PipelineRun`, and can be used to monitor
 progress.
-This field contains the status of every `TaskRun`, as well as the full `PipelineSpec` used
-to instantiate this `PipelineRun`, for full auditability.
+This field references the child `TaskRuns` and includes a snapshot of the
+`PipelineSpec` used to instantiate this `PipelineRun`. Documentation-only
+`description` fields are omitted from the snapshot by default. See
+[Status spec descriptions](additional-configs.md#status-spec-descriptions).
 
 ## Configuring a `PipelineRun`
 
@@ -1525,7 +1527,7 @@ Your `PipelineRun`'s `status` field can contain the following fields:
   - `status` - Most relevant, `status.conditions`, which contains the latest observations of the `PipelineRun`'s state. [See here](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties) for information on typical status properties.
   - `startTime` - The time at which the `PipelineRun` began executing, in [RFC3339](https://tools.ietf.org/html/rfc3339) format.
   - `completionTime` - The time at which the `PipelineRun` finished executing, in [RFC3339](https://tools.ietf.org/html/rfc3339) format.
-  - [`pipelineSpec`](pipelines.md#configuring-a-pipeline) - The exact `PipelineSpec` used when starting the `PipelineRun`.
+  - [`pipelineSpec`](pipelines.md#configuring-a-pipeline) - A snapshot of the `PipelineSpec` used when starting the `PipelineRun`, with documentation-only `description` fields omitted by default. See [Status spec descriptions](additional-configs.md#status-spec-descriptions).
 - Optional:
   - [`pipelineResults`](pipelines.md#emitting-results-from-a-pipeline) - Results emitted by this `PipelineRun`.
   - `skippedTasks` - A list of `Task`s which were skipped when running this `PipelineRun` due to [when expressions](pipelines.md#guard-task-execution-using-when-expressions), including the when expressions applying to the skipped task.

@@ -941,6 +941,8 @@ spec:
 	}
 }
 
+// TestTaskParamDescription checks the default status snapshot behavior with
+// keep-status-spec-descriptions disabled; the input spec must retain descriptions.
 // @test:execution=parallel
 func TestTaskParamDescription(t *testing.T) {
 	inputYAML := fmt.Sprintf(`
@@ -978,8 +980,11 @@ spec:
 		t.Errorf("Expect vendor service to provide Param Description \"foo param\" but it has: %s", resolvedTR.Spec.TaskSpec.Params[0].Description)
 	}
 
-	if resolvedTR.Status.TaskSpec.Params[0].Description != "foo param" {
-		t.Errorf("Expect vendor service to provide Param Description \"foo param\" but it has: %s", resolvedTR.Spec.TaskSpec.Params[0].Description)
+	if resolvedTR.Status.TaskSpec == nil || len(resolvedTR.Status.TaskSpec.Params) != 1 {
+		t.Fatal("Expected status.taskSpec to contain the parameter specification")
+	}
+	if got := resolvedTR.Status.TaskSpec.Params[0].Description; got != "" {
+		t.Errorf("Expected parameter description to be omitted from status.taskSpec by default, got %q", got)
 	}
 }
 

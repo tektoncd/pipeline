@@ -2111,7 +2111,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunStatus(ref common.ReferenceCall
 					},
 					"pipelineSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "PipelineSpec contains the exact spec used to instantiate the run. See Pipeline.spec (API version: tekton.dev/v1beta1)",
+							Description: "PipelineSpec contains the Pipeline spec used to instantiate the run, without documentation-only descriptions by default. Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation. See Pipeline.spec (API version: tekton.dev/v1beta1)",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec"),
 						},
 					},
@@ -2253,7 +2253,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunStatusFields(ref common.Referen
 					},
 					"pipelineSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "PipelineSpec contains the exact spec used to instantiate the run. See Pipeline.spec (API version: tekton.dev/v1beta1)",
+							Description: "PipelineSpec contains the Pipeline spec used to instantiate the run, without documentation-only descriptions by default. Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation. See Pipeline.spec (API version: tekton.dev/v1beta1)",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec"),
 						},
 					},
@@ -5622,7 +5622,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunStatus(ref common.ReferenceCallback
 					},
 					"taskSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. See Task.spec (API version tekton.dev/v1beta1)",
+							Description: "TaskSpec contains the Task spec used to instantiate the run, without documentation-only descriptions by default. Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation. See Task.spec (API version tekton.dev/v1beta1)",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskSpec"),
 						},
 					},
@@ -5788,7 +5788,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunStatusFields(ref common.ReferenceCa
 					},
 					"taskSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. See Task.spec (API version tekton.dev/v1beta1)",
+							Description: "TaskSpec contains the Task spec used to instantiate the run, without documentation-only descriptions by default. Descriptions are retained when keep-status-spec-descriptions is true at snapshot creation. See Task.spec (API version tekton.dev/v1beta1)",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskSpec"),
 						},
 					},
