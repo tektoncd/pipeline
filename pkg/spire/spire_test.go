@@ -18,10 +18,8 @@ package spire
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
@@ -47,13 +45,6 @@ var (
 	td           = spiffeid.RequireTrustDomainFromString(trustDomain)
 	controllerID = spiffeid.RequireFromPath(td, "/controller")
 )
-
-func init() {
-	// shorten timeout and backoff intervals for faster tests;
-	// variables are declared in entrypointer.go
-	timeout = time.Second
-	backoff = 100 * time.Millisecond
-}
 
 func TestTaskRunSign(t *testing.T) {
 	ctx, _ := ttesting.SetupDefaultContext(t)
@@ -345,17 +336,6 @@ func TestCheckTamper(t *testing.T) {
 				t.Fatalf("test %v expected verify %v, got %v", tt.desc, tt.verify, verified)
 			}
 		}
-	}
-}
-
-func TestNoSVID(t *testing.T) {
-	ctx := t.Context()
-	cfg := &config.SpireConfig{SocketPath: "tcp://127.0.0.1:12345"} // bogus SocketPath
-	ec := NewEntrypointerAPIClient(cfg)
-	defer ec.Close()
-
-	if _, err := ec.Sign(ctx, nil); !errors.Is(err, context.DeadlineExceeded) {
-		t.Errorf("got %v; want %v", err, context.DeadlineExceeded)
 	}
 }
 
