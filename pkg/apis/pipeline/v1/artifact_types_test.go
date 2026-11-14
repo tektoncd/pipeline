@@ -190,3 +190,15 @@ func TestArtifactsMerge(t *testing.T) {
 		})
 	}
 }
+
+func TestArtifactsMergeSubject(t *testing.T) {
+	a := Artifacts{Outputs: []Artifact{{Name: "image"}}}
+	a.Merge(&Artifacts{Outputs: []Artifact{{Name: "image", Subject: true}}})
+	if len(a.Outputs) != 1 || !a.Outputs[0].Subject {
+		t.Errorf("expected Subject to be preserved by Merge, got %+v", a.Outputs)
+	}
+	a.Merge(&Artifacts{Outputs: []Artifact{{Name: "image"}}})
+	if !a.Outputs[0].Subject {
+		t.Errorf("Subject must not be reset to false by Merge, got %+v", a.Outputs)
+	}
+}
