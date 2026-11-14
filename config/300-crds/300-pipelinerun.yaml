@@ -3252,6 +3252,73 @@ spec:
               description: PipelineRunSpec defines the desired state of PipelineRun
               type: object
               properties:
+                artifacts:
+                  description: Artifacts supplies values for declared Pipeline artifact inputs.
+                  type: object
+                  properties:
+                    inputs:
+                      type: array
+                      items:
+                        description: |-
+                          Artifact represents an artifact within a system, potentially containing multiple values
+                          associated with it.
+                        type: object
+                        properties:
+                          buildOutput:
+                            description: |-
+                              Indicate if the artifact is a build output or a by-product.
+                              This is the legacy form of Subject, still populated from the legacy
+                              provenance format.
+                            type: boolean
+                          name:
+                            description: The artifact's identifying category name
+                            type: string
+                          subject:
+                            description: |-
+                              Subject marks this artifact as the primary build output (the SLSA
+                              attestation subject), as declared in the Task's artifact outputs.
+                            type: boolean
+                          values:
+                            description: A collection of values related to the artifact
+                            type: array
+                            items:
+                              description: ArtifactValue represents a specific value or data element within an Artifact.
+                              type: object
+                              properties:
+                                digest:
+                                  type: object
+                                  additionalProperties:
+                                    type: string
+                                inline:
+                                  description: |-
+                                    Inline holds small content embedded directly in the status (base64-encoded),
+                                    avoiding external storage overhead.
+                                  type: string
+                                ref:
+                                  description: |-
+                                    Ref is a backend-specific storage reference. Present only for content
+                                    artifacts stored externally; absent for reference artifacts and inline content.
+                                  type: object
+                                  required:
+                                    - backend
+                                    - digest
+                                    - location
+                                  properties:
+                                    backend:
+                                      type: string
+                                    contentType:
+                                      type: string
+                                    digest:
+                                      type: string
+                                    location:
+                                      type: string
+                                size:
+                                  description: content size in bytes, letting consumers and UIs know the artifact size before fetching.
+                                  type: integer
+                                  format: int64
+                                uri:
+                                  type: string
+                      x-kubernetes-list-type: atomic
                 managedBy:
                   description: |-
                     ManagedBy indicates which controller is responsible for reconciling
@@ -5340,6 +5407,136 @@ spec:
                   type: object
                   additionalProperties:
                     type: string
+                artifacts:
+                  description: Artifacts are the declared outputs produced by the Pipeline.
+                  type: object
+                  properties:
+                    inputs:
+                      type: array
+                      items:
+                        description: |-
+                          Artifact represents an artifact within a system, potentially containing multiple values
+                          associated with it.
+                        type: object
+                        properties:
+                          buildOutput:
+                            description: |-
+                              Indicate if the artifact is a build output or a by-product.
+                              This is the legacy form of Subject, still populated from the legacy
+                              provenance format.
+                            type: boolean
+                          name:
+                            description: The artifact's identifying category name
+                            type: string
+                          subject:
+                            description: |-
+                              Subject marks this artifact as the primary build output (the SLSA
+                              attestation subject), as declared in the Task's artifact outputs.
+                            type: boolean
+                          values:
+                            description: A collection of values related to the artifact
+                            type: array
+                            items:
+                              description: ArtifactValue represents a specific value or data element within an Artifact.
+                              type: object
+                              properties:
+                                digest:
+                                  type: object
+                                  additionalProperties:
+                                    type: string
+                                inline:
+                                  description: |-
+                                    Inline holds small content embedded directly in the status (base64-encoded),
+                                    avoiding external storage overhead.
+                                  type: string
+                                ref:
+                                  description: |-
+                                    Ref is a backend-specific storage reference. Present only for content
+                                    artifacts stored externally; absent for reference artifacts and inline content.
+                                  type: object
+                                  required:
+                                    - backend
+                                    - digest
+                                    - location
+                                  properties:
+                                    backend:
+                                      type: string
+                                    contentType:
+                                      type: string
+                                    digest:
+                                      type: string
+                                    location:
+                                      type: string
+                                size:
+                                  description: content size in bytes, letting consumers and UIs know the artifact size before fetching.
+                                  type: integer
+                                  format: int64
+                                uri:
+                                  type: string
+                      x-kubernetes-list-type: atomic
+                    outputs:
+                      type: array
+                      items:
+                        description: |-
+                          Artifact represents an artifact within a system, potentially containing multiple values
+                          associated with it.
+                        type: object
+                        properties:
+                          buildOutput:
+                            description: |-
+                              Indicate if the artifact is a build output or a by-product.
+                              This is the legacy form of Subject, still populated from the legacy
+                              provenance format.
+                            type: boolean
+                          name:
+                            description: The artifact's identifying category name
+                            type: string
+                          subject:
+                            description: |-
+                              Subject marks this artifact as the primary build output (the SLSA
+                              attestation subject), as declared in the Task's artifact outputs.
+                            type: boolean
+                          values:
+                            description: A collection of values related to the artifact
+                            type: array
+                            items:
+                              description: ArtifactValue represents a specific value or data element within an Artifact.
+                              type: object
+                              properties:
+                                digest:
+                                  type: object
+                                  additionalProperties:
+                                    type: string
+                                inline:
+                                  description: |-
+                                    Inline holds small content embedded directly in the status (base64-encoded),
+                                    avoiding external storage overhead.
+                                  type: string
+                                ref:
+                                  description: |-
+                                    Ref is a backend-specific storage reference. Present only for content
+                                    artifacts stored externally; absent for reference artifacts and inline content.
+                                  type: object
+                                  required:
+                                    - backend
+                                    - digest
+                                    - location
+                                  properties:
+                                    backend:
+                                      type: string
+                                    contentType:
+                                      type: string
+                                    digest:
+                                      type: string
+                                    location:
+                                      type: string
+                                size:
+                                  description: content size in bytes, letting consumers and UIs know the artifact size before fetching.
+                                  type: integer
+                                  format: int64
+                                uri:
+                                  type: string
+                      x-kubernetes-list-type: atomic
                 childReferences:
                   description: list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun.
                   type: array

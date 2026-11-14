@@ -94,6 +94,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
 	errs = errs.Also(validateTaskResultsVariables(ctx, ts.Steps, ts.Results))
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
+	errs = errs.Also(ValidateArtifactDeclarations(ctx, ts.Artifacts).ViaField("artifacts"))
 	return errs
 }
 
@@ -230,6 +231,9 @@ func (l StepList) Validate(ctx context.Context) (errs *apis.FieldError) {
 		if s.Results != nil {
 			errs = errs.Also(ValidateStepResultsVariables(ctx, s.Results, s.Script).ViaIndex(idx))
 			errs = errs.Also(ValidateStepResults(ctx, s.Results).ViaIndex(idx).ViaField("results"))
+		}
+		if s.Artifacts != nil {
+			errs = errs.Also(ValidateStepArtifacts(ctx, s.Artifacts).ViaIndex(idx).ViaField("artifacts"))
 		}
 		if len(s.When) > 0 {
 			errs = errs.Also(s.When.validate(ctx).ViaIndex(idx))
