@@ -24,3 +24,10 @@ metadata:
 data:
   # The maximum amount of time the http resolver will wait for a response from the server.
   fetch-timeout: "1m"
+  # Optional: Backoff configuration for retrying failed http resolution requests.
+  # These settings control the exponential backoff used when a request fails.
+  # backoff-duration: "2s"
+  # backoff-factor: "2.0"
+  # backoff-jitter: "0.1"
+  # backoff-steps: "2"  # total number of fetch attempts (must be >= 1)
+  # backoff-cap: "10s"

@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tektoncd/pipeline/internal/resolution/retry"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	common "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -276,38 +277,19 @@ func FetchHttpResource(ctx context.Context, params map[string]string, kubeclient
 		return nil, fmt.Errorf("missing required params: %s", UrlParam)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("constructing request: %w", err)
-	}
-
 	// NOTE(chmouel): We already made sure that username and secret was specified by the user
+	var authHeader string
 	if secret, ok := params[HttpBasicAuthSecret]; ok && secret != "" {
-		if encodedSecret, err := getBasicAuthSecret(ctx, params, kubeclient, logger); err != nil {
+		if authHeader, err = getBasicAuthSecret(ctx, params, kubeclient, logger); err != nil {
 			return nil, err
-		} else {
-			req.Header.Set("Authorization", encodedSecret)
 		}
 	}
 
-	// #nosec G704 -- URL cannot be constant in this case.
-	resp, err := httpClient.Do(req)
+	body, err := retry.Resolve(ctx, func() ([]byte, error) {
+		return fetchURL(ctx, httpClient, targetURL, authHeader)
+	})
 	if err != nil {
-		return nil, fmt.Errorf("error fetching URL: %w", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("requested URL '%s' is not found", targetURL)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-	lr := &io.LimitedReader{R: resp.Body, N: maxResponseBodySize + 1}
-	body, err := io.ReadAll(lr)
-	if err != nil {
-		return nil, fmt.Errorf("error reading response body: %w", err)
-	}
-	if lr.N <= 0 {
-		return nil, fmt.Errorf("response body exceeds maximum allowed size of %d bytes", int64(maxResponseBodySize))
+		return nil, err
 	}
 
 	digest, ok := params[digestParam]
@@ -322,6 +304,39 @@ func FetchHttpResource(ctx context.Context, params map[string]string, kubeclient
 		Content: body,
 		URL:     targetURL,
 	}, nil
+}
+
+// fetchURL sends a single GET request to targetURL and returns the response
+// body. A non-empty authHeader is sent as the Authorization header.
+func fetchURL(ctx context.Context, httpClient *http.Client, targetURL, authHeader string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("constructing request: %w", err)
+	}
+	if authHeader != "" {
+		req.Header.Set("Authorization", authHeader)
+	}
+
+	// #nosec G704 -- URL cannot be constant in this case.
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching URL: %w", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("requested URL '%s' is not found", targetURL)
+	}
+	lr := &io.LimitedReader{R: resp.Body, N: maxResponseBodySize + 1}
+	body, err := io.ReadAll(lr)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+	if lr.N <= 0 {
+		return nil, fmt.Errorf("response body exceeds maximum allowed size of %d bytes", int64(maxResponseBodySize))
+	}
+	return body, nil
 }
 
 func getBasicAuthSecret(ctx context.Context, params map[string]string, kubeclient kubernetes.Interface, logger *zap.SugaredLogger) (string, error) {
