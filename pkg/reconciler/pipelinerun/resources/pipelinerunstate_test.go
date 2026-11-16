@@ -1109,6 +1109,82 @@ func TestDAGExecutionQueue(t *testing.T) {
 	}
 }
 
+// TestDAGExecutionQueueStoppedWhileParentRuns covers a PipelineRun that is stopped, gracefully
+// or because a task failed, while a task with dependents is still running. The dependents are
+// skipped before their parent is done, which must not fail the reconcile.
+func TestDAGExecutionQueueStoppedWhileParentRuns(t *testing.T) {
+	runningParent := ResolvedPipelineTask{
+		PipelineTask: &v1.PipelineTask{
+			Name:    "parent",
+			TaskRef: &v1.TaskRef{Name: "task"},
+		},
+		TaskRunNames: []string{"parent"},
+		TaskRuns:     []*v1.TaskRun{newTaskRun(trs[0])},
+		ResolvedTask: &resources.ResolvedTask{
+			TaskSpec: &task.Spec,
+		},
+	}
+	pendingChild := ResolvedPipelineTask{
+		PipelineTask: &v1.PipelineTask{
+			Name:     "child",
+			TaskRef:  &v1.TaskRef{Name: "task"},
+			RunAfter: []string{"parent"},
+		},
+		TaskRunNames: []string{"child"},
+		ResolvedTask: &resources.ResolvedTask{
+			TaskSpec: &task.Spec,
+		},
+	}
+	failedSibling := ResolvedPipelineTask{
+		PipelineTask: &v1.PipelineTask{
+			Name:    "sibling",
+			TaskRef: &v1.TaskRef{Name: "task"},
+		},
+		TaskRunNames: []string{"sibling"},
+		TaskRuns:     []*v1.TaskRun{makeFailed(trs[0])},
+		ResolvedTask: &resources.ResolvedTask{
+			TaskSpec: &task.Spec,
+		},
+	}
+
+	tcs := []struct {
+		name       string
+		state      PipelineRunState
+		specStatus v1.PipelineRunSpecStatus
+	}{{
+		name:       "gracefully stopped",
+		specStatus: v1.PipelineRunSpecStatusStoppedRunFinally,
+		state:      PipelineRunState{&runningParent, &pendingChild},
+	}, {
+		name:  "stopping after a failed task",
+		state: PipelineRunState{&runningParent, &pendingChild, &failedSibling},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			d, err := dagFromState(tc.state)
+			if err != nil {
+				t.Fatalf("Unexpected error while building DAG for state %v: %v", tc.state, err)
+			}
+			facts := PipelineRunFacts{
+				State:           tc.state,
+				SpecStatus:      tc.specStatus,
+				TasksGraph:      d,
+				FinalTasksGraph: &dag.Graph{},
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
+			}
+			queue, err := facts.DAGExecutionQueue()
+			if err != nil {
+				t.Errorf("unexpected error getting DAG execution queue: %s", err)
+			}
+			if len(queue) != 0 {
+				t.Errorf("expected no tasks to be scheduled, got %v", queue.ToMap())
+			}
+		})
+	}
+}
+
 // TestDAGExecutionQueueSequentialTasks tests the DAGExecutionQueue function for sequential TaskRuns
 // in different states for a running or stopping PipelineRun.
 func TestDAGExecutionQueueSequentialTasks(t *testing.T) {

@@ -458,9 +458,12 @@ func (facts *PipelineRunFacts) IsGracefullyStopped() bool {
 // DAGExecutionQueue returns a list of DAG tasks which needs to be scheduled next
 func (facts *PipelineRunFacts) DAGExecutionQueue() (PipelineRunState, error) {
 	var tasks PipelineRunState
-	// when pipelinerun is cancelled or gracefully cancelled, do not schedule any new tasks,
-	// and only wait for all running tasks to complete (without exhausting retries).
-	if facts.IsCancelled() || facts.IsGracefullyCancelled() {
+	// when pipelinerun is cancelled, gracefully cancelled, stopping or gracefully stopped, do not
+	// schedule any new tasks, and only wait for all running tasks to complete (without exhausting
+	// retries). The candidate tasks are not computed either: in these states every unscheduled task
+	// is skipped right away, even while its parents are still running, and the DAG rejects such a
+	// list of done tasks, which would fail every reconcile until the running tasks finish.
+	if facts.IsCancelled() || facts.IsGracefullyCancelled() || facts.IsStopping() || facts.IsGracefullyStopped() {
 		return tasks, nil
 	}
 	// candidateTasks is initialized to DAG root nodes to start pipeline execution
@@ -469,10 +472,7 @@ func (facts *PipelineRunFacts) DAGExecutionQueue() (PipelineRunState, error) {
 	if err != nil {
 		return tasks, err
 	}
-	if !facts.IsStopping() && !facts.IsGracefullyStopped() {
-		tasks = facts.State.getNextTasks(candidateTasks)
-	}
-	return tasks, nil
+	return facts.State.getNextTasks(candidateTasks), nil
 }
 
 // GetFinalTaskNames returns a list of all final task names
