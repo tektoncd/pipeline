@@ -58,7 +58,9 @@ func (p *Pipeline) SupportedVerbs() []admissionregistrationv1.OperationType {
 // that any references resources exist, that is done at run time.
 func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(p.GetObjectMeta()).ViaField("metadata")
-	ctx = resolveArtifactStorageForValidation(ctx, p.Namespace, p.Annotations)
+	var resolveErr *apis.FieldError
+	ctx, resolveErr = resolveArtifactStorageForValidation(ctx, p.Namespace, p.Annotations)
+	errs = errs.Also(resolveErr)
 	errs = errs.Also(ValidateArtifactStorageAnnotations(p.Annotations))
 	errs = errs.Also(p.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 	// When a Pipeline is created directly, instead of declared inline in a PipelineRun,

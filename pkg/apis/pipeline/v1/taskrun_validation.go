@@ -60,7 +60,9 @@ func (tr *TaskRun) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
-	ctx = resolveArtifactStorageForValidation(ctx, tr.Namespace, tr.Annotations)
+	var resolveErr *apis.FieldError
+	ctx, resolveErr = resolveArtifactStorageForValidation(ctx, tr.Namespace, tr.Annotations)
+	errs = errs.Also(resolveErr)
 	errs = errs.Also(ValidateArtifactStorageAnnotations(tr.Annotations))
 
 	return errs.Also(tr.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))

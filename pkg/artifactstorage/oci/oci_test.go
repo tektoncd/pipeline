@@ -17,9 +17,11 @@ limitations under the License.
 package oci
 
 import (
-	"fmt"
+	"errors"
+	"net/http"
 	"testing"
 
+	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/tektoncd/pipeline/pkg/artifactstorage"
 )
 
@@ -30,18 +32,10 @@ func TestOCIProvider_Name(t *testing.T) {
 	}
 }
 
-func TestOCIProvider_ContentAddressed(t *testing.T) {
-	p := NewOCIProvider("registry.example.com/artifacts")
-	if !p.ContentAddressed() {
-		t.Error("ContentAddressed() = false, want true")
-	}
-}
-
 func TestOCIProvider_ImplementsInterfaces(t *testing.T) {
 	p := NewOCIProvider("registry.example.com/artifacts")
 
 	var _ artifactstorage.Provider = p
-	var _ artifactstorage.ContentAddressedProvider = p
 }
 
 func TestNewOCIProvider_WithOptions(t *testing.T) {
@@ -58,18 +52,56 @@ func TestNewOCIProvider_WithOptions(t *testing.T) {
 
 func TestIsNotFound(t *testing.T) {
 	tests := []struct {
-		msg  string
+		name string
+		err  error
 		want bool
 	}{
-		{"NOT_FOUND: manifest not found", true},
-		{"MANIFEST_UNKNOWN", true},
-		{"unexpected status: 404 Not Found", true},
-		{"connection refused", false},
+		{
+			name: "transport error with 404 status code",
+			err:  &transport.Error{StatusCode: http.StatusNotFound},
+			want: true,
+		},
+		{
+			name: "transport error with MANIFEST_UNKNOWN diagnostic",
+			err: &transport.Error{
+				StatusCode: http.StatusBadRequest,
+				Errors:     []transport.Diagnostic{{Code: transport.ManifestUnknownErrorCode}},
+			},
+			want: true,
+		},
+		{
+			name: "transport error with NAME_UNKNOWN diagnostic",
+			err: &transport.Error{
+				StatusCode: http.StatusBadRequest,
+				Errors:     []transport.Diagnostic{{Code: transport.NameUnknownErrorCode}},
+			},
+			want: true,
+		},
+		{
+			name: "transport error with 403 is not treated as not-found",
+			err:  &transport.Error{StatusCode: http.StatusForbidden},
+			want: false,
+		},
+		{
+			name: "repo name containing 404 is not treated as not-found",
+			err: &transport.Error{
+				StatusCode: http.StatusForbidden,
+				Errors:     []transport.Diagnostic{{Code: transport.DeniedErrorCode, Message: "artifacts404: access denied"}},
+			},
+			want: false,
+		},
+		{
+			name: "non-transport error is not treated as not-found",
+			err:  errors.New("connection refused"),
+			want: false,
+		},
 	}
 	for _, tt := range tests {
-		got := isNotFound(fmt.Errorf("%s", tt.msg))
-		if got != tt.want {
-			t.Errorf("isNotFound(%q) = %v, want %v", tt.msg, got, tt.want)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			got := isNotFound(tt.err)
+			if got != tt.want {
+				t.Errorf("isNotFound() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

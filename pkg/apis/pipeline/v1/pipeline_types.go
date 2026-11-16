@@ -37,6 +37,8 @@ const (
 	PipelineTasksAggregateStatus = "tasks.status"
 	// PipelineTasks is a value representing a task is a member of "tasks" section of the pipeline
 	PipelineTasks = "tasks"
+	// PipelineTaskOutputs is the name used in artifact binding references (e.g. tasks.<name>.outputs.<artifact>).
+	PipelineTaskOutputs = "outputs"
 	// PipelineFinallyTasks is a value representing a task is a member of "finally" section of the pipeline
 	PipelineFinallyTasks = "finally"
 	// PipelineTaskStopAndFail indicates to stop and fail the PipelineRun if the PipelineTask fails

@@ -759,6 +759,7 @@ func TestResolveArtifactStorageForValidation(t *testing.T) {
 		useKube     bool
 		wantRepo    string
 		wantEnabled bool
+		wantErr     bool
 	}{
 		{
 			name:        "no kubeclient no annotations returns cluster config",
@@ -858,6 +859,16 @@ func TestResolveArtifactStorageForValidation(t *testing.T) {
 			wantRepo:    "cluster-repo",
 			wantEnabled: true,
 		},
+		{
+			name:      "namespace configmap with invalid enabled value returns error",
+			storage:   clusterConfig,
+			namespace: "test-ns",
+			nsCMData: map[string]string{
+				"enabled": "not-a-bool",
+			},
+			useKube: true,
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -887,7 +898,17 @@ func TestResolveArtifactStorageForValidation(t *testing.T) {
 				}
 			}
 
-			resultCtx := resolveArtifactStorageForValidation(ctx, tt.namespace, tt.annotations)
+			resultCtx, resolveErr := resolveArtifactStorageForValidation(ctx, tt.namespace, tt.annotations)
+			if tt.wantErr {
+				if resolveErr == nil {
+					t.Fatal("expected error but got nil")
+				}
+				return
+			}
+			if resolveErr != nil {
+				t.Fatalf("unexpected error: %v", resolveErr)
+			}
+
 			resolved := config.FromContextOrDefaults(resultCtx).ArtifactStorage
 
 			if tt.storage == nil {
