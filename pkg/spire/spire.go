@@ -31,6 +31,7 @@ import (
 	spiresigning "github.com/tektoncd/pipeline/internal/spire"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/result"
+	spireclient "github.com/tektoncd/pipeline/pkg/spire/client"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -71,8 +72,4 @@ type ControllerAPIClient interface {
 }
 
 // EntrypointerAPIClient interface maps to the spire entrypointer API to interact with spire
-type EntrypointerAPIClient interface {
-	Close() error
-	// Sign returns the signature material to be put in the RunResult to append to the output results
-	Sign(ctx context.Context, results []result.RunResult) ([]result.RunResult, error)
-}
+type EntrypointerAPIClient = spireclient.EntrypointerAPIClient

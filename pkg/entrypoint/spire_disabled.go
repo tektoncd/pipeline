@@ -25,6 +25,7 @@ import (
 )
 
 // EntrypointerAPIClient defines the interface for SPIRE operations
+// Disabled builds retain the Sign-only contract for compatibility.
 type EntrypointerAPIClient interface {
 	Sign(ctx context.Context, results []result.RunResult) ([]result.RunResult, error)
 }
