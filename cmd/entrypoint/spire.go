@@ -23,6 +23,7 @@ import (
 	"log"
 
 	"github.com/tektoncd/pipeline/internal/spire"
+	spireclient "github.com/tektoncd/pipeline/pkg/spire/client"
 	"github.com/tektoncd/pipeline/pkg/spire/config"
 )
 
@@ -31,7 +32,7 @@ var (
 	socketPath  = flag.String("spire_socket_path", "unix:///spiffe-workload-api/spire-agent.sock", "Experimental: The SPIRE agent socket for SPIFFE workload API.")
 )
 
-func initializeSpireAPI() spire.EntrypointerAPIClient {
+func initializeSpireAPI() spireclient.EntrypointerAPIClient {
 	if enableSpire != nil && *enableSpire && socketPath != nil && *socketPath != "" {
 		log.Println("SPIRE is enabled in this build, enableSpire is supported")
 		spireConfig := config.SpireConfig{

@@ -19,26 +19,18 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"flag"
 	"log"
 	"os"
 
-	"github.com/tektoncd/pipeline/pkg/result"
+	spireclient "github.com/tektoncd/pipeline/pkg/spire/client"
 )
 
 var (
 	enableSpire = flag.Bool("enable_spire", false, "If specified by configmap, this enables spire signing and verification")
 )
 
-// EntrypointerAPIClient interface maps to the spire entrypointer API to interact with spire
-type EntrypointerAPIClient interface {
-	Close() error
-	// Sign returns the signature material to be put in the RunResult to append to the output results
-	Sign(ctx context.Context, results []result.RunResult) ([]result.RunResult, error)
-}
-
-func initializeSpireAPI() EntrypointerAPIClient {
+func initializeSpireAPI() spireclient.EntrypointerAPIClient {
 	if enableSpire != nil && *enableSpire {
 		log.Fatal("Error: SPIRE is disabled in this build, but enableSpire was set to true. Please recompile with SPIRE support.")
 		os.Exit(1)

@@ -25,18 +25,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
-	"github.com/tektoncd/pipeline/pkg/result"
+	spireclient "github.com/tektoncd/pipeline/pkg/spire/client"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
 )
 
-// EntrypointerAPIClient signs results using the workload identity.
-type EntrypointerAPIClient interface {
-	Close() error
-	Sign(ctx context.Context, results []result.RunResult) ([]result.RunResult, error)
-}
-
 // NewEntrypointerAPIClient creates the EntrypointerAPIClient
-func NewEntrypointerAPIClient(c *spireconfig.SpireConfig) EntrypointerAPIClient {
+func NewEntrypointerAPIClient(c *spireconfig.SpireConfig) spireclient.EntrypointerAPIClient {
 	return &spireEntrypointerAPIClient{
 		config: c,
 	}
