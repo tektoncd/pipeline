@@ -130,17 +130,27 @@ func withPerNamespaceConfig(ctx context.Context, perNamespaceConfig *nsconfig.Pe
 	_ = req.Body.Close()
 	req.Body = io.NopCloser(bytes.NewReader(body))
 	// Admission handles malformed requests; only config merge failures propagate.
-	if err == nil {
-		review := &admissionv1.AdmissionReview{}
-		if json.Unmarshal(body, review) == nil && review.Request != nil {
-			namespace := review.Request.Namespace
-			kind := review.Request.Kind.Kind
-			if namespace != "" && (kind == taskRunKind || kind == pipelineRunKind) {
-				return perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, namespace)
-			}
-		}
+	if err != nil {
+		logging.FromContext(ctx).Debugf("Skipping namespace config: reading admission request body: %v", err)
+		return ctx, nil
 	}
-	return ctx, nil
+
+	review := &admissionv1.AdmissionReview{}
+	if err := json.Unmarshal(body, review); err != nil {
+		logging.FromContext(ctx).Debugf("Skipping namespace config: decoding admission review: %v", err)
+		return ctx, nil
+	}
+	if review.Request == nil {
+		return ctx, nil
+	}
+
+	namespace := review.Request.Namespace
+	kind := review.Request.Kind.Kind
+	if namespace == "" || (kind != taskRunKind && kind != pipelineRunKind) {
+		return ctx, nil
+	}
+
+	return perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, namespace)
 }
 
 func newValidationAdmissionController(name string) func(context.Context, configmap.Watcher) *controller.Impl {

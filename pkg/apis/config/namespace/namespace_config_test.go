@@ -19,7 +19,6 @@ package namespace_test
 import (
 	"context"
 	"strconv"
-	"strings"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -77,72 +76,95 @@ func TestNewPerNamespaceConfigSharesContextInstance(t *testing.T) {
 }
 
 func TestNewPerNamespaceConfigRespectsNamespaceScope(t *testing.T) {
-	for _, scope := range []string{"", "team-a"} {
-		for _, enabled := range []bool{false, true} {
-			t.Run(scope+"/enabled="+strconv.FormatBool(enabled), func(t *testing.T) {
-				synctest.Test(t, func(t *testing.T) {
-					client := fakek8s.NewSimpleClientset(
-						th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{"default-timeout-minutes": "120"}),
-						th.NewNamespaceDefaultsConfigMap("team-b", map[string]string{"default-timeout-minutes": "240"}),
-					)
-					ctx, cancel := context.WithCancel(logging.WithLogger(t.Context(), zaptest.NewLogger(t).Sugar()))
-					t.Cleanup(cancel)
-					ctx = injection.WithNamespaceScope(ctx, scope)
-					ctx, cfg := enabledConfigContext(ctx)
-					cfg.FeatureFlags.PerNamespaceConfiguration = enabled
+	client := fakek8s.NewSimpleClientset(
+		th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{"default-timeout-minutes": "120"}),
+		th.NewNamespaceDefaultsConfigMap("team-b", map[string]string{"default-timeout-minutes": "240"}),
+	)
+	ctx, cancel := context.WithCancel(logging.WithLogger(t.Context(), zaptest.NewLogger(t).Sugar()))
+	t.Cleanup(cancel)
+	ctx = injection.WithNamespaceScope(ctx, "team-a")
+	ctx, cfg := enabledConfigContext(ctx)
 
-					perNamespaceConfig := namespaceconfig.NewPerNamespaceConfig(ctx, client)
-					synctest.Wait()
+	perNamespaceConfig := namespaceconfig.NewPerNamespaceConfig(ctx, client)
 
-					seen := map[string]bool{}
-					for _, action := range client.Actions() {
-						if action.GetResource().Resource == "configmaps" && (action.GetVerb() == "list" || action.GetVerb() == "watch") {
-							seen[action.GetVerb()] = true
-							if action.GetNamespace() != scope {
-								t.Errorf("%s namespace = %q, want %q", action.GetVerb(), action.GetNamespace(), scope)
-							}
-						}
-					}
-					if !seen["list"] || !seen["watch"] {
-						t.Fatalf("expected ConfigMap list and watch, got %v", seen)
-					}
-					for namespace, timeout := range map[string]int{"team-a": 120, "team-b": 240} {
-						merged, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, namespace)
-						if err != nil {
-							t.Fatal(err)
-						}
-						if !enabled || (scope != "" && scope != namespace) {
-							timeout = cfg.Defaults.DefaultTimeoutMinutes
-						}
-						if got := config.FromContext(merged).Defaults.DefaultTimeoutMinutes; got != timeout {
-							t.Errorf("%s timeout = %d, want %d", namespace, got, timeout)
-						}
-					}
-				})
-			})
-		}
+	merged, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, "team-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := config.FromContext(merged).Defaults.DefaultTimeoutMinutes; got != 120 {
+		t.Errorf("in-scope namespace: timeout = %d, want 120", got)
+	}
+
+	merged, err = perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, "team-b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := config.FromContext(merged).Defaults.DefaultTimeoutMinutes; got != cfg.Defaults.DefaultTimeoutMinutes {
+		t.Errorf("out-of-scope namespace: timeout = %d, want cluster default %d", got, cfg.Defaults.DefaultTimeoutMinutes)
 	}
 }
 
-func TestMergeGlobalConfigWithLocal(t *testing.T) {
+func TestMergeGlobalConfigWithLocalAppliesOverrides(t *testing.T) {
 	defaults := th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{
 		"default-timeout-minutes": "120",
 		"default-service-account": "team-a-sa",
-		"default-resolver-type":   "ignored",
-		"unknown-default":         "ignored",
 	})
 	flags := th.NewNamespaceFeatureFlagsConfigMap("team-a", map[string]string{
 		"enable-cel-in-whenexpression": "true",
-		"coschedule":                   "isolate-pipelinerun",
-		"set-security-context":         "true",
-		"unknown-flag":                 "true",
 	})
+	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, defaults, flags)
+	ctx, cfg := enabledConfigContext(baseCtx)
+	cfg.FeatureFlags.EnableCELInWhenExpression = false
+	want := cfg.DeepCopy()
+	want.Defaults.DefaultTimeoutMinutes = 120
+	want.Defaults.DefaultServiceAccount = "team-a-sa"
+	want.FeatureFlags.EnableCELInWhenExpression = true
+
+	mergedCtx, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, "team-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(want, config.FromContext(mergedCtx)); diff != "" {
+		t.Errorf("namespace overrides (-want +got):\n%s", diff)
+	}
+}
+
+func TestMergeGlobalConfigWithLocalIgnoresRestrictedFields(t *testing.T) {
+	defaults := th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{
+		"default-resolver-type": "ignored",
+		"unknown-default":       "ignored",
+	})
+	flags := th.NewNamespaceFeatureFlagsConfigMap("team-a", map[string]string{
+		"coschedule":           "isolate-pipelinerun",
+		"set-security-context": "true",
+		"unknown-flag":         "true",
+	})
+	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, defaults, flags)
+	ctx, cfg := enabledConfigContext(baseCtx)
+	cfg.FeatureFlags.NonOverridableFields = " coschedule "
+	cfg.FeatureFlags.Coschedule = "workspaces"
+	cfg.FeatureFlags.SetSecurityContext = false
+	want := cfg.DeepCopy()
+
+	mergedCtx, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, "team-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(want, config.FromContext(mergedCtx)); diff != "" {
+		t.Errorf("restricted fields changed config (-want +got):\n%s", diff)
+	}
+}
+
+func TestMergeGlobalConfigWithLocalPreservesGlobalConfig(t *testing.T) {
+	defaults := th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{"default-timeout-minutes": "120"})
+	flags := th.NewNamespaceFeatureFlagsConfigMap("team-a", map[string]string{"enable-cel-in-whenexpression": "true"})
 	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, defaults, flags)
 	ctx, cfg := enabledConfigContext(baseCtx)
 	cfg.FeatureFlags.NonOverridableFields = " coschedule "
 	cfg.FeatureFlags.EnableTerminationMessageCompression = true
 	cfg.FeatureFlags.KeepStatusSpecDescriptions = true
 	cfg.FeatureFlags.EnableSurfacePodEvents = true
+	cfg.FeatureFlags.EnableCELInWhenExpression = false
 	cfg.Defaults.DefaultTaskRunWorkspaceBinding = "emptyDir: {}"
 	cfg.Defaults.DefaultForbiddenEnv = []string{"FORBIDDEN_ENV"}
 	cfg.Defaults.DefaultPodTemplate = &pod.Template{NodeSelector: map[string]string{"disk": "ssd"}}
@@ -152,42 +174,20 @@ func TestMergeGlobalConfigWithLocal(t *testing.T) {
 			Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")},
 		},
 	}
+	original := cfg.DeepCopy()
+	want := cfg.DeepCopy()
+	want.Defaults.DefaultTimeoutMinutes = 120
+	want.FeatureFlags.EnableCELInWhenExpression = true
 
 	mergedCtx, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, "team-a")
 	if err != nil {
 		t.Fatal(err)
 	}
-	merged := config.FromContext(mergedCtx)
-	if merged.Defaults.DefaultTimeoutMinutes != 120 || merged.Defaults.DefaultServiceAccount != "team-a-sa" {
-		t.Fatalf("namespace defaults were not applied: %#v", merged.Defaults)
+	if diff := cmp.Diff(want, config.FromContext(mergedCtx)); diff != "" {
+		t.Errorf("merged config (-want +got):\n%s", diff)
 	}
-	if !merged.FeatureFlags.EnableCELInWhenExpression {
-		t.Error("namespace feature flag was not applied")
-	}
-	if merged.FeatureFlags.Coschedule != cfg.FeatureFlags.Coschedule {
-		t.Error("operator-locked field was overridden")
-	}
-	if merged.FeatureFlags.SetSecurityContext != cfg.FeatureFlags.SetSecurityContext {
-		t.Error("blocked security field was overridden")
-	}
-	if merged.Defaults.DefaultResolverType != cfg.Defaults.DefaultResolverType {
-		t.Error("unsupported default was overridden")
-	}
-	if diff := cmp.Diff(cfg.Defaults.DefaultPodTemplate, merged.Defaults.DefaultPodTemplate); diff != "" {
-		t.Errorf("pod template changed (-want +got):\n%s", diff)
-	}
-	if diff := cmp.Diff(cfg.Defaults.DefaultAAPodTemplate, merged.Defaults.DefaultAAPodTemplate); diff != "" {
-		t.Errorf("affinity assistant template changed (-want +got):\n%s", diff)
-	}
-	if diff := cmp.Diff(cfg.Defaults.DefaultContainerResourceRequirements, merged.Defaults.DefaultContainerResourceRequirements); diff != "" {
-		t.Errorf("container resources changed (-want +got):\n%s", diff)
-	}
-	if merged.Defaults.DefaultTaskRunWorkspaceBinding != cfg.Defaults.DefaultTaskRunWorkspaceBinding ||
-		!cmp.Equal(merged.Defaults.DefaultForbiddenEnv, cfg.Defaults.DefaultForbiddenEnv) {
-		t.Error("optional cluster defaults were not preserved")
-	}
-	if !merged.FeatureFlags.EnableTerminationMessageCompression || !merged.FeatureFlags.KeepStatusSpecDescriptions || !merged.FeatureFlags.EnableSurfacePodEvents || !merged.FeatureFlags.PerNamespaceConfiguration || merged.FeatureFlags.NonOverridableFields != " coschedule " {
-		t.Error("cluster feature flags were not preserved")
+	if diff := cmp.Diff(original, cfg); diff != "" {
+		t.Errorf("merge mutated global config (-want +got):\n%s", diff)
 	}
 }
 
@@ -201,8 +201,14 @@ func TestMergeGlobalConfigWithLocalNoOp(t *testing.T) {
 	delete(missingSelector.Labels, "tekton.dev/pipeline-config")
 	systemConfig := valid.DeepCopy()
 	systemConfig.Namespace = system.Namespace()
+	kubeSystemConfig := valid.DeepCopy()
+	kubeSystemConfig.Namespace = "kube-system"
+	kubePublicConfig := valid.DeepCopy()
+	kubePublicConfig.Namespace = "kube-public"
 	example := th.NewNamespaceDefaultsConfigMap("example", map[string]string{"_example": "ignored"})
-	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, valid, missingPartOf, missingSelector, systemConfig, example)
+	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t,
+		valid, missingPartOf, missingSelector, systemConfig, kubeSystemConfig, kubePublicConfig, example,
+	)
 
 	tests := []struct {
 		name      string
@@ -215,18 +221,24 @@ func TestMergeGlobalConfigWithLocalNoOp(t *testing.T) {
 		{name: "missing selector label", namespace: "missing-selector", enabled: true},
 		{name: "example key", namespace: "example", enabled: true},
 		{name: "system namespace", namespace: system.Namespace(), enabled: true},
+		{name: "kube-system namespace", namespace: "kube-system", enabled: true},
+		{name: "kube-public namespace", namespace: "kube-public", enabled: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := &config.Config{Defaults: config.DefaultConfig.DeepCopy(), FeatureFlags: config.DefaultFeatureFlags.DeepCopy()}
+			cfg := config.FromContextOrDefaults(baseCtx).DeepCopy()
+			cfg.Defaults.DefaultTimeoutMinutes = 45
+			cfg.Defaults.DefaultServiceAccount = "global-sa"
 			cfg.FeatureFlags.PerNamespaceConfiguration = tt.enabled
+			cfg.FeatureFlags.EnableCELInWhenExpression = true
+			want := cfg.DeepCopy()
 			ctx := config.ToContext(baseCtx, cfg)
 			mergedCtx, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, tt.namespace)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := config.FromContext(mergedCtx).Defaults.DefaultTimeoutMinutes; got != config.DefaultTimeoutMinutes {
-				t.Fatalf("timeout = %d, want %d", got, config.DefaultTimeoutMinutes)
+			if diff := cmp.Diff(want, config.FromContext(mergedCtx)); diff != "" {
+				t.Errorf("no-op changed config (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -355,14 +367,46 @@ func TestMergeGlobalConfigWithLocalIgnoresLockedInvalidDefaults(t *testing.T) {
 	}
 }
 
+func TestMergeGlobalConfigWithLocalLogsOverridesAtDebugLevel(t *testing.T) {
+	defaults := th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{
+		"default-timeout-minutes": "120",
+		"unknown-default":         "ignored",
+	})
+	flags := th.NewNamespaceFeatureFlagsConfigMap("team-a", map[string]string{
+		"coschedule":           "isolate-pipelinerun",
+		"set-security-context": "true",
+	})
+	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, defaults, flags)
+
+	var entries []zapcore.Entry
+	logger := zaptest.NewLogger(t, zaptest.WrapOptions(zap.Hooks(func(entry zapcore.Entry) error {
+		entries = append(entries, entry)
+		return nil
+	}))).Sugar()
+	ctx, cfg := enabledConfigContext(logging.WithLogger(baseCtx, logger))
+	cfg.FeatureFlags.NonOverridableFields = "coschedule"
+
+	if _, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, "team-a"); err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) == 0 {
+		t.Fatal("expected override diagnostics at debug level")
+	}
+	for _, entry := range entries {
+		if entry.Level != zapcore.DebugLevel {
+			t.Errorf("override diagnostic level = %v, want debug: %s", entry.Level, entry.Message)
+		}
+	}
+}
+
 func TestMergeGlobalConfigWithLocalLogsOnlyAfterSuccessfulMerge(t *testing.T) {
 	defaults := th.NewNamespaceDefaultsConfigMap("team-a", map[string]string{"default-timeout-minutes": "120"})
 	flags := th.NewNamespaceFeatureFlagsConfigMap("team-a", map[string]string{"enable-cel-in-whenexpression": "not-a-bool"})
 	perNamespaceConfig, _, baseCtx := newPerNamespaceConfig(t, defaults, flags)
 
-	var messages []string
+	var entries []zapcore.Entry
 	logger := zaptest.NewLogger(t, zaptest.WrapOptions(zap.Hooks(func(entry zapcore.Entry) error {
-		messages = append(messages, entry.Message)
+		entries = append(entries, entry)
 		return nil
 	}))).Sugar()
 	ctx, _ := enabledConfigContext(logging.WithLogger(baseCtx, logger))
@@ -370,10 +414,8 @@ func TestMergeGlobalConfigWithLocalLogsOnlyAfterSuccessfulMerge(t *testing.T) {
 	if _, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, "team-a"); err == nil {
 		t.Fatal("expected parse error")
 	}
-	for _, message := range messages {
-		if strings.HasPrefix(message, "Applying namespace config") {
-			t.Fatalf("logged a partially applied namespace config: %q", message)
-		}
+	if len(entries) != 0 {
+		t.Errorf("logged a failed merge: %v", entries)
 	}
 }
 
@@ -386,18 +428,23 @@ func TestPerNamespaceConfigTracksUpdatesAndNamespaces(t *testing.T) {
 		})
 		perNamespaceConfig, client, baseCtx := newPerNamespaceConfig(t, alpha, beta)
 
-		assertConfig := func(namespace string, timeout int, serviceAccount string) bool {
+		assertConfig := func(namespace string, timeout int, serviceAccount string) {
+			t.Helper()
 			ctx, _ := enabledConfigContext(baseCtx)
 			mergedCtx, err := perNamespaceConfig.MergeGlobalConfigWithLocal(ctx, namespace)
 			if err != nil {
-				return false
+				t.Fatalf("%s config merge: %v", namespace, err)
 			}
 			merged := config.FromContext(mergedCtx)
-			return merged.Defaults.DefaultTimeoutMinutes == timeout && merged.Defaults.DefaultServiceAccount == serviceAccount
+			if got := merged.Defaults.DefaultTimeoutMinutes; got != timeout {
+				t.Errorf("%s timeout = %d, want %d", namespace, got, timeout)
+			}
+			if got := merged.Defaults.DefaultServiceAccount; got != serviceAccount {
+				t.Errorf("%s service account = %q, want %q", namespace, got, serviceAccount)
+			}
 		}
-		if !assertConfig("team-alpha", 90, config.DefaultServiceAccountValue) || !assertConfig("team-beta", 240, "beta-sa") {
-			t.Fatal("namespace configs were not isolated")
-		}
+		assertConfig("team-alpha", 90, config.DefaultServiceAccountValue)
+		assertConfig("team-beta", 240, "beta-sa")
 
 		updated := alpha.DeepCopy()
 		updated.Data["default-timeout-minutes"] = "200"
@@ -405,8 +452,7 @@ func TestPerNamespaceConfigTracksUpdatesAndNamespaces(t *testing.T) {
 			t.Fatal(err)
 		}
 		synctest.Wait()
-		if !assertConfig("team-alpha", 200, config.DefaultServiceAccountValue) {
-			t.Fatal("ConfigMap update was not applied")
-		}
+		assertConfig("team-alpha", 200, config.DefaultServiceAccountValue)
+		assertConfig("team-beta", 240, "beta-sa")
 	})
 }

@@ -287,13 +287,13 @@ func mergeConfigMaps(globalConfig, localConfig map[string]string, allowList, ope
 		case key == exampleConfigKey:
 			continue
 		case blockList[key]:
-			logger.Warnf("Namespace config attempted to override non-overridable field %q, ignoring", key)
+			logger.Debugf("Namespace config attempted to override non-overridable field %q, ignoring", key)
 		case operatorBlockList[key]:
-			logger.Warnf("Namespace config attempted to override operator-locked field %q, ignoring", key)
+			logger.Debugf("Namespace config attempted to override operator-locked field %q, ignoring", key)
 		case allowList[key]:
 			merged[key] = value
 		default:
-			logger.Warnf("Namespace config contains unknown or non-overridable field %q, ignoring", key)
+			logger.Debugf("Namespace config contains unknown or non-overridable field %q, ignoring", key)
 		}
 	}
 	return merged
@@ -323,7 +323,7 @@ func logOverrides(logger *zap.SugaredLogger, namespace, configMap string, localC
 		return
 	}
 	sort.Strings(overridden)
-	logger.Infof("Applying namespace config for %q: overriding %s fields: %s", namespace, configMap, strings.Join(overridden, ", "))
+	logger.Debugf("Applying namespace config for %q: overriding %s fields: %s", namespace, configMap, strings.Join(overridden, ", "))
 }
 
 func configToDefaultsMap(defaults *config.Defaults) (map[string]string, error) {
