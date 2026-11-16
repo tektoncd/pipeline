@@ -18,6 +18,9 @@ package spire
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/pem"
+	stderrors "errors"
 	"fmt"
 	"time"
 
@@ -27,6 +30,7 @@ import (
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	entryv1 "github.com/spiffe/spire-api-sdk/proto/spire/api/server/entry/v1"
 	spiffetypes "github.com/spiffe/spire-api-sdk/proto/spire/api/types"
+	spiresigning "github.com/tektoncd/pipeline/internal/spire"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
@@ -146,6 +150,47 @@ func (sc *spireControllerAPIClient) fetchControllerSVID(ctx context.Context) (*x
 		return nil, fmt.Errorf("failed to fetch controller SVID: %w", err)
 	}
 	return xsvid, nil
+}
+
+// AppendStatusInternalAnnotation creates the status annotations which are used by the controller to verify the status hash
+func (sc *spireControllerAPIClient) AppendStatusInternalAnnotation(ctx context.Context, tr *v1beta1.TaskRun) error {
+	err := sc.setupClient(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Add status hash
+	currentHash, err := hashTaskrunStatusInternal(tr)
+	if err != nil {
+		return err
+	}
+
+	// Sign with controller private key
+	xsvid, err := sc.fetchControllerSVID(ctx)
+	if err != nil {
+		return err
+	}
+
+	sig, err := spiresigning.SignWithKey(xsvid, currentHash)
+	if err != nil {
+		return err
+	}
+
+	if len(xsvid.Certificates) == 0 {
+		return stderrors.New("returned controller svid does not have certificates")
+	}
+	// Store Controller SVID
+	p := pem.EncodeToMemory(&pem.Block{
+		Bytes: xsvid.Certificates[0].Raw,
+		Type:  "CERTIFICATE",
+	})
+	if tr.Status.Annotations == nil {
+		tr.Status.Annotations = map[string]string{}
+	}
+	tr.Status.Annotations[controllerSvidAnnotation] = string(p)
+	tr.Status.Annotations[TaskRunStatusHashAnnotation] = currentHash
+	tr.Status.Annotations[taskRunStatusHashSigAnnotation] = base64.StdEncoding.EncodeToString(sig)
+	return nil
 }
 
 func (sc *spireControllerAPIClient) nodeEntry(nodeName string) *spiffetypes.Entry {
