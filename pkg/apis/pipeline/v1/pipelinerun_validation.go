@@ -60,7 +60,9 @@ func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
-	ctx = resolveArtifactStorageForValidation(ctx, pr.Namespace, pr.Annotations)
+	var resolveErr *apis.FieldError
+	ctx, resolveErr = resolveArtifactStorageForValidation(ctx, pr.Namespace, pr.Annotations)
+	errs = errs.Also(resolveErr)
 	errs = errs.Also(ValidateArtifactStorageAnnotations(pr.Annotations))
 
 	return errs.Also(pr.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
@@ -95,16 +97,23 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 
 	// Validate PipelineRun artifact inputs
 	if ps.Artifacts != nil {
-		declared := map[string]bool{}
-		if ps.PipelineSpec != nil && ps.PipelineSpec.Artifacts != nil {
-			for _, a := range ps.PipelineSpec.Artifacts.Inputs {
-				declared[a.Name] = true
+		// Only check declared names when using an inline PipelineSpec.
+		// With PipelineRef the declarations are not available at admission time;
+		// the reconciler validates them once the Pipeline is resolved.
+		if ps.PipelineSpec != nil {
+			declared := map[string]bool{}
+			if ps.PipelineSpec.Artifacts != nil {
+				for _, a := range ps.PipelineSpec.Artifacts.Inputs {
+					declared[a.Name] = true
+				}
+			}
+			for i, a := range ps.Artifacts.Inputs {
+				if !declared[a.Name] {
+					errs = errs.Also(apis.ErrInvalidValue(a.Name, fmt.Sprintf("artifacts.inputs[%d].name", i)))
+				}
 			}
 		}
 		for i, a := range ps.Artifacts.Inputs {
-			if !declared[a.Name] {
-				errs = errs.Also(apis.ErrInvalidValue(a.Name, fmt.Sprintf("artifacts.inputs[%d].name", i)))
-			}
 			for j, v := range a.Values {
 				if v.Ref == nil && v.Inline == "" {
 					if len(v.Digest) == 0 {

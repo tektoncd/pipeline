@@ -38,10 +38,14 @@ var stepArtifactValuePattern = regexp.MustCompile(`^\$\(steps\.([^.]+)\.artifact
 // is available (webhook admission), it reads the namespace ConfigMap. The
 // annotations from the object (Pipeline/PipelineRun/TaskRun) are merged
 // as the highest-priority overrides.
-func resolveArtifactStorageForValidation(ctx context.Context, namespace string, annotations map[string]string) context.Context {
+func resolveArtifactStorageForValidation(ctx context.Context, namespace string, annotations map[string]string) (context.Context, *apis.FieldError) {
 	cfg := config.FromContextOrDefaults(ctx)
 	if cfg == nil || cfg.ArtifactStorage == nil {
-		return ctx
+		return ctx, nil
+	}
+
+	if cfg.FeatureFlags == nil || !cfg.FeatureFlags.EnableArtifacts {
+		return ctx, nil
 	}
 
 	var nsOverrides map[string]string
@@ -54,12 +58,12 @@ func resolveArtifactStorageForValidation(ctx context.Context, namespace string, 
 
 	resolved, err := config.ResolveArtifactStorage(cfg.ArtifactStorage, nsOverrides, annotations)
 	if err != nil {
-		return ctx
+		return ctx, apis.ErrGeneric(err.Error(), "")
 	}
 
 	cfgCopy := *cfg
 	cfgCopy.ArtifactStorage = resolved
-	return config.ToContext(ctx, &cfgCopy)
+	return config.ToContext(ctx, &cfgCopy), nil
 }
 
 // validateArtifactStorageConfig checks the artifact storage configuration from
@@ -290,17 +294,19 @@ func validatePipelineArtifacts(ctx context.Context, ps *PipelineSpec) *apis.Fiel
 		}
 		outputNames[out.Name] = true
 		parts := strings.Split(out.From, ".")
-		if len(parts) != 4 || parts[0] != "tasks" || parts[2] != "outputs" {
+		if len(parts) != 4 || parts[0] != PipelineTasks || parts[2] != PipelineTaskOutputs {
 			errs = errs.Also(apis.ErrInvalidValue(out.From, fmt.Sprintf("outputs[%d].from", i)))
 			continue
 		}
 		for _, task := range allTasks {
 			if task.Name == parts[1] && task.TaskSpec != nil {
 				found := false
-				for _, a := range task.TaskSpec.Artifacts.Outputs {
-					if a.Name == parts[3] {
-						found = true
-						break
+				if task.TaskSpec.Artifacts != nil {
+					for _, a := range task.TaskSpec.Artifacts.Outputs {
+						if a.Name == parts[3] {
+							found = true
+							break
+						}
 					}
 				}
 				if !found {
@@ -319,6 +325,12 @@ func ValidatePipelineTaskArtifactBindings(ctx context.Context, bindings *Pipelin
 	}
 
 	var errs *apis.FieldError
+
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg == nil || cfg.FeatureFlags == nil || !cfg.FeatureFlags.EnableArtifacts {
+		return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature", config.EnableArtifacts), "")
+	}
+
 	errs = errs.Also(validateArtifactStorageConfig(ctx))
 	for i, binding := range bindings.Inputs {
 		if binding.Name == "" {
@@ -329,7 +341,7 @@ func ValidatePipelineTaskArtifactBindings(ctx context.Context, bindings *Pipelin
 		} else {
 			// Validate format: tasks.<taskName>.outputs.<artifactName>
 			parts := strings.Split(binding.From, ".")
-			if len(parts) != 4 || parts[0] != PipelineTasks || parts[2] != "outputs" { //nolint:goconst
+			if len(parts) != 4 || parts[0] != PipelineTasks || parts[2] != PipelineTaskOutputs {
 				errs = errs.Also(&apis.FieldError{
 					Message: fmt.Sprintf("invalid from format %q, expected 'tasks.<taskName>.outputs.<artifactName>'", binding.From),
 					Paths:   []string{fmt.Sprintf("inputs[%d].from", i)},
