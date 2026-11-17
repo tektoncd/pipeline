@@ -31,6 +31,14 @@ import (
 	"knative.dev/pkg/observability/tracing"
 )
 
+// These tests protect Tekton's startup and HTTP telemetry exports during Knative
+// and OpenTelemetry dependency upgrades. Conflicting semantic-convention schemas
+// make Knative's default resource panic at controller startup. OTLP HTTP exporters
+// 1.45 also changed pathless WithEndpointURL values to use "/" instead of
+// "/v1/traces" or "/v1/metrics", breaking existing config-observability endpoints.
+// Endpoint normalization belongs in Knative, not a Tekton vendor patch. Keep the
+// HTTP regression tests to verify the upstream fix when updating Knative.
+
 // @test:execution=parallel
 func TestDefaultResource(t *testing.T) {
 	// Given the environment used by the controller processes.
