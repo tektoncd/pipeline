@@ -394,7 +394,7 @@ github.com/gaganhr94/docker-credential-acr/pkg/token
 # github.com/go-fed/httpsig v1.1.0
 ## explicit; go 1.13
 github.com/go-fed/httpsig
-# github.com/go-jose/go-jose/v4 v4.1.5
+# github.com/go-jose/go-jose/v4 v4.1.9
 ## explicit; go 1.24.0
 github.com/go-jose/go-jose/v4
 github.com/go-jose/go-jose/v4/cipher
