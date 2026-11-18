@@ -202,7 +202,7 @@ A `Task` with 2 `Steps` and no resources specified would result in a pod with th
 
 Here, the default CPU request was divided among the step containers, and this value was used since it was greater
 than the minimum request specified by the LimitRange.
-The CPU limits are 2 for each container, as this is the default limit specifed in the LimitRange.
+The CPU limits are 2 for each container, as this is the default limit specified in the LimitRange.
 
 If we had a `Task` with 2 `Steps` and 1 `Sidecar` with no resources specified would result in a pod with the following containers:  
 
@@ -214,7 +214,7 @@ If we had a `Task` with 2 `Steps` and 1 `Sidecar` with no resources specified wo
 
 For the first two containers, the default CPU request was divided among the step containers, and this value was used since it was greater
 than the minimum request specified by the LimitRange. The third container is a sidecar and since it is not a step container gets the full 
-default CPU request of 1. AS before the CPU limits are 2 for each container, as this is the default limit specifed in the LimitRange.
+default CPU request of 1. AS before the CPU limits are 2 for each container, as this is the default limit specified in the LimitRange.
 
 
 Now, consider a `Task` with the following `Step`s:
@@ -238,7 +238,7 @@ while the second `Step's` limit is greater than the maximum, so the maximum (3) 
 ### Support for multiple LimitRanges
 
 Tekton supports running `TaskRuns` in namespaces with multiple LimitRanges.
-For a given resource, the minumum used will be the largest of any of the LimitRanges' minimum values,
+For a given resource, the minimum used will be the largest of any of the LimitRanges' minimum values,
 and the maximum used will be the smallest of any of the LimitRanges' maximum values.
 
 The minimum resource requirement used will be the largest of any minimum for that resource,

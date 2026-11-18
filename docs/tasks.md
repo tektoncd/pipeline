@@ -294,7 +294,7 @@ As can be seen the command is different. The windows shebang can be used for any
 ```
 Note that other than the `#!win` shebang the example is identical to the earlier linux example.
 
-Finally, if no interpreter is specified on the `#!win` line then the script will be treated as a windows `.cmd` file which will be excecuted. The example below shows this:
+Finally, if no interpreter is specified on the `#!win` line then the script will be treated as a windows `.cmd` file which will be executed. The example below shows this:
 ```yaml
   steps:
   - image: mcr.microsoft.com/powershell:lts-nanoserver-1809
@@ -657,7 +657,7 @@ Each declared parameter has a `type` field, which can be set to `string`, `array
 
 ##### `object` type
 
-`object` type is useful in cases where users want to group related parameters. For example, an object parameter called `gitrepo` can contain both the `url` and the `commmit` to group related information:
+`object` type is useful in cases where users want to group related parameters. For example, an object parameter called `gitrepo` can contain both the `url` and the `commit` to group related information:
 
 ```yaml
 spec:

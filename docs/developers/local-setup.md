@@ -146,7 +146,7 @@ kubectl create secret docker-registry secret-tekton \
    --namespace=tekton-pipelines
 ```
 
-4. Config [ko](https://github.com/google/ko#install) and add secret to service acount.
+4. Config [ko](https://github.com/google/ko#install) and add secret to service account.
 
 ```bash
 export KO_DOCKER_REPO='localhost:5000'

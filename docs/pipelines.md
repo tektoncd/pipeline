@@ -302,7 +302,7 @@ If the `Param` value passed in by `PipelineRun` is **NOT** in the predefined `en
 
 If a `PipelineTask` references a `Task` with `enum`, the `enums` specified in the Pipeline `spec.params` (pipeline-level `enum`) must be
 a **subset** of the `enums` specified in the referenced `Task` (task-level `enum`). An empty pipeline-level `enum` is invalid
-in this scenario since an empty `enum` set indicates a "universal set" which allows all possible values. The same rules apply to `Pipelines` with embbeded `Tasks`.
+in this scenario since an empty `enum` set indicates a "universal set" which allows all possible values. The same rules apply to `Pipelines` with embedded `Tasks`.
 
 In the below example, the referenced `Task` accepts `v1` and `v2` as valid values, the `Pipeline` further restricts the valid value to `v1`.
 
@@ -1775,7 +1775,7 @@ This kind of variable can have any one of the values from the following table:
 | Status      | Description                                                                                                                       |
 |-------------|-----------------------------------------------------------------------------------------------------------------------------------|
 | `Succeeded` | all `tasks` have succeeded                                                                                                        |
-| `Failed`    | one ore more `tasks` failed                                                                                                       |
+| `Failed`    | one or more `tasks` failed                                                                                                       |
 | `Completed` | all `tasks` completed successfully including one or more skipped tasks                                                            |
 | `None`      | no aggregate execution status available (i.e. none of the above), one or more `tasks` could be pending/running/cancelled/timedout |
 

@@ -232,7 +232,7 @@ for your `KO_DOCKER_REPO` if required. To be able to push images to
 gcloud auth configure-docker
 ```
 
-To be able to pull images from `gcr.io/<project>`, please follow the instructions [here](https://cloud.google.com/container-registry/docs/access-control#grant) to configure IAM policies for the services that will pull iamges from your GCR. 
+To be able to pull images from `gcr.io/<project>`, please follow the instructions [here](https://cloud.google.com/container-registry/docs/access-control#grant) to configure IAM policies for the services that will pull images from your GCR. 
 
 If you choose to run GKE and GCR in the same GCP project, please follow the [example GKE setup](#using-gke) and make sure to add ```storage-full``` to the ```--scopes``` args in the example to give the GKE default service account full access to your GCR. Alternatively, you can grant the GKE default service account read access to your GCR by running:
 

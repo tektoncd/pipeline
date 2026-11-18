@@ -9,7 +9,7 @@ This Resolver responds to type `demo`.
 
 ## Parameters
 
-| Name   | Desccription                 | Example Value               |
+| Name   | Description                 | Example Value               |
 |--------|------------------------------|-----------------------------|
 | `url`  | The repository url.          | `https://example.com/repo/` |
 

@@ -631,7 +631,7 @@ Now, let's introduce `include` with a couple of `Parameters`: `"package"`, `"fla
                   value: "I-do-not-exist"
 ```
 
-The first `include` clause is added to all the original `matrix` combintations without overwriting any `parameters` of
+The first `include` clause is added to all the original `matrix` combinations without overwriting any `parameters` of
 the original combinations:
 
 ```json!
