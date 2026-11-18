@@ -56,7 +56,8 @@ for variant in default disable_spire; do
         "${tags[@]}" -o "$output/$revision-$variant" ./cmd/entrypoint
     )
   done
-  go test -race -shuffle=on -count=1 -v -tags=entrypoint_performance ./test/entrypoint \
+  # Keep this binary test outside test/, whose e2e scanner walks all test files.
+  go test -race -shuffle=on -count=1 -v -tags=entrypoint_performance ./hack/entrypoint_performance \
     -args -baseline "$output/baseline-$variant" -candidate "$output/candidate-$variant" \
     -report "$output/$variant.json" "$@" | tee "$output/$variant.txt"
 done
