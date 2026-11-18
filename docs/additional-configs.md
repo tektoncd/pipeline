@@ -374,7 +374,7 @@ that are running while the change occurs.
 
 The flags in this ConfigMap are as follows:
 
-- `coschedule`: set this flag determines how PipelineRun Pods are scheduled with [Affinity Assistant](./affinityassistants).
+- `coschedule`: set this flag determines how PipelineRun Pods are scheduled with [Affinity Assistant](./affinityassistants.md).
 Acceptable values are "workspaces" (default), "pipelineruns", "isolate-pipelinerun", or "disabled".
 Setting it to "workspaces" will schedule all the taskruns sharing the same PVC-based workspace in a pipelinerun to the same node.
 Setting it to "pipelineruns" will schedule all the taskruns in a pipelinerun to the same node.
@@ -477,7 +477,7 @@ Features currently in "alpha" are:
 | [Hermetic Execution Mode](./hermetic.md)                                                                     | [TEP-0025](https://github.com/tektoncd/community/blob/main/teps/0025-hermekton.md)                                   | [v0.25.0](https://github.com/tektoncd/pipeline/releases/tag/v0.25.0) |                                                  |
 | [Windows Scripts](./tasks.md#windows-scripts)                                                                | [TEP-0057](https://github.com/tektoncd/community/blob/main/teps/0057-windows-support.md)                             | [v0.28.0](https://github.com/tektoncd/pipeline/releases/tag/v0.28.0) |                                                  |
 | [Debug](./debug.md)                                                                                          | [TEP-0042](https://github.com/tektoncd/community/blob/main/teps/0042-taskrun-breakpoint-on-failure.md)               | [v0.26.0](https://github.com/tektoncd/pipeline/releases/tag/v0.26.0) |                                                  |
-| [StdoutConfig and StderrConfig](./tasks#redirecting-step-output-streams-with-stdoutConfig-and-stderrConfig) | [TEP-0011](https://github.com/tektoncd/community/blob/main/teps/0011-redirecting-step-output-streams.md)             | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                                                  |
+| [StdoutConfig and StderrConfig](./tasks.md#redirecting-step-output-streams-with-stdoutconfig-and-stderrconfig) | [TEP-0011](https://github.com/tektoncd/community/blob/main/teps/0011-redirecting-step-output-streams.md)             | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                                                  |
 | [Trusted Resources](./trusted-resources.md)                                                                  | [TEP-0091](https://github.com/tektoncd/community/blob/main/teps/0091-trusted-resources.md)                           | [v0.49.0](https://github.com/tektoncd/pipeline/releases/tag/v0.49.0) | `trusted-resources-verification-no-match-policy` |
 | [Configure Default Resolver](./resolution.md#configuring-built-in-resolvers)                                 | [TEP-0133](https://github.com/tektoncd/community/blob/main/teps/0133-configure-default-resolver.md)                  | [v0.46.0](https://github.com/tektoncd/pipeline/releases/tag/v0.46.0) |                                                  |
 | [Coschedule](./affinityassistants.md)                                                                        | [TEP-0135](https://github.com/tektoncd/community/blob/main/teps/0135-coscheduling-pipelinerun-pods.md)               | [v0.51.0](https://github.com/tektoncd/pipeline/releases/tag/v0.51.0) | `coschedule`                                     |

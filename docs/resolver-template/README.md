@@ -49,7 +49,7 @@ will need to point to your new go module's name, with a `ko://` prefix.
   [`ko`](https://github.com/google/ko) installed.
 - The `tekton-pipelines` namespace and `ResolutionRequest`
   controller installed. See [the getting started
-  guide](./getting-started.md#step-3-install-tekton-resolution) for
+  guide](../resolution-getting-started.md) for
   instructions.
 
 ### Install

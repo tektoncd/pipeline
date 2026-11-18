@@ -26,7 +26,7 @@ immediately.
 
 ## Affinity Assistant StatefulSet
 
-The Affinity Assistant, which powers [workspaces](docs/workspaces.md), works
+The Affinity Assistant, which powers [workspaces](../../docs/workspaces.md), works
 by running a
 [`StatefulSet`](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/)
 with an container that runs indefinitely. This container doesn't need to _do_
