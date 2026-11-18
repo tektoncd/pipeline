@@ -1086,6 +1086,10 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	if err != nil {
 		return err
 	}
+	if podconvert.IsRecoverableNodeDisruption(pod) {
+		logger.Infof("Waiting for node-disrupted Pod %s/%s (UID %s) to be deleted", pod.Namespace, pod.Name, pod.UID)
+		return controller.NewRequeueAfter(time.Second)
+	}
 	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableSurfacePodEvents && shouldLookupPodEvents(pod) {
 		condition := tr.Status.GetCondition(apis.ConditionSucceeded)
 		if condition != nil && podconvert.IsLastObservedPodWarning(condition.Message) {
