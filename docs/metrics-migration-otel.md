@@ -213,10 +213,18 @@ data:
   metrics-protocol: http/protobuf
   metrics-endpoint: "http://otel-collector.observability.svc.cluster.local:4318/v1/metrics"
 
-  tracing-protocol: grpc
-  tracing-endpoint: "otel-collector.observability.svc.cluster.local:4317"
+  tracing-protocol: http/protobuf
+  tracing-endpoint: "http://otel-collector.observability.svc.cluster.local:4318/v1/traces"
   tracing-sampling-rate: "0.1"  # 10% sampling
 ```
+
+**Action required for existing OTLP HTTP configurations:** OpenTelemetry Go 1.45
+changed pathless endpoint URLs to target `/`. Add `/v1/metrics` to
+`metrics-endpoint` and `/v1/traces` to `tracing-endpoint` if your collector uses the
+standard OTLP paths. This applies to `config-observability` in both
+`tekton-pipelines` and `tekton-pipelines-resolvers`. See
+[OTLP HTTP endpoint URLs](metrics.md#otlp-http-endpoint-urls) for custom paths and
+environment overrides.
 
 ---
 
