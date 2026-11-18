@@ -18,7 +18,7 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 if [[ "$(uname -s)" != Linux ]]; then
-  echo "Entrypoint performance checks require native Linux." >&2
+  echo "Image performance checks require native Linux." >&2
   exit 1
 fi
 base_ref=$(git rev-parse "${1:?Usage: $0 BASE_REF OUTPUT_DIR [test flags]}^{commit}")
@@ -57,7 +57,7 @@ for variant in default disable_spire; do
     )
   done
   # Keep this binary test outside test/, whose e2e scanner walks all test files.
-  go test -race -shuffle=on -count=1 -v -tags=entrypoint_performance ./hack/entrypoint_performance \
+  go test -race -shuffle=on -count=1 -v -tags=image_performance ./hack/image_performance \
     -args -baseline "$output/baseline-$variant" -candidate "$output/candidate-$variant" \
     -report "$output/$variant.json" "$@" | tee "$output/$variant.txt"
 done

@@ -47,27 +47,25 @@ go test ./...
 By default `go test` will not run [the end to end tests](#end-to-end-tests),
 which need `-tags=e2e` to be enabled.
 
-### Entrypoint performance
+### Image performance
 
-On Linux, compare the current checkout with a base revision:
+This check currently covers only the entrypoint binary, in default and
+`disable_spire` builds. The approach can be extended to other Tekton images.
+Run on Linux:
 
 ```shell
-bash hack/entrypoint_performance.sh origin/main /tmp/entrypoint-performance
+bash hack/image_performance.sh origin/main /tmp/image-performance
 ```
 
-This builds matching default and `disable_spire` binaries with one Go toolchain.
-After three warmups, 30 paired rounds alternate baseline/candidate order. The
-JSON reports include binary sizes and hashes, raw samples, medians and quartiles.
-Live RSS samples only the entrypoint parent after its wrapped shell signals
-readiness and blocks on a FIFO. Startup measures warm `-help` launch-to-exit.
-Neither workload enables signing or measures Kubernetes, cold starts or image pulls.
+The report includes binary size, entrypoint memory use (RSS), and time to start
+and exit with `-help`. After warm-up, each binary runs 30 times for memory checks
+and 30 times for startup checks. The base and PR binaries take turns running
+first. All measurements are saved as JSON.
 
-Initial configurable limits are 24 MiB for candidate binary size and median RSS,
-plus at most 10% binary growth over the base. Startup is reported on shared CI;
-pass `-max-startup-growth 50` to gate it on a stable runner, with a 3 ms noise
-floor. Extra arguments are forwarded to the Go test, including `-rounds 60`,
-`-max-size-mib`, `-max-rss-mib` and `-max-size-growth`. These initial budgets can
-be calibrated independently of the dependency guard.
+Default limits are 24 MiB for size/RSS
+and 10% binary growth over the base. Pass test flags after the output directory
+to adjust these limits. Startup is report-only unless `-max-startup-growth` is
+set; its gate has a 3 ms noise floor. This does not measure image pulls or signing.
 
 ### Unit testing Controllers
 

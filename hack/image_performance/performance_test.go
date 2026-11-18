@@ -1,4 +1,4 @@
-//go:build entrypoint_performance && linux
+//go:build image_performance && linux
 
 /*
 Copyright 2026 The Tekton Authors
@@ -16,7 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package entrypoint
+package imageperformance
 
 import (
 	"bufio"
@@ -44,7 +44,7 @@ var (
 	baselinePath     = flag.String("baseline", "", "Baseline entrypoint executable")
 	candidatePath    = flag.String("candidate", "", "Candidate entrypoint executable")
 	reportPath       = flag.String("report", "", "Output JSON file including raw samples")
-	rounds           = flag.Int("rounds", 30, "Even number of paired rounds, at least 10")
+	rounds           = flag.Int("rounds", 30, "Runs per binary, separately for startup and memory; must be even and at least 10.")
 	maxSizeMiB       = flag.Float64("max-size-mib", 24, "Candidate executable size ceiling in MiB")
 	maxRSSMiB        = flag.Float64("max-rss-mib", 24, "Candidate median live RSS ceiling in MiB")
 	maxSizeGrowth    = flag.Float64("max-size-growth", 10, "Maximum executable growth over baseline, percent")
