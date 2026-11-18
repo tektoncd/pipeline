@@ -47,6 +47,28 @@ go test ./...
 By default `go test` will not run [the end to end tests](#end-to-end-tests),
 which need `-tags=e2e` to be enabled.
 
+### Entrypoint performance
+
+On Linux, compare the current checkout with a base revision:
+
+```shell
+bash hack/entrypoint_performance.sh origin/main /tmp/entrypoint-performance
+```
+
+This builds matching default and `disable_spire` binaries with one Go toolchain.
+After three warmups, 30 paired rounds alternate baseline/candidate order. The
+JSON reports include binary sizes and hashes, raw samples, medians and quartiles.
+Live RSS samples only the entrypoint parent after its wrapped shell signals
+readiness and blocks on a FIFO. Startup measures warm `-help` launch-to-exit.
+Neither workload enables signing or measures Kubernetes, cold starts or image pulls.
+
+Initial configurable limits are 24 MiB for candidate binary size and median RSS,
+plus at most 10% binary growth over the base. Startup is reported on shared CI;
+pass `-max-startup-growth 50` to gate it on a stable runner, with a 3 ms noise
+floor. Extra arguments are forwarded to the Go test, including `-rounds 60`,
+`-max-size-mib`, `-max-rss-mib` and `-max-size-growth`. These initial budgets can
+be calibrated independently of the dependency guard.
+
 ### Unit testing Controllers
 
 Kubernetes [client-go](https://godoc.org/k8s.io/client-go) provides a number of
