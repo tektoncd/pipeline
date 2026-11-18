@@ -43,8 +43,10 @@ data:
     # Default if not specified: "none"
     metrics-protocol: prometheus
 
-    # Metrics endpoint (for grpc/http protocols)
-    # Default: empty (uses default OTLP endpoint)
+    # Metrics endpoint (required for grpc/http protocols)
+    # For http/protobuf, include the signal path, for example:
+    # http://otel-collector.observability.svc.cluster.local:4318/v1/metrics
+    # A URL without a path targets "/".
     metrics-endpoint: ""
 
     # Metrics export interval (e.g., "30s", "1m")
@@ -63,8 +65,10 @@ data:
     # Default: none
     tracing-protocol: none
 
-    # Tracing endpoint (for grpc/http protocols)
-    # Default: empty
+    # Tracing endpoint (required for grpc/http protocols)
+    # For http/protobuf, include the signal path, for example:
+    # http://otel-collector.observability.svc.cluster.local:4318/v1/traces
+    # A URL without a path targets "/".
     tracing-endpoint: ""
 
     # Tracing sampling rate (0.0 to 1.0)

@@ -33,11 +33,10 @@ import (
 
 // These tests protect Tekton's startup and HTTP telemetry exports during Knative
 // and OpenTelemetry dependency upgrades. Conflicting semantic-convention schemas
-// make Knative's default resource panic at controller startup. OTLP HTTP exporters
-// 1.45 also changed pathless WithEndpointURL values to use "/" instead of
-// "/v1/traces" or "/v1/metrics", breaking existing config-observability endpoints.
-// Endpoint normalization belongs in Knative, not a Tekton vendor patch. Keep the
-// HTTP regression tests to verify the upstream fix when updating Knative.
+// make Knative's default resource panic at controller startup. OTLP HTTP endpoints
+// follow OpenTelemetry's complete-URL semantics: configured paths are preserved
+// and pathless URLs target "/". Standard collectors require an explicit
+// "/v1/traces" or "/v1/metrics" path in config-observability.
 
 // @test:execution=parallel
 func TestDefaultResource(t *testing.T) {
@@ -102,7 +101,8 @@ func testHTTPEndpointPaths(t *testing.T, signal string, export func(context.Cont
 		envSuffix  string
 		wantSuffix string
 	}{
-		{name: "pathless", wantSuffix: "/v1/" + signal},
+		{name: "pathless", wantSuffix: "/"},
+		{name: "explicit signal path", suffix: "/v1/" + signal, wantSuffix: "/v1/" + signal},
 		{name: "explicit path", suffix: "/custom", wantSuffix: "/custom"},
 		{name: "explicit root", suffix: "/", wantSuffix: "/"},
 		{name: "generic environment override", suffix: "/configured", envName: "OTEL_EXPORTER_OTLP_ENDPOINT", envSuffix: "/base", wantSuffix: "/base/v1/" + signal},
