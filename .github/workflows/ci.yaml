@@ -96,8 +96,8 @@ jobs:
       run: |
         go build -v -tags "disable_spire,disable_tls" ./cmd/entrypoint
         echo "Build finished with exit code: $?"
-  entrypoint_performance:
-    name: entrypoint_performance
+  image_performance:
+    name: image_performance
     runs-on: ubuntu-latest-8-cores
     timeout-minutes: 20
     needs: [changes]
@@ -114,15 +114,15 @@ jobs:
     - name: Compare entrypoint binaries
       env:
         BASE_SHA: ${{ github.event.pull_request.base.sha }}
-      run: bash ./hack/entrypoint_performance.sh "$BASE_SHA" artifacts/entrypoint
+      run: bash ./hack/image_performance.sh "$BASE_SHA" artifacts/image_performance
     - name: Upload measurements
       if: always()
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
       with:
-        name: entrypoint_performance
+        name: image_performance
         path: |
-          artifacts/entrypoint/*.json
-          artifacts/entrypoint/*.txt
+          artifacts/image_performance/*.json
+          artifacts/image_performance/*.txt
   linting:
     name: lint
     runs-on: ubuntu-latest-8-cores
@@ -152,7 +152,7 @@ jobs:
       with:
         version: v2.15.0
         install-mode: goinstall
-        args: --new-from-merge-base=origin/${{ github.base_ref }} --build-tags=e2e,entrypoint_performance --timeout=10m
+        args: --new-from-merge-base=origin/${{ github.base_ref }} --build-tags=e2e,image_performance --timeout=10m
     - name: yamllint
       if: ${{ needs.changes.outputs.yaml == 'true' }}
       run: |
@@ -227,7 +227,7 @@ jobs:
 
   ci-summary:
     name: CI summary
-    needs: [build, buildFips, entrypoint_performance, linting, tests, generated, multi-arch-build, e2e-tests]
+    needs: [build, buildFips, image_performance, linting, tests, generated, multi-arch-build, e2e-tests]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -245,7 +245,7 @@ jobs:
         results=(
           "build=${NEEDS_BUILD_RESULT}"
           "buildFips=${NEEDS_BUILDFIPS_RESULT}"
-          "entrypoint_performance=${NEEDS_ENTRYPOINT_PERFORMANCE_RESULT}"
+          "image_performance=${NEEDS_IMAGE_PERFORMANCE_RESULT}"
           "linting=${NEEDS_LINTING_RESULT}"
           "tests=${NEEDS_TESTS_RESULT}"
           "generated=${NEEDS_GENERATED_RESULT}"
@@ -271,7 +271,7 @@ jobs:
       env:
         NEEDS_BUILD_RESULT: ${{ needs.build.result }}
         NEEDS_BUILDFIPS_RESULT: ${{ needs.buildFips.result }}
-        NEEDS_ENTRYPOINT_PERFORMANCE_RESULT: ${{ needs.entrypoint_performance.result }}
+        NEEDS_IMAGE_PERFORMANCE_RESULT: ${{ needs.image_performance.result }}
         NEEDS_LINTING_RESULT: ${{ needs.linting.result }}
         NEEDS_TESTS_RESULT: ${{ needs.tests.result }}
         NEEDS_GENERATED_RESULT: ${{ needs.generated.result }}
