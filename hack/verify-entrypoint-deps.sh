@@ -18,6 +18,13 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
+forbidden_packages=(
+  'knative[.]dev/'
+  'k8s[.]io/client-go(/|$)'
+  'github[.]com/spiffe/spire-api-sdk(/|$)'
+)
+package_re="$(IFS='|'; echo "${forbidden_packages[*]}")"
+
 format='{{range .Imports}}{{$.ImportPath}} -> {{.}}
 {{end}}'
 for tags in "" "disable_spire"; do
@@ -26,7 +33,7 @@ for tags in "" "disable_spire"; do
     args+=(-tags "$tags")
   fi
   edges=$("${args[@]}" ./cmd/entrypoint)
-  if forbidden=$(grep -E ' -> (knative[.]dev/|k8s[.]io/client-go(/|$)|github[.]com/spiffe/spire-api-sdk(/|$))' <<<"$edges"); then
+  if forbidden=$(grep -E " -> (${package_re})" <<<"$edges"); then
     printf 'Forbidden entrypoint dependencies (build tags: %s):\n%s\n' "${tags:-default}" "$forbidden" >&2
     exit 1
   fi
