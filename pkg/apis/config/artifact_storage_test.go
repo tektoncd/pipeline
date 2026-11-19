@@ -475,8 +475,9 @@ func TestResolveArtifactStorage(t *testing.T) {
 		wantErr    bool
 	}{
 		{
-			name: "nil base returns nil",
+			name: "nil base returns empty",
 			base: nil,
+			want: &ArtifactStorage{},
 		},
 		{
 			name: "empty overrides and annotations return copy of base",
@@ -527,42 +528,16 @@ func TestResolveArtifactStorage(t *testing.T) {
 				"enabled": "false",
 			},
 			annots: map[string]string{
-				ArtifactStorageEnabledAnnotation: "true",
+				ArtifactStorageInlineThresholdAnnotation: "128",
 			},
 			want: &ArtifactStorage{
-				Enabled:            true,
+				Enabled:            false,
 				Backend:            DefaultBackend,
-				InlineThreshold:    DefaultInlineThreshold,
+				InlineThreshold:    128,
 				OCIRepository:      "cluster-repo",
 				Insecure:           false,
 				OCIAttachReferrers: true,
 				OCITagPattern:      DefaultTagPattern,
-			},
-		},
-		{
-			name: "all annotation fields override",
-			base: clusterBase,
-			annots: map[string]string{
-				ArtifactStorageEnabledAnnotation:               "true",
-				ArtifactStorageOCIRepositoryAnnotation:         "annot-repo",
-				ArtifactStorageBackendAnnotation:               "s3",
-				ArtifactStorageInlineThresholdAnnotation:       "128",
-				ArtifactStorageInsecureAnnotation:              "true",
-				ArtifactStorageOCICredentialsSecretAnnotation:  "annot-secret",
-				ArtifactStorageOCIAttachReferrersAnnotation:    "false",
-				ArtifactStorageOCITagPatternAnnotation:         "custom-{{artifact}}",
-				ArtifactStorageOCIGroupByPipelineRunAnnotation: "true",
-			},
-			want: &ArtifactStorage{
-				Enabled:               true,
-				Backend:               "s3",
-				InlineThreshold:       128,
-				OCIRepository:         "annot-repo",
-				Insecure:              true,
-				OCICredentialsSecret:  "annot-secret",
-				OCIAttachReferrers:    false,
-				OCITagPattern:         "custom-{{artifact}}",
-				OCIGroupByPipelineRun: true,
 			},
 		},
 		{
@@ -584,10 +559,9 @@ func TestResolveArtifactStorage(t *testing.T) {
 			base: clusterBase,
 			annots: map[string]string{
 				ArtifactStorageOCIRepositoryAnnotation: "mutated-repo",
-				ArtifactStorageEnabledAnnotation:       "true",
 			},
 			want: &ArtifactStorage{
-				Enabled:            true,
+				Enabled:            false,
 				Backend:            DefaultBackend,
 				InlineThreshold:    DefaultInlineThreshold,
 				OCIRepository:      "mutated-repo",

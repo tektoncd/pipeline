@@ -3917,19 +3917,11 @@ spec:
                           associated with it.
                         type: object
                         properties:
-                          buildOutput:
-                            description: |-
-                              Indicate if the artifact is a build output or a by-product.
-                              This is the legacy form of Subject, still populated from the legacy
-                              provenance format.
-                            type: boolean
                           name:
                             description: The artifact's identifying category name
                             type: string
                           subject:
-                            description: |-
-                              Subject marks this artifact as the primary build output (the SLSA
-                              attestation subject), as declared in the Task's artifact outputs.
+                            description: Indicate if the artifact is a build output or a by-product
                             type: boolean
                           values:
                             description: A collection of values related to the artifact
@@ -3980,19 +3972,11 @@ spec:
                           associated with it.
                         type: object
                         properties:
-                          buildOutput:
-                            description: |-
-                              Indicate if the artifact is a build output or a by-product.
-                              This is the legacy form of Subject, still populated from the legacy
-                              provenance format.
-                            type: boolean
                           name:
                             description: The artifact's identifying category name
                             type: string
                           subject:
-                            description: |-
-                              Subject marks this artifact as the primary build output (the SLSA
-                              attestation subject), as declared in the Task's artifact outputs.
+                            description: Indicate if the artifact is a build output or a by-product
                             type: boolean
                           values:
                             description: A collection of values related to the artifact
@@ -4300,19 +4284,11 @@ spec:
                             associated with it.
                           type: object
                           properties:
-                            buildOutput:
-                              description: |-
-                                Indicate if the artifact is a build output or a by-product.
-                                This is the legacy form of Subject, still populated from the legacy
-                                provenance format.
-                              type: boolean
                             name:
                               description: The artifact's identifying category name
                               type: string
                             subject:
-                              description: |-
-                                Subject marks this artifact as the primary build output (the SLSA
-                                attestation subject), as declared in the Task's artifact outputs.
+                              description: Indicate if the artifact is a build output or a by-product
                               type: boolean
                             values:
                               description: A collection of values related to the artifact
@@ -4364,19 +4340,11 @@ spec:
                             associated with it.
                           type: object
                           properties:
-                            buildOutput:
-                              description: |-
-                                Indicate if the artifact is a build output or a by-product.
-                                This is the legacy form of Subject, still populated from the legacy
-                                provenance format.
-                              type: boolean
                             name:
                               description: The artifact's identifying category name
                               type: string
                             subject:
-                              description: |-
-                                Subject marks this artifact as the primary build output (the SLSA
-                                attestation subject), as declared in the Task's artifact outputs.
+                              description: Indicate if the artifact is a build output or a by-product
                               type: boolean
                             values:
                               description: A collection of values related to the artifact

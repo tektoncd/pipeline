@@ -634,6 +634,13 @@ func (in *PipelineRunArtifacts) DeepCopyInto(out *PipelineRunArtifacts) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.Outputs != nil {
+		in, out := &in.Outputs, &out.Outputs
+		*out = make([]Artifact, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -745,11 +752,6 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Artifacts != nil {
-		in, out := &in.Artifacts, &out.Artifacts
-		*out = new(PipelineRunArtifacts)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.Timeouts != nil {
 		in, out := &in.Timeouts, &out.Timeouts
 		*out = new(TimeoutFields)
@@ -769,6 +771,11 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.Artifacts != nil {
+		in, out := &in.Artifacts, &out.Artifacts
+		*out = new(PipelineRunArtifacts)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.ManagedBy != nil {
 		in, out := &in.ManagedBy, &out.ManagedBy
@@ -824,11 +831,6 @@ func (in *PipelineRunStatusFields) DeepCopyInto(out *PipelineRunStatusFields) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Artifacts != nil {
-		in, out := &in.Artifacts, &out.Artifacts
-		*out = new(Artifacts)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.PipelineSpec != nil {
 		in, out := &in.PipelineSpec, &out.PipelineSpec
 		*out = new(PipelineSpec)
@@ -855,6 +857,11 @@ func (in *PipelineRunStatusFields) DeepCopyInto(out *PipelineRunStatusFields) {
 	if in.Provenance != nil {
 		in, out := &in.Provenance, &out.Provenance
 		*out = new(Provenance)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.Artifacts != nil {
+		in, out := &in.Artifacts, &out.Artifacts
+		*out = new(PipelineRunArtifacts)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.SpanContext != nil {

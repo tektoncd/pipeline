@@ -3253,10 +3253,15 @@ spec:
               type: object
               properties:
                 artifacts:
-                  description: Artifacts supplies values for declared Pipeline artifact inputs.
+                  description: |-
+                    Artifacts provides artifact inputs for the Pipeline at run time.
+                    Each input MUST match a name declared in Pipeline.spec.artifacts.inputs.
                   type: object
                   properties:
                     inputs:
+                      description: |-
+                        Inputs provides artifact values to satisfy Pipeline.spec.artifacts.inputs.
+                        Each input MUST match a name declared in the Pipeline.
                       type: array
                       items:
                         description: |-
@@ -3264,19 +3269,70 @@ spec:
                           associated with it.
                         type: object
                         properties:
-                          buildOutput:
-                            description: |-
-                              Indicate if the artifact is a build output or a by-product.
-                              This is the legacy form of Subject, still populated from the legacy
-                              provenance format.
-                            type: boolean
                           name:
                             description: The artifact's identifying category name
                             type: string
                           subject:
-                            description: |-
-                              Subject marks this artifact as the primary build output (the SLSA
-                              attestation subject), as declared in the Task's artifact outputs.
+                            description: Indicate if the artifact is a build output or a by-product
+                            type: boolean
+                          values:
+                            description: A collection of values related to the artifact
+                            type: array
+                            items:
+                              description: ArtifactValue represents a specific value or data element within an Artifact.
+                              type: object
+                              properties:
+                                digest:
+                                  type: object
+                                  additionalProperties:
+                                    type: string
+                                inline:
+                                  description: |-
+                                    Inline holds small content embedded directly in the status (base64-encoded),
+                                    avoiding external storage overhead.
+                                  type: string
+                                ref:
+                                  description: |-
+                                    Ref is a backend-specific storage reference. Present only for content
+                                    artifacts stored externally; absent for reference artifacts and inline content.
+                                  type: object
+                                  required:
+                                    - backend
+                                    - digest
+                                    - location
+                                  properties:
+                                    backend:
+                                      type: string
+                                    contentType:
+                                      type: string
+                                    digest:
+                                      type: string
+                                    location:
+                                      type: string
+                                size:
+                                  description: content size in bytes, letting consumers and UIs know the artifact size before fetching.
+                                  type: integer
+                                  format: int64
+                                uri:
+                                  type: string
+                      x-kubernetes-list-type: atomic
+                    outputs:
+                      description: |-
+                        Outputs holds artifact values resolved from child TaskRuns at
+                        PipelineRun completion. This field is read-only and populated by
+                        the controller.
+                      type: array
+                      items:
+                        description: |-
+                          Artifact represents an artifact within a system, potentially containing multiple values
+                          associated with it.
+                        type: object
+                        properties:
+                          name:
+                            description: The artifact's identifying category name
+                            type: string
+                          subject:
+                            description: Indicate if the artifact is a build output or a by-product
                             type: boolean
                           values:
                             description: A collection of values related to the artifact
@@ -5408,10 +5464,16 @@ spec:
                   additionalProperties:
                     type: string
                 artifacts:
-                  description: Artifacts are the declared outputs produced by the Pipeline.
+                  description: |-
+                    Artifacts holds pipeline-level artifact outputs resolved from child
+                    TaskRuns. Populated once when the PipelineRun completes (including
+                    finally tasks).
                   type: object
                   properties:
                     inputs:
+                      description: |-
+                        Inputs provides artifact values to satisfy Pipeline.spec.artifacts.inputs.
+                        Each input MUST match a name declared in the Pipeline.
                       type: array
                       items:
                         description: |-
@@ -5419,19 +5481,11 @@ spec:
                           associated with it.
                         type: object
                         properties:
-                          buildOutput:
-                            description: |-
-                              Indicate if the artifact is a build output or a by-product.
-                              This is the legacy form of Subject, still populated from the legacy
-                              provenance format.
-                            type: boolean
                           name:
                             description: The artifact's identifying category name
                             type: string
                           subject:
-                            description: |-
-                              Subject marks this artifact as the primary build output (the SLSA
-                              attestation subject), as declared in the Task's artifact outputs.
+                            description: Indicate if the artifact is a build output or a by-product
                             type: boolean
                           values:
                             description: A collection of values related to the artifact
@@ -5475,6 +5529,10 @@ spec:
                                   type: string
                       x-kubernetes-list-type: atomic
                     outputs:
+                      description: |-
+                        Outputs holds artifact values resolved from child TaskRuns at
+                        PipelineRun completion. This field is read-only and populated by
+                        the controller.
                       type: array
                       items:
                         description: |-
@@ -5482,19 +5540,11 @@ spec:
                           associated with it.
                         type: object
                         properties:
-                          buildOutput:
-                            description: |-
-                              Indicate if the artifact is a build output or a by-product.
-                              This is the legacy form of Subject, still populated from the legacy
-                              provenance format.
-                            type: boolean
                           name:
                             description: The artifact's identifying category name
                             type: string
                           subject:
-                            description: |-
-                              Subject marks this artifact as the primary build output (the SLSA
-                              attestation subject), as declared in the Task's artifact outputs.
+                            description: Indicate if the artifact is a build output or a by-product
                             type: boolean
                           values:
                             description: A collection of values related to the artifact

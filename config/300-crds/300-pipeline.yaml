@@ -763,15 +763,22 @@ spec:
                     outputs:
                       type: array
                       items:
-                        description: PipelineArtifactOutput exposes a Task artifact as a Pipeline output.
+                        description: PipelineArtifactOutput exposes a Task artifact as a Pipeline
                         type: object
                         required:
                           - from
                           - name
                         properties:
+                          description:
+                            description: Description of the artifact.
+                            type: string
                           from:
+                            description: |-
+                              From references the producing Task's output:
+                              "tasks.<taskName>.outputs.<artifactName>"
                             type: string
                           name:
+                            description: Name of the artifact output. Must be unique within Pipeline outputs.
                             type: string
                       x-kubernetes-list-type: atomic
                 description:

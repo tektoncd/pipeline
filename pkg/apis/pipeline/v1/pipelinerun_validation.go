@@ -30,6 +30,7 @@ import (
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/webhook/resourcesemantics"
 )
@@ -60,9 +61,7 @@ func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
-	var resolveErr *apis.FieldError
-	ctx, resolveErr = resolveArtifactStorageForValidation(ctx, pr.Namespace, pr.Annotations)
-	errs = errs.Also(resolveErr)
+	ctx = resolveArtifactStorageForValidation(ctx, pr.Namespace, pr.Annotations)
 	errs = errs.Also(ValidateArtifactStorageAnnotations(pr.Annotations))
 
 	return errs.Also(pr.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
@@ -93,37 +92,6 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 			errs = errs.Also(apis.ErrDisallowedFields("pipelineSpec"))
 		}
 		errs = errs.Also(ps.PipelineSpec.Validate(ctx).ViaField("pipelineSpec"))
-	}
-
-	// Validate PipelineRun artifact inputs
-	if ps.Artifacts != nil {
-		// Only check declared names when using an inline PipelineSpec.
-		// With PipelineRef the declarations are not available at admission time;
-		// the reconciler validates them once the Pipeline is resolved.
-		if ps.PipelineSpec != nil {
-			declared := map[string]bool{}
-			if ps.PipelineSpec.Artifacts != nil {
-				for _, a := range ps.PipelineSpec.Artifacts.Inputs {
-					declared[a.Name] = true
-				}
-			}
-			for i, a := range ps.Artifacts.Inputs {
-				if !declared[a.Name] {
-					errs = errs.Also(apis.ErrInvalidValue(a.Name, fmt.Sprintf("artifacts.inputs[%d].name", i)))
-				}
-			}
-		}
-		for i, a := range ps.Artifacts.Inputs {
-			for j, v := range a.Values {
-				if v.Ref == nil && v.Inline == "" {
-					if len(v.Digest) == 0 {
-						errs = errs.Also(apis.ErrInvalidValue("missing digest", fmt.Sprintf("artifacts.inputs[%d].values[%d]", i, j)))
-					}
-				} else if v.Ref == nil && len(v.Digest) == 0 {
-					errs = errs.Also(apis.ErrInvalidValue("missing digest", fmt.Sprintf("artifacts.inputs[%d].values[%d]", i, j)))
-				}
-			}
-		}
 	}
 
 	// Validate PipelineRun parameters
@@ -171,6 +139,49 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		errs = errs.Also(validatePodTemplateEnv(ctx, *ps.TaskRunTemplate.PodTemplate).ViaField("taskRunTemplate"))
 	}
 
+	errs = errs.Also(ps.validatePipelineRunArtifacts(ctx))
+
+	return errs
+}
+
+func (ps *PipelineRunSpec) validatePipelineRunArtifacts(ctx context.Context) (errs *apis.FieldError) {
+	if ps.Artifacts == nil {
+		return nil
+	}
+	if cfg := config.FromContextOrDefaults(ctx); cfg == nil || !cfg.FeatureFlags.EnableArtifacts {
+		return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature", config.EnableArtifacts), "")
+	}
+	if len(ps.Artifacts.Outputs) > 0 {
+		errs = errs.Also(apis.ErrDisallowedFields("artifacts.outputs"))
+	}
+	names := sets.NewString()
+	for idx, in := range ps.Artifacts.Inputs {
+		if in.Name == "" {
+			errs = errs.Also(apis.ErrMissingField("name").ViaFieldIndex("inputs", idx).ViaField("artifacts"))
+		}
+		if names.Has(in.Name) {
+			errs = errs.Also(apis.ErrMultipleOneOf("name").ViaFieldIndex("inputs", idx).ViaField("artifacts"))
+		}
+		names.Insert(in.Name)
+		if in.Subject {
+			errs = errs.Also(&apis.FieldError{
+				Message: "subject is not allowed on pipeline run artifact inputs",
+				Paths:   []string{fmt.Sprintf("artifacts.inputs[%d].subject", idx)},
+			})
+		}
+		if len(in.Values) == 0 {
+			errs = errs.Also(apis.ErrMissingField("values").ViaFieldIndex("inputs", idx).ViaField("artifacts"))
+			continue
+		}
+		for vi, v := range in.Values {
+			if v.Uri == "" {
+				errs = errs.Also(apis.ErrMissingField("uri").ViaFieldIndex("values", vi).ViaFieldIndex("inputs", idx).ViaField("artifacts"))
+			}
+			if len(v.Digest) == 0 {
+				errs = errs.Also(apis.ErrMissingField("digest").ViaFieldIndex("values", vi).ViaFieldIndex("inputs", idx).ViaField("artifacts"))
+			}
+		}
+	}
 	return errs
 }
 

@@ -37,10 +37,13 @@ const (
 	PipelineTasksAggregateStatus = "tasks.status"
 	// PipelineTasks is a value representing a task is a member of "tasks" section of the pipeline
 	PipelineTasks = "tasks"
-	// PipelineTaskOutputs is the name used in artifact binding references (e.g. tasks.<name>.outputs.<artifact>).
-	PipelineTaskOutputs = "outputs"
 	// PipelineFinallyTasks is a value representing a task is a member of "finally" section of the pipeline
 	PipelineFinallyTasks = "finally"
+	// PipelineTaskOutputs is the name used in artifact binding references (e.g. tasks.<name>.outputs.<artifact>).
+	PipelineTaskOutputs = "outputs"
+	// PipelineTaskInputs is the name used in artifact binding references (e.g. tasks.<name>.inputs.<artifact>).
+	PipelineTaskInputs = "inputs"
+	PipelineArtifacts  = "artifacts"
 	// PipelineTaskStopAndFail indicates to stop and fail the PipelineRun if the PipelineTask fails
 	PipelineTaskStopAndFail PipelineTaskOnErrorType = "stopAndFail"
 	// PipelineTaskContinue indicates to continue executing the rest of the DAG when the PipelineTask fails
@@ -322,7 +325,7 @@ func (pt PipelineTask) Deps() []string {
 		for _, in := range pt.Artifacts.Inputs {
 			// Expected format: tasks.<taskName>.outputs.<artifactName>
 			parts := strings.Split(in.From, ".")
-			if len(parts) == 4 && parts[0] == PipelineTasks && parts[2] == "outputs" { //nolint:goconst
+			if len(parts) == 4 && parts[0] == PipelineTasks && parts[2] == PipelineTaskOutputs {
 				deps.Insert(parts[1])
 			}
 		}

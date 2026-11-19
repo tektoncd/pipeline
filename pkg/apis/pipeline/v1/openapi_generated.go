@@ -436,16 +436,9 @@ func schema_pkg_apis_pipeline_v1_Artifact(ref common.ReferenceCallback) common.O
 							},
 						},
 					},
-					"buildOutput": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Indicate if the artifact is a build output or a by-product. This is the legacy form of Subject, still populated from the legacy provenance format.",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
 					"subject": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Subject marks this artifact as the primary build output (the SLSA attestation subject), as declared in the Task's artifact outputs.",
+							Description: "Indicate if the artifact is a build output or a by-product",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -1273,21 +1266,30 @@ func schema_pkg_apis_pipeline_v1_PipelineArtifactOutput(ref common.ReferenceCall
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "PipelineArtifactOutput exposes a Task artifact as a Pipeline output.",
+				Description: "PipelineArtifactOutput exposes a Task artifact as a Pipeline",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"name": {
 						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
+							Description: "Name of the artifact output. Must be unique within Pipeline outputs.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"description": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Description of the artifact.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"from": {
 						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
+							Description: "From references the producing Task's output: \"tasks.<taskName>.outputs.<artifactName>\"",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -1490,7 +1492,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunArtifacts(ref common.ReferenceCallba
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "PipelineRunArtifacts supplies artifacts to a PipelineRun.",
+				Description: "PipelineRunArtifacts holds artifact inputs provided at PipelineRun creation and artifact outputs populated at PipelineRun completion.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"inputs": {
@@ -1500,7 +1502,26 @@ func schema_pkg_apis_pipeline_v1_PipelineRunArtifacts(ref common.ReferenceCallba
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Inputs provides artifact values to satisfy Pipeline.spec.artifacts.inputs. Each input MUST match a name declared in the Pipeline.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact"),
+									},
+								},
+							},
+						},
+					},
+					"outputs": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Outputs holds artifact values resolved from child TaskRuns at PipelineRun completion. This field is read-only and populated by the controller.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -1673,12 +1694,6 @@ func schema_pkg_apis_pipeline_v1_PipelineRunSpec(ref common.ReferenceCallback) c
 							},
 						},
 					},
-					"artifacts": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Artifacts supplies values for declared Pipeline artifact inputs.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRunArtifacts"),
-						},
-					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Used for cancelling a pipelinerun (and maybe more later on)",
@@ -1733,6 +1748,12 @@ func schema_pkg_apis_pipeline_v1_PipelineRunSpec(ref common.ReferenceCallback) c
 									},
 								},
 							},
+						},
+					},
+					"artifacts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Artifacts provides artifact inputs for the Pipeline at run time. Each input MUST match a name declared in Pipeline.spec.artifacts.inputs.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRunArtifacts"),
 						},
 					},
 					"managedBy": {
@@ -1828,12 +1849,6 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatus(ref common.ReferenceCallback)
 							},
 						},
 					},
-					"artifacts": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Artifacts are the declared outputs produced by the Pipeline.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts"),
-						},
-					},
 					"pipelineSpec": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PipelineSpec contains the exact spec used to instantiate the run. See Pipeline.spec (API version: tekton.dev/v1)",
@@ -1888,6 +1903,12 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatus(ref common.ReferenceCallback)
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Provenance"),
 						},
 					},
+					"artifacts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Artifacts holds pipeline-level artifact outputs resolved from child TaskRuns. Populated once when the PipelineRun completes (including finally tasks).",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRunArtifacts"),
+						},
+					},
 					"spanContext": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SpanContext contains tracing span context fields",
@@ -1907,7 +1928,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatus(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ChildStatusReference", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Provenance", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SkippedTask", "k8s.io/apimachinery/pkg/apis/meta/v1.Time", "knative.dev/pkg/apis.Condition"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ChildStatusReference", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRunArtifacts", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Provenance", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SkippedTask", "k8s.io/apimachinery/pkg/apis/meta/v1.Time", "knative.dev/pkg/apis.Condition"},
 	}
 }
 
@@ -1948,12 +1969,6 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatusFields(ref common.ReferenceCal
 							},
 						},
 					},
-					"artifacts": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Artifacts are the declared outputs produced by the Pipeline.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts"),
-						},
-					},
 					"pipelineSpec": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PipelineSpec contains the exact spec used to instantiate the run. See Pipeline.spec (API version: tekton.dev/v1)",
@@ -2008,6 +2023,12 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatusFields(ref common.ReferenceCal
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Provenance"),
 						},
 					},
+					"artifacts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Artifacts holds pipeline-level artifact outputs resolved from child TaskRuns. Populated once when the PipelineRun completes (including finally tasks).",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRunArtifacts"),
+						},
+					},
 					"spanContext": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SpanContext contains tracing span context fields",
@@ -2027,7 +2048,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatusFields(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifacts", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ChildStatusReference", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Provenance", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SkippedTask", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ChildStatusReference", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRunArtifacts", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Provenance", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.SkippedTask", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -2386,7 +2407,8 @@ func schema_pkg_apis_pipeline_v1_PipelineTaskArtifacts(ref common.ReferenceCallb
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "PipelineTaskArtifacts configures artifact bindings for a PipelineTask.",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"inputs": {
 						VendorExtensible: spec.VendorExtensible{
