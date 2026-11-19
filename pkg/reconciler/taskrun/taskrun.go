@@ -1197,6 +1197,11 @@ func (c *Reconciler) handlePodCreationError(tr *v1.TaskRun, err error) error {
 		tr.Status.StartTime = nil
 		tr.Status.MarkResourceOngoing(podconvert.ReasonExceededResourceQuota, fmt.Sprint("TaskRun Pod exceeded available resources: ", err))
 		return controller.NewRequeueAfter(time.Minute)
+	case isResourceQuotaTimeoutError(err):
+		tr.Status.StartTime = nil
+		tr.Status.MarkResourceOngoing(podconvert.ReasonPodPending,
+			fmt.Sprint("tried to create pod, but it failed with a transient resource quota evaluation timeout: ", err))
+		return controller.NewRequeueAfter(time.Second)
 	case isTaskRunValidationFailed(err):
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
 	case k8serrors.IsAlreadyExists(err):
@@ -1528,6 +1533,11 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tracer trace.T
 
 func isExceededResourceQuotaError(err error) bool {
 	return err != nil && k8serrors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota")
+}
+
+func isResourceQuotaTimeoutError(err error) bool {
+	return err != nil && k8serrors.IsInternalError(err) &&
+		strings.Contains(err.Error(), "resource quota evaluation timed out")
 }
 
 func isTaskRunValidationFailed(err error) bool {

@@ -4729,6 +4729,12 @@ status:
 			expectedStatus: corev1.ConditionUnknown,
 			expectedReason: podconvert.ReasonPodPending,
 		}, {
+			description:    "resource quota evaluation timeout does not fail taskrun",
+			err:            k8sapierrors.NewInternalError(errors.New("resource quota evaluation timed out")),
+			expectedType:   apis.ConditionSucceeded,
+			expectedStatus: corev1.ConditionUnknown,
+			expectedReason: podconvert.ReasonPodPending,
+		}, {
 			description:    "exceeded quota errors are surfaced in taskrun condition but do not fail taskrun",
 			err:            k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz", errors.New("exceeded quota")),
 			expectedType:   apis.ConditionSucceeded,
