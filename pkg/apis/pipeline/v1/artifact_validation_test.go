@@ -136,6 +136,44 @@ func TestValidateArtifactDeclarations_EmptyName(t *testing.T) {
 	}
 }
 
+func TestValidateArtifactDeclarations_PathTraversalNames(t *testing.T) {
+	ctx := artifactsEnabledCtx()
+	tests := []struct {
+		name         string
+		artifactName string
+		wantErr      bool
+	}{
+		{"path traversal with parent dir", "../../etc/shadow", true},
+		{"dotdot only", "..", true},
+		{"single dot", ".", true},
+		{"slash in name", "foo/bar", true},
+		{"backslash in name", "foo\\bar", true},
+		{"dotdot prefix", "..foo", true},
+		{"ssh key path", "../.ssh/id_rsa", true},
+		{"starts with hyphen", "-image", true},
+		{"starts with dot", ".hidden", true},
+		{"valid simple name", "image", false},
+		{"valid with hyphen", "my-image", false},
+		{"valid with underscore", "my_image", false},
+		{"valid with dot", "image.tar", false},
+		{"valid alphanumeric", "sbom2", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			decls := &ArtifactDeclarations{
+				Inputs: []ArtifactDeclaration{
+					{Name: tt.artifactName},
+				},
+			}
+			errs := ValidateArtifactDeclarations(ctx, decls)
+			if (errs != nil) != tt.wantErr {
+				t.Errorf("ValidateArtifactDeclarations() with name %q: errors = %v, wantErr %v", tt.artifactName, errs, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestValidateArtifactDeclarations_MultipleSubjectsAllowed(t *testing.T) {
 	ctx := artifactsEnabledCtx()
 	decls := &ArtifactDeclarations{
@@ -348,6 +386,18 @@ func TestValidatePipelineTaskArtifactBindings_OCIRepositoryWithoutEnabled(t *tes
 	}
 }
 
+func TestValidatePipelineTaskArtifactBindings_PipelineInputFormat(t *testing.T) {
+	bindings := &PipelineTaskArtifacts{
+		Inputs: []PipelineTaskArtifactBinding{
+			{Name: "source", From: "artifacts.inputs.source"},
+		},
+	}
+
+	if errs := ValidatePipelineTaskArtifactBindings(artifactsEnabledCtx(), bindings); errs != nil {
+		t.Errorf("expected no errors for artifacts.inputs.<name> format, got: %v", errs)
+	}
+}
+
 func TestValidatePipelineTaskArtifactBindings_InvalidFromFormat(t *testing.T) {
 	bindings := &PipelineTaskArtifacts{
 		Inputs: []PipelineTaskArtifactBinding{
@@ -517,28 +567,6 @@ func TestValidateArtifactStorageAnnotations(t *testing.T) {
 			wantErr:     false,
 		},
 		{
-			name: "valid enabled true",
-			annotations: map[string]string{
-				config.ArtifactStorageEnabledAnnotation: "true",
-			},
-			wantErr: false,
-		},
-		{
-			name: "valid enabled false",
-			annotations: map[string]string{
-				config.ArtifactStorageEnabledAnnotation: "false",
-			},
-			wantErr: false,
-		},
-		{
-			name: "invalid enabled",
-			annotations: map[string]string{
-				config.ArtifactStorageEnabledAnnotation: "notbool",
-			},
-			wantErr:     true,
-			errContains: config.ArtifactStorageEnabledAnnotation,
-		},
-		{
 			name: "valid inline-threshold",
 			annotations: map[string]string{
 				config.ArtifactStorageInlineThresholdAnnotation: "256",
@@ -570,70 +598,27 @@ func TestValidateArtifactStorageAnnotations(t *testing.T) {
 			errContains: config.ArtifactStorageInlineThresholdAnnotation,
 		},
 		{
-			name: "valid insecure",
+			name: "valid oci-repository",
 			annotations: map[string]string{
-				config.ArtifactStorageInsecureAnnotation: "false",
+				config.ArtifactStorageOCIRepositoryAnnotation: "ghcr.io/test",
 			},
 			wantErr: false,
 		},
 		{
-			name: "invalid insecure",
+			name: "valid oci-repository empty",
 			annotations: map[string]string{
-				config.ArtifactStorageInsecureAnnotation: "xyz",
+				config.ArtifactStorageOCIRepositoryAnnotation: "",
 			},
 			wantErr:     true,
-			errContains: config.ArtifactStorageInsecureAnnotation,
-		},
-		{
-			name: "valid attach-referrers",
-			annotations: map[string]string{
-				config.ArtifactStorageOCIAttachReferrersAnnotation: "true",
-			},
-			wantErr: false,
-		},
-		{
-			name: "invalid attach-referrers",
-			annotations: map[string]string{
-				config.ArtifactStorageOCIAttachReferrersAnnotation: "nope",
-			},
-			wantErr:     true,
-			errContains: config.ArtifactStorageOCIAttachReferrersAnnotation,
-		},
-		{
-			name: "valid group-by-pipelinerun",
-			annotations: map[string]string{
-				config.ArtifactStorageOCIGroupByPipelineRunAnnotation: "false",
-			},
-			wantErr: false,
-		},
-		{
-			name: "invalid group-by-pipelinerun",
-			annotations: map[string]string{
-				config.ArtifactStorageOCIGroupByPipelineRunAnnotation: "bad",
-			},
-			wantErr:     true,
-			errContains: config.ArtifactStorageOCIGroupByPipelineRunAnnotation,
+			errContains: config.ArtifactStorageOCIRepositoryAnnotation,
 		},
 		{
 			name: "multiple valid annotations",
 			annotations: map[string]string{
-				config.ArtifactStorageEnabledAnnotation:            "true",
-				config.ArtifactStorageInsecureAnnotation:           "false",
-				config.ArtifactStorageInlineThresholdAnnotation:    "128",
-				config.ArtifactStorageOCIRepositoryAnnotation:      "ghcr.io/test",
-				config.ArtifactStorageOCIAttachReferrersAnnotation: "true",
+				config.ArtifactStorageInlineThresholdAnnotation: "128",
+				config.ArtifactStorageOCIRepositoryAnnotation:   "ghcr.io/test",
 			},
 			wantErr: false,
-		},
-		{
-			name: "multiple invalid annotations",
-			annotations: map[string]string{
-				config.ArtifactStorageEnabledAnnotation:         "bad",
-				config.ArtifactStorageInsecureAnnotation:        "bad",
-				config.ArtifactStorageInlineThresholdAnnotation: "bad",
-			},
-			wantErr:  true,
-			errCount: 2,
 		},
 		{
 			name: "unrelated annotations ignored",
@@ -759,7 +744,6 @@ func TestResolveArtifactStorageForValidation(t *testing.T) {
 		useKube     bool
 		wantRepo    string
 		wantEnabled bool
-		wantErr     bool
 	}{
 		{
 			name:        "no kubeclient no annotations returns cluster config",
@@ -781,14 +765,14 @@ func TestResolveArtifactStorageForValidation(t *testing.T) {
 			wantEnabled: false,
 		},
 		{
-			name:    "no kubeclient annotation overrides enabled",
+			name:    "no kubeclient unknown annotation is ignored",
 			storage: clusterConfig,
 			annotations: map[string]string{
-				config.ArtifactStorageEnabledAnnotation: "true",
+				"tekton.dev/something-else": "true",
 			},
 			useKube:     false,
 			wantRepo:    "cluster-repo",
-			wantEnabled: true,
+			wantEnabled: false,
 		},
 		{
 			name:        "nil ArtifactStorage returns context unchanged",
@@ -833,7 +817,7 @@ func TestResolveArtifactStorageForValidation(t *testing.T) {
 			wantEnabled: false,
 		},
 		{
-			name:      "annotation wins over namespace configmap",
+			name:      "annotation oci-repository wins over namespace configmap",
 			storage:   clusterConfig,
 			namespace: "test-ns",
 			nsCMData: map[string]string{
@@ -842,11 +826,10 @@ func TestResolveArtifactStorageForValidation(t *testing.T) {
 			},
 			annotations: map[string]string{
 				config.ArtifactStorageOCIRepositoryAnnotation: "annotation-repo",
-				config.ArtifactStorageEnabledAnnotation:       "false",
 			},
 			useKube:     true,
 			wantRepo:    "annotation-repo",
-			wantEnabled: false,
+			wantEnabled: true,
 		},
 		{
 			name:      "namespace overrides only some fields",
@@ -858,16 +841,6 @@ func TestResolveArtifactStorageForValidation(t *testing.T) {
 			useKube:     true,
 			wantRepo:    "cluster-repo",
 			wantEnabled: true,
-		},
-		{
-			name:      "namespace configmap with invalid enabled value returns error",
-			storage:   clusterConfig,
-			namespace: "test-ns",
-			nsCMData: map[string]string{
-				"enabled": "not-a-bool",
-			},
-			useKube: true,
-			wantErr: true,
 		},
 	}
 
@@ -898,17 +871,7 @@ func TestResolveArtifactStorageForValidation(t *testing.T) {
 				}
 			}
 
-			resultCtx, resolveErr := resolveArtifactStorageForValidation(ctx, tt.namespace, tt.annotations)
-			if tt.wantErr {
-				if resolveErr == nil {
-					t.Fatal("expected error but got nil")
-				}
-				return
-			}
-			if resolveErr != nil {
-				t.Fatalf("unexpected error: %v", resolveErr)
-			}
-
+			resultCtx := resolveArtifactStorageForValidation(ctx, tt.namespace, tt.annotations)
 			resolved := config.FromContextOrDefaults(resultCtx).ArtifactStorage
 
 			if tt.storage == nil {
@@ -923,6 +886,385 @@ func TestResolveArtifactStorageForValidation(t *testing.T) {
 			}
 			if resolved.Enabled != tt.wantEnabled {
 				t.Errorf("Enabled = %v, want %v", resolved.Enabled, tt.wantEnabled)
+			}
+		})
+	}
+}
+
+func TestValidatePipelineArtifacts_CrossValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		arts    *PipelineArtifactDeclarations
+		tasks   []PipelineTask
+		finally []PipelineTask
+		wantErr bool
+	}{
+		{
+			name: "valid: task references declared pipeline input",
+			arts: &PipelineArtifactDeclarations{
+				Inputs: []ArtifactDeclaration{{Name: "source"}},
+			},
+			tasks: []PipelineTask{
+				{
+					Name: "build",
+					Artifacts: &PipelineTaskArtifacts{
+						Inputs: []PipelineTaskArtifactBinding{
+							{Name: "src", From: "artifacts.inputs.source"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "error: task references undeclared pipeline input",
+			arts: &PipelineArtifactDeclarations{
+				Inputs: []ArtifactDeclaration{{Name: "source"}},
+			},
+			tasks: []PipelineTask{
+				{
+					Name: "build",
+					Artifacts: &PipelineTaskArtifacts{
+						Inputs: []PipelineTaskArtifactBinding{
+							{Name: "src", From: "artifacts.inputs.missing"},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "error: subject not allowed on pipeline inputs",
+			arts: &PipelineArtifactDeclarations{
+				Inputs: []ArtifactDeclaration{{Name: "source", Subject: true}},
+			},
+			tasks:   []PipelineTask{{Name: "build"}},
+			wantErr: true,
+		},
+		{
+			name: "error: value not allowed on pipeline inputs",
+			arts: &PipelineArtifactDeclarations{
+				Inputs: []ArtifactDeclaration{{Name: "source", Value: "$(steps.build.artifacts.img)"}},
+			},
+			tasks:   []PipelineTask{{Name: "build"}},
+			wantErr: true,
+		},
+		{
+			name: "error: invalid type on pipeline input",
+			arts: &PipelineArtifactDeclarations{
+				Inputs: []ArtifactDeclaration{{Name: "source", Type: "invalid"}},
+			},
+			tasks:   []PipelineTask{{Name: "build"}},
+			wantErr: true,
+		},
+		{
+			name: "valid: content type on pipeline input",
+			arts: &PipelineArtifactDeclarations{
+				Inputs: []ArtifactDeclaration{{Name: "source", Type: ArtifactTypeContent}},
+			},
+			tasks: []PipelineTask{{Name: "build"}},
+		},
+		{
+			name: "valid: task uses task output, not pipeline input",
+			arts: &PipelineArtifactDeclarations{
+				Outputs: []PipelineArtifactOutput{
+					{Name: "image", From: "tasks.build.outputs.image"},
+				},
+			},
+			tasks: []PipelineTask{
+				{Name: "build"},
+				{
+					Name: "sign",
+					Artifacts: &PipelineTaskArtifacts{
+						Inputs: []PipelineTaskArtifactBinding{
+							{Name: "img", From: "tasks.build.outputs.image"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:    "error: empty input name",
+			arts:    &PipelineArtifactDeclarations{Inputs: []ArtifactDeclaration{{Name: ""}}},
+			tasks:   []PipelineTask{{Name: "build"}},
+			wantErr: true,
+		},
+		{
+			name: "error: duplicate input names",
+			arts: &PipelineArtifactDeclarations{
+				Inputs: []ArtifactDeclaration{{Name: "source"}, {Name: "source"}},
+			},
+			tasks:   []PipelineTask{{Name: "build"}},
+			wantErr: true,
+		},
+		{
+			name: "error: empty output name",
+			arts: &PipelineArtifactDeclarations{
+				Outputs: []PipelineArtifactOutput{{Name: "", From: "tasks.build.outputs.image"}},
+			},
+			tasks:   []PipelineTask{{Name: "build"}},
+			wantErr: true,
+		},
+		{
+			name: "error: duplicate output names",
+			arts: &PipelineArtifactDeclarations{
+				Outputs: []PipelineArtifactOutput{
+					{Name: "image", From: "tasks.build.outputs.image"},
+					{Name: "image", From: "tasks.build.outputs.logs"},
+				},
+			},
+			tasks:   []PipelineTask{{Name: "build"}},
+			wantErr: true,
+		},
+		{
+			name: "error: empty output from",
+			arts: &PipelineArtifactDeclarations{
+				Outputs: []PipelineArtifactOutput{{Name: "image", From: ""}},
+			},
+			tasks:   []PipelineTask{{Name: "build"}},
+			wantErr: true,
+		},
+		{
+			name: "error: invalid output from format",
+			arts: &PipelineArtifactDeclarations{
+				Outputs: []PipelineArtifactOutput{{Name: "image", From: "invalid.ref"}},
+			},
+			tasks:   []PipelineTask{{Name: "build"}},
+			wantErr: true,
+		},
+		{
+			name: "error: output references nonexistent task",
+			arts: &PipelineArtifactDeclarations{
+				Outputs: []PipelineArtifactOutput{
+					{Name: "image", From: "tasks.nonexistent.outputs.image"},
+				},
+			},
+			tasks:   []PipelineTask{{Name: "build"}},
+			wantErr: true,
+		},
+		{
+			name: "error: output references nonexistent finally task",
+			arts: &PipelineArtifactDeclarations{
+				Outputs: []PipelineArtifactOutput{
+					{Name: "image", From: "finally.nonexistent.outputs.image"},
+				},
+			},
+			tasks:   []PipelineTask{{Name: "build"}},
+			finally: []PipelineTask{{Name: "cleanup"}},
+			wantErr: true,
+		},
+		{
+			name: "valid: output references existing finally task",
+			arts: &PipelineArtifactDeclarations{
+				Outputs: []PipelineArtifactOutput{
+					{Name: "image", From: "finally.cleanup.outputs.image"},
+				},
+			},
+			tasks:   []PipelineTask{{Name: "build"}},
+			finally: []PipelineTask{{Name: "cleanup"}},
+		},
+		{
+			name: "valid: finally task references declared pipeline input",
+			arts: &PipelineArtifactDeclarations{
+				Inputs: []ArtifactDeclaration{{Name: "source"}},
+			},
+			tasks: []PipelineTask{{Name: "build"}},
+			finally: []PipelineTask{
+				{
+					Name: "cleanup",
+					Artifacts: &PipelineTaskArtifacts{
+						Inputs: []PipelineTaskArtifactBinding{
+							{Name: "src", From: "artifacts.inputs.source"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "error: finally task references undeclared pipeline input",
+			arts: &PipelineArtifactDeclarations{
+				Inputs: []ArtifactDeclaration{{Name: "source"}},
+			},
+			tasks: []PipelineTask{{Name: "build"}},
+			finally: []PipelineTask{
+				{
+					Name: "cleanup",
+					Artifacts: &PipelineTaskArtifacts{
+						Inputs: []PipelineTaskArtifactBinding{
+							{Name: "src", From: "artifacts.inputs.missing"},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := validatePipelineArtifacts(artifactsEnabledCtx(), tt.arts, tt.tasks, tt.finally)
+			if (errs != nil) != tt.wantErr {
+				t.Errorf("validatePipelineArtifacts() errors = %v, wantErr %v", errs, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidatePipelineRunArtifacts(t *testing.T) {
+	tests := []struct {
+		name    string
+		spec    *PipelineRunSpec
+		wantErr bool
+	}{
+		{
+			name: "valid: nil artifacts",
+			spec: &PipelineRunSpec{},
+		},
+		{
+			name: "valid: input with uri and digest",
+			spec: &PipelineRunSpec{
+				Artifacts: &PipelineRunArtifacts{
+					Inputs: []Artifact{
+						{
+							Name: "source",
+							Values: []ArtifactValue{
+								{
+									Uri:    "oci://registry:5000/artifacts/source@sha256:abc123",
+									Digest: map[Algorithm]string{"sha256": "abc123"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "error: empty input name",
+			spec: &PipelineRunSpec{
+				Artifacts: &PipelineRunArtifacts{
+					Inputs: []Artifact{
+						{
+							Name: "",
+							Values: []ArtifactValue{
+								{
+									Uri:    "oci://registry:5000/artifacts/source@sha256:abc123",
+									Digest: map[Algorithm]string{"sha256": "abc123"},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "error: duplicate input names",
+			spec: &PipelineRunSpec{
+				Artifacts: &PipelineRunArtifacts{
+					Inputs: []Artifact{
+						{
+							Name: "source",
+							Values: []ArtifactValue{
+								{
+									Uri:    "oci://registry:5000/artifacts/source@sha256:abc123",
+									Digest: map[Algorithm]string{"sha256": "abc123"},
+								},
+							},
+						},
+						{
+							Name: "source",
+							Values: []ArtifactValue{
+								{
+									Uri:    "oci://registry:5000/artifacts/other@sha256:def456",
+									Digest: map[Algorithm]string{"sha256": "def456"},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "error: subject not allowed on inputs",
+			spec: &PipelineRunSpec{
+				Artifacts: &PipelineRunArtifacts{
+					Inputs: []Artifact{
+						{
+							Name:    "source",
+							Subject: true,
+							Values: []ArtifactValue{
+								{
+									Uri:    "oci://registry:5000/artifacts/source@sha256:abc123",
+									Digest: map[Algorithm]string{"sha256": "abc123"},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "error: empty values",
+			spec: &PipelineRunSpec{
+				Artifacts: &PipelineRunArtifacts{
+					Inputs: []Artifact{
+						{Name: "source", Values: []ArtifactValue{}},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "error: missing uri",
+			spec: &PipelineRunSpec{
+				Artifacts: &PipelineRunArtifacts{
+					Inputs: []Artifact{
+						{
+							Name: "source",
+							Values: []ArtifactValue{
+								{Digest: map[Algorithm]string{"sha256": "abc123"}},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "error: missing digest",
+			spec: &PipelineRunSpec{
+				Artifacts: &PipelineRunArtifacts{
+					Inputs: []Artifact{
+						{
+							Name: "source",
+							Values: []ArtifactValue{
+								{Uri: "oci://registry:5000/artifacts/source@sha256:abc123"},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "error: outputs not allowed",
+			spec: &PipelineRunSpec{
+				Artifacts: &PipelineRunArtifacts{
+					Outputs: []Artifact{
+						{Name: "image"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := tt.spec.validatePipelineRunArtifacts(artifactsEnabledCtx())
+			if (errs != nil) != tt.wantErr {
+				t.Errorf("validatePipelineRunArtifacts() errors = %v, wantErr %v", errs, tt.wantErr)
 			}
 		})
 	}
