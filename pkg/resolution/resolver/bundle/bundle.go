@@ -19,7 +19,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"strings"
+	"syscall"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -143,17 +145,45 @@ func retrieveImage(ctx context.Context, keychain authn.Keychain, ref string) (st
 	if err != nil {
 		return "", nil, fmt.Errorf("%s is an unparseable image reference: %w", ref, err)
 	}
-	customRetryBackoff, err := GetBundleResolverBackoff(ctx)
-	if err == nil {
-		img, err := remote.Image(imgRef, remote.WithAuthFromKeychain(keychain), remote.WithContext(ctx),
-			remote.WithRetryBackoff(customRetryBackoff))
-
-		return imgRef.Context().Name(), img, err
-	} else {
-		img, err := remote.Image(imgRef, remote.WithAuthFromKeychain(keychain), remote.WithContext(ctx))
-
-		return imgRef.Context().Name(), img, err
+	opts := []remote.Option{
+		remote.WithAuthFromKeychain(keychain),
+		remote.WithContext(ctx),
+		remote.WithRetryPredicate(func(err error) bool { return isRetryableError(ctx, err) }),
 	}
+	if customRetryBackoff, err := GetBundleResolverBackoff(ctx); err == nil {
+		opts = append(opts, remote.WithRetryBackoff(customRetryBackoff))
+	}
+	img, err := remote.Image(imgRef, opts...)
+	return imgRef.Context().Name(), img, err
+}
+
+// temporary is the interface go-containerregistry checks for when it decides whether to retry.
+type temporary interface {
+	Temporary() bool
+}
+
+// isRetryableError reports whether a registry request should be retried. It keeps the
+// go-containerregistry defaults (EOF, connection reset, broken pipe, closed connection and
+// temporary errors) and also retries network timeouts such as "dial tcp: i/o timeout".
+// The default predicate skips those because net timeout errors also match
+// context.DeadlineExceeded. Nothing is retried once the resolution context itself is done.
+func isRetryableError(ctx context.Context, err error) bool {
+	if err == nil || ctx.Err() != nil {
+		return false
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+	if errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) || errors.Is(err, syscall.EPIPE) ||
+		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, net.ErrClosed) {
+		return true
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	var tempErr temporary
+	return errors.As(err, &tempErr) && tempErr.Temporary()
 }
 
 // checkImageCompliance will perform common checks to ensure the Tekton Bundle is compliant to our spec.
