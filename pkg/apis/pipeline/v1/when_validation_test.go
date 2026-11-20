@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -198,5 +199,26 @@ func TestCELWhenExpressions_Invalid(t *testing.T) {
 				t.Errorf("WhenExpressions.validate() did not return error for invalid when expressions: %s", tt.wes)
 			}
 		})
+	}
+}
+
+func TestCELWhenExpressions_InvalidErrorMessage(t *testing.T) {
+	ctx := config.ToContext(t.Context(), &config.Config{
+		FeatureFlags: &config.FeatureFlags{
+			EnableCELInWhenExpression: true,
+		},
+	})
+	wes := WhenExpressions{{CEL: " params.foo == 'foo' "}}
+
+	err := wes.validate(ctx)
+	if err == nil {
+		t.Fatal("WhenExpressions.validate() did not return error for an invalid cel expression")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "invalid cel expression:  params.foo == 'foo'  with err:") {
+		t.Errorf("error does not describe the invalid cel expression, got %q", msg)
+	}
+	if strings.Contains(msg, "%s") {
+		t.Errorf("error contains an unformatted verb, got %q", msg)
 	}
 }
