@@ -70,6 +70,7 @@ See the following topics to learn how to use Tekton Pipelines in your project:
 - [Using labels](labels.md)
 - [Viewing logs](logs.md)
 - [Pipelines metrics](metrics.md)
+- [Measuring and estimating etcd usage](etcd-revision-profiling.md)
 - [Variable Substitutions](tasks.md#using-variable-substitution)
 - [Running a Custom Task](customruns.md)
 - [Remote resolution of Pipelines and Tasks](resolution.md)
