@@ -136,6 +136,84 @@ spec:
       cpu: 2
 ```
 
+## Variable Substitution in Compute Resources
+
+Tekton supports [variable substitution](./variables.md) in `computeResources` fields, allowing
+resource requests and limits to be parameterized:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: build
+spec:
+  params:
+    - name: MEMORY_REQUEST
+      type: string
+      default: "128Mi"
+    - name: MEMORY_LIMIT
+      type: string
+      default: "256Mi"
+  steps:
+    - name: build
+      image: golang:1.22
+      computeResources:
+        requests:
+          memory: $(params.MEMORY_REQUEST)
+        limits:
+          memory: $(params.MEMORY_LIMIT)
+```
+
+This is useful when the same Task is used across multiple projects with different resource
+requirements. Instead of duplicating the Task, pipeline or TaskRun authors can pass the
+resource values as parameters:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: build-large
+spec:
+  taskRef:
+    name: build
+  params:
+    - name: MEMORY_REQUEST
+      value: "1Gi"
+    - name: MEMORY_LIMIT
+      value: "2Gi"
+```
+
+> **Note:** Variable substitution is supported in Task/Pipeline `computeResources` fields
+> (steps, sidecars, stepTemplate). It is **not** supported in `TaskRun.spec.computeResources`,
+> `TaskRun.spec.stepSpecs[].computeResources`, `TaskRun.spec.sidecarSpecs[].computeResources`,
+> or `PipelineRun.spec.taskRunSpecs[].stepSpecs[].computeResources` — these runtime override
+> fields require concrete resource values.
+
+> **Note:** When using parameterized compute resources, consider using
+> [LimitRanges](https://kubernetes.io/docs/concepts/policy/limit-range/) and
+> [ResourceQuotas](https://kubernetes.io/docs/concepts/policy/resource-quotas/)
+> to guard against resource exhaustion from excessively large values.
+
+### Validation of parameterized values
+
+Values are checked twice:
+
+- At **admission** time, the webhook rejects a `computeResources` value that is neither a
+  valid quantity nor a well-formed variable reference. A reference may be combined with a
+  suffix, so both `$(params.MEM)` and `$(params.SIZE)Mi` are accepted, while `notaquantity`
+  or an unterminated `$(params.MEM` are rejected.
+- At **pod creation** time, once the variables have been substituted, values that did not
+  resolve to a valid quantity (for example a parameter whose value is `large` instead of
+  `1Gi`) fail the TaskRun with a validation error, rather than being dropped silently.
+
+### v1beta1 compatibility
+
+`v1beta1` stores compute resources as Kubernetes `ResourceRequirements`, whose values cannot
+hold a variable reference. When a v1 Task, TaskRun, Pipeline or PipelineRun holding
+unresolved references is converted to `v1beta1`, those values are preserved in the
+`tekton.dev/v1ComputeResources` annotation and restored on the way back to v1, so a
+round-trip through a v1beta1 client does not lose them.
+
 ## LimitRange Support
 
 Kubernetes allows users to configure [LimitRanges]((https://kubernetes.io/docs/concepts/policy/limit-range/)),
