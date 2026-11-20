@@ -33,6 +33,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	aa "github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	pipelinePod "github.com/tektoncd/pipeline/pkg/pod"
+	th "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -49,7 +50,6 @@ import (
 	testing2 "k8s.io/client-go/testing"
 	"knative.dev/pkg/kmeta"
 	logtesting "knative.dev/pkg/logging/testing"
-	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 
@@ -1611,12 +1611,9 @@ func TestCleanupAffinityAssistantsAndPVCs_Failure(t *testing.T) {
 
 // TestThatCleanupIsAvoidedtests that cleanup of Affinity Assistants is omitted
 func TestThatCleanupIsAvoided(t *testing.T) {
-	configMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-		Data: map[string]string{
-			"coschedule": "disabled",
-		},
-	}
+	configMap := th.NewFeatureFlagsConfigMapWithData(map[string]string{
+		"coschedule": "disabled",
+	})
 
 	fakeClientSet := fakek8s.NewSimpleClientset(
 		configMap,
