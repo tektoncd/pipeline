@@ -6178,6 +6178,7 @@ spec:
       ref:
         resolver: bar
 `)
+			originalSpec := tr.Spec.TaskSpec.DeepCopy()
 			stepActionReq := getResolvedResolutionRequest(t, "bar", stepActionBytes, tr.Namespace, tr.Name)
 			d := test.Data{
 				TaskRuns: []*v1.TaskRun{tr},
@@ -6199,6 +6200,9 @@ spec:
 				t.Fatalf("getting reconciled run: %v", err)
 			}
 
+			if d := cmp.Diff(originalSpec, reconciledRun.Spec.TaskSpec); d != "" {
+				t.Errorf("spec.taskSpec changed during reconciliation (-want, +got): %s", d)
+			}
 			ts := reconciledRun.Status.TaskSpec
 			if ts == nil {
 				t.Fatal("expected status.taskSpec to be set after reconcile")
