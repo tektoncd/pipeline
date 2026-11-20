@@ -4,7 +4,9 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -98,6 +100,26 @@ type GenerateRandomInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GenerateRandomInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GenerateRandomRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GenerateRandomInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CustomKeyStoreId != nil {
+		s.WriteString(schemas.GenerateRandomRequest_CustomKeyStoreId, *v.CustomKeyStoreId)
+	}
+	if v.NumberOfBytes != nil {
+		s.WriteInt32(schemas.GenerateRandomRequest_NumberOfBytes, *v.NumberOfBytes)
+	}
+	if v.Recipient != nil {
+		s.WriteStruct(schemas.GenerateRandomRequest_Recipient)
+		v.Recipient.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+
 type GenerateRandomOutput struct {
 
 	// The plaintext random bytes encrypted with the public key from the attestation
@@ -126,13 +148,36 @@ type GenerateRandomOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GenerateRandomOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GenerateRandomResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GenerateRandomOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CiphertextForRecipient != nil {
+		s.WriteBlob(schemas.GenerateRandomResponse_CiphertextForRecipient, v.CiphertextForRecipient)
+	}
+	if v.Plaintext != nil {
+		s.WriteBlob(schemas.GenerateRandomResponse_Plaintext, v.Plaintext)
+	}
+}
+func (v *GenerateRandomOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.GenerateRandomResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.GenerateRandomResponse_CiphertextForRecipient:
+			return d.ReadBlob(schemas.GenerateRandomResponse_CiphertextForRecipient, &v.CiphertextForRecipient)
+		case schemas.GenerateRandomResponse_Plaintext:
+			return d.ReadBlob(schemas.GenerateRandomResponse_Plaintext, &v.Plaintext)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGenerateRandomMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpGenerateRandom{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GenerateRandom, schemas.GenerateRandomRequest, schemas.GenerateRandomResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpGenerateRandom{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GenerateRandom, schemas.GenerateRandomRequest, schemas.GenerateRandomResponse), output: &GenerateRandomOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

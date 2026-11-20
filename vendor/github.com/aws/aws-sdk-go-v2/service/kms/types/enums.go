@@ -178,6 +178,9 @@ const (
 	DataKeyPairSpecEccSecgP256k1       DataKeyPairSpec = "ECC_SECG_P256K1"
 	DataKeyPairSpecSm2                 DataKeyPairSpec = "SM2"
 	DataKeyPairSpecEccNistEdwards25519 DataKeyPairSpec = "ECC_NIST_EDWARDS25519"
+	DataKeyPairSpecMlKem512            DataKeyPairSpec = "ML_KEM_512"
+	DataKeyPairSpecMlKem768            DataKeyPairSpec = "ML_KEM_768"
+	DataKeyPairSpecMlKem1024           DataKeyPairSpec = "ML_KEM_1024"
 )
 
 // Values returns all known values for DataKeyPairSpec. Note that this can be
@@ -195,6 +198,9 @@ func (DataKeyPairSpec) Values() []DataKeyPairSpec {
 		"ECC_SECG_P256K1",
 		"SM2",
 		"ECC_NIST_EDWARDS25519",
+		"ML_KEM_512",
+		"ML_KEM_768",
+		"ML_KEM_1024",
 	}
 }
 
@@ -231,6 +237,23 @@ const (
 func (DryRunModifierType) Values() []DryRunModifierType {
 	return []DryRunModifierType{
 		"IGNORE_CIPHERTEXT",
+	}
+}
+
+type EncapsulationAlgorithmSpec string
+
+// Enum values for EncapsulationAlgorithmSpec
+const (
+	EncapsulationAlgorithmSpecMlKem EncapsulationAlgorithmSpec = "ML_KEM"
+)
+
+// Values returns all known values for EncapsulationAlgorithmSpec. Note that this
+// can be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (EncapsulationAlgorithmSpec) Values() []EncapsulationAlgorithmSpec {
+	return []EncapsulationAlgorithmSpec{
+		"ML_KEM",
 	}
 }
 
@@ -297,6 +320,8 @@ const (
 	GrantOperationGenerateMac                         GrantOperation = "GenerateMac"
 	GrantOperationVerifyMac                           GrantOperation = "VerifyMac"
 	GrantOperationDeriveSharedSecret                  GrantOperation = "DeriveSharedSecret"
+	GrantOperationEncapsulate                         GrantOperation = "Encapsulate"
+	GrantOperationDecapsulate                         GrantOperation = "Decapsulate"
 )
 
 // Values returns all known values for GrantOperation. Note that this can be
@@ -322,6 +347,8 @@ func (GrantOperation) Values() []GrantOperation {
 		"GenerateMac",
 		"VerifyMac",
 		"DeriveSharedSecret",
+		"Encapsulate",
+		"Decapsulate",
 	}
 }
 
@@ -432,6 +459,8 @@ const (
 	KeyLastUsageTrackingOperationSign                                KeyLastUsageTrackingOperation = "Sign"
 	KeyLastUsageTrackingOperationVerify                              KeyLastUsageTrackingOperation = "Verify"
 	KeyLastUsageTrackingOperationVerifyMac                           KeyLastUsageTrackingOperation = "VerifyMac"
+	KeyLastUsageTrackingOperationEncapsulate                         KeyLastUsageTrackingOperation = "Encapsulate"
+	KeyLastUsageTrackingOperationDecapsulate                         KeyLastUsageTrackingOperation = "Decapsulate"
 )
 
 // Values returns all known values for KeyLastUsageTrackingOperation. Note that
@@ -453,6 +482,8 @@ func (KeyLastUsageTrackingOperation) Values() []KeyLastUsageTrackingOperation {
 		"Sign",
 		"Verify",
 		"VerifyMac",
+		"Encapsulate",
+		"Decapsulate",
 	}
 }
 
@@ -519,6 +550,9 @@ const (
 	KeySpecMlDsa65             KeySpec = "ML_DSA_65"
 	KeySpecMlDsa87             KeySpec = "ML_DSA_87"
 	KeySpecEccNistEdwards25519 KeySpec = "ECC_NIST_EDWARDS25519"
+	KeySpecMlKem512            KeySpec = "ML_KEM_512"
+	KeySpecMlKem768            KeySpec = "ML_KEM_768"
+	KeySpecMlKem1024           KeySpec = "ML_KEM_1024"
 )
 
 // Values returns all known values for KeySpec. Note that this can be expanded in
@@ -544,6 +578,9 @@ func (KeySpec) Values() []KeySpec {
 		"ML_DSA_65",
 		"ML_DSA_87",
 		"ECC_NIST_EDWARDS25519",
+		"ML_KEM_512",
+		"ML_KEM_768",
+		"ML_KEM_1024",
 	}
 }
 
@@ -582,10 +619,11 @@ type KeyUsageType string
 
 // Enum values for KeyUsageType
 const (
-	KeyUsageTypeSignVerify        KeyUsageType = "SIGN_VERIFY"
-	KeyUsageTypeEncryptDecrypt    KeyUsageType = "ENCRYPT_DECRYPT"
-	KeyUsageTypeGenerateVerifyMac KeyUsageType = "GENERATE_VERIFY_MAC"
-	KeyUsageTypeKeyAgreement      KeyUsageType = "KEY_AGREEMENT"
+	KeyUsageTypeSignVerify             KeyUsageType = "SIGN_VERIFY"
+	KeyUsageTypeEncryptDecrypt         KeyUsageType = "ENCRYPT_DECRYPT"
+	KeyUsageTypeGenerateVerifyMac      KeyUsageType = "GENERATE_VERIFY_MAC"
+	KeyUsageTypeKeyAgreement           KeyUsageType = "KEY_AGREEMENT"
+	KeyUsageTypeEncapsulateDecapsulate KeyUsageType = "ENCAPSULATE_DECAPSULATE"
 )
 
 // Values returns all known values for KeyUsageType. Note that this can be
@@ -598,6 +636,7 @@ func (KeyUsageType) Values() []KeyUsageType {
 		"ENCRYPT_DECRYPT",
 		"GENERATE_VERIFY_MAC",
 		"KEY_AGREEMENT",
+		"ENCAPSULATE_DECAPSULATE",
 	}
 }
 

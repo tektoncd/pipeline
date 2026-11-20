@@ -1048,77 +1048,77 @@ var File_google_cloud_kms_v1_ekm_service_proto protoreflect.FileDescriptor
 
 const file_google_cloud_kms_v1_ekm_service_proto_rawDesc = "" +
 	"\n" +
-	"%google/cloud/kms/v1/ekm_service.proto\x12\x13google.cloud.kms.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe1\x01\n" +
-	"\x19ListEkmConnectionsRequest\x12A\n" +
-	"\x06parent\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!locations.googleapis.com/LocationR\x06parent\x12 \n" +
-	"\tpage_size\x18\x02 \x01(\x05B\x03\xe0A\x01R\bpageSize\x12\"\n" +
+	"%google/cloud/kms/v1/ekm_service.proto\x12\x13google.cloud.kms.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe6\x01\n" +
+	"\x19ListEkmConnectionsRequest\x12B\n" +
+	"\x06parent\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!locations.googleapis.com/LocationR\x06parent\x12!\n" +
+	"\tpage_size\x18\x02 \x01(\x05B\x04\xe2A\x01\x01R\bpageSize\x12#\n" +
 	"\n" +
-	"page_token\x18\x03 \x01(\tB\x03\xe0A\x01R\tpageToken\x12\x1b\n" +
-	"\x06filter\x18\x04 \x01(\tB\x03\xe0A\x01R\x06filter\x12\x1e\n" +
-	"\border_by\x18\x05 \x01(\tB\x03\xe0A\x01R\aorderBy\"\xb0\x01\n" +
+	"page_token\x18\x03 \x01(\tB\x04\xe2A\x01\x01R\tpageToken\x12\x1c\n" +
+	"\x06filter\x18\x04 \x01(\tB\x04\xe2A\x01\x01R\x06filter\x12\x1f\n" +
+	"\border_by\x18\x05 \x01(\tB\x04\xe2A\x01\x01R\aorderBy\"\xb0\x01\n" +
 	"\x1aListEkmConnectionsResponse\x12K\n" +
 	"\x0fekm_connections\x18\x01 \x03(\v2\".google.cloud.kms.v1.EkmConnectionR\x0eekmConnections\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1d\n" +
 	"\n" +
-	"total_size\x18\x03 \x01(\x05R\ttotalSize\"\\\n" +
-	"\x17GetEkmConnectionRequest\x12A\n" +
-	"\x04name\x18\x01 \x01(\tB-\xe0A\x02\xfaA'\n" +
-	"%cloudkms.googleapis.com/EkmConnectionR\x04name\"\xe0\x01\n" +
-	"\x1aCreateEkmConnectionRequest\x12A\n" +
-	"\x06parent\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!locations.googleapis.com/LocationR\x06parent\x12/\n" +
-	"\x11ekm_connection_id\x18\x02 \x01(\tB\x03\xe0A\x02R\x0fekmConnectionId\x12N\n" +
-	"\x0eekm_connection\x18\x03 \x01(\v2\".google.cloud.kms.v1.EkmConnectionB\x03\xe0A\x02R\rekmConnection\"\xae\x01\n" +
-	"\x1aUpdateEkmConnectionRequest\x12N\n" +
-	"\x0eekm_connection\x18\x01 \x01(\v2\".google.cloud.kms.v1.EkmConnectionB\x03\xe0A\x02R\rekmConnection\x12@\n" +
-	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x03\xe0A\x02R\n" +
-	"updateMask\"T\n" +
-	"\x13GetEkmConfigRequest\x12=\n" +
-	"\x04name\x18\x01 \x01(\tB)\xe0A\x02\xfaA#\n" +
-	"!cloudkms.googleapis.com/EkmConfigR\x04name\"\x9e\x01\n" +
-	"\x16UpdateEkmConfigRequest\x12B\n" +
+	"total_size\x18\x03 \x01(\x05R\ttotalSize\"]\n" +
+	"\x17GetEkmConnectionRequest\x12B\n" +
+	"\x04name\x18\x01 \x01(\tB.\xe2A\x01\x02\xfaA'\n" +
+	"%cloudkms.googleapis.com/EkmConnectionR\x04name\"\xe3\x01\n" +
+	"\x1aCreateEkmConnectionRequest\x12B\n" +
+	"\x06parent\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!locations.googleapis.com/LocationR\x06parent\x120\n" +
+	"\x11ekm_connection_id\x18\x02 \x01(\tB\x04\xe2A\x01\x02R\x0fekmConnectionId\x12O\n" +
+	"\x0eekm_connection\x18\x03 \x01(\v2\".google.cloud.kms.v1.EkmConnectionB\x04\xe2A\x01\x02R\rekmConnection\"\xb0\x01\n" +
+	"\x1aUpdateEkmConnectionRequest\x12O\n" +
+	"\x0eekm_connection\x18\x01 \x01(\v2\".google.cloud.kms.v1.EkmConnectionB\x04\xe2A\x01\x02R\rekmConnection\x12A\n" +
+	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x04\xe2A\x01\x02R\n" +
+	"updateMask\"U\n" +
+	"\x13GetEkmConfigRequest\x12>\n" +
+	"\x04name\x18\x01 \x01(\tB*\xe2A\x01\x02\xfaA#\n" +
+	"!cloudkms.googleapis.com/EkmConfigR\x04name\"\xa0\x01\n" +
+	"\x16UpdateEkmConfigRequest\x12C\n" +
 	"\n" +
-	"ekm_config\x18\x01 \x01(\v2\x1e.google.cloud.kms.v1.EkmConfigB\x03\xe0A\x02R\tekmConfig\x12@\n" +
-	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x03\xe0A\x02R\n" +
-	"updateMask\"\xba\x03\n" +
-	"\vCertificate\x12\x1c\n" +
-	"\araw_der\x18\x01 \x01(\fB\x03\xe0A\x02R\x06rawDer\x12\x1b\n" +
-	"\x06parsed\x18\x02 \x01(\bB\x03\xe0A\x03R\x06parsed\x12\x1b\n" +
-	"\x06issuer\x18\x03 \x01(\tB\x03\xe0A\x03R\x06issuer\x12\x1d\n" +
-	"\asubject\x18\x04 \x01(\tB\x03\xe0A\x03R\asubject\x12F\n" +
-	"\x1dsubject_alternative_dns_names\x18\x05 \x03(\tB\x03\xe0A\x03R\x1asubjectAlternativeDnsNames\x12G\n" +
-	"\x0fnot_before_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\rnotBeforeTime\x12E\n" +
-	"\x0enot_after_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\fnotAfterTime\x12(\n" +
-	"\rserial_number\x18\b \x01(\tB\x03\xe0A\x03R\fserialNumber\x122\n" +
-	"\x12sha256_fingerprint\x18\t \x01(\tB\x03\xe0A\x03R\x11sha256Fingerprint\"\xf7\x06\n" +
-	"\rEkmConnection\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x03R\x04name\x12@\n" +
-	"\vcreate_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
-	"createTime\x12d\n" +
-	"\x11service_resolvers\x18\x03 \x03(\v22.google.cloud.kms.v1.EkmConnection.ServiceResolverB\x03\xe0A\x01R\x10serviceResolvers\x12\x17\n" +
-	"\x04etag\x18\x05 \x01(\tB\x03\xe0A\x01R\x04etag\x12i\n" +
-	"\x13key_management_mode\x18\x06 \x01(\x0e24.google.cloud.kms.v1.EkmConnection.KeyManagementModeB\x03\xe0A\x01R\x11keyManagementMode\x12/\n" +
-	"\x11crypto_space_path\x18\a \x01(\tB\x03\xe0A\x01R\x0fcryptoSpacePath\x1a\xa5\x02\n" +
-	"\x0fServiceResolver\x12k\n" +
-	"\x19service_directory_service\x18\x01 \x01(\tB/\xe0A\x02\xfaA)\n" +
-	"'servicedirectory.googleapis.com/ServiceR\x17serviceDirectoryService\x12,\n" +
-	"\x0fendpoint_filter\x18\x02 \x01(\tB\x03\xe0A\x01R\x0eendpointFilter\x12\x1f\n" +
-	"\bhostname\x18\x03 \x01(\tB\x03\xe0A\x02R\bhostname\x12V\n" +
-	"\x13server_certificates\x18\x04 \x03(\v2 .google.cloud.kms.v1.CertificateB\x03\xe0A\x02R\x12serverCertificates\"S\n" +
+	"ekm_config\x18\x01 \x01(\v2\x1e.google.cloud.kms.v1.EkmConfigB\x04\xe2A\x01\x02R\tekmConfig\x12A\n" +
+	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x04\xe2A\x01\x02R\n" +
+	"updateMask\"\xc3\x03\n" +
+	"\vCertificate\x12\x1d\n" +
+	"\araw_der\x18\x01 \x01(\fB\x04\xe2A\x01\x02R\x06rawDer\x12\x1c\n" +
+	"\x06parsed\x18\x02 \x01(\bB\x04\xe2A\x01\x03R\x06parsed\x12\x1c\n" +
+	"\x06issuer\x18\x03 \x01(\tB\x04\xe2A\x01\x03R\x06issuer\x12\x1e\n" +
+	"\asubject\x18\x04 \x01(\tB\x04\xe2A\x01\x03R\asubject\x12G\n" +
+	"\x1dsubject_alternative_dns_names\x18\x05 \x03(\tB\x04\xe2A\x01\x03R\x1asubjectAlternativeDnsNames\x12H\n" +
+	"\x0fnot_before_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\rnotBeforeTime\x12F\n" +
+	"\x0enot_after_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\fnotAfterTime\x12)\n" +
+	"\rserial_number\x18\b \x01(\tB\x04\xe2A\x01\x03R\fserialNumber\x123\n" +
+	"\x12sha256_fingerprint\x18\t \x01(\tB\x04\xe2A\x01\x03R\x11sha256Fingerprint\"\x81\a\n" +
+	"\rEkmConnection\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\tB\x04\xe2A\x01\x03R\x04name\x12A\n" +
+	"\vcreate_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampB\x04\xe2A\x01\x03R\n" +
+	"createTime\x12e\n" +
+	"\x11service_resolvers\x18\x03 \x03(\v22.google.cloud.kms.v1.EkmConnection.ServiceResolverB\x04\xe2A\x01\x01R\x10serviceResolvers\x12\x18\n" +
+	"\x04etag\x18\x05 \x01(\tB\x04\xe2A\x01\x01R\x04etag\x12j\n" +
+	"\x13key_management_mode\x18\x06 \x01(\x0e24.google.cloud.kms.v1.EkmConnection.KeyManagementModeB\x04\xe2A\x01\x01R\x11keyManagementMode\x120\n" +
+	"\x11crypto_space_path\x18\a \x01(\tB\x04\xe2A\x01\x01R\x0fcryptoSpacePath\x1a\xa9\x02\n" +
+	"\x0fServiceResolver\x12l\n" +
+	"\x19service_directory_service\x18\x01 \x01(\tB0\xe2A\x01\x02\xfaA)\n" +
+	"'servicedirectory.googleapis.com/ServiceR\x17serviceDirectoryService\x12-\n" +
+	"\x0fendpoint_filter\x18\x02 \x01(\tB\x04\xe2A\x01\x01R\x0eendpointFilter\x12 \n" +
+	"\bhostname\x18\x03 \x01(\tB\x04\xe2A\x01\x02R\bhostname\x12W\n" +
+	"\x13server_certificates\x18\x04 \x03(\v2 .google.cloud.kms.v1.CertificateB\x04\xe2A\x01\x02R\x12serverCertificates\"S\n" +
 	"\x11KeyManagementMode\x12#\n" +
 	"\x1fKEY_MANAGEMENT_MODE_UNSPECIFIED\x10\x00\x12\n" +
 	"\n" +
 	"\x06MANUAL\x10\x01\x12\r\n" +
 	"\tCLOUD_KMS\x10\x02:s\xeaAp\n" +
-	"%cloudkms.googleapis.com/EkmConnection\x12Gprojects/{project}/locations/{location}/ekmConnections/{ekm_connection}\"\xe4\x01\n" +
-	"\tEkmConfig\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tB\x03\xe0A\x03R\x04name\x12c\n" +
-	"\x16default_ekm_connection\x18\x02 \x01(\tB-\xe0A\x01\xfaA'\n" +
+	"%cloudkms.googleapis.com/EkmConnection\x12Gprojects/{project}/locations/{location}/ekmConnections/{ekm_connection}\"\xe6\x01\n" +
+	"\tEkmConfig\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\tB\x04\xe2A\x01\x03R\x04name\x12d\n" +
+	"\x16default_ekm_connection\x18\x02 \x01(\tB.\xe2A\x01\x01\xfaA'\n" +
 	"%cloudkms.googleapis.com/EkmConnectionR\x14defaultEkmConnection:Y\xeaAV\n" +
-	"!cloudkms.googleapis.com/EkmConfig\x121projects/{project}/locations/{location}/ekmConfig\"^\n" +
-	"\x19VerifyConnectivityRequest\x12A\n" +
-	"\x04name\x18\x01 \x01(\tB-\xe0A\x02\xfaA'\n" +
+	"!cloudkms.googleapis.com/EkmConfig\x121projects/{project}/locations/{location}/ekmConfig\"_\n" +
+	"\x19VerifyConnectivityRequest\x12B\n" +
+	"\x04name\x18\x01 \x01(\tB.\xe2A\x01\x02\xfaA'\n" +
 	"%cloudkms.googleapis.com/EkmConnectionR\x04name\"\x1c\n" +
 	"\x1aVerifyConnectivityResponse2\xdc\v\n" +
 	"\n" +

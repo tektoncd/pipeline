@@ -71,6 +71,10 @@ func getPluginExecutableAndKeyResourceID(inputKeyResourceID string) (string, str
 		return "", "", fmt.Errorf("%w: expected format: [plugin name]://[key ref], got: %s", ErrorInputKeyResourceID, inputKeyResourceID)
 	}
 	pluginName, keyResourceID := parts[0], parts[1]
+	// A path separator would make exec skip the PATH lookup and run a file relative to the working directory.
+	if strings.ContainsAny(pluginName, `/\`) {
+		return "", "", fmt.Errorf("%w: plugin name must not contain a path separator, got: %s", ErrorInputKeyResourceID, pluginName)
+	}
 	executable := PluginBinaryPrefix + pluginName
 	return executable, keyResourceID, nil
 }

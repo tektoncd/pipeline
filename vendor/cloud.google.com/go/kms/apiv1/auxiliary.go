@@ -18,11 +18,13 @@ package kms
 
 import (
 	"context"
+	"iter"
 	"time"
 
 	kmspb "cloud.google.com/go/kms/apiv1/kmspb"
 	"cloud.google.com/go/longrunning"
 	gax "github.com/googleapis/gax-go/v2"
+	gaxiter "github.com/googleapis/gax-go/v2/iterator"
 	"google.golang.org/api/iterator"
 	locationpb "google.golang.org/genproto/googleapis/cloud/location"
 )
@@ -389,6 +391,12 @@ func (op *ExecuteSingleTenantHsmInstanceProposalOperation) Name() string {
 	return op.lro.Name()
 }
 
+// All returns an iterator. If an error is returned by the iterator, the
+// iterator will stop after that iteration.
+func (it *CryptoKeyIterator) All() iter.Seq2[*kmspb.CryptoKey, error] {
+	return gaxiter.RangeAdapter(it.Next)
+}
+
 // CryptoKeyIterator manages a stream of *kmspb.CryptoKey.
 type CryptoKeyIterator struct {
 	items    []*kmspb.CryptoKey
@@ -434,6 +442,12 @@ func (it *CryptoKeyIterator) takeBuf() interface{} {
 	b := it.items
 	it.items = nil
 	return b
+}
+
+// All returns an iterator. If an error is returned by the iterator, the
+// iterator will stop after that iteration.
+func (it *CryptoKeyVersionIterator) All() iter.Seq2[*kmspb.CryptoKeyVersion, error] {
+	return gaxiter.RangeAdapter(it.Next)
 }
 
 // CryptoKeyVersionIterator manages a stream of *kmspb.CryptoKeyVersion.
@@ -483,6 +497,12 @@ func (it *CryptoKeyVersionIterator) takeBuf() interface{} {
 	return b
 }
 
+// All returns an iterator. If an error is returned by the iterator, the
+// iterator will stop after that iteration.
+func (it *EkmConnectionIterator) All() iter.Seq2[*kmspb.EkmConnection, error] {
+	return gaxiter.RangeAdapter(it.Next)
+}
+
 // EkmConnectionIterator manages a stream of *kmspb.EkmConnection.
 type EkmConnectionIterator struct {
 	items    []*kmspb.EkmConnection
@@ -528,6 +548,12 @@ func (it *EkmConnectionIterator) takeBuf() interface{} {
 	b := it.items
 	it.items = nil
 	return b
+}
+
+// All returns an iterator. If an error is returned by the iterator, the
+// iterator will stop after that iteration.
+func (it *ImportJobIterator) All() iter.Seq2[*kmspb.ImportJob, error] {
+	return gaxiter.RangeAdapter(it.Next)
 }
 
 // ImportJobIterator manages a stream of *kmspb.ImportJob.
@@ -577,6 +603,12 @@ func (it *ImportJobIterator) takeBuf() interface{} {
 	return b
 }
 
+// All returns an iterator. If an error is returned by the iterator, the
+// iterator will stop after that iteration.
+func (it *KeyHandleIterator) All() iter.Seq2[*kmspb.KeyHandle, error] {
+	return gaxiter.RangeAdapter(it.Next)
+}
+
 // KeyHandleIterator manages a stream of *kmspb.KeyHandle.
 type KeyHandleIterator struct {
 	items    []*kmspb.KeyHandle
@@ -622,6 +654,12 @@ func (it *KeyHandleIterator) takeBuf() interface{} {
 	b := it.items
 	it.items = nil
 	return b
+}
+
+// All returns an iterator. If an error is returned by the iterator, the
+// iterator will stop after that iteration.
+func (it *KeyRingIterator) All() iter.Seq2[*kmspb.KeyRing, error] {
+	return gaxiter.RangeAdapter(it.Next)
 }
 
 // KeyRingIterator manages a stream of *kmspb.KeyRing.
@@ -671,6 +709,12 @@ func (it *KeyRingIterator) takeBuf() interface{} {
 	return b
 }
 
+// All returns an iterator. If an error is returned by the iterator, the
+// iterator will stop after that iteration.
+func (it *LocationIterator) All() iter.Seq2[*locationpb.Location, error] {
+	return gaxiter.RangeAdapter(it.Next)
+}
+
 // LocationIterator manages a stream of *locationpb.Location.
 type LocationIterator struct {
 	items    []*locationpb.Location
@@ -716,6 +760,12 @@ func (it *LocationIterator) takeBuf() interface{} {
 	b := it.items
 	it.items = nil
 	return b
+}
+
+// All returns an iterator. If an error is returned by the iterator, the
+// iterator will stop after that iteration.
+func (it *RetiredResourceIterator) All() iter.Seq2[*kmspb.RetiredResource, error] {
+	return gaxiter.RangeAdapter(it.Next)
 }
 
 // RetiredResourceIterator manages a stream of *kmspb.RetiredResource.
@@ -765,6 +815,12 @@ func (it *RetiredResourceIterator) takeBuf() interface{} {
 	return b
 }
 
+// All returns an iterator. If an error is returned by the iterator, the
+// iterator will stop after that iteration.
+func (it *SingleTenantHsmInstanceIterator) All() iter.Seq2[*kmspb.SingleTenantHsmInstance, error] {
+	return gaxiter.RangeAdapter(it.Next)
+}
+
 // SingleTenantHsmInstanceIterator manages a stream of *kmspb.SingleTenantHsmInstance.
 type SingleTenantHsmInstanceIterator struct {
 	items    []*kmspb.SingleTenantHsmInstance
@@ -810,6 +866,12 @@ func (it *SingleTenantHsmInstanceIterator) takeBuf() interface{} {
 	b := it.items
 	it.items = nil
 	return b
+}
+
+// All returns an iterator. If an error is returned by the iterator, the
+// iterator will stop after that iteration.
+func (it *SingleTenantHsmInstanceProposalIterator) All() iter.Seq2[*kmspb.SingleTenantHsmInstanceProposal, error] {
+	return gaxiter.RangeAdapter(it.Next)
 }
 
 // SingleTenantHsmInstanceProposalIterator manages a stream of *kmspb.SingleTenantHsmInstanceProposal.
