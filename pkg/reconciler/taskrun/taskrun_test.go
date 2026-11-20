@@ -2527,6 +2527,137 @@ func makePod(taskRun *v1.TaskRun, task *v1.Task) (*corev1.Pod, error) {
 	return builder.Build(context.Background(), taskRun, task.Spec)
 }
 
+func TestReconcileNodeLossPolicy(t *testing.T) {
+	for _, mode := range []string{"step-failure", "cancelled", "timeout"} {
+		t.Run(mode, func(t *testing.T) {
+			tr := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: policy
+  namespace: foo
+spec:
+  taskRef:
+    name: test-task
+status:
+  podName: policy-pod
+`)
+			tr.Status.InitializeConditions()
+			if mode == "cancelled" {
+				tr.Spec.Status = v1.TaskRunSpecStatusCancelled
+			}
+			if mode == "timeout" {
+				tr.Status.StartTime = &metav1.Time{Time: testClock.Now().Add(-time.Hour)}
+				tr.Spec.Timeout = &metav1.Duration{Duration: time.Minute}
+			}
+			p, err := makePod(tr, simpleTask)
+			if err != nil {
+				t.Fatal(err)
+			}
+			p.Status.Phase = corev1.PodFailed
+			if mode != "step-failure" {
+				p.Status.Conditions = []corev1.PodCondition{{Type: corev1.DisruptionTarget, Status: corev1.ConditionTrue, Reason: "DeletionByPodGC"}}
+			}
+			assets, cancel := getTaskRunController(t, test.Data{TaskRuns: []*v1.TaskRun{tr}, Tasks: []*v1.Task{simpleTask}, Pods: []*corev1.Pod{p}})
+			defer cancel()
+			err = assets.Controller.Reconciler.Reconcile(assets.Ctx, getRunName(tr))
+			if err != nil {
+				if ok, _ := controller.IsRequeueKey(err); !ok {
+					t.Fatal(err)
+				}
+			}
+			got, err := assets.Clients.Pipeline.TektonV1().TaskRuns(tr.Namespace).Get(assets.Ctx, tr.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !got.IsDone() || got.Status.GetCondition(apis.ConditionSucceeded).Status != corev1.ConditionFalse {
+				t.Fatalf("%s should remain terminal: %+v", mode, got.Status)
+			}
+			for _, action := range assets.Clients.Kube.Actions() {
+				if action.Matches("create", "pods") {
+					t.Fatal("unexpected replacement for terminal policy")
+				}
+			}
+		})
+	}
+}
+
+func TestReconcileNodeLossOrdering(t *testing.T) {
+	for _, reason := range []string{"DeletionByTaintManager", "DeletionByPodGC"} {
+		for _, failedFirst := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s/failed-first=%v", reason, failedFirst), func(t *testing.T) {
+				tr := parse.MustParseV1TaskRun(t, `
+metadata:
+  name: node-loss
+  namespace: foo
+spec:
+  taskRef:
+    name: test-task
+status:
+  podName: node-loss-pod
+`)
+				p, err := makePod(tr, simpleTask)
+				if err != nil {
+					t.Fatal(err)
+				}
+				p.Status.Phase = corev1.PodFailed
+				p.Status.Conditions = []corev1.PodCondition{{Type: corev1.DisruptionTarget, Status: corev1.ConditionTrue, Reason: reason}}
+				data := test.Data{TaskRuns: []*v1.TaskRun{tr}, Tasks: []*v1.Task{simpleTask}}
+				data.ServiceAccounts = []*corev1.ServiceAccount{{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: tr.Namespace}}}
+				if failedFirst {
+					data.Pods = []*corev1.Pod{p}
+				}
+				assets, cancel := getTaskRunController(t, data)
+				defer cancel()
+				reconcile := func() *v1.TaskRun {
+					t.Helper()
+					err := assets.Controller.Reconciler.Reconcile(assets.Ctx, getRunName(tr))
+					if err != nil {
+						if ok, _ := controller.IsRequeueKey(err); !ok {
+							t.Fatal(err)
+						}
+					}
+					got, err := assets.Clients.Pipeline.TektonV1().TaskRuns(tr.Namespace).Get(assets.Ctx, tr.Name, metav1.GetOptions{})
+					if err != nil {
+						t.Fatal(err)
+					}
+					if got.IsDone() || got.Status.CompletionTime != nil || len(got.Status.RetriesStatus) != 0 {
+						t.Fatalf("node disruption completed or consumed retries: %+v", got.Status)
+					}
+					if err := assets.Informers.TaskRun.Informer().GetIndexer().Add(got); err != nil {
+						t.Fatal(err)
+					}
+					return got
+				}
+				if failedFirst {
+					for range 2 {
+						reconcile()
+					}
+					for _, action := range assets.Clients.Kube.Actions() {
+						if action.Matches("create", "pods") {
+							t.Fatal("duplicate Pod created while original exists")
+						}
+					}
+					if err := assets.Clients.Kube.CoreV1().Pods(tr.Namespace).Delete(assets.Ctx, p.Name, metav1.DeleteOptions{}); err != nil {
+						t.Fatal(err)
+					}
+					if err := assets.Informers.Pod.Informer().GetIndexer().Delete(p); err != nil {
+						t.Fatal(err)
+					}
+				}
+				reconcile()
+				creates := 0
+				for _, action := range assets.Clients.Kube.Actions() {
+					if action.Matches("create", "pods") {
+						creates++
+					}
+				}
+				if creates != 1 {
+					t.Fatalf("replacement Pod creates = %d, want 1", creates)
+				}
+			})
+		}
+	}
+}
+
 func TestReconcilePodUpdateStatus(t *testing.T) {
 	const taskLabel = "test-task"
 	taskRun := parse.MustParseV1TaskRun(t, `

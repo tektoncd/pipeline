@@ -85,8 +85,10 @@ const (
 )
 
 const (
-	oomKilled = "OOMKilled"
-	evicted   = "Evicted"
+	oomKilled              = "OOMKilled"
+	evicted                = "Evicted"
+	deletionByTaintManager = "DeletionByTaintManager"
+	deletionByPodGC        = "DeletionByPodGC"
 )
 
 // SidecarsReady returns true if all of the Pod's sidecars are Ready or
@@ -114,9 +116,26 @@ func SidecarsReady(podStatus corev1.PodStatus) bool {
 	return true
 }
 
+// IsRecoverableNodeDisruption identifies node-loss deletions that can be retried
+// through the normal Pod NotFound path, without consuming TaskRun retries.
+func IsRecoverableNodeDisruption(pod *corev1.Pod) bool {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.DisruptionTarget && condition.Status == corev1.ConditionTrue &&
+			(condition.Reason == deletionByTaintManager || condition.Reason == deletionByPodGC) {
+			return true
+		}
+	}
+	return false
+}
+
 // MakeTaskRunStatus returns a TaskRunStatus based on the Pod's status.
 func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1.TaskRun, pod *corev1.Pod, kubeclient kubernetes.Interface, ts *v1.TaskSpec) (v1.TaskRunStatus, error) {
 	trs := &tr.Status
+	if IsRecoverableNodeDisruption(pod) {
+		markStatusRunning(trs, v1.TaskRunReasonRunning.String(), "TaskRun Pod is being deleted after node disruption; waiting for replacement")
+		trs.PodName = pod.Name
+		return *trs, nil
+	}
 	if trs.GetCondition(apis.ConditionSucceeded) == nil || trs.GetCondition(apis.ConditionSucceeded).Status == corev1.ConditionUnknown {
 		// If the taskRunStatus doesn't exist yet, it's because we just started running
 		markStatusRunning(trs, v1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
