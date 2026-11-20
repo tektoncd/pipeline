@@ -344,6 +344,30 @@ data:
   default-sidecar-log-polling-interval: "100ms"
 ```
 
+### Allowed values
+
+Each key in `config-defaults` accepts the values below. A value outside them is rejected when the ConfigMap is created or updated.
+Durations use the Go duration format, such as `10s`, `5m` or `1h`.
+
+| Key | Allowed values |
+|-----|----------------|
+| `default-timeout-minutes` | An integer from `0` to `153722867`. |
+| `default-service-account` | Any string. |
+| `default-managed-by-label-value` | A valid Kubernetes label value. At most 63 characters of alphanumerics, `-`, `_` and `.`, starting and ending with an alphanumeric, or an empty string. |
+| `default-pod-template` | A Pod template in YAML. See [supported fields](./podtemplates.md#supported-fields). |
+| `default-affinity-assistant-pod-template` | An [Affinity Assistant Pod template](./podtemplates.md#affinity-assistant-pod-templates) in YAML. |
+| `default-cloud-events-sink` | A URL, or an empty string for no sink. |
+| `default-task-run-workspace-binding` | A YAML mapping, such as `emptyDir: {}`. |
+| `default-max-matrix-combinations-count` | An integer, `0` or greater. |
+| `default-forbidden-env` | A comma-separated list of environment variable names. |
+| `default-resolver-type` | Any string, such as `git` or `bundles`. |
+| `default-container-resource-requirements` | Resource requirements per container in YAML. See [Configuring default resources requirements](#configuring-default-resources-requirements). |
+| `default-imagepullbackoff-timeout` | A duration, `0` or greater. |
+| `default-create-container-error-timeout` | A duration, `0` or greater. |
+| `default-maximum-resolution-timeout` | A duration greater than `0`. |
+| `default-sidecar-log-polling-interval` | A duration, `0` or greater. |
+| `default-step-ref-concurrency-limit` | An integer greater than `0`. |
+
 ### `default-sidecar-log-polling-interval`
 
 The `default-sidecar-log-polling-interval` key in the `config-defaults` ConfigMap specifies how frequently the Tekton
@@ -918,7 +942,7 @@ If the `default-step-ref-concurrency-limit` key is not set in the `config-defaul
 
 #### Overriding the Default
 
-You can override this default to better suit your environment's capacity (e.g., a high-capacity, self-hosted git server might allow for a higher limit). To change the limit, set the `default-step-ref-concurrency-limit` key in your `config-defaults` `ConfigMap`.
+You can override this default to better suit your environment's capacity (e.g., a high-capacity, self-hosted git server might allow for a higher limit). To change the limit, set the `default-step-ref-concurrency-limit` key in your `config-defaults` `ConfigMap`. The value must be greater than 0.
 
 **Example**: To increase the concurrency limit to 20:
 ```yaml
