@@ -568,6 +568,9 @@ func (ScheduleDuration) Description() string {
 // Computed from `/sched/latencies:seconds`. Bucket boundaries are provided by
 // the runtime, and are subject to change.
 func (m ScheduleDuration) Record(ctx context.Context, val float64, attrs ...attribute.KeyValue) {
+	if !m.Float64Histogram.Enabled(ctx) {
+		return
+	}
 	if len(attrs) == 0 {
 		m.Float64Histogram.Record(ctx, val)
 		return
@@ -588,6 +591,9 @@ func (m ScheduleDuration) Record(ctx context.Context, val float64, attrs ...attr
 // Computed from `/sched/latencies:seconds`. Bucket boundaries are provided by
 // the runtime, and are subject to change.
 func (m ScheduleDuration) RecordSet(ctx context.Context, val float64, set attribute.Set) {
+	if !m.Float64Histogram.Enabled(ctx) {
+		return
+	}
 	if set.Len() == 0 {
 		m.Float64Histogram.Record(ctx, val)
 		return
