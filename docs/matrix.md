@@ -225,6 +225,73 @@ possible for the pipeline author to specify `params` in `matrix.include[].name` 
       value: chrome
 ```
 
+### Naming `TaskRuns` and `PipelineRuns` using `matrix.include[].name`
+
+By default, the `TaskRuns`, `PipelineRuns` or `Runs` fanned out from a `Matrix` are named using a numeric index suffix,
+for example `<pipelineRunName>-<pipelineTaskName>-0`, `<pipelineRunName>-<pipelineTaskName>-1`, and so on. This makes it
+hard to tell which matrix combination a given child resource corresponds to.
+
+When the `Matrix` uses `include` to define explicit combinations, the `matrix.include[].name` values can be used as the
+suffix instead of the numeric index, producing names such as `<pipelineRunName>-<pipelineTaskName>-<includeName>`. This
+behavior is enabled automatically, and only when **all** of the following conditions are met:
+
+1. The `Matrix` is **include-only** — it specifies `matrix.include` but no `matrix.params`. This guarantees a 1:1
+   mapping between each `include` entry and the generated combination.
+2. **Every** `matrix.include[]` entry specifies a non-empty `name`.
+3. Every `name` is a valid [DNS label](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names)
+   — lowercase alphanumeric characters and `-`, starting and ending with an alphanumeric character, and at most 63
+   characters — so that it can be used in a Kubernetes resource name.
+4. The `name` values are unique across the `Matrix`, so that the generated resource names do not collide.
+
+If any of these conditions is not met (for example, the `Matrix` also uses `matrix.params`, a `name` is missing, a
+`name` contains characters that are not valid in a resource name, or names are duplicated), Tekton falls back to numeric
+indexing. This keeps the behavior fully backward compatible.
+
+For example, given the following include-only `Matrix`:
+
+```yaml
+tasks:
+  - name: integration
+    matrix:
+      include:
+        - name: default-config-macro
+          params:
+            - name: test-case
+              value: default-config-macro
+        - name: robots-txt
+          params:
+            - name: test-case
+              value: robots_txt
+    taskSpec:
+      params:
+        - name: test-case
+          type: string
+      steps:
+        - name: echo
+          image: alpine
+          script: |
+            echo "Running $(params.test-case)"
+```
+
+the generated `TaskRuns` are named `<pipelineRunName>-integration-default-config-macro` and
+`<pipelineRunName>-integration-robots-txt` instead of `<pipelineRunName>-integration-0` and
+`<pipelineRunName>-integration-1`.
+
+This also applies to an include-only `Matrix` that produces a single combination: a `Matrix` with one
+named `include` entry generates `<pipelineRunName>-<pipelineTaskName>-<includeName>` rather than the
+bare `<pipelineRunName>-<pipelineTaskName>`.
+
+If the resulting name exceeds the Kubernetes 63 character limit, the `<pipelineRunName>-<pipelineTaskName>`
+portion is truncated to make room for the `include` name, so the generated names stay readable and
+unique. When the `include` name itself is long enough that it cannot be kept intact within the limit,
+Tekton falls back to a hashed name (the same mechanism used for numeric naming); the name remains valid
+and unique but no longer ends in the literal `include` name.
+
+> **Note:** `matrix.include[].name` is evaluated as a literal string for naming eligibility, so a `name`
+> that relies on parameter substitution (for example `"$(params.platform)"`) falls back to numeric naming
+> even if the substituted value would be a valid resource name. Such names remain valid for display and
+> are still surfaced as `childReferences[].displayName`.
+
 ### Precedence Order
 
 | specification                                             | precedence                      | `childReferences[].displayName` |
