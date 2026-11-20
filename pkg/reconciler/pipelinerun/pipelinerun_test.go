@@ -20112,3 +20112,108 @@ func TestCreateChildResourceAnnotations_FiltersAutoCleanupPVC(t *testing.T) {
 		})
 	}
 }
+
+// TestReconcile_PipelineResultsFromDefaultsOfSkippedTask verifies that PipelineResults referencing
+// the results of a task that was skipped by its when expressions are populated with the defaults
+// declared for those results when the enable-default-results feature flag is enabled.
+func TestReconcile_PipelineResultsFromDefaultsOfSkippedTask(t *testing.T) {
+	pr := parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: pr
+  namespace: foo
+spec:
+  pipelineSpec:
+    results:
+    - name: string-result
+      value: $(tasks.skipped-task.results.str)
+    - name: array-result
+      value: $(tasks.skipped-task.results.arr[*])
+    - name: array-element-result
+      value: $(tasks.skipped-task.results.arr[1])
+    - name: object-result
+      value: $(tasks.skipped-task.results.obj[*])
+    - name: object-element-result
+      value: $(tasks.skipped-task.results.obj.key1)
+    tasks:
+    - name: skipped-task
+      when:
+      - input: "skip"
+        operator: in
+        values: ["run"]
+      taskSpec:
+        results:
+        - name: str
+          default: default-string
+        - name: arr
+          type: array
+          default: ["default-a", "default-b"]
+        - name: obj
+          type: object
+          properties:
+            key1:
+              type: string
+            key2:
+              type: string
+          default:
+            key1: default-value1
+            key2: default-value2
+        steps:
+        - name: emit-results
+          image: alpine
+          script: echo
+`)
+	cms := []*corev1.ConfigMap{{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+		Data: map[string]string{
+			"enable-api-fields":      "alpha",
+			"enable-default-results": "true",
+		},
+	}}
+	prt := newPipelineRunTest(t, test.Data{
+		PipelineRuns: []*v1.PipelineRun{pr},
+		ConfigMaps:   cms,
+	})
+	defer prt.Cancel()
+
+	reconciledRun, clients := prt.reconcileRun("foo", "pr", nil, false)
+
+	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsTrue() {
+		t.Errorf("Expected PipelineRun to succeed, got condition: %+v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+	if d := cmp.Diff([]string{"skipped-task"}, func() []string {
+		var names []string
+		for _, st := range reconciledRun.Status.SkippedTasks {
+			names = append(names, st.Name)
+		}
+		return names
+	}()); d != "" {
+		t.Errorf("Unexpected skipped tasks %s", diff.PrintWantGot(d))
+	}
+	taskRuns, err := clients.Pipeline.TektonV1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Failed to list TaskRuns: %v", err)
+	}
+	if len(taskRuns.Items) != 0 {
+		t.Errorf("Expected no TaskRuns for the skipped task, got %d", len(taskRuns.Items))
+	}
+
+	expectedResults := []v1.PipelineRunResult{{
+		Name:  "string-result",
+		Value: *v1.NewStructuredValues("default-string"),
+	}, {
+		Name:  "array-result",
+		Value: *v1.NewStructuredValues("default-a", "default-b"),
+	}, {
+		Name:  "array-element-result",
+		Value: *v1.NewStructuredValues("default-b"),
+	}, {
+		Name:  "object-result",
+		Value: *v1.NewObject(map[string]string{"key1": "default-value1", "key2": "default-value2"}),
+	}, {
+		Name:  "object-element-result",
+		Value: *v1.NewStructuredValues("default-value1"),
+	}}
+	if d := cmp.Diff(expectedResults, reconciledRun.Status.Results); d != "" {
+		t.Errorf("Unexpected PipelineRun results %s", diff.PrintWantGot(d))
+	}
+}
