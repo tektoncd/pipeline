@@ -70,6 +70,45 @@ spec:
                   items:
                     type: string
                   x-kubernetes-list-type: atomic
+                artifacts:
+                  description: |-
+                    Artifacts declares artifact outputs this StepAction produces.
+                    Only outputs are supported — inputs are declared at Task scope.
+                  type: object
+                  properties:
+                    outputs:
+                      description: Outputs declares artifacts produced by this Step or StepAction.
+                      type: array
+                      items:
+                        description: ArtifactDeclaration describes a single artifact input or output.
+                        type: object
+                        required:
+                          - name
+                        properties:
+                          description:
+                            description: Description of the artifact.
+                            type: string
+                          mediaType:
+                            description: MediaType hint for the artifact (e.g., application/vnd.tekton.artifact.junit.v1+xml)
+                            type: string
+                          name:
+                            description: Name of the artifact (used in path substitution and pipeline bindings)
+                            type: string
+                          subject:
+                            description: |-
+                              Subject marks this artifact as the primary build output — the SLSA
+                              attestation subject. Multiple artifacts can be subjects.
+                            type: boolean
+                          type:
+                            description: 'Type of the artifact: "reference" or "content". Defaults to "content".'
+                            type: string
+                          value:
+                            description: |-
+                              Value surfaces an artifact produced by a Step, using
+                              $(steps.<step>.artifacts.<name>). Mirrors TaskResult.Value. When set,
+                              Type and MediaType are inherited from the referenced step artifact.
+                            type: string
+                      x-kubernetes-list-type: atomic
                 command:
                   description: |-
                     Entrypoint array. Not executed within a shell.
@@ -635,6 +674,43 @@ spec:
                   items:
                     type: string
                   x-kubernetes-list-type: atomic
+                artifacts:
+                  description: Artifacts
+                  type: object
+                  properties:
+                    outputs:
+                      description: Outputs declares artifacts produced by this Step or StepAction.
+                      type: array
+                      items:
+                        description: ArtifactDeclaration describes a single artifact input or output.
+                        type: object
+                        required:
+                          - name
+                        properties:
+                          description:
+                            description: Description of the artifact.
+                            type: string
+                          mediaType:
+                            description: MediaType hint for the artifact (e.g., application/vnd.tekton.artifact.junit.v1+xml)
+                            type: string
+                          name:
+                            description: Name of the artifact (used in path substitution and pipeline bindings)
+                            type: string
+                          subject:
+                            description: |-
+                              Subject marks this artifact as the primary build output — the SLSA
+                              attestation subject. Multiple artifacts can be subjects.
+                            type: boolean
+                          type:
+                            description: 'Type of the artifact: "reference" or "content". Defaults to "content".'
+                            type: string
+                          value:
+                            description: |-
+                              Value surfaces an artifact produced by a Step, using
+                              $(steps.<step>.artifacts.<name>). Mirrors TaskResult.Value. When set,
+                              Type and MediaType are inherited from the referenced step artifact.
+                            type: string
+                      x-kubernetes-list-type: atomic
                 command:
                   description: Command
                   type: array

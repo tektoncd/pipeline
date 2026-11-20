@@ -300,12 +300,95 @@ associated with it.
 
 _Appears in:_
 - [Artifacts](#artifacts)
+- [PipelineRunArtifacts](#pipelinerunartifacts)
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `name` _string_ | The artifact's identifying category name |  |  |
 | `values` _[ArtifactValue](#artifactvalue) array_ | A collection of values related to the artifact |  |  |
-| `buildOutput` _boolean_ | Indicate if the artifact is a build output or a by-product |  |  |
+| `buildOutput` _boolean_ | Indicate if the artifact is a build output or a by-product.<br />This is the legacy form of Subject, still populated from the legacy<br />provenance format. |  |  |
+| `subject` _boolean_ | Subject marks this artifact as the primary build output (the SLSA<br />attestation subject), as declared in the Task's artifact outputs. |  |  |
+
+
+#### ArtifactDeclaration
+
+
+
+ArtifactDeclaration describes a single artifact input or output.
+
+
+
+_Appears in:_
+- [ArtifactDeclarations](#artifactdeclarations)
+- [PipelineArtifactDeclarations](#pipelineartifactdeclarations)
+- [StepArtifacts](#stepartifacts)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `name` _string_ | Name of the artifact (used in path substitution and pipeline bindings) |  |  |
+| `description` _string_ | Description of the artifact. |  | Optional: \{\} <br /> |
+| `type` _[ArtifactType](#artifacttype)_ | Type of the artifact: "reference" or "content". Defaults to "content". |  | Optional: \{\} <br /> |
+| `mediaType` _string_ | MediaType hint for the artifact (e.g., application/vnd.tekton.artifact.junit.v1+xml) |  | Optional: \{\} <br /> |
+| `subject` _boolean_ | Subject marks this artifact as the primary build output — the SLSA<br />attestation subject. Multiple artifacts can be subjects. |  | Optional: \{\} <br /> |
+| `value` _string_ | Value surfaces an artifact produced by a Step, using<br />$(steps.<step>.artifacts.<name>). Mirrors TaskResult.Value. When set,<br />Type and MediaType are inherited from the referenced step artifact. |  | Optional: \{\} <br /> |
+
+
+#### ArtifactDeclarations
+
+
+
+ArtifactDeclarations declares what artifacts a task consumes and produces.
+
+
+
+_Appears in:_
+- [EmbeddedTask](#embeddedtask)
+- [TaskSpec](#taskspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `inputs` _[ArtifactDeclaration](#artifactdeclaration) array_ | Inputs declares artifacts that the task expects to consume. |  |  |
+| `outputs` _[ArtifactDeclaration](#artifactdeclaration) array_ | Outputs declares artifacts that the task produces. |  |  |
+
+
+#### ArtifactStorageRef
+
+
+
+ArtifactStorageRef identifies where a content artifact is stored in a backend.
+
+
+
+_Appears in:_
+- [ArtifactValue](#artifactvalue)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `backend` _string_ |  |  |  |
+| `location` _string_ |  |  |  |
+| `digest` _string_ |  |  |  |
+| `contentType` _string_ |  |  |  |
+
+
+#### ArtifactType
+
+_Underlying type:_ _string_
+
+ArtifactType distinguishes how Tekton handles the artifact.
+  - "reference": the step already stored the content elsewhere (e.g. pushed
+    an image); Tekton only records the URI and digest.
+  - "content": the step writes data to a path; Tekton uploads, downloads and
+    verifies it transparently across Tasks.
+
+
+
+_Appears in:_
+- [ArtifactDeclaration](#artifactdeclaration)
+
+| Field | Description |
+| --- | --- |
+| `content` | ArtifactTypeContent means Tekton manages storage and transport of the artifact.<br /> |
+| `reference` | ArtifactTypeReference means the step handles storage; Tekton only records metadata.<br /> |
 
 
 #### ArtifactValue
@@ -323,6 +406,9 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `digest` _object (keys:[Algorithm](#algorithm), values:string)_ |  |  |  |
 | `uri` _string_ |  |  |  |
+| `ref` _[ArtifactStorageRef](#artifactstorageref)_ | Ref is a backend-specific storage reference. Present only for content<br />artifacts stored externally; absent for reference artifacts and inline content. |  | Optional: \{\} <br /> |
+| `size` _integer_ | content size in bytes, letting consumers and UIs know the artifact size before fetching. |  | Optional: \{\} <br /> |
+| `inline` _string_ | Inline holds small content embedded directly in the status (base64-encoded),<br />avoiding external storage overhead. |  | Optional: \{\} <br /> |
 
 
 #### Artifacts
@@ -336,6 +422,8 @@ that the process either consumes as input or produces as output.
 
 
 _Appears in:_
+- [PipelineRunStatus](#pipelinerunstatus)
+- [PipelineRunStatusFields](#pipelinerunstatusfields)
 - [TaskRunStatus](#taskrunstatus)
 - [TaskRunStatusFields](#taskrunstatusfields)
 
@@ -404,6 +492,7 @@ _Appears in:_
 | `sidecars` _[Sidecar](#sidecar) array_ | Sidecars are run alongside the Task's step containers. They begin before<br />the steps start and end after the steps complete. |  |  |
 | `workspaces` _[WorkspaceDeclaration](#workspacedeclaration) array_ | Workspaces are the volumes that this Task requires. |  |  |
 | `results` _[TaskResult](#taskresult) array_ | Results are values that this Task can output |  |  |
+| `artifacts` _[ArtifactDeclarations](#artifactdeclarations)_ | Artifacts declares the inputs and outputs of the task for OCI-based transport.<br />Requires enable-artifacts feature flag. |  | Optional: \{\} <br /> |
 
 
 
@@ -594,6 +683,40 @@ of tasks feed into inputs of subsequent tasks.
 | `spec` _[PipelineSpec](#pipelinespec)_ | Spec holds the desired state of the Pipeline from the client |  | Optional: \{\} <br /> |
 
 
+#### PipelineArtifactDeclarations
+
+
+
+PipelineArtifactDeclarations declares artifacts at the Pipeline boundary.
+
+
+
+_Appears in:_
+- [PipelineSpec](#pipelinespec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `inputs` _[ArtifactDeclaration](#artifactdeclaration) array_ |  |  |  |
+| `outputs` _[PipelineArtifactOutput](#pipelineartifactoutput) array_ |  |  |  |
+
+
+#### PipelineArtifactOutput
+
+
+
+PipelineArtifactOutput exposes a Task artifact as a Pipeline output.
+
+
+
+_Appears in:_
+- [PipelineArtifactDeclarations](#pipelineartifactdeclarations)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `name` _string_ |  |  |  |
+| `from` _string_ |  |  |  |
+
+
 #### PipelineRef
 
 
@@ -649,6 +772,22 @@ PipelineRun creates TaskRuns for Tasks in the referenced Pipeline.
 | `status` _[PipelineRunStatus](#pipelinerunstatus)_ |  |  | Optional: \{\} <br /> |
 
 
+#### PipelineRunArtifacts
+
+
+
+PipelineRunArtifacts supplies artifacts to a PipelineRun.
+
+
+
+_Appears in:_
+- [PipelineRunSpec](#pipelinerunspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `inputs` _[Artifact](#artifact) array_ |  |  |  |
+
+
 
 
 #### PipelineRunResult
@@ -687,6 +826,7 @@ _Appears in:_
 | `pipelineRef` _[PipelineRef](#pipelineref)_ |  |  | Optional: \{\} <br /> |
 | `pipelineSpec` _[PipelineSpec](#pipelinespec)_ | Specifying PipelineSpec can be disabled by setting<br />`disable-inline-spec` feature flag.<br />See Pipeline.spec (API version: tekton.dev/v1) |  | Schemaless: \{\} <br />Optional: \{\} <br /> |
 | `params` _[Params](#params)_ | Params is a list of parameter names and values. |  |  |
+| `artifacts` _[PipelineRunArtifacts](#pipelinerunartifacts)_ | Artifacts supplies values for declared Pipeline artifact inputs. |  | Optional: \{\} <br /> |
 | `status` _[PipelineRunSpecStatus](#pipelinerunspecstatus)_ | Used for cancelling a pipelinerun (and maybe more later on) |  | Optional: \{\} <br /> |
 | `timeouts` _[TimeoutFields](#timeoutfields)_ | Time after which the Pipeline times out.<br />Currently three keys are accepted in the map<br />pipeline, tasks and finally<br />with Timeouts.pipeline >= Timeouts.tasks + Timeouts.finally |  | Optional: \{\} <br /> |
 | `taskRunTemplate` _[PipelineTaskRunTemplate](#pipelinetaskruntemplate)_ | TaskRunTemplate represent template of taskrun |  | Optional: \{\} <br /> |
@@ -727,6 +867,7 @@ _Appears in:_
 | `startTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | StartTime is the time the PipelineRun is actually started. |  |  |
 | `completionTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | CompletionTime is the time the PipelineRun completed. |  |  |
 | `results` _[PipelineRunResult](#pipelinerunresult) array_ | Results are the list of results written out by the pipeline task's containers |  | Optional: \{\} <br /> |
+| `artifacts` _[Artifacts](#artifacts)_ | Artifacts are the declared outputs produced by the Pipeline. |  | Optional: \{\} <br /> |
 | `pipelineSpec` _[PipelineSpec](#pipelinespec)_ | PipelineSpec contains the exact spec used to instantiate the run.<br />See Pipeline.spec (API version: tekton.dev/v1) |  | Schemaless: \{\} <br /> |
 | `skippedTasks` _[SkippedTask](#skippedtask) array_ | list of tasks that were skipped due to when expressions evaluating to false |  | Optional: \{\} <br /> |
 | `childReferences` _[ChildStatusReference](#childstatusreference) array_ | list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun. |  | Optional: \{\} <br /> |
@@ -753,6 +894,7 @@ _Appears in:_
 | `startTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | StartTime is the time the PipelineRun is actually started. |  |  |
 | `completionTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | CompletionTime is the time the PipelineRun completed. |  |  |
 | `results` _[PipelineRunResult](#pipelinerunresult) array_ | Results are the list of results written out by the pipeline task's containers |  | Optional: \{\} <br /> |
+| `artifacts` _[Artifacts](#artifacts)_ | Artifacts are the declared outputs produced by the Pipeline. |  | Optional: \{\} <br /> |
 | `pipelineSpec` _[PipelineSpec](#pipelinespec)_ | PipelineSpec contains the exact spec used to instantiate the run.<br />See Pipeline.spec (API version: tekton.dev/v1) |  | Schemaless: \{\} <br /> |
 | `skippedTasks` _[SkippedTask](#skippedtask) array_ | list of tasks that were skipped due to when expressions evaluating to false |  | Optional: \{\} <br /> |
 | `childReferences` _[ChildStatusReference](#childstatusreference) array_ | list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun. |  | Optional: \{\} <br /> |
@@ -786,6 +928,7 @@ _Appears in:_
 | `params` _[ParamSpecs](#paramspecs)_ | Params declares a list of input parameters that must be supplied when<br />this Pipeline is run. |  |  |
 | `workspaces` _[PipelineWorkspaceDeclaration](#pipelineworkspacedeclaration) array_ | Workspaces declares a set of named workspaces that are expected to be<br />provided by a PipelineRun. |  | Optional: \{\} <br /> |
 | `results` _[PipelineResult](#pipelineresult) array_ | Results are values that this pipeline can output once run |  | Optional: \{\} <br /> |
+| `artifacts` _[PipelineArtifactDeclarations](#pipelineartifactdeclarations)_ | Artifacts declares artifacts entering and leaving the Pipeline. |  | Optional: \{\} <br /> |
 | `finally` _[PipelineTask](#pipelinetask) array_ | Finally declares the list of Tasks that execute just before leaving the Pipeline<br />i.e. either after all Tasks are finished executing successfully<br />or after a failure which would result in ending the Pipeline |  |  |
 
 
@@ -813,11 +956,45 @@ _Appears in:_
 | `runAfter` _string array_ | RunAfter is the list of PipelineTask names that should be executed before<br />this Task executes. (Used to force a specific ordering in graph execution.) |  | Optional: \{\} <br /> |
 | `params` _[Params](#params)_ | Parameters declares parameters passed to this task. |  | Optional: \{\} <br /> |
 | `matrix` _[Matrix](#matrix)_ | Matrix declares parameters used to fan out this task. |  | Optional: \{\} <br /> |
+| `artifacts` _[PipelineTaskArtifacts](#pipelinetaskartifacts)_ | Artifacts configures artifact bindings for this task. |  | Optional: \{\} <br /> |
 | `workspaces` _[WorkspacePipelineTaskBinding](#workspacepipelinetaskbinding) array_ | Workspaces maps workspaces from the pipeline spec to the workspaces<br />declared in the Task. |  | Optional: \{\} <br /> |
 | `timeout` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#duration-v1-meta)_ | Duration after which the TaskRun times out. Defaults to 1 hour.<br />Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration |  | Optional: \{\} <br /> |
 | `pipelineRef` _[PipelineRef](#pipelineref)_ | PipelineRef is a reference to a pipeline definition.<br />This is an alpha field. You must set the "enable-api-fields" feature flag<br />to "alpha" for this field to be supported. When enabled, the referenced<br />Pipeline is executed as a child PipelineRun owned by the parent PipelineRun. |  | Optional: \{\} <br /> |
 | `pipelineSpec` _[PipelineSpec](#pipelinespec)_ | PipelineSpec is a specification of a pipeline.<br />This is an alpha field. You must set the "enable-api-fields" feature flag<br />to "alpha" for this field to be supported. When enabled, the embedded<br />Pipeline is executed as a child PipelineRun owned by the parent PipelineRun.<br />Specifying PipelineSpec can be disabled by setting<br />`disable-inline-spec` feature flag.<br />See Pipeline.spec (API version: tekton.dev/v1) |  | Schemaless: \{\} <br />Optional: \{\} <br /> |
 | `onError` _[PipelineTaskOnErrorType](#pipelinetaskonerrortype)_ | OnError defines the exiting behavior of a PipelineRun on error<br />can be set to [ continue \| stopAndFail ] |  | Optional: \{\} <br /> |
+
+
+#### PipelineTaskArtifactBinding
+
+
+
+PipelineTaskArtifactBinding binds an artifact input to an output from another task.
+
+
+
+_Appears in:_
+- [PipelineTaskArtifacts](#pipelinetaskartifacts)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `name` _string_ | Name matches the artifact input name in the referenced Task. |  |  |
+| `from` _string_ | From references an output from another task: "tasks.<taskName>.outputs.<artifactName>" |  |  |
+
+
+#### PipelineTaskArtifacts
+
+
+
+
+
+
+
+_Appears in:_
+- [PipelineTask](#pipelinetask)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `inputs` _[PipelineTaskArtifactBinding](#pipelinetaskartifactbinding) array_ | Inputs binds artifact inputs from other tasks' outputs. |  |  |
 
 
 #### PipelineTaskMetadata
@@ -1224,7 +1401,28 @@ _Appears in:_
 | `ref` _[Ref](#ref)_ | Contains the reference to an existing StepAction. |  | Optional: \{\} <br /> |
 | `params` _[Params](#params)_ | Params declares parameters passed to this step action. |  | Optional: \{\} <br /> |
 | `results` _[StepResult](#stepresult) array_ | Results declares StepResults produced by the Step.<br />It can be used in an inlined Step when used to store Results to $(step.results.resultName.path).<br />It cannot be used when referencing StepActions using [v1.Step.Ref].<br />The Results declared by the StepActions will be stored here instead. |  | Optional: \{\} <br /> |
+| `artifacts` _[StepArtifacts](#stepartifacts)_ | Artifacts declares step-scoped artifact outputs produced by this Step.<br />Only outputs are supported at step scope. |  | Optional: \{\} <br /> |
 | `when` _[StepWhenExpressions](#stepwhenexpressions)_ | When is a list of when expressions that need to be true for the task to run |  | Optional: \{\} <br /> |
+
+
+#### StepArtifacts
+
+
+
+StepArtifacts declares the artifact outputs a Step or StepAction produces.
+Only outputs are declared at step scope — inputs are fetched once at Task
+scope and passed to steps as params.
+
+
+
+_Appears in:_
+- [Step](#step)
+- [StepActionSpec](#stepactionspec)
+- [StepActionSpec](#stepactionspec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `outputs` _[ArtifactDeclaration](#artifactdeclaration) array_ | Outputs declares artifacts produced by this Step or StepAction. |  |  |
 
 
 #### StepOutputConfig
@@ -1580,7 +1778,7 @@ _Appears in:_
 | `results` _[TaskRunResult](#taskrunresult) array_ | Results are the list of results written out by the task's containers |  | Optional: \{\} <br /> |
 | `artifacts` _[Artifacts](#artifacts)_ | Artifacts are the list of artifacts written out by the task's containers |  | Optional: \{\} <br /> |
 | `sidecars` _[SidecarState](#sidecarstate) array_ | The list has one entry per sidecar in the manifest. Each entry is<br />represents the imageid of the corresponding sidecar. |  |  |
-| `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. |  |  |
+| `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.<br />See Task.spec (API version: tekton.dev/v1) |  | Schemaless: \{\} <br /> |
 | `provenance` _[Provenance](#provenance)_ | Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.). |  | Optional: \{\} <br /> |
 | `spanContext` _object (keys:string, values:string)_ | SpanContext contains tracing span context fields |  |  |
 
@@ -1608,7 +1806,7 @@ _Appears in:_
 | `results` _[TaskRunResult](#taskrunresult) array_ | Results are the list of results written out by the task's containers |  | Optional: \{\} <br /> |
 | `artifacts` _[Artifacts](#artifacts)_ | Artifacts are the list of artifacts written out by the task's containers |  | Optional: \{\} <br /> |
 | `sidecars` _[SidecarState](#sidecarstate) array_ | The list has one entry per sidecar in the manifest. Each entry is<br />represents the imageid of the corresponding sidecar. |  |  |
-| `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. |  |  |
+| `taskSpec` _[TaskSpec](#taskspec)_ | TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.<br />See Task.spec (API version: tekton.dev/v1) |  | Schemaless: \{\} <br /> |
 | `provenance` _[Provenance](#provenance)_ | Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.). |  | Optional: \{\} <br /> |
 | `spanContext` _object (keys:string, values:string)_ | SpanContext contains tracing span context fields |  |  |
 
@@ -1661,6 +1859,7 @@ _Appears in:_
 | `sidecars` _[Sidecar](#sidecar) array_ | Sidecars are run alongside the Task's step containers. They begin before<br />the steps start and end after the steps complete. |  |  |
 | `workspaces` _[WorkspaceDeclaration](#workspacedeclaration) array_ | Workspaces are the volumes that this Task requires. |  |  |
 | `results` _[TaskResult](#taskresult) array_ | Results are values that this Task can output |  |  |
+| `artifacts` _[ArtifactDeclarations](#artifactdeclarations)_ | Artifacts declares the inputs and outputs of the task for OCI-based transport.<br />Requires enable-artifacts feature flag. |  | Optional: \{\} <br /> |
 
 
 #### TimeoutFields
@@ -2210,6 +2409,7 @@ _Appears in:_
 | `workingDir` _string_ | Step's working directory.<br />If not specified, the container runtime's default will be used, which<br />might be configured in the container image.<br />Cannot be updated. |  | Optional: \{\} <br /> |
 | `params` _[ParamSpecs](#paramspecs)_ | Params is a list of input parameters required to run the stepAction.<br />Params must be supplied as inputs in Steps unless they declare a defaultvalue. |  | Optional: \{\} <br /> |
 | `results` _[StepResult](#stepresult) array_ | Results are values that this StepAction can output |  | Optional: \{\} <br /> |
+| `artifacts` _[StepArtifacts](#stepartifacts)_ | Artifacts declares artifact outputs this StepAction produces.<br />Only outputs are supported — inputs are declared at Task scope. |  | Optional: \{\} <br /> |
 | `securityContext` _[SecurityContext](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core)_ | SecurityContext defines the security options the Step should be run with.<br />If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.<br />More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/<br />The value set in StepAction will take precedence over the value from Task. |  | Optional: \{\} <br /> |
 | `volumeMounts` _[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volumemount-v1-core) array_ | Volumes to mount into the Step's filesystem.<br />Cannot be updated. |  | Optional: \{\} <br /> |
 
@@ -3622,6 +3822,7 @@ _Appears in:_
 | `workingDir` _string_ | Step's working directory.<br />If not specified, the container runtime's default will be used, which<br />might be configured in the container image.<br />Cannot be updated. |  | Optional: \{\} <br /> |
 | `params` _[ParamSpecs](#paramspecs)_ | Params is a list of input parameters required to run the stepAction.<br />Params must be supplied as inputs in Steps unless they declare a defaultvalue. |  | Optional: \{\} <br /> |
 | `results` _[StepResult](#stepresult) array_ | Results are values that this StepAction can output |  | Optional: \{\} <br /> |
+| `artifacts` _[StepArtifacts](#stepartifacts)_ | Artifacts declares artifact outputs this StepAction produces.<br />Only outputs are supported — inputs are declared at Task scope. |  | Optional: \{\} <br /> |
 | `securityContext` _[SecurityContext](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core)_ | SecurityContext defines the security options the Step should be run with.<br />If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.<br />More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/<br />The value set in StepAction will take precedence over the value from Task. |  | Optional: \{\} <br /> |
 | `volumeMounts` _[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volumemount-v1-core) array_ | Volumes to mount into the Step's filesystem.<br />Cannot be updated. |  | Optional: \{\} <br /> |
 
