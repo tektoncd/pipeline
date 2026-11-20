@@ -136,6 +136,64 @@ func TestValidateMissing(t *testing.T) {
 	}
 }
 
+func TestResolveCatalogNameStepAction(t *testing.T) {
+	params := map[string]string{
+		hubresolver.ParamKind: hubresolver.StepActionKind,
+		hubresolver.ParamType: ArtifactHubType,
+	}
+	conf := resolutionframework.GetResolverConfigFromContext(contextWithConfig())
+
+	got, err := resolveCatalogName(params, conf)
+	if err != nil {
+		t.Fatalf("unexpected error resolving catalog: %v", err)
+	}
+	if want := "git-clone-stepaction"; got != want {
+		t.Errorf("expected catalog %q but got %q", want, got)
+	}
+}
+
+func TestResolveCatalogNameWithoutStepActionCatalog(t *testing.T) {
+	conf := resolutionframework.GetResolverConfigFromContext(contextWithConfig())
+	delete(conf, hubresolver.ConfigArtifactHubStepActionCatalog)
+
+	t.Run("stepaction requires its default", func(t *testing.T) {
+		params := map[string]string{hubresolver.ParamKind: hubresolver.StepActionKind, hubresolver.ParamType: ArtifactHubType}
+		_, err := resolveCatalogName(params, conf)
+		if err == nil {
+			t.Fatal("expected an error when the default StepAction catalog is not configured")
+		}
+		if want := "default Artifact Hub StepAction catalog was not set during installation of the hub resolver"; err.Error() != want {
+			t.Errorf("expected error %q but got %q", want, err)
+		}
+	})
+
+	t.Run("explicit stepaction catalog remains compatible", func(t *testing.T) {
+		params := map[string]string{
+			hubresolver.ParamCatalog: "custom-stepactions",
+			hubresolver.ParamKind:    hubresolver.StepActionKind,
+			hubresolver.ParamType:    ArtifactHubType,
+		}
+		got, err := resolveCatalogName(params, conf)
+		if err != nil {
+			t.Fatalf("unexpected error resolving explicit StepAction catalog: %v", err)
+		}
+		if want := "custom-stepactions"; got != want {
+			t.Errorf("expected catalog %q but got %q", want, got)
+		}
+	})
+
+	t.Run("task remains compatible", func(t *testing.T) {
+		params := map[string]string{hubresolver.ParamKind: "task", hubresolver.ParamType: ArtifactHubType}
+		got, err := resolveCatalogName(params, conf)
+		if err != nil {
+			t.Fatalf("unexpected error resolving task catalog: %v", err)
+		}
+		if want := "tekton-catalog-tasks"; got != want {
+			t.Errorf("expected catalog %q but got %q", want, got)
+		}
+	})
+}
+
 func TestValidateConflictingKindName(t *testing.T) {
 	testCases := []struct {
 		kind    string
@@ -304,10 +362,11 @@ func toParams(m map[string]string) []pipelinev1.Param {
 
 func contextWithConfig() context.Context {
 	config := map[string]string{
-		"default-tekton-hub-catalog":            "Tekton",
-		"default-artifact-hub-task-catalog":     "tekton-catalog-tasks",
-		"default-artifact-hub-pipeline-catalog": "tekton-catalog-pipelines",
-		"default-type":                          "artifact",
+		"default-tekton-hub-catalog":              "Tekton",
+		"default-artifact-hub-task-catalog":       "tekton-catalog-tasks",
+		"default-artifact-hub-pipeline-catalog":   "tekton-catalog-pipelines",
+		"default-artifact-hub-stepaction-catalog": "git-clone-stepaction",
+		"default-type": "artifact",
 	}
 
 	return resolutionframework.InjectResolverConfigToContext(context.Background(), config)
