@@ -28,12 +28,14 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"go.uber.org/zap"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/internal/resolution/retry"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
@@ -46,6 +48,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fakek8s "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing"
@@ -516,6 +519,8 @@ func toParams(m map[string]string) []pipelinev1.Param {
 func contextWithConfig(timeout string) context.Context {
 	config := map[string]string{
 		TimeoutKey: timeout,
+		// Keep the retries of failing fetches fast.
+		retry.ConfigBackoffDuration: "1ms",
 	}
 	return framework.InjectResolverConfigToContext(context.Background(), config)
 }
@@ -703,6 +708,115 @@ func TestFetchHttpResourceMaxBodySize(t *testing.T) {
 				}
 				if string(result.Data()) != body {
 					t.Fatalf("expected body length %d but got %d", len(body), len(result.Data()))
+				}
+			}
+		})
+	}
+}
+
+func TestFetchHttpResourceRetries(t *testing.T) {
+	const (
+		secretName = "auth-secret"
+		namespace  = "foo"
+	)
+	wantAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte("user:token"))
+
+	tests := []struct {
+		name         string
+		steps        string
+		failures     int32
+		withAuth     bool
+		digest       string
+		wantRequests int32
+		wantErr      string
+	}{{
+		name:         "succeeds after a failed attempt",
+		failures:     1,
+		wantRequests: 2,
+	}, {
+		name:         "sends the auth header on every attempt",
+		failures:     1,
+		withAuth:     true,
+		wantRequests: 2,
+	}, {
+		name:         "returns the last error when all attempts fail",
+		steps:        "3",
+		failures:     5,
+		wantRequests: 3,
+		wantErr:      "requested URL '.*' is not found",
+	}, {
+		name:         "one step disables retries",
+		steps:        "1",
+		failures:     1,
+		wantRequests: 1,
+		wantErr:      "requested URL '.*' is not found",
+	}, {
+		name:         "a digest mismatch is not retried",
+		digest:       "sha256:" + strings.Repeat("0", 64),
+		wantRequests: 1,
+		wantErr:      "error validating digest: SHA mismatch",
+	}}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var requests atomic.Int32
+			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				n := requests.Add(1)
+				if tc.withAuth && r.Header.Get("Authorization") != wantAuth {
+					t.Errorf("request %d: unexpected Authorization header %q", n, r.Header.Get("Authorization"))
+				}
+				if n <= tc.failures {
+					w.WriteHeader(http.StatusServiceUnavailable)
+					return
+				}
+				fmt.Fprint(w, sampleTask)
+			}))
+			defer svr.Close()
+
+			config := map[string]string{
+				retry.ConfigBackoffDuration: "1ms",
+				retry.ConfigBackoffJitter:   "0",
+			}
+			if tc.steps != "" {
+				config[retry.ConfigBackoffSteps] = tc.steps
+			}
+			ctx := framework.InjectResolverConfigToContext(t.Context(), config)
+			ctx = common.InjectRequestNamespace(ctx, namespace)
+
+			params := map[string]string{UrlParam: svr.URL}
+			if tc.digest != "" {
+				params[digestParam] = tc.digest
+			}
+			kubeClient := fakek8s.NewSimpleClientset()
+			if tc.withAuth {
+				params[HttpBasicAuthUsername] = "user"
+				params[HttpBasicAuthSecret] = secretName
+				kubeClient = fakek8s.NewSimpleClientset(&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: namespace},
+					Data:       map[string][]byte{defaultBasicAuthSecretKey: []byte("token")},
+				})
+			}
+
+			result, err := FetchHttpResource(ctx, params, kubeClient, zap.NewNop().Sugar())
+			if got := requests.Load(); got != tc.wantRequests {
+				t.Errorf("expected %d requests, got %d", tc.wantRequests, got)
+			}
+			if tc.wantErr != "" {
+				if err == nil || !regexp.MustCompile(tc.wantErr).MatchString(err.Error()) {
+					t.Fatalf("expected error matching %q, got %v", tc.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if d := cmp.Diff(sampleTask, string(result.Data())); d != "" {
+				t.Errorf("unexpected data: %s", diff.PrintWantGot(d))
+			}
+			if tc.withAuth {
+				// The secret is read once, not once per attempt.
+				if got := len(kubeClient.Actions()); got != 1 {
+					t.Errorf("expected 1 secret lookup, got %d: %v", got, kubeClient.Actions())
 				}
 			}
 		})

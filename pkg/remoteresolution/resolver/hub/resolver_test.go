@@ -23,10 +23,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/internal/resolution/retry"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -308,6 +311,8 @@ func contextWithConfig() context.Context {
 		"default-artifact-hub-task-catalog":     "tekton-catalog-tasks",
 		"default-artifact-hub-pipeline-catalog": "tekton-catalog-pipelines",
 		"default-type":                          "artifact",
+		// Keep the retries of failing requests fast.
+		retry.ConfigBackoffDuration: "1ms",
 	}
 
 	return resolutionframework.InjectResolverConfigToContext(context.Background(), config)
@@ -934,6 +939,7 @@ func TestResolveFallbackAllFail(t *testing.T) {
 		"default-artifact-hub-pipeline-catalog": "tekton-catalog-pipelines",
 		"default-type":                          "artifact",
 		ConfigArtifactHubURLs:                   urlYAML,
+		retry.ConfigBackoffDuration:             "1ms",
 	}
 	ctx := resolutionframework.InjectResolverConfigToContext(context.Background(), config)
 
@@ -990,6 +996,7 @@ func TestResolveFallbackVersionConstraintNoVersionStopsFallback(t *testing.T) {
 		"default-artifact-hub-pipeline-catalog": "tekton-catalog-pipelines",
 		"default-type":                          "artifact",
 		ConfigArtifactHubURLs:                   urlYAML,
+		retry.ConfigBackoffDuration:             "1ms",
 	}
 	ctx := resolutionframework.InjectResolverConfigToContext(context.Background(), config)
 
@@ -1128,6 +1135,7 @@ func TestResolveSingleConfigMapURLErrorFormat(t *testing.T) {
 		"default-artifact-hub-pipeline-catalog": "tekton-catalog-pipelines",
 		"default-type":                          "artifact",
 		ConfigArtifactHubURLs:                   "- " + svr.URL,
+		retry.ConfigBackoffDuration:             "1ms",
 	}
 	ctx := resolutionframework.InjectResolverConfigToContext(context.Background(), config)
 
@@ -1225,5 +1233,163 @@ func TestValidateParamsTektonTypeWithConfigMapURLs(t *testing.T) {
 	err := resolver.Validate(ctx, &req)
 	if err != nil {
 		t.Fatalf("expected no error when ConfigMap has tekton-hub-urls, got: %v", err)
+	}
+}
+
+func TestResolveRetries(t *testing.T) {
+	listPath := "/" + fmt.Sprintf(hubresolver.ArtifactHubListTasksEndpoint, "task", "Tekton", "foo")
+
+	testCases := []struct {
+		name string
+		// version is the version param. A version that parses as a
+		// constraint makes the resolver list the available versions
+		// before it fetches the resource.
+		version     string
+		wantVersion string
+		steps       string
+		// failRequests lists the requests, counted from 1, that get a 503.
+		failRequests []int32
+		wantRequests int32
+		wantErr      string
+	}{{
+		name:         "succeeds after a failed attempt",
+		version:      "baz",
+		wantVersion:  "baz",
+		failRequests: []int32{1},
+		wantRequests: 2,
+	}, {
+		name:         "retries a failed version constraint lookup",
+		version:      ">= 0.1",
+		wantVersion:  "0.2.0",
+		failRequests: []int32{1},
+		wantRequests: 3,
+	}, {
+		name:         "retries the version constraint lookup when the fetch fails",
+		version:      ">= 0.1",
+		wantVersion:  "0.2.0",
+		failRequests: []int32{2},
+		wantRequests: 4,
+	}, {
+		name:         "returns the last error when all attempts fail",
+		version:      "baz",
+		steps:        "3",
+		failRequests: []int32{1, 2, 3, 4, 5},
+		wantRequests: 3,
+		wantErr:      "fail to fetch Artifact Hub resource: requested resource",
+	}, {
+		name:         "one step disables retries",
+		version:      "baz",
+		steps:        "1",
+		failRequests: []int32{1},
+		wantRequests: 1,
+		wantErr:      "fail to fetch Artifact Hub resource: requested resource",
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var requests atomic.Int32
+			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if slices.Contains(tc.failRequests, requests.Add(1)) {
+					w.WriteHeader(http.StatusServiceUnavailable)
+					return
+				}
+				if r.URL.Path == listPath {
+					fmt.Fprint(w, `{"available_versions":[{"version":"0.1.0"},{"version":"0.2.0"}]}`)
+					return
+				}
+				if !strings.HasSuffix(r.URL.Path, "/"+tc.wantVersion) {
+					t.Errorf("unexpected version in request path %q", r.URL.Path)
+				}
+				fmt.Fprint(w, `{"data":{"manifestRaw":"some content"}}`)
+			}))
+			defer svr.Close()
+
+			config := map[string]string{
+				"default-tekton-hub-catalog":            "Tekton",
+				"default-artifact-hub-task-catalog":     "tekton-catalog-tasks",
+				"default-artifact-hub-pipeline-catalog": "tekton-catalog-pipelines",
+				"default-type":                          "artifact",
+				retry.ConfigBackoffDuration:             "1ms",
+				retry.ConfigBackoffJitter:               "0",
+			}
+			if tc.steps != "" {
+				config[retry.ConfigBackoffSteps] = tc.steps
+			}
+			ctx := resolutionframework.InjectResolverConfigToContext(t.Context(), config)
+
+			resolver := &Resolver{ArtifactHubURL: svr.URL}
+			params := map[string]string{
+				hubresolver.ParamKind:    "task",
+				hubresolver.ParamName:    "foo",
+				hubresolver.ParamVersion: tc.version,
+				hubresolver.ParamCatalog: "Tekton",
+				hubresolver.ParamType:    ArtifactHubType,
+			}
+			output, err := resolver.Resolve(ctx, &v1beta1.ResolutionRequestSpec{Params: toParams(params)})
+			if got := requests.Load(); got != tc.wantRequests {
+				t.Errorf("expected %d requests, got %d", tc.wantRequests, got)
+			}
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("expected error containing %q, got %v", tc.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error resolving: %v", err)
+			}
+			if d := cmp.Diff("some content", string(output.Data())); d != "" {
+				t.Errorf("unexpected resource from Resolve: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestResolveRetriesAllHubURLs(t *testing.T) {
+	var svr1Requests, svr2Requests atomic.Int32
+	svr1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		svr1Requests.Add(1)
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer svr1.Close()
+	svr2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if svr2Requests.Add(1) == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		fmt.Fprint(w, `{"data":{"manifestRaw":"from second"}}`)
+	}))
+	defer svr2.Close()
+
+	config := map[string]string{
+		"default-tekton-hub-catalog":            "Tekton",
+		"default-artifact-hub-task-catalog":     "tekton-catalog-tasks",
+		"default-artifact-hub-pipeline-catalog": "tekton-catalog-pipelines",
+		"default-type":                          "artifact",
+		ConfigArtifactHubURLs:                   fmt.Sprintf("- %s\n- %s", svr1.URL, svr2.URL),
+		retry.ConfigBackoffDuration:             "1ms",
+	}
+	ctx := resolutionframework.InjectResolverConfigToContext(t.Context(), config)
+
+	params := map[string]string{
+		hubresolver.ParamKind:    "task",
+		hubresolver.ParamName:    "foo",
+		hubresolver.ParamVersion: "baz",
+		hubresolver.ParamCatalog: "Tekton",
+		hubresolver.ParamType:    ArtifactHubType,
+	}
+	output, err := (&Resolver{}).Resolve(ctx, &v1beta1.ResolutionRequestSpec{Params: toParams(params)})
+	if err != nil {
+		t.Fatalf("unexpected error resolving: %v", err)
+	}
+	if d := cmp.Diff("from second", string(output.Data())); d != "" {
+		t.Errorf("unexpected resource from Resolve: %s", diff.PrintWantGot(d))
+	}
+	// Each attempt tries every hub URL in order before backing off.
+	if got := svr1Requests.Load(); got != 2 {
+		t.Errorf("expected 2 requests to the first hub, got %d", got)
+	}
+	if got := svr2Requests.Load(); got != 2 {
+		t.Errorf("expected 2 requests to the second hub, got %d", got)
 	}
 }
