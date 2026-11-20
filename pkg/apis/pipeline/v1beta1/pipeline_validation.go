@@ -139,6 +139,10 @@ func (pt *PipelineTask) validateBetaFields(ctx context.Context) *apis.FieldError
 func ValidatePipelineTasks(ctx context.Context, tasks []PipelineTask, finalTasks []PipelineTask) *apis.FieldError {
 	taskNames := sets.NewString()
 	var errs *apis.FieldError
+	// Pipeline must have at least one Task, regardless of whether finally Tasks are present.
+	if len(tasks) == 0 {
+		errs = errs.Also(apis.ErrMissingField("tasks"))
+	}
 	errs = errs.Also(PipelineTaskList(tasks).Validate(ctx, taskNames, "tasks"))
 	errs = errs.Also(PipelineTaskList(finalTasks).Validate(ctx, taskNames, "finally"))
 	return errs
