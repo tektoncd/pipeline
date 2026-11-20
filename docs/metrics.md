@@ -92,18 +92,14 @@ The `tracing-protocol` key controls distributed tracing:
 For `http/protobuf`, configure the complete collector URL, including the signal
 path:
 
-```yaml
-data:
-  metrics-protocol: http/protobuf
-  metrics-endpoint: "http://otel-collector.observability.svc.cluster.local:4318/v1/metrics"
-  tracing-protocol: http/protobuf
-  tracing-endpoint: "http://otel-collector.observability.svc.cluster.local:4318/v1/traces"
-```
+| ConfigMap data | value | description |
+|---|---|---|
+| `metrics-protocol` | `http/protobuf` | Exports metrics over OTLP HTTP |
+| `metrics-endpoint` | `http://otel-collector.observability.svc.cluster.local:4318/v1/metrics` | Complete metrics collector URL |
+| `tracing-protocol` | `http/protobuf` | Exports traces over OTLP HTTP |
+| `tracing-endpoint` | `http://otel-collector.observability.svc.cluster.local:4318/v1/traces` | Complete tracing collector URL |
 
-**Action required when upgrading:** OpenTelemetry Go 1.45 changed pathless HTTP
-endpoint URLs to target `/`. If your `config-observability` uses a pathless HTTP
-endpoint, add `/v1/metrics` or `/v1/traces` for a standard OTLP collector. Explicit
-root and custom paths are used as configured.
+URLs are used as configured; a URL without a path targets `/`.
 
 Environment overrides retain their OpenTelemetry behavior:
 `OTEL_EXPORTER_OTLP_ENDPOINT` appends the signal path to the base URL, while
