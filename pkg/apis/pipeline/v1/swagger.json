@@ -161,12 +161,16 @@
       "type": "object",
       "properties": {
         "buildOutput": {
-          "description": "Indicate if the artifact is a build output or a by-product",
+          "description": "Indicate if the artifact is a build output or a by-product. This is the legacy form of Subject, still populated from the legacy provenance format.",
           "type": "boolean"
         },
         "name": {
           "description": "The artifact's identifying category name",
           "type": "string"
+        },
+        "subject": {
+          "description": "Subject marks this artifact as the primary build output (the SLSA attestation subject), as declared in the Task's artifact outputs.",
+          "type": "boolean"
         },
         "values": {
           "description": "A collection of values related to the artifact",
@@ -174,6 +178,88 @@
           "items": {
             "$ref": "#/definitions/v1.ArtifactValue"
           }
+        }
+      }
+    },
+    "v1.ArtifactDeclaration": {
+      "description": "ArtifactDeclaration describes a single artifact input or output.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "description": {
+          "description": "Description of the artifact.",
+          "type": "string"
+        },
+        "mediaType": {
+          "description": "MediaType hint for the artifact (e.g., application/vnd.tekton.artifact.junit.v1+xml)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the artifact (used in path substitution and pipeline bindings)",
+          "type": "string",
+          "default": ""
+        },
+        "subject": {
+          "description": "Subject marks this artifact as the primary build output — the SLSA attestation subject. Multiple artifacts can be subjects.",
+          "type": "boolean"
+        },
+        "type": {
+          "description": "Type of the artifact: \"reference\" or \"content\". Defaults to \"content\".",
+          "type": "string"
+        },
+        "value": {
+          "description": "Value surfaces an artifact produced by a Step, using $(steps.\u003cstep\u003e.artifacts.\u003cname\u003e). Mirrors TaskResult.Value. When set, Type and MediaType are inherited from the referenced step artifact.",
+          "type": "string"
+        }
+      }
+    },
+    "v1.ArtifactDeclarations": {
+      "description": "ArtifactDeclarations declares what artifacts a task consumes and produces.",
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "description": "Inputs declares artifacts that the task expects to consume.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.ArtifactDeclaration"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "outputs": {
+          "description": "Outputs declares artifacts that the task produces.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.ArtifactDeclaration"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.ArtifactStorageRef": {
+      "description": "ArtifactStorageRef identifies where a content artifact is stored in a backend.",
+      "type": "object",
+      "required": [
+        "backend",
+        "location",
+        "digest"
+      ],
+      "properties": {
+        "backend": {
+          "type": "string",
+          "default": ""
+        },
+        "contentType": {
+          "type": "string"
+        },
+        "digest": {
+          "type": "string",
+          "default": ""
+        },
+        "location": {
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -186,6 +272,19 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "inline": {
+          "description": "Inline holds small content embedded directly in the status (base64-encoded), avoiding external storage overhead.",
+          "type": "string"
+        },
+        "ref": {
+          "description": "Ref is a backend-specific storage reference. Present only for content artifacts stored externally; absent for reference artifacts and inline content.",
+          "$ref": "#/definitions/v1.ArtifactStorageRef"
+        },
+        "size": {
+          "description": "content size in bytes, letting consumers and UIs know the artifact size before fetching.",
+          "type": "integer",
+          "format": "int64"
         },
         "uri": {
           "description": "Algorithm-specific digests for verifying the content (e.g., SHA256)",
@@ -251,6 +350,10 @@
       "properties": {
         "apiVersion": {
           "type": "string"
+        },
+        "artifacts": {
+          "description": "Artifacts declares the inputs and outputs of the task for OCI-based transport. Requires enable-artifacts feature flag.",
+          "$ref": "#/definitions/v1.ArtifactDeclarations"
         },
         "description": {
           "description": "Description is a user-facing description of the task that may be used to populate a UI.",
@@ -474,6 +577,44 @@
         }
       }
     },
+    "v1.PipelineArtifactDeclarations": {
+      "description": "PipelineArtifactDeclarations declares artifacts at the Pipeline boundary.",
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.ArtifactDeclaration"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.PipelineArtifactOutput"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.PipelineArtifactOutput": {
+      "description": "PipelineArtifactOutput exposes a Task artifact as a Pipeline output.",
+      "type": "object",
+      "required": [
+        "name",
+        "from"
+      ],
+      "properties": {
+        "from": {
+          "type": "string",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
     "v1.PipelineList": {
       "description": "PipelineList contains a list of Pipeline",
       "type": "object",
@@ -580,6 +721,19 @@
         }
       }
     },
+    "v1.PipelineRunArtifacts": {
+      "description": "PipelineRunArtifacts supplies artifacts to a PipelineRun.",
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.Artifact"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
     "v1.PipelineRunList": {
       "description": "PipelineRunList contains a list of PipelineRun",
       "type": "object",
@@ -652,6 +806,10 @@
       "description": "PipelineRunSpec defines the desired state of PipelineRun",
       "type": "object",
       "properties": {
+        "artifacts": {
+          "description": "Artifacts supplies values for declared Pipeline artifact inputs.",
+          "$ref": "#/definitions/v1.PipelineRunArtifacts"
+        },
         "managedBy": {
           "description": "ManagedBy indicates which controller is responsible for reconciling this resource. If unset or set to \"tekton.dev/pipeline\", the default Tekton controller will manage this resource. This field is immutable.",
           "type": "string"
@@ -711,6 +869,10 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "artifacts": {
+          "description": "Artifacts are the declared outputs produced by the Pipeline.",
+          "$ref": "#/definitions/v1.Artifacts"
         },
         "childReferences": {
           "description": "list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun.",
@@ -783,6 +945,10 @@
       "description": "PipelineRunStatusFields holds the fields of PipelineRunStatus' status. This is defined separately and inlined so that other types can readily consume these fields via duck typing.",
       "type": "object",
       "properties": {
+        "artifacts": {
+          "description": "Artifacts are the declared outputs produced by the Pipeline.",
+          "$ref": "#/definitions/v1.Artifacts"
+        },
         "childReferences": {
           "description": "list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun.",
           "type": "array",
@@ -862,6 +1028,10 @@
       "description": "PipelineSpec defines the desired state of Pipeline.",
       "type": "object",
       "properties": {
+        "artifacts": {
+          "description": "Artifacts declares artifacts entering and leaving the Pipeline.",
+          "$ref": "#/definitions/v1.PipelineArtifactDeclarations"
+        },
         "description": {
           "description": "Description is a user-facing description of the pipeline that may be used to populate a UI.",
           "type": "string"
@@ -915,6 +1085,10 @@
       "description": "PipelineTask defines a task in a Pipeline, passing inputs from both Params and from the output of previous tasks.",
       "type": "object",
       "properties": {
+        "artifacts": {
+          "description": "Artifacts configures artifact bindings for this task.",
+          "$ref": "#/definitions/v1.PipelineTaskArtifacts"
+        },
         "description": {
           "description": "Description is the description of this task within the context of a Pipeline. This description may be used to populate a UI.",
           "type": "string"
@@ -987,6 +1161,39 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1.WorkspacePipelineTaskBinding"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.PipelineTaskArtifactBinding": {
+      "description": "PipelineTaskArtifactBinding binds an artifact input to an output from another task.",
+      "type": "object",
+      "required": [
+        "name",
+        "from"
+      ],
+      "properties": {
+        "from": {
+          "description": "From references an output from another task: \"tasks.\u003ctaskName\u003e.outputs.\u003cartifactName\u003e\"",
+          "type": "string",
+          "default": ""
+        },
+        "name": {
+          "description": "Name matches the artifact input name in the referenced Task.",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "v1.PipelineTaskArtifacts": {
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "description": "Inputs binds artifact inputs from other tasks' outputs.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.PipelineTaskArtifactBinding"
           },
           "x-kubernetes-list-type": "atomic"
         }
@@ -1446,6 +1653,10 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "artifacts": {
+          "description": "Artifacts declares step-scoped artifact outputs produced by this Step. Only outputs are supported at step scope.",
+          "$ref": "#/definitions/v1.StepArtifacts"
+        },
         "command": {
           "description": "Entrypoint array. Not executed within a shell. The image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
           "type": "array",
@@ -1573,6 +1784,20 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1.WorkspaceUsage"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.StepArtifacts": {
+      "description": "StepArtifacts declares the artifact outputs a Step or StepAction produces. Only outputs are declared at step scope — inputs are fetched once at Task scope and passed to steps as params.",
+      "type": "object",
+      "properties": {
+        "outputs": {
+          "description": "Outputs declares artifacts produced by this Step or StepAction.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.ArtifactDeclaration"
           },
           "x-kubernetes-list-type": "atomic"
         }
@@ -2164,7 +2389,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "taskSpec": {
-          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
+          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. See Task.spec (API version: tekton.dev/v1)",
           "$ref": "#/definitions/v1.TaskSpec"
         }
       }
@@ -2236,7 +2461,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "taskSpec": {
-          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
+          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. See Task.spec (API version: tekton.dev/v1)",
           "$ref": "#/definitions/v1.TaskSpec"
         }
       }
@@ -2265,6 +2490,10 @@
       "description": "TaskSpec defines the desired state of Task.",
       "type": "object",
       "properties": {
+        "artifacts": {
+          "description": "Artifacts declares the inputs and outputs of the task for OCI-based transport. Requires enable-artifacts feature flag.",
+          "$ref": "#/definitions/v1.ArtifactDeclarations"
+        },
         "description": {
           "description": "Description is a user-facing description of the task that may be used to populate a UI.",
           "type": "string"
