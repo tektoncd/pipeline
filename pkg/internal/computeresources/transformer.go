@@ -66,7 +66,6 @@ func transformPodBasedOnLimitRange(p *corev1.Pod, limitRange *corev1.LimitRange)
 		}
 	}
 
-	// FIXME(#4230) maxLimitRequestRatio to support later
 	defaultStepContainerRequests := getDefaultStepContainerRequest(limitRange, nbStepContainers)
 
 	for i, c := range p.Spec.Containers {
