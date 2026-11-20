@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 )
@@ -54,6 +55,7 @@ type Recorder struct {
 	prTRDurationHistogram                  metric.Float64Histogram
 	trDurationGauge                        metric.Float64Gauge
 	prTRDurationGauge                      metric.Float64Gauge
+	trResolutionWaitHistogram              metric.Float64Histogram
 	trTotalCounter                         metric.Int64Counter
 	runningTRsGauge                        metric.Int64ObservableGauge
 	runningTRsWaitingOnTaskResolutionGauge metric.Int64ObservableGauge
@@ -63,6 +65,16 @@ type Recorder struct {
 
 	insertTaskTag     func(task, taskrun string) []attribute.KeyValue
 	insertPipelineTag func(pipeline, pipelinerun string) []attribute.KeyValue
+
+	// resolvingSince and resolutionWaitSeconds track, per TaskRun UID, how long
+	// a run has been waiting on resolution of its Task reference. See the
+	// equivalent fields in pkg/pipelinerunmetrics.Recorder for the full
+	// rationale: Status.Conditions only retains the *current* reason, so the
+	// LastTransitionTime at which resolution started must be captured on every
+	// reconcile (via ObserveResolutionWait) before it's overwritten, and
+	// stashed until DurationAndCount consumes it at run completion.
+	resolvingSince        map[types.UID]time.Time
+	resolutionWaitSeconds map[types.UID]float64
 }
 
 var (
@@ -76,8 +88,10 @@ func NewRecorder(ctx context.Context) (*Recorder, error) {
 	once.Do(func() {
 		cfg := config.FromContextOrDefaults(ctx)
 		r = &Recorder{
-			initialized: true,
-			cfg:         cfg.Metrics,
+			initialized:           true,
+			cfg:                   cfg.Metrics,
+			resolvingSince:        make(map[types.UID]time.Time),
+			resolutionWaitSeconds: make(map[types.UID]float64),
 		}
 
 		errRegistering = r.configure(cfg.Metrics)
@@ -173,6 +187,19 @@ func (r *Recorder) configure(cfg *config.Metrics) error {
 		}
 		r.trDurationGauge = nil
 		r.prTRDurationGauge = nil
+	}
+
+	if r.trResolutionWaitHistogram == nil {
+		trResolutionWaitHistogram, err := r.meter.Float64Histogram(
+			"tekton_pipelines_controller_taskrun_resolution_wait_seconds",
+			metric.WithDescription("The time a taskrun spent waiting on resolution of its Task reference, in seconds. Runs that never entered the resolving state (e.g. inline Task specs) record 0."),
+			metric.WithUnit("s"),
+			metric.WithExplicitBucketBoundaries(0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create taskrun resolution wait histogram: %w", err)
+		}
+		r.trResolutionWaitHistogram = trResolutionWaitHistogram
 	}
 
 	trTotalCounter, err := r.meter.Int64Counter(
@@ -295,9 +322,49 @@ func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1.TaskRun, beforeC
 		}
 	}
 
+	if r.trResolutionWaitHistogram != nil {
+		waitSeconds := r.resolutionWaitSeconds[tr.UID]
+		delete(r.resolutionWaitSeconds, tr.UID)
+		r.trResolutionWaitHistogram.Record(ctx, waitSeconds, metric.WithAttributes(attrs...))
+	}
+
 	r.trTotalCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("status", status)))
 
 	return nil
+}
+
+// ObserveResolutionWait tracks how long tr has been waiting on resolution of
+// its Task reference. It should be called on every reconcile of tr, after
+// the reconcile logic has run (so it observes the up-to-date condition).
+// While the Succeeded condition's reason is TaskRunReasonResolvingTaskRef, it
+// records the point in time resolution started (idempotently —
+// LastTransitionTime does not change while the reason is unchanged). Once
+// the reason moves past resolving, it computes the elapsed wait and stashes
+// it for DurationAndCount to consume when the run finishes. Runs that never
+// enter the resolving state never populate an entry, so DurationAndCount
+// records 0 for them.
+func (r *Recorder) ObserveResolutionWait(tr *v1.TaskRun) {
+	if r == nil || !r.initialized || tr == nil {
+		return
+	}
+
+	cond := tr.Status.GetCondition(apis.ConditionSucceeded)
+	if cond == nil {
+		return
+	}
+
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if cond.Reason == v1.TaskRunReasonResolvingTaskRef {
+		r.resolvingSince[tr.UID] = cond.LastTransitionTime.Inner.Time
+		return
+	}
+
+	if startedAt, ok := r.resolvingSince[tr.UID]; ok {
+		r.resolutionWaitSeconds[tr.UID] = time.Since(startedAt).Seconds()
+		delete(r.resolvingSince, tr.UID)
+	}
 }
 
 // observeRunningTaskRuns logs the number of TaskRuns running right now

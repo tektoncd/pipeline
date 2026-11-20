@@ -23,6 +23,7 @@ import (
 	resolutionclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client"
 	resolutionrequestinformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
 	resolutionrequestreconciler "github.com/tektoncd/pipeline/pkg/client/resolution/injection/reconciler/resolution/v1beta1/resolutionrequest"
+	"github.com/tektoncd/pipeline/pkg/resolutionrequestmetrics"
 	"k8s.io/utils/clock"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -38,9 +39,15 @@ func NewController(clock clock.PassiveClock) func(ctx context.Context, cmw confi
 		configStore := config.NewStore(logger.Named("config-store"))
 		configStore.WatchConfigs(cmw)
 
+		metricsRecorder, err := resolutionrequestmetrics.NewRecorder(ctx)
+		if err != nil {
+			logger.Errorf("failed to create ResolutionRequest metrics recorder: %v", err)
+		}
+
 		r := &Reconciler{
-			client: resolutionclient.Get(ctx),
-			clock:  clock,
+			client:  resolutionclient.Get(ctx),
+			clock:   clock,
+			metrics: metricsRecorder,
 		}
 		impl := resolutionrequestreconciler.NewImpl(ctx, r, func(impl *controller.Impl) controller.Options {
 			return controller.Options{

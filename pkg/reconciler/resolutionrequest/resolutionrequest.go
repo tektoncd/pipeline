@@ -27,6 +27,7 @@ import (
 	resolutionclientset "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	rrreconciler "github.com/tektoncd/pipeline/pkg/client/resolution/injection/reconciler/resolution/v1beta1/resolutionrequest"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	"github.com/tektoncd/pipeline/pkg/resolutionrequestmetrics"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,6 +46,11 @@ type Reconciler struct {
 	// client applies lifecycle-only status patches.
 	client resolutionclientset.Interface
 	clock  clock.PassiveClock
+
+	// metrics records ResolutionRequest lifecycle histograms. It may be nil
+	// (e.g. in tests that don't wire one up), in which case recording is a
+	// no-op.
+	metrics *resolutionrequestmetrics.Recorder
 }
 
 var _ rrreconciler.Interface = (*Reconciler)(nil)
@@ -88,8 +94,13 @@ func (r *Reconciler) reconcile(ctx context.Context, rr *v1beta1.ResolutionReques
 	switch {
 	case rr.IsResolved():
 		rr.Status.MarkSucceeded()
+		r.metrics.RecordCompletion(ctx, rr, resolutionrequestmetrics.Cached(rr.Status.Annotations))
 	case requestDuration(rr) > maximumResolutionDuration:
 		rr.Status.MarkFailed(resolutioncommon.ReasonResolutionTimedOut, timeoutMessage(maximumResolutionDuration))
+		// Unlike the IsResolved() branch above, a request failing here was
+		// never resolved, so it carries no resolver annotations (cached will
+		// always be false).
+		r.metrics.RecordCompletion(ctx, rr, resolutionrequestmetrics.Cached(rr.Status.Annotations))
 	default:
 		rr.Status.MarkInProgress(resolutioncommon.MessageWaitingForResolver)
 		return controller.NewRequeueAfter(maximumResolutionDuration - requestDuration(rr))

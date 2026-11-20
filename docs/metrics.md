@@ -20,10 +20,12 @@ for sending metrics to an OpenTelemetry Collector or compatible backend.
 | Name | Type | Labels/Tags | Status |
 |---|---|---|---|
 | `tekton_pipelines_controller_pipelinerun_duration_seconds_[bucket, sum, count]` | Histogram/LastValue(Gauge) | `*pipeline`=&lt;pipeline_name&gt; <br> `*pipelinerun`=&lt;pipelinerun_name&gt; <br> `status`=&lt;status&gt; <br> `namespace`=&lt;pipelinerun-namespace&gt; <br> `*reason`=&lt;reason&gt; | experimental |
+| `tekton_pipelines_controller_pipelinerun_resolution_wait_seconds_[bucket, sum, count]` | Histogram | `*pipeline`=&lt;pipeline_name&gt; <br> `*pipelinerun`=&lt;pipelinerun_name&gt; <br> `status`=&lt;status&gt; <br> `namespace`=&lt;pipelinerun-namespace&gt; <br> `*reason`=&lt;reason&gt; | experimental |
 | `tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds_[bucket, sum, count]` | Histogram/LastValue(Gauge) | `*pipeline`=&lt;pipeline_name&gt; <br> `*pipelinerun`=&lt;pipelinerun_name&gt; <br> `status`=&lt;status&gt; <br> `*task`=&lt;task_name&gt; <br> `*taskrun`=&lt;taskrun_name&gt;<br> `namespace`=&lt;pipelineruns-taskruns-namespace&gt; <br> `*reason`=&lt;reason&gt; | experimental |
 | `tekton_pipelines_controller_pipelinerun_total` | Counter | `status`=&lt;status&gt; | experimental |
 | `tekton_pipelines_controller_running_pipelineruns` | Gauge | | experimental |
 | `tekton_pipelines_controller_taskrun_duration_seconds_[bucket, sum, count]` | Histogram/LastValue(Gauge) | `status`=&lt;status&gt; <br> `*task`=&lt;task_name&gt; <br> `*taskrun`=&lt;taskrun_name&gt;<br> `namespace`=&lt;pipelineruns-taskruns-namespace&gt; <br> `*reason`=&lt;reason&gt; | experimental |
+| `tekton_pipelines_controller_taskrun_resolution_wait_seconds_[bucket, sum, count]` | Histogram | `status`=&lt;status&gt; <br> `*task`=&lt;task_name&gt; <br> `*taskrun`=&lt;taskrun_name&gt;<br> `namespace`=&lt;pipelineruns-taskruns-namespace&gt; <br> `*reason`=&lt;reason&gt; | experimental |
 | `tekton_pipelines_controller_taskrun_total` | Counter | `status`=&lt;status&gt; | experimental |
 | `tekton_pipelines_controller_running_taskruns` | Gauge | | experimental |
 | `tekton_pipelines_controller_running_taskruns_throttled_by_quota` | Gauge | `namespace`=&lt;pipelinerun-namespace&gt; | experimental |
@@ -32,12 +34,36 @@ for sending metrics to an OpenTelemetry Collector or compatible backend.
 | `tekton_pipelines_controller_running_pipelineruns_waiting_on_task_resolution` | Gauge | | experimental |
 | `tekton_pipelines_controller_running_taskruns_waiting_on_task_resolution_count` | Gauge | | experimental |
 | `tekton_pipelines_controller_taskruns_pod_latency_milliseconds` | Histogram | `namespace`=&lt;namespace&gt; `*task`=&lt;task_name&gt; `*taskrun`=&lt;taskrun_name&gt; (unbounded cardinality, see [#9393](https://github.com/tektoncd/pipeline/issues/9393)) | experimental |
+| `tekton_pipelines_controller_resolution_request_resolution_seconds_[bucket, sum, count]` | Histogram | `resolver`=&lt;resolver_type&gt; <br> `cached`=&lt;true\|false&gt; <br> `namespace`=&lt;resolutionrequest-namespace&gt; | experimental |
+| `tekton_pipelines_controller_resolution_request_completion_seconds_[bucket, sum, count]` | Histogram | `resolver`=&lt;resolver_type&gt; <br> `cached`=&lt;true\|false&gt; <br> `namespace`=&lt;resolutionrequest-namespace&gt; | experimental |
 
 The Labels/Tags marked as "\*" are optional. There is a choice between Histogram and LastValue(Gauge) for pipelinerun and taskrun duration metrics.
 
 > **Note:** All metrics now carry an `otel_scope_name` label identifying the
 > instrumentation package. This label is informational and transparent to
 > most PromQL queries.
+
+> **Note:** `tekton_pipelines_controller_pipelinerun_resolution_wait_seconds`
+> and `tekton_pipelines_controller_taskrun_resolution_wait_seconds` measure
+> how long a PipelineRun or TaskRun spent waiting on a remote resolver to
+> resolve its `pipelineRef`/`taskRef` before it could start running. They are
+> recorded once, when the run reaches a terminal state, using the same
+> labels as the corresponding `*_duration_seconds` metric. Runs that never
+> entered the resolving state (for example, those using an inline
+> `pipelineSpec`/`taskSpec`) record a wait time of `0`.
+
+> **Note:** `tekton_pipelines_controller_resolution_request_resolution_seconds`
+> and `tekton_pipelines_controller_resolution_request_completion_seconds`
+> measure the lifecycle of a `ResolutionRequest` object, both starting from
+> the `ResolutionRequest`'s creation time. `resolution_seconds` is recorded
+> by the resolver once it produces resolved data; `completion_seconds` is
+> recorded once the `ResolutionRequest` reaches a terminal (`Succeeded` or
+> `Failed`) state, whether due to successful resolution, a resolver-side
+> failure, or the global resolution timeout. Subtracting
+> `resolution_seconds` from `completion_seconds` approximates the pipelines
+> controller's overhead on top of resolver time. The `cached` label
+> indicates whether the resolved data was served from the resolver
+> framework's cache rather than freshly resolved.
 
 ## Infrastructure Metrics
 
