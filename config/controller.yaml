@@ -73,6 +73,13 @@ spec:
       containers:
       - name: tekton-pipelines-controller
         image: ko://github.com/tektoncd/pipeline/cmd/controller
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 500m
+            memory: 500Mi
         args: [
           # These images are built on-demand by `ko resolve` and are replaced
           # by image references by digest.
