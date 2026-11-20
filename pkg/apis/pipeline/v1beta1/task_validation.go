@@ -65,6 +65,13 @@ func (t *Task) SupportedVerbs() []admissionregistrationv1.OperationType {
 var (
 	stringAndArrayVariableNameFormatRegex = regexp.MustCompile(stringAndArrayVariableNameFormat)
 	objectVariableNameFormatRegex         = regexp.MustCompile(objectVariableNameFormat)
+
+	// workspaceVariableRegex matches workspace variable references, capturing the workspace name
+	// and, when present, the property, e.g. $(workspaces.myws.path).
+	workspaceVariableRegex = regexp.MustCompile(`\$\(workspaces\.([^.)]*)(?:\.([^)]*))?\)`)
+
+	// validWorkspaceProperties are the workspace properties substituted at runtime.
+	validWorkspaceProperties = sets.NewString("path", "bound", "claim", "volume")
 )
 
 // Validate implements apis.Validatable
@@ -73,7 +80,12 @@ func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 	errs = errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 	// When a Task is created directly, instead of declared inline in a TaskRun or PipelineRun,
 	// we do not support propagated parameters. Validate that all params it uses are declared.
-	return errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.Spec.Steps, t.Spec.Params).ViaField("spec"))
+	errs = errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.Spec.Steps, t.Spec.Params).ViaField("spec"))
+	// When a Task is created directly, instead of declared inline in a TaskRun or PipelineRun,
+	// we do not support propagated workspaces. Validate that all workspace variable references
+	// (e.g. $(workspaces.foo.path)) refer to declared workspaces with valid properties.
+	errs = errs.Also(ValidateUsageOfDeclaredWorkspaces(t.Spec.Steps, t.Spec.Sidecars, t.Spec.Workspaces).ViaField("spec"))
+	return errs
 }
 
 // Validate implements apis.Validatable
@@ -179,6 +191,57 @@ func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step,
 		mountPaths[mountPath] = struct{}{}
 	}
 	return errs
+}
+
+// ValidateUsageOfDeclaredWorkspaces validates that all workspace variable references
+// (e.g. $(workspaces.foo.path)) in Steps and Sidecars refer to workspaces declared in the Task
+// and use one of the valid workspace properties (path, bound, claim, volume).
+func ValidateUsageOfDeclaredWorkspaces(steps []Step, sidecars []Sidecar, workspaces []WorkspaceDeclaration) *apis.FieldError {
+	var errs *apis.FieldError
+	wsNames := sets.NewString()
+	for _, w := range workspaces {
+		wsNames.Insert(w.Name)
+	}
+	check := func(value string, isScript bool) *apis.FieldError {
+		return validateWorkspaceVariableReferences(value, wsNames, isScript)
+	}
+	for idx, step := range steps {
+		errs = errs.Also(walkStepVariableFields(step, check).ViaFieldIndex("steps", idx))
+	}
+	for idx, sidecar := range sidecars {
+		errs = errs.Also(walkSidecarVariableFields(sidecar, check).ViaFieldIndex("sidecars", idx))
+	}
+	return errs
+}
+
+// validateWorkspaceVariableReferences returns an error if value references a workspace that is
+// not in wsNames, or uses a property that is not substituted at runtime. Bare references such as
+// $(workspaces.myws) are rejected: only $(workspaces.myws.<property>) is substituted.
+// When withDetail is set, the offending reference is named in the error message.
+func validateWorkspaceVariableReferences(value string, wsNames sets.String, withDetail bool) *apis.FieldError {
+	for _, match := range workspaceVariableRegex.FindAllStringSubmatch(value, -1) {
+		if !wsNames.Has(match[1]) || !validWorkspaceProperties.Has(match[2]) {
+			msg := fmt.Sprintf("non-existent variable in %q", value)
+			if withDetail {
+				invalid := match[1]
+				switch {
+				case !wsNames.Has(invalid):
+				case match[2] != "":
+					invalid = match[2]
+				default:
+					// bare reference, e.g. $(workspaces.myws)
+					invalid = match[0]
+				}
+				msg = fmt.Sprintf("non-existent variable `%s` in %q", invalid, value)
+			}
+			return &apis.FieldError{
+				Message: msg,
+				// Empty path is required to make the `ViaField`, … work
+				Paths: []string{""},
+			}
+		}
+	}
+	return nil
 }
 
 // validateWorkspaceUsages checks that all WorkspaceUsage objects in Steps
@@ -687,6 +750,31 @@ func validateVariables(ctx context.Context, steps []Step, prefix string, vars se
 	return errs
 }
 
+// walkSidecarVariableFields calls check on every Sidecar field that supports variable
+// substitution, attaching the path of the field to any error returned. check is called with
+// isScript set to true for the script field, which some callers report with more detail.
+func walkSidecarVariableFields(sidecar Sidecar, check func(value string, isScript bool) *apis.FieldError) *apis.FieldError {
+	errs := check(sidecar.Name, false).ViaField("name")
+	errs = errs.Also(check(sidecar.Image, false).ViaField("image"))
+	errs = errs.Also(check(sidecar.WorkingDir, false).ViaField("workingDir"))
+	errs = errs.Also(check(sidecar.Script, true).ViaField("script"))
+	for i, cmd := range sidecar.Command {
+		errs = errs.Also(check(cmd, false).ViaFieldIndex("command", i))
+	}
+	for i, arg := range sidecar.Args {
+		errs = errs.Also(check(arg, false).ViaFieldIndex("args", i))
+	}
+	for _, env := range sidecar.Env {
+		errs = errs.Also(check(env.Value, false).ViaFieldKey("env", env.Name))
+	}
+	for i, v := range sidecar.VolumeMounts {
+		errs = errs.Also(check(v.Name, false).ViaField("name").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(check(v.MountPath, false).ViaField("MountPath").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(check(v.SubPath, false).ViaField("SubPath").ViaFieldIndex("volumeMount", i))
+	}
+	return errs
+}
+
 // validateNameFormat validates that the name format of all param types follows the rules
 func validateNameFormat(stringAndArrayParams sets.String, objectParams []ParamSpec) (errs *apis.FieldError) {
 	// checking string or array name format
@@ -738,25 +826,43 @@ func validateNameFormat(stringAndArrayParams sets.String, objectParams []ParamSp
 
 // validateStepVariables returns an error if the Step contains references to any unknown variables
 func validateStepVariables(ctx context.Context, step Step, prefix string, vars sets.String) *apis.FieldError {
-	errs := substitution.ValidateNoReferencesToUnknownVariables(step.Name, prefix, vars).ViaField("name")
-	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.Image, prefix, vars).ViaField("image"))
-	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.WorkingDir, prefix, vars).ViaField("workingDir"))
-	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariablesWithDetail(step.Script, prefix, vars).ViaField("script"))
+	return walkStepVariableFields(step, func(value string, isScript bool) *apis.FieldError {
+		if isScript {
+			return substitution.ValidateNoReferencesToUnknownVariablesWithDetail(value, prefix, vars)
+		}
+		return substitution.ValidateNoReferencesToUnknownVariables(value, prefix, vars)
+	})
+}
+
+// walkStepVariableFields calls check on every Step field that supports variable substitution,
+// attaching the path of the field to any error returned. check is called with isScript set to
+// true for the script field, which some callers report with more detail.
+func walkStepVariableFields(step Step, check func(value string, isScript bool) *apis.FieldError) *apis.FieldError {
+	errs := check(step.Name, false).ViaField("name")
+	errs = errs.Also(check(step.Image, false).ViaField("image"))
+	errs = errs.Also(check(step.WorkingDir, false).ViaField("workingDir"))
+	errs = errs.Also(check(step.Script, true).ViaField("script"))
 	for i, cmd := range step.Command {
-		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(cmd, prefix, vars).ViaFieldIndex("command", i))
+		errs = errs.Also(check(cmd, false).ViaFieldIndex("command", i))
 	}
 	for i, arg := range step.Args {
-		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(arg, prefix, vars).ViaFieldIndex("args", i))
+		errs = errs.Also(check(arg, false).ViaFieldIndex("args", i))
 	}
 	for _, env := range step.Env {
-		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(env.Value, prefix, vars).ViaFieldKey("env", env.Name))
+		errs = errs.Also(check(env.Value, false).ViaFieldKey("env", env.Name))
 	}
 	for i, v := range step.VolumeMounts {
-		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v.Name, prefix, vars).ViaField("name").ViaFieldIndex("volumeMount", i))
-		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v.MountPath, prefix, vars).ViaField("MountPath").ViaFieldIndex("volumeMount", i))
-		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v.SubPath, prefix, vars).ViaField("SubPath").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(check(v.Name, false).ViaField("name").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(check(v.MountPath, false).ViaField("MountPath").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(check(v.SubPath, false).ViaField("SubPath").ViaFieldIndex("volumeMount", i))
 	}
-	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(string(step.OnError), prefix, vars).ViaField("onError"))
+	if step.StdoutConfig != nil {
+		errs = errs.Also(check(step.StdoutConfig.Path, false).ViaField("path").ViaField("stdoutConfig"))
+	}
+	if step.StderrConfig != nil {
+		errs = errs.Also(check(step.StderrConfig.Path, false).ViaField("path").ViaField("stderrConfig"))
+	}
+	errs = errs.Also(check(string(step.OnError), false).ViaField("onError"))
 	return errs
 }
 
