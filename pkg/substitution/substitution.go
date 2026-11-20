@@ -50,6 +50,35 @@ var paramIndexingRegex = regexp.MustCompile(paramIndexing)
 // intIndexRegex will match all `[int]` for param expression
 var intIndexRegex = regexp.MustCompile(intIndex)
 
+// ValidateNoReferencesToBareVariables returns an error if the input string contains references
+// like $(prefix.name) where name is one of vars but no property suffix follows.
+// For example, $(workspaces.myws) is bare because it lacks .path, .bound, etc.
+func ValidateNoReferencesToBareVariables(value, prefix string, vars sets.String) *apis.FieldError {
+	if value == "" || vars.Len() == 0 {
+		return nil
+	}
+	// Build a regex that matches $(prefix.name) exactly — no trailing .property.
+	// We escape both the prefix and each variable name for regex safety.
+	escapedNames := make([]string, 0, vars.Len())
+	for _, name := range vars.List() {
+		escapedNames = append(escapedNames, regexp.QuoteMeta(name))
+	}
+	names := strings.Join(escapedNames, "|")
+	pattern := `\$\(` + regexp.QuoteMeta(prefix) + `\.(` + names + `)\)`
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil
+	}
+	matches := re.FindAllStringSubmatch(value, -1)
+	for _, match := range matches {
+		return &apis.FieldError{
+			Message: fmt.Sprintf("variable %s must specify a property (path, bound, claim, or volume)", match[0]),
+			Paths:   []string{""},
+		}
+	}
+	return nil
+}
+
 // ValidateNoReferencesToUnknownVariables returns an error if the input string contains references to unknown variables
 // Inputs:
 // - value: a string containing a reference to a variable that can be substituted, e.g. "echo $(params.foo)"
