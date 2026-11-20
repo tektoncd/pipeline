@@ -110,6 +110,17 @@ func TestWorkspaceBindingValidateValid(t *testing.T) {
 				Driver: "my-csi",
 			},
 		},
+	}, {
+		name: "Valid image",
+		binding: &v1.WorkspaceBinding{
+			Name: "beth",
+			Image: &corev1.ImageVolumeSource{
+				Reference: "quay.io/example/my-image:latest",
+			},
+		},
+		wc: func(ctx context.Context) context.Context {
+			return cfgtesting.SetFeatureFlags(ctx, t, map[string]string{"enable-image-workspace": "true"})
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := t.Context()
@@ -179,6 +190,25 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 			},
 		},
 		wc: cfgtesting.EnableBetaAPIFields,
+	}, {
+		name: "Provide image without feature flag",
+		binding: &v1.WorkspaceBinding{
+			Name: "beth",
+			Image: &corev1.ImageVolumeSource{
+				Reference: "quay.io/example/my-image:latest",
+			},
+		},
+	}, {
+		name: "Provide image without a reference",
+		binding: &v1.WorkspaceBinding{
+			Name: "beth",
+			Image: &corev1.ImageVolumeSource{
+				Reference: "",
+			},
+		},
+		wc: func(ctx context.Context) context.Context {
+			return cfgtesting.SetFeatureFlags(ctx, t, map[string]string{"enable-image-workspace": "true"})
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := t.Context()

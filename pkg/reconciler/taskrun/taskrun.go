@@ -1131,6 +1131,7 @@ func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr 
 					EmptyDir:              defaultWS.EmptyDir,
 					ConfigMap:             defaultWS.ConfigMap,
 					Secret:                defaultWS.Secret,
+					Image:                 defaultWS.Image,
 				}
 			}
 		}

@@ -738,6 +738,45 @@ func TestApply(t *testing.T) {
 				ReadOnly:  true,
 			}},
 		},
+	}, {
+		name: "binding a single workspace with Image",
+		ts: v1.TaskSpec{
+			Workspaces: []v1.WorkspaceDeclaration{{
+				Name:      "custom",
+				MountPath: "/workspace/image",
+				ReadOnly:  true,
+			}},
+		},
+		workspaces: []v1.WorkspaceBinding{{
+			Name: "custom",
+			Image: &corev1.ImageVolumeSource{
+				Reference:  "quay.io/example/my-tools:latest",
+				PullPolicy: corev1.PullAlways,
+			},
+		}},
+		expectedTaskSpec: v1.TaskSpec{
+			StepTemplate: &v1.StepTemplate{
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "ws-20573",
+					MountPath: "/workspace/image",
+					ReadOnly:  true,
+				}},
+			},
+			Volumes: []corev1.Volume{{
+				Name: "ws-20573",
+				VolumeSource: corev1.VolumeSource{
+					Image: &corev1.ImageVolumeSource{
+						Reference:  "quay.io/example/my-tools:latest",
+						PullPolicy: corev1.PullAlways,
+					},
+				},
+			}},
+			Workspaces: []v1.WorkspaceDeclaration{{
+				Name:      "custom",
+				MountPath: "/workspace/image",
+				ReadOnly:  true,
+			}},
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			vols := workspace.CreateVolumes(tc.workspaces)
@@ -1568,6 +1607,26 @@ func TestReplaceWorkspaceBindingsVars(t *testing.T) {
 						NodePublishSecretRef: &corev1.LocalObjectReference{
 							Name: "replaced",
 						},
+					},
+				},
+			},
+		},
+		{
+			name: "Replace Image",
+			replacements: map[string]string{
+				"params.to-replace": "replaced",
+			},
+			workspaceBindings: []v1.WorkspaceBinding{
+				{
+					Image: &corev1.ImageVolumeSource{
+						Reference: "$(params.to-replace)",
+					},
+				},
+			},
+			expected: []v1.WorkspaceBinding{
+				{
+					Image: &corev1.ImageVolumeSource{
+						Reference: "replaced",
 					},
 				},
 			},

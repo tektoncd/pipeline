@@ -93,6 +93,9 @@ func CreateVolumes(wb []v1.WorkspaceBinding) map[string]corev1.Volume {
 		case w.CSI != nil:
 			csi := *w.CSI
 			v.setVolumeSource(w.Name, name, corev1.VolumeSource{CSI: &csi})
+		case w.Image != nil:
+			img := *w.Image
+			v.setVolumeSource(w.Name, name, corev1.VolumeSource{Image: &img})
 		}
 	}
 	return v
@@ -349,6 +352,9 @@ func replaceWorkspaceBindingVars(wb *v1.WorkspaceBinding, replacements map[strin
 	if wb.CSI != nil {
 		wb.CSI = applyCSIVolumeSource(wb.CSI, replacements)
 	}
+	if wb.Image != nil {
+		wb.Image = applyImageVolumeSource(wb.Image, replacements)
+	}
 	return wb
 }
 
@@ -388,6 +394,11 @@ func applyCSIVolumeSource(csi *corev1.CSIVolumeSource, replacements map[string]s
 		csi.NodePublishSecretRef.Name = substitution.ApplyReplacements(csi.NodePublishSecretRef.Name, replacements)
 	}
 	return csi
+}
+
+func applyImageVolumeSource(img *corev1.ImageVolumeSource, replacements map[string]string) *corev1.ImageVolumeSource {
+	img.Reference = substitution.ApplyReplacements(img.Reference, replacements)
+	return img
 }
 
 func applyKeyToPathItems(items []corev1.KeyToPath, replacements map[string]string) []corev1.KeyToPath {
