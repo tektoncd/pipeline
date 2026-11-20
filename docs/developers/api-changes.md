@@ -34,7 +34,7 @@ how these affect your deprecation or timeline, ask the maintainers.
    A conservative deprecation sequence to move from field A -> B might look
    like:
 
-   1. (inital state) Return field A
+   1. (initial state) Return field A
    2. Introduce new field B with opt-in feature flag (disabled by default).
    3. Set feature flag to return both A and B in responses by default.
    4. Set feature flag to opt-in users by default and only return field B.

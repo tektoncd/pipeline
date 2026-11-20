@@ -84,7 +84,7 @@ certain cases, but it's not officially supported.
 
 ## Conversion Webhook
 
-Kubernets only allows one specific version of all resources associated with a specific
+Kubernetes only allows one specific version of all resources associated with a specific
 CRD being stored in etcd. For instance, all `Tasks` will be stored as `v1`, even if
 both `v1` and `v1beta1` are served by the API.
 
