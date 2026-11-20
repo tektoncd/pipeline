@@ -17,6 +17,7 @@ limitations under the License.
 package config_test
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -248,6 +249,55 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				verifyConfigFileWithExpectedError(t, tc.fileName)
 			} else {
 				verifyConfigFileWithExpectedConfig(t, tc.fileName, tc.expectedConfig)
+			}
+		})
+	}
+}
+
+func TestNewDefaultsFromMapValidatesTimeoutAndWorkspace(t *testing.T) {
+	maxTimeout := int64((1<<63 - 1) / time.Minute)
+	tests := []struct {
+		name    string
+		data    map[string]string
+		wantErr bool
+	}{
+		{name: "zero timeout", data: map[string]string{"default-timeout-minutes": "0"}},
+		{name: "maximum timeout", data: map[string]string{"default-timeout-minutes": strconv.FormatInt(maxTimeout, 10)}},
+		{name: "negative timeout", data: map[string]string{"default-timeout-minutes": "-1"}, wantErr: true},
+		{name: "overflowing timeout", data: map[string]string{"default-timeout-minutes": strconv.FormatInt(maxTimeout+1, 10)}, wantErr: true},
+		{name: "empty workspace", data: map[string]string{"default-task-run-workspace-binding": ""}},
+		{name: "emptyDir workspace", data: map[string]string{"default-task-run-workspace-binding": "emptyDir: {}"}},
+		{name: "claim template workspace", data: map[string]string{"default-task-run-workspace-binding": "volumeClaimTemplate:\n  spec:\n    accessModes: [ReadWriteOnce]"}},
+		{name: "unknown workspace field", data: map[string]string{"default-task-run-workspace-binding": "emptyDir: {}\nunknown: ignored"}},
+		{name: "malformed workspace", data: map[string]string{"default-task-run-workspace-binding": "["}, wantErr: true},
+		{name: "workspace scalar", data: map[string]string{"default-task-run-workspace-binding": "emptyDir == {}"}, wantErr: true},
+		{name: "invalid workspace field type", data: map[string]string{"default-task-run-workspace-binding": "emptyDir: []"}, wantErr: true},
+		{name: "invalid workspace subpath type", data: map[string]string{"default-task-run-workspace-binding": "subPath: []"}, wantErr: true},
+		{name: "invalid claim template type", data: map[string]string{"default-task-run-workspace-binding": "volumeClaimTemplate: []"}, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := config.NewDefaultsFromMap(tt.data)
+			if tt.wantErr {
+				if err == nil || got != nil {
+					t.Fatalf("NewDefaultsFromMap() = %#v, %v, want nil config and error", got, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := config.DefaultConfig.DeepCopy()
+			if timeout, ok := tt.data["default-timeout-minutes"]; ok {
+				value, err := strconv.Atoi(timeout)
+				if err != nil {
+					t.Fatal(err)
+				}
+				want.DefaultTimeoutMinutes = value
+			}
+			want.DefaultTaskRunWorkspaceBinding = tt.data["default-task-run-workspace-binding"]
+			if d := cmp.Diff(want, got); d != "" {
+				t.Errorf("config mismatch (-want +got):\n%s", d)
 			}
 		})
 	}

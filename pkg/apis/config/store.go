@@ -72,6 +72,36 @@ func ToContext(ctx context.Context, c *Config) context.Context {
 	return context.WithValue(ctx, cfgKey{}, c)
 }
 
+// DeepCopy returns a deep copy of the Config struct.
+func (c *Config) DeepCopy() *Config {
+	if c == nil {
+		return nil
+	}
+	out := &Config{}
+	if c.Defaults != nil {
+		out.Defaults = c.Defaults.DeepCopy()
+	}
+	if c.FeatureFlags != nil {
+		out.FeatureFlags = c.FeatureFlags.DeepCopy()
+	}
+	if c.Metrics != nil {
+		out.Metrics = c.Metrics.DeepCopy()
+	}
+	if c.SpireConfig != nil {
+		out.SpireConfig = c.SpireConfig.DeepCopy()
+	}
+	if c.Events != nil {
+		out.Events = c.Events.DeepCopy()
+	}
+	if c.Tracing != nil {
+		out.Tracing = c.Tracing.DeepCopy()
+	}
+	if c.WaitExponentialBackoff != nil {
+		out.WaitExponentialBackoff = c.WaitExponentialBackoff.DeepCopy()
+	}
+	return out
+}
+
 // Store is a typed wrapper around configmap.Untyped store to handle our configmaps.
 // +k8s:deepcopy-gen=false
 type Store struct {

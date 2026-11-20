@@ -163,6 +163,9 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing default config %q", defaultTimeoutMinutesKey)
 		}
+		if timeout < 0 || timeout > int64((1<<63-1)/time.Minute) {
+			return nil, fmt.Errorf("%s must be non-negative and fit in a time.Duration", defaultTimeoutMinutesKey)
+		}
 		tc.DefaultTimeoutMinutes = int(timeout)
 	}
 
@@ -195,6 +198,22 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	}
 
 	if bindingYAML, ok := cfgMap[defaultTaskRunWorkspaceBinding]; ok {
+		// ponytail: mirror v1.WorkspaceBinding to avoid its config import cycle;
+		// move the shared type if the workspace API grows.
+		var binding struct {
+			Name                  string                                    `json:"name"`
+			SubPath               string                                    `json:"subPath,omitempty"`
+			VolumeClaimTemplate   *corev1.PersistentVolumeClaim             `json:"volumeClaimTemplate,omitempty"`
+			PersistentVolumeClaim *corev1.PersistentVolumeClaimVolumeSource `json:"persistentVolumeClaim,omitempty"`
+			EmptyDir              *corev1.EmptyDirVolumeSource              `json:"emptyDir,omitempty"`
+			ConfigMap             *corev1.ConfigMapVolumeSource             `json:"configMap,omitempty"`
+			Secret                *corev1.SecretVolumeSource                `json:"secret,omitempty"`
+			Projected             *corev1.ProjectedVolumeSource             `json:"projected,omitempty"`
+			CSI                   *corev1.CSIVolumeSource                   `json:"csi,omitempty"`
+		}
+		if err := yamlUnmarshal(bindingYAML, defaultTaskRunWorkspaceBinding, &binding); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal %s: %w", defaultTaskRunWorkspaceBinding, err)
+		}
 		tc.DefaultTaskRunWorkspaceBinding = bindingYAML
 	}
 
