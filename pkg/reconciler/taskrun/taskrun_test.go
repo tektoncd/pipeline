@@ -5282,7 +5282,7 @@ spec:
 	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
 		Data: map[string]string{
-			"default-task-run-workspace-binding": "emptyDir: invalid",
+			"default-task-run-workspace-binding": "subPath: data",
 		},
 	})
 	testAssets, cancel := getTaskRunController(t, d)

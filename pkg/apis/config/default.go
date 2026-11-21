@@ -210,7 +210,19 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	}
 
 	if defaultTaskRunWorkspaceBindingValue, ok := cfgMap[defaultTaskRunWorkspaceBindingKey]; ok {
-		var binding map[string]interface{}
+		// Mirrors v1.WorkspaceBinding, which cannot be imported here because
+		// pkg/apis/pipeline/v1 imports this package.
+		var binding struct {
+			Name                  string                                    `json:"name"`
+			SubPath               string                                    `json:"subPath,omitempty"`
+			VolumeClaimTemplate   *corev1.PersistentVolumeClaim             `json:"volumeClaimTemplate,omitempty"`
+			PersistentVolumeClaim *corev1.PersistentVolumeClaimVolumeSource `json:"persistentVolumeClaim,omitempty"`
+			EmptyDir              *corev1.EmptyDirVolumeSource              `json:"emptyDir,omitempty"`
+			ConfigMap             *corev1.ConfigMapVolumeSource             `json:"configMap,omitempty"`
+			Secret                *corev1.SecretVolumeSource                `json:"secret,omitempty"`
+			Projected             *corev1.ProjectedVolumeSource             `json:"projected,omitempty"`
+			CSI                   *corev1.CSIVolumeSource                   `json:"csi,omitempty"`
+		}
 		if err := yamlUnmarshal(defaultTaskRunWorkspaceBindingValue, defaultTaskRunWorkspaceBindingKey, &binding); err != nil {
 			return nil, fmt.Errorf("invalid default config %q: %w", defaultTaskRunWorkspaceBindingKey, err)
 		}
