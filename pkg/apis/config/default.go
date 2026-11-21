@@ -189,7 +189,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	if defaultPodTemplateValue, ok := cfgMap[defaultPodTemplateKey]; ok {
 		var podTemplate pod.Template
 		if err := yamlUnmarshal(defaultPodTemplateValue, defaultPodTemplateKey, &podTemplate); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal %v", defaultPodTemplateValue)
+			return nil, fmt.Errorf("invalid default config %q: %w", defaultPodTemplateKey, err)
 		}
 		tc.DefaultPodTemplate = &podTemplate
 	}
@@ -197,7 +197,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	if defaultAAPodTemplateValue, ok := cfgMap[defaultAAPodTemplateKey]; ok {
 		var podTemplate pod.AffinityAssistantTemplate
 		if err := yamlUnmarshal(defaultAAPodTemplateValue, defaultAAPodTemplateKey, &podTemplate); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal %v", defaultAAPodTemplateValue)
+			return nil, fmt.Errorf("invalid default config %q: %w", defaultAAPodTemplateKey, err)
 		}
 		tc.DefaultAAPodTemplate = &podTemplate
 	}
@@ -235,7 +235,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 			return nil, fmt.Errorf("failed parsing default config %q", defaultMaxMatrixCombinationsCountKey)
 		}
 		if matrixCombinationsCount < 0 {
-			return nil, fmt.Errorf("invalid default config %q: %d must not be negative", defaultMaxMatrixCombinationsCountKey, matrixCombinationsCount)
+			return nil, fmt.Errorf("invalid default config %q: %d must be zero or positive", defaultMaxMatrixCombinationsCountKey, matrixCombinationsCount)
 		}
 		tc.DefaultMaxMatrixCombinationsCount = int(matrixCombinationsCount)
 	}
@@ -255,7 +255,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	if defaultContainerResourceRequirementsValue, ok := cfgMap[defaultContainerResourceRequirementsKey]; ok {
 		resourceRequirementsValue := make(map[string]corev1.ResourceRequirements)
 		if err := yamlUnmarshal(defaultContainerResourceRequirementsValue, defaultContainerResourceRequirementsKey, &resourceRequirementsValue); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal %v", defaultContainerResourceRequirementsValue)
+			return nil, fmt.Errorf("invalid default config %q: %w", defaultContainerResourceRequirementsKey, err)
 		}
 		tc.DefaultContainerResourceRequirements = resourceRequirementsValue
 	}
@@ -266,7 +266,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 			return nil, fmt.Errorf("failed parsing default config %q", defaultImagePullBackOffTimeoutKey)
 		}
 		if timeout < 0 {
-			return nil, fmt.Errorf("invalid default config %q: %s must not be negative", defaultImagePullBackOffTimeoutKey, timeout)
+			return nil, fmt.Errorf("invalid default config %q: %s must be zero or positive", defaultImagePullBackOffTimeoutKey, timeout)
 		}
 		tc.DefaultImagePullBackOffTimeout = timeout
 	}
@@ -277,7 +277,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 			return nil, fmt.Errorf("failed parsing default config %q: %w", defaultCreateContainerErrorTimeoutKey, err)
 		}
 		if timeout < 0 {
-			return nil, fmt.Errorf("invalid default config %q: %s must not be negative", defaultCreateContainerErrorTimeoutKey, timeout)
+			return nil, fmt.Errorf("invalid default config %q: %s must be zero or positive", defaultCreateContainerErrorTimeoutKey, timeout)
 		}
 		tc.DefaultCreateContainerErrorTimeout = timeout
 	}
@@ -288,7 +288,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 			return nil, fmt.Errorf("failed parsing default config %q", defaultMaximumResolutionTimeoutKey)
 		}
 		if timeout <= 0 {
-			return nil, fmt.Errorf("invalid default config %q: %s must be greater than 0", defaultMaximumResolutionTimeoutKey, timeout)
+			return nil, fmt.Errorf("invalid default config %q: %s must be positive", defaultMaximumResolutionTimeoutKey, timeout)
 		}
 		tc.DefaultMaximumResolutionTimeout = timeout
 	}
@@ -299,7 +299,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 			return nil, fmt.Errorf("failed parsing default config %q", defaultSidecarLogPollingIntervalKey)
 		}
 		if interval < 0 {
-			return nil, fmt.Errorf("invalid default config %q: %s must not be negative", defaultSidecarLogPollingIntervalKey, interval)
+			return nil, fmt.Errorf("invalid default config %q: %s must be zero or positive", defaultSidecarLogPollingIntervalKey, interval)
 		}
 		tc.DefaultSidecarLogPollingInterval = interval
 	}
@@ -310,7 +310,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 			return nil, fmt.Errorf("failed parsing default config %q", DefaultStepRefConcurrencyLimitKey)
 		}
 		if stepRefConcurrencyLimit <= 0 {
-			return nil, fmt.Errorf("invalid default config %q: %d must be greater than 0", DefaultStepRefConcurrencyLimitKey, stepRefConcurrencyLimit)
+			return nil, fmt.Errorf("invalid default config %q: %d must be positive", DefaultStepRefConcurrencyLimitKey, stepRefConcurrencyLimit)
 		}
 		tc.DefaultStepRefConcurrencyLimit = int(stepRefConcurrencyLimit)
 	}

@@ -580,6 +580,9 @@ func TestNewDefaultsFromMapValidation(t *testing.T) {
 		{name: "invalid cloud events sink", data: map[string]string{"default-cloud-events-sink": "http://[::1"}, wantErr: true},
 		{name: "valid cloud events sink", data: map[string]string{"default-cloud-events-sink": "http://sink.example.com:8080/events"}},
 		{name: "empty cloud events sink", data: map[string]string{"default-cloud-events-sink": ""}},
+		{name: "invalid pod template", data: map[string]string{"default-pod-template": "nodeSelector: [a]"}, wantErr: true},
+		{name: "invalid affinity assistant pod template", data: map[string]string{"default-affinity-assistant-pod-template": "nodeSelector: [a]"}, wantErr: true},
+		{name: "invalid container resource requirements", data: map[string]string{"default-container-resource-requirements": "default: [a]"}, wantErr: true},
 		{name: "unparseable maximum resolution timeout", data: map[string]string{"default-maximum-resolution-timeout": "abc"}, wantErr: true},
 		{name: "unparseable sidecar log polling interval", data: map[string]string{"default-sidecar-log-polling-interval": "abc"}, wantErr: true},
 	}
