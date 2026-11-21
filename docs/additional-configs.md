@@ -344,29 +344,30 @@ data:
   default-sidecar-log-polling-interval: "100ms"
 ```
 
-### Allowed values
+### `config-defaults` settings reference
 
-Each key in `config-defaults` accepts the values below. A value outside them is rejected when the ConfigMap is created or updated.
+The table below lists every key in `config-defaults`, what it controls, the value used when the key is not set, and the values it accepts.
+A value outside the allowed values is rejected when the ConfigMap is created or updated.
 Durations use the Go duration format, such as `10s`, `5m` or `1h`.
 
-| Key | Allowed values |
-|-----|----------------|
-| `default-timeout-minutes` | An integer from `0` to `153722867`. |
-| `default-service-account` | Any string. |
-| `default-managed-by-label-value` | A valid Kubernetes label value. At most 63 characters of alphanumerics, `-`, `_` and `.`, starting and ending with an alphanumeric, or an empty string. |
-| `default-pod-template` | A Pod template in YAML. See [supported fields](./podtemplates.md#supported-fields). |
-| `default-affinity-assistant-pod-template` | An [Affinity Assistant Pod template](./podtemplates.md#affinity-assistant-pod-templates) in YAML. |
-| `default-cloud-events-sink` | A URL, or an empty string for no sink. |
-| `default-task-run-workspace-binding` | A YAML mapping, such as `emptyDir: {}`. |
-| `default-max-matrix-combinations-count` | An integer, `0` or greater. |
-| `default-forbidden-env` | A comma-separated list of environment variable names. |
-| `default-resolver-type` | Any string, such as `git` or `bundles`. |
-| `default-container-resource-requirements` | Resource requirements per container in YAML. See [Configuring default resources requirements](#configuring-default-resources-requirements). |
-| `default-imagepullbackoff-timeout` | A duration, `0` or greater. |
-| `default-create-container-error-timeout` | A duration, `0` or greater. |
-| `default-maximum-resolution-timeout` | A duration greater than `0`. |
-| `default-sidecar-log-polling-interval` | A duration, `0` or greater. |
-| `default-step-ref-concurrency-limit` | An integer greater than `0`. |
+| Key | Description | Default | Allowed values |
+|-----|-------------|---------|----------------|
+| `default-timeout-minutes` | Timeout for `TaskRuns` and `PipelineRuns` that do not set one. `0` means no timeout. | `60` | An integer from `0` to `153722867`. |
+| `default-service-account` | Service account for `TaskRuns` and `PipelineRuns` that do not set one. | `default` | Any string. |
+| `default-managed-by-label-value` | Value of the `app.kubernetes.io/managed-by` label on Pods created for `TaskRuns`. A value set on the `TaskRun` takes precedence. | `tekton-pipelines` | A valid Kubernetes label value. At most 63 characters of alphanumerics, `-`, `_` and `.`, starting and ending with an alphanumeric, or an empty string. |
+| `default-pod-template` | Pod template merged into the Pod template of `TaskRuns` and `PipelineRuns`. | None | A Pod template in YAML. See [supported fields](./podtemplates.md#supported-fields). |
+| `default-affinity-assistant-pod-template` | Pod template merged into the Pod template of Affinity Assistant Pods. | None | An [Affinity Assistant Pod template](./podtemplates.md#affinity-assistant-pod-templates) in YAML. |
+| `default-cloud-events-sink` | Deprecated, use the [`config-events` ConfigMap](#configuring-cloudevents-notifications) instead. CloudEvents sink for `TaskRuns` and `PipelineRuns`. | None | A URL, or an empty string for no sink. |
+| `default-task-run-workspace-binding` | Binding used for any `Workspace` a `Task` declares but a `TaskRun` does not provide. | None | A [`WorkspaceBinding`](./workspaces.md#specifying-volumesources-in-workspaces) in YAML, such as `emptyDir: {}`. |
+| `default-max-matrix-combinations-count` | Maximum number of combinations a [`Matrix`](matrix.md) can fan a `PipelineTask` out to. | `256` | An integer, `0` or greater. |
+| `default-forbidden-env` | Environment variables that a `PodTemplate` cannot override. See [Configuring environment variables](#configuring-environment-variables). | None | A comma-separated list of environment variable names. |
+| `default-resolver-type` | Resolver used when a remote reference does not name one. | None | Any string, such as `git` or `bundles`. |
+| `default-container-resource-requirements` | Resource requirements applied to containers that do not set their own. See [Configuring default resources requirements](#configuring-default-resources-requirements). | None | Resource requirements per container in YAML. |
+| `default-imagepullbackoff-timeout` | How long to wait on an `imagePullBackOff` before failing the `TaskRun`. `0` fails it immediately. See [TaskRuns with `imagePullBackOff` Timeout](#taskruns-with-imagepullbackoff-timeout). | `0` | A duration, `0` or greater. |
+| `default-create-container-error-timeout` | How long to wait on a `CreateContainerError` before failing the `TaskRun`. `0` fails it immediately. See [TaskRuns with `CreateContainerError` Timeout](#taskruns-with-createcontainererror-timeout). | `0` | A duration, `0` or greater. |
+| `default-maximum-resolution-timeout` | How long the resolution controller waits for a remote resource before timing out. | `1m` | A duration greater than `0`. |
+| `default-sidecar-log-polling-interval` | How often the sidecar log results container polls for step completion. See [`default-sidecar-log-polling-interval`](#default-sidecar-log-polling-interval). | `100ms` | A duration, `0` or greater. |
+| `default-step-ref-concurrency-limit` | Maximum number of `StepAction` references resolved in parallel for one `TaskRun`. See [Limiting Step reference concurrency resolution](#limiting-step-reference-concurrency-resolution). | `5` | An integer greater than `0`. |
 
 ### `default-sidecar-log-polling-interval`
 
