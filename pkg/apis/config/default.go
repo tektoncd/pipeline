@@ -70,14 +70,14 @@ const (
 	defaultPodTemplateKey                   = "default-pod-template"
 	defaultAAPodTemplateKey                 = "default-affinity-assistant-pod-template"
 	defaultCloudEventsSinkKey               = "default-cloud-events-sink"
-	defaultTaskRunWorkspaceBinding          = "default-task-run-workspace-binding"
+	defaultTaskRunWorkspaceBindingKey       = "default-task-run-workspace-binding"
 	defaultMaxMatrixCombinationsCountKey    = "default-max-matrix-combinations-count"
-	defaultForbiddenEnv                     = "default-forbidden-env"
+	defaultForbiddenEnvKey                  = "default-forbidden-env"
 	defaultResolverTypeKey                  = "default-resolver-type"
 	defaultContainerResourceRequirementsKey = "default-container-resource-requirements"
-	defaultImagePullBackOffTimeout          = "default-imagepullbackoff-timeout"
-	defaultCreateContainerErrorTimeout      = "default-create-container-error-timeout"
-	defaultMaximumResolutionTimeout         = "default-maximum-resolution-timeout"
+	defaultImagePullBackOffTimeoutKey       = "default-imagepullbackoff-timeout"
+	defaultCreateContainerErrorTimeoutKey   = "default-create-container-error-timeout"
+	defaultMaximumResolutionTimeoutKey      = "default-maximum-resolution-timeout"
 	defaultSidecarLogPollingIntervalKey     = "default-sidecar-log-polling-interval"
 	DefaultStepRefConcurrencyLimitKey       = "default-step-ref-concurrency-limit"
 
@@ -164,8 +164,8 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		DefaultStepRefConcurrencyLimit:     DefaultStepRefConcurrencyLimit,
 	}
 
-	if defaultTimeoutMin, ok := cfgMap[defaultTimeoutMinutesKey]; ok {
-		timeout, err := strconv.ParseInt(defaultTimeoutMin, 10, 0)
+	if defaultTimeoutMinutesValue, ok := cfgMap[defaultTimeoutMinutesKey]; ok {
+		timeout, err := strconv.ParseInt(defaultTimeoutMinutesValue, 10, 0)
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing default config %q", defaultTimeoutMinutesKey)
 		}
@@ -175,50 +175,50 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		tc.DefaultTimeoutMinutes = int(timeout)
 	}
 
-	if defaultServiceAccount, ok := cfgMap[defaultServiceAccountKey]; ok {
-		tc.DefaultServiceAccount = defaultServiceAccount
+	if defaultServiceAccountValue, ok := cfgMap[defaultServiceAccountKey]; ok {
+		tc.DefaultServiceAccount = defaultServiceAccountValue
 	}
 
-	if defaultManagedByLabelValue, ok := cfgMap[defaultManagedByLabelValueKey]; ok {
-		if errs := validation.IsValidLabelValue(defaultManagedByLabelValue); len(errs) > 0 {
+	if defaultManagedByLabelValueValue, ok := cfgMap[defaultManagedByLabelValueKey]; ok {
+		if errs := validation.IsValidLabelValue(defaultManagedByLabelValueValue); len(errs) > 0 {
 			return nil, fmt.Errorf("invalid default config %q: %s", defaultManagedByLabelValueKey, strings.Join(errs, "; "))
 		}
-		tc.DefaultManagedByLabelValue = defaultManagedByLabelValue
+		tc.DefaultManagedByLabelValue = defaultManagedByLabelValueValue
 	}
 
-	if defaultPodTemplate, ok := cfgMap[defaultPodTemplateKey]; ok {
+	if defaultPodTemplateValue, ok := cfgMap[defaultPodTemplateKey]; ok {
 		var podTemplate pod.Template
-		if err := yamlUnmarshal(defaultPodTemplate, defaultPodTemplateKey, &podTemplate); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal %v", defaultPodTemplate)
+		if err := yamlUnmarshal(defaultPodTemplateValue, defaultPodTemplateKey, &podTemplate); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal %v", defaultPodTemplateValue)
 		}
 		tc.DefaultPodTemplate = &podTemplate
 	}
 
-	if defaultAAPodTemplate, ok := cfgMap[defaultAAPodTemplateKey]; ok {
+	if defaultAAPodTemplateValue, ok := cfgMap[defaultAAPodTemplateKey]; ok {
 		var podTemplate pod.AffinityAssistantTemplate
-		if err := yamlUnmarshal(defaultAAPodTemplate, defaultAAPodTemplateKey, &podTemplate); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal %v", defaultAAPodTemplate)
+		if err := yamlUnmarshal(defaultAAPodTemplateValue, defaultAAPodTemplateKey, &podTemplate); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal %v", defaultAAPodTemplateValue)
 		}
 		tc.DefaultAAPodTemplate = &podTemplate
 	}
 
-	if defaultCloudEventsSink, ok := cfgMap[defaultCloudEventsSinkKey]; ok {
-		if _, err := url.Parse(defaultCloudEventsSink); err != nil {
+	if defaultCloudEventsSinkValue, ok := cfgMap[defaultCloudEventsSinkKey]; ok {
+		if _, err := url.Parse(defaultCloudEventsSinkValue); err != nil {
 			return nil, fmt.Errorf("invalid default config %q: %w", defaultCloudEventsSinkKey, err)
 		}
-		tc.DefaultCloudEventsSink = defaultCloudEventsSink
+		tc.DefaultCloudEventsSink = defaultCloudEventsSinkValue
 	}
 
-	if bindingYAML, ok := cfgMap[defaultTaskRunWorkspaceBinding]; ok {
+	if defaultTaskRunWorkspaceBindingValue, ok := cfgMap[defaultTaskRunWorkspaceBindingKey]; ok {
 		var binding map[string]interface{}
-		if err := yamlUnmarshal(bindingYAML, defaultTaskRunWorkspaceBinding, &binding); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal %v", bindingYAML)
+		if err := yamlUnmarshal(defaultTaskRunWorkspaceBindingValue, defaultTaskRunWorkspaceBindingKey, &binding); err != nil {
+			return nil, fmt.Errorf("invalid default config %q: %w", defaultTaskRunWorkspaceBindingKey, err)
 		}
-		tc.DefaultTaskRunWorkspaceBinding = bindingYAML
+		tc.DefaultTaskRunWorkspaceBinding = defaultTaskRunWorkspaceBindingValue
 	}
 
-	if defaultMaxMatrixCombinationsCount, ok := cfgMap[defaultMaxMatrixCombinationsCountKey]; ok {
-		matrixCombinationsCount, err := strconv.ParseInt(defaultMaxMatrixCombinationsCount, 10, 0)
+	if defaultMaxMatrixCombinationsCountValue, ok := cfgMap[defaultMaxMatrixCombinationsCountKey]; ok {
+		matrixCombinationsCount, err := strconv.ParseInt(defaultMaxMatrixCombinationsCountValue, 10, 0)
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing default config %q", defaultMaxMatrixCombinationsCountKey)
 		}
@@ -227,64 +227,64 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		}
 		tc.DefaultMaxMatrixCombinationsCount = int(matrixCombinationsCount)
 	}
-	if defaultForbiddenEnvString, ok := cfgMap[defaultForbiddenEnv]; ok {
+	if defaultForbiddenEnvValue, ok := cfgMap[defaultForbiddenEnvKey]; ok {
 		tmpString := sets.NewString()
-		fEnvs := strings.Split(defaultForbiddenEnvString, ",")
+		fEnvs := strings.Split(defaultForbiddenEnvValue, ",")
 		for _, fEnv := range fEnvs {
 			tmpString.Insert(strings.TrimSpace(fEnv))
 		}
 		tc.DefaultForbiddenEnv = tmpString.List()
 	}
 
-	if defaultResolverType, ok := cfgMap[defaultResolverTypeKey]; ok {
-		tc.DefaultResolverType = defaultResolverType
+	if defaultResolverTypeValue, ok := cfgMap[defaultResolverTypeKey]; ok {
+		tc.DefaultResolverType = defaultResolverTypeValue
 	}
 
-	if resourceRequirementsStringValue, ok := cfgMap[defaultContainerResourceRequirementsKey]; ok {
+	if defaultContainerResourceRequirementsValue, ok := cfgMap[defaultContainerResourceRequirementsKey]; ok {
 		resourceRequirementsValue := make(map[string]corev1.ResourceRequirements)
-		if err := yamlUnmarshal(resourceRequirementsStringValue, defaultContainerResourceRequirementsKey, &resourceRequirementsValue); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal %v", resourceRequirementsStringValue)
+		if err := yamlUnmarshal(defaultContainerResourceRequirementsValue, defaultContainerResourceRequirementsKey, &resourceRequirementsValue); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal %v", defaultContainerResourceRequirementsValue)
 		}
 		tc.DefaultContainerResourceRequirements = resourceRequirementsValue
 	}
 
-	if defaultImagePullBackOff, ok := cfgMap[defaultImagePullBackOffTimeout]; ok {
-		timeout, err := time.ParseDuration(defaultImagePullBackOff)
+	if defaultImagePullBackOffTimeoutValue, ok := cfgMap[defaultImagePullBackOffTimeoutKey]; ok {
+		timeout, err := time.ParseDuration(defaultImagePullBackOffTimeoutValue)
 		if err != nil {
-			return nil, fmt.Errorf("failed parsing default config %q", defaultImagePullBackOffTimeout)
+			return nil, fmt.Errorf("failed parsing default config %q", defaultImagePullBackOffTimeoutKey)
 		}
 		if timeout < 0 {
-			return nil, fmt.Errorf("invalid default config %q: %s must not be negative", defaultImagePullBackOffTimeout, timeout)
+			return nil, fmt.Errorf("invalid default config %q: %s must not be negative", defaultImagePullBackOffTimeoutKey, timeout)
 		}
 		tc.DefaultImagePullBackOffTimeout = timeout
 	}
 
-	if defaultCreateContainerError, ok := cfgMap[defaultCreateContainerErrorTimeout]; ok {
-		timeout, err := time.ParseDuration(defaultCreateContainerError)
+	if defaultCreateContainerErrorTimeoutValue, ok := cfgMap[defaultCreateContainerErrorTimeoutKey]; ok {
+		timeout, err := time.ParseDuration(defaultCreateContainerErrorTimeoutValue)
 		if err != nil {
-			return nil, fmt.Errorf("failed parsing default config %q: %w", defaultCreateContainerErrorTimeout, err)
+			return nil, fmt.Errorf("failed parsing default config %q: %w", defaultCreateContainerErrorTimeoutKey, err)
 		}
 		if timeout < 0 {
-			return nil, fmt.Errorf("invalid default config %q: %s must not be negative", defaultCreateContainerErrorTimeout, timeout)
+			return nil, fmt.Errorf("invalid default config %q: %s must not be negative", defaultCreateContainerErrorTimeoutKey, timeout)
 		}
 		tc.DefaultCreateContainerErrorTimeout = timeout
 	}
 
-	if defaultMaximumResolutionTimeout, ok := cfgMap[defaultMaximumResolutionTimeout]; ok {
-		timeout, err := time.ParseDuration(defaultMaximumResolutionTimeout)
+	if defaultMaximumResolutionTimeoutValue, ok := cfgMap[defaultMaximumResolutionTimeoutKey]; ok {
+		timeout, err := time.ParseDuration(defaultMaximumResolutionTimeoutValue)
 		if err != nil {
-			return nil, fmt.Errorf("failed parsing default config %q", defaultMaximumResolutionTimeout)
+			return nil, fmt.Errorf("failed parsing default config %q", defaultMaximumResolutionTimeoutKey)
 		}
 		if timeout <= 0 {
-			return nil, fmt.Errorf("invalid default config %q: %s must be greater than 0", defaultMaximumResolutionTimeout, timeout)
+			return nil, fmt.Errorf("invalid default config %q: %s must be greater than 0", defaultMaximumResolutionTimeoutKey, timeout)
 		}
 		tc.DefaultMaximumResolutionTimeout = timeout
 	}
 
-	if defaultSidecarPollingInterval, ok := cfgMap[defaultSidecarLogPollingIntervalKey]; ok {
-		interval, err := time.ParseDuration(defaultSidecarPollingInterval)
+	if defaultSidecarLogPollingIntervalValue, ok := cfgMap[defaultSidecarLogPollingIntervalKey]; ok {
+		interval, err := time.ParseDuration(defaultSidecarLogPollingIntervalValue)
 		if err != nil {
-			return nil, fmt.Errorf("failed parsing default config %q", defaultSidecarPollingInterval)
+			return nil, fmt.Errorf("failed parsing default config %q", defaultSidecarLogPollingIntervalKey)
 		}
 		if interval < 0 {
 			return nil, fmt.Errorf("invalid default config %q: %s must not be negative", defaultSidecarLogPollingIntervalKey, interval)
@@ -292,8 +292,8 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		tc.DefaultSidecarLogPollingInterval = interval
 	}
 
-	if DefaultStepRefConcurrencyLimit, ok := cfgMap[DefaultStepRefConcurrencyLimitKey]; ok {
-		stepRefConcurrencyLimit, err := strconv.ParseInt(DefaultStepRefConcurrencyLimit, 10, 0)
+	if defaultStepRefConcurrencyLimitValue, ok := cfgMap[DefaultStepRefConcurrencyLimitKey]; ok {
+		stepRefConcurrencyLimit, err := strconv.ParseInt(defaultStepRefConcurrencyLimitValue, 10, 0)
 		if err != nil {
 			return nil, fmt.Errorf("failed parsing default config %q", DefaultStepRefConcurrencyLimitKey)
 		}

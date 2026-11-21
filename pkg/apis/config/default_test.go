@@ -17,6 +17,7 @@ limitations under the License.
 package config_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -576,12 +577,21 @@ func TestNewDefaultsFromMapValidation(t *testing.T) {
 		{name: "invalid cloud events sink", data: map[string]string{"default-cloud-events-sink": "http://[::1"}, wantErr: true},
 		{name: "valid cloud events sink", data: map[string]string{"default-cloud-events-sink": "http://sink.example.com:8080/events"}},
 		{name: "empty cloud events sink", data: map[string]string{"default-cloud-events-sink": ""}},
+		{name: "unparseable maximum resolution timeout", data: map[string]string{"default-maximum-resolution-timeout": "abc"}, wantErr: true},
+		{name: "unparseable sidecar log polling interval", data: map[string]string{"default-sidecar-log-polling-interval": "abc"}, wantErr: true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := config.NewDefaultsFromMap(tc.data)
 			if tc.wantErr && err == nil {
 				t.Errorf("expected error for %v, got nil", tc.data)
+			}
+			if tc.wantErr && err != nil {
+				for key := range tc.data {
+					if !strings.Contains(err.Error(), key) {
+						t.Errorf("expected error to name %q, got: %v", key, err)
+					}
+				}
 			}
 			if !tc.wantErr && err != nil {
 				t.Errorf("unexpected error for %v: %v", tc.data, err)
