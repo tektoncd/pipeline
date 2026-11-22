@@ -485,6 +485,14 @@ Features currently in "alpha" are:
 | [CEL in WhenExpression](./pipelines.md#use-cel-expression-in-whenexpression)                                                  | [TEP-0145](https://github.com/tektoncd/community/blob/main/teps/0145-cel-in-whenexpression.md)                       | [v0.53.0](https://github.com/tektoncd/pipeline/releases/tag/v0.53.0) | `enable-cel-in-whenexpression`                   |
 | [Param Enum](./taskruns.md#parameter-enums)                                                                  | [TEP-0144](https://github.com/tektoncd/community/blob/main/teps/0144-param-enum.md)                                  | [v0.54.0](https://github.com/tektoncd/pipeline/releases/tag/v0.54.0) | `enable-param-enum`                              |
 | Termination Message Compression                                                                             | N/A                                                                                                                  | N/A                                                                  | `enable-termination-message-compression`         |
+| [PipelineRun Outcomes](./pipelinerun-outcomes.md) | [TEP-0171](https://github.com/tektoncd/community/pull/1313) | N/A | `enable-pipelinerun-outcomes` |
+
+`enable-pipelinerun-outcomes` defaults to `"false"`. Set it to `"true"` to
+allow `Pipeline.spec.outcome.result` to select a declared object-valued Pipeline
+result by its literal name. Parameter and result expressions are not allowed in
+the selector. The selected result supplies the author-defined `reason` and
+`message` exposed in `PipelineRun.status.outcome`. This flag is independent of
+`enable-api-fields`.
 
 ### Beta Features
 

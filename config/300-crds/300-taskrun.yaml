@@ -1881,6 +1881,8 @@ spec:
                           type: boolean
                         enableParamEnum:
                           type: boolean
+                        enablePipelineRunOutcomes:
+                          type: boolean
                         enableProvenanceInStatus:
                           type: boolean
                         enableStepActions:
@@ -2157,6 +2159,8 @@ spec:
                               enableKubernetesSidecar:
                                 type: boolean
                               enableParamEnum:
+                                type: boolean
+                              enablePipelineRunOutcomes:
                                 type: boolean
                               enableProvenanceInStatus:
                                 type: boolean
@@ -4043,6 +4047,8 @@ spec:
                           type: boolean
                         enableParamEnum:
                           type: boolean
+                        enablePipelineRunOutcomes:
+                          type: boolean
                         enableProvenanceInStatus:
                           type: boolean
                         enableStepActions:
@@ -4311,6 +4317,8 @@ spec:
                               enableKubernetesSidecar:
                                 type: boolean
                               enableParamEnum:
+                                type: boolean
+                              enablePipelineRunOutcomes:
                                 type: boolean
                               enableProvenanceInStatus:
                                 type: boolean

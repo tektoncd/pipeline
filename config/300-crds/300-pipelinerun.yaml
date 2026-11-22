@@ -2366,6 +2366,8 @@ spec:
                           type: boolean
                         enableParamEnum:
                           type: boolean
+                        enablePipelineRunOutcomes:
+                          type: boolean
                         enableProvenanceInStatus:
                           type: boolean
                         enableStepActions:
@@ -2750,6 +2752,8 @@ spec:
                                     type: boolean
                                   enableParamEnum:
                                     type: boolean
+                                  enablePipelineRunOutcomes:
+                                    type: boolean
                                   enableProvenanceInStatus:
                                     type: boolean
                                   enableStepActions:
@@ -3026,6 +3030,8 @@ spec:
                                         enableKubernetesSidecar:
                                           type: boolean
                                         enableParamEnum:
+                                          type: boolean
+                                        enablePipelineRunOutcomes:
                                           type: boolean
                                         enableProvenanceInStatus:
                                           type: boolean
@@ -5442,6 +5448,18 @@ spec:
                     was last processed by the controller.
                   type: integer
                   format: int64
+                outcome:
+                  description: Outcome is the author-defined outcome selected by the Pipeline.
+                  type: object
+                  required:
+                    - reason
+                  properties:
+                    message:
+                      description: Message is the human-readable outcome message, limited to 4096 UTF-8 bytes.
+                      type: string
+                    reason:
+                      description: 'Reason is the machine-readable outcome reason: Succeeded or Neutral.'
+                      type: string
                 pipelineSpec:
                   description: |-
                     PipelineSpec contains the exact spec used to instantiate the run.
@@ -5476,6 +5494,8 @@ spec:
                         enableKubernetesSidecar:
                           type: boolean
                         enableParamEnum:
+                          type: boolean
+                        enablePipelineRunOutcomes:
                           type: boolean
                         enableProvenanceInStatus:
                           type: boolean

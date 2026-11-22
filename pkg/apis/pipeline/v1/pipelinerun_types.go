@@ -427,6 +427,8 @@ const (
 	// PipelineRunReasonInvalidPipelineResultReference indicates a pipeline result was declared
 	// by the pipeline but not initialized in the pipelineTask
 	PipelineRunReasonInvalidPipelineResultReference PipelineRunReason = "InvalidPipelineResultReference"
+	// PipelineRunReasonInvalidPipelineOutcome indicates an invalid author-defined outcome.
+	PipelineRunReasonInvalidPipelineOutcome PipelineRunReason = "InvalidPipelineOutcome"
 	// ReasonRequiredWorkspaceMarkedOptional indicates an optional workspace
 	// has been passed to a Task that is expecting a non-optional workspace
 	PipelineRunReasonRequiredWorkspaceMarkedOptional PipelineRunReason = "RequiredWorkspaceMarkedOptional"
@@ -525,6 +527,9 @@ type ChildStatusReference struct {
 // This is defined separately and inlined so that other types can readily
 // consume these fields via duck typing.
 type PipelineRunStatusFields struct {
+	// Outcome is the author-defined outcome selected by the Pipeline.
+	// +optional
+	Outcome *PipelineRunOutcome `json:"outcome,omitempty"`
 	// StartTime is the time the PipelineRun is actually started.
 	StartTime *metav1.Time `json:"startTime,omitempty"`
 

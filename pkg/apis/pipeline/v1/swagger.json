@@ -501,6 +501,20 @@
         }
       }
     },
+    "v1.PipelineOutcomeSpec": {
+      "description": "PipelineOutcomeSpec selects the result used for an author-defined outcome.",
+      "type": "object",
+      "required": [
+        "result"
+      ],
+      "properties": {
+        "result": {
+          "description": "Result is the literal name of a declared object-valued Pipeline result.",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
     "v1.PipelineRef": {
       "description": "PipelineRef can be used to refer to a specific instance of a Pipeline.",
       "type": "object",
@@ -604,6 +618,24 @@
         "metadata": {
           "default": {},
           "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1.PipelineRunOutcome": {
+      "description": "PipelineRunOutcome is the author-defined reason and message for a PipelineRun.",
+      "type": "object",
+      "required": [
+        "reason"
+      ],
+      "properties": {
+        "message": {
+          "description": "Message is the human-readable outcome message, limited to 4096 UTF-8 bytes.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Reason is the machine-readable outcome reason: Succeeded or Neutral.",
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -742,6 +774,10 @@
           "type": "integer",
           "format": "int64"
         },
+        "outcome": {
+          "description": "Outcome is the author-defined outcome selected by the Pipeline.",
+          "$ref": "#/definitions/v1.PipelineRunOutcome"
+        },
         "pipelineSpec": {
           "description": "PipelineSpec contains the exact spec used to instantiate the run. See Pipeline.spec (API version: tekton.dev/v1)",
           "$ref": "#/definitions/v1.PipelineSpec"
@@ -798,6 +834,10 @@
         "finallyStartTime": {
           "description": "FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.",
           "$ref": "#/definitions/v1.Time"
+        },
+        "outcome": {
+          "description": "Outcome is the author-defined outcome selected by the Pipeline.",
+          "$ref": "#/definitions/v1.PipelineRunOutcome"
         },
         "pipelineSpec": {
           "description": "PipelineSpec contains the exact spec used to instantiate the run. See Pipeline.spec (API version: tekton.dev/v1)",
@@ -877,6 +917,10 @@
             "$ref": "#/definitions/v1.PipelineTask"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "outcome": {
+          "description": "Outcome selects the object-valued Pipeline result that defines the run outcome. This alpha field requires enable-pipelinerun-outcomes.",
+          "$ref": "#/definitions/v1.PipelineOutcomeSpec"
         },
         "params": {
           "description": "Params declares a list of input parameters that must be supplied when this Pipeline is run.",

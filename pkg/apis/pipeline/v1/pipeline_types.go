@@ -103,6 +103,10 @@ func (p *Pipeline) Checksum() ([]byte, error) {
 
 // PipelineSpec defines the desired state of Pipeline.
 type PipelineSpec struct {
+	// Outcome selects the object-valued Pipeline result that defines the run outcome.
+	// This alpha field requires enable-pipelinerun-outcomes.
+	// +optional
+	Outcome *PipelineOutcomeSpec `json:"outcome,omitempty"`
 	// DisplayName is a user-facing name of the pipeline that may be
 	// used to populate a UI.
 	// +optional
@@ -131,6 +135,12 @@ type PipelineSpec struct {
 	// or after a failure which would result in ending the Pipeline
 	// +listType=atomic
 	Finally []PipelineTask `json:"finally,omitempty"`
+}
+
+// PipelineOutcomeSpec selects the result used for an author-defined outcome.
+type PipelineOutcomeSpec struct {
+	// Result is the literal name of a declared object-valued Pipeline result.
+	Result string `json:"result"`
 }
 
 // PipelineResult used to describe the results of a pipeline

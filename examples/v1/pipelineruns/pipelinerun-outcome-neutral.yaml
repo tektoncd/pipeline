@@ -1,0 +1,44 @@
+# Requires a controller built with the TEP-0171 proof of concept and the
+# enable-pipelinerun-outcomes feature flag.
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: outcome-neutral-
+spec:
+  pipelineSpec:
+    outcome:
+      result: workflow-outcome
+    results:
+      - name: workflow-outcome
+        type: object
+        value: $(finally.report.results.outcome[*])
+    tasks:
+      - name: work
+        taskSpec:
+          steps:
+            - name: work
+              image: alpine:3.22
+              script: |
+                #!/bin/sh
+                set -eu
+                printf 'Work completed with a finding to review.\n'
+    finally:
+      - name: report
+        taskSpec:
+          results:
+            - name: outcome
+              type: object
+              properties:
+                reason:
+                  type: string
+                message:
+                  type: string
+          steps:
+            - name: report
+              image: alpine:3.22
+              script: |
+                #!/bin/sh
+                set -eu
+                printf '%s' \
+                  '{"reason":"Neutral","message":"Review the finding before releasing."}' \
+                  > "$(results.outcome.path)"
