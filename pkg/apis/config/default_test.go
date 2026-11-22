@@ -17,6 +17,7 @@ limitations under the License.
 package config_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -540,6 +541,69 @@ func TestSidecarLogPollingIntervalParsing(t *testing.T) {
 			}
 			if cfg.DefaultSidecarLogPollingInterval != tc.expected {
 				t.Errorf("got %v, want %v", cfg.DefaultSidecarLogPollingInterval, tc.expected)
+			}
+		})
+	}
+}
+
+func TestNewDefaultsFromMapValidation(t *testing.T) {
+	cases := []struct {
+		name    string
+		data    map[string]string
+		wantErr string // substring of the expected error; empty means no error
+	}{
+		{name: "negative timeout minutes", data: map[string]string{"default-timeout-minutes": "-1"}, wantErr: "default-timeout-minutes"},
+		{name: "timeout minutes overflowing time.Duration", data: map[string]string{"default-timeout-minutes": "153722868"}, wantErr: "default-timeout-minutes"},
+		{name: "zero timeout minutes means no timeout", data: map[string]string{"default-timeout-minutes": "0"}},
+		{name: "largest timeout minutes", data: map[string]string{"default-timeout-minutes": "153722867"}},
+		{name: "invalid managed-by label value", data: map[string]string{"default-managed-by-label-value": "-bad_label!"}, wantErr: "default-managed-by-label-value"},
+		{name: "too long managed-by label value", data: map[string]string{"default-managed-by-label-value": strings.Repeat("a", 64)}, wantErr: "default-managed-by-label-value"},
+		{name: "valid managed-by label value", data: map[string]string{"default-managed-by-label-value": "my-installation_1.x"}},
+		{name: "empty managed-by label value", data: map[string]string{"default-managed-by-label-value": ""}},
+		{name: "invalid cloud events sink", data: map[string]string{"default-cloud-events-sink": "not a url"}, wantErr: "default-cloud-events-sink"},
+		{name: "cloud events sink without scheme", data: map[string]string{"default-cloud-events-sink": "mysink.example.com"}, wantErr: "default-cloud-events-sink"},
+		{name: "cloud events sink with non-http scheme", data: map[string]string{"default-cloud-events-sink": "ftp://mysink.example.com"}, wantErr: "default-cloud-events-sink"},
+		{name: "valid cloud events sink", data: map[string]string{"default-cloud-events-sink": "https://mysink.example.com:8080/path"}},
+		{name: "empty cloud events sink means no sink", data: map[string]string{"default-cloud-events-sink": ""}},
+		{name: "workspace binding with invalid YAML", data: map[string]string{"default-task-run-workspace-binding": "emptyDir: {"}, wantErr: "default-task-run-workspace-binding"},
+		{name: "workspace binding that is not a mapping", data: map[string]string{"default-task-run-workspace-binding": "- emptyDir: {}"}, wantErr: "default-task-run-workspace-binding"},
+		{name: "workspace binding that is a scalar", data: map[string]string{"default-task-run-workspace-binding": "source"}, wantErr: "default-task-run-workspace-binding"},
+		{name: "workspace binding with wrongly typed field", data: map[string]string{"default-task-run-workspace-binding": "emptyDir: invalid"}, wantErr: "default-task-run-workspace-binding"},
+		{name: "workspace binding with wrongly typed nested field", data: map[string]string{"default-task-run-workspace-binding": "persistentVolumeClaim:\n  claimName: [a, b]"}, wantErr: "default-task-run-workspace-binding"},
+		{name: "valid workspace binding", data: map[string]string{"default-task-run-workspace-binding": "emptyDir: {}"}},
+		{name: "valid workspace binding with claim", data: map[string]string{"default-task-run-workspace-binding": "persistentVolumeClaim:\n  claimName: my-claim"}},
+		{name: "negative max matrix combinations count", data: map[string]string{"default-max-matrix-combinations-count": "-1"}, wantErr: "default-max-matrix-combinations-count"},
+		{name: "zero max matrix combinations count", data: map[string]string{"default-max-matrix-combinations-count": "0"}},
+		{name: "negative imagepullbackoff timeout", data: map[string]string{"default-imagepullbackoff-timeout": "-1s"}, wantErr: "default-imagepullbackoff-timeout"},
+		{name: "zero imagepullbackoff timeout fails fast", data: map[string]string{"default-imagepullbackoff-timeout": "0s"}},
+		{name: "negative create container error timeout", data: map[string]string{"default-create-container-error-timeout": "-1s"}, wantErr: "default-create-container-error-timeout"},
+		{name: "zero create container error timeout fails fast", data: map[string]string{"default-create-container-error-timeout": "0s"}},
+		{name: "negative maximum resolution timeout", data: map[string]string{"default-maximum-resolution-timeout": "-1s"}, wantErr: "default-maximum-resolution-timeout"},
+		{name: "zero maximum resolution timeout", data: map[string]string{"default-maximum-resolution-timeout": "0s"}, wantErr: "default-maximum-resolution-timeout"},
+		{name: "positive maximum resolution timeout", data: map[string]string{"default-maximum-resolution-timeout": "10s"}},
+		{name: "negative sidecar log polling interval", data: map[string]string{"default-sidecar-log-polling-interval": "-100ms"}, wantErr: "default-sidecar-log-polling-interval"},
+		{name: "positive sidecar log polling interval", data: map[string]string{"default-sidecar-log-polling-interval": "10ms"}},
+		{name: "negative step ref concurrency limit", data: map[string]string{"default-step-ref-concurrency-limit": "-1"}, wantErr: "default-step-ref-concurrency-limit"},
+		{name: "zero step ref concurrency limit", data: map[string]string{"default-step-ref-concurrency-limit": "0"}, wantErr: "default-step-ref-concurrency-limit"},
+		{name: "positive step ref concurrency limit", data: map[string]string{"default-step-ref-concurrency-limit": "20"}},
+		{name: "resolver type is not validated", data: map[string]string{"default-resolver-type": "anything"}},
+		{name: "forbidden env is not validated", data: map[string]string{"default-forbidden-env": "ANY, THING"}},
+		{name: "service account is not validated", data: map[string]string{"default-service-account": "anything"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := config.NewDefaultsFromMap(tc.data)
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("NewDefaultsFromMap(%v) returned unexpected error: %v", tc.data, err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("NewDefaultsFromMap(%v) expected error mentioning %q, got nil", tc.data, tc.wantErr)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("NewDefaultsFromMap(%v) error %q does not mention %q", tc.data, err, tc.wantErr)
 			}
 		})
 	}
