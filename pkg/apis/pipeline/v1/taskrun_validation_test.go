@@ -567,6 +567,23 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		wc:      EnableForbiddenEnv,
 		wantErr: apis.ErrInvalidValue("PodTemplate cannot update a forbidden env: TEST_ENV", "PodTemplate.Env"),
 	}, {
+		name: "PodTemplate with pod-level request greater than limit",
+		spec: v1.TaskRunSpec{
+			TaskSpec: &v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name:  "mystep",
+					Image: "myimage",
+				}},
+			},
+			PodTemplate: &pod.Template{
+				Resources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceCPU: corev1resources.MustParse("2")},
+					Limits:   corev1.ResourceList{corev1.ResourceCPU: corev1resources.MustParse("1")},
+				},
+			},
+		},
+		wantErr: apis.ErrInvalidValue("2", "podTemplate.resources.requests[cpu]", "must be less than or equal to cpu limit of 1"),
+	}, {
 		name: "invalid taskref and taskspec together",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{

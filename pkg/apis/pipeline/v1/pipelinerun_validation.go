@@ -133,6 +133,7 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 
 	if ps.TaskRunTemplate.PodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *ps.TaskRunTemplate.PodTemplate).ViaField("taskRunTemplate"))
+		errs = errs.Also(ps.TaskRunTemplate.PodTemplate.ValidateResources().ViaField("taskRunTemplate", "podTemplate"))
 	}
 
 	return errs
@@ -358,6 +359,7 @@ func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec, pipelineT
 	}
 	if trs.PodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *trs.PodTemplate))
+		errs = errs.Also(trs.PodTemplate.ValidateResources().ViaField("podTemplate"))
 	}
 
 	errs = errs.Also(validateTaskRunSpecTimeout(ctx, trs.Timeout, pipelineTimeouts))

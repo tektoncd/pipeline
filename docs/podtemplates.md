@@ -132,6 +132,10 @@ Pod templates support fields listed in the table below.
             <td><code>topologySpreadConstraints</code></td>
             <td>Specify how Pods are spread across your cluster among topology domains.</td>
         </tr>
+        <tr>
+            <td><code>resources</code></td>
+            <td>Pod-level resource requests and limits, passed through to <code>Pod.spec.resources</code>. Only <code>cpu</code>, <code>memory</code> and <code>hugepages-*</code> are supported; Kubernetes rejects the Pod otherwise. Requests greater than limits are rejected when the <code>TaskRun</code> or <code>PipelineRun</code> is created. Requires the <code>PodLevelResources</code> feature gate (beta and enabled by default from Kubernetes 1.34). Kubernetes rejects the Pod if the containers' aggregate requests or limits exceed the pod-level values, so combining this with <code>computeResources</code>, <code>stepSpecs</code> or LimitRange defaults needs care. For further info see [Kubernetes' docs for this field](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pod-level-resources/).</td>
+        </tr>
 	</tbody>
 </table>
 

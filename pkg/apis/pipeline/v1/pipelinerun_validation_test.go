@@ -890,6 +890,35 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		withContext: EnableForbiddenEnv,
 		wantErr:     apis.ErrInvalidValue("PodTemplate cannot update a forbidden env: TEST_ENV", "taskRunTemplate.PodTemplate.Env"),
 	}, {
+		name: "TaskRunTemplate.PodTemplate with pod-level request greater than limit",
+		spec: v1.PipelineRunSpec{
+			PipelineRef: &v1.PipelineRef{Name: "foo"},
+			TaskRunTemplate: v1.PipelineTaskRunTemplate{
+				PodTemplate: &pod.PodTemplate{
+					Resources: &corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceCPU: corev1resources.MustParse("2")},
+						Limits:   corev1.ResourceList{corev1.ResourceCPU: corev1resources.MustParse("1")},
+					},
+				},
+			},
+		},
+		wantErr: apis.ErrInvalidValue("2", "taskRunTemplate.podTemplate.resources.requests[cpu]", "must be less than or equal to cpu limit of 1"),
+	}, {
+		name: "TaskRunSpecs PodTemplate with pod-level request greater than limit",
+		spec: v1.PipelineRunSpec{
+			PipelineRef: &v1.PipelineRef{Name: "foo"},
+			TaskRunSpecs: []v1.PipelineTaskRunSpec{{
+				PipelineTaskName: "task-1",
+				PodTemplate: &pod.PodTemplate{
+					Resources: &corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
+						Limits:   corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+					},
+				},
+			}},
+		},
+		wantErr: apis.ErrInvalidValue("2Gi", "taskRunSpecs[0].podTemplate.resources.requests[memory]", "must be less than or equal to memory limit of 1Gi"),
+	}, {
 		name: "pipelineRef and pipelineSpec together",
 		spec: v1.PipelineRunSpec{
 			PipelineRef: &v1.PipelineRef{

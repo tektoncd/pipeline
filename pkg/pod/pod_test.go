@@ -1458,6 +1458,73 @@ _EOF_
 			},
 		},
 		{
+			desc: "using pod-level resources",
+			ts: v1.TaskSpec{
+				Steps: []v1.Step{
+					{
+						Name:    "use-pod-level-resources",
+						Image:   "image",
+						Command: []string{"cmd"}, // avoid entrypoint lookup.
+					},
+				},
+			},
+			trs: v1.TaskRunSpec{
+				PodTemplate: &pod.Template{
+					Resources: &corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("2"),
+							corev1.ResourceMemory: resource.MustParse("4Gi"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceMemory: resource.MustParse("8Gi"),
+						},
+					},
+				},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1.Step{{Name: "use-pod-level-resources"}}, SecurityContextConfig{SetSecurityContext: true, SetReadOnlyRootFilesystem: false}, false /* windows */)},
+				Resources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("2"),
+						corev1.ResourceMemory: resource.MustParse("4Gi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceMemory: resource.MustParse("8Gi"),
+					},
+				},
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				Containers: []corev1.Container{{
+					Name:    "step-use-pod-level-resources",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/run/0/status",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+						Name:      "tekton-creds-init-home-0",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+				}},
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
+		},
+		{
 			desc: "step-with-timeout",
 			ts: v1.TaskSpec{
 				Steps: []v1.Step{{
