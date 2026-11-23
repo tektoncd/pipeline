@@ -733,7 +733,7 @@ func TestResolve(t *testing.T) {
 			gitresolution.APISecretNamespaceKey: system.Namespace(),
 		},
 		expectedStatus: resolution.CreateResolutionRequestFailureStatus(),
-		expectedErr:    createError("cannot get API token, secret not accessible in namespace " + system.Namespace()),
+		expectedErr:    createError(fmt.Sprintf(common.MessageAuthenticationFailed, system.Namespace())),
 	}, {
 		name: "api: token secret name not specified",
 		args: &params{
@@ -903,7 +903,7 @@ func getGitCmd(t *testing.T, dir string) func(...string) *exec.Cmd {
 				"-c", "user.name=PipelinesTests",
 			},
 			args...)
-		return exec.Command("git", args...)
+		return exec.CommandContext(t.Context(), "git", args...)
 	}
 }
 

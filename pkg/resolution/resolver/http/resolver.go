@@ -334,17 +334,17 @@ func getBasicAuthSecret(ctx context.Context, params map[string]string, kubeclien
 	}
 	secretNS := common.RequestNamespace(ctx)
 	if secretNS == "" {
-		return "", errors.New("cannot get API token, secret not accessible: request namespace not available in context")
+		return "", errors.New(common.MessageMissingRequestNamespace)
 	}
 	secret, err := kubeclient.CoreV1().Secrets(secretNS).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
 		logger.Debugf("secret lookup failed: ns=%s name=%s err=%v", secretNS, secretName, err)
-		return "", fmt.Errorf("cannot get API token, secret not accessible in namespace %s", secretNS)
+		return "", fmt.Errorf(common.MessageAuthenticationFailed, secretNS)
 	}
 	secretVal, ok := secret.Data[tokenSecretKey]
 	if !ok {
 		logger.Debugf("secret key not found in secret: ns=%s name=%s", secretNS, secretName)
-		return "", fmt.Errorf("cannot get API token, secret not accessible in namespace %s", secretNS)
+		return "", fmt.Errorf(common.MessageAuthenticationFailed, secretNS)
 	}
 	return "Basic " + base64.StdEncoding.EncodeToString(
 		[]byte(fmt.Sprintf("%s:%s", userName, secretVal))), nil

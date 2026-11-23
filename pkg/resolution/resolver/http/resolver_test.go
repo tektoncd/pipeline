@@ -350,7 +350,7 @@ func TestResolverReconcileBasicAuth(t *testing.T) {
 				authUsername: "user",
 				url:          "https://blah/blah.com",
 			},
-			expectedErr: errors.New(`error getting "Http" "foo/rr": cannot get API token, secret not accessible in namespace foo`),
+			expectedErr: fmt.Errorf(`error getting "Http" "foo/rr": `+common.MessageAuthenticationFailed, "foo"),
 		},
 		{
 			name: "bad/no valid secret key",
@@ -360,7 +360,7 @@ func TestResolverReconcileBasicAuth(t *testing.T) {
 				authSecretKey: wrongSecretKey,
 				url:           "https://blah/blah",
 			},
-			expectedErr: errors.New(`error getting "Http" "foo/rr": cannot get API token, secret not accessible in namespace foo`),
+			expectedErr: fmt.Errorf(`error getting "Http" "foo/rr": `+common.MessageAuthenticationFailed, "foo"),
 		},
 		{
 			name: "bad/missing username params for secret with params",
@@ -504,12 +504,12 @@ func TestGetBasicAuthSecretEmptyNamespace(t *testing.T) {
 		HttpBasicAuthUsername: "user",
 	}
 	// Context without RequestNamespace injected — simulates missing namespace
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := getBasicAuthSecret(ctx, params, nil, logger)
 	if err == nil {
 		t.Fatal("expected error when namespace is empty, got nil")
 	}
-	expectedErr := "cannot get API token, secret not accessible: request namespace not available in context"
+	expectedErr := common.MessageMissingRequestNamespace
 	if err.Error() != expectedErr {
 		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
 	}
@@ -521,7 +521,7 @@ func TestGetBasicAuthSecretNotFound(t *testing.T) {
 		HttpBasicAuthSecret:   "nonexistent-secret",
 		HttpBasicAuthUsername: "user",
 	}
-	ctx := common.InjectRequestNamespace(context.Background(), "test-ns")
+	ctx := common.InjectRequestNamespace(t.Context(), "test-ns")
 	kubeclient := fakekubeclient.NewSimpleClientset()
 	_, err := getBasicAuthSecret(ctx, params, kubeclient, logger)
 	if err == nil {
@@ -531,7 +531,7 @@ func TestGetBasicAuthSecretNotFound(t *testing.T) {
 	if strings.Contains(gotErr, params[HttpBasicAuthSecret]) {
 		t.Error("error message should not contain the secret name")
 	}
-	expectedErr := "cannot get API token, secret not accessible in namespace test-ns"
+	expectedErr := fmt.Sprintf(common.MessageAuthenticationFailed, "test-ns")
 	if gotErr != expectedErr {
 		t.Errorf("expected error %q, got %q", expectedErr, gotErr)
 	}
@@ -544,7 +544,7 @@ func TestGetBasicAuthSecretWrongKey(t *testing.T) {
 		HttpBasicAuthUsername:  "user",
 		HttpBasicAuthSecretKey: "wrong-key",
 	}
-	ctx := common.InjectRequestNamespace(context.Background(), "test-ns")
+	ctx := common.InjectRequestNamespace(t.Context(), "test-ns")
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "real-secret", Namespace: "test-ns"},
 		Data:       map[string][]byte{"correct-key": []byte("token-value")},
@@ -558,7 +558,7 @@ func TestGetBasicAuthSecretWrongKey(t *testing.T) {
 	if strings.Contains(gotErr, params[HttpBasicAuthSecret]) || strings.Contains(gotErr, params[HttpBasicAuthSecretKey]) {
 		t.Error("error message should not contain secret name or key name")
 	}
-	expectedErr := "cannot get API token, secret not accessible in namespace test-ns"
+	expectedErr := fmt.Sprintf(common.MessageAuthenticationFailed, "test-ns")
 	if gotErr != expectedErr {
 		t.Errorf("expected error %q, got %q", expectedErr, gotErr)
 	}

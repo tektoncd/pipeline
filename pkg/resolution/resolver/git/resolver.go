@@ -592,11 +592,9 @@ func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey
 	}
 	if apiSecret.ns == "" {
 		if userSpecified {
-			// User-specified secret: refuse to fall back to config or system
-			// namespace. This prevents silent privilege escalation from the
-			// user's namespace to the system namespace when RequestNamespace
-			// is not available in the context.
-			return nil, errors.New("cannot get API token, secret not accessible: request namespace not available in context")
+			// User-specified secrets require a request namespace instead of
+			// using the admin-configured fallback.
+			return nil, errors.New(common.MessageMissingRequestNamespace)
 		}
 		// Config-sourced secret: admin controls all values, fallback is safe
 		apiSecret.ns = conf.APISecretNamespace
@@ -617,16 +615,16 @@ func (g *GitResolver) getAPIToken(ctx context.Context, apiSecret *secretCacheKey
 		// Use a single generic error message for all secret access failures
 		// to prevent secret enumeration via distinct error strings.
 		g.Logger.Debugf("secret lookup failed: ns=%s name=%s err=%v", apiSecret.ns, apiSecret.name, err)
-		return nil, fmt.Errorf("cannot get API token, secret not accessible in namespace %s", apiSecret.ns)
+		return nil, fmt.Errorf(common.MessageAuthenticationFailed, apiSecret.ns)
 	}
 
 	secretVal, ok := secret.Data[apiSecret.key]
 	if !ok {
 		g.Logger.Debugf("secret key not found in secret: ns=%s name=%s", apiSecret.ns, apiSecret.name)
-		return nil, fmt.Errorf("cannot get API token, secret not accessible in namespace %s", apiSecret.ns)
+		return nil, fmt.Errorf(common.MessageAuthenticationFailed, apiSecret.ns)
 	}
 	if cacheSecret {
-		g.Cache.Add(*apiSecret, secretVal, ttl)
+		g.Cache.Add(*apiSecret, secretVal, g.TTL)
 	}
 	return secretVal, nil
 }

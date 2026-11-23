@@ -546,7 +546,7 @@ func TestResolve(t *testing.T) {
 			gitToken:    "non-existent",
 			gitTokenKey: "token",
 		},
-		expectedErr: createError(`cannot get API token, secret not accessible in namespace foo`),
+		expectedErr: createError(fmt.Sprintf(common.MessageAuthenticationFailed, "foo")),
 	}, {
 		name: "clone: revision does not exist",
 		args: &params{
@@ -782,7 +782,7 @@ func TestResolve(t *testing.T) {
 			APISecretNamespaceKey: system.Namespace(),
 		},
 		expectedStatus: resolution.CreateResolutionRequestFailureStatus(),
-		expectedErr:    createError("cannot get API token, secret not accessible in namespace " + system.Namespace()),
+		expectedErr:    createError(fmt.Sprintf(common.MessageAuthenticationFailed, system.Namespace())),
 	}, {
 		name: "api: token secret name not specified",
 		args: &params{
@@ -1070,11 +1070,11 @@ func TestGetAPITokenUserSpecifiedEmptyNamespace(t *testing.T) {
 		key:  "token",
 		ns:   "",
 	}
-	_, err := resolver.getAPIToken(ctx, apiSecret, "token")
+	_, err := resolver.getAPIToken(ctx, apiSecret, APISecretNameKey)
 	if err == nil {
 		t.Fatal("expected error when user-specified secret has empty namespace, got nil")
 	}
-	expectedErr := "cannot get API token, secret not accessible: request namespace not available in context"
+	expectedErr := common.MessageMissingRequestNamespace
 	if err.Error() != expectedErr {
 		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
 	}
@@ -1099,12 +1099,12 @@ func TestGetAPITokenConfigSourcedFallback(t *testing.T) {
 		Params:     map[string]string{},
 	}
 	// Config-sourced secret (apiSecret == nil) — should fall back to config namespace
-	_, err := resolver.getAPIToken(ctx, nil, "token")
+	_, err := resolver.getAPIToken(ctx, nil, APISecretNameKey)
 	if err == nil {
 		t.Fatal("expected error (secret not found), got nil")
 	}
 	// Should use the config namespace, not error about missing namespace
-	expectedErr := "cannot get API token, secret not accessible in namespace config-ns"
+	expectedErr := fmt.Sprintf(common.MessageAuthenticationFailed, "config-ns")
 	if err.Error() != expectedErr {
 		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
 	}
