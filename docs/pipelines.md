@@ -54,6 +54,7 @@ weight: 203
       - [`when` expressions using `Aggregate Execution Status` of `Tasks` in `finally` `tasks`](#when-expressions-using-aggregate-execution-status-of-tasks-in-finally-tasks)
     - [Known Limitations](#known-limitations)
       - [Cannot configure the `finally` task execution order](#cannot-configure-the-finally-task-execution-order)
+  - [Failing fast](#failing-fast)
   - [Using Custom Tasks](#using-custom-tasks)
     - [Specifying the target Custom Task](#specifying-the-target-custom-task)
     - [Specifying a Custom Task Spec in-line (or embedded)](#specifying-a-custom-task-spec-in-line-or-embedded)
@@ -1919,6 +1920,23 @@ For an end-to-end example, see [PipelineRun with `when` expressions](../examples
 It's not possible to configure or modify the execution order of the `finally` tasks. Unlike `Tasks` in a `Pipeline`,
 all `finally` tasks run simultaneously and start executing once all `PipelineTasks` under `tasks` have settled which means
 no `runAfter` can be specified in `finally` tasks.
+
+## Failing fast
+
+Set `spec.failFast: true` on a `Pipeline` to cancel the still-running `Tasks` as soon as a `PipelineTask` fails.
+`finally` tasks still run, and `onError: continue` tasks do not trigger it. The `PipelineRun`'s own `failFast`
+takes precedence. See [Failing fast a `PipelineRun`](pipelineruns.md#failing-fast-a-pipelinerun).
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: demo-pipeline
+spec:
+  failFast: true
+  tasks:
+    # ...
+```
 
 ## Using Custom Tasks
 

@@ -312,6 +312,12 @@ type PipelineRunSpec struct {
 	// This field is immutable.
 	// +optional
 	ManagedBy *string `json:"managedBy,omitempty"`
+
+	// FailFast, when true, cancels the running tasks of the PipelineRun as soon as
+	// a PipelineTask fails (finally tasks still run). It takes precedence over the
+	// Pipeline's failFast and the default-fail-fast setting of config-defaults.
+	// +optional
+	FailFast *bool `json:"failFast,omitempty"`
 }
 
 // TimeoutFields allows granular specification of pipeline, task, and finally timeouts

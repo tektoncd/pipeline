@@ -961,6 +961,11 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.FailFast != nil {
+		in, out := &in.FailFast, &out.FailFast
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -1156,6 +1161,11 @@ func (in *PipelineSpec) DeepCopyInto(out *PipelineSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.FailFast != nil {
+		in, out := &in.FailFast, &out.FailFast
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }

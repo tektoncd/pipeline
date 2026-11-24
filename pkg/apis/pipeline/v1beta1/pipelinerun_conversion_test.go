@@ -34,6 +34,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/utils/ptr"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -527,4 +528,30 @@ func TestPipelineRunConversionRoundTrip(t *testing.T) {
 
 func lessChildReferences(i, j v1beta1.ChildStatusReference) bool {
 	return i.Name < j.Name
+}
+
+func TestPipelineRunConversionFailFast(t *testing.T) {
+	for _, failFast := range []*bool{nil, ptr.To(true), ptr.To(false)} {
+		in := &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{Name: "test"},
+				FailFast:    failFast,
+			},
+		}
+		hub := &v1.PipelineRun{}
+		if err := in.ConvertTo(t.Context(), hub); err != nil {
+			t.Fatalf("ConvertTo() = %v", err)
+		}
+		if d := cmp.Diff(failFast, hub.Spec.FailFast); d != "" {
+			t.Errorf("v1 failFast %s", diff.PrintWantGot(d))
+		}
+		got := &v1beta1.PipelineRun{}
+		if err := got.ConvertFrom(t.Context(), hub); err != nil {
+			t.Fatalf("ConvertFrom() = %v", err)
+		}
+		if d := cmp.Diff(failFast, got.Spec.FailFast); d != "" {
+			t.Errorf("v1beta1 failFast roundtrip %s", diff.PrintWantGot(d))
+		}
+	}
 }

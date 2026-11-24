@@ -131,6 +131,11 @@ type PipelineSpec struct {
 	// or after a failure which would result in ending the Pipeline
 	// +listType=atomic
 	Finally []PipelineTask `json:"finally,omitempty"`
+	// FailFast, when true, cancels the running tasks of a PipelineRun as soon as
+	// a PipelineTask fails (finally tasks still run). It can be overridden by the
+	// PipelineRun's failFast.
+	// +optional
+	FailFast *bool `json:"failFast,omitempty"`
 }
 
 // PipelineResult used to describe the results of a pipeline

@@ -39,6 +39,7 @@ weight: 204
   - [Cancelling a <code>PipelineRun</code>](#cancelling-a-pipelinerun)
   - [Gracefully cancelling a <code>PipelineRun</code>](#gracefully-cancelling-a-pipelinerun)
   - [Gracefully stopping a <code>PipelineRun</code>](#gracefully-stopping-a-pipelinerun)
+  - [Failing fast a <code>PipelineRun</code>](#failing-fast-a-pipelinerun)
   - [Pending <code>PipelineRuns</code>](#pending-pipelineruns)
 <!-- /toc -->
 
@@ -84,6 +85,7 @@ A `PipelineRun` definition supports the following fields:
   - [`podTemplate`](#specifying-a-pod-template) - Specifies a [`Pod` template](./podtemplates.md) to use as the basis for the configuration of the `Pod` that executes each `Task`.
   - [`workspaces`](#specifying-workspaces) - Specifies a set of workspace bindings which must match the names of workspaces declared in the pipeline being used.
   - [`managedBy`](#delegating-reconciliation) - Specifies the controller responsible for managing this PipelineRun's lifecycle.
+  - [`failFast`](#failing-fast-a-pipelinerun) - Specifies whether to cancel the running `Tasks` as soon as a `Task` fails.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -1748,6 +1750,60 @@ spec:
   # […]
   status: "StoppedRunFinally"
 ```
+
+## Failing fast a `PipelineRun`
+
+A `Pipeline` may have several `Tasks` running in parallel. By default, when one of them fails the others
+keep running to completion. Set `failFast: true` to cancel the still-running `Tasks` as soon as a
+`PipelineTask` fails:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: pipeline-run
+spec:
+  failFast: true
+  pipelineSpec:
+    tasks:
+    - name: fail-task
+      taskSpec:
+        steps:
+          - name: fail-task
+            image: busybox
+            command: ["/bin/sh", "-c"]
+            args:
+              - exit 1
+    - name: success1
+      taskSpec:
+        steps:
+          - name: success1
+            image: busybox
+            command: ["/bin/sh", "-c"]
+            args:
+              - sleep 360
+    - name: success2
+      taskSpec:
+        steps:
+          - name: success2
+            image: busybox
+            command: ["/bin/sh", "-c"]
+            args:
+              - sleep 360
+```
+
+In the example above, `success1` and `success2` are cancelled (`RunCancelled`) as soon as `fail-task` fails;
+the `PipelineRun` is marked `Failed`.
+
+- `finally` tasks still run.
+- A failure that does not fail the `PipelineRun` does not trigger `failFast`: `onError: continue` tasks, and
+  failures that will be retried (`retries`).
+- `failFast` can also be set on the [`Pipeline`](pipelines.md#failing-fast) (`spec.failFast`) and cluster-wide
+  with `default-fail-fast` in the [`config-defaults`](additional-configs.md#customizing-basic-execution-parameters)
+  ConfigMap. Precedence: `PipelineRun` > `Pipeline` > `config-defaults`. An explicit `failFast: false`
+  on the `PipelineRun` overrides a `true` coming from the `Pipeline` or the ConfigMap.
+
+For the status of cancelled tasks, see [cancelling a TaskRun](taskruns.md#cancelling-a-taskrun).
 
 ## Pending `PipelineRuns`
 

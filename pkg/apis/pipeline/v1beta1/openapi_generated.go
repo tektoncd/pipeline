@@ -1995,6 +1995,13 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"failFast": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FailFast, when true, cancels the running tasks of the PipelineRun as soon as a PipelineTask fails (finally tasks still run). It takes precedence over the Pipeline's failFast and the default-fail-fast setting of config-defaults.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -2496,6 +2503,13 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineSpec(ref common.ReferenceCallback)
 									},
 								},
 							},
+						},
+					},
+					"failFast": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FailFast, when true, cancels the running tasks of a PipelineRun as soon as a PipelineTask fails (finally tasks still run). It can be overridden by the PipelineRun's failFast.",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},

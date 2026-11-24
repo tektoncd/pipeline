@@ -77,6 +77,7 @@ func (ps *PipelineSpec) ConvertTo(ctx context.Context, sink *v1.PipelineSpec, me
 		r.convertTo(ctx, &new)
 		sink.Results = append(sink.Results, new)
 	}
+	sink.FailFast = ps.FailFast
 	sink.Finally = nil
 	for _, f := range ps.Finally {
 		new := v1.PipelineTask{}
@@ -134,6 +135,7 @@ func (ps *PipelineSpec) ConvertFrom(ctx context.Context, source *v1.PipelineSpec
 		new.convertFrom(ctx, r)
 		ps.Results = append(ps.Results, new)
 	}
+	ps.FailFast = source.FailFast
 	ps.Finally = nil
 	for _, f := range source.Finally {
 		new := PipelineTask{}
