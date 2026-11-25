@@ -4,6 +4,8 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -96,6 +98,18 @@ type DisableKeyRotationInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DisableKeyRotationInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DisableKeyRotationRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DisableKeyRotationInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyId != nil {
+		s.WriteString(schemas.DisableKeyRotationRequest_KeyId, *v.KeyId)
+	}
+}
+
 type DisableKeyRotationOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -103,13 +117,26 @@ type DisableKeyRotationOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *DisableKeyRotationOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(nil)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DisableKeyRotationOutput) SerializeMembers(s smithy.ShapeSerializer) {
+}
+func (v *DisableKeyRotationOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, nil, func(s *smithy.Schema) error {
+		switch s {
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationDisableKeyRotationMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDisableKeyRotation{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DisableKeyRotation, schemas.DisableKeyRotationRequest, nil)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDisableKeyRotation{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.DisableKeyRotation, schemas.DisableKeyRotationRequest, nil), output: &DisableKeyRotationOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

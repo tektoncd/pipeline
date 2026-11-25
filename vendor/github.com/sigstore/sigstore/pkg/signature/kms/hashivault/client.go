@@ -20,11 +20,13 @@ import (
 	"context"
 	"crypto"
 	"crypto/ed25519"
+	"crypto/mldsa"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"regexp"
 	"strconv"
@@ -279,7 +281,104 @@ func (h *hashivaultClient) fetchPublicKey(_ context.Context) (crypto.PublicKey, 
 		return ed25519.PublicKey(decodedPublicKey), nil
 	}
 
+	// Vault enterprise also reports the parameter set at the top level of the key
+	// read response; whichMldsa uses it when the entry name does not carry the set.
+	params, isMldsa, err := whichMldsa(keyMap, keyResult.Data["parameter_set"])
+	if err != nil {
+		return nil, err
+	}
+	if isMldsa {
+		// Vault and OpenBao return ML-DSA public keys as base64 encoding of the raw key bytes
+		decodedPublicKey, err := base64.StdEncoding.DecodeString(strPublicKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to base64 decode ML-DSA public key: %w", err)
+		}
+		mldsaPublicKey, err := mldsa.NewPublicKey(params, decodedPublicKey)
+		if err != nil {
+			return nil, fmt.Errorf("parsing ML-DSA public key: %w", err)
+		}
+		// Same validation as the in-process ML-DSA loaders (pkg/signature/mldsa.go):
+		// it probes Parameters(), rejecting zero-value keys that NewPublicKey accepts.
+		if _, err := cryptoutils.ValidateMLDSAPublicKey(mldsaPublicKey); err != nil {
+			return nil, fmt.Errorf("validating ML-DSA public key: %w", err)
+		}
+		return mldsaPublicKey, nil
+	}
+
 	return cryptoutils.UnmarshalPEMToPublicKey([]byte(strPublicKey))
+}
+
+// whichMldsa determines the ML-DSA parameters of a transit key version entry.
+// OpenBao names one key type per parameter set ("mldsa-44"|"mldsa-65"|"mldsa-87").
+// Vault enterprise creates keys with type "ml-dsa" and a parameter_set
+// ("44"|"65"|"87"); its key read reports each version entry's name as
+// "ml-dsa-<set>", with type and parameter_set at the top level of the response
+// (formatKeyPolicy in Vault's builtin/logical/transit/path_keys.go). A bare
+// "ml-dsa" entry name is also accepted, taking the parameter set from the entry
+// or, failing that, from the top level of the response, passed as paramSet.
+//
+// isMldsa is false only for key types that are not ML-DSA. An ML-DSA key type that
+// cannot be mapped to parameters is an error rather than falling through to PEM
+// parsing, which would fail with a misleading error.
+func whichMldsa(entry map[string]any, paramSet any) (params mldsa.Parameters, isMldsa bool, err error) {
+	name, _ := entry["name"].(string)
+	switch name {
+	case AlgorithmMLDSA44, AlgorithmMLDSA44FB:
+		return mldsa.MLDSA44(), true, nil
+	case AlgorithmMLDSA65, AlgorithmMLDSA65FB:
+		return mldsa.MLDSA65(), true, nil
+	case AlgorithmMLDSA87, AlgorithmMLDSA87FB:
+		return mldsa.MLDSA87(), true, nil
+	case AlgorithmMLDSA:
+		// Get the string parameter value from one of the two possible locations, then select the
+		// corresponding parameter set. The entry's parameter set has priority.
+		set := ""
+		if parameterSet, ok := mldsaParameterSet(paramSet); ok {
+			set = parameterSet
+		}
+		if parameterSet, ok := mldsaParameterSet(entry["parameter_set"]); ok {
+			set = parameterSet
+		}
+		if set == "" {
+			return mldsa.Parameters{}, true, fmt.Errorf("ML-DSA key type %q has no parameter_set", name)
+		}
+		params, ok := mldsaParamsForSet(set)
+		if !ok {
+			return mldsa.Parameters{}, true, fmt.Errorf("unsupported ML-DSA parameter set %q for key type %q", set, name)
+		}
+		return params, true, nil
+	default:
+		if strings.HasPrefix(name, "mldsa-") || strings.HasPrefix(name, "ml-dsa-") {
+			return mldsa.Parameters{}, true, fmt.Errorf("unsupported ML-DSA key type %q", name)
+		}
+		return mldsa.Parameters{}, false, nil
+	}
+}
+
+// Handle both string and Number typed parameter sets.
+func mldsaParameterSet(value any) (string, bool) {
+	switch set := value.(type) {
+	case string:
+		return set, true
+	case json.Number:
+		return set.String(), true
+	default:
+		return "", false
+	}
+}
+
+// Map parameter set string to mldsa type.
+func mldsaParamsForSet(set string) (mldsa.Parameters, bool) {
+	switch set {
+	case "44":
+		return mldsa.MLDSA44(), true
+	case "65":
+		return mldsa.MLDSA65(), true
+	case "87":
+		return mldsa.MLDSA87(), true
+	default:
+		return mldsa.Parameters{}, false
+	}
 }
 
 func (h *hashivaultClient) public() (crypto.PublicKey, error) {
@@ -325,19 +424,6 @@ func (h hashivaultClient) sign(digest []byte, alg crypto.Hash, opts ...signature
 	}
 
 	prehashed := alg != crypto.Hash(0)
-
-	pub, err := h.public()
-	if err != nil {
-		return nil, fmt.Errorf("determining key type: %w", err)
-	}
-	switch pub.(type) {
-	case ed25519.PublicKey:
-		if alg == crypto.SHA512 {
-			prehashed = true
-			break
-		}
-		prehashed = false
-	}
 
 	signResult, err := client.Write(fmt.Sprintf("/%s/sign/%s%s", h.transitSecretEnginePath, h.keyPath, hashString(alg)), map[string]any{
 		"input":               base64.StdEncoding.Strict().EncodeToString(digest),
@@ -389,20 +475,8 @@ func (h hashivaultClient) verify(sig, digest []byte, alg crypto.Hash, opts ...si
 	}
 	prehashed := alg != crypto.Hash(0)
 
-	pub, err := h.public()
-	if err != nil {
-		return fmt.Errorf("determining key type: %w", err)
-	}
-	switch pub.(type) {
-	case ed25519.PublicKey:
-		if alg == crypto.SHA512 {
-			prehashed = true
-			break
-		}
-		prehashed = false
-	}
-
-	result, err := client.Write(fmt.Sprintf("/%s/verify/%s/%s", h.transitSecretEnginePath, h.keyPath, hashString(alg)), map[string]any{
+	// Non-empty hash strings include a preceding '/'.
+	result, err := client.Write(fmt.Sprintf("/%s/verify/%s%s", h.transitSecretEnginePath, h.keyPath, hashString(alg)), map[string]any{
 		"input":     base64.StdEncoding.EncodeToString(digest),
 		"prehashed": prehashed,
 		"signature": fmt.Sprintf("%s%s", vaultDataPrefix, encodedSig),
@@ -441,6 +515,9 @@ func vaultDecode(data any, keyVersionUsed *string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(prefixRegex.ReplaceAllString(encoded, ""))
 }
 
+// hashString maps alg to the hash suffix of the transit sign/verify URL.
+// crypto.Hash(0) yields no suffix: ML-DSA and pure Ed25519 sign the raw
+// message and choose their own hash algorithm server-side.
 func hashString(h crypto.Hash) string {
 	var hashStr string
 	switch h {
@@ -461,10 +538,30 @@ func hashString(h crypto.Hash) string {
 func (h hashivaultClient) createKey(typeStr string) (crypto.PublicKey, error) {
 	client := h.client.Logical()
 
-	if _, err := client.Write(fmt.Sprintf("/%s/keys/%s", h.transitSecretEnginePath, h.keyPath), map[string]any{
-		"type": typeStr,
-	}); err != nil {
-		return nil, fmt.Errorf("failed to create transit key: %w", err)
+	path := fmt.Sprintf("/%s/keys/%s", h.transitSecretEnginePath, h.keyPath)
+	fields := map[string]any{"type": typeStr}
+	if _, err := client.Write(path, fields); err != nil {
+		// OpenBao types an ML-DSA key "mldsa-<set>"; Vault enterprise instead requires
+		// type "ml-dsa" with the set as a separate parameter_set field: retry that,
+		// but only for request-validation failures — other errors (403, sealed, wrong
+		// mount) would fail the retry too and must not mask the original cause.
+		parameterSet := ""
+		switch typeStr {
+		case AlgorithmMLDSA44:
+			parameterSet = "44"
+		case AlgorithmMLDSA65:
+			parameterSet = "65"
+		case AlgorithmMLDSA87:
+			parameterSet = "87"
+		}
+		var respErr *vault.ResponseError
+		if parameterSet == "" || !errors.As(err, &respErr) || respErr.StatusCode != http.StatusBadRequest {
+			return nil, fmt.Errorf("failed to create transit key: %w", err)
+		}
+		fields = map[string]any{"type": AlgorithmMLDSA, "parameter_set": parameterSet}
+		if _, retryErr := client.Write(path, fields); retryErr != nil {
+			return nil, fmt.Errorf("failed to create transit key: %w; retrying as vault enterprise ml-dsa: %w", err, retryErr)
+		}
 	}
 	return h.public()
 }

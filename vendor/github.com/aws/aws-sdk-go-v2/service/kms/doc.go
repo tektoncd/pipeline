@@ -37,6 +37,16 @@
 // as Ephemeral Diffie-Hellman (DHE) or Elliptic Curve Ephemeral Diffie-Hellman
 // (ECDHE). Most modern systems such as Java 7 and later support these modes.
 //
+// With current technology, brute force attacks on KMS TLS cipher suite key
+// exchange mechanisms are not feasible. However, cipher suites that use
+// Rivest–Shamir–Adleman (RSA) or Diffie-Hellman (DH) key exchange will be
+// susceptible if large-scale quantum computing becomes practical. [NIST IR 8547]on the NIST
+// website establishes a timeline to phase out quantum-vulnerable algorithms by
+// 2030 and disallow them entirely by 2035. If your applications rely on the
+// long-term confidentiality of KMS API traffic, we recommend that you [use post-quantum TLS with KMS]. For more
+// information about post-quantum cybersecurity, see [Post-Quantum Cybersecurity Resources]on the National Security
+// Agency (NSA) website.
+//
 // # Signing Requests
 //
 // Requests must be signed using an access key ID and a secret access key. We
@@ -88,12 +98,15 @@
 // # GenerateDataKeyWithoutPlaintext
 //
 // [Dual-stack endpoint support]: https://docs.aws.amazon.com/kms/latest/developerguide/ipv6-kms.html
+// [NIST IR 8547]: https://nvlpubs.nist.gov/nistpubs/ir/2024/NIST.IR.8547.ipd.pdf
 // [Signature Version 4]: https://docs.aws.amazon.com/general/latest/gr/signature-version-4.html
 // [Temporary Security Credentials]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html
+// [use post-quantum TLS with KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/pqtls.html
 // [Tools for Amazon Web Services]: http://aws.amazon.com/tools/
 // [Amazon Web Services Security Credentials]: https://docs.aws.amazon.com/general/latest/gr/aws-security-credentials.html
 // [Key Management Service Developer Guide]: https://docs.aws.amazon.com/kms/latest/developerguide/
 // [Service endpoints]: https://docs.aws.amazon.com/general/latest/gr/kms.html#kms_region
 // [CloudTrail User Guide]: https://docs.aws.amazon.com/awscloudtrail/latest/userguide/
 // [Signature Version 4 Signing Process]: https://docs.aws.amazon.com/general/latest/gr/signature-version-4.html
+// [Post-Quantum Cybersecurity Resources]: https://www.nsa.gov/Cybersecurity/Post-Quantum-Cybersecurity-Resources/
 package kms
