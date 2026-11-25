@@ -130,6 +130,26 @@ func (m *validateOpCreateKey) HandleInitialize(ctx context.Context, in middlewar
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpDecapsulate struct {
+}
+
+func (*validateOpDecapsulate) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpDecapsulate) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*DecapsulateInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpDecapsulateInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpDeleteAlias struct {
 }
 
@@ -325,6 +345,26 @@ func (m *validateOpEnableKeyRotation) HandleInitialize(ctx context.Context, in m
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpEnableKeyRotationInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpEncapsulate struct {
+}
+
+func (*validateOpEncapsulate) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpEncapsulate) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*EncapsulateInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpEncapsulateInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -974,6 +1014,10 @@ func addOpCreateKeyValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpCreateKey{}, middleware.After)
 }
 
+func addOpDecapsulateValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpDecapsulate{}, middleware.After)
+}
+
 func addOpDeleteAliasValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDeleteAlias{}, middleware.After)
 }
@@ -1012,6 +1056,10 @@ func addOpEnableKeyValidationMiddleware(stack *middleware.Stack) error {
 
 func addOpEnableKeyRotationValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpEnableKeyRotation{}, middleware.After)
+}
+
+func addOpEncapsulateValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpEncapsulate{}, middleware.After)
 }
 
 func addOpEncryptValidationMiddleware(stack *middleware.Stack) error {
@@ -1294,6 +1342,27 @@ func validateOpCreateKeyInput(v *CreateKeyInput) error {
 	}
 }
 
+func validateOpDecapsulateInput(v *DecapsulateInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DecapsulateInput"}
+	if v.KeyId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("KeyId"))
+	}
+	if v.SharedSecretCiphertextBlob == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("SharedSecretCiphertextBlob"))
+	}
+	if len(v.EncapsulationAlgorithm) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("EncapsulationAlgorithm"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpDeleteAliasInput(v *DeleteAliasInput) error {
 	if v == nil {
 		return nil
@@ -1442,6 +1511,24 @@ func validateOpEnableKeyRotationInput(v *EnableKeyRotationInput) error {
 	invalidParams := smithy.InvalidParamsError{Context: "EnableKeyRotationInput"}
 	if v.KeyId == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("KeyId"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpEncapsulateInput(v *EncapsulateInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "EncapsulateInput"}
+	if v.KeyId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("KeyId"))
+	}
+	if len(v.EncapsulationAlgorithm) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("EncapsulationAlgorithm"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams

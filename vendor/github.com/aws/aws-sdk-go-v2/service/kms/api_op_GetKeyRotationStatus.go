@@ -4,6 +4,8 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 	"time"
 )
@@ -114,6 +116,18 @@ type GetKeyRotationStatusInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetKeyRotationStatusInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetKeyRotationStatusRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetKeyRotationStatusInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyId != nil {
+		s.WriteString(schemas.GetKeyRotationStatusRequest_KeyId, *v.KeyId)
+	}
+}
+
 type GetKeyRotationStatusOutput struct {
 
 	// Identifies the specified symmetric encryption KMS key.
@@ -145,13 +159,55 @@ type GetKeyRotationStatusOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GetKeyRotationStatusOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GetKeyRotationStatusResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GetKeyRotationStatusOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyId != nil {
+		s.WriteString(schemas.GetKeyRotationStatusResponse_KeyId, *v.KeyId)
+	}
+	if v.KeyRotationEnabled != false {
+		s.WriteBool(schemas.GetKeyRotationStatusResponse_KeyRotationEnabled, v.KeyRotationEnabled)
+	}
+	if v.NextRotationDate != nil {
+		s.WriteTime(schemas.GetKeyRotationStatusResponse_NextRotationDate, *v.NextRotationDate)
+	}
+	if v.OnDemandRotationStartDate != nil {
+		s.WriteTime(schemas.GetKeyRotationStatusResponse_OnDemandRotationStartDate, *v.OnDemandRotationStartDate)
+	}
+	if v.RotationPeriodInDays != nil {
+		s.WriteInt32(schemas.GetKeyRotationStatusResponse_RotationPeriodInDays, *v.RotationPeriodInDays)
+	}
+}
+func (v *GetKeyRotationStatusOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.GetKeyRotationStatusResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.GetKeyRotationStatusResponse_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.GetKeyRotationStatusResponse_KeyId, v.KeyId)
+		case schemas.GetKeyRotationStatusResponse_KeyRotationEnabled:
+			return d.ReadBool(schemas.GetKeyRotationStatusResponse_KeyRotationEnabled, &v.KeyRotationEnabled)
+		case schemas.GetKeyRotationStatusResponse_NextRotationDate:
+			v.NextRotationDate = new(time.Time)
+			return d.ReadTime(schemas.GetKeyRotationStatusResponse_NextRotationDate, v.NextRotationDate)
+		case schemas.GetKeyRotationStatusResponse_OnDemandRotationStartDate:
+			v.OnDemandRotationStartDate = new(time.Time)
+			return d.ReadTime(schemas.GetKeyRotationStatusResponse_OnDemandRotationStartDate, v.OnDemandRotationStartDate)
+		case schemas.GetKeyRotationStatusResponse_RotationPeriodInDays:
+			v.RotationPeriodInDays = new(int32)
+			return d.ReadInt32(schemas.GetKeyRotationStatusResponse_RotationPeriodInDays, v.RotationPeriodInDays)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGetKeyRotationStatusMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpGetKeyRotationStatus{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetKeyRotationStatus, schemas.GetKeyRotationStatusRequest, schemas.GetKeyRotationStatusResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpGetKeyRotationStatus{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GetKeyRotationStatus, schemas.GetKeyRotationStatusRequest, schemas.GetKeyRotationStatusResponse), output: &GetKeyRotationStatusOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
