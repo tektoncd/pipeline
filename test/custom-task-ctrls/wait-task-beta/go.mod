@@ -5,9 +5,9 @@ go 1.27.0
 require (
 	github.com/google/go-cmp v0.7.0
 	github.com/tektoncd/pipeline v1.17.0
-	k8s.io/api v0.35.9
-	k8s.io/apimachinery v0.37.1
-	k8s.io/client-go v0.35.9
+	k8s.io/api v0.35.10
+	k8s.io/apimachinery v0.37.2
+	k8s.io/client-go v0.35.10
 	k8s.io/utils v0.0.0-20260626114624-be93311217bd
 	knative.dev/pkg v0.0.0-20260622140654-39ebae2ee2dc
 )
