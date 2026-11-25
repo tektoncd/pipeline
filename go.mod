@@ -16,7 +16,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-version v1.9.0
 	github.com/hashicorp/golang-lru v1.0.2
-	github.com/jenkins-x/go-scm v1.17.1
+	github.com/jenkins-x/go-scm v1.17.2
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_model v0.6.3
 	github.com/prometheus/common v0.72.1
@@ -204,7 +204,7 @@ require (
 	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
-	golang.org/x/oauth2 v0.37.0 // indirect
+	golang.org/x/oauth2 v0.38.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/term v0.47.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
