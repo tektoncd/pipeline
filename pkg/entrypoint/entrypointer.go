@@ -204,23 +204,7 @@ type PostWriter interface {
 func (e Entrypointer) Go() (retErr error) {
 	output := []result.RunResult{}
 	defer func() {
-		var msgLenErr termination.MessageLengthError
-		if errors.As(retErr, &msgLenErr) {
-			if wErr := e.writeResultTooLargeTerminationMessage(output); wErr != nil {
-				log.Fatalf("Error while writing message: %s", wErr)
-			}
-			return
-		}
-		if wErr := e.writeTerminationMessage(e.TerminationPath, output); wErr != nil {
-			if errors.As(wErr, &msgLenErr) {
-				if truncErr := e.writeResultTooLargeTerminationMessage(output); truncErr != nil {
-					log.Fatalf("Error while writing message: %s", truncErr)
-				}
-				retErr = wErr
-				return
-			}
-			log.Fatalf("Error while writing message: %s", wErr)
-		}
+		retErr = e.finalizeTerminationMessage(output, retErr)
 	}()
 
 	if err := os.MkdirAll(filepath.Join(e.StepMetadataDir, "results"), os.ModePerm); err != nil {
@@ -510,6 +494,28 @@ func (e Entrypointer) writeTerminationMessage(path string, results []result.RunR
 		return termination.WriteCompressedMessage(path, results)
 	}
 	return termination.WriteMessage(path, results)
+}
+
+// finalizeTerminationMessage writes the final termination message on exit from Go,
+// rewriting it with ResultLargerThanAllowedLimit if a MessageLengthError occurred.
+func (e Entrypointer) finalizeTerminationMessage(output []result.RunResult, retErr error) error {
+	var msgLenErr termination.MessageLengthError
+	if errors.As(retErr, &msgLenErr) {
+		if wErr := e.writeResultTooLargeTerminationMessage(output); wErr != nil {
+			log.Fatalf("Error while writing message: %s", wErr)
+		}
+		return retErr
+	}
+	if wErr := e.writeTerminationMessage(e.TerminationPath, output); wErr != nil {
+		if errors.As(wErr, &msgLenErr) {
+			if truncErr := e.writeResultTooLargeTerminationMessage(output); truncErr != nil {
+				log.Fatalf("Error while writing message: %s", truncErr)
+			}
+			return wErr
+		}
+		log.Fatalf("Error while writing message: %s", wErr)
+	}
+	return retErr
 }
 
 // writeResultTooLargeTerminationMessage truncates the termination message file
