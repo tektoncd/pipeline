@@ -804,6 +804,7 @@ indicates the specific failure type:
 | `InitContainerFailed` | An internal Tekton init container failed (e.g. node memory pressure caused the container runtime to kill it). |
 | `StepOOM` | A step container was terminated due to an out-of-memory condition (`OOMKilled`). |
 | `StepFailed` | A step container exited with a non-zero exit code (not OOM). |
+| `TaskRunResultLargerThanAllowedLimit` | A step's results or termination message exceeded the maximum allowed size (4096 bytes for `termination-message`, or `max-result-size` for `sidecar-logs`). |
 | `SidecarOOM` | A sidecar container was terminated due to an out-of-memory condition (`OOMKilled`). |
 | `SidecarFailed` | A sidecar container exited with a non-zero exit code (not OOM). |
 | `Failed` | Default fallback for other failures. |
@@ -849,6 +850,7 @@ The following tables shows how to read the overall status of a `TaskRun`:
 | False    | TaskRunCancelled       | TaskRun cancelled as the PipelineRun it belongs to has timed out. |           Yes           |                                      The TaskRun was cancelled because the PipelineRun timed out. |
 | False    | TaskRunTimeout         | n/a                                                               |           Yes           |                                                                            The TaskRun timed out. |
 | False    | TaskRunImagePullFailed | n/a                                                               |           Yes           |                      The TaskRun failed due to one of its steps not being able to pull the image. |
+| False    | TaskRunResultLargerThanAllowedLimit | n/a                                                  |           Yes           |                 The TaskRun failed because its results exceeded the maximum allowed size. |
 | False    | FailureIgnored         | n/a                                                               |           Yes           |                                                   The TaskRun failed but the failure was ignored. |
 
 When a `TaskRun` changes status, [events](events.md#taskruns) are triggered accordingly.

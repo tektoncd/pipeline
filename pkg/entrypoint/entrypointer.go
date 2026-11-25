@@ -51,12 +51,13 @@ const (
 )
 
 const (
-	breakpointExitSuffix                     = ".breakpointexit"
-	breakpointBeforeStepSuffix               = ".beforestepexit"
-	ResultExtractionMethodTerminationMessage = "termination-message"
-	TerminationReasonSkipped                 = "Skipped"
-	TerminationReasonCancelled               = "Cancelled"
-	TerminationReasonTimeoutExceeded         = "TimeoutExceeded"
+	breakpointExitSuffix                          = ".breakpointexit"
+	breakpointBeforeStepSuffix                    = ".beforestepexit"
+	ResultExtractionMethodTerminationMessage      = "termination-message"
+	TerminationReasonSkipped                      = "Skipped"
+	TerminationReasonCancelled                    = "Cancelled"
+	TerminationReasonTimeoutExceeded              = "TimeoutExceeded"
+	TerminationReasonResultLargerThanAllowedLimit = "ResultLargerThanAllowedLimit"
 	// DownwardMountCancelFile is cancellation file mount to step, entrypoint will check this file to cancel the step.
 	downwardMountPoint      = "/tekton/downward"
 	downwardMountCancelFile = "cancel"
@@ -200,10 +201,24 @@ type PostWriter interface {
 
 // Go optionally waits for a file, runs the command, and writes a
 // post file.
-func (e Entrypointer) Go() error {
+func (e Entrypointer) Go() (retErr error) {
 	output := []result.RunResult{}
 	defer func() {
+		var msgLenErr termination.MessageLengthError
+		if errors.As(retErr, &msgLenErr) {
+			if wErr := e.writeResultTooLargeTerminationMessage(output); wErr != nil {
+				log.Fatalf("Error while writing message: %s", wErr)
+			}
+			return
+		}
 		if wErr := e.writeTerminationMessage(e.TerminationPath, output); wErr != nil {
+			if errors.As(wErr, &msgLenErr) {
+				if truncErr := e.writeResultTooLargeTerminationMessage(output); truncErr != nil {
+					log.Fatalf("Error while writing message: %s", truncErr)
+				}
+				retErr = wErr
+				return
+			}
 			log.Fatalf("Error while writing message: %s", wErr)
 		}
 	}()
@@ -495,6 +510,23 @@ func (e Entrypointer) writeTerminationMessage(path string, results []result.RunR
 		return termination.WriteCompressedMessage(path, results)
 	}
 	return termination.WriteMessage(path, results)
+}
+
+// writeResultTooLargeTerminationMessage truncates the termination message file
+// and writes only internal Tekton metadata along with the ResultLargerThanAllowedLimit
+// reason so the controller can surface a specific failure reason.
+func (e Entrypointer) writeResultTooLargeTerminationMessage(output []result.RunResult) error {
+	if err := os.Truncate(e.TerminationPath, 0); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	internal := make([]result.RunResult, 0, len(output)+1)
+	for _, r := range output {
+		if r.ResultType == result.InternalTektonResultType && r.Key != "Reason" {
+			internal = append(internal, r)
+		}
+	}
+	internal = append(internal, e.outputRunResult(TerminationReasonResultLargerThanAllowedLimit))
+	return e.writeTerminationMessage(e.TerminationPath, internal)
 }
 
 // BreakpointExitCode reads the post file and returns the exit code it contains

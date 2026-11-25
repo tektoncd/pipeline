@@ -18,6 +18,9 @@ package entrypoint
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -2392,6 +2395,155 @@ func TestWriteTerminationMessage_Compression(t *testing.T) {
 				}
 				if len(parsed) != len(results) {
 					t.Errorf("expected %d results, got %d", len(results), len(parsed))
+				}
+			}
+		})
+	}
+}
+
+func TestEntrypointerResultTooLarge(t *testing.T) {
+	// Build a deterministic incompressible payload (> 4096 bytes even after flate+base64).
+	var raw []byte
+	var buf [8]byte
+	for i := range uint64(160) {
+		binary.LittleEndian.PutUint64(buf[:], i)
+		sum := sha256.Sum256(buf[:])
+		raw = append(raw, sum[:]...)
+	}
+	incompressible := base64.StdEncoding.EncodeToString(raw)
+
+	for _, tc := range []struct {
+		desc                       string
+		taskResults                map[string]string
+		stepResults                map[string]string
+		compressTerminationMessage bool
+		wantErr                    bool
+	}{
+		{
+			desc: "task result within 4096 bytes succeeds",
+			taskResults: map[string]string{
+				"small": "hello",
+			},
+			wantErr: false,
+		},
+		{
+			desc: "task result exceeds 4096 bytes",
+			taskResults: map[string]string{
+				"large": strings.Repeat("a", 5000),
+			},
+			wantErr: true,
+		},
+		{
+			desc: "task result fits then step result pushes combined message over 4096 bytes",
+			taskResults: map[string]string{
+				"task-res": strings.Repeat("a", 3000),
+			},
+			stepResults: map[string]string{
+				"step-res": strings.Repeat("b", 2000),
+			},
+			wantErr: true,
+		},
+		{
+			desc: "task result fits just under 4096 bytes then deferred StartedAt pushes over limit",
+			taskResults: map[string]string{
+				"near-limit": strings.Repeat("a", 4040),
+			},
+			wantErr: true,
+		},
+		{
+			desc: "compressed incompressible payload exceeding 4096 bytes",
+			taskResults: map[string]string{
+				"incompressible": incompressible,
+			},
+			compressTerminationMessage: true,
+			wantErr:                    true,
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			resultsDir := t.TempDir()
+			stepDir := t.TempDir()
+			terminationFile, err := os.CreateTemp(t.TempDir(), "termination")
+			if err != nil {
+				t.Fatalf("creating temporary termination file: %v", err)
+			}
+			terminationPath := terminationFile.Name()
+			if err := terminationFile.Close(); err != nil {
+				t.Fatalf("closing temporary termination file: %v", err)
+			}
+
+			filesToWrite := map[string]string{}
+			var taskResultNames, stepResultNames []string
+			for k, v := range tc.taskResults {
+				filesToWrite[filepath.Join(resultsDir, k)] = v
+				taskResultNames = append(taskResultNames, k)
+			}
+			for k, v := range tc.stepResults {
+				filesToWrite[filepath.Join(resultsDir, k)] = v
+				stepResultNames = append(stepResultNames, k)
+			}
+
+			timeout := time.Duration(0)
+			err = Entrypointer{
+				Command:                    []string{"echo"},
+				Waiter:                     &fakeWaiter{},
+				Runner:                     &fakeResultsWriter{resultsToWrite: filesToWrite},
+				PostWriter:                 &fakePostWriter{},
+				Results:                    taskResultNames,
+				StepResults:                stepResultNames,
+				ResultsDirectory:           resultsDir,
+				StepMetadataDir:            stepDir,
+				ResultExtractionMethod:     ResultExtractionMethodTerminationMessage,
+				TerminationPath:            terminationPath,
+				Timeout:                    &timeout,
+				CompressTerminationMessage: tc.compressTerminationMessage,
+			}.Go()
+
+			var msgLenErr termination.MessageLengthError
+			if tc.wantErr {
+				if !errors.As(err, &msgLenErr) {
+					t.Fatalf("Go() error = %v, want termination.MessageLengthError", err)
+				}
+				entries, parseErr := getTermination(t, terminationPath)
+				if parseErr != nil {
+					t.Fatalf("parsing termination file: %v", parseErr)
+				}
+				wantEntries := []result.RunResult{
+					{
+						Key:        "Reason",
+						Value:      TerminationReasonResultLargerThanAllowedLimit,
+						ResultType: result.InternalTektonResultType,
+					},
+					{
+						Key:        "StartedAt",
+						Value:      "",
+						ResultType: result.InternalTektonResultType,
+					},
+				}
+				if d := cmp.Diff(wantEntries, entries); d != "" {
+					t.Errorf("termination entries mismatch %s", diff.PrintWantGot(d))
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Go() unexpected error: %v", err)
+				}
+				entries, parseErr := getTermination(t, terminationPath)
+				if parseErr != nil {
+					t.Fatalf("parsing termination file: %v", parseErr)
+				}
+				wantEntries := []result.RunResult{
+					{
+						Key:        "StartedAt",
+						Value:      "",
+						ResultType: result.InternalTektonResultType,
+					},
+					{
+						Key:        "small",
+						Value:      "hello",
+						ResultType: result.TaskRunResultType,
+					},
+				}
+				if d := cmp.Diff(wantEntries, entries); d != "" {
+					t.Errorf("termination entries mismatch %s", diff.PrintWantGot(d))
 				}
 			}
 		})
