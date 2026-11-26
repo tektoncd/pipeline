@@ -25,6 +25,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -521,5 +523,56 @@ func TestTaskConversionFromDeprecated(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// TestTaskConversionComputeResourcesRoundTrip checks that compute resource values
+// holding variable references survive a v1 -> v1beta1 -> v1 round-trip. v1beta1 stores
+// them as corev1.ResourceRequirements, which cannot represent a variable reference, so
+// they are carried over in an annotation.
+func TestTaskConversionComputeResourcesRoundTrip(t *testing.T) {
+	v1Task := &v1.Task{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+		Spec: v1.TaskSpec{
+			StepTemplate: &v1.StepTemplate{
+				ComputeResources: v1.ComputeResourceRequirements{
+					RawLimits: map[corev1.ResourceName]string{corev1.ResourceCPU: "$(params.CPU)"},
+				},
+			},
+			Steps: []v1.Step{{
+				Name:  "build",
+				Image: "image",
+				ComputeResources: v1.ComputeResourceRequirements{
+					Requests:    corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")},
+					RawRequests: map[corev1.ResourceName]string{corev1.ResourceMemory: "$(params.MEM)"},
+				},
+			}},
+			Sidecars: []v1.Sidecar{{
+				Name:  "server",
+				Image: "image",
+				ComputeResources: v1.ComputeResourceRequirements{
+					RawRequests: map[corev1.ResourceName]string{corev1.ResourceMemory: "$(params.SIDECAR_MEM)"},
+				},
+			}},
+		},
+	}
+
+	downgraded := &v1beta1.Task{}
+	if err := downgraded.ConvertFrom(t.Context(), v1Task); err != nil {
+		t.Fatalf("ConvertFrom() = %v", err)
+	}
+	if _, ok := downgraded.Annotations[v1beta1.ComputeResourcesAnnotationKey]; !ok {
+		t.Fatalf("expected annotation %s to be set, got %v", v1beta1.ComputeResourcesAnnotationKey, downgraded.Annotations)
+	}
+
+	got := &v1.Task{}
+	if err := downgraded.ConvertTo(t.Context(), got); err != nil {
+		t.Fatalf("ConvertTo() = %v", err)
+	}
+	if _, ok := got.Annotations[v1beta1.ComputeResourcesAnnotationKey]; ok {
+		t.Errorf("expected annotation %s to be consumed, got %v", v1beta1.ComputeResourcesAnnotationKey, got.Annotations)
+	}
+	if d := cmp.Diff(v1Task, got); d != "" {
+		t.Errorf("round-trip diff %s", diff.PrintWantGot(d))
 	}
 }

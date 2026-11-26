@@ -188,7 +188,10 @@ func (ptrs PipelineTaskRunSpec) convertTo(ctx context.Context, sink *v1.Pipeline
 		sink.Metadata = &v1.PipelineTaskMetadata{}
 		ptrs.Metadata.convertTo(ctx, sink.Metadata)
 	}
-	sink.ComputeResources = ptrs.ComputeResources
+	if ptrs.ComputeResources != nil {
+		cr := v1.FromK8sResourceRequirements(*ptrs.ComputeResources)
+		sink.ComputeResources = &cr
+	}
 	sink.Timeout = ptrs.Timeout
 }
 
@@ -213,7 +216,10 @@ func (ptrs *PipelineTaskRunSpec) convertFrom(ctx context.Context, source v1.Pipe
 		newMetadata.convertFrom(ctx, *source.Metadata)
 		ptrs.Metadata = &newMetadata
 	}
-	ptrs.ComputeResources = source.ComputeResources
+	if source.ComputeResources != nil {
+		k8s := source.ComputeResources.MustToK8s()
+		ptrs.ComputeResources = &k8s
+	}
 	ptrs.Timeout = source.Timeout
 }
 

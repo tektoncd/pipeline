@@ -24,16 +24,24 @@ import (
 
 // applyStepReplacements returns a StepContainer with variable interpolation applied.
 func applyStepReplacements(step *v1.Step, stringReplacements map[string]string, arrayReplacements map[string][]string) {
+	// Save compute resources before k8s container roundtrip (which drops raw variable refs)
+	cr := step.ComputeResources
 	c := step.ToK8sContainer()
 	applyContainerReplacements(c, stringReplacements, arrayReplacements)
 	step.SetContainerFields(*c)
+	// Restore and apply replacements to compute resources
+	step.ComputeResources = cr.ApplyReplacements(stringReplacements)
 }
 
 // applySidecarReplacements returns a SidecarContainer with variable interpolation applied.
 func applySidecarReplacements(sidecar *v1.Sidecar, stringReplacements map[string]string, arrayReplacements map[string][]string) {
+	// Save compute resources before k8s container roundtrip (which drops raw variable refs)
+	cr := sidecar.ComputeResources
 	c := sidecar.ToK8sContainer()
 	applyContainerReplacements(c, stringReplacements, arrayReplacements)
 	sidecar.SetContainerFields(*c)
+	// Restore and apply replacements to compute resources
+	sidecar.ComputeResources = cr.ApplyReplacements(stringReplacements)
 }
 
 func applyContainerReplacements(c *corev1.Container, stringReplacements map[string]string, arrayReplacements map[string][]string) {
