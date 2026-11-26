@@ -14,10 +14,31 @@ import (
 // Gets a list of all KMS keys in the caller's Amazon Web Services account and
 // Region.
 //
-// Cross-account use: No. You cannot perform this operation on a KMS key in a
-// different Amazon Web Services account.
+// You can also use ListKeys to list KMS keys in the Region that other Amazon Web
+// Services accounts shared with the caller's Amazon Web Services account through
+// Resource Access Manager (RAM). To list them, use the ResourceOwners parameter.
+// If you omit ResourceOwners , ListKeys lists only the KMS keys in the caller's
+// Amazon Web Services account.
+//
+// When ResourceOwners includes OTHER_ACCOUNTS_VIA_RAM , ListKeys returns the KMS
+// keys that other Amazon Web Services accounts currently share with the caller's
+// Amazon Web Services account through RAM. For information about how and when a
+// resource that another account shares becomes available to your Amazon Web
+// Services account, see [Access Amazon Web Services resources shared with you]in the RAM User Guide.
+//
+// Cross-account use: No. This operation doesn't take a KMS key parameter, so you
+// can't use it to list the KMS keys of a specific Amazon Web Services account. The
+// only KMS keys in other Amazon Web Services accounts that ListKeys returns are
+// the ones that other accounts shared with the caller's Amazon Web Services
+// account through RAM. To list them, set the ResourceOwners parameter to include
+// OTHER_ACCOUNTS_VIA_RAM .
 //
 // Required permissions: [kms:ListKeys] (IAM policy)
+//
+// The same kms:ListKeys permission lets you list the KMS keys that other accounts
+// shared with you through RAM. KMS doesn't evaluate the key policies of shared KMS
+// keys when it lists them. To use a shared KMS key, you need permission for each
+// operation on that KMS key.
 //
 // Related operations:
 //
@@ -32,7 +53,12 @@ import (
 // Eventual consistency: The KMS API follows an eventual consistency model. For
 // more information, see [KMS eventual consistency].
 //
+// KMS keys that other Amazon Web Services accounts share with you can take some
+// time to appear in or disappear from ListKeys results after changes to resource
+// shares, such as accepting an invitation or deleting a resource share.
+//
 // [kms:ListKeys]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
+// [Access Amazon Web Services resources shared with you]: https://docs.aws.amazon.com/ram/latest/userguide/working-with-shared.html
 // [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/accessing-kms.html#programming-eventual-consistency
 func (c *Client) ListKeys(ctx context.Context, params *ListKeysInput, optFns ...func(*Options)) (*ListKeysOutput, error) {
 	if params == nil {
@@ -64,6 +90,38 @@ type ListKeysInput struct {
 	// response you just received.
 	Marker *string
 
+	// Specifies whose KMS keys to list. Use this parameter to list KMS keys that
+	// other Amazon Web Services accounts shared with your Amazon Web Services account
+	// through Resource Access Manager (RAM).
+	//
+	// Specify one or two values. Valid values are:
+	//
+	// SELF Lists the KMS keys in your Amazon Web Services account and Region.
+	//
+	// OTHER_ACCOUNTS_VIA_RAM Lists the KMS keys in the Region that other Amazon Web
+	// Services accounts currently share with your Amazon Web Services account through
+	// RAM. This list doesn't include KMS keys that your Amazon Web Services account
+	// owns. For each of these KMS keys, the key ARN in the response contains the
+	// account ID of the Amazon Web Services account that owns the KMS key.
+	//
+	// If you omit this parameter, ListKeys lists only the KMS keys in your Amazon Web
+	// Services account. If you specify both values, in either order, ListKeys returns
+	// the KMS keys in your Amazon Web Services account first, and then the KMS keys
+	// that other Amazon Web Services accounts shared with you. A single response
+	// doesn't contain both kinds of KMS keys.
+	//
+	// When ResourceOwners includes OTHER_ACCOUNTS_VIA_RAM , a response can contain
+	// fewer KMS keys than the Limit value, or none, even when Truncated is true. To
+	// get all of the KMS keys, continue calling ListKeys with the NextMarker value
+	// from each response until Truncated is false. Use a NextMarker value only in a
+	// request that has the same ResourceOwners value as the request that returned it.
+	// Otherwise, the request can fail with an InvalidMarkerException .
+	//
+	// KMS keys that other Amazon Web Services accounts share with you can take some
+	// time to appear in or disappear from the results after changes to resource
+	// shares.
+	ResourceOwners []types.ResourceOwnerType
+
 	noSmithyDocumentSerde
 }
 
@@ -80,11 +138,16 @@ func (v *ListKeysInput) SerializeMembers(s smithy.ShapeSerializer) {
 	if v.Marker != nil {
 		s.WriteString(schemas.ListKeysRequest_Marker, *v.Marker)
 	}
+	if v.ResourceOwners != nil {
+		serializeResourceOwnersList(s, schemas.ListKeysRequest_ResourceOwners, v.ResourceOwners)
+	}
 }
 
 type ListKeysOutput struct {
 
-	// A list of KMS keys.
+	// A list of KMS keys. For a KMS key that another Amazon Web Services account
+	// shared with you through RAM, the key ARN contains the account ID of the Amazon
+	// Web Services account that owns the KMS key.
 	Keys []types.KeyListEntry
 
 	// When Truncated is true, this element is present and contains the value to use

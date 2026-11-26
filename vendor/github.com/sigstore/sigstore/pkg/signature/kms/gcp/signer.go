@@ -74,12 +74,12 @@ func (g *SignerVerifier) SignMessage(message io.Reader, opts ...signature.SignOp
 	ctx := context.Background()
 	var digest []byte
 	var signerOpts crypto.SignerOpts
-	var err error
 
-	signerOpts, err = g.client.getHashFunc()
+	ckv, err := g.client.getCKV()
 	if err != nil {
 		return nil, fmt.Errorf("getting fetching default hash function: %w", err)
 	}
+	signerOpts = ckv.HashFunc
 
 	for _, opt := range opts {
 		opt.ApplyContext(&ctx)
@@ -98,7 +98,7 @@ func (g *SignerVerifier) SignMessage(message io.Reader, opts ...signature.SignOp
 		return nil, err
 	}
 
-	return g.client.sign(ctx, digest, hf, crc32cHasher.Sum32())
+	return g.client.sign(ctx, ckv.CryptoKeyVersion.Name, digest, hf, crc32cHasher.Sum32())
 }
 
 // PublicKey returns the public key that can be used to verify signatures created by

@@ -1474,6 +1474,20 @@ var _RegionType = smithy.NewSchema(smithy.ShapeID{
 	Name:      "RegionType",
 }, smithy.ShapeTypeString, 0)
 
+var _ResourceOwnersList = smithy.NewSchema(smithy.ShapeID{
+	Namespace: "com.amazonaws.kms",
+	Name:      "ResourceOwnersList",
+}, smithy.ShapeTypeList, 1)
+var _ResourceOwnersList_member *smithy.Schema
+
+var ResourceOwnerType = smithy.NewSchema(smithy.ShapeID{
+	Namespace: "com.amazonaws.kms",
+	Name:      "ResourceOwnerType",
+}, smithy.ShapeTypeEnum, 2)
+var ResourceOwnerType_SELF *smithy.Schema
+
+var ResourceOwnerType_OTHER_ACCOUNTS_VIA_RAM *smithy.Schema
+
 var _RotationPeriodInDaysType = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.kms",
 	Name:      "RotationPeriodInDaysType",
@@ -2555,10 +2569,12 @@ var ListKeyRotationsResponse_Truncated *smithy.Schema
 var ListKeysRequest = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.kms",
 	Name:      "ListKeysRequest",
-}, smithy.ShapeTypeStructure, 2)
+}, smithy.ShapeTypeStructure, 3)
 var ListKeysRequest_Limit *smithy.Schema
 
 var ListKeysRequest_Marker *smithy.Schema
+
+var ListKeysRequest_ResourceOwners *smithy.Schema
 
 var ListKeysResponse = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.kms",
@@ -3486,6 +3502,12 @@ func init() {
 
 	RecipientInfo_AttestationDocument = RecipientInfo.AddMember("AttestationDocument", _AttestationDocumentType)
 
+	ResourceOwnerType_SELF = ResourceOwnerType.AddMember("SELF", smithyprelude.Unit)
+
+	ResourceOwnerType_OTHER_ACCOUNTS_VIA_RAM = ResourceOwnerType.AddMember("OTHER_ACCOUNTS_VIA_RAM", smithyprelude.Unit)
+
+	_ResourceOwnersList_member = _ResourceOwnersList.AddMember("member", ResourceOwnerType)
+
 	RotationType_AUTOMATIC = RotationType.AddMember("AUTOMATIC", smithyprelude.Unit)
 
 	RotationType_ON_DEMAND = RotationType.AddMember("ON_DEMAND", smithyprelude.Unit)
@@ -4041,6 +4063,8 @@ func init() {
 	ListKeysRequest_Limit = ListKeysRequest.AddMember("Limit", _LimitType)
 
 	ListKeysRequest_Marker = ListKeysRequest.AddMember("Marker", _MarkerType)
+
+	ListKeysRequest_ResourceOwners = ListKeysRequest.AddMember("ResourceOwners", _ResourceOwnersList)
 
 	ListKeysResponse_Keys = ListKeysResponse.AddMember("Keys", _KeyList)
 

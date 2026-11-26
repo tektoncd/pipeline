@@ -278,7 +278,11 @@ func (h *hashivaultClient) fetchPublicKey(_ context.Context) (crypto.PublicKey, 
 		if keyLen := len(decodedPublicKey); keyLen != ed25519.PublicKeySize {
 			return nil, fmt.Errorf("decoded ed25519 public key length is %d, should be %d", keyLen, ed25519.PublicKeySize)
 		}
-		return ed25519.PublicKey(decodedPublicKey), nil
+		edPub := ed25519.PublicKey(decodedPublicKey)
+		if err := cryptoutils.ValidateEd25519PublicKey(edPub); err != nil {
+			return nil, fmt.Errorf("validating ed25519 public key: %w", err)
+		}
+		return edPub, nil
 	}
 
 	// Vault enterprise also reports the parameter set at the top level of the key

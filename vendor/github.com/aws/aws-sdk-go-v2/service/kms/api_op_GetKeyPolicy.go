@@ -11,18 +11,34 @@ import (
 
 // Gets a key policy attached to the specified KMS key.
 //
+// A KMS key can have two key policies. You manage the default key policy.
+// Resource Access Manager (RAM) manages the AWS_RAM key policy for KMS keys that
+// you share through RAM. You can use GetKeyPolicy to view the AWS_RAM key policy,
+// but you can't change it with PutKeyPolicy. To get the AWS_RAM key policy, set the PolicyName
+// parameter to AWS_RAM . If the KMS key doesn't have an AWS_RAM key policy,
+// GetKeyPolicy returns a NotFoundException . For information about sharing KMS
+// keys, see [Sharing KMS keys with RAM]in the Key Management Service Developer Guide. For information about
+// RAM managed permissions, see [Managing permissions in RAM]in the RAM User Guide.
+//
 // Cross-account use: No. You cannot perform this operation on a KMS key in a
 // different Amazon Web Services account.
 //
 // Required permissions: [kms:GetKeyPolicy] (key policy)
+//
+// You can use the [kms:PolicyName] condition key to control access to this operation based on the
+// value of the PolicyName parameter in the request. If the request doesn't
+// include PolicyName , the value of kms:PolicyName is default .
 //
 // Related operations: [PutKeyPolicy]
 //
 // Eventual consistency: The KMS API follows an eventual consistency model. For
 // more information, see [KMS eventual consistency].
 //
+// [kms:PolicyName]: https://docs.aws.amazon.com/kms/latest/developerguide/conditions-kms.html#conditions-kms-policy-name
 // [kms:GetKeyPolicy]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
+// [Sharing KMS keys with RAM]: https://docs.aws.amazon.com/kms/latest/developerguide/key-sharing-ram.html
 // [PutKeyPolicy]: https://docs.aws.amazon.com/kms/latest/APIReference/API_PutKeyPolicy.html
+// [Managing permissions in RAM]: https://docs.aws.amazon.com/ram/latest/userguide/security-ram-permissions.html
 // [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/accessing-kms.html#programming-eventual-consistency
 func (c *Client) GetKeyPolicy(ctx context.Context, params *GetKeyPolicyInput, optFns ...func(*Options)) (*GetKeyPolicyOutput, error) {
 	if params == nil {
@@ -41,7 +57,7 @@ func (c *Client) GetKeyPolicy(ctx context.Context, params *GetKeyPolicyInput, op
 
 type GetKeyPolicyInput struct {
 
-	// Gets the key policy for the specified KMS key.
+	// Identifies the KMS key whose key policy you want to get.
 	//
 	// Specify the key ID or key ARN of the KMS key.
 	//
@@ -58,8 +74,10 @@ type GetKeyPolicyInput struct {
 	KeyId *string
 
 	// Specifies the name of the key policy. If no policy name is specified, the
-	// default value is default . The only valid name is default . To get the names of
-	// key policies, use ListKeyPolicies.
+	// default value is default . Valid values are default and AWS_RAM . Use AWS_RAM
+	// to get the key policy that RAM manages for a KMS key that you share through RAM.
+	// If the KMS key doesn't have an AWS_RAM key policy, the request fails with a
+	// NotFoundException . To get the names of key policies, use ListKeyPolicies.
 	PolicyName *string
 
 	noSmithyDocumentSerde
@@ -85,7 +103,11 @@ type GetKeyPolicyOutput struct {
 	// A key policy document in JSON format.
 	Policy *string
 
-	// The name of the key policy. The only valid value is default .
+	// The name of the key policy. Valid values are:
+	//
+	// default The key policy that you manage.
+	//
+	// AWS_RAM The key policy that RAM manages for KMS keys that you share through RAM.
 	PolicyName *string
 
 	// Metadata pertaining to the operation's result.
