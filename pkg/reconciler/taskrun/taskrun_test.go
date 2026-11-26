@@ -74,6 +74,8 @@ import (
 	k8sruntimeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	k8sversion "k8s.io/apimachinery/pkg/version"
+	fakediscovery "k8s.io/client-go/discovery/fake"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
@@ -9522,5 +9524,58 @@ func TestAppendPreviousConditionContext(t *testing.T) {
 				t.Errorf("Expected message to be unchanged %q, got: %s", tc.newMessage, result)
 			}
 		})
+	}
+}
+
+func TestUseTektonSidecarModeDoesNotCacheDiscoveryErrors(t *testing.T) {
+	featureFlags := config.DefaultFeatureFlags.DeepCopy()
+	featureFlags.EnableKubernetesSidecar = true
+	ctx := config.ToContext(context.Background(), &config.Config{FeatureFlags: featureFlags})
+	logger := logging.FromContext(ctx)
+
+	kubeClient := fakekubeclientset.NewSimpleClientset()
+	kubeClient.Discovery().(*fakediscovery.FakeDiscovery).FakedServerVersion = &k8sversion.Info{Major: "1", Minor: "29"}
+	discoveryErr := errors.New("transient discovery error")
+	failNext := true
+	kubeClient.PrependReactor("get", "version", func(ktesting.Action) (bool, runtime.Object, error) {
+		if failNext {
+			failNext = false
+			return true, nil, discoveryErr
+		}
+		return false, nil, nil
+	})
+	versionGets := func() int {
+		n := 0
+		for _, action := range kubeClient.Actions() {
+			if action.Matches("get", "version") {
+				n++
+			}
+		}
+		return n
+	}
+
+	c := &Reconciler{KubeClientSet: kubeClient}
+
+	if _, err := c.useTektonSidecarMode(ctx, logger); !errors.Is(err, discoveryErr) {
+		t.Fatalf("first call: expected the discovery error, got %v", err)
+	}
+
+	useTektonNop, err := c.useTektonSidecarMode(ctx, logger)
+	if err != nil {
+		t.Fatalf("second call: expected discovery to be retried after the transient error, got %v", err)
+	}
+	if useTektonNop {
+		t.Errorf("second call: expected native sidecars on Kubernetes 1.29, got Tekton nop sidecars")
+	}
+	if got := versionGets(); got != 2 {
+		t.Errorf("expected 2 ServerVersion calls after the retry, got %d", got)
+	}
+
+	// The successful result is cached, so later reconciles do not query the API server again.
+	if useTektonNop, err := c.useTektonSidecarMode(ctx, logger); err != nil || useTektonNop {
+		t.Errorf("third call: expected the cached (false, nil), got (%t, %v)", useTektonNop, err)
+	}
+	if got := versionGets(); got != 2 {
+		t.Errorf("expected the successful result to be cached, but ServerVersion was called %d times", got)
 	}
 }
