@@ -20,12 +20,28 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"knative.dev/pkg/apis"
 )
+
+const pipelineTaskResourceOverridesAnnotationKey = "tekton.dev/v1.pipelineTaskResourceOverrides"
+
+// +k8s:openapi-gen=false
+type pipelineTaskResourceOverrides struct {
+	Tasks   map[string]pipelineTaskResourceOverride `json:"tasks,omitempty"`
+	Finally map[string]pipelineTaskResourceOverride `json:"finally,omitempty"`
+}
+
+// +k8s:openapi-gen=false
+type pipelineTaskResourceOverride struct {
+	StepSpecs        []v1.TaskRunStepSpec         `json:"stepSpecs,omitempty"`
+	SidecarSpecs     []v1.TaskRunSidecarSpec      `json:"sidecarSpecs,omitempty"`
+	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
+}
 
 var _ apis.Convertible = (*Pipeline)(nil)
 
@@ -36,11 +52,14 @@ func (p *Pipeline) ConvertTo(ctx context.Context, to apis.Convertible) error {
 	}
 	switch sink := to.(type) {
 	case *v1.Pipeline:
-		sink.ObjectMeta = p.ObjectMeta
+		sink.ObjectMeta = *p.ObjectMeta.DeepCopy()
 		if err := serializePipelineResources(&sink.ObjectMeta, &p.Spec); err != nil {
 			return err
 		}
-		return p.Spec.ConvertTo(ctx, &sink.Spec, &sink.ObjectMeta)
+		if err := p.Spec.ConvertTo(ctx, &sink.Spec, &sink.ObjectMeta); err != nil {
+			return err
+		}
+		return deserializePipelineTaskResourceOverrides(&sink.ObjectMeta, &sink.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}
@@ -93,11 +112,14 @@ func (ps *PipelineSpec) ConvertTo(ctx context.Context, sink *v1.PipelineSpec, me
 func (p *Pipeline) ConvertFrom(ctx context.Context, from apis.Convertible) error {
 	switch source := from.(type) {
 	case *v1.Pipeline:
-		p.ObjectMeta = source.ObjectMeta
+		p.ObjectMeta = *source.ObjectMeta.DeepCopy()
 		if err := deserializePipelineResources(&p.ObjectMeta, &p.Spec); err != nil {
 			return err
 		}
-		return p.Spec.ConvertFrom(ctx, &source.Spec, &p.ObjectMeta)
+		if err := p.Spec.ConvertFrom(ctx, &source.Spec, &p.ObjectMeta); err != nil {
+			return err
+		}
+		return serializePipelineTaskResourceOverrides(&p.ObjectMeta, &source.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", p)
 	}
@@ -350,4 +372,56 @@ func deserializePipelineResources(meta *metav1.ObjectMeta, spec *PipelineSpec) e
 		spec.Resources = *resources
 	}
 	return nil
+}
+
+func serializePipelineTaskResourceOverrides(meta *metav1.ObjectMeta, spec *v1.PipelineSpec) error {
+	overrides := pipelineTaskResourceOverrides{
+		Tasks:   collectPipelineTaskResourceOverrides(spec.Tasks),
+		Finally: collectPipelineTaskResourceOverrides(spec.Finally),
+	}
+	if len(overrides.Tasks) == 0 && len(overrides.Finally) == 0 {
+		delete(meta.Annotations, pipelineTaskResourceOverridesAnnotationKey)
+		if len(meta.Annotations) == 0 {
+			meta.Annotations = nil
+		}
+		return nil
+	}
+	return version.SerializeToMetadata(meta, overrides, pipelineTaskResourceOverridesAnnotationKey)
+}
+
+func collectPipelineTaskResourceOverrides(tasks []v1.PipelineTask) map[string]pipelineTaskResourceOverride {
+	overrides := make(map[string]pipelineTaskResourceOverride)
+	for _, task := range tasks {
+		if task.StepSpecs == nil && task.SidecarSpecs == nil && task.ComputeResources == nil {
+			continue
+		}
+		overrides[task.Name] = pipelineTaskResourceOverride{
+			StepSpecs:        task.StepSpecs,
+			SidecarSpecs:     task.SidecarSpecs,
+			ComputeResources: task.ComputeResources,
+		}
+	}
+	return overrides
+}
+
+func deserializePipelineTaskResourceOverrides(meta *metav1.ObjectMeta, spec *v1.PipelineSpec) error {
+	overrides := pipelineTaskResourceOverrides{}
+	if err := version.DeserializeFromMetadata(meta, &overrides, pipelineTaskResourceOverridesAnnotationKey); err != nil {
+		return err
+	}
+	applyPipelineTaskResourceOverrides(spec.Tasks, overrides.Tasks)
+	applyPipelineTaskResourceOverrides(spec.Finally, overrides.Finally)
+	return nil
+}
+
+func applyPipelineTaskResourceOverrides(tasks []v1.PipelineTask, overrides map[string]pipelineTaskResourceOverride) {
+	for i := range tasks {
+		override, ok := overrides[tasks[i].Name]
+		if !ok {
+			continue
+		}
+		tasks[i].StepSpecs = override.StepSpecs
+		tasks[i].SidecarSpecs = override.SidecarSpecs
+		tasks[i].ComputeResources = override.ComputeResources
+	}
 }
