@@ -28,6 +28,10 @@ const ConfigArtifactHubTaskCatalog = "default-artifact-hub-task-catalog"
 // the Artifact Hub Pipeline catalog to fetch the remote resource from.
 const ConfigArtifactHubPipelineCatalog = "default-artifact-hub-pipeline-catalog"
 
+// ConfigArtifactHubStepActionCatalog is the configuration field name for controlling
+// the Artifact Hub StepAction catalog to fetch the remote resource from.
+const ConfigArtifactHubStepActionCatalog = "default-artifact-hub-stepaction-catalog"
+
 // ConfigKind is the configuration field name for controlling
 // what the layer name in the hub image is.
 const ConfigKind = "default-kind"
