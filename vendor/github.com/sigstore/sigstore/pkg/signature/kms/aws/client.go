@@ -20,7 +20,9 @@ import (
 	"context"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/mldsa"
 	"crypto/rsa"
+	"crypto/sha3"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -36,6 +38,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 	"github.com/jellydator/ttlcache/v3"
+	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature"
 	sigkms "github.com/sigstore/sigstore/pkg/signature/kms"
 )
@@ -52,8 +55,17 @@ const (
 	ReferenceScheme = "awskms://"
 )
 
+type kmsAPI interface {
+	CreateKey(ctx context.Context, params *kms.CreateKeyInput, optFns ...func(*kms.Options)) (*kms.CreateKeyOutput, error)
+	CreateAlias(ctx context.Context, params *kms.CreateAliasInput, optFns ...func(*kms.Options)) (*kms.CreateAliasOutput, error)
+	DescribeKey(ctx context.Context, params *kms.DescribeKeyInput, optFns ...func(*kms.Options)) (*kms.DescribeKeyOutput, error)
+	GetPublicKey(ctx context.Context, params *kms.GetPublicKeyInput, optFns ...func(*kms.Options)) (*kms.GetPublicKeyOutput, error)
+	Sign(ctx context.Context, params *kms.SignInput, optFns ...func(*kms.Options)) (*kms.SignOutput, error)
+	Verify(ctx context.Context, params *kms.VerifyInput, optFns ...func(*kms.Options)) (*kms.VerifyOutput, error)
+}
+
 type awsClient struct {
-	client   *kms.Client
+	client   kmsAPI
 	endpoint string
 	keyID    string
 	alias    string
@@ -159,6 +171,9 @@ type cmk struct {
 }
 
 func (c *cmk) HashFunc() crypto.Hash {
+	if len(c.KeyMetadata.SigningAlgorithms) == 0 {
+		return 0
+	}
 	switch c.KeyMetadata.SigningAlgorithms[0] {
 	case types.SigningAlgorithmSpecRsassaPssSha256, types.SigningAlgorithmSpecRsassaPkcs1V15Sha256, types.SigningAlgorithmSpecEcdsaSha256:
 		return crypto.SHA256
@@ -166,12 +181,17 @@ func (c *cmk) HashFunc() crypto.Hash {
 		return crypto.SHA384
 	case types.SigningAlgorithmSpecRsassaPssSha512, types.SigningAlgorithmSpecRsassaPkcs1V15Sha512, types.SigningAlgorithmSpecEcdsaSha512:
 		return crypto.SHA512
+	case types.SigningAlgorithmSpecMlDsaShake256:
+		return crypto.Hash(0)
 	default:
 		return 0
 	}
 }
 
 func (c *cmk) Verifier() (signature.Verifier, error) {
+	if len(c.KeyMetadata.SigningAlgorithms) == 0 {
+		return nil, fmt.Errorf("no signing algorithms available for key")
+	}
 	switch c.KeyMetadata.SigningAlgorithms[0] {
 	case types.SigningAlgorithmSpecRsassaPssSha256, types.SigningAlgorithmSpecRsassaPssSha384, types.SigningAlgorithmSpecRsassaPssSha512:
 		pub, ok := c.PublicKey.(*rsa.PublicKey)
@@ -191,6 +211,12 @@ func (c *cmk) Verifier() (signature.Verifier, error) {
 			return nil, fmt.Errorf("public key is not ecdsa")
 		}
 		return signature.LoadECDSAVerifier(pub, c.HashFunc())
+	case types.SigningAlgorithmSpecMlDsaShake256:
+		pub, ok := c.PublicKey.(*mldsa.PublicKey)
+		if !ok {
+			return nil, fmt.Errorf("public key is not mldsa")
+		}
+		return signature.LoadMLDSAVerifier(pub)
 	default:
 		return nil, fmt.Errorf("signing algorithm unsupported")
 	}
@@ -252,8 +278,7 @@ func (a *awsClient) createKey(ctx context.Context, algorithm string) (crypto.Pub
 	}
 
 	// return error if not *kms.NotFoundException
-	var errNotFound *types.NotFoundException
-	if !errors.As(err, &errNotFound) {
+	if _, ok := errors.AsType[*types.NotFoundException](err); !ok {
 		return nil, fmt.Errorf("looking up key: %w", err)
 	}
 
@@ -296,16 +321,61 @@ func (a *awsClient) verify(ctx context.Context, sig, message io.Reader, opts ...
 	return verifier.VerifySignature(sig, message, opts...)
 }
 
+// computeMLDSAMu computes the 64-byte external message representative μ per
+// FIPS 204 Section 6.2 / RFC 9881 for pure ML-DSA with an empty context:
+//
+//	tr = SHAKE256(pk, 64)
+//	mu = SHAKE256(tr || 0x00 || 0x00 || message, 64)
+//
+// Using EXTERNAL_MU avoids AWS KMS's 4096-byte limit on RAW messages and works
+// for empty messages as well.
+func computeMLDSAMu(pub *mldsa.PublicKey, message []byte) ([]byte, error) {
+	if _, err := cryptoutils.ValidateMLDSAPublicKey(pub); err != nil {
+		return nil, err
+	}
+	tr := sha3.SumSHAKE256(pub.Bytes(), 64)
+	h := sha3.NewSHAKE256()
+	if _, err := h.Write(tr); err != nil {
+		return nil, err
+	}
+	if _, err := h.Write([]byte{0x00, 0x00}); err != nil {
+		return nil, err
+	}
+	if _, err := h.Write(message); err != nil {
+		return nil, err
+	}
+	mu := make([]byte, 64)
+	if _, err := h.Read(mu); err != nil {
+		return nil, err
+	}
+	return mu, nil
+}
+
 func (a *awsClient) verifyRemotely(ctx context.Context, sig, digest []byte) error {
 	cmk, err := a.getCMK(ctx)
 	if err != nil {
 		return err
 	}
+	if len(cmk.KeyMetadata.SigningAlgorithms) == 0 {
+		return errors.New("no signing algorithms available for key")
+	}
 	alg := cmk.KeyMetadata.SigningAlgorithms[0]
+	message := digest
 	messageType := types.MessageTypeDigest
+	if alg == types.SigningAlgorithmSpecMlDsaShake256 {
+		pub, ok := cmk.PublicKey.(*mldsa.PublicKey)
+		if !ok {
+			return errors.New("public key is not mldsa")
+		}
+		message, err = computeMLDSAMu(pub, digest)
+		if err != nil {
+			return fmt.Errorf("computing ML-DSA mu: %w", err)
+		}
+		messageType = types.MessageTypeExternalMu
+	}
 	if _, err := a.client.Verify(ctx, &kms.VerifyInput{
 		KeyId:            &a.keyID,
-		Message:          digest,
+		Message:          message,
 		MessageType:      messageType,
 		Signature:        sig,
 		SigningAlgorithm: alg,
@@ -315,17 +385,38 @@ func (a *awsClient) verifyRemotely(ctx context.Context, sig, digest []byte) erro
 	return nil
 }
 
-func (a *awsClient) sign(ctx context.Context, digest []byte, _ crypto.Hash) ([]byte, error) {
+func (a *awsClient) sign(ctx context.Context, digest []byte, hashFunc crypto.Hash) ([]byte, error) {
 	cmk, err := a.getCMK(ctx)
 	if err != nil {
 		return nil, err
 	}
+	if len(cmk.KeyMetadata.SigningAlgorithms) == 0 {
+		return nil, errors.New("no signing algorithms available for key")
+	}
 	alg := cmk.KeyMetadata.SigningAlgorithms[0]
 
+	message := digest
 	messageType := types.MessageTypeDigest
+	if alg == types.SigningAlgorithmSpecMlDsaShake256 {
+		if hashFunc != crypto.Hash(0) {
+			return nil, fmt.Errorf("unsupported hash function for ML-DSA: %v", hashFunc)
+		}
+		pub, ok := cmk.PublicKey.(*mldsa.PublicKey)
+		if !ok {
+			return nil, errors.New("public key is not mldsa")
+		}
+		message, err = computeMLDSAMu(pub, digest)
+		if err != nil {
+			return nil, fmt.Errorf("computing ML-DSA mu: %w", err)
+		}
+		messageType = types.MessageTypeExternalMu
+	} else if hashFunc == crypto.Hash(0) {
+		return nil, fmt.Errorf("unsupported hash function: %v", hashFunc)
+	}
+
 	out, err := a.client.Sign(ctx, &kms.SignInput{
 		KeyId:            &a.keyID,
-		Message:          digest,
+		Message:          message,
 		MessageType:      messageType,
 		SigningAlgorithm: alg,
 	})

@@ -16,6 +16,7 @@
 package cryptoutils
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
@@ -31,6 +32,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+
+	"filippo.io/edwards25519"
 )
 
 const (
@@ -55,7 +58,16 @@ func UnmarshalPEMToPublicKey(pemBytes []byte) (crypto.PublicKey, error) {
 	}
 	switch derBytes.Type {
 	case string(PublicKeyPEMType):
-		return x509.ParsePKIXPublicKey(derBytes.Bytes)
+		pub, err := x509.ParsePKIXPublicKey(derBytes.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		if edPub, ok := pub.(ed25519.PublicKey); ok {
+			if err := ValidateEd25519PublicKey(edPub); err != nil {
+				return nil, err
+			}
+		}
+		return pub, nil
 	case string(PKCS1PublicKeyPEMType):
 		return x509.ParsePKCS1PublicKey(derBytes.Bytes)
 	default:
@@ -151,6 +163,56 @@ func ValidateMLDSAPublicKey(pub *mldsa.PublicKey) (params mldsa.Parameters, err 
 	return pub.Parameters(), nil
 }
 
+var (
+	errEd25519NotOnCurve   = errors.New("not a point on the curve")
+	errEd25519NonCanonical = errors.New("non-canonical encoding")
+	errEd25519SmallOrder   = errors.New("small-order point")
+)
+
+func validateEd25519Point(b []byte) error {
+	p, err := new(edwards25519.Point).SetBytes(b)
+	if err != nil {
+		return errEd25519NotOnCurve
+	}
+	if !bytes.Equal(p.Bytes(), b) {
+		return errEd25519NonCanonical
+	}
+	if new(edwards25519.Point).MultByCofactor(p).Equal(edwards25519.NewIdentityPoint()) == 1 {
+		return errEd25519SmallOrder
+	}
+	return nil
+}
+
+// ValidateEd25519PublicKey checks that an Ed25519 public key has the expected
+// length, is a canonically encoded point on the curve, and is not a small-order
+// point (order dividing the cofactor 8).
+func ValidateEd25519PublicKey(pub ed25519.PublicKey) error {
+	if len(pub) != ed25519.PublicKeySize {
+		return errors.New("invalid size for ED25519 key")
+	}
+	if err := validateEd25519Point(pub); err != nil {
+		return fmt.Errorf("invalid ED25519 public key: %w", err)
+	}
+	return nil
+}
+
+// ValidateEd25519SignatureR checks that an Ed25519 signature has the expected
+// length and that its R component is a canonically encoded, non-small-order
+// point on Edwards25519.
+func ValidateEd25519SignatureR(sig []byte) error {
+	if len(sig) != ed25519.SignatureSize {
+		return errors.New("failed to verify signature")
+	}
+	err := validateEd25519Point(sig[:32])
+	if errors.Is(err, errEd25519SmallOrder) {
+		return errors.New("failed to verify signature: small-order R")
+	}
+	if err != nil {
+		return errors.New("failed to verify signature")
+	}
+	return nil
+}
+
 // genErrMsg generates an error message for EqualKeys
 func genErrMsg(first, second crypto.PublicKey, keyType string) string {
 	msg := fmt.Sprintf("%s public keys are not equal", keyType)
@@ -169,8 +231,8 @@ func genErrMsg(first, second crypto.PublicKey, keyType string) string {
 // ValidatePubKey validates the parameters of an RSA, ECDSA, ED25519, or ML-DSA public key.
 //
 // Deprecated: This function only verifies the size of the key for RSA, the curve
-// for ECDSA, or initialization for ML-DSA. This is largely unnecessary, and this function will be removed
-// in a future version.
+// for ECDSA, canonical non-small-order encoding for Ed25519, or initialization for ML-DSA.
+// This is largely unnecessary, and this function will be removed in a future version.
 func ValidatePubKey(pub crypto.PublicKey) error {
 	switch pk := pub.(type) {
 	case *rsa.PublicKey:
@@ -184,8 +246,7 @@ func ValidatePubKey(pub crypto.PublicKey) error {
 		}
 		return nil
 	case ed25519.PublicKey:
-		// Nothing to validate for Ed25519
-		return nil
+		return ValidateEd25519PublicKey(pk)
 	case *mldsa.PublicKey:
 		_, err := ValidateMLDSAPublicKey(pk)
 		return err

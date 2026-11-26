@@ -16,8 +16,11 @@
 package aws
 
 import (
+	"bytes"
 	"context"
 	"crypto"
+	"crypto/mldsa"
+	"errors"
 	"fmt"
 	"io"
 
@@ -27,19 +30,23 @@ import (
 	"github.com/sigstore/sigstore/pkg/signature/options"
 )
 
-var awsSupportedAlgorithms = []types.CustomerMasterKeySpec{
-	types.CustomerMasterKeySpecRsa2048,
-	types.CustomerMasterKeySpecRsa3072,
-	types.CustomerMasterKeySpecRsa4096,
-	types.CustomerMasterKeySpecEccNistP256,
-	types.CustomerMasterKeySpecEccNistP384,
-	types.CustomerMasterKeySpecEccNistP521,
+var awsSupportedAlgorithms = []types.KeySpec{
+	types.KeySpecRsa2048,
+	types.KeySpecRsa3072,
+	types.KeySpecRsa4096,
+	types.KeySpecEccNistP256,
+	types.KeySpecEccNistP384,
+	types.KeySpecEccNistP521,
+	types.KeySpecMlDsa44,
+	types.KeySpecMlDsa65,
+	types.KeySpecMlDsa87,
 }
 
 var awsSupportedHashFuncs = []crypto.Hash{
 	crypto.SHA256,
 	crypto.SHA384,
 	crypto.SHA512,
+	crypto.Hash(0),
 }
 
 // SignerVerifier is a signature.SignerVerifier that uses the AWS Key Management Service
@@ -85,16 +92,26 @@ func (a *SignerVerifier) SignMessage(message io.Reader, opts ...signature.SignOp
 		opt.ApplyDigest(&digest)
 	}
 
-	var signerOpts crypto.SignerOpts
-	signerOpts, err = a.client.getHashFunc(ctx)
+	defaultHf, err := a.client.getHashFunc(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("getting fetching default hash function: %w", err)
 	}
+	var signerOpts crypto.SignerOpts = defaultHf
 	for _, opt := range opts {
 		opt.ApplyCryptoSignerOpts(&signerOpts)
 	}
 
+	if mldsaOpts, ok := signerOpts.(*mldsa.Options); ok && mldsaOpts.Context != "" {
+		return nil, errors.New("non-empty context is not supported; use empty context for consistency across backends")
+	}
+
 	hf := signerOpts.HashFunc()
+	if defaultHf == crypto.Hash(0) && hf != crypto.Hash(0) {
+		return nil, fmt.Errorf("unsupported hash function for ML-DSA: %v", hf)
+	}
+	if defaultHf != crypto.Hash(0) && hf == crypto.Hash(0) {
+		return nil, fmt.Errorf("unsupported hash function: %v", hf)
+	}
 
 	if len(digest) == 0 {
 		digest, hf, err = signature.ComputeDigestForSigning(message, hf, awsSupportedHashFuncs, opts...)
@@ -156,15 +173,24 @@ func (a *SignerVerifier) VerifySignature(sig, message io.Reader, opts ...signatu
 		return a.client.verify(ctx, sig, message, opts...)
 	}
 
-	var signerOpts crypto.SignerOpts
-	signerOpts, err = a.client.getHashFunc(ctx)
+	defaultHf, err := a.client.getHashFunc(ctx)
 	if err != nil {
 		return fmt.Errorf("getting hash func: %w", err)
 	}
+	var signerOpts crypto.SignerOpts = defaultHf
 	for _, opt := range opts {
 		opt.ApplyCryptoSignerOpts(&signerOpts)
 	}
+	if mldsaOpts, ok := signerOpts.(*mldsa.Options); ok && mldsaOpts.Context != "" {
+		return errors.New("non-empty context is not supported; use empty context for consistency across backends")
+	}
 	hf := signerOpts.HashFunc()
+	if defaultHf == crypto.Hash(0) && hf != crypto.Hash(0) {
+		return fmt.Errorf("unsupported hash function for ML-DSA: %v", hf)
+	}
+	if defaultHf != crypto.Hash(0) && hf == crypto.Hash(0) {
+		return fmt.Errorf("unsupported hash function: %v", hf)
+	}
 
 	if len(digest) == 0 {
 		digest, _, err = signature.ComputeDigestForVerifying(message, hf, awsSupportedHashFuncs, opts...)
@@ -203,7 +229,19 @@ func (c cryptoSignerWrapper) Public() crypto.PublicKey {
 func (c cryptoSignerWrapper) Sign(_ io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 	hashFunc := c.hashFunc
 	if opts != nil {
+		if mldsaOpts, ok := opts.(*mldsa.Options); ok && mldsaOpts.Context != "" {
+			return nil, errors.New("non-empty context is not supported; use empty context for consistency across backends")
+		}
 		hashFunc = opts.HashFunc()
+	}
+	if hashFunc == crypto.Hash(0) {
+		if digest == nil {
+			return nil, errors.New("message must not be nil")
+		}
+		return c.sv.SignMessage(bytes.NewReader(digest),
+			options.WithContext(c.ctx),
+			options.WithCryptoSignerOpts(hashFunc),
+		)
 	}
 	awsOptions := []signature.SignOption{
 		options.WithContext(c.ctx),
@@ -243,5 +281,5 @@ func (*SignerVerifier) SupportedAlgorithms() []string {
 
 // DefaultAlgorithm returns the default algorithm for the AWS KMS service
 func (*SignerVerifier) DefaultAlgorithm() string {
-	return string(types.CustomerMasterKeySpecEccNistP256)
+	return string(types.KeySpecEccNistP256)
 }

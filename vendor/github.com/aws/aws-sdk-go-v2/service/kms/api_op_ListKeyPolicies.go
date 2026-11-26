@@ -5,12 +5,17 @@ package kms
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
 // Gets the names of the key policies that are attached to a KMS key. This
-// operation is designed to get policy names that you can use in a GetKeyPolicyoperation.
-// However, the only valid policy name is default .
+// operation is designed to get policy names that you can use in a GetKeyPolicyoperation. The
+// valid policy names are default and AWS_RAM .
+//
+// For information about the AWS_RAM key policy, see [Sharing KMS keys with RAM] in the Key Management
+// Service Developer Guide.
 //
 // Cross-account use: No. You cannot perform this operation on a KMS key in a
 // different Amazon Web Services account.
@@ -27,6 +32,7 @@ import (
 // more information, see [KMS eventual consistency].
 //
 // [kms:ListKeyPolicies]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
+// [Sharing KMS keys with RAM]: https://docs.aws.amazon.com/kms/latest/developerguide/key-sharing-ram.html
 // [PutKeyPolicy]: https://docs.aws.amazon.com/kms/latest/APIReference/API_PutKeyPolicy.html
 // [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/accessing-kms.html#programming-eventual-consistency
 func (c *Client) ListKeyPolicies(ctx context.Context, params *ListKeyPoliciesInput, optFns ...func(*Options)) (*ListKeyPoliciesOutput, error) {
@@ -69,7 +75,7 @@ type ListKeyPoliciesInput struct {
 	// This value is optional. If you include a value, it must be between 1 and 1000,
 	// inclusive. If you do not include a value, it defaults to 100.
 	//
-	// Only one policy can be attached to a key.
+	// A KMS key can have at most two key policies, default and AWS_RAM .
 	Limit *int32
 
 	// Use this parameter in a subsequent request after you receive a response with
@@ -80,13 +86,35 @@ type ListKeyPoliciesInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListKeyPoliciesInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListKeyPoliciesRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListKeyPoliciesInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyId != nil {
+		s.WriteString(schemas.ListKeyPoliciesRequest_KeyId, *v.KeyId)
+	}
+	if v.Limit != nil {
+		s.WriteInt32(schemas.ListKeyPoliciesRequest_Limit, *v.Limit)
+	}
+	if v.Marker != nil {
+		s.WriteString(schemas.ListKeyPoliciesRequest_Marker, *v.Marker)
+	}
+}
+
 type ListKeyPoliciesOutput struct {
 
 	// When Truncated is true, this element is present and contains the value to use
 	// for the Marker parameter in a subsequent request.
 	NextMarker *string
 
-	// A list of key policy names. The only valid value is default .
+	// A list of key policy names. Valid values are:
+	//
+	// default The key policy that you manage.
+	//
+	// AWS_RAM The key policy that RAM manages for KMS keys that you share through RAM.
 	PolicyNames []string
 
 	// A flag that indicates whether there are more items in the list. When this value
@@ -101,13 +129,42 @@ type ListKeyPoliciesOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ListKeyPoliciesOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ListKeyPoliciesResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ListKeyPoliciesOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.NextMarker != nil {
+		s.WriteString(schemas.ListKeyPoliciesResponse_NextMarker, *v.NextMarker)
+	}
+	if v.PolicyNames != nil {
+		serializePolicyNameList(s, schemas.ListKeyPoliciesResponse_PolicyNames, v.PolicyNames)
+	}
+	if v.Truncated != false {
+		s.WriteBool(schemas.ListKeyPoliciesResponse_Truncated, v.Truncated)
+	}
+}
+func (v *ListKeyPoliciesOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ListKeyPoliciesResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ListKeyPoliciesResponse_NextMarker:
+			v.NextMarker = new(string)
+			return d.ReadString(schemas.ListKeyPoliciesResponse_NextMarker, v.NextMarker)
+		case schemas.ListKeyPoliciesResponse_PolicyNames:
+			return deserializePolicyNameList(d, schemas.ListKeyPoliciesResponse_PolicyNames, &v.PolicyNames)
+		case schemas.ListKeyPoliciesResponse_Truncated:
+			return d.ReadBool(schemas.ListKeyPoliciesResponse_Truncated, &v.Truncated)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationListKeyPoliciesMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpListKeyPolicies{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListKeyPolicies, schemas.ListKeyPoliciesRequest, schemas.ListKeyPoliciesResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpListKeyPolicies{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ListKeyPolicies, schemas.ListKeyPoliciesRequest, schemas.ListKeyPoliciesResponse), output: &ListKeyPoliciesOutput{}}, middleware.After); err != nil {
 		return err
 	}
 
@@ -153,7 +210,7 @@ type ListKeyPoliciesPaginatorOptions struct {
 	// This value is optional. If you include a value, it must be between 1 and 1000,
 	// inclusive. If you do not include a value, it defaults to 100.
 	//
-	// Only one policy can be attached to a key.
+	// A KMS key can have at most two key policies, default and AWS_RAM .
 	Limit int32
 
 	// Set to true if pagination should stop if the service returns a pagination token

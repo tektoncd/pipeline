@@ -4,7 +4,9 @@ package sts
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/sts/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/sts/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -202,6 +204,12 @@ type AssumeRoleWithSAMLInput struct {
 	// [Creating a URL that Enables Federated Users to Access the Amazon Web Services Management Console]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_enable-console-custom-url.html
 	DurationSeconds *int32
 
+	// The minimum size, in bytes, of the session token that STS issues for the
+	// request. STS increases the session token to at least this size, regardless of
+	// its actual content. The value must not exceed 4,096 bytes. When set to 0 or not
+	// specified, the session token size is unchanged.
+	MinimumSessionTokenSize *int32
+
 	// An IAM policy in JSON format that you want to use as an inline session policy.
 	//
 	// This parameter is optional. Passing policies to this operation returns new
@@ -263,6 +271,36 @@ type AssumeRoleWithSAMLInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *AssumeRoleWithSAMLInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.AssumeRoleWithSAMLRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *AssumeRoleWithSAMLInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DurationSeconds != nil {
+		s.WriteInt32(schemas.AssumeRoleWithSAMLRequest_DurationSeconds, *v.DurationSeconds)
+	}
+	if v.MinimumSessionTokenSize != nil {
+		s.WriteInt32(schemas.AssumeRoleWithSAMLRequest_MinimumSessionTokenSize, *v.MinimumSessionTokenSize)
+	}
+	if v.Policy != nil {
+		s.WriteString(schemas.AssumeRoleWithSAMLRequest_Policy, *v.Policy)
+	}
+	if v.PolicyArns != nil {
+		serializepolicyDescriptorListType(s, schemas.AssumeRoleWithSAMLRequest_PolicyArns, v.PolicyArns)
+	}
+	if v.PrincipalArn != nil {
+		s.WriteString(schemas.AssumeRoleWithSAMLRequest_PrincipalArn, *v.PrincipalArn)
+	}
+	if v.RoleArn != nil {
+		s.WriteString(schemas.AssumeRoleWithSAMLRequest_RoleArn, *v.RoleArn)
+	}
+	if v.SAMLAssertion != nil {
+		s.WriteString(schemas.AssumeRoleWithSAMLRequest_SAMLAssertion, *v.SAMLAssertion)
+	}
+}
+
 // Contains the response to a successful AssumeRoleWithSAML request, including temporary Amazon Web
 // Services credentials that can be used to make Amazon Web Services requests.
 type AssumeRoleWithSAMLOutput struct {
@@ -305,7 +343,17 @@ type AssumeRoleWithSAMLOutput struct {
 	// session tags combined passed in the request. The request fails if the packed
 	// size is greater than 100 percent, which means the policies and tags exceeded the
 	// allowed space.
+	//
+	// Deprecated: Deprecated. Replaced by SessionTokenUtilization.
 	PackedPolicySize *int32
+
+	// The size, in bytes, of the session token returned in the Credentials for this
+	// response.
+	SessionTokenSize *int32
+
+	// The percentage (0-100) of the maximum allowed session token size that the
+	// returned session token consumes.
+	SessionTokenUtilization *int32
 
 	// The value in the SourceIdentity attribute in the SAML assertion. The source
 	// identity value persists across [chained role]sessions.
@@ -349,13 +397,96 @@ type AssumeRoleWithSAMLOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *AssumeRoleWithSAMLOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.AssumeRoleWithSAMLResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *AssumeRoleWithSAMLOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.AssumedRoleUser != nil {
+		s.WriteStruct(schemas.AssumeRoleWithSAMLResponse_AssumedRoleUser)
+		v.AssumedRoleUser.SerializeMembers(s)
+		s.CloseStruct()
+	}
+	if v.Audience != nil {
+		s.WriteString(schemas.AssumeRoleWithSAMLResponse_Audience, *v.Audience)
+	}
+	if v.Credentials != nil {
+		s.WriteStruct(schemas.AssumeRoleWithSAMLResponse_Credentials)
+		v.Credentials.SerializeMembers(s)
+		s.CloseStruct()
+	}
+	if v.Issuer != nil {
+		s.WriteString(schemas.AssumeRoleWithSAMLResponse_Issuer, *v.Issuer)
+	}
+	if v.NameQualifier != nil {
+		s.WriteString(schemas.AssumeRoleWithSAMLResponse_NameQualifier, *v.NameQualifier)
+	}
+	if v.PackedPolicySize != nil {
+		s.WriteInt32(schemas.AssumeRoleWithSAMLResponse_PackedPolicySize, *v.PackedPolicySize)
+	}
+	if v.SessionTokenSize != nil {
+		s.WriteInt32(schemas.AssumeRoleWithSAMLResponse_SessionTokenSize, *v.SessionTokenSize)
+	}
+	if v.SessionTokenUtilization != nil {
+		s.WriteInt32(schemas.AssumeRoleWithSAMLResponse_SessionTokenUtilization, *v.SessionTokenUtilization)
+	}
+	if v.SourceIdentity != nil {
+		s.WriteString(schemas.AssumeRoleWithSAMLResponse_SourceIdentity, *v.SourceIdentity)
+	}
+	if v.Subject != nil {
+		s.WriteString(schemas.AssumeRoleWithSAMLResponse_Subject, *v.Subject)
+	}
+	if v.SubjectType != nil {
+		s.WriteString(schemas.AssumeRoleWithSAMLResponse_SubjectType, *v.SubjectType)
+	}
+}
+func (v *AssumeRoleWithSAMLOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.AssumeRoleWithSAMLResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.AssumeRoleWithSAMLResponse_AssumedRoleUser:
+			v.AssumedRoleUser = &types.AssumedRoleUser{}
+			return v.AssumedRoleUser.Deserialize(d)
+		case schemas.AssumeRoleWithSAMLResponse_Audience:
+			v.Audience = new(string)
+			return d.ReadString(schemas.AssumeRoleWithSAMLResponse_Audience, v.Audience)
+		case schemas.AssumeRoleWithSAMLResponse_Credentials:
+			v.Credentials = &types.Credentials{}
+			return v.Credentials.Deserialize(d)
+		case schemas.AssumeRoleWithSAMLResponse_Issuer:
+			v.Issuer = new(string)
+			return d.ReadString(schemas.AssumeRoleWithSAMLResponse_Issuer, v.Issuer)
+		case schemas.AssumeRoleWithSAMLResponse_NameQualifier:
+			v.NameQualifier = new(string)
+			return d.ReadString(schemas.AssumeRoleWithSAMLResponse_NameQualifier, v.NameQualifier)
+		case schemas.AssumeRoleWithSAMLResponse_PackedPolicySize:
+			v.PackedPolicySize = new(int32)
+			return d.ReadInt32(schemas.AssumeRoleWithSAMLResponse_PackedPolicySize, v.PackedPolicySize)
+		case schemas.AssumeRoleWithSAMLResponse_SessionTokenSize:
+			v.SessionTokenSize = new(int32)
+			return d.ReadInt32(schemas.AssumeRoleWithSAMLResponse_SessionTokenSize, v.SessionTokenSize)
+		case schemas.AssumeRoleWithSAMLResponse_SessionTokenUtilization:
+			v.SessionTokenUtilization = new(int32)
+			return d.ReadInt32(schemas.AssumeRoleWithSAMLResponse_SessionTokenUtilization, v.SessionTokenUtilization)
+		case schemas.AssumeRoleWithSAMLResponse_SourceIdentity:
+			v.SourceIdentity = new(string)
+			return d.ReadString(schemas.AssumeRoleWithSAMLResponse_SourceIdentity, v.SourceIdentity)
+		case schemas.AssumeRoleWithSAMLResponse_Subject:
+			v.Subject = new(string)
+			return d.ReadString(schemas.AssumeRoleWithSAMLResponse_Subject, v.Subject)
+		case schemas.AssumeRoleWithSAMLResponse_SubjectType:
+			v.SubjectType = new(string)
+			return d.ReadString(schemas.AssumeRoleWithSAMLResponse_SubjectType, v.SubjectType)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationAssumeRoleWithSAMLMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsquery_serializeOpAssumeRoleWithSAML{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.AssumeRoleWithSAML, schemas.AssumeRoleWithSAMLRequest, schemas.AssumeRoleWithSAMLResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsquery_deserializeOpAssumeRoleWithSAML{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.AssumeRoleWithSAML, schemas.AssumeRoleWithSAMLRequest, schemas.AssumeRoleWithSAMLResponse), output: &AssumeRoleWithSAMLOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

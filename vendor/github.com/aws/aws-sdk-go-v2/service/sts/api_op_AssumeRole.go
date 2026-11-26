@@ -5,7 +5,9 @@ package sts
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/aws/aws-sdk-go-v2/service/sts/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/sts/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -198,6 +200,12 @@ type AssumeRoleInput struct {
 	// [How to Use an External ID When Granting Access to Your Amazon Web Services Resources to a Third Party]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html
 	ExternalId *string
 
+	// The minimum size, in bytes, of the session token that STS issues for the
+	// request. STS increases the session token to at least this size, regardless of
+	// its actual content. The value must not exceed 4,096 bytes. When set to 0 or not
+	// specified, the session token size is unchanged.
+	MinimumSessionTokenSize *int32
+
 	// An IAM policy in JSON format that you want to use as an inline session policy.
 	//
 	// This parameter is optional. Passing policies to this operation returns new
@@ -363,6 +371,54 @@ type AssumeRoleInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *AssumeRoleInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.AssumeRoleRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *AssumeRoleInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DurationSeconds != nil {
+		s.WriteInt32(schemas.AssumeRoleRequest_DurationSeconds, *v.DurationSeconds)
+	}
+	if v.ExternalId != nil {
+		s.WriteString(schemas.AssumeRoleRequest_ExternalId, *v.ExternalId)
+	}
+	if v.MinimumSessionTokenSize != nil {
+		s.WriteInt32(schemas.AssumeRoleRequest_MinimumSessionTokenSize, *v.MinimumSessionTokenSize)
+	}
+	if v.Policy != nil {
+		s.WriteString(schemas.AssumeRoleRequest_Policy, *v.Policy)
+	}
+	if v.PolicyArns != nil {
+		serializepolicyDescriptorListType(s, schemas.AssumeRoleRequest_PolicyArns, v.PolicyArns)
+	}
+	if v.ProvidedContexts != nil {
+		serializeProvidedContextsListType(s, schemas.AssumeRoleRequest_ProvidedContexts, v.ProvidedContexts)
+	}
+	if v.RoleArn != nil {
+		s.WriteString(schemas.AssumeRoleRequest_RoleArn, *v.RoleArn)
+	}
+	if v.RoleSessionName != nil {
+		s.WriteString(schemas.AssumeRoleRequest_RoleSessionName, *v.RoleSessionName)
+	}
+	if v.SerialNumber != nil {
+		s.WriteString(schemas.AssumeRoleRequest_SerialNumber, *v.SerialNumber)
+	}
+	if v.SourceIdentity != nil {
+		s.WriteString(schemas.AssumeRoleRequest_SourceIdentity, *v.SourceIdentity)
+	}
+	if v.Tags != nil {
+		serializetagListType(s, schemas.AssumeRoleRequest_Tags, v.Tags)
+	}
+	if v.TokenCode != nil {
+		s.WriteString(schemas.AssumeRoleRequest_TokenCode, *v.TokenCode)
+	}
+	if v.TransitiveTagKeys != nil {
+		serializetagKeyListType(s, schemas.AssumeRoleRequest_TransitiveTagKeys, v.TransitiveTagKeys)
+	}
+}
+
 // Contains the response to a successful AssumeRole request, including temporary Amazon Web
 // Services credentials that can be used to make Amazon Web Services requests.
 type AssumeRoleOutput struct {
@@ -385,7 +441,17 @@ type AssumeRoleOutput struct {
 	// session tags combined passed in the request. The request fails if the packed
 	// size is greater than 100 percent, which means the policies and tags exceeded the
 	// allowed space.
+	//
+	// Deprecated: Deprecated. Replaced by SessionTokenUtilization.
 	PackedPolicySize *int32
+
+	// The size, in bytes, of the session token returned in the Credentials for this
+	// response.
+	SessionTokenSize *int32
+
+	// The percentage (0-100) of the maximum allowed session token size that the
+	// returned session token consumes.
+	SessionTokenUtilization *int32
 
 	// The source identity specified by the principal that is calling the AssumeRole
 	// operation.
@@ -411,13 +477,66 @@ type AssumeRoleOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *AssumeRoleOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.AssumeRoleResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *AssumeRoleOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.AssumedRoleUser != nil {
+		s.WriteStruct(schemas.AssumeRoleResponse_AssumedRoleUser)
+		v.AssumedRoleUser.SerializeMembers(s)
+		s.CloseStruct()
+	}
+	if v.Credentials != nil {
+		s.WriteStruct(schemas.AssumeRoleResponse_Credentials)
+		v.Credentials.SerializeMembers(s)
+		s.CloseStruct()
+	}
+	if v.PackedPolicySize != nil {
+		s.WriteInt32(schemas.AssumeRoleResponse_PackedPolicySize, *v.PackedPolicySize)
+	}
+	if v.SessionTokenSize != nil {
+		s.WriteInt32(schemas.AssumeRoleResponse_SessionTokenSize, *v.SessionTokenSize)
+	}
+	if v.SessionTokenUtilization != nil {
+		s.WriteInt32(schemas.AssumeRoleResponse_SessionTokenUtilization, *v.SessionTokenUtilization)
+	}
+	if v.SourceIdentity != nil {
+		s.WriteString(schemas.AssumeRoleResponse_SourceIdentity, *v.SourceIdentity)
+	}
+}
+func (v *AssumeRoleOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.AssumeRoleResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.AssumeRoleResponse_AssumedRoleUser:
+			v.AssumedRoleUser = &types.AssumedRoleUser{}
+			return v.AssumedRoleUser.Deserialize(d)
+		case schemas.AssumeRoleResponse_Credentials:
+			v.Credentials = &types.Credentials{}
+			return v.Credentials.Deserialize(d)
+		case schemas.AssumeRoleResponse_PackedPolicySize:
+			v.PackedPolicySize = new(int32)
+			return d.ReadInt32(schemas.AssumeRoleResponse_PackedPolicySize, v.PackedPolicySize)
+		case schemas.AssumeRoleResponse_SessionTokenSize:
+			v.SessionTokenSize = new(int32)
+			return d.ReadInt32(schemas.AssumeRoleResponse_SessionTokenSize, v.SessionTokenSize)
+		case schemas.AssumeRoleResponse_SessionTokenUtilization:
+			v.SessionTokenUtilization = new(int32)
+			return d.ReadInt32(schemas.AssumeRoleResponse_SessionTokenUtilization, v.SessionTokenUtilization)
+		case schemas.AssumeRoleResponse_SourceIdentity:
+			v.SourceIdentity = new(string)
+			return d.ReadString(schemas.AssumeRoleResponse_SourceIdentity, v.SourceIdentity)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationAssumeRoleMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsquery_serializeOpAssumeRole{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.AssumeRole, schemas.AssumeRoleRequest, schemas.AssumeRoleResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsquery_deserializeOpAssumeRole{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.AssumeRole, schemas.AssumeRoleRequest, schemas.AssumeRoleResponse), output: &AssumeRoleOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

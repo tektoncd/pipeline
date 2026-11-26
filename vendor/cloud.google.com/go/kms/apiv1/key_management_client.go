@@ -1484,6 +1484,113 @@ func NewKeyManagementClient(ctx context.Context, opts ...option.ClientOption) (*
 		client.CallOptions.TestIamPermissions = append(client.CallOptions.TestIamPermissions, gax.WithClientMetrics(metrics))
 		client.CallOptions.GetOperation = append(client.CallOptions.GetOperation, gax.WithClientMetrics(metrics))
 	}
+	if gax.IsFeatureEnabled("TRACING") {
+		tracing := gax.NewClientTracing(
+			gax.WithTracingAttributes(map[string]string{
+				gax.ClientService:  "cloudkms",
+				gax.ClientVersion:  getVersionClient(),
+				gax.ClientArtifact: "cloud.google.com/go/kms/apiv1",
+				gax.RPCSystem:      "grpc",
+				gax.URLDomain:      "cloudkms.googleapis.com",
+			}),
+		)
+
+		client.CallOptions.ListKeyRings = append(client.CallOptions.ListKeyRings, gax.WithClientTracing(tracing))
+		client.CallOptions.ListCryptoKeys = append(client.CallOptions.ListCryptoKeys, gax.WithClientTracing(tracing))
+		client.CallOptions.ListCryptoKeyVersions = append(client.CallOptions.ListCryptoKeyVersions, gax.WithClientTracing(tracing))
+		client.CallOptions.ListImportJobs = append(client.CallOptions.ListImportJobs, gax.WithClientTracing(tracing))
+		client.CallOptions.ListRetiredResources = append(client.CallOptions.ListRetiredResources, gax.WithClientTracing(tracing))
+		client.CallOptions.GetKeyRing = append(client.CallOptions.GetKeyRing, gax.WithClientTracing(tracing))
+		client.CallOptions.GetCryptoKey = append(client.CallOptions.GetCryptoKey, gax.WithClientTracing(tracing))
+		client.CallOptions.GetCryptoKeyVersion = append(client.CallOptions.GetCryptoKeyVersion, gax.WithClientTracing(tracing))
+		client.CallOptions.GetPublicKey = append(client.CallOptions.GetPublicKey, gax.WithClientTracing(tracing))
+		client.CallOptions.GetImportJob = append(client.CallOptions.GetImportJob, gax.WithClientTracing(tracing))
+		client.CallOptions.GetRetiredResource = append(client.CallOptions.GetRetiredResource, gax.WithClientTracing(tracing))
+		client.CallOptions.CreateKeyRing = append(client.CallOptions.CreateKeyRing, gax.WithClientTracing(tracing))
+		client.CallOptions.CreateCryptoKey = append(client.CallOptions.CreateCryptoKey, gax.WithClientTracing(tracing))
+		client.CallOptions.CreateCryptoKeyVersion = append(client.CallOptions.CreateCryptoKeyVersion, gax.WithClientTracing(tracing))
+		client.CallOptions.DeleteCryptoKey = append(client.CallOptions.DeleteCryptoKey, gax.WithClientTracing(tracing))
+		client.CallOptions.DeleteCryptoKeyVersion = append(client.CallOptions.DeleteCryptoKeyVersion, gax.WithClientTracing(tracing))
+		client.CallOptions.ImportCryptoKeyVersion = append(client.CallOptions.ImportCryptoKeyVersion, gax.WithClientTracing(tracing))
+		client.CallOptions.ImportTrustedKeyWrappedCryptoKeyVersion = append(client.CallOptions.ImportTrustedKeyWrappedCryptoKeyVersion, gax.WithClientTracing(tracing))
+		client.CallOptions.ExportTrustedKeyWrappedCryptoKeyVersion = append(client.CallOptions.ExportTrustedKeyWrappedCryptoKeyVersion, gax.WithClientTracing(tracing))
+		client.CallOptions.CreateImportJob = append(client.CallOptions.CreateImportJob, gax.WithClientTracing(tracing))
+		client.CallOptions.UpdateCryptoKey = append(client.CallOptions.UpdateCryptoKey, gax.WithClientTracing(tracing))
+		client.CallOptions.UpdateCryptoKeyVersion = append(client.CallOptions.UpdateCryptoKeyVersion, gax.WithClientTracing(tracing))
+		client.CallOptions.UpdateCryptoKeyPrimaryVersion = append(client.CallOptions.UpdateCryptoKeyPrimaryVersion, gax.WithClientTracing(tracing))
+		client.CallOptions.DestroyCryptoKeyVersion = append(client.CallOptions.DestroyCryptoKeyVersion, gax.WithClientTracing(tracing))
+		client.CallOptions.RestoreCryptoKeyVersion = append(client.CallOptions.RestoreCryptoKeyVersion, gax.WithClientTracing(tracing))
+		client.CallOptions.Encrypt = append(client.CallOptions.Encrypt, gax.WithClientTracing(tracing))
+		client.CallOptions.Decrypt = append(client.CallOptions.Decrypt, gax.WithClientTracing(tracing))
+		client.CallOptions.RawEncrypt = append(client.CallOptions.RawEncrypt, gax.WithClientTracing(tracing))
+		client.CallOptions.RawDecrypt = append(client.CallOptions.RawDecrypt, gax.WithClientTracing(tracing))
+		client.CallOptions.AsymmetricSign = append(client.CallOptions.AsymmetricSign, gax.WithClientTracing(tracing))
+		client.CallOptions.AsymmetricDecrypt = append(client.CallOptions.AsymmetricDecrypt, gax.WithClientTracing(tracing))
+		client.CallOptions.MacSign = append(client.CallOptions.MacSign, gax.WithClientTracing(tracing))
+		client.CallOptions.MacVerify = append(client.CallOptions.MacVerify, gax.WithClientTracing(tracing))
+		client.CallOptions.Decapsulate = append(client.CallOptions.Decapsulate, gax.WithClientTracing(tracing))
+		client.CallOptions.GenerateRandomBytes = append(client.CallOptions.GenerateRandomBytes, gax.WithClientTracing(tracing))
+		client.CallOptions.GetLocation = append(client.CallOptions.GetLocation, gax.WithClientTracing(tracing))
+		client.CallOptions.ListLocations = append(client.CallOptions.ListLocations, gax.WithClientTracing(tracing))
+		client.CallOptions.GetIamPolicy = append(client.CallOptions.GetIamPolicy, gax.WithClientTracing(tracing))
+		client.CallOptions.SetIamPolicy = append(client.CallOptions.SetIamPolicy, gax.WithClientTracing(tracing))
+		client.CallOptions.TestIamPermissions = append(client.CallOptions.TestIamPermissions, gax.WithClientTracing(tracing))
+		client.CallOptions.GetOperation = append(client.CallOptions.GetOperation, gax.WithClientTracing(tracing))
+	}
+	if gax.IsFeatureEnabled("LOGGING") {
+		logging := gax.NewClientLogging(
+			gax.WithLoggerProvider(c.logger),
+			gax.WithLoggingAttributes(map[string]string{
+				gax.ClientService:  "cloudkms",
+				gax.ClientVersion:  getVersionClient(),
+				gax.ClientArtifact: "cloud.google.com/go/kms/apiv1",
+				gax.RPCSystem:      "grpc",
+				gax.URLDomain:      "cloudkms.googleapis.com",
+			}),
+		)
+
+		client.CallOptions.ListKeyRings = append(client.CallOptions.ListKeyRings, gax.WithClientLogging(logging))
+		client.CallOptions.ListCryptoKeys = append(client.CallOptions.ListCryptoKeys, gax.WithClientLogging(logging))
+		client.CallOptions.ListCryptoKeyVersions = append(client.CallOptions.ListCryptoKeyVersions, gax.WithClientLogging(logging))
+		client.CallOptions.ListImportJobs = append(client.CallOptions.ListImportJobs, gax.WithClientLogging(logging))
+		client.CallOptions.ListRetiredResources = append(client.CallOptions.ListRetiredResources, gax.WithClientLogging(logging))
+		client.CallOptions.GetKeyRing = append(client.CallOptions.GetKeyRing, gax.WithClientLogging(logging))
+		client.CallOptions.GetCryptoKey = append(client.CallOptions.GetCryptoKey, gax.WithClientLogging(logging))
+		client.CallOptions.GetCryptoKeyVersion = append(client.CallOptions.GetCryptoKeyVersion, gax.WithClientLogging(logging))
+		client.CallOptions.GetPublicKey = append(client.CallOptions.GetPublicKey, gax.WithClientLogging(logging))
+		client.CallOptions.GetImportJob = append(client.CallOptions.GetImportJob, gax.WithClientLogging(logging))
+		client.CallOptions.GetRetiredResource = append(client.CallOptions.GetRetiredResource, gax.WithClientLogging(logging))
+		client.CallOptions.CreateKeyRing = append(client.CallOptions.CreateKeyRing, gax.WithClientLogging(logging))
+		client.CallOptions.CreateCryptoKey = append(client.CallOptions.CreateCryptoKey, gax.WithClientLogging(logging))
+		client.CallOptions.CreateCryptoKeyVersion = append(client.CallOptions.CreateCryptoKeyVersion, gax.WithClientLogging(logging))
+		client.CallOptions.DeleteCryptoKey = append(client.CallOptions.DeleteCryptoKey, gax.WithClientLogging(logging))
+		client.CallOptions.DeleteCryptoKeyVersion = append(client.CallOptions.DeleteCryptoKeyVersion, gax.WithClientLogging(logging))
+		client.CallOptions.ImportCryptoKeyVersion = append(client.CallOptions.ImportCryptoKeyVersion, gax.WithClientLogging(logging))
+		client.CallOptions.ImportTrustedKeyWrappedCryptoKeyVersion = append(client.CallOptions.ImportTrustedKeyWrappedCryptoKeyVersion, gax.WithClientLogging(logging))
+		client.CallOptions.ExportTrustedKeyWrappedCryptoKeyVersion = append(client.CallOptions.ExportTrustedKeyWrappedCryptoKeyVersion, gax.WithClientLogging(logging))
+		client.CallOptions.CreateImportJob = append(client.CallOptions.CreateImportJob, gax.WithClientLogging(logging))
+		client.CallOptions.UpdateCryptoKey = append(client.CallOptions.UpdateCryptoKey, gax.WithClientLogging(logging))
+		client.CallOptions.UpdateCryptoKeyVersion = append(client.CallOptions.UpdateCryptoKeyVersion, gax.WithClientLogging(logging))
+		client.CallOptions.UpdateCryptoKeyPrimaryVersion = append(client.CallOptions.UpdateCryptoKeyPrimaryVersion, gax.WithClientLogging(logging))
+		client.CallOptions.DestroyCryptoKeyVersion = append(client.CallOptions.DestroyCryptoKeyVersion, gax.WithClientLogging(logging))
+		client.CallOptions.RestoreCryptoKeyVersion = append(client.CallOptions.RestoreCryptoKeyVersion, gax.WithClientLogging(logging))
+		client.CallOptions.Encrypt = append(client.CallOptions.Encrypt, gax.WithClientLogging(logging))
+		client.CallOptions.Decrypt = append(client.CallOptions.Decrypt, gax.WithClientLogging(logging))
+		client.CallOptions.RawEncrypt = append(client.CallOptions.RawEncrypt, gax.WithClientLogging(logging))
+		client.CallOptions.RawDecrypt = append(client.CallOptions.RawDecrypt, gax.WithClientLogging(logging))
+		client.CallOptions.AsymmetricSign = append(client.CallOptions.AsymmetricSign, gax.WithClientLogging(logging))
+		client.CallOptions.AsymmetricDecrypt = append(client.CallOptions.AsymmetricDecrypt, gax.WithClientLogging(logging))
+		client.CallOptions.MacSign = append(client.CallOptions.MacSign, gax.WithClientLogging(logging))
+		client.CallOptions.MacVerify = append(client.CallOptions.MacVerify, gax.WithClientLogging(logging))
+		client.CallOptions.Decapsulate = append(client.CallOptions.Decapsulate, gax.WithClientLogging(logging))
+		client.CallOptions.GenerateRandomBytes = append(client.CallOptions.GenerateRandomBytes, gax.WithClientLogging(logging))
+		client.CallOptions.GetLocation = append(client.CallOptions.GetLocation, gax.WithClientLogging(logging))
+		client.CallOptions.ListLocations = append(client.CallOptions.ListLocations, gax.WithClientLogging(logging))
+		client.CallOptions.GetIamPolicy = append(client.CallOptions.GetIamPolicy, gax.WithClientLogging(logging))
+		client.CallOptions.SetIamPolicy = append(client.CallOptions.SetIamPolicy, gax.WithClientLogging(logging))
+		client.CallOptions.TestIamPermissions = append(client.CallOptions.TestIamPermissions, gax.WithClientLogging(logging))
+		client.CallOptions.GetOperation = append(client.CallOptions.GetOperation, gax.WithClientLogging(logging))
+	}
 
 	client.internalClient = c
 
@@ -1645,6 +1752,113 @@ func NewKeyManagementRESTClient(ctx context.Context, opts ...option.ClientOption
 		callOpts.TestIamPermissions = append(callOpts.TestIamPermissions, gax.WithClientMetrics(metrics))
 		callOpts.GetOperation = append(callOpts.GetOperation, gax.WithClientMetrics(metrics))
 	}
+	if gax.IsFeatureEnabled("TRACING") {
+		tracing := gax.NewClientTracing(
+			gax.WithTracingAttributes(map[string]string{
+				gax.ClientService:  "cloudkms",
+				gax.ClientVersion:  getVersionClient(),
+				gax.ClientArtifact: "cloud.google.com/go/kms/apiv1",
+				gax.RPCSystem:      "http",
+				gax.URLDomain:      "cloudkms.googleapis.com",
+			}),
+		)
+
+		callOpts.ListKeyRings = append(callOpts.ListKeyRings, gax.WithClientTracing(tracing))
+		callOpts.ListCryptoKeys = append(callOpts.ListCryptoKeys, gax.WithClientTracing(tracing))
+		callOpts.ListCryptoKeyVersions = append(callOpts.ListCryptoKeyVersions, gax.WithClientTracing(tracing))
+		callOpts.ListImportJobs = append(callOpts.ListImportJobs, gax.WithClientTracing(tracing))
+		callOpts.ListRetiredResources = append(callOpts.ListRetiredResources, gax.WithClientTracing(tracing))
+		callOpts.GetKeyRing = append(callOpts.GetKeyRing, gax.WithClientTracing(tracing))
+		callOpts.GetCryptoKey = append(callOpts.GetCryptoKey, gax.WithClientTracing(tracing))
+		callOpts.GetCryptoKeyVersion = append(callOpts.GetCryptoKeyVersion, gax.WithClientTracing(tracing))
+		callOpts.GetPublicKey = append(callOpts.GetPublicKey, gax.WithClientTracing(tracing))
+		callOpts.GetImportJob = append(callOpts.GetImportJob, gax.WithClientTracing(tracing))
+		callOpts.GetRetiredResource = append(callOpts.GetRetiredResource, gax.WithClientTracing(tracing))
+		callOpts.CreateKeyRing = append(callOpts.CreateKeyRing, gax.WithClientTracing(tracing))
+		callOpts.CreateCryptoKey = append(callOpts.CreateCryptoKey, gax.WithClientTracing(tracing))
+		callOpts.CreateCryptoKeyVersion = append(callOpts.CreateCryptoKeyVersion, gax.WithClientTracing(tracing))
+		callOpts.DeleteCryptoKey = append(callOpts.DeleteCryptoKey, gax.WithClientTracing(tracing))
+		callOpts.DeleteCryptoKeyVersion = append(callOpts.DeleteCryptoKeyVersion, gax.WithClientTracing(tracing))
+		callOpts.ImportCryptoKeyVersion = append(callOpts.ImportCryptoKeyVersion, gax.WithClientTracing(tracing))
+		callOpts.ImportTrustedKeyWrappedCryptoKeyVersion = append(callOpts.ImportTrustedKeyWrappedCryptoKeyVersion, gax.WithClientTracing(tracing))
+		callOpts.ExportTrustedKeyWrappedCryptoKeyVersion = append(callOpts.ExportTrustedKeyWrappedCryptoKeyVersion, gax.WithClientTracing(tracing))
+		callOpts.CreateImportJob = append(callOpts.CreateImportJob, gax.WithClientTracing(tracing))
+		callOpts.UpdateCryptoKey = append(callOpts.UpdateCryptoKey, gax.WithClientTracing(tracing))
+		callOpts.UpdateCryptoKeyVersion = append(callOpts.UpdateCryptoKeyVersion, gax.WithClientTracing(tracing))
+		callOpts.UpdateCryptoKeyPrimaryVersion = append(callOpts.UpdateCryptoKeyPrimaryVersion, gax.WithClientTracing(tracing))
+		callOpts.DestroyCryptoKeyVersion = append(callOpts.DestroyCryptoKeyVersion, gax.WithClientTracing(tracing))
+		callOpts.RestoreCryptoKeyVersion = append(callOpts.RestoreCryptoKeyVersion, gax.WithClientTracing(tracing))
+		callOpts.Encrypt = append(callOpts.Encrypt, gax.WithClientTracing(tracing))
+		callOpts.Decrypt = append(callOpts.Decrypt, gax.WithClientTracing(tracing))
+		callOpts.RawEncrypt = append(callOpts.RawEncrypt, gax.WithClientTracing(tracing))
+		callOpts.RawDecrypt = append(callOpts.RawDecrypt, gax.WithClientTracing(tracing))
+		callOpts.AsymmetricSign = append(callOpts.AsymmetricSign, gax.WithClientTracing(tracing))
+		callOpts.AsymmetricDecrypt = append(callOpts.AsymmetricDecrypt, gax.WithClientTracing(tracing))
+		callOpts.MacSign = append(callOpts.MacSign, gax.WithClientTracing(tracing))
+		callOpts.MacVerify = append(callOpts.MacVerify, gax.WithClientTracing(tracing))
+		callOpts.Decapsulate = append(callOpts.Decapsulate, gax.WithClientTracing(tracing))
+		callOpts.GenerateRandomBytes = append(callOpts.GenerateRandomBytes, gax.WithClientTracing(tracing))
+		callOpts.GetLocation = append(callOpts.GetLocation, gax.WithClientTracing(tracing))
+		callOpts.ListLocations = append(callOpts.ListLocations, gax.WithClientTracing(tracing))
+		callOpts.GetIamPolicy = append(callOpts.GetIamPolicy, gax.WithClientTracing(tracing))
+		callOpts.SetIamPolicy = append(callOpts.SetIamPolicy, gax.WithClientTracing(tracing))
+		callOpts.TestIamPermissions = append(callOpts.TestIamPermissions, gax.WithClientTracing(tracing))
+		callOpts.GetOperation = append(callOpts.GetOperation, gax.WithClientTracing(tracing))
+	}
+	if gax.IsFeatureEnabled("LOGGING") {
+		logging := gax.NewClientLogging(
+			gax.WithLoggerProvider(c.logger),
+			gax.WithLoggingAttributes(map[string]string{
+				gax.ClientService:  "cloudkms",
+				gax.ClientVersion:  getVersionClient(),
+				gax.ClientArtifact: "cloud.google.com/go/kms/apiv1",
+				gax.RPCSystem:      "http",
+				gax.URLDomain:      "cloudkms.googleapis.com",
+			}),
+		)
+
+		callOpts.ListKeyRings = append(callOpts.ListKeyRings, gax.WithClientLogging(logging))
+		callOpts.ListCryptoKeys = append(callOpts.ListCryptoKeys, gax.WithClientLogging(logging))
+		callOpts.ListCryptoKeyVersions = append(callOpts.ListCryptoKeyVersions, gax.WithClientLogging(logging))
+		callOpts.ListImportJobs = append(callOpts.ListImportJobs, gax.WithClientLogging(logging))
+		callOpts.ListRetiredResources = append(callOpts.ListRetiredResources, gax.WithClientLogging(logging))
+		callOpts.GetKeyRing = append(callOpts.GetKeyRing, gax.WithClientLogging(logging))
+		callOpts.GetCryptoKey = append(callOpts.GetCryptoKey, gax.WithClientLogging(logging))
+		callOpts.GetCryptoKeyVersion = append(callOpts.GetCryptoKeyVersion, gax.WithClientLogging(logging))
+		callOpts.GetPublicKey = append(callOpts.GetPublicKey, gax.WithClientLogging(logging))
+		callOpts.GetImportJob = append(callOpts.GetImportJob, gax.WithClientLogging(logging))
+		callOpts.GetRetiredResource = append(callOpts.GetRetiredResource, gax.WithClientLogging(logging))
+		callOpts.CreateKeyRing = append(callOpts.CreateKeyRing, gax.WithClientLogging(logging))
+		callOpts.CreateCryptoKey = append(callOpts.CreateCryptoKey, gax.WithClientLogging(logging))
+		callOpts.CreateCryptoKeyVersion = append(callOpts.CreateCryptoKeyVersion, gax.WithClientLogging(logging))
+		callOpts.DeleteCryptoKey = append(callOpts.DeleteCryptoKey, gax.WithClientLogging(logging))
+		callOpts.DeleteCryptoKeyVersion = append(callOpts.DeleteCryptoKeyVersion, gax.WithClientLogging(logging))
+		callOpts.ImportCryptoKeyVersion = append(callOpts.ImportCryptoKeyVersion, gax.WithClientLogging(logging))
+		callOpts.ImportTrustedKeyWrappedCryptoKeyVersion = append(callOpts.ImportTrustedKeyWrappedCryptoKeyVersion, gax.WithClientLogging(logging))
+		callOpts.ExportTrustedKeyWrappedCryptoKeyVersion = append(callOpts.ExportTrustedKeyWrappedCryptoKeyVersion, gax.WithClientLogging(logging))
+		callOpts.CreateImportJob = append(callOpts.CreateImportJob, gax.WithClientLogging(logging))
+		callOpts.UpdateCryptoKey = append(callOpts.UpdateCryptoKey, gax.WithClientLogging(logging))
+		callOpts.UpdateCryptoKeyVersion = append(callOpts.UpdateCryptoKeyVersion, gax.WithClientLogging(logging))
+		callOpts.UpdateCryptoKeyPrimaryVersion = append(callOpts.UpdateCryptoKeyPrimaryVersion, gax.WithClientLogging(logging))
+		callOpts.DestroyCryptoKeyVersion = append(callOpts.DestroyCryptoKeyVersion, gax.WithClientLogging(logging))
+		callOpts.RestoreCryptoKeyVersion = append(callOpts.RestoreCryptoKeyVersion, gax.WithClientLogging(logging))
+		callOpts.Encrypt = append(callOpts.Encrypt, gax.WithClientLogging(logging))
+		callOpts.Decrypt = append(callOpts.Decrypt, gax.WithClientLogging(logging))
+		callOpts.RawEncrypt = append(callOpts.RawEncrypt, gax.WithClientLogging(logging))
+		callOpts.RawDecrypt = append(callOpts.RawDecrypt, gax.WithClientLogging(logging))
+		callOpts.AsymmetricSign = append(callOpts.AsymmetricSign, gax.WithClientLogging(logging))
+		callOpts.AsymmetricDecrypt = append(callOpts.AsymmetricDecrypt, gax.WithClientLogging(logging))
+		callOpts.MacSign = append(callOpts.MacSign, gax.WithClientLogging(logging))
+		callOpts.MacVerify = append(callOpts.MacVerify, gax.WithClientLogging(logging))
+		callOpts.Decapsulate = append(callOpts.Decapsulate, gax.WithClientLogging(logging))
+		callOpts.GenerateRandomBytes = append(callOpts.GenerateRandomBytes, gax.WithClientLogging(logging))
+		callOpts.GetLocation = append(callOpts.GetLocation, gax.WithClientLogging(logging))
+		callOpts.ListLocations = append(callOpts.ListLocations, gax.WithClientLogging(logging))
+		callOpts.GetIamPolicy = append(callOpts.GetIamPolicy, gax.WithClientLogging(logging))
+		callOpts.SetIamPolicy = append(callOpts.SetIamPolicy, gax.WithClientLogging(logging))
+		callOpts.TestIamPermissions = append(callOpts.TestIamPermissions, gax.WithClientLogging(logging))
+		callOpts.GetOperation = append(callOpts.GetOperation, gax.WithClientLogging(logging))
+	}
 
 	lroOpts := []option.ClientOption{
 		option.WithHTTPClient(httpClient),
@@ -1701,9 +1915,6 @@ func (c *keyManagementGRPCClient) ListKeyRings(ctx context.Context, req *kmspb.L
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetParent()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/ListKeyRings")
 	}
@@ -1753,9 +1964,6 @@ func (c *keyManagementGRPCClient) ListCryptoKeys(ctx context.Context, req *kmspb
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetParent()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/ListCryptoKeys")
 	}
@@ -1805,9 +2013,6 @@ func (c *keyManagementGRPCClient) ListCryptoKeyVersions(ctx context.Context, req
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetParent()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/ListCryptoKeyVersions")
 	}
@@ -1857,9 +2062,6 @@ func (c *keyManagementGRPCClient) ListImportJobs(ctx context.Context, req *kmspb
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetParent()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/ListImportJobs")
 	}
@@ -1909,9 +2111,6 @@ func (c *keyManagementGRPCClient) ListRetiredResources(ctx context.Context, req 
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetParent()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/ListRetiredResources")
 	}
@@ -1961,9 +2160,6 @@ func (c *keyManagementGRPCClient) GetKeyRing(ctx context.Context, req *kmspb.Get
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/GetKeyRing")
 	}
@@ -1985,9 +2181,6 @@ func (c *keyManagementGRPCClient) GetCryptoKey(ctx context.Context, req *kmspb.G
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/GetCryptoKey")
 	}
@@ -2009,9 +2202,6 @@ func (c *keyManagementGRPCClient) GetCryptoKeyVersion(ctx context.Context, req *
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/GetCryptoKeyVersion")
 	}
@@ -2033,9 +2223,6 @@ func (c *keyManagementGRPCClient) GetPublicKey(ctx context.Context, req *kmspb.G
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/GetPublicKey")
 	}
@@ -2057,9 +2244,6 @@ func (c *keyManagementGRPCClient) GetImportJob(ctx context.Context, req *kmspb.G
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/GetImportJob")
 	}
@@ -2081,9 +2265,6 @@ func (c *keyManagementGRPCClient) GetRetiredResource(ctx context.Context, req *k
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/GetRetiredResource")
 	}
@@ -2105,9 +2286,6 @@ func (c *keyManagementGRPCClient) CreateKeyRing(ctx context.Context, req *kmspb.
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetParent()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/CreateKeyRing")
 	}
@@ -2129,9 +2307,6 @@ func (c *keyManagementGRPCClient) CreateCryptoKey(ctx context.Context, req *kmsp
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetParent()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/CreateCryptoKey")
 	}
@@ -2153,9 +2328,6 @@ func (c *keyManagementGRPCClient) CreateCryptoKeyVersion(ctx context.Context, re
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetParent()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/CreateCryptoKeyVersion")
 	}
@@ -2177,9 +2349,6 @@ func (c *keyManagementGRPCClient) DeleteCryptoKey(ctx context.Context, req *kmsp
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/DeleteCryptoKey")
 	}
@@ -2207,9 +2376,6 @@ func (c *keyManagementGRPCClient) DeleteCryptoKeyVersion(ctx context.Context, re
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/DeleteCryptoKeyVersion")
 	}
@@ -2237,9 +2403,6 @@ func (c *keyManagementGRPCClient) ImportCryptoKeyVersion(ctx context.Context, re
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetParent()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/ImportCryptoKeyVersion")
 	}
@@ -2282,9 +2445,6 @@ func (c *keyManagementGRPCClient) ExportTrustedKeyWrappedCryptoKeyVersion(ctx co
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/ExportTrustedKeyWrappedCryptoKeyVersion")
 	}
@@ -2306,9 +2466,6 @@ func (c *keyManagementGRPCClient) CreateImportJob(ctx context.Context, req *kmsp
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetParent()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/CreateImportJob")
 	}
@@ -2372,9 +2529,6 @@ func (c *keyManagementGRPCClient) UpdateCryptoKeyPrimaryVersion(ctx context.Cont
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/UpdateCryptoKeyPrimaryVersion")
 	}
@@ -2396,9 +2550,6 @@ func (c *keyManagementGRPCClient) DestroyCryptoKeyVersion(ctx context.Context, r
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/DestroyCryptoKeyVersion")
 	}
@@ -2420,9 +2571,6 @@ func (c *keyManagementGRPCClient) RestoreCryptoKeyVersion(ctx context.Context, r
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/RestoreCryptoKeyVersion")
 	}
@@ -2444,9 +2592,6 @@ func (c *keyManagementGRPCClient) Encrypt(ctx context.Context, req *kmspb.Encryp
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/Encrypt")
 	}
@@ -2468,9 +2613,6 @@ func (c *keyManagementGRPCClient) Decrypt(ctx context.Context, req *kmspb.Decryp
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/Decrypt")
 	}
@@ -2534,9 +2676,6 @@ func (c *keyManagementGRPCClient) AsymmetricSign(ctx context.Context, req *kmspb
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/AsymmetricSign")
 	}
@@ -2558,9 +2697,6 @@ func (c *keyManagementGRPCClient) AsymmetricDecrypt(ctx context.Context, req *km
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/AsymmetricDecrypt")
 	}
@@ -2582,9 +2718,6 @@ func (c *keyManagementGRPCClient) MacSign(ctx context.Context, req *kmspb.MacSig
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/MacSign")
 	}
@@ -2606,9 +2739,6 @@ func (c *keyManagementGRPCClient) MacVerify(ctx context.Context, req *kmspb.MacV
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/MacVerify")
 	}
@@ -2630,9 +2760,6 @@ func (c *keyManagementGRPCClient) Decapsulate(ctx context.Context, req *kmspb.De
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/Decapsulate")
 	}
@@ -2745,9 +2872,6 @@ func (c *keyManagementGRPCClient) GetIamPolicy(ctx context.Context, req *iampb.G
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//iam-meta-api.googleapis.com/%v", req.GetResource()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.iam.v1.IAMPolicy/GetIamPolicy")
 	}
@@ -2769,9 +2893,6 @@ func (c *keyManagementGRPCClient) SetIamPolicy(ctx context.Context, req *iampb.S
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//iam-meta-api.googleapis.com/%v", req.GetResource()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.iam.v1.IAMPolicy/SetIamPolicy")
 	}
@@ -2793,9 +2914,6 @@ func (c *keyManagementGRPCClient) TestIamPermissions(ctx context.Context, req *i
 
 	hds = append(c.xGoogHeaders, hds...)
 	ctx = gax.InsertMetadataIntoOutgoingContext(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//iam-meta-api.googleapis.com/%v", req.GetResource()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.iam.v1.IAMPolicy/TestIamPermissions")
 	}
@@ -2850,6 +2968,11 @@ func (c *keyManagementRESTClient) ListKeyRings(ctx context.Context, req *kmspb.L
 		}
 		baseUrl, err := url.Parse(c.endpoint)
 		if err != nil {
+			return nil, "", err
+		}
+		if err = gax.ValidatePathExpressions(
+			req.GetParent(),
+		); err != nil {
 			return nil, "", err
 		}
 		baseUrl.Path += fmt.Sprintf("/v1/%v/keyRings", req.GetParent())
@@ -2934,6 +3057,11 @@ func (c *keyManagementRESTClient) ListCryptoKeys(ctx context.Context, req *kmspb
 		}
 		baseUrl, err := url.Parse(c.endpoint)
 		if err != nil {
+			return nil, "", err
+		}
+		if err = gax.ValidatePathExpressions(
+			req.GetParent(),
+		); err != nil {
 			return nil, "", err
 		}
 		baseUrl.Path += fmt.Sprintf("/v1/%v/cryptoKeys", req.GetParent())
@@ -3023,6 +3151,11 @@ func (c *keyManagementRESTClient) ListCryptoKeyVersions(ctx context.Context, req
 		if err != nil {
 			return nil, "", err
 		}
+		if err = gax.ValidatePathExpressions(
+			req.GetParent(),
+		); err != nil {
+			return nil, "", err
+		}
 		baseUrl.Path += fmt.Sprintf("/v1/%v/cryptoKeyVersions", req.GetParent())
 
 		params := url.Values{}
@@ -3108,6 +3241,11 @@ func (c *keyManagementRESTClient) ListImportJobs(ctx context.Context, req *kmspb
 		}
 		baseUrl, err := url.Parse(c.endpoint)
 		if err != nil {
+			return nil, "", err
+		}
+		if err = gax.ValidatePathExpressions(
+			req.GetParent(),
+		); err != nil {
 			return nil, "", err
 		}
 		baseUrl.Path += fmt.Sprintf("/v1/%v/importJobs", req.GetParent())
@@ -3196,6 +3334,11 @@ func (c *keyManagementRESTClient) ListRetiredResources(ctx context.Context, req 
 		if err != nil {
 			return nil, "", err
 		}
+		if err = gax.ValidatePathExpressions(
+			req.GetParent(),
+		); err != nil {
+			return nil, "", err
+		}
 		baseUrl.Path += fmt.Sprintf("/v1/%v/retiredResources", req.GetParent())
 
 		params := url.Values{}
@@ -3261,6 +3404,11 @@ func (c *keyManagementRESTClient) GetKeyRing(ctx context.Context, req *kmspb.Get
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v", req.GetName())
 
 	params := url.Values{}
@@ -3274,9 +3422,6 @@ func (c *keyManagementRESTClient) GetKeyRing(ctx context.Context, req *kmspb.Get
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/GetKeyRing")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*}")
@@ -3320,6 +3465,11 @@ func (c *keyManagementRESTClient) GetCryptoKey(ctx context.Context, req *kmspb.G
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v", req.GetName())
 
 	params := url.Values{}
@@ -3333,9 +3483,6 @@ func (c *keyManagementRESTClient) GetCryptoKey(ctx context.Context, req *kmspb.G
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/GetCryptoKey")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/*}")
@@ -3378,6 +3525,11 @@ func (c *keyManagementRESTClient) GetCryptoKeyVersion(ctx context.Context, req *
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v", req.GetName())
 
 	params := url.Values{}
@@ -3391,9 +3543,6 @@ func (c *keyManagementRESTClient) GetCryptoKeyVersion(ctx context.Context, req *
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/GetCryptoKeyVersion")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*}")
@@ -3440,6 +3589,11 @@ func (c *keyManagementRESTClient) GetPublicKey(ctx context.Context, req *kmspb.G
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v/publicKey", req.GetName())
 
 	params := url.Values{}
@@ -3456,9 +3610,6 @@ func (c *keyManagementRESTClient) GetPublicKey(ctx context.Context, req *kmspb.G
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/GetPublicKey")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*}/publicKey")
@@ -3500,6 +3651,11 @@ func (c *keyManagementRESTClient) GetImportJob(ctx context.Context, req *kmspb.G
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v", req.GetName())
 
 	params := url.Values{}
@@ -3516,9 +3672,6 @@ func (c *keyManagementRESTClient) GetImportJob(ctx context.Context, req *kmspb.G
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/GetImportJob")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/importJobs/*}")
@@ -3562,6 +3715,11 @@ func (c *keyManagementRESTClient) GetRetiredResource(ctx context.Context, req *k
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v", req.GetName())
 
 	params := url.Values{}
@@ -3575,9 +3733,6 @@ func (c *keyManagementRESTClient) GetRetiredResource(ctx context.Context, req *k
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/GetRetiredResource")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/retiredResources/*}")
@@ -3627,6 +3782,11 @@ func (c *keyManagementRESTClient) CreateKeyRing(ctx context.Context, req *kmspb.
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetParent(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v/keyRings", req.GetParent())
 
 	params := url.Values{}
@@ -3641,9 +3801,6 @@ func (c *keyManagementRESTClient) CreateKeyRing(ctx context.Context, req *kmspb.
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetParent()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/CreateKeyRing")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{parent=projects/*/locations/*}/keyRings")
@@ -3697,6 +3854,11 @@ func (c *keyManagementRESTClient) CreateCryptoKey(ctx context.Context, req *kmsp
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetParent(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v/cryptoKeys", req.GetParent())
 
 	params := url.Values{}
@@ -3717,9 +3879,6 @@ func (c *keyManagementRESTClient) CreateCryptoKey(ctx context.Context, req *kmsp
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetParent()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/CreateCryptoKey")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{parent=projects/*/locations/*/keyRings/*}/cryptoKeys")
@@ -3773,6 +3932,11 @@ func (c *keyManagementRESTClient) CreateCryptoKeyVersion(ctx context.Context, re
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetParent(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v/cryptoKeyVersions", req.GetParent())
 
 	params := url.Values{}
@@ -3786,9 +3950,6 @@ func (c *keyManagementRESTClient) CreateCryptoKeyVersion(ctx context.Context, re
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetParent()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/CreateCryptoKeyVersion")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{parent=projects/*/locations/*/keyRings/*/cryptoKeys/*}/cryptoKeyVersions")
@@ -3835,6 +3996,11 @@ func (c *keyManagementRESTClient) DeleteCryptoKey(ctx context.Context, req *kmsp
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v", req.GetName())
 
 	params := url.Values{}
@@ -3848,9 +4014,6 @@ func (c *keyManagementRESTClient) DeleteCryptoKey(ctx context.Context, req *kmsp
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/DeleteCryptoKey")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/*}")
@@ -3909,6 +4072,11 @@ func (c *keyManagementRESTClient) DeleteCryptoKeyVersion(ctx context.Context, re
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v", req.GetName())
 
 	params := url.Values{}
@@ -3922,9 +4090,6 @@ func (c *keyManagementRESTClient) DeleteCryptoKeyVersion(ctx context.Context, re
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/DeleteCryptoKeyVersion")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*}")
@@ -3986,6 +4151,11 @@ func (c *keyManagementRESTClient) ImportCryptoKeyVersion(ctx context.Context, re
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetParent(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v/cryptoKeyVersions:import", req.GetParent())
 
 	params := url.Values{}
@@ -3999,9 +4169,6 @@ func (c *keyManagementRESTClient) ImportCryptoKeyVersion(ctx context.Context, re
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetParent()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/ImportCryptoKeyVersion")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{parent=projects/*/locations/*/keyRings/*/cryptoKeys/*}/cryptoKeyVersions:import")
@@ -4058,6 +4225,11 @@ func (c *keyManagementRESTClient) ImportTrustedKeyWrappedCryptoKeyVersion(ctx co
 
 	baseUrl, err := url.Parse(c.endpoint)
 	if err != nil {
+		return nil, err
+	}
+	if err = gax.ValidatePathExpressions(
+		req.GetParent(),
+	); err != nil {
 		return nil, err
 	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v/cryptoKeyVersions:importTrustedKeyWrappedCryptoKeyVersion", req.GetParent())
@@ -4124,6 +4296,11 @@ func (c *keyManagementRESTClient) ExportTrustedKeyWrappedCryptoKeyVersion(ctx co
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:exportTrustedKeyWrappedCryptoKeyVersion", req.GetName())
 
 	params := url.Values{}
@@ -4138,9 +4315,6 @@ func (c *keyManagementRESTClient) ExportTrustedKeyWrappedCryptoKeyVersion(ctx co
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/ExportTrustedKeyWrappedCryptoKeyVersion")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*}:exportTrustedKeyWrappedCryptoKeyVersion")
@@ -4193,6 +4367,11 @@ func (c *keyManagementRESTClient) CreateImportJob(ctx context.Context, req *kmsp
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetParent(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v/importJobs", req.GetParent())
 
 	params := url.Values{}
@@ -4207,9 +4386,6 @@ func (c *keyManagementRESTClient) CreateImportJob(ctx context.Context, req *kmsp
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetParent()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/CreateImportJob")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{parent=projects/*/locations/*/keyRings/*}/importJobs")
@@ -4256,6 +4432,11 @@ func (c *keyManagementRESTClient) UpdateCryptoKey(ctx context.Context, req *kmsp
 
 	baseUrl, err := url.Parse(c.endpoint)
 	if err != nil {
+		return nil, err
+	}
+	if err = gax.ValidatePathExpressions(
+		req.GetCryptoKey().GetName(),
+	); err != nil {
 		return nil, err
 	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v", req.GetCryptoKey().GetName())
@@ -4337,6 +4518,11 @@ func (c *keyManagementRESTClient) UpdateCryptoKeyVersion(ctx context.Context, re
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetCryptoKeyVersion().GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v", req.GetCryptoKeyVersion().GetName())
 
 	params := url.Values{}
@@ -4409,6 +4595,11 @@ func (c *keyManagementRESTClient) UpdateCryptoKeyPrimaryVersion(ctx context.Cont
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:updatePrimaryVersion", req.GetName())
 
 	params := url.Values{}
@@ -4422,9 +4613,6 @@ func (c *keyManagementRESTClient) UpdateCryptoKeyPrimaryVersion(ctx context.Cont
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/UpdateCryptoKeyPrimaryVersion")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/*}:updatePrimaryVersion")
@@ -4492,6 +4680,11 @@ func (c *keyManagementRESTClient) DestroyCryptoKeyVersion(ctx context.Context, r
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:destroy", req.GetName())
 
 	params := url.Values{}
@@ -4505,9 +4698,6 @@ func (c *keyManagementRESTClient) DestroyCryptoKeyVersion(ctx context.Context, r
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/DestroyCryptoKeyVersion")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*}:destroy")
@@ -4563,6 +4753,11 @@ func (c *keyManagementRESTClient) RestoreCryptoKeyVersion(ctx context.Context, r
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:restore", req.GetName())
 
 	params := url.Values{}
@@ -4576,9 +4771,6 @@ func (c *keyManagementRESTClient) RestoreCryptoKeyVersion(ctx context.Context, r
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/RestoreCryptoKeyVersion")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*}:restore")
@@ -4629,6 +4821,11 @@ func (c *keyManagementRESTClient) Encrypt(ctx context.Context, req *kmspb.Encryp
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:encrypt", req.GetName())
 
 	params := url.Values{}
@@ -4642,9 +4839,6 @@ func (c *keyManagementRESTClient) Encrypt(ctx context.Context, req *kmspb.Encryp
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/Encrypt")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/**}:encrypt")
@@ -4695,6 +4889,11 @@ func (c *keyManagementRESTClient) Decrypt(ctx context.Context, req *kmspb.Decryp
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:decrypt", req.GetName())
 
 	params := url.Values{}
@@ -4708,9 +4907,6 @@ func (c *keyManagementRESTClient) Decrypt(ctx context.Context, req *kmspb.Decryp
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/Decrypt")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/*}:decrypt")
@@ -4761,6 +4957,11 @@ func (c *keyManagementRESTClient) RawEncrypt(ctx context.Context, req *kmspb.Raw
 
 	baseUrl, err := url.Parse(c.endpoint)
 	if err != nil {
+		return nil, err
+	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
 		return nil, err
 	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:rawEncrypt", req.GetName())
@@ -4824,6 +5025,11 @@ func (c *keyManagementRESTClient) RawDecrypt(ctx context.Context, req *kmspb.Raw
 
 	baseUrl, err := url.Parse(c.endpoint)
 	if err != nil {
+		return nil, err
+	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
 		return nil, err
 	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:rawDecrypt", req.GetName())
@@ -4890,6 +5096,11 @@ func (c *keyManagementRESTClient) AsymmetricSign(ctx context.Context, req *kmspb
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:asymmetricSign", req.GetName())
 
 	params := url.Values{}
@@ -4903,9 +5114,6 @@ func (c *keyManagementRESTClient) AsymmetricSign(ctx context.Context, req *kmspb
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/AsymmetricSign")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*}:asymmetricSign")
@@ -4957,6 +5165,11 @@ func (c *keyManagementRESTClient) AsymmetricDecrypt(ctx context.Context, req *km
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:asymmetricDecrypt", req.GetName())
 
 	params := url.Values{}
@@ -4970,9 +5183,6 @@ func (c *keyManagementRESTClient) AsymmetricDecrypt(ctx context.Context, req *km
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/AsymmetricDecrypt")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*}:asymmetricDecrypt")
@@ -5022,6 +5232,11 @@ func (c *keyManagementRESTClient) MacSign(ctx context.Context, req *kmspb.MacSig
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:macSign", req.GetName())
 
 	params := url.Values{}
@@ -5035,9 +5250,6 @@ func (c *keyManagementRESTClient) MacSign(ctx context.Context, req *kmspb.MacSig
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/MacSign")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*}:macSign")
@@ -5088,6 +5300,11 @@ func (c *keyManagementRESTClient) MacVerify(ctx context.Context, req *kmspb.MacV
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:macVerify", req.GetName())
 
 	params := url.Values{}
@@ -5101,9 +5318,6 @@ func (c *keyManagementRESTClient) MacVerify(ctx context.Context, req *kmspb.MacV
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/MacVerify")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*}:macVerify")
@@ -5155,6 +5369,11 @@ func (c *keyManagementRESTClient) Decapsulate(ctx context.Context, req *kmspb.De
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:decapsulate", req.GetName())
 
 	params := url.Values{}
@@ -5168,9 +5387,6 @@ func (c *keyManagementRESTClient) Decapsulate(ctx context.Context, req *kmspb.De
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//cloudkms.googleapis.com/%v", req.GetName()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.cloud.kms.v1.KeyManagementService/Decapsulate")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{name=projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*}:decapsulate")
@@ -5217,6 +5433,11 @@ func (c *keyManagementRESTClient) GenerateRandomBytes(ctx context.Context, req *
 
 	baseUrl, err := url.Parse(c.endpoint)
 	if err != nil {
+		return nil, err
+	}
+	if err = gax.ValidatePathExpressions(
+		req.GetLocation(),
+	); err != nil {
 		return nil, err
 	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:generateRandomBytes", req.GetLocation())
@@ -5271,6 +5492,11 @@ func (c *keyManagementRESTClient) GenerateRandomBytes(ctx context.Context, req *
 func (c *keyManagementRESTClient) GetLocation(ctx context.Context, req *locationpb.GetLocationRequest, opts ...gax.CallOption) (*locationpb.Location, error) {
 	baseUrl, err := url.Parse(c.endpoint)
 	if err != nil {
+		return nil, err
+	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
 		return nil, err
 	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v", req.GetName())
@@ -5355,6 +5581,11 @@ func (c *keyManagementRESTClient) ListLocations(ctx context.Context, req *locati
 		if err != nil {
 			return nil, "", err
 		}
+		if err = gax.ValidatePathExpressions(
+			req.GetName(),
+		); err != nil {
+			return nil, "", err
+		}
 		baseUrl.Path += fmt.Sprintf("/v1/%v/locations", req.GetName())
 
 		params := url.Values{}
@@ -5424,6 +5655,11 @@ func (c *keyManagementRESTClient) GetIamPolicy(ctx context.Context, req *iampb.G
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetResource(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:getIamPolicy", req.GetResource())
 
 	params := url.Values{}
@@ -5440,9 +5676,6 @@ func (c *keyManagementRESTClient) GetIamPolicy(ctx context.Context, req *iampb.G
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//iam-meta-api.googleapis.com/%v", req.GetResource()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.iam.v1.IAMPolicy/GetIamPolicy")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{resource=projects/*/locations/*/keyRings/*}:getIamPolicy")
@@ -5494,6 +5727,11 @@ func (c *keyManagementRESTClient) SetIamPolicy(ctx context.Context, req *iampb.S
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetResource(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:setIamPolicy", req.GetResource())
 
 	params := url.Values{}
@@ -5507,9 +5745,6 @@ func (c *keyManagementRESTClient) SetIamPolicy(ctx context.Context, req *iampb.S
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//iam-meta-api.googleapis.com/%v", req.GetResource()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.iam.v1.IAMPolicy/SetIamPolicy")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{resource=projects/*/locations/*/keyRings/*}:setIamPolicy")
@@ -5563,6 +5798,11 @@ func (c *keyManagementRESTClient) TestIamPermissions(ctx context.Context, req *i
 	if err != nil {
 		return nil, err
 	}
+	if err = gax.ValidatePathExpressions(
+		req.GetResource(),
+	); err != nil {
+		return nil, err
+	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v:testIamPermissions", req.GetResource())
 
 	params := url.Values{}
@@ -5576,9 +5816,6 @@ func (c *keyManagementRESTClient) TestIamPermissions(ctx context.Context, req *i
 	hds = append(c.xGoogHeaders, hds...)
 	hds = append(hds, "Content-Type", "application/json")
 	headers := gax.BuildHeaders(ctx, hds...)
-	if gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
-		ctx = callctx.WithTelemetryContext(ctx, "resource_name", fmt.Sprintf("//iam-meta-api.googleapis.com/%v", req.GetResource()))
-	}
 	if gax.IsFeatureEnabled("METRICS") || gax.IsFeatureEnabled("TRACING") || gax.IsFeatureEnabled("LOGGING") {
 		ctx = callctx.WithTelemetryContext(ctx, "rpc_method", "google.iam.v1.IAMPolicy/TestIamPermissions")
 		ctx = callctx.WithTelemetryContext(ctx, "url_template", "/v1/{resource=projects/*/locations/*/keyRings/*}:testIamPermissions")
@@ -5618,6 +5855,11 @@ func (c *keyManagementRESTClient) TestIamPermissions(ctx context.Context, req *i
 func (c *keyManagementRESTClient) GetOperation(ctx context.Context, req *longrunningpb.GetOperationRequest, opts ...gax.CallOption) (*longrunningpb.Operation, error) {
 	baseUrl, err := url.Parse(c.endpoint)
 	if err != nil {
+		return nil, err
+	}
+	if err = gax.ValidatePathExpressions(
+		req.GetName(),
+	); err != nil {
 		return nil, err
 	}
 	baseUrl.Path += fmt.Sprintf("/v1/%v", req.GetName())

@@ -155,8 +155,14 @@ func (a AlgorithmDetails) checkKey(pubKey crypto.PublicKey) (bool, error) {
 		}
 		return ecdsaKey.Curve == *curve, nil
 	case ED25519:
-		_, ok := pubKey.(ed25519.PublicKey)
-		return ok, nil
+		edKey, ok := pubKey.(ed25519.PublicKey)
+		if !ok {
+			return false, nil
+		}
+		if err := cryptoutils.ValidateEd25519PublicKey(edKey); err != nil {
+			return false, err
+		}
+		return true, nil
 	case MLDSA:
 		mldsaKey, ok := pubKey.(*mldsa.PublicKey)
 		if !ok {
@@ -329,6 +335,9 @@ func GetDefaultPublicKeyDetails(publicKey crypto.PublicKey, opts ...LoadOption) 
 			return v1.PublicKeyDetails_PKIX_ECDSA_P521_SHA_512, nil
 		}
 	case ed25519.PublicKey:
+		if err := cryptoutils.ValidateEd25519PublicKey(pk); err != nil {
+			return v1.PublicKeyDetails_PUBLIC_KEY_DETAILS_UNSPECIFIED, err
+		}
 		if useED25519ph {
 			return v1.PublicKeyDetails_PKIX_ED25519_PH, nil
 		}
