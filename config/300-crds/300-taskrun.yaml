@@ -1906,6 +1906,16 @@ spec:
                           type: boolean
                         maxResultSize:
                           type: integer
+                        nonOverridableFields:
+                          description: |-
+                            NonOverridableFields is a comma-separated list of additional fields that operators
+                            can lock from being overridden per namespace.
+                          type: string
+                        perNamespaceConfiguration:
+                          description: |-
+                            PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
+                            are honored. Default: false.
+                          type: boolean
                         requireGitSSHSecretKnownHosts:
                           type: boolean
                         resultExtractionMethod:
@@ -2183,6 +2193,16 @@ spec:
                                 type: boolean
                               maxResultSize:
                                 type: integer
+                              nonOverridableFields:
+                                description: |-
+                                  NonOverridableFields is a comma-separated list of additional fields that operators
+                                  can lock from being overridden per namespace.
+                                type: string
+                              perNamespaceConfiguration:
+                                description: |-
+                                  PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
+                                  are honored. Default: false.
+                                type: boolean
                               requireGitSSHSecretKnownHosts:
                                 type: boolean
                               resultExtractionMethod:
@@ -4068,6 +4088,16 @@ spec:
                           type: boolean
                         maxResultSize:
                           type: integer
+                        nonOverridableFields:
+                          description: |-
+                            NonOverridableFields is a comma-separated list of additional fields that operators
+                            can lock from being overridden per namespace.
+                          type: string
+                        perNamespaceConfiguration:
+                          description: |-
+                            PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
+                            are honored. Default: false.
+                          type: boolean
                         requireGitSSHSecretKnownHosts:
                           type: boolean
                         resultExtractionMethod:
@@ -4337,6 +4367,16 @@ spec:
                                 type: boolean
                               maxResultSize:
                                 type: integer
+                              nonOverridableFields:
+                                description: |-
+                                  NonOverridableFields is a comma-separated list of additional fields that operators
+                                  can lock from being overridden per namespace.
+                                type: string
+                              perNamespaceConfiguration:
+                                description: |-
+                                  PerNamespaceConfiguration controls whether per-namespace ConfigMap overrides
+                                  are honored. Default: false.
+                                type: boolean
                               requireGitSSHSecretKnownHosts:
                                 type: boolean
                               resultExtractionMethod:

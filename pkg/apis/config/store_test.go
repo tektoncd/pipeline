@@ -88,3 +88,49 @@ func TestStoreLoadWithContext_Empty(t *testing.T) {
 		t.Errorf("Unexpected config %s", diff.PrintWantGot(d))
 	}
 }
+
+func TestStoreKeepsDefaultsOnInvalidTimeoutOrWorkspaceUpdate(t *testing.T) {
+	for key, value := range map[string]string{
+		"default-timeout-minutes":            "-1",
+		"default-task-run-workspace-binding": "[",
+	} {
+		t.Run(key, func(t *testing.T) {
+			valid := test.ConfigMapFromTestFile(t, "config-defaults")
+			store := config.NewStore(logtesting.TestLogger(t))
+			store.OnConfigChanged(valid)
+			want := store.Load().Defaults.DeepCopy()
+			invalid := valid.DeepCopy()
+			invalid.Data[key] = value
+
+			store.OnConfigChanged(invalid)
+
+			if d := cmp.Diff(want, store.Load().Defaults); d != "" {
+				t.Errorf("invalid update changed defaults (-want +got):\n%s", d)
+			}
+		})
+	}
+}
+
+func TestConfigDeepCopy(t *testing.T) {
+	if got := (*config.Config)(nil).DeepCopy(); got != nil {
+		t.Fatalf("nil.DeepCopy() = %#v, want nil", got)
+	}
+	if d := cmp.Diff(&config.Config{}, (&config.Config{}).DeepCopy()); d != "" {
+		t.Errorf("empty DeepCopy() mismatch (-want +got):\n%s", d)
+	}
+
+	original := config.FromContextOrDefaults(t.Context())
+	got := original.DeepCopy()
+	if d := cmp.Diff(original, got); d != "" {
+		t.Errorf("DeepCopy() mismatch (-want +got):\n%s", d)
+	}
+	if original.Defaults == got.Defaults ||
+		original.FeatureFlags == got.FeatureFlags ||
+		original.Metrics == got.Metrics ||
+		original.SpireConfig == got.SpireConfig ||
+		original.Events == got.Events ||
+		original.Tracing == got.Tracing ||
+		original.WaitExponentialBackoff == got.WaitExponentialBackoff {
+		t.Error("DeepCopy() retained a nested config pointer")
+	}
+}

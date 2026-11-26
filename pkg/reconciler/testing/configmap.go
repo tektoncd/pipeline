@@ -59,6 +59,34 @@ func NewFeatureFlagsConfigMapInSlice() []*corev1.ConfigMap {
 	return []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 }
 
+func NewNamespaceDefaultsConfigMap(namespace string, data map[string]string) *corev1.ConfigMap {
+	return namespaceConfigurationConfigMap(namespace, "tekton-config-defaults", data)
+}
+
+func NewNamespaceFeatureFlagsConfigMap(namespace string, data map[string]string) *corev1.ConfigMap {
+	return namespaceConfigurationConfigMap(namespace, "tekton-feature-flags", data)
+}
+
+func namespaceConfigurationConfigMap(namespace, name string, data map[string]string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app.kubernetes.io/part-of":  "tekton-pipelines",
+				"tekton.dev/pipeline-config": "true",
+			},
+		},
+		Data: data,
+	}
+}
+
+func NewPerNamespaceConfigInSlice(namespace string, defaultsData map[string]string) []*corev1.ConfigMap {
+	configMaps := NewFeatureFlagsConfigMapInSlice()
+	configMaps[0].Data[config.PerNamespaceConfigurationKey] = "true"
+	return append(configMaps, NewNamespaceDefaultsConfigMap(namespace, defaultsData))
+}
+
 func newFeatureFlagsConfigMap() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -109,6 +137,18 @@ func NewAlphaFeatureFlagsConfigMapWithMatrixInSlice(count int) []*corev1.ConfigM
 	)
 }
 
-func NewDefaultsCofigMapInSlice() []*corev1.ConfigMap {
+func NewDefaultsConfigMapInSlice() []*corev1.ConfigMap {
 	return []*corev1.ConfigMap{newDefaultsConfigMap()}
+}
+
+func NewDefaultsConfigMapWithValuesInSlice(data map[string]string) []*corev1.ConfigMap {
+	return []*corev1.ConfigMap{withDefaultsData(newDefaultsConfigMap(), data)}
+}
+
+func withDefaultsData(cm *corev1.ConfigMap, data map[string]string) *corev1.ConfigMap {
+	newCM := cm.DeepCopy()
+	for key, value := range data {
+		newCM.Data[key] = value
+	}
+	return newCM
 }
