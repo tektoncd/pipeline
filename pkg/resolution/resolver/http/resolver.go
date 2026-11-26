@@ -212,8 +212,10 @@ func makeHttpClient(ctx context.Context) (*http.Client, error) {
 			return nil, fmt.Errorf("error parsing timeout value %s: %w", v, err)
 		}
 	}
+
 	return &http.Client{
-		Timeout: timeout,
+		Timeout:   timeout,
+		Transport: framework.ResolverHTTPTransport(ctx),
 	}, nil
 }
 
