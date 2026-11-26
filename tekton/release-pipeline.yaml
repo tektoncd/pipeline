@@ -310,7 +310,7 @@ spec:
             description: The full URL of the release file (no tag) in the bucket
         steps:
           - name: create-results
-            image: docker.io/library/alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+            image: docker.io/library/alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
             env:
               - name: RELEASE_BUCKET
                 value: $(params.releaseBucket)
@@ -350,7 +350,7 @@ spec:
             description: Whether Chains signing succeeded (true, failed, or timeout)
         steps:
           - name: wait-and-extract
-            image: docker.io/alpine/k8s:1.37.1@sha256:712dc5385d1c1a3f83b747fa9e40f64d433a97f72ff42f9755ff7dd1f62846e4
+            image: docker.io/alpine/k8s:1.37.2@sha256:7a82aeefea3d554a43a8676b137f2b88bae6c1fe11c13862b191b3a086cc28c0
             script: |
               #!/bin/sh
               set -e
@@ -505,7 +505,7 @@ spec:
           - name: workarea
         steps:
           - name: setup
-            image: docker.io/library/alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+            image: docker.io/library/alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
             script: |
               #!/bin/sh
               set -e
