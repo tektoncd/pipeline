@@ -62,8 +62,12 @@ The controller sends cloud events in a parallel routine to allow for retries wit
 reconciliation. Retries are sent using an exponential back-off strategy.
 Because of retries, events are not guaranteed to be sent to the target sink in the order they happened.
 
-The controller uses an in-memory cache to deduplicate events. In case of controller restart,
-the cache is reset and a small number of duplicate events may be sent.
+The controller uses an in-memory cache to deduplicate events. Updates to a resource are
+only processed when its `Succeeded` condition changes, so periodic informer resyncs and
+metadata-only updates (labels, annotations, finalizers) do not re-send events, even after
+the cache entry has expired. When the controller restarts, or when another replica takes
+over a set of resources, its cache starts empty and events may be sent again for runs that
+still exist in the cluster.
 
 Resource      |Event                             |Event Type
 :-------------|:--------------------------------:|:---------------------------------------------------------:
