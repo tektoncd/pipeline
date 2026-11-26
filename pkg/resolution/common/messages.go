@@ -21,4 +21,11 @@ const (
 	// when a resolver has not yet returned any data for it or
 	// marked the request as invalid.
 	MessageWaitingForResolver = "waiting for resolver"
+
+	// MessageAuthenticationFailed hides secret names and keys in lookup errors.
+	MessageAuthenticationFailed = "cannot get API token, secret not accessible in namespace %s"
+
+	// MessageMissingRequestNamespace is returned when a user-specified secret
+	// cannot be scoped to the namespace of the resolution request.
+	MessageMissingRequestNamespace = "cannot get API token, secret not accessible: request namespace not available in context"
 )
