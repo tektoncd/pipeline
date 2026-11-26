@@ -344,6 +344,15 @@ data:
   default-sidecar-log-polling-interval: "100ms"
 ```
 
+Values in `config-defaults` are validated when the ConfigMap is loaded. A value that is semantically invalid
+(for example a negative `default-timeout-minutes`, a `default-task-run-workspace-binding` that is not a valid
+`WorkspaceBinding`, a `default-managed-by-label-value` that is not a valid Kubernetes label value, a
+`default-cloud-events-sink` that is not an http(s) URL, or a non-positive
+`default-step-ref-concurrency-limit` or `default-maximum-resolution-timeout`) is rejected by the config
+validation webhook, and the controller keeps using the last valid configuration instead of applying it.
+`0` remains valid where it has a documented meaning, such as no timeout for `default-timeout-minutes` and
+fail-fast for `default-imagepullbackoff-timeout` and `default-create-container-error-timeout`.
+
 ### `default-sidecar-log-polling-interval`
 
 The `default-sidecar-log-polling-interval` key in the `config-defaults` ConfigMap specifies how frequently the Tekton

@@ -5248,7 +5248,10 @@ spec:
 
 // TestReconcileInvalidDefaultWorkspace tests a reconcile of a TaskRun that does
 // not include a Workspace that the Task is expecting, and gets an error updating
-// the TaskRun with an invalid default workspace.
+// the TaskRun with an invalid default workspace. A binding with no volume
+// source is used here: malformed binding YAML is now rejected when the
+// config-defaults ConfigMap is loaded (see pkg/apis/config), while a
+// well-formed but invalid binding still fails at reconcile time.
 func TestReconcileInvalidDefaultWorkspace(t *testing.T) {
 	taskWithWorkspace := parse.MustParseV1Task(t, `
 metadata:
@@ -5282,7 +5285,7 @@ spec:
 	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
 		Data: map[string]string{
-			"default-task-run-workspace-binding": "emptyDir == {}",
+			"default-task-run-workspace-binding": "subPath: data",
 		},
 	})
 	testAssets, cancel := getTaskRunController(t, d)
