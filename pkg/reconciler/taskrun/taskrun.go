@@ -646,6 +646,7 @@ func (c *Reconciler) checkContainerFailure(
 func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "durationAndCountMetrics")
 	defer span.End()
+	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace), attribute.Bool("done", tr.IsDone()))
 	logger := logging.FromContext(ctx)
 	if tr.IsDone() {
 		if err := c.metrics.DurationAndCount(ctx, tr, beforeCondition); err != nil {
@@ -683,9 +684,15 @@ func newNativeSidecarFromCluster(client kubernetes.Interface, log *zap.SugaredLo
 	})
 }
 
-func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
+func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) (err error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "stopSidecars")
 	defer span.End()
+	defer func() { recordSpanError(span, err) }()
+	span.SetAttributes(
+		attribute.String("taskrun", tr.Name),
+		attribute.String("namespace", tr.Namespace),
+		attribute.String("pod", tr.Status.PodName),
+	)
 	logger := logging.FromContext(ctx)
 	// do not continue without knowing the associated pod
 	if tr.Status.PodName == "" {
@@ -729,6 +736,7 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1.TaskRun) error {
 func (c *Reconciler) emitReconcileEvents(ctx context.Context, tr *v1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "emitReconcileEvents")
 	defer span.End()
+	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 
 	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
 	if afterCondition.IsFalse() && !tr.IsCancelled() && tr.IsRetriable() {
@@ -753,6 +761,10 @@ func (c *Reconciler) emitReconcileEvents(ctx context.Context, tr *v1.TaskRun, be
 func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec, *resources.ResolvedTask, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "prepare")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("taskrun", tr.Name),
+		attribute.String("namespace", tr.Namespace),
+	)
 	logger := logging.FromContext(ctx)
 	tr.SetDefaults(ctx)
 
@@ -850,6 +862,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	if err := func() error {
 		_, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "validateTaskSpecRequestResources")
 		defer span.End()
+		span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 		return validateTaskSpecRequestResources(taskSpec)
 	}(); err != nil {
 		logger.Errorf("TaskRun %s taskSpec request resources are invalid: %v", tr.Name, err)
@@ -860,6 +873,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	if err := func() error {
 		spanCtx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "ValidateResolvedTask")
 		defer span.End()
+		span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 		return ValidateResolvedTask(spanCtx, tr.Spec.Params, &v1.Matrix{}, rtr)
 	}(); err != nil {
 		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
@@ -871,6 +885,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 		if err := func() error {
 			spanCtx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "ValidateEnumParam")
 			defer span.End()
+			span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 			return ValidateEnumParam(spanCtx, tr.Spec.Params, rtr.TaskSpec.Params)
 		}(); err != nil {
 			logger.Errorf("TaskRun %q Param Enum validation failed: %v", tr.Name, err)
@@ -882,6 +897,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	if err := func() error {
 		_, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "ValidateParamArrayIndex")
 		defer span.End()
+		span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 		return resources.ValidateParamArrayIndex(rtr.TaskSpec, tr.Spec.Params)
 	}(); err != nil {
 		logger.Errorf("TaskRun %q Param references are invalid: %v", tr.Name, err)
@@ -911,6 +927,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	if err := func() error {
 		spanCtx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "ValidateBindings")
 		defer span.End()
+		span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 		return workspace.ValidateBindings(spanCtx, workspaceDeclarations, tr.Spec.Workspaces)
 	}(); err != nil {
 		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
@@ -933,6 +950,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 	if err := func() error {
 		_, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "validateOverrides")
 		defer span.End()
+		span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 		return validateOverrides(taskSpec, &tr.Spec)
 	}(); err != nil {
 		logger.Errorf("TaskRun %q step or sidecar overrides are invalid: %v", tr.Name, err)
@@ -948,13 +966,19 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1.TaskRun) (*v1.TaskSpec,
 // It reports errors back to Reconcile, it updates the taskrun status in case of
 // error but it does not sync updates back to etcd. It does not emit events.
 // `reconcile` consumes spec and resources returned by `prepare`
-func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resources.ResolvedTask) error {
+func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resources.ResolvedTask) (err error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "reconcile")
 	defer span.End()
+	defer func() { recordSpanError(span, err) }()
+	span.SetAttributes(
+		attribute.String("taskrun", tr.Name),
+		attribute.String("task", rtr.TaskName),
+		attribute.String("namespace", tr.Namespace),
+		attribute.Int("step.count", len(rtr.TaskSpec.Steps)),
+	)
 
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
-	var err error
 
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
 	var pod *corev1.Pod
@@ -1100,6 +1124,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 	if err := func() error {
 		_, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "validateTaskRunResults")
 		defer span.End()
+		span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("task", rtr.TaskName), attribute.String("namespace", tr.Namespace))
 		return validateTaskRunResults(tr, rtr.TaskSpec)
 	}(); err != nil {
 		tr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
@@ -1113,6 +1138,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1.TaskRun, rtr *resourc
 func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr *v1.TaskRun, taskSpec *v1.TaskSpec) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updateTaskRunWithDefaultWorkspaces")
 	defer span.End()
+	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 	configMap := config.FromContextOrDefaults(ctx)
 	defaults := configMap.Defaults
 	if defaults.DefaultTaskRunWorkspaceBinding != "" {
@@ -1160,6 +1186,7 @@ func (c *Reconciler) syncMetadata(ctx context.Context, tr *v1.TaskRun) (err erro
 			span.RecordError(err)
 		}
 	}()
+	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 
 	existing, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
 	if err != nil {
@@ -1226,6 +1253,11 @@ func (c *Reconciler) handlePodCreationError(tr *v1.TaskRun, err error) error {
 func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1.TaskRun, reason v1.TaskRunReason, message string) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "failTaskRun")
 	defer span.End()
+	span.SetAttributes(
+		attribute.String("taskrun", tr.Name),
+		attribute.String("namespace", tr.Namespace),
+		attribute.String("failure.reason", string(reason)),
+	)
 	logger := logging.FromContext(ctx)
 
 	logger.Warnf("stopping task run %q because of %q", tr.Name, reason)
@@ -1369,6 +1401,12 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 			span.RecordError(err)
 		}
 	}()
+	span.SetAttributes(
+		attribute.String("taskrun", tr.Name),
+		attribute.String("task", rtr.TaskName),
+		attribute.String("namespace", tr.Namespace),
+		attribute.Int("step.count", len(ts.Steps)),
+	)
 	logger := logging.FromContext(ctx)
 
 	// We don't want to mutate tr.Status.TaskSpec inside
@@ -1479,6 +1517,7 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1.TaskSpec, tr *v1.Task
 func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tracer trace.Tracer, tr *v1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*v1.TaskSpec, error) {
 	ctx, span := tracer.Start(ctx, "applyParamsContextsResultsAndWorkspaces")
 	defer span.End()
+	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("task", rtr.TaskName), attribute.String("namespace", tr.Namespace))
 
 	ts := rtr.TaskSpec.DeepCopy()
 	var defaults []v1.ParamSpec
@@ -1487,6 +1526,7 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tracer trace.T
 	}
 	// Apply parameter substitution from the taskrun.
 	_, paramSpan := tracer.Start(ctx, "ApplyParameters")
+	paramSpan.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 	ts = resources.ApplyParameters(ts, tr, defaults...)
 	paramSpan.End()
 
@@ -1521,6 +1561,7 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tracer trace.T
 		}
 	}
 	_, workspaceSpan := tracer.Start(ctx, "ApplyWorkspaces")
+	workspaceSpan.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 	ts = resources.ApplyWorkspaces(ctx, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
 	workspaceSpan.End()
 	return ts, nil

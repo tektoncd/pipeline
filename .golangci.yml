@@ -177,6 +177,9 @@ linters:
           - maintidx
         path: pkg/reconciler/pipelinerun/pipelinerun\.go
       - linters:
+          - maintidx
+        path: pkg/reconciler/taskrun/taskrun\.go
+      - linters:
           - containedctx
         path: pkg/taskrunmetrics/injection\.go
       - linters:
