@@ -4505,6 +4505,141 @@ func Test_getFailureInfo(t *testing.T) {
 			},
 		},
 		wantReason: v1.TaskRunReasonPodEvicted,
+	}, {
+		name: "step result larger than allowed limit",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "step-build",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Message:  `[{"key":"StartedAt","value":"2026-01-02T15:04:05.000Z","type":3},{"key":"Reason","value":"ResultLargerThanAllowedLimit","type":3}]`,
+						},
+					},
+				}},
+			},
+		},
+		wantReason: v1.TaskRunReasonResultLargerThanAllowedLimit,
+	}, {
+		name: "step failed with malformed termination message falls back to StepFailed",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "step-build",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Message:  `{not valid json`,
+						},
+					},
+				}},
+			},
+		},
+		wantReason: v1.TaskRunReasonStepFailed,
+	}, {
+		name: "eviction + step result too large -> PodEvicted",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase:  corev1.PodFailed,
+				Reason: "Evicted",
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "step-build",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Message:  `[{"key":"Reason","value":"ResultLargerThanAllowedLimit","type":3}]`,
+						},
+					},
+				}},
+			},
+		},
+		wantReason: v1.TaskRunReasonPodEvicted,
+	}, {
+		name: "sidecar OOM + step result too large -> SidecarOOM",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "step-build",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+								Message:  `[{"key":"Reason","value":"ResultLargerThanAllowedLimit","type":3}]`,
+							},
+						},
+					},
+					{
+						Name: "sidecar-logging",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 137,
+								Reason:   "OOMKilled",
+							},
+						},
+					},
+				},
+			},
+		},
+		wantReason: v1.TaskRunReasonSidecarOOM,
+	}, {
+		name: "step OOM + step result too large -> StepOOM",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "step-results",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+								Message:  `[{"key":"Reason","value":"ResultLargerThanAllowedLimit","type":3}]`,
+							},
+						},
+					},
+					{
+						Name: "step-oom",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 137,
+								Reason:   "OOMKilled",
+							},
+						},
+					},
+				},
+			},
+		},
+		wantReason: v1.TaskRunReasonStepOOM,
+	}, {
+		name: "sidecar failed + step result too large -> SidecarFailed",
+		pod: &corev1.Pod{
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "step-build",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+								Message:  `[{"key":"Reason","value":"ResultLargerThanAllowedLimit","type":3}]`,
+							},
+						},
+					},
+					{
+						Name: "sidecar-logging",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+							},
+						},
+					},
+				},
+			},
+		},
+		wantReason: v1.TaskRunReasonSidecarFailed,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -4866,4 +5001,195 @@ func TestExtractExitCodeFromResults(t *testing.T) {
 			t.Fatalf("expected a parse error distinct from ErrResultNotFound, got %v", err)
 		}
 	})
+}
+
+func TestMakeTaskRunStatus_ResultLargerThanAllowedLimit(t *testing.T) {
+	resultTooLargeMsg := `[{"key":"StartedAt","value":"2026-01-02T15:04:05.000Z","type":3},{"key":"Reason","value":"ResultLargerThanAllowedLimit","type":3}]`
+
+	for _, tc := range []struct {
+		name                  string
+		pod                   corev1.Pod
+		tr                    v1.TaskRun
+		wantStatus            corev1.ConditionStatus
+		wantReason            string
+		wantMessage           string
+		wantTerminationReason string
+		wantResults           []v1.TaskRunResult
+		wantErr               bool
+	}{
+		{
+			name: "step result exceeds 4096 bytes surfaces TaskRunResultLargerThanAllowedLimit",
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "pod", Namespace: "foo"},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "step-build"}}},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodFailed,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name: "step-build",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+								Reason:   "Error",
+								Message:  resultTooLargeMsg,
+							},
+						},
+					}},
+				},
+			},
+			tr:                    v1.TaskRun{ObjectMeta: metav1.ObjectMeta{Name: "task-run", Namespace: "foo"}},
+			wantStatus:            corev1.ConditionFalse,
+			wantReason:            v1.TaskRunReasonResultLargerThanAllowedLimit.String(),
+			wantMessage:           `"step-build" exited because the step termination message exceeded the maximum allowed size of 4096 bytes`,
+			wantTerminationReason: TerminationReasonResultLargerThanAllowedLimit,
+		},
+		{
+			name: "onError continue preserves FailureIgnored reason with descriptive message",
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "pod", Namespace: "foo"},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "step-build"}}},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodFailed,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name: "step-build",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+								Reason:   "Error",
+								Message:  resultTooLargeMsg,
+							},
+						},
+					}},
+				},
+			},
+			tr: v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "task-run",
+					Namespace:   "foo",
+					Annotations: map[string]string{v1.PipelineTaskOnErrorAnnotation: string(v1.PipelineTaskContinue)},
+				},
+			},
+			wantStatus:            corev1.ConditionFalse,
+			wantReason:            v1.TaskRunReasonFailureIgnored.String(),
+			wantMessage:           `"step-build" exited because the step termination message exceeded the maximum allowed size of 4096 bytes`,
+			wantTerminationReason: TerminationReasonResultLargerThanAllowedLimit,
+		},
+		{
+			name: "normal step failure without internal reason reports StepFailed",
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "pod", Namespace: "foo"},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "step-build"}}},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodFailed,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name: "step-build",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+							},
+						},
+					}},
+				},
+			},
+			tr:          v1.TaskRun{ObjectMeta: metav1.ObjectMeta{Name: "task-run", Namespace: "foo"}},
+			wantStatus:  corev1.ConditionFalse,
+			wantReason:  v1.TaskRunReasonStepFailed.String(),
+			wantMessage: `"step-build" exited with code 1`,
+		},
+		{
+			name: "malformed termination message on failed step falls back to StepFailed",
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "pod", Namespace: "foo"},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "step-build"}}},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodFailed,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name: "step-build",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 1,
+								Message:  `{not valid json`,
+							},
+						},
+					}},
+				},
+			},
+			tr:          v1.TaskRun{ObjectMeta: metav1.ObjectMeta{Name: "task-run", Namespace: "foo"}},
+			wantStatus:  corev1.ConditionFalse,
+			wantReason:  v1.TaskRunReasonStepFailed.String(),
+			wantMessage: `"step-build" exited with code 1`,
+			wantErr:     true,
+		},
+		{
+			name: "task result within 4096 bytes succeeds and populates results",
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "pod", Namespace: "foo"},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "step-build"}}},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodSucceeded,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name: "step-build",
+						State: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 0,
+								Reason:   "Completed",
+								Message:  `[{"key":"res","value":"ok","type":1}]`,
+							},
+						},
+					}},
+				},
+			},
+			tr: v1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "task-run", Namespace: "foo"},
+				Spec: v1.TaskRunSpec{
+					TaskSpec: &v1.TaskSpec{
+						Results: []v1.TaskResult{{Name: "res", Type: v1.ResultsTypeString}},
+					},
+				},
+			},
+			wantStatus:            corev1.ConditionTrue,
+			wantReason:            v1.TaskRunReasonSuccessful.String(),
+			wantMessage:           "All Steps have completed executing",
+			wantTerminationReason: "Completed",
+			wantResults: []v1.TaskRunResult{{
+				Name:  "res",
+				Type:  v1.ResultsTypeString,
+				Value: *v1.NewStructuredValues("ok"),
+			}},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			logger, _ := logging.NewLogger("", "status")
+			kubeclient := fakek8s.NewSimpleClientset()
+			ts := tc.tr.Spec.TaskSpec
+			if ts == nil {
+				ts = &v1.TaskSpec{}
+			}
+			got, err := MakeTaskRunStatus(t.Context(), logger, tc.tr, &tc.pod, kubeclient, ts)
+			if tc.wantErr != (err != nil) {
+				t.Fatalf("MakeTaskRunStatus() err = %v, wantErr %v", err, tc.wantErr)
+			}
+			cond := got.GetCondition(apis.ConditionSucceeded)
+			if cond == nil {
+				t.Fatal("expected ConditionSucceeded to be set")
+			}
+			if cond.Status != tc.wantStatus {
+				t.Errorf("Status = %q, want %q", cond.Status, tc.wantStatus)
+			}
+			if cond.Reason != tc.wantReason {
+				t.Errorf("Reason = %q, want %q", cond.Reason, tc.wantReason)
+			}
+			if cond.Message != tc.wantMessage {
+				t.Errorf("Message = %q, want %q", cond.Message, tc.wantMessage)
+			}
+			if len(got.Steps) != 1 {
+				t.Fatalf("len(Steps) = %d, want 1", len(got.Steps))
+			}
+			if got.Steps[0].TerminationReason != tc.wantTerminationReason {
+				t.Errorf("Steps[0].TerminationReason = %q, want %q", got.Steps[0].TerminationReason, tc.wantTerminationReason)
+			}
+			if d := cmp.Diff(tc.wantResults, got.Results); d != "" {
+				t.Errorf("Results diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
 }

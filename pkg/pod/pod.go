@@ -79,6 +79,9 @@ const (
 	// TerminationReasonCancelled indicates a step was cancelled.
 	TerminationReasonCancelled = "Cancelled"
 
+	// TerminationReasonResultLargerThanAllowedLimit indicates a step's termination message exceeded the allowed size limit.
+	TerminationReasonResultLargerThanAllowedLimit = "ResultLargerThanAllowedLimit"
+
 	StepArtifactPathPattern = "step.artifacts.path"
 
 	// K8s version to determine if to use native k8s sidecar or Tekton sidecar

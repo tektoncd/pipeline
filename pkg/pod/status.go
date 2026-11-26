@@ -780,7 +780,7 @@ type failureInfo struct {
 //  4. SidecarOOM            - sidecar OOMKilled (init or regular container)
 //  5. StepOOM               - step OOMKilled
 //  6. SidecarFailed         - sidecar failed non-OOM (init or regular container)
-//  7. StepFailed            - step failed non-OOM
+//  7. StepFailed / TaskRunResultLargerThanAllowedLimit - step failed non-OOM
 //  8. Failed                - generic fallthrough (unknown)
 func getFailureInfo(pod *corev1.Pod) failureInfo {
 	// Check pod-level eviction first, this is authoritative.
@@ -863,6 +863,11 @@ func getFailureInfo(pod *corev1.Pod) failureInfo {
 			continue
 		}
 		if s.State.Terminated.ExitCode != 0 && IsContainerStep(s.Name) {
+			if results, err := termination.ParseMessage(zap.NewNop().Sugar(), s.State.Terminated.Message); err == nil {
+				if extractTerminationReasonFromResults(results) == TerminationReasonResultLargerThanAllowedLimit {
+					return failureInfo{reason: v1.TaskRunReasonResultLargerThanAllowedLimit, container: &pod.Status.ContainerStatuses[i]}
+				}
+			}
 			return failureInfo{reason: v1.TaskRunReasonStepFailed, container: &pod.Status.ContainerStatuses[i]}
 		}
 	}
@@ -926,8 +931,13 @@ func extractContainerFailureMessage(logger *zap.SugaredLogger, status corev1.Con
 		msg := status.State.Terminated.Message
 		r, _ := termination.ParseMessage(logger, msg)
 		for _, runResult := range r {
-			if runResult.ResultType == result.InternalTektonResultType && runResult.Key == "Reason" && runResult.Value == TerminationReasonTimeoutExceeded {
-				return fmt.Sprintf("%q exited because the step exceeded the specified timeout limit", status.Name)
+			if runResult.ResultType == result.InternalTektonResultType && runResult.Key == "Reason" {
+				switch runResult.Value {
+				case TerminationReasonTimeoutExceeded:
+					return fmt.Sprintf("%q exited because the step exceeded the specified timeout limit", status.Name)
+				case TerminationReasonResultLargerThanAllowedLimit:
+					return fmt.Sprintf("%q exited because the step termination message exceeded the maximum allowed size of %d bytes", status.Name, termination.MaxContainerTerminationMessageLength)
+				}
 			}
 		}
 		if term.ExitCode != 0 {
