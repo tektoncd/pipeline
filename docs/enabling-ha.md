@@ -67,9 +67,9 @@ spec:
         ]
 ```
 
-**Note:** If you set `-disable-ha=false` and run multiple replicas of the Controller, each replica will process work items separately, which will lead to unwanted behavior when creating resources (e.g., `TaskRuns`, etc.).
+**Note:** If you set `-disable-ha=true` and run multiple replicas of the Controller, each replica will process work items separately, which will lead to unwanted behavior when creating resources (e.g., `TaskRuns`, etc.).
 
-In general, setting `-disable-ha=false` is not recommended. Instead, to disable HA, simply run one replica of the Controller deployment.
+In general, setting `-disable-ha=true` is not recommended. Instead, to disable HA, simply run one replica of the Controller deployment.
 
 ## Webhook HA
 
