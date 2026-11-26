@@ -134,6 +134,11 @@ const (
 	// DefaultSurfacePodEvents is the default value for SurfacePodEvents
 	DefaultSurfacePodEvents = false
 
+	// EnableImageWorkspace is the flag to enable image volume sources in workspace bindings
+	EnableImageWorkspace = "enable-image-workspace"
+	// DefaultEnableImageWorkspace is the default value for EnableImageWorkspace
+	DefaultEnableImageWorkspace = false
+
 	// EnableStepActions is the flag to enable step actions (no-op since it's stable)
 	EnableStepActions = "enable-step-actions"
 
@@ -212,6 +217,13 @@ var (
 		Enabled:   DefaultAlphaFeatureEnabled,
 	}
 
+	// DefaultEnableImageWorkspaceFlag is the default PerFeatureFlag value for "enable-image-workspace"
+	DefaultEnableImageWorkspaceFlag = PerFeatureFlag{
+		Name:      EnableImageWorkspace,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
 	DefaultEnableTektonOCIBundles = PerFeatureFlag{
 		Name:       EnableTektonOCIBundles,
 		Stability:  AlphaAPIFields,
@@ -256,6 +268,7 @@ type FeatureFlags struct {
 	EnableTerminationMessageCompression bool   `json:"enableTerminationMessageCompression,omitempty"`
 	KeepStatusSpecDescriptions          bool   `json:"keepStatusSpecDescriptions,omitempty"`
 	EnableSurfacePodEvents              bool   `json:"enableSurfacePodEvents,omitempty"`
+	EnableImageWorkspace                bool   `json:"enableImageWorkspace,omitempty"`
 	// DeprecatedEnableTektonOCIBundles is maintained for backward compatibility
 	// to allow deletion of PipelineRuns created before v0.62.x.
 	// This field is not used and can be removed in a future release
@@ -376,6 +389,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setPerFeatureFlag(SurfacePodEvents, DefaultSurfacePodEventsFlag, &tc.EnableSurfacePodEvents); err != nil {
+		return nil, err
+	}
+	if err := setPerFeatureFlag(EnableImageWorkspace, DefaultEnableImageWorkspaceFlag, &tc.EnableImageWorkspace); err != nil {
 		return nil, err
 	}
 
