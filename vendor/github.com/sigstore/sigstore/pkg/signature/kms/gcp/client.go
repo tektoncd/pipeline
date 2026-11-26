@@ -28,6 +28,7 @@ import (
 	"io"
 	"log"
 	"regexp"
+	"sync"
 	"time"
 
 	gcpkms "cloud.google.com/go/kms/apiv1"
@@ -98,6 +99,8 @@ type gcpClient struct {
 	keyName    string
 	version    string
 	kvCache    *ttlcache.Cache[string, cryptoKeyVersion]
+	loadErrMu  sync.Mutex
+	loadErr    error
 	kmsClient  *gcpkms.KeyManagementClient
 }
 
@@ -126,8 +129,29 @@ func newGCPClient(ctx context.Context, refStr string, opts ...option.ClientOptio
 		return nil, fmt.Errorf("new gcp kms client: %w", err)
 	}
 
+	loader := ttlcache.LoaderFunc[string, cryptoKeyVersion](
+		func(c *ttlcache.Cache[string, cryptoKeyVersion], key string) *ttlcache.Item[string, cryptoKeyVersion] {
+			ttl := time.Second * 300
+			// if we're given an explicit version, cache this value forever
+			if g.version != "" {
+				ttl = ttlcache.NoTTL
+			}
+			data, err := g.keyVersionName(context.Background())
+			if err != nil {
+				g.loadErrMu.Lock()
+				g.loadErr = err
+				g.loadErrMu.Unlock()
+				return nil
+			}
+			return c.Set(key, *data, ttl)
+		},
+	)
+
 	g.kvCache = ttlcache.New[string, cryptoKeyVersion](
 		ttlcache.WithDisableTouchOnHit[string, cryptoKeyVersion](),
+		ttlcache.WithLoader[string, cryptoKeyVersion](
+			ttlcache.NewSuppressedLoader[string, cryptoKeyVersion](loader, nil),
+		),
 	)
 
 	// prime the cache
@@ -309,43 +333,20 @@ func (g *gcpClient) getHashFunc() (crypto.Hash, error) {
 // getCKV gets the latest CryptoKeyVersion from the client's cache, which may trigger an actual
 // call to GCP if the existing entry in the cache has expired.
 func (g *gcpClient) getCKV() (*cryptoKeyVersion, error) {
-	var lerr error
-	loader := ttlcache.LoaderFunc[string, cryptoKeyVersion](
-		func(c *ttlcache.Cache[string, cryptoKeyVersion], key string) *ttlcache.Item[string, cryptoKeyVersion] {
-			var ttl time.Duration
-			var data *cryptoKeyVersion
-
-			// if we're given an explicit version, cache this value forever
-			if g.version != "" {
-				ttl = time.Second * 0
-			} else {
-				ttl = time.Second * 300
-			}
-			data, lerr = g.keyVersionName(context.Background())
-			if lerr == nil {
-				return c.Set(key, *data, ttl)
-			}
-			return nil
-		},
-	)
-
 	// we get once and use consistently to ensure the cache value doesn't change underneath us
-	item := g.kvCache.Get(cacheKey, ttlcache.WithLoader[string, cryptoKeyVersion](loader))
+	item := g.kvCache.Get(cacheKey)
 	if item != nil {
 		v := item.Value()
 		return &v, nil
 	}
-	return nil, lerr
+	g.loadErrMu.Lock()
+	defer g.loadErrMu.Unlock()
+	return nil, g.loadErr
 }
 
-func (g *gcpClient) sign(ctx context.Context, digest []byte, alg crypto.Hash, crc uint32) ([]byte, error) {
-	ckv, err := g.getCKV()
-	if err != nil {
-		return nil, err
-	}
-
+func (g *gcpClient) sign(ctx context.Context, keyVersionName string, digest []byte, alg crypto.Hash, crc uint32) ([]byte, error) {
 	gcpSignReq := kmspb.AsymmetricSignRequest{
-		Name: ckv.CryptoKeyVersion.Name,
+		Name: keyVersionName,
 	}
 
 	switch alg {

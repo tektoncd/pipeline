@@ -25,6 +25,7 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature/options"
 )
@@ -266,6 +267,12 @@ func (h SignerVerifier) VerifySignature(sig, message io.Reader, opts ...signatur
 	sigBytes, err := io.ReadAll(sig)
 	if err != nil {
 		return fmt.Errorf("reading signature: %w", err)
+	}
+
+	if _, ok := pub.(ed25519.PublicKey); ok {
+		if err := cryptoutils.ValidateEd25519SignatureR(sigBytes); err != nil {
+			return err
+		}
 	}
 
 	return h.client.verify(sigBytes, digest, hashFunc, opts...)

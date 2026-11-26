@@ -9,7 +9,8 @@ import (
 	"github.com/aws/smithy-go/middleware"
 )
 
-// Attaches a key policy to the specified KMS key.
+// Attaches a key policy to the specified KMS key. You can use this operation to
+// set only the default key policy.
 //
 // For more information about key policies, see [Key Policies] in the Key Management Service
 // Developer Guide. For help writing and formatting a JSON policy document, see the
@@ -17,19 +18,33 @@ import (
 // policy in multiple programming languages, see [Use PutKeyPolicy with an Amazon Web Services SDK or CLI]in the Key Management Service
 // Developer Guide.
 //
+// A KMS key can also have an AWS_RAM key policy, which Resource Access Manager
+// (RAM) manages for KMS keys that you share through RAM. You can't use
+// PutKeyPolicy to create, change, or delete the AWS_RAM key policy. If you set
+// PolicyName to AWS_RAM , the request fails with a ValidationException and the
+// message The AWS_RAM policy can only be managed by the RAM service. To view the
+// AWS_RAM key policy, use GetKeyPolicy. For information about sharing KMS keys, see [Sharing KMS keys with RAM] in the
+// Key Management Service Developer Guide.
+//
 // Cross-account use: No. You cannot perform this operation on a KMS key in a
 // different Amazon Web Services account.
 //
 // Required permissions: [kms:PutKeyPolicy] (key policy)
+//
+// You can use the [kms:PolicyName] condition key to control access to this operation based on the
+// value of the PolicyName parameter in the request. If the request doesn't
+// include PolicyName , the value of kms:PolicyName is default .
 //
 // Related operations: GetKeyPolicy
 //
 // Eventual consistency: The KMS API follows an eventual consistency model. For
 // more information, see [KMS eventual consistency].
 //
+// [kms:PolicyName]: https://docs.aws.amazon.com/kms/latest/developerguide/conditions-kms.html#conditions-kms-policy-name
 // [IAM JSON Policy Reference]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies.html
 // [kms:PutKeyPolicy]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
 // [Use PutKeyPolicy with an Amazon Web Services SDK or CLI]: https://docs.aws.amazon.com/kms/latest/developerguide/example_kms_PutKeyPolicy_section.html
+// [Sharing KMS keys with RAM]: https://docs.aws.amazon.com/kms/latest/developerguide/key-sharing-ram.html
 // [Key Policies]: https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html
 // [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/accessing-kms.html#programming-eventual-consistency
 func (c *Client) PutKeyPolicy(ctx context.Context, params *PutKeyPolicyInput, optFns ...func(*Options)) (*PutKeyPolicyOutput, error) {
@@ -129,12 +144,21 @@ type PutKeyPolicyInput struct {
 	// Use this parameter only when you intend to prevent the principal that is making
 	// the request from making a subsequent [PutKeyPolicy]request on the KMS key.
 	//
+	// The key policy lockout safety check and the BypassPolicyLockoutSafetyCheck
+	// parameter apply only to the default key policy. The check evaluates only the
+	// new default key policy, with kms:PolicyName set to default . It doesn't consider
+	// permissions in the AWS_RAM key policy.
+	//
 	// [Default key policy]: https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html#prevent-unmanageable-key
 	// [PutKeyPolicy]: https://docs.aws.amazon.com/kms/latest/APIReference/API_PutKeyPolicy.html
 	BypassPolicyLockoutSafetyCheck bool
 
 	// The name of the key policy. If no policy name is specified, the default value
-	// is default . The only valid value is default .
+	// is default . Valid values are default and AWS_RAM , but you can set only the
+	// default key policy. RAM manages the AWS_RAM key policy for KMS keys that you
+	// share through RAM. If you specify AWS_RAM , the request fails with a
+	// ValidationException , or with an AccessDeniedException if you don't have
+	// permission to call PutKeyPolicy with that policy name.
 	PolicyName *string
 
 	noSmithyDocumentSerde

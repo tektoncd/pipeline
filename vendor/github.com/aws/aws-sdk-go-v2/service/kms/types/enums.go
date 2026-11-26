@@ -726,6 +726,25 @@ func (OriginType) Values() []OriginType {
 	}
 }
 
+type ResourceOwnerType string
+
+// Enum values for ResourceOwnerType
+const (
+	ResourceOwnerTypeSelf                ResourceOwnerType = "SELF"
+	ResourceOwnerTypeOtherAccountsViaRam ResourceOwnerType = "OTHER_ACCOUNTS_VIA_RAM"
+)
+
+// Values returns all known values for ResourceOwnerType. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (ResourceOwnerType) Values() []ResourceOwnerType {
+	return []ResourceOwnerType{
+		"SELF",
+		"OTHER_ACCOUNTS_VIA_RAM",
+	}
+}
+
 type RotationType string
 
 // Enum values for RotationType

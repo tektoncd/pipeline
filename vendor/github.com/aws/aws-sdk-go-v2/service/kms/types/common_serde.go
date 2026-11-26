@@ -120,6 +120,14 @@ func serializePolicyNameList(s smithy.ShapeSerializer, schema *smithy.Schema, v 
 	s.CloseList()
 }
 
+func serializeResourceOwnersList(s smithy.ShapeSerializer, schema *smithy.Schema, v []ResourceOwnerType) {
+	s.WriteList(schema)
+	for _, vv := range v {
+		s.WriteString(schema.ListMember(), string(vv))
+	}
+	s.CloseList()
+}
+
 func serializeRotationsList(s smithy.ShapeSerializer, schema *smithy.Schema, v []RotationsListEntry) {
 	s.WriteList(schema)
 	for _, vv := range v {
@@ -430,6 +438,27 @@ func deserializePolicyNameList(d smithy.ShapeDeserializer, s *smithy.Schema, v *
 		}
 
 		*v = append(*v, vv)
+		return nil
+	})
+}
+
+func deserializeResourceOwnersList(d smithy.ShapeDeserializer, s *smithy.Schema, v *[]ResourceOwnerType) error {
+	*v = make([]ResourceOwnerType, 0)
+	var vv string
+	return smithy.ReadList(d, s, func() error {
+		if isNil, err := d.ReadNil(s.ListMember()); err != nil {
+			return err
+		} else if isNil {
+			var zero ResourceOwnerType
+			*v = append(*v, zero)
+			return nil
+		}
+
+		if err := d.ReadString(s.ListMember(), &vv); err != nil {
+			return err
+		}
+
+		*v = append(*v, ResourceOwnerType(vv))
 		return nil
 	})
 }
