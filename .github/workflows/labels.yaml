@@ -19,7 +19,7 @@ jobs:
     name: Check kind labels
     runs-on: ubuntu-latest
     steps:
-      - uses: agilepathway/label-checker@e5e3846bc3669d7444c809a84fcc7d9b7e002f1a # v2.0.5
+      - uses: agilepathway/label-checker@be9ec6c3cf7422877c41630a194d1d801371d8d3 # v2.0.78
         with:
           prefix_mode: true
           one_of: "kind/"
