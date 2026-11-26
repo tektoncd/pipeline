@@ -150,6 +150,7 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	}
 	if ps.PodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *ps.PodTemplate))
+		errs = errs.Also(ps.PodTemplate.ValidateResources().ViaField("podTemplate"))
 	}
 	if ps.Resources != nil {
 		errs = errs.Also(apis.ErrDisallowedFields("resources"))
@@ -407,6 +408,7 @@ func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec, pipelineT
 	}
 	if trs.TaskPodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *trs.TaskPodTemplate))
+		errs = errs.Also(trs.TaskPodTemplate.ValidateResources().ViaField("taskPodTemplate"))
 	}
 
 	// Check taskRunSpec timeout against pipeline limits

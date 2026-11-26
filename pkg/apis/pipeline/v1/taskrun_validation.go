@@ -126,6 +126,7 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 	if ts.PodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *ts.PodTemplate))
+		errs = errs.Also(ts.PodTemplate.ValidateResources().ViaField("podTemplate"))
 	}
 
 	if ts.Timeout != nil && ts.Timeout.Duration < 0 {

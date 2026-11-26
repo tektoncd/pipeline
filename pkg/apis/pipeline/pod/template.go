@@ -149,6 +149,15 @@ type Template struct {
 	// +optional
 	// +listType=atomic
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+
+	// Resources is the total amount of CPU and Memory resources required by all
+	// containers in the pod. It supports specifying Requests and Limits for
+	// "cpu", "memory" and "hugepages-" resource names only.
+	// It is passed through to Pod.spec.resources (pod-level resources).
+	// This field depends on the kubernetes feature gate PodLevelResources being enabled.
+	// See Pod.spec.resources (API version: v1)
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // Equals checks if this Template is identical to the given Template.
@@ -246,6 +255,9 @@ func MergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
 		}
 		if tpl.TopologySpreadConstraints == nil {
 			tpl.TopologySpreadConstraints = defaultTpl.TopologySpreadConstraints
+		}
+		if tpl.Resources == nil {
+			tpl.Resources = defaultTpl.Resources
 		}
 		return tpl
 	}

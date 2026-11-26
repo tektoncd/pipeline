@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func TestMergeByName(t *testing.T) {
@@ -116,6 +117,38 @@ func TestMergePodTemplateWithDefault(t *testing.T) {
 			},
 			expected: &PodTemplate{
 				NodeSelector: map[string]string{"foo": "bar"},
+			},
+		},
+		{
+			name: "use default resources",
+			tpl:  &PodTemplate{},
+			defaultTpl: &PodTemplate{
+				Resources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
+				},
+			},
+			expected: &PodTemplate{
+				Resources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
+				},
+			},
+		},
+		{
+			name: "override default resources",
+			tpl: &PodTemplate{
+				Resources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")},
+				},
+			},
+			defaultTpl: &PodTemplate{
+				Resources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
+				},
+			},
+			expected: &PodTemplate{
+				Resources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")},
+				},
 			},
 		},
 		{
