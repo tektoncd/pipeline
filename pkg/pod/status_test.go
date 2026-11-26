@@ -40,6 +40,48 @@ import (
 
 var ignoreVolatileTime = cmp.Comparer(func(_, _ apis.VolatileTime) bool { return true })
 
+func TestNodeLossStatus(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		status  corev1.ConditionStatus
+		reason  string
+		recover bool
+	}{
+		{"taint-manager", corev1.ConditionTrue, deletionByTaintManager, true},
+		{"podgc", corev1.ConditionTrue, deletionByPodGC, true},
+		{"false", corev1.ConditionFalse, deletionByPodGC, false},
+		{"unknown", corev1.ConditionUnknown, deletionByPodGC, false},
+		{"drain", corev1.ConditionTrue, "EvictionByEvictionAPI", false},
+		{"step-failure", corev1.ConditionFalse, "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "run-pod"}, Status: corev1.PodStatus{
+				Phase:             corev1.PodFailed,
+				Conditions:        []corev1.PodCondition{{Type: corev1.DisruptionTarget, Status: tc.status, Reason: tc.reason}},
+				ContainerStatuses: []corev1.ContainerStatus{{Name: "step-test", State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 1, Reason: "Error"}}}},
+			}}
+			if got := IsRecoverableNodeDisruption(p); got != tc.recover {
+				t.Fatalf("recoverable = %v, want %v", got, tc.recover)
+			}
+			tr := v1.TaskRun{}
+			tr.Status.InitializeConditions()
+			ctx := t.Context()
+			status, err := MakeTaskRunStatus(ctx, logging.FromContext(ctx), tr, p, fakek8s.NewSimpleClientset(), &v1.TaskSpec{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			condition := status.GetCondition(apis.ConditionSucceeded)
+			if tc.recover {
+				if condition.Status != corev1.ConditionUnknown || status.CompletionTime != nil || status.PodName != p.Name {
+					t.Fatalf("unexpected recoverable status: %+v", status)
+				}
+			} else if condition.Status != corev1.ConditionFalse || status.CompletionTime == nil {
+				t.Fatalf("ordinary failure was not terminal: %+v", status)
+			}
+		})
+	}
+}
+
 func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 	for _, c := range []struct {
 		desc              string
