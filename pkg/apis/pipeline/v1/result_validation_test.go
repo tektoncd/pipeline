@@ -197,7 +197,7 @@ func TestResultsValidateValueError(t *testing.T) {
 			},
 		},
 		expectedError: apis.FieldError{
-			Message: `Could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got "not a valid format"`,
+			Message: `could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got "not a valid format"`,
 			Paths:   []string{"MY-RESULT.value"},
 		},
 	}, {
@@ -283,15 +283,15 @@ func TestExtractStepResultNameError(t *testing.T) {
 	}{{
 		name:    "invalid string format",
 		value:   "not valid",
-		wantErr: errors.New(`Could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got "not valid"`),
+		wantErr: errors.New(`could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got "not valid"`),
 	}, {
 		name:    "singular step and result",
 		value:   "$(step.Foo.result.Bar)",
-		wantErr: errors.New(`Could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got "$(step.Foo.result.Bar)"`),
+		wantErr: errors.New(`could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got "$(step.Foo.result.Bar)"`),
 	}, {
 		name:    "missing steps prefix",
 		value:   "$(Foo.results.Bar)",
-		wantErr: errors.New(`Could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got "$(Foo.results.Bar)"`),
+		wantErr: errors.New(`could not extract step name and result name. Expected value to look like $(steps.<stepName>.results.<resultName>) but got "$(Foo.results.Bar)"`),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -300,10 +300,10 @@ func TestExtractStepResultNameError(t *testing.T) {
 				t.Error(diff.PrintWantGot(d))
 			}
 			if gotStep != "" {
-				t.Errorf("Expected an empty string but got: %v", gotStep)
+				t.Errorf("expected an empty string but got: %v", gotStep)
 			}
 			if gotResult != "" {
-				t.Errorf("Expected an empty string but got: %v", gotResult)
+				t.Errorf("expected an empty string but got: %v", gotResult)
 			}
 		})
 	}
