@@ -4,7 +4,9 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 )
 
@@ -45,6 +47,10 @@ import (
 // is used to encrypt the private key. The public key is a DER-encoded X.509
 // SubjectPublicKeyInfo, as specified in [RFC 5280]. The private key is a DER-encoded PKCS8
 // PrivateKeyInfo, as specified in [RFC 5958].
+//
+// For ML-KEM data key pairs, the DER-encoded PKCS8 PrivateKeyInfo contains the
+// private key in seed format. As a result, the length of the private key is the
+// same for all ML-KEM key pair specs.
 //
 // GenerateDataKeyPair also supports [Amazon Web Services Nitro Enclaves], which provide an isolated compute
 // environment in Amazon EC2. To call GenerateDataKeyPair for an Amazon Web
@@ -147,7 +153,7 @@ type GenerateDataKeyPairInput struct {
 	// you to use ECC KMS keys only to sign and verify, and the rule that permits you
 	// to use ML-DSA key pairs to sign and verify only are not effective on data key
 	// pairs, which are used outside of KMS. The SM2 key spec is only available in
-	// China Regions.
+	// China Regions. The ML-KEM key specs are not available in China Regions.
 	//
 	// This member is required.
 	KeyPairSpec types.DataKeyPairSpec
@@ -222,6 +228,35 @@ type GenerateDataKeyPairInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GenerateDataKeyPairInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GenerateDataKeyPairRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GenerateDataKeyPairInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DryRun != nil {
+		s.WriteBool(schemas.GenerateDataKeyPairRequest_DryRun, *v.DryRun)
+	}
+	if v.EncryptionContext != nil {
+		serializeEncryptionContextType(s, schemas.GenerateDataKeyPairRequest_EncryptionContext, v.EncryptionContext)
+	}
+	if v.GrantTokens != nil {
+		serializeGrantTokenList(s, schemas.GenerateDataKeyPairRequest_GrantTokens, v.GrantTokens)
+	}
+	if v.KeyId != nil {
+		s.WriteString(schemas.GenerateDataKeyPairRequest_KeyId, *v.KeyId)
+	}
+	if v.KeyPairSpec != "" {
+		s.WriteString(schemas.GenerateDataKeyPairRequest_KeyPairSpec, string(v.KeyPairSpec))
+	}
+	if v.Recipient != nil {
+		s.WriteStruct(schemas.GenerateDataKeyPairRequest_Recipient)
+		v.Recipient.SerializeMembers(s)
+		s.CloseStruct()
+	}
+}
+
 type GenerateDataKeyPairOutput struct {
 
 	// The plaintext private data key encrypted with the public key from the
@@ -271,13 +306,68 @@ type GenerateDataKeyPairOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *GenerateDataKeyPairOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.GenerateDataKeyPairResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *GenerateDataKeyPairOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.CiphertextForRecipient != nil {
+		s.WriteBlob(schemas.GenerateDataKeyPairResponse_CiphertextForRecipient, v.CiphertextForRecipient)
+	}
+	if v.KeyId != nil {
+		s.WriteString(schemas.GenerateDataKeyPairResponse_KeyId, *v.KeyId)
+	}
+	if v.KeyMaterialId != nil {
+		s.WriteString(schemas.GenerateDataKeyPairResponse_KeyMaterialId, *v.KeyMaterialId)
+	}
+	if v.KeyPairSpec != "" {
+		s.WriteString(schemas.GenerateDataKeyPairResponse_KeyPairSpec, string(v.KeyPairSpec))
+	}
+	if v.PrivateKeyCiphertextBlob != nil {
+		s.WriteBlob(schemas.GenerateDataKeyPairResponse_PrivateKeyCiphertextBlob, v.PrivateKeyCiphertextBlob)
+	}
+	if v.PrivateKeyPlaintext != nil {
+		s.WriteBlob(schemas.GenerateDataKeyPairResponse_PrivateKeyPlaintext, v.PrivateKeyPlaintext)
+	}
+	if v.PublicKey != nil {
+		s.WriteBlob(schemas.GenerateDataKeyPairResponse_PublicKey, v.PublicKey)
+	}
+}
+func (v *GenerateDataKeyPairOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.GenerateDataKeyPairResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.GenerateDataKeyPairResponse_CiphertextForRecipient:
+			return d.ReadBlob(schemas.GenerateDataKeyPairResponse_CiphertextForRecipient, &v.CiphertextForRecipient)
+		case schemas.GenerateDataKeyPairResponse_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.GenerateDataKeyPairResponse_KeyId, v.KeyId)
+		case schemas.GenerateDataKeyPairResponse_KeyMaterialId:
+			v.KeyMaterialId = new(string)
+			return d.ReadString(schemas.GenerateDataKeyPairResponse_KeyMaterialId, v.KeyMaterialId)
+		case schemas.GenerateDataKeyPairResponse_KeyPairSpec:
+			var ev string
+			if err := d.ReadString(schemas.GenerateDataKeyPairResponse_KeyPairSpec, &ev); err != nil {
+				return err
+			}
+			v.KeyPairSpec = types.DataKeyPairSpec(ev)
+			return nil
+		case schemas.GenerateDataKeyPairResponse_PrivateKeyCiphertextBlob:
+			return d.ReadBlob(schemas.GenerateDataKeyPairResponse_PrivateKeyCiphertextBlob, &v.PrivateKeyCiphertextBlob)
+		case schemas.GenerateDataKeyPairResponse_PrivateKeyPlaintext:
+			return d.ReadBlob(schemas.GenerateDataKeyPairResponse_PrivateKeyPlaintext, &v.PrivateKeyPlaintext)
+		case schemas.GenerateDataKeyPairResponse_PublicKey:
+			return d.ReadBlob(schemas.GenerateDataKeyPairResponse_PublicKey, &v.PublicKey)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationGenerateDataKeyPairMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpGenerateDataKeyPair{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GenerateDataKeyPair, schemas.GenerateDataKeyPairRequest, schemas.GenerateDataKeyPairResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpGenerateDataKeyPair{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.GenerateDataKeyPair, schemas.GenerateDataKeyPairRequest, schemas.GenerateDataKeyPairResponse), output: &GenerateDataKeyPairOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

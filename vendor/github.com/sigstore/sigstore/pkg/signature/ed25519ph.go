@@ -16,6 +16,7 @@
 package signature
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -23,6 +24,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature/options"
 )
 
@@ -39,6 +41,18 @@ type ED25519phSigner struct {
 func LoadED25519phSigner(priv ed25519.PrivateKey) (*ED25519phSigner, error) {
 	if priv == nil {
 		return nil, errors.New("invalid ED25519 private key specified")
+	}
+
+	if len(priv) != ed25519.PrivateKeySize {
+		return nil, errors.New("invalid size for ED25519 key")
+	}
+
+	pub, ok := priv.Public().(ed25519.PublicKey)
+	if !ok {
+		return nil, errors.New("given key is not ed25519.PublicKey")
+	}
+	if err := cryptoutils.ValidateEd25519PublicKey(pub); err != nil {
+		return nil, err
 	}
 
 	return &ED25519phSigner{
@@ -109,12 +123,12 @@ func LoadED25519phVerifier(pub ed25519.PublicKey) (*ED25519phVerifier, error) {
 		return nil, errors.New("invalid ED25519 public key specified")
 	}
 
-	if len(pub) != ed25519.PublicKeySize {
-		return nil, errors.New("invalid size for ED25519 key")
+	if err := cryptoutils.ValidateEd25519PublicKey(pub); err != nil {
+		return nil, err
 	}
 
 	return &ED25519phVerifier{
-		publicKey: pub,
+		publicKey: bytes.Clone(pub),
 	}, nil
 }
 
@@ -122,7 +136,7 @@ func LoadED25519phVerifier(pub ed25519.PublicKey) (*ED25519phVerifier, error) {
 // this verifier. As this value is held in memory, all options provided in arguments
 // to this method are ignored.
 func (e *ED25519phVerifier) PublicKey(_ ...PublicKeyOption) (crypto.PublicKey, error) {
-	return e.publicKey, nil
+	return ed25519.PublicKey(bytes.Clone(e.publicKey)), nil
 }
 
 // VerifySignature verifies the signature for the given message. Unless provided
@@ -149,6 +163,10 @@ func (e *ED25519phVerifier) VerifySignature(signature, message io.Reader, opts .
 	sigBytes, err := io.ReadAll(signature)
 	if err != nil {
 		return fmt.Errorf("reading signature: %w", err)
+	}
+
+	if err := cryptoutils.ValidateEd25519SignatureR(sigBytes); err != nil {
+		return err
 	}
 
 	if err := ed25519.VerifyWithOptions(e.publicKey, digest, sigBytes, &ed25519.Options{Hash: crypto.SHA512}); err != nil {
@@ -211,5 +229,5 @@ func NewED25519phSignerVerifier(rand io.Reader) (*ED25519phSignerVerifier, ed255
 // this verifier. As this value is held in memory, all options provided in arguments
 // to this method are ignored.
 func (e ED25519phSignerVerifier) PublicKey(_ ...PublicKeyOption) (crypto.PublicKey, error) {
-	return e.publicKey, nil
+	return ed25519.PublicKey(bytes.Clone(e.publicKey)), nil
 }

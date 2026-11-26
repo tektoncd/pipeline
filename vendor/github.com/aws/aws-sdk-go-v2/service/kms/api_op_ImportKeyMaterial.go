@@ -4,7 +4,9 @@ package kms
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/kms/schemas"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 	"time"
 )
@@ -264,6 +266,39 @@ type ImportKeyMaterialInput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ImportKeyMaterialInput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ImportKeyMaterialRequest)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ImportKeyMaterialInput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.EncryptedKeyMaterial != nil {
+		s.WriteBlob(schemas.ImportKeyMaterialRequest_EncryptedKeyMaterial, v.EncryptedKeyMaterial)
+	}
+	if v.ExpirationModel != "" {
+		s.WriteString(schemas.ImportKeyMaterialRequest_ExpirationModel, string(v.ExpirationModel))
+	}
+	if v.ImportToken != nil {
+		s.WriteBlob(schemas.ImportKeyMaterialRequest_ImportToken, v.ImportToken)
+	}
+	if v.ImportType != "" {
+		s.WriteString(schemas.ImportKeyMaterialRequest_ImportType, string(v.ImportType))
+	}
+	if v.KeyId != nil {
+		s.WriteString(schemas.ImportKeyMaterialRequest_KeyId, *v.KeyId)
+	}
+	if v.KeyMaterialDescription != nil {
+		s.WriteString(schemas.ImportKeyMaterialRequest_KeyMaterialDescription, *v.KeyMaterialDescription)
+	}
+	if v.KeyMaterialId != nil {
+		s.WriteString(schemas.ImportKeyMaterialRequest_KeyMaterialId, *v.KeyMaterialId)
+	}
+	if v.ValidTo != nil {
+		s.WriteTime(schemas.ImportKeyMaterialRequest_ValidTo, *v.ValidTo)
+	}
+}
+
 type ImportKeyMaterialOutput struct {
 
 	// The Amazon Resource Name ([key ARN] ) of the KMS key into which key material was imported.
@@ -280,13 +315,38 @@ type ImportKeyMaterialOutput struct {
 	noSmithyDocumentSerde
 }
 
+func (v *ImportKeyMaterialOutput) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.ImportKeyMaterialResponse)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *ImportKeyMaterialOutput) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.KeyId != nil {
+		s.WriteString(schemas.ImportKeyMaterialResponse_KeyId, *v.KeyId)
+	}
+	if v.KeyMaterialId != nil {
+		s.WriteString(schemas.ImportKeyMaterialResponse_KeyMaterialId, *v.KeyMaterialId)
+	}
+}
+func (v *ImportKeyMaterialOutput) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.ImportKeyMaterialResponse, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.ImportKeyMaterialResponse_KeyId:
+			v.KeyId = new(string)
+			return d.ReadString(schemas.ImportKeyMaterialResponse_KeyId, v.KeyId)
+		case schemas.ImportKeyMaterialResponse_KeyMaterialId:
+			v.KeyMaterialId = new(string)
+			return d.ReadString(schemas.ImportKeyMaterialResponse_KeyMaterialId, v.KeyMaterialId)
+		}
+		return nil
+	})
+}
 func (c *Client) addOperationImportKeyMaterialMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpImportKeyMaterial{}, middleware.After)
-	if err != nil {
+	if err := stack.Serialize.Add(&serializeRequestMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ImportKeyMaterial, schemas.ImportKeyMaterialRequest, schemas.ImportKeyMaterialResponse)}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpImportKeyMaterial{}, middleware.After)
-	if err != nil {
+	if err := stack.Deserialize.Add(&deserializeResponseMiddleware{options: &options, operationSchema: smithy.NewOperationSchema(schemas.ImportKeyMaterial, schemas.ImportKeyMaterialRequest, schemas.ImportKeyMaterialResponse), output: &ImportKeyMaterialOutput{}}, middleware.After); err != nil {
 		return err
 	}
 

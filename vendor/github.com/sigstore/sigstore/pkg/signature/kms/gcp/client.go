@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/mldsa"
 	"crypto/rsa"
 	"errors"
 	"fmt"
@@ -27,6 +28,7 @@ import (
 	"io"
 	"log"
 	"regexp"
+	"sync"
 	"time"
 
 	gcpkms "cloud.google.com/go/kms/apiv1"
@@ -67,6 +69,9 @@ const (
 	AlgorithmRSAPSS3072SHA256      = "rsa-pss-3072-sha256"
 	AlgorithmRSAPSS4096SHA256      = "rsa-pss-4096-sha256"
 	AlgorithmRSAPSS4096SHA512      = "rsa-pss-4096-sha512"
+	AlgorithmPQSignMLDSA44         = "pq-sign-ml-dsa-44"
+	AlgorithmPQSignMLDSA65         = "pq-sign-ml-dsa-65"
+	AlgorithmPQSignMLDSA87         = "pq-sign-ml-dsa-87"
 )
 
 var algorithmMap = map[string]kmspb.CryptoKeyVersion_CryptoKeyVersionAlgorithm{
@@ -80,6 +85,9 @@ var algorithmMap = map[string]kmspb.CryptoKeyVersion_CryptoKeyVersionAlgorithm{
 	AlgorithmRSAPSS3072SHA256:      kmspb.CryptoKeyVersion_RSA_SIGN_PSS_3072_SHA256,
 	AlgorithmRSAPSS4096SHA256:      kmspb.CryptoKeyVersion_RSA_SIGN_PSS_4096_SHA256,
 	AlgorithmRSAPSS4096SHA512:      kmspb.CryptoKeyVersion_RSA_SIGN_PSS_4096_SHA512,
+	AlgorithmPQSignMLDSA44:         kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_44,
+	AlgorithmPQSignMLDSA65:         kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_65,
+	AlgorithmPQSignMLDSA87:         kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_87,
 }
 
 type gcpClient struct {
@@ -91,6 +99,8 @@ type gcpClient struct {
 	keyName    string
 	version    string
 	kvCache    *ttlcache.Cache[string, cryptoKeyVersion]
+	loadErrMu  sync.Mutex
+	loadErr    error
 	kmsClient  *gcpkms.KeyManagementClient
 }
 
@@ -119,8 +129,29 @@ func newGCPClient(ctx context.Context, refStr string, opts ...option.ClientOptio
 		return nil, fmt.Errorf("new gcp kms client: %w", err)
 	}
 
+	loader := ttlcache.LoaderFunc[string, cryptoKeyVersion](
+		func(c *ttlcache.Cache[string, cryptoKeyVersion], key string) *ttlcache.Item[string, cryptoKeyVersion] {
+			ttl := time.Second * 300
+			// if we're given an explicit version, cache this value forever
+			if g.version != "" {
+				ttl = ttlcache.NoTTL
+			}
+			data, err := g.keyVersionName(context.Background())
+			if err != nil {
+				g.loadErrMu.Lock()
+				g.loadErr = err
+				g.loadErrMu.Unlock()
+				return nil
+			}
+			return c.Set(key, *data, ttl)
+		},
+	)
+
 	g.kvCache = ttlcache.New[string, cryptoKeyVersion](
 		ttlcache.WithDisableTouchOnHit[string, cryptoKeyVersion](),
+		ttlcache.WithLoader[string, cryptoKeyVersion](
+			ttlcache.NewSuppressedLoader[string, cryptoKeyVersion](loader, nil),
+		),
 	)
 
 	// prime the cache
@@ -262,6 +293,15 @@ func (g *gcpClient) keyVersionName(ctx context.Context) (*cryptoKeyVersion, erro
 		}
 		crv.Verifier, err = signature.LoadRSAPSSVerifier(pk, crypto.SHA512, nil)
 		crv.HashFunc = crypto.SHA512
+	case kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_44,
+		kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_65,
+		kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_87:
+		pk, ok := pubKey.(*mldsa.PublicKey)
+		if !ok {
+			return nil, fmt.Errorf("asserting public key type mldsa.PublicKey")
+		}
+		crv.Verifier, err = signature.LoadMLDSAVerifier(pk)
+		crv.HashFunc = crypto.Hash(0)
 	default:
 		return nil, errors.New("unknown algorithm specified by KMS")
 	}
@@ -293,65 +333,53 @@ func (g *gcpClient) getHashFunc() (crypto.Hash, error) {
 // getCKV gets the latest CryptoKeyVersion from the client's cache, which may trigger an actual
 // call to GCP if the existing entry in the cache has expired.
 func (g *gcpClient) getCKV() (*cryptoKeyVersion, error) {
-	var lerr error
-	loader := ttlcache.LoaderFunc[string, cryptoKeyVersion](
-		func(c *ttlcache.Cache[string, cryptoKeyVersion], key string) *ttlcache.Item[string, cryptoKeyVersion] {
-			var ttl time.Duration
-			var data *cryptoKeyVersion
-
-			// if we're given an explicit version, cache this value forever
-			if g.version != "" {
-				ttl = time.Second * 0
-			} else {
-				ttl = time.Second * 300
-			}
-			data, lerr = g.keyVersionName(context.Background())
-			if lerr == nil {
-				return c.Set(key, *data, ttl)
-			}
-			return nil
-		},
-	)
-
 	// we get once and use consistently to ensure the cache value doesn't change underneath us
-	item := g.kvCache.Get(cacheKey, ttlcache.WithLoader[string, cryptoKeyVersion](loader))
+	item := g.kvCache.Get(cacheKey)
 	if item != nil {
 		v := item.Value()
 		return &v, nil
 	}
-	return nil, lerr
+	g.loadErrMu.Lock()
+	defer g.loadErrMu.Unlock()
+	return nil, g.loadErr
 }
 
-func (g *gcpClient) sign(ctx context.Context, digest []byte, alg crypto.Hash, crc uint32) ([]byte, error) {
-	ckv, err := g.getCKV()
-	if err != nil {
-		return nil, err
-	}
-
+func (g *gcpClient) sign(ctx context.Context, keyVersionName string, digest []byte, alg crypto.Hash, crc uint32) ([]byte, error) {
 	gcpSignReq := kmspb.AsymmetricSignRequest{
-		Name:   ckv.CryptoKeyVersion.Name,
-		Digest: &kmspb.Digest{},
-	}
-
-	if crc != 0 {
-		gcpSignReq.DigestCrc32C = wrapperspb.Int64(int64(crc))
+		Name: keyVersionName,
 	}
 
 	switch alg {
 	case crypto.SHA256:
-		gcpSignReq.Digest.Digest = &kmspb.Digest_Sha256{
-			Sha256: digest,
+		gcpSignReq.Digest = &kmspb.Digest{
+			Digest: &kmspb.Digest_Sha256{
+				Sha256: digest,
+			},
 		}
 	case crypto.SHA384:
-		gcpSignReq.Digest.Digest = &kmspb.Digest_Sha384{
-			Sha384: digest,
+		gcpSignReq.Digest = &kmspb.Digest{
+			Digest: &kmspb.Digest_Sha384{
+				Sha384: digest,
+			},
 		}
 	case crypto.SHA512:
-		gcpSignReq.Digest.Digest = &kmspb.Digest_Sha512{
-			Sha512: digest,
+		gcpSignReq.Digest = &kmspb.Digest{
+			Digest: &kmspb.Digest_Sha512{
+				Sha512: digest,
+			},
 		}
+	case crypto.Hash(0):
+		gcpSignReq.Data = digest
 	default:
 		return nil, errors.New("unsupported hash function")
+	}
+
+	if crc != 0 {
+		if alg == crypto.Hash(0) {
+			gcpSignReq.DataCrc32C = wrapperspb.Int64(int64(crc))
+		} else {
+			gcpSignReq.DigestCrc32C = wrapperspb.Int64(int64(crc))
+		}
 	}
 
 	resp, err := g.kmsClient.AsymmetricSign(ctx, &gcpSignReq)
@@ -362,8 +390,13 @@ func (g *gcpClient) sign(ctx context.Context, digest []byte, alg crypto.Hash, cr
 	// Optional, but recommended: perform integrity verification on result.
 	// For more details on ensuring E2E in-transit integrity to and from Cloud KMS visit:
 	// https://cloud.google.com/kms/docs/data-integrity-guidelines
-	if crc != 0 && !resp.VerifiedDigestCrc32C {
-		return nil, fmt.Errorf("AsymmetricSign: request corrupted in-transit")
+	if crc != 0 {
+		if alg == crypto.Hash(0) && !resp.VerifiedDataCrc32C {
+			return nil, fmt.Errorf("AsymmetricSign: request corrupted in-transit")
+		}
+		if alg != crypto.Hash(0) && !resp.VerifiedDigestCrc32C {
+			return nil, fmt.Errorf("AsymmetricSign: request corrupted in-transit")
+		}
 	}
 	if int64(crc32.Checksum(resp.Signature, crc32.MakeTable(crc32.Castagnoli))) != resp.SignatureCrc32C.Value {
 		return nil, fmt.Errorf("AsymmetricSign: response corrupted in-transit")
