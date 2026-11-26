@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -214,12 +215,12 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 				},
 			}
 
-			isDone := facts.checkTasksDone(d)
+			isDone := facts.checkTasksDone(context.Background(), d)
 			if d := cmp.Diff(tc.expected, isDone); d != "" {
 				t.Errorf("Didn't get expected checkTasksDone %s", diff.PrintWantGot(d))
 			}
 			for i, pt := range tc.state {
-				isDone = pt.isDone(&facts)
+				isDone = pt.isDone(context.Background(), &facts)
 				if d := cmp.Diff(tc.ptExpected[i], isDone); d != "" {
 					t.Errorf("Didn't get expected (ResolvedPipelineTask) isDone %s", diff.PrintWantGot(d))
 				}
@@ -1098,7 +1099,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 					Clock: testClock,
 				},
 			}
-			queue, err := facts.DAGExecutionQueue()
+			queue, err := facts.DAGExecutionQueue(context.Background())
 			if err != nil {
 				t.Errorf("unexpected error getting DAG execution queue: %s", err)
 			}
@@ -1188,7 +1189,7 @@ func TestDAGExecutionQueueSequentialTasks(t *testing.T) {
 					Clock: testClock,
 				},
 			}
-			queue, err := facts.DAGExecutionQueue()
+			queue, err := facts.DAGExecutionQueue(context.Background())
 			if err != nil {
 				t.Errorf("unexpected error getting DAG execution queue but got error %s", err)
 			}
@@ -1281,7 +1282,7 @@ func TestDAGExecutionQueueSequentialRuns(t *testing.T) {
 					Clock: testClock,
 				},
 			}
-			queue, err := facts.DAGExecutionQueue()
+			queue, err := facts.DAGExecutionQueue(context.Background())
 			if err != nil {
 				t.Errorf("unexpected error getting DAG execution queue but got error %s", err)
 			}
@@ -1380,7 +1381,7 @@ func TestDAGExecutionQueueSequentialChildPipelines(t *testing.T) {
 					Clock: testClock,
 				},
 			}
-			queue, err := facts.DAGExecutionQueue()
+			queue, err := facts.DAGExecutionQueue(context.Background())
 			if err != nil {
 				t.Errorf("unexpected error getting DAG execution queue but got error %s", err)
 			}
@@ -1480,7 +1481,7 @@ func TestPipelineRunState_CompletedOrSkippedDAGTasks(t *testing.T) {
 					Clock: testClock,
 				},
 			}
-			names := facts.completedOrSkippedDAGTasks()
+			names := facts.completedOrSkippedDAGTasks(context.Background())
 			if d := cmp.Diff(tc.expectedNames, names); d != "" {
 				t.Errorf("Expected to get completed names %v but got something different %s", tc.expectedNames, diff.PrintWantGot(d))
 			}
@@ -1711,7 +1712,7 @@ func TestPipelineRunState_GetFinalTasksAndNames(t *testing.T) {
 					Clock: testClock,
 				},
 			}
-			next := facts.GetFinalTasks()
+			next := facts.GetFinalTasks(context.Background())
 			if d := cmp.Diff(tc.expectedFinalTasks, next); d != "" {
 				t.Errorf("Didn't get expected final Tasks for %s (%s): %s", tc.name, tc.desc, diff.PrintWantGot(d))
 			}
@@ -1792,7 +1793,7 @@ func TestPipelineRunState_IsFinalTaskStarted(t *testing.T) {
 					Clock: testClock,
 				},
 			}
-			started := facts.IsFinalTaskStarted()
+			started := facts.IsFinalTaskStarted(context.Background())
 			if d := cmp.Diff(tc.expectedFinalTaskStarted, started); d != "" {
 				t.Errorf("Didn't get expected (IsFinalTaskStarted) started for %s (%s):%s", tc.name, tc.desc, diff.PrintWantGot(d))
 			}
@@ -3007,7 +3008,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 					Clock: testClock,
 				},
 			}
-			s := facts.GetPipelineTaskStatus()
+			s := facts.GetPipelineTaskStatus(context.Background())
 			if d := cmp.Diff(tc.expectedStatus, s); d != "" {
 				t.Fatalf("Test failed: %s Mismatch in pipelineTask execution state %s", tc.name, diff.PrintWantGot(d))
 			}
@@ -3226,7 +3227,7 @@ func TestPipelineRunFacts_GetSkippedTasks(t *testing.T) {
 					Clock: testClock,
 				},
 			}
-			actualSkippedTasks := facts.GetSkippedTasks()
+			actualSkippedTasks := facts.GetSkippedTasks(context.Background())
 			if d := cmp.Diff(tc.expectedSkippedTasks, actualSkippedTasks); d != "" {
 				t.Fatalf("Mismatch skipped tasks %s", diff.PrintWantGot(d))
 			}
@@ -5089,7 +5090,7 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 				TimeoutsState: PipelineRunTimeoutsState{
 					Clock: testClock,
 				},
-			}).GetChildReferences()
+			}).GetChildReferences(context.Background())
 			if d := cmp.Diff(tc.childRefs, childRefs); d != "" {
 				t.Errorf("Didn't get expected child references for %s: %s", tc.name, diff.PrintWantGot(d))
 			}
