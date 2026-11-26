@@ -101,6 +101,8 @@ const (
 	EnableCELInWhenExpression = "enable-cel-in-whenexpression"
 	// EnableArtifacts is the flag to enable the use of Artifacts in Steps
 	EnableArtifacts = "enable-artifacts"
+	// EnablePipelineRunOutcomes enables author-defined PipelineRun outcomes.
+	EnablePipelineRunOutcomes = "enable-pipelinerun-outcomes"
 	// EnableParamEnum is the flag to enabled enum in params
 	EnableParamEnum = "enable-param-enum"
 	// EnableConciseResolverSyntax is the flag to enable concise resolver syntax
@@ -184,6 +186,13 @@ var (
 		Enabled:   DefaultAlphaFeatureEnabled,
 	}
 
+	// DefaultEnablePipelineRunOutcomes is the default for author-defined outcomes.
+	DefaultEnablePipelineRunOutcomes = PerFeatureFlag{
+		Name:      EnablePipelineRunOutcomes,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
+
 	// DefaultEnableParamEnum is the default PerFeatureFlag value for EnableParamEnum
 	DefaultEnableParamEnum = PerFeatureFlag{
 		Name:      EnableParamEnum,
@@ -249,6 +258,7 @@ type FeatureFlags struct {
 	EnableStepActions                   bool   `json:"enableStepActions,omitempty"`
 	EnableParamEnum                     bool   `json:"enableParamEnum,omitempty"`
 	EnableArtifacts                     bool   `json:"enableArtifacts,omitempty"`
+	EnablePipelineRunOutcomes           bool   `json:"enablePipelineRunOutcomes,omitempty"`
 	DisableInlineSpec                   string `json:"disableInlineSpec,omitempty"`
 	EnableConciseResolverSyntax         bool   `json:"enableConciseResolverSyntax,omitempty"`
 	EnableKubernetesSidecar             bool   `json:"enableKubernetesSidecar,omitempty"`
@@ -354,6 +364,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setPerFeatureFlag(EnableArtifacts, DefaultEnableArtifacts, &tc.EnableArtifacts); err != nil {
+		return nil, err
+	}
+	if err := setPerFeatureFlag(EnablePipelineRunOutcomes, DefaultEnablePipelineRunOutcomes, &tc.EnablePipelineRunOutcomes); err != nil {
 		return nil, err
 	}
 

@@ -594,6 +594,22 @@ of tasks feed into inputs of subsequent tasks.
 | `spec` _[PipelineSpec](#pipelinespec)_ | Spec holds the desired state of the Pipeline from the client |  | Optional: \{\} <br /> |
 
 
+#### PipelineOutcomeSpec
+
+
+
+PipelineOutcomeSpec selects the result used for an author-defined outcome.
+
+
+
+_Appears in:_
+- [PipelineSpec](#pipelinespec)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `result` _string_ | Result is the literal name of a declared object-valued Pipeline result. |  |  |
+
+
 #### PipelineRef
 
 
@@ -647,6 +663,24 @@ PipelineRun creates TaskRuns for Tasks in the referenced Pipeline.
 | `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |  | Optional: \{\} <br /> |
 | `spec` _[PipelineRunSpec](#pipelinerunspec)_ |  |  | Optional: \{\} <br /> |
 | `status` _[PipelineRunStatus](#pipelinerunstatus)_ |  |  | Optional: \{\} <br /> |
+
+
+#### PipelineRunOutcome
+
+
+
+PipelineRunOutcome is the author-defined reason and message for a PipelineRun.
+
+
+
+_Appears in:_
+- [PipelineRunStatus](#pipelinerunstatus)
+- [PipelineRunStatusFields](#pipelinerunstatusfields)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `reason` _string_ | Reason is the machine-readable outcome reason: Succeeded or Neutral. |  |  |
+| `message` _string_ | Message is the human-readable outcome message, limited to 4096 UTF-8 bytes. |  | Optional: \{\} <br /> |
 
 
 
@@ -724,6 +758,7 @@ _Appears in:_
 | `observedGeneration` _integer_ | ObservedGeneration is the 'Generation' of the Service that<br />was last processed by the controller. |  | Optional: \{\} <br /> |
 | `conditions` _[Conditions](#conditions)_ | Conditions the latest available observations of a resource's current state. |  | Optional: \{\} <br /> |
 | `annotations` _object (keys:string, values:string)_ | Annotations is additional Status fields for the Resource to save some<br />additional State as well as convey more information to the user. This is<br />roughly akin to Annotations on any k8s resource, just the reconciler conveying<br />richer information outwards. |  |  |
+| `outcome` _[PipelineRunOutcome](#pipelinerunoutcome)_ | Outcome is the author-defined outcome selected by the Pipeline. |  | Optional: \{\} <br /> |
 | `startTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | StartTime is the time the PipelineRun is actually started. |  |  |
 | `completionTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | CompletionTime is the time the PipelineRun completed. |  |  |
 | `results` _[PipelineRunResult](#pipelinerunresult) array_ | Results are the list of results written out by the pipeline task's containers |  | Optional: \{\} <br /> |
@@ -750,6 +785,7 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
+| `outcome` _[PipelineRunOutcome](#pipelinerunoutcome)_ | Outcome is the author-defined outcome selected by the Pipeline. |  | Optional: \{\} <br /> |
 | `startTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | StartTime is the time the PipelineRun is actually started. |  |  |
 | `completionTime` _[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta)_ | CompletionTime is the time the PipelineRun completed. |  |  |
 | `results` _[PipelineRunResult](#pipelinerunresult) array_ | Results are the list of results written out by the pipeline task's containers |  | Optional: \{\} <br /> |
@@ -780,6 +816,7 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
+| `outcome` _[PipelineOutcomeSpec](#pipelineoutcomespec)_ | Outcome selects the object-valued Pipeline result that defines the run outcome.<br />This alpha field requires enable-pipelinerun-outcomes. |  | Optional: \{\} <br /> |
 | `displayName` _string_ | DisplayName is a user-facing name of the pipeline that may be<br />used to populate a UI. |  | Optional: \{\} <br /> |
 | `description` _string_ | Description is a user-facing description of the pipeline that may be<br />used to populate a UI. |  | Optional: \{\} <br /> |
 | `tasks` _[PipelineTask](#pipelinetask) array_ | Tasks declares the graph of Tasks that execute when this Pipeline is run. |  |  |

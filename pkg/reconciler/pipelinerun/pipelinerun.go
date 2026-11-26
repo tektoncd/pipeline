@@ -1011,7 +1011,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		}
 	}
 
-	logger.Infof("PipelineRun %s status is being set to %s", pr.Name, after)
+	setPipelineRunOutcome(pr, pipelineSpec)
+	logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status.GetCondition(apis.ConditionSucceeded))
 	return nil
 }
 

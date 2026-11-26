@@ -1001,6 +1001,17 @@ spec:
                               type: string
                         x-kubernetes-list-type: atomic
                   x-kubernetes-list-type: atomic
+                outcome:
+                  description: |-
+                    Outcome selects the object-valued Pipeline result that defines the run outcome.
+                    This alpha field requires enable-pipelinerun-outcomes.
+                  type: object
+                  required:
+                    - result
+                  properties:
+                    result:
+                      description: Result is the literal name of a declared object-valued Pipeline result.
+                      type: string
                 params:
                   description: |-
                     Params declares a list of input parameters that must be supplied when

@@ -29,6 +29,12 @@ import (
 
 var _ apis.Convertible = (*PipelineRun)(nil)
 
+const (
+	pipelineRunSpecOutcomeAnnotationKey       = "tekton.dev/v1.pipelinerun-spec-outcome"
+	pipelineRunStatusSpecOutcomeAnnotationKey = "tekton.dev/v1.pipelinerun-status-spec-outcome"
+	pipelineRunOutcomeAnnotationKey           = "tekton.dev/v1.pipelinerun-outcome"
+)
+
 // ConvertTo implements apis.Convertible
 func (pr *PipelineRun) ConvertTo(ctx context.Context, to apis.Convertible) error {
 	if apis.IsInDelete(ctx) {
@@ -36,7 +42,7 @@ func (pr *PipelineRun) ConvertTo(ctx context.Context, to apis.Convertible) error
 	}
 	switch sink := to.(type) {
 	case *v1.PipelineRun:
-		sink.ObjectMeta = pr.ObjectMeta
+		sink.ObjectMeta = *pr.ObjectMeta.DeepCopy()
 		if err := serializePipelineRunResources(&sink.ObjectMeta, &pr.Spec); err != nil {
 			return err
 		}
@@ -59,6 +65,9 @@ func (prs PipelineRunSpec) ConvertTo(ctx context.Context, sink *v1.PipelineRunSp
 		sink.PipelineSpec = &v1.PipelineSpec{}
 		err := prs.PipelineSpec.ConvertTo(ctx, sink.PipelineSpec, meta)
 		if err != nil {
+			return err
+		}
+		if err := version.DeserializeFromMetadata(meta, &sink.PipelineSpec.Outcome, pipelineRunSpecOutcomeAnnotationKey); err != nil {
 			return err
 		}
 	}
@@ -99,7 +108,7 @@ func (prs PipelineRunSpec) ConvertTo(ctx context.Context, sink *v1.PipelineRunSp
 func (pr *PipelineRun) ConvertFrom(ctx context.Context, from apis.Convertible) error {
 	switch source := from.(type) {
 	case *v1.PipelineRun:
-		pr.ObjectMeta = source.ObjectMeta
+		pr.ObjectMeta = *source.ObjectMeta.DeepCopy()
 		if err := deserializePipelineRunResources(&pr.ObjectMeta, &pr.Spec); err != nil {
 			return err
 		}
@@ -126,6 +135,11 @@ func (prs *PipelineRunSpec) ConvertFrom(ctx context.Context, source *v1.Pipeline
 			return err
 		}
 		prs.PipelineSpec = &newPipelineSpec
+		if source.PipelineSpec.Outcome != nil {
+			if err := version.SerializeToMetadata(meta, source.PipelineSpec.Outcome, pipelineRunSpecOutcomeAnnotationKey); err != nil {
+				return err
+			}
+		}
 	}
 	prs.Params = nil
 	for _, p := range source.Params {
@@ -218,6 +232,10 @@ func (ptrs *PipelineTaskRunSpec) convertFrom(ctx context.Context, source v1.Pipe
 }
 
 func (prs *PipelineRunStatus) convertTo(ctx context.Context, sink *v1.PipelineRunStatus, meta *metav1.ObjectMeta) error {
+	sink.Outcome = nil
+	if err := version.DeserializeFromMetadata(meta, &sink.Outcome, pipelineRunOutcomeAnnotationKey); err != nil {
+		return err
+	}
 	sink.Status = prs.Status
 	sink.StartTime = prs.StartTime
 	sink.CompletionTime = prs.CompletionTime
@@ -231,6 +249,9 @@ func (prs *PipelineRunStatus) convertTo(ctx context.Context, sink *v1.PipelineRu
 		sink.PipelineSpec = &v1.PipelineSpec{}
 		err := prs.PipelineSpec.ConvertTo(ctx, sink.PipelineSpec, meta)
 		if err != nil {
+			return err
+		}
+		if err := version.DeserializeFromMetadata(meta, &sink.PipelineSpec.Outcome, pipelineRunStatusSpecOutcomeAnnotationKey); err != nil {
 			return err
 		}
 	}
@@ -256,6 +277,11 @@ func (prs *PipelineRunStatus) convertTo(ctx context.Context, sink *v1.PipelineRu
 }
 
 func (prs *PipelineRunStatus) convertFrom(ctx context.Context, source *v1.PipelineRunStatus, meta *metav1.ObjectMeta) error {
+	if source.Outcome != nil {
+		if err := version.SerializeToMetadata(meta, source.Outcome, pipelineRunOutcomeAnnotationKey); err != nil {
+			return err
+		}
+	}
 	prs.Status = source.Status
 	prs.StartTime = source.StartTime
 	prs.CompletionTime = source.CompletionTime
@@ -272,6 +298,11 @@ func (prs *PipelineRunStatus) convertFrom(ctx context.Context, source *v1.Pipeli
 			return err
 		}
 		prs.PipelineSpec = &newPipelineSpec
+		if source.PipelineSpec.Outcome != nil {
+			if err := version.SerializeToMetadata(meta, source.PipelineSpec.Outcome, pipelineRunStatusSpecOutcomeAnnotationKey); err != nil {
+				return err
+			}
+		}
 	}
 	prs.SkippedTasks = nil
 	for _, st := range source.SkippedTasks {

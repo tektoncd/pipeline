@@ -29,6 +29,8 @@ import (
 
 var _ apis.Convertible = (*Pipeline)(nil)
 
+const pipelineOutcomeAnnotationKey = "tekton.dev/v1.pipeline-outcome"
+
 // ConvertTo implements apis.Convertible
 func (p *Pipeline) ConvertTo(ctx context.Context, to apis.Convertible) error {
 	if apis.IsInDelete(ctx) {
@@ -36,11 +38,15 @@ func (p *Pipeline) ConvertTo(ctx context.Context, to apis.Convertible) error {
 	}
 	switch sink := to.(type) {
 	case *v1.Pipeline:
-		sink.ObjectMeta = p.ObjectMeta
+		sink.ObjectMeta = *p.ObjectMeta.DeepCopy()
 		if err := serializePipelineResources(&sink.ObjectMeta, &p.Spec); err != nil {
 			return err
 		}
-		return p.Spec.ConvertTo(ctx, &sink.Spec, &sink.ObjectMeta)
+		if err := p.Spec.ConvertTo(ctx, &sink.Spec, &sink.ObjectMeta); err != nil {
+			return err
+		}
+		sink.Spec.Outcome = nil
+		return version.DeserializeFromMetadata(&sink.ObjectMeta, &sink.Spec.Outcome, pipelineOutcomeAnnotationKey)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}
@@ -93,11 +99,17 @@ func (ps *PipelineSpec) ConvertTo(ctx context.Context, sink *v1.PipelineSpec, me
 func (p *Pipeline) ConvertFrom(ctx context.Context, from apis.Convertible) error {
 	switch source := from.(type) {
 	case *v1.Pipeline:
-		p.ObjectMeta = source.ObjectMeta
+		p.ObjectMeta = *source.ObjectMeta.DeepCopy()
 		if err := deserializePipelineResources(&p.ObjectMeta, &p.Spec); err != nil {
 			return err
 		}
-		return p.Spec.ConvertFrom(ctx, &source.Spec, &p.ObjectMeta)
+		if err := p.Spec.ConvertFrom(ctx, &source.Spec, &p.ObjectMeta); err != nil {
+			return err
+		}
+		if source.Spec.Outcome != nil {
+			return version.SerializeToMetadata(&p.ObjectMeta, source.Spec.Outcome, pipelineOutcomeAnnotationKey)
+		}
+		return nil
 	default:
 		return fmt.Errorf("unknown version, got: %T", p)
 	}
