@@ -77,6 +77,7 @@ const (
 	defaultMaximumResolutionTimeout         = "default-maximum-resolution-timeout"
 	defaultSidecarLogPollingIntervalKey     = "default-sidecar-log-polling-interval"
 	DefaultStepRefConcurrencyLimitKey       = "default-step-ref-concurrency-limit"
+	defaultFailFastKey                      = "default-fail-fast"
 )
 
 // DefaultConfig holds all the default configurations for the config.
@@ -104,6 +105,9 @@ type Defaults struct {
 	// It is used to control the responsiveness and resource usage of the sidecar in both production and test environments.
 	DefaultSidecarLogPollingInterval time.Duration
 	DefaultStepRefConcurrencyLimit   int
+	// DefaultFailFast is the default failFast behavior of PipelineRuns whose
+	// PipelineRun and Pipeline do not set failFast.
+	DefaultFailFast bool
 }
 
 // GetDefaultsConfigName returns the name of the configmap containing all
@@ -139,6 +143,7 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 		other.DefaultMaximumResolutionTimeout == cfg.DefaultMaximumResolutionTimeout &&
 		other.DefaultSidecarLogPollingInterval == cfg.DefaultSidecarLogPollingInterval &&
 		other.DefaultStepRefConcurrencyLimit == cfg.DefaultStepRefConcurrencyLimit &&
+		other.DefaultFailFast == cfg.DefaultFailFast &&
 		reflect.DeepEqual(other.DefaultForbiddenEnv, cfg.DefaultForbiddenEnv)
 }
 
@@ -248,6 +253,14 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 			return nil, fmt.Errorf("failed parsing default config %q", defaultMaximumResolutionTimeout)
 		}
 		tc.DefaultMaximumResolutionTimeout = timeout
+	}
+
+	if defaultFailFast, ok := cfgMap[defaultFailFastKey]; ok {
+		failFast, err := strconv.ParseBool(defaultFailFast)
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing default config %q: %w", defaultFailFastKey, err)
+		}
+		tc.DefaultFailFast = failFast
 	}
 
 	if defaultSidecarPollingInterval, ok := cfgMap[defaultSidecarLogPollingIntervalKey]; ok {

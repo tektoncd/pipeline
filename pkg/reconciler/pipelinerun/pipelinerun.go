@@ -877,6 +877,25 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 		}
 	}
 
+	// With failFast, once a PipelineTask has failed (and onError does not ignore it),
+	// cancel the tasks that are still running. Finally tasks are left untouched.
+	if isFailFast(ctx, pr, pipelineSpec) && pipelineRunFacts.IsStopping() {
+		tasksToCancel := sets.NewString()
+		for _, pt := range pipelineRunFacts.State {
+			if !pt.IsFinalTask(pipelineRunFacts) && pt.IsRunning() {
+				tasksToCancel.Insert(pt.PipelineTask.Name)
+			}
+		}
+		if tasksToCancel.Len() > 0 {
+			logger.Infof("PipelineRun %s/%s has failFast and a task failed, cancelling running tasks", pr.Namespace, pr.Name)
+			if errs := cancelPipelineTaskRunsForTaskNames(ctx, logger, pr, c.PipelineClientSet, tasksToCancel); len(errs) > 0 {
+				errString := strings.Join(errs, "\n")
+				logger.Errorf("Failed to cancel tasks for PipelineRun %s/%s: %s", pr.Namespace, pr.Name, errString)
+				return fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, errString)
+			}
+		}
+	}
+
 	if pipelineRunFacts.State.IsBeforeFirstTaskRun() {
 		if err := resources.ValidatePipelineTaskResults(pipelineRunFacts.State); err != nil {
 			logger.Errorf("Failed to resolve task result reference for %q with error %v", pr.Name, err)
@@ -2295,4 +2314,16 @@ func validatePipelineSpecAfterApplyParameters(ctx context.Context, pipelineSpec 
 		errs = errs.Also(t.ValidateOnError(ctx))
 	}
 	return errs
+}
+
+// isFailFast returns whether failFast applies to the PipelineRun. The PipelineRun
+// takes precedence over the Pipeline, which takes precedence over config-defaults.
+func isFailFast(ctx context.Context, pr *v1.PipelineRun, pipelineSpec *v1.PipelineSpec) bool {
+	if pr.Spec.FailFast != nil {
+		return *pr.Spec.FailFast
+	}
+	if pipelineSpec != nil && pipelineSpec.FailFast != nil {
+		return *pipelineSpec.FailFast
+	}
+	return config.FromContextOrDefaults(ctx).Defaults.DefaultFailFast
 }

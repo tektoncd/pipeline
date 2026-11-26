@@ -693,6 +693,7 @@ _Appears in:_
 | `workspaces` _[WorkspaceBinding](#workspacebinding) array_ | Workspaces holds a set of workspace bindings that must match names<br />with those declared in the pipeline. |  | Optional: \{\} <br /> |
 | `taskRunSpecs` _[PipelineTaskRunSpec](#pipelinetaskrunspec) array_ | TaskRunSpecs holds a set of runtime specs |  | Optional: \{\} <br /> |
 | `managedBy` _string_ | ManagedBy indicates which controller is responsible for reconciling<br />this resource. If unset or set to "tekton.dev/pipeline", the default<br />Tekton controller will manage this resource.<br />This field is immutable. |  | Optional: \{\} <br /> |
+| `failFast` _boolean_ | FailFast, when true, cancels the running tasks of the PipelineRun as soon as<br />a PipelineTask fails (finally tasks still run). It takes precedence over the<br />Pipeline's failFast and the default-fail-fast setting of config-defaults. |  | Optional: \{\} <br /> |
 
 
 #### PipelineRunSpecStatus
@@ -787,6 +788,7 @@ _Appears in:_
 | `workspaces` _[PipelineWorkspaceDeclaration](#pipelineworkspacedeclaration) array_ | Workspaces declares a set of named workspaces that are expected to be<br />provided by a PipelineRun. |  | Optional: \{\} <br /> |
 | `results` _[PipelineResult](#pipelineresult) array_ | Results are values that this pipeline can output once run |  | Optional: \{\} <br /> |
 | `finally` _[PipelineTask](#pipelinetask) array_ | Finally declares the list of Tasks that execute just before leaving the Pipeline<br />i.e. either after all Tasks are finished executing successfully<br />or after a failure which would result in ending the Pipeline |  |  |
+| `failFast` _boolean_ | FailFast, when true, cancels the running tasks of a PipelineRun as soon as<br />a PipelineTask fails (finally tasks still run). It can be overridden by the<br />PipelineRun's failFast. |  | Optional: \{\} <br /> |
 
 
 #### PipelineTask
@@ -2957,6 +2959,7 @@ _Appears in:_
 | `workspaces` _[WorkspaceBinding](#workspacebinding) array_ | Workspaces holds a set of workspace bindings that must match names<br />with those declared in the pipeline. |  | Optional: \{\} <br /> |
 | `taskRunSpecs` _[PipelineTaskRunSpec](#pipelinetaskrunspec) array_ | TaskRunSpecs holds a set of runtime specs |  | Optional: \{\} <br /> |
 | `managedBy` _string_ | ManagedBy indicates which controller is responsible for reconciling<br />this resource. If unset or set to "tekton.dev/pipeline", the default<br />Tekton controller will manage this resource.<br />This field is immutable. |  | Optional: \{\} <br /> |
+| `failFast` _boolean_ | FailFast, when true, cancels the running tasks of the PipelineRun as soon as<br />a PipelineTask fails (finally tasks still run). It takes precedence over the<br />Pipeline's failFast and the default-fail-fast setting of config-defaults. |  | Optional: \{\} <br /> |
 
 
 #### PipelineRunSpecStatus
@@ -3073,6 +3076,7 @@ _Appears in:_
 | `workspaces` _[PipelineWorkspaceDeclaration](#pipelineworkspacedeclaration) array_ | Workspaces declares a set of named workspaces that are expected to be<br />provided by a PipelineRun. |  | Optional: \{\} <br /> |
 | `results` _[PipelineResult](#pipelineresult) array_ | Results are values that this pipeline can output once run |  | Optional: \{\} <br /> |
 | `finally` _[PipelineTask](#pipelinetask) array_ | Finally declares the list of Tasks that execute just before leaving the Pipeline<br />i.e. either after all Tasks are finished executing successfully<br />or after a failure which would result in ending the Pipeline |  |  |
+| `failFast` _boolean_ | FailFast, when true, cancels the running tasks of a PipelineRun as soon as<br />a PipelineTask fails (finally tasks still run). It can be overridden by the<br />PipelineRun's failFast. |  | Optional: \{\} <br /> |
 
 
 #### PipelineTask

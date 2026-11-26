@@ -64,6 +64,9 @@ spec:
                 displayName:
                   description: DisplayName
                   type: string
+                failFast:
+                  description: FailFast
+                  type: boolean
                 finally:
                   description: Finally
                   type: array
@@ -734,6 +737,12 @@ spec:
                     DisplayName is a user-facing name of the pipeline that may be
                     used to populate a UI.
                   type: string
+                failFast:
+                  description: |-
+                    FailFast, when true, cancels the running tasks of a PipelineRun as soon as
+                    a PipelineTask fails (finally tasks still run). It can be overridden by the
+                    PipelineRun's failFast.
+                  type: boolean
                 finally:
                   description: |-
                     Finally declares the list of Tasks that execute just before leaving the Pipeline

@@ -80,6 +80,7 @@ func (prs PipelineRunSpec) ConvertTo(ctx context.Context, sink *v1.PipelineRunSp
 	sink.TaskRunTemplate = v1.PipelineTaskRunTemplate{}
 	sink.TaskRunTemplate.PodTemplate = prs.PodTemplate
 	sink.TaskRunTemplate.ServiceAccountName = prs.ServiceAccountName
+	sink.FailFast = prs.FailFast
 	sink.Workspaces = nil
 	for _, w := range prs.Workspaces {
 		new := v1.WorkspaceBinding{}
@@ -141,6 +142,7 @@ func (prs *PipelineRunSpec) ConvertFrom(ctx context.Context, source *v1.Pipeline
 		prs.Timeouts = newTimeouts
 	}
 	prs.PodTemplate = source.TaskRunTemplate.PodTemplate
+	prs.FailFast = source.FailFast
 	prs.Workspaces = nil
 	for _, w := range source.Workspaces {
 		new := WorkspaceBinding{}

@@ -3057,6 +3057,149 @@ status:
 	}
 }
 
+func TestReconcileFailFast(t *testing.T) {
+	// TestReconcileFailFast runs "Reconcile" on a PipelineRun with one failed and one running PipelineTask
+	// and verifies that the running TaskRun is cancelled only when failFast applies.
+	pipeline := func(failFast, onErrorContinue string) []*v1.Pipeline {
+		return []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+`+failFast+`
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      name: hello-world
+`+onErrorContinue+`
+  - name: hello-world-2
+    taskRef:
+      name: hello-world
+`)}
+	}
+	prSpec := func(failFast string) *v1.PipelineRun {
+		return parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+`+failFast+`
+status:
+  startTime: "2021-12-31T23:55:00Z"
+  childReferences:
+  - name: test-pipeline-run-hello-world-1
+    pipelineTaskName: hello-world-1
+    kind: TaskRun
+  - name: test-pipeline-run-hello-world-2
+    pipelineTaskName: hello-world-2
+    kind: TaskRun
+`)
+	}
+	taskRun := func(ptName, status string) *v1.TaskRun {
+		return parse.MustParseTaskRunWithObjectMeta(t, taskRunObjectMeta("test-pipeline-run-"+ptName, "foo", "test-pipeline-run",
+			"test-pipeline", ptName, false), `
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+    kind: Task
+status:
+  conditions:
+  - lastTransitionTime: null
+    status: "`+status+`"
+    type: Succeeded
+`)
+	}
+
+	tcs := []struct {
+		name       string
+		pipeline   []*v1.Pipeline
+		pr         *v1.PipelineRun
+		defaults   map[string]string
+		wantCancel bool
+	}{{
+		name:       "failFast not set",
+		pipeline:   pipeline("", ""),
+		pr:         prSpec(""),
+		wantCancel: false,
+	}, {
+		name:       "failFast set on the PipelineRun",
+		pipeline:   pipeline("", ""),
+		pr:         prSpec("  failFast: true"),
+		wantCancel: true,
+	}, {
+		name:       "failFast set on the Pipeline",
+		pipeline:   pipeline("  failFast: true", ""),
+		pr:         prSpec(""),
+		wantCancel: true,
+	}, {
+		name:       "failFast set in config-defaults",
+		pipeline:   pipeline("", ""),
+		pr:         prSpec(""),
+		defaults:   map[string]string{"default-fail-fast": "true"},
+		wantCancel: true,
+	}, {
+		name:       "PipelineRun false overrides Pipeline true",
+		pipeline:   pipeline("  failFast: true", ""),
+		pr:         prSpec("  failFast: false"),
+		wantCancel: false,
+	}, {
+		name:       "PipelineRun false overrides config-defaults true",
+		pipeline:   pipeline("", ""),
+		pr:         prSpec("  failFast: false"),
+		defaults:   map[string]string{"default-fail-fast": "true"},
+		wantCancel: false,
+	}, {
+		name:       "Pipeline true overrides config-defaults false",
+		pipeline:   pipeline("  failFast: true", ""),
+		pr:         prSpec(""),
+		defaults:   map[string]string{"default-fail-fast": "false"},
+		wantCancel: true,
+	}, {
+		name:       "failed task with onError continue does not trigger failFast",
+		pipeline:   pipeline("", "    onError: continue"),
+		pr:         prSpec("  failFast: true"),
+		wantCancel: false,
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				PipelineRuns: []*v1.PipelineRun{tc.pr},
+				Pipelines:    tc.pipeline,
+				Tasks:        []*v1.Task{simpleHelloWorldTask},
+				TaskRuns:     []*v1.TaskRun{taskRun("hello-world-1", "False"), taskRun("hello-world-2", "Unknown")},
+			}
+			if tc.defaults != nil {
+				d.ConfigMaps = []*corev1.ConfigMap{{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+					Data:       tc.defaults,
+				}}
+			}
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+
+			_, clients := prt.reconcileRun("foo", "test-pipeline-run", nil, false)
+
+			running, err := clients.Pipeline.TektonV1().TaskRuns("foo").Get(t.Context(), "test-pipeline-run-hello-world-2", metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("error getting TaskRun: %v", err)
+			}
+			if got := running.Spec.Status == v1.TaskRunSpecStatusCancelled; got != tc.wantCancel {
+				t.Errorf("running TaskRun cancelled = %t, want %t (spec.status=%q)", got, tc.wantCancel, running.Spec.Status)
+			}
+			failed, err := clients.Pipeline.TektonV1().TaskRuns("foo").Get(t.Context(), "test-pipeline-run-hello-world-1", metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("error getting TaskRun: %v", err)
+			}
+			if failed.Spec.Status == v1.TaskRunSpecStatusCancelled {
+				t.Errorf("failed TaskRun must not be cancelled")
+			}
+		})
+	}
+}
+
 func TestReconcileWithTimeouts_Finally(t *testing.T) {
 	// TestReconcileWithTimeouts_Finally runs "Reconcile" on a PipelineRun with timeouts.finally configured.
 	// It verifies that reconcile is successful, no TaskRun is created, the PipelineTask is marked as skipped, and the

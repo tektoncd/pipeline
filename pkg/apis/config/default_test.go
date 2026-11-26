@@ -240,6 +240,26 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultSidecarLogPollingInterval:   100 * time.Millisecond,
 			},
 		},
+		{
+			expectedError: false,
+			fileName:      "config-defaults-fail-fast",
+			expectedConfig: &config.Defaults{
+				DefaultFailFast:                    true,
+				DefaultStepRefConcurrencyLimit:     5,
+				DefaultTimeoutMinutes:              60,
+				DefaultServiceAccount:              "default",
+				DefaultManagedByLabelValue:         config.DefaultManagedByLabelValue,
+				DefaultMaxMatrixCombinationsCount:  256,
+				DefaultImagePullBackOffTimeout:     0,
+				DefaultCreateContainerErrorTimeout: 0,
+				DefaultMaximumResolutionTimeout:    1 * time.Minute,
+				DefaultSidecarLogPollingInterval:   100 * time.Millisecond,
+			},
+		},
+		{
+			expectedError: true,
+			fileName:      "config-defaults-fail-fast-err",
+		},
 	}
 
 	for _, tc := range testCases {

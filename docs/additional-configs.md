@@ -324,6 +324,7 @@ The example below customizes the following:
 more information, see [`Matrix`](matrix.md).
 - the default resolver type to `git`.
 - the default polling interval for the sidecar log results container via `default-sidecar-log-polling-interval`.
+- the default `failFast` behavior of `PipelineRuns` via `default-fail-fast`.
 
 ```yaml
 apiVersion: v1
@@ -342,6 +343,7 @@ data:
   default-max-matrix-combinations-count: "1024"
   default-resolver-type: "git"
   default-sidecar-log-polling-interval: "100ms"
+  default-fail-fast: "true"
 ```
 
 ### `default-sidecar-log-polling-interval`

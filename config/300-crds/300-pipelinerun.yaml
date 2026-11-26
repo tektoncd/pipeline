@@ -56,6 +56,9 @@ spec:
               description: Spec
               type: object
               properties:
+                failFast:
+                  description: FailFast
+                  type: boolean
                 managedBy:
                   description: ManagedBy
                   type: string
@@ -3252,6 +3255,12 @@ spec:
               description: PipelineRunSpec defines the desired state of PipelineRun
               type: object
               properties:
+                failFast:
+                  description: |-
+                    FailFast, when true, cancels the running tasks of the PipelineRun as soon as
+                    a PipelineTask fails (finally tasks still run). It takes precedence over the
+                    Pipeline's failFast and the default-fail-fast setting of config-defaults.
+                  type: boolean
                 managedBy:
                   description: |-
                     ManagedBy indicates which controller is responsible for reconciling
