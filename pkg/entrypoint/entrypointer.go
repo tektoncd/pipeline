@@ -35,7 +35,6 @@ import (
 
 	"cel.dev/cel-go/cel"
 	"github.com/tektoncd/pipeline/internal/artifactref"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1/types"
 	"github.com/tektoncd/pipeline/pkg/artifactstorage"
 	"github.com/tektoncd/pipeline/pkg/entrypoint/pipeline"
@@ -192,6 +191,12 @@ type Entrypointer struct {
 	// ArtifactProvider is the storage backend for uploading/downloading content
 	// artifacts. May be nil when artifact storage is disabled.
 	ArtifactProvider artifactstorage.Provider
+	// ArtifactTaskRun is the TaskRun name.
+	ArtifactTaskRun string
+	// ArtifactPipelineRun is the PipelineRun name (empty for standalone TaskRuns).
+	ArtifactPipelineRun string
+	// ArtifactNamespace is the namespace where the workload runs.
+	ArtifactNamespace string
 }
 
 // Waiter encapsulates waiting for files to exist.
@@ -273,16 +278,18 @@ func (e Entrypointer) Go() error {
 			slog.Error("Error while substituting step artifacts:", slog.Any("error", err))
 		}
 
-		// Download input artifacts before step execution.
-		// Reference artifacts carry only metadata (URI + digest) for
-		// variable substitution — there is no content to download.
-		for _, input := range e.ArtifactInputs {
-			if input.Reference {
-				continue
-			}
-			if dlErr := DownloadArtifact(ctx, input, e.ArtifactProvider); dlErr != nil {
-				err = fmt.Errorf("downloading artifact %s: %w", input.Name, dlErr)
-				break
+		// Download input artifacts before step execution, unless the
+		// artifact-fetch init container already handled it (indicated
+		// by the marker file).
+		if !artifactsFetched() {
+			for _, input := range e.ArtifactInputs {
+				if input.Reference {
+					continue
+				}
+				if dlErr := DownloadArtifact(ctx, input, e.ArtifactProvider); dlErr != nil {
+					err = fmt.Errorf("downloading artifact %s: %w", input.Name, dlErr)
+					break
+				}
 			}
 		}
 
@@ -291,7 +298,7 @@ func (e Entrypointer) Go() error {
 		// For Reference artifacts: Path is a .uri file and the step writes a URI.
 		for _, ao := range e.ArtifactOutputs {
 			dir := ao.Path
-			if ao.Type == "reference" { //nolint:goconst
+			if ao.Type == v1.ArtifactTypeReference {
 				dir = filepath.Dir(ao.Path)
 			}
 			if mkErr := os.MkdirAll(dir, 0o755); mkErr != nil {
@@ -304,7 +311,7 @@ func (e Entrypointer) Go() error {
 		// files are visible but should not be re-uploaded.
 		preStepFileCounts := make(map[string]int)
 		for _, ao := range e.ArtifactOutputs {
-			if ao.Type == "reference" {
+			if ao.Type == v1.ArtifactTypeReference {
 				continue
 			}
 			preStepFileCounts[ao.Name] = countFiles(ao.Path)
@@ -335,23 +342,32 @@ func (e Entrypointer) Go() error {
 				// Use a fresh context for uploads — the step context may be cancelled by the cancellation watcher
 				var budget *InlineBudgetTracker
 				if e.ArtifactInlineThreshold > 0 {
-					budget = NewInlineBudgetTracker(config.InlineBudgetFile, config.PodInlineBudget)
+					budget = NewInlineBudgetTracker(pipeline.InlineBudgetFile, pipeline.PodInlineBudget)
 				}
 				uploadCtx := context.Background()
+				meta := ArtifactMetadata{
+					TaskRun:     e.ArtifactTaskRun,
+					PipelineRun: e.ArtifactPipelineRun,
+					Namespace:   e.ArtifactNamespace,
+				}
 				for _, ao := range e.ArtifactOutputs {
-					if ao.Type != "reference" {
+					if ao.Type != v1.ArtifactTypeReference {
 						if countFiles(ao.Path) <= preStepFileCounts[ao.Name] {
 							continue
 						}
 					}
-					av, uploadErr := UploadArtifact(uploadCtx, ao, e.ArtifactProvider, e.ArtifactInlineThreshold, budget)
+					av, uploadErr := UploadArtifact(uploadCtx, ao, e.ArtifactProvider, e.ArtifactInlineThreshold, budget, meta)
 					if uploadErr != nil {
 						err = fmt.Errorf("uploading artifact %s: %w", ao.Name, uploadErr)
 						slog.Error("Error uploading artifact", slog.String("name", ao.Name), slog.Any("error", uploadErr))
 						output = append(output, e.outputRunResult(uploadErr.Error()))
 						break
 					}
-					avJSON, _ := json.Marshal(av) //nolint:errchkjson // marshaling plain structs cannot fail
+					avJSON, jsonErr := json.Marshal(av)
+					if jsonErr != nil {
+						err = fmt.Errorf("marshalling artifact value %s: %w", ao.Name, jsonErr)
+						break
+					}
 					output = append(output, result.RunResult{
 						Key:        "artifact-" + ao.Name,
 						Value:      string(avJSON),

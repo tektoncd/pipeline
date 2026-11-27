@@ -22,17 +22,21 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
+	"github.com/google/go-containerregistry/pkg/v1/static"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 
 	v1types "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1/types"
@@ -80,8 +84,8 @@ func NewOCIProvider(repository string, opts ...Option) *OCIProvider {
 
 func (p *OCIProvider) Name() string { return "oci" }
 
-// ContentAddressed reports that OCI pulls are digest-pinned and therefore
-// self-verifying, so core skips wrapping Fetch in a verifying reader.
+// ContentAddressed returns true because Fetch already verifies ref.Digest
+// internally. This tells VerifiedFetch to skip its own redundant check.
 func (p *OCIProvider) ContentAddressed() bool { return true }
 
 func (p *OCIProvider) nameOpts() []name.Option {
@@ -105,6 +109,8 @@ func (p *OCIProvider) buildRemoteOpts(ctx context.Context) []remote.Option {
 	return opts
 }
 
+const artifactConfigMediaType = "application/vnd.tekton.artifact.config.v1+json"
+
 func (p *OCIProvider) Store(ctx context.Context, opts artifactstorage.StoreOptions, content io.Reader) (*v1types.ArtifactStorageRef, error) {
 	data, err := io.ReadAll(content)
 	if err != nil {
@@ -117,18 +123,63 @@ func (p *OCIProvider) Store(ctx context.Context, opts artifactstorage.StoreOptio
 
 	layerMediaType := types.MediaType(opts.MediaType)
 	if layerMediaType == "" {
-		layerMediaType = types.OCILayer
+		layerMediaType = types.MediaType(detectContentType(data))
 	}
 
-	layer, err := tarball.LayerFromReader(bytes.NewReader(data), tarball.WithMediaType(layerMediaType))
-	if err != nil {
-		return nil, fmt.Errorf("creating layer: %w", err)
-	}
+	layer := static.NewLayer(data, layerMediaType)
 
 	img, err := mutate.AppendLayers(mutate.MediaType(empty.Image, types.OCIManifestSchema1), layer)
 	if err != nil {
 		return nil, fmt.Errorf("creating image with layer: %w", err)
 	}
+
+	now := time.Now().UTC().Format(time.RFC3339)
+
+	cfgBlob := struct {
+		Created  string `json:"created"`
+		Artifact struct {
+			Name        string `json:"name"`
+			TaskRun     string `json:"taskrun,omitempty"`
+			PipelineRun string `json:"pipelinerun,omitempty"`
+			Namespace   string `json:"namespace,omitempty"`
+			ContentType string `json:"contentType,omitempty"`
+		} `json:"artifact"`
+	}{
+		Created: now,
+	}
+	cfgBlob.Artifact.Name = opts.ArtifactName
+	cfgBlob.Artifact.ContentType = string(layerMediaType)
+
+	annotations := map[string]string{
+		"dev.tekton.artifact/name":    opts.ArtifactName,
+		"dev.tekton.artifact/created": now,
+	}
+
+	if opts.TaskRun != "" {
+		cfgBlob.Artifact.TaskRun = opts.TaskRun
+		annotations["dev.tekton.artifact/taskrun"] = opts.TaskRun
+	}
+	if opts.PipelineRun != "" {
+		cfgBlob.Artifact.PipelineRun = opts.PipelineRun
+		annotations["dev.tekton.artifact/pipelinerun"] = opts.PipelineRun
+	}
+	if opts.Namespace != "" {
+		cfgBlob.Artifact.Namespace = opts.Namespace
+		annotations["dev.tekton.artifact/namespace"] = opts.Namespace
+	}
+
+	cfgJSON, err := json.Marshal(cfgBlob)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling config blob: %w", err)
+	}
+
+	img, err = mutate.AppendLayers(img, static.NewLayer(cfgJSON, artifactConfigMediaType))
+	if err != nil {
+		return nil, fmt.Errorf("appending config layer: %w", err)
+	}
+	img = mutate.ConfigMediaType(img, artifactConfigMediaType)
+
+	img = mutate.Annotations(img, annotations).(v1.Image)
 
 	repo := opts.Repository
 	if repo == "" {
@@ -178,7 +229,15 @@ func (p *OCIProvider) Fetch(ctx context.Context, ref *v1types.ArtifactStorageRef
 		return nil, fmt.Errorf("artifact at %s has no layers", ref.Location)
 	}
 
-	return layerReadCloser(layers[0])
+	rc, err := layerReadCloser(layers[0])
+	if err != nil {
+		return nil, err
+	}
+
+	if digest := strings.TrimPrefix(ref.Digest, "sha256:"); digest != "" {
+		return artifactstorage.NewVerifyingReader(rc, digest), nil
+	}
+	return rc, nil
 }
 
 func (p *OCIProvider) Delete(ctx context.Context, ref *v1types.ArtifactStorageRef) error {
@@ -205,14 +264,44 @@ func (p *OCIProvider) Exists(ctx context.Context, ref *v1types.ArtifactStorageRe
 	return true, nil
 }
 
-// layerReadCloser returns a ReadCloser for the compressed layer content.
 func layerReadCloser(layer v1.Layer) (io.ReadCloser, error) {
 	return layer.Compressed()
 }
 
-// isNotFound checks if the error indicates a 404 / not-found response.
+// detectContentType sniffs the content bytes and returns a MIME type.
+// It improves on http.DetectContentType by recognising JSON and XML,
+// which the standard library reports as "text/plain".
+func detectContentType(data []byte) string {
+	trimmed := bytes.TrimLeft(data, " \t\r\n")
+	if len(trimmed) > 0 {
+		switch trimmed[0] {
+		case '{', '[':
+			return "application/json"
+		case '<':
+			return "application/xml"
+		}
+	}
+	ct := http.DetectContentType(data)
+	if strings.HasPrefix(ct, "text/") {
+		return "text/plain; charset=utf-8"
+	}
+	return "application/octet-stream"
+}
+
+// isNotFound checks if the error indicates a 404 / not-found response
+// by inspecting the structured transport.Error from go-containerregistry.
 func isNotFound(err error) bool {
-	return strings.Contains(err.Error(), "NOT_FOUND") ||
-		strings.Contains(err.Error(), "MANIFEST_UNKNOWN") ||
-		strings.Contains(err.Error(), "404")
+	var terr *transport.Error
+	if !errors.As(err, &terr) {
+		return false
+	}
+	if terr.StatusCode == http.StatusNotFound {
+		return true
+	}
+	for _, d := range terr.Errors {
+		if d.Code == transport.ManifestUnknownErrorCode || d.Code == transport.NameUnknownErrorCode {
+			return true
+		}
+	}
+	return false
 }

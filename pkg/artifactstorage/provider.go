@@ -55,4 +55,10 @@ type StoreOptions struct {
 	Tag string
 	// Insecure allows plain HTTP transport when true.
 	Insecure bool
+	// TaskRun is the name of the TaskRun that produced this artifact.
+	TaskRun string
+	// PipelineRun is the name of the PipelineRun (empty for standalone TaskRuns).
+	PipelineRun string
+	// Namespace is the namespace where the workload runs.
+	Namespace string
 }

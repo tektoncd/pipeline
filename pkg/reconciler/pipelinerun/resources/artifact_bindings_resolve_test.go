@@ -47,7 +47,7 @@ func TestResolveArtifactInputsForTask(t *testing.T) {
 		},
 	}
 
-	resolved, err := ResolveArtifactInputsForTask(pt, taskArtifacts)
+	resolved, err := ResolveArtifactInputsForTask(pt, taskArtifacts, nil)
 	if err != nil {
 		t.Fatalf("ResolveArtifactInputsForTask() error = %v", err)
 	}
@@ -69,7 +69,7 @@ func TestResolveArtifactInputsForTask(t *testing.T) {
 func TestResolveArtifactInputsForTask_NoBindings(t *testing.T) {
 	pt := &v1.PipelineTask{Name: "simple"}
 
-	resolved, err := ResolveArtifactInputsForTask(pt, nil)
+	resolved, err := ResolveArtifactInputsForTask(pt, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -88,9 +88,50 @@ func TestResolveArtifactInputsForTask_MissingUpstream(t *testing.T) {
 		},
 	}
 
-	_, err := ResolveArtifactInputsForTask(pt, map[string]*v1.Artifacts{})
+	_, err := ResolveArtifactInputsForTask(pt, map[string]*v1.Artifacts{}, nil)
 	if err == nil {
 		t.Error("expected error for missing upstream task")
+	}
+}
+
+func TestResolveArtifactInputsForTask_PipelineRunInputs(t *testing.T) {
+	pt := &v1.PipelineTask{
+		Name: "consume",
+		Artifacts: &v1.PipelineTaskArtifacts{
+			Inputs: []v1.PipelineTaskArtifactBinding{
+				{Name: "data", From: "artifacts.inputs.source"},
+			},
+		},
+	}
+
+	pipelineRunInputs := []v1.Artifact{
+		{
+			Name: "source",
+			Values: []v1.ArtifactValue{
+				{Uri: "registry:5000/artifacts/source@sha256:def456", Digest: map[v1.Algorithm]string{"sha256": "def456"}},
+			},
+		},
+	}
+
+	resolved, err := ResolveArtifactInputsForTask(pt, nil, pipelineRunInputs)
+	if err != nil {
+		t.Fatalf("ResolveArtifactInputsForTask() error = %v", err)
+	}
+
+	if len(resolved) != 1 {
+		t.Fatalf("expected 1 resolved input, got %d", len(resolved))
+	}
+	if resolved[0].Name != "data" {
+		t.Errorf("expected name 'data', got %q", resolved[0].Name)
+	}
+	if resolved[0].URI != "registry:5000/artifacts/source@sha256:def456" {
+		t.Errorf("expected URI from pipeline run input, got %q", resolved[0].URI)
+	}
+	if resolved[0].Path != "/tekton/artifacts/inputs/data" {
+		t.Errorf("expected path '/tekton/artifacts/inputs/data', got %q", resolved[0].Path)
+	}
+	if resolved[0].Digest["sha256"] != "def456" {
+		t.Errorf("expected digest sha256:def456, got %v", resolved[0].Digest)
 	}
 }
 

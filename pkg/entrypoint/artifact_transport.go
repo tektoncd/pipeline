@@ -31,9 +31,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	v1types "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1/types"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1/types"
 	"github.com/tektoncd/pipeline/pkg/artifactstorage"
+	"github.com/tektoncd/pipeline/pkg/entrypoint/pipeline"
 )
+
+const algorithmSHA256 = "sha256"
 
 // ArtifactInput describes an artifact to download before step execution.
 type ArtifactInput struct {
@@ -47,12 +50,12 @@ type ArtifactInput struct {
 
 // ArtifactOutput describes an artifact to upload after step execution.
 type ArtifactOutput struct {
-	Name       string               `json:"name"`                 // artifact name
-	Type       v1types.ArtifactType `json:"type"`                 // "content" (transported by Tekton) or "reference" (step already stored it)
-	Path       string               `json:"path"`                 // for content: local dir to archive from; for reference: file containing "uri@digest"
-	Repository string               `json:"repository,omitempty"` // OCI repository to push to (content only)
-	MediaType  string               `json:"mediaType,omitempty"`  // artifact media type (content only)
-	Subject    bool                 `json:"subject,omitempty"`    // whether this is a SLSA attestation subject
+	Name       string                  `json:"name"`                 // artifact name
+	Type       pipelinev1.ArtifactType `json:"type"`                 // "content" (transported by Tekton) or "reference" (step already stored it)
+	Path       string                  `json:"path"`                 // for content: local dir to archive from; for reference: file containing "uri@digest"
+	Repository string                  `json:"repository,omitempty"` // OCI repository to push to (content only)
+	MediaType  string                  `json:"mediaType,omitempty"`  // artifact media type (content only)
+	Subject    bool                    `json:"subject,omitempty"`    // whether this is a SLSA attestation subject
 }
 
 // UploadArtifact processes an output artifact after step execution.
@@ -74,8 +77,15 @@ type ArtifactOutput struct {
 //
 // provider may be nil when storage is disabled. budget may be nil, in which
 // case only the per-artifact threshold is checked.
-func UploadArtifact(ctx context.Context, output ArtifactOutput, provider artifactstorage.Provider, inlineThreshold int, budget *InlineBudgetTracker) (*v1types.ArtifactValue, error) {
-	if output.Type == v1types.ArtifactTypeReference {
+// ArtifactMetadata carries provenance metadata for OCI manifest annotations.
+type ArtifactMetadata struct {
+	TaskRun     string
+	PipelineRun string
+	Namespace   string
+}
+
+func UploadArtifact(ctx context.Context, output ArtifactOutput, provider artifactstorage.Provider, inlineThreshold int, budget *InlineBudgetTracker, metadata ArtifactMetadata) (*pipelinev1.ArtifactValue, error) {
+	if output.Type == pipelinev1.ArtifactTypeReference {
 		return readReferenceArtifact(output)
 	}
 
@@ -96,8 +106,8 @@ func UploadArtifact(ctx context.Context, output ArtifactOutput, provider artifac
 	if inlineThreshold > 0 && int(dataSize) <= inlineThreshold {
 		canInline := budget == nil || budget.TryConsume(int(dataSize))
 		if canInline {
-			return &v1types.ArtifactValue{
-				Digest: map[v1types.Algorithm]string{"sha256": digestHex}, //nolint:goconst
+			return &pipelinev1.ArtifactValue{
+				Digest: map[pipelinev1.Algorithm]string{algorithmSHA256: digestHex},
 				Size:   dataSize,
 				Inline: base64.StdEncoding.EncodeToString(dataBytes),
 			}, nil
@@ -121,8 +131,8 @@ func UploadArtifact(ctx context.Context, output ArtifactOutput, provider artifac
 		slog.Warn("Artifact storage is not enabled, content artifact will be digested but not uploaded. "+
 			"Set enabled: \"true\" in config-artifact-storage ConfigMap to enable uploads.",
 			slog.String("name", output.Name), slog.Int64("size", dataSize))
-		return &v1types.ArtifactValue{
-			Digest: map[v1types.Algorithm]string{"sha256": digestHex},
+		return &pipelinev1.ArtifactValue{
+			Digest: map[pipelinev1.Algorithm]string{algorithmSHA256: digestHex},
 			Size:   dataSize,
 		}, nil
 	}
@@ -132,14 +142,17 @@ func UploadArtifact(ctx context.Context, output ArtifactOutput, provider artifac
 		ArtifactName: output.Name,
 		MediaType:    output.MediaType,
 		Repository:   output.Repository,
+		TaskRun:      metadata.TaskRun,
+		PipelineRun:  metadata.PipelineRun,
+		Namespace:    metadata.Namespace,
 	}, bytes.NewReader(dataBytes))
 	if err != nil {
 		return nil, fmt.Errorf("storing artifact %q: %w", output.Name, err)
 	}
 
-	return &v1types.ArtifactValue{
+	return &pipelinev1.ArtifactValue{
 		Uri:    ref.Location,
-		Digest: map[v1types.Algorithm]string{"sha256": strings.TrimPrefix(ref.Digest, "sha256:")},
+		Digest: map[pipelinev1.Algorithm]string{algorithmSHA256: strings.TrimPrefix(ref.Digest, algorithmSHA256+":")},
 		Size:   dataSize,
 		Ref:    ref,
 	}, nil
@@ -150,7 +163,7 @@ func UploadArtifact(ctx context.Context, output ArtifactOutput, provider artifac
 // upload. The URI must carry a digest suffix ("@sha256:..."): a step that has
 // just pushed content always knows its digest, and requiring it here
 // guarantees every reference artifact recorded by Tekton is digest-pinned.
-func readReferenceArtifact(output ArtifactOutput) (*v1types.ArtifactValue, error) {
+func readReferenceArtifact(output ArtifactOutput) (*pipelinev1.ArtifactValue, error) {
 	data, err := os.ReadFile(output.Path)
 	if err != nil {
 		return nil, fmt.Errorf("reading reference artifact %q: %w", output.Name, err)
@@ -167,10 +180,10 @@ func readReferenceArtifact(output ArtifactOutput) (*v1types.ArtifactValue, error
 	if digest == "" {
 		return nil, fmt.Errorf("reference artifact %q: empty digest in uri %q", output.Name, uri)
 	}
-	return &v1types.ArtifactValue{
+	return &pipelinev1.ArtifactValue{
 		Uri: uri,
-		Digest: map[v1types.Algorithm]string{
-			"sha256": digest,
+		Digest: map[pipelinev1.Algorithm]string{
+			algorithmSHA256: digest,
 		},
 	}, nil
 }
@@ -182,6 +195,13 @@ func readReferenceArtifact(output ArtifactOutput) (*v1types.ArtifactValue, error
 // Digest verification is handled by the Provider layer (via VerifiedFetch for
 // non-content-addressed backends, or inherently by the transport for
 // content-addressed backends like OCI).
+// artifactsFetched returns true if the artifact-fetch init container has
+// already downloaded all content input artifacts (indicated by its marker file).
+func artifactsFetched() bool {
+	_, err := os.Stat(pipeline.ArtifactsFetchedFile)
+	return err == nil
+}
+
 func DownloadArtifact(ctx context.Context, input ArtifactInput, provider artifactstorage.Provider) error {
 	if input.Inline != "" {
 		return verifyAndExtractInlineArtifact(input)
@@ -192,10 +212,10 @@ func DownloadArtifact(ctx context.Context, input ArtifactInput, provider artifac
 	}
 
 	digestStr := ""
-	if d, ok := input.Digest["sha256"]; ok {
-		digestStr = "sha256:" + d
+	if d, ok := input.Digest[algorithmSHA256]; ok {
+		digestStr = algorithmSHA256 + ":" + d
 	}
-	storageRef := &v1types.ArtifactStorageRef{
+	storageRef := &pipelinev1.ArtifactStorageRef{
 		Location: input.URI,
 		Digest:   digestStr,
 	}
@@ -240,7 +260,7 @@ func verifyDigest(data []byte, expectedDigest map[string]string) error {
 	if len(expectedDigest) == 0 {
 		return nil
 	}
-	expected, ok := expectedDigest["sha256"]
+	expected, ok := expectedDigest[algorithmSHA256]
 	if !ok {
 		return nil
 	}
@@ -248,7 +268,7 @@ func verifyDigest(data []byte, expectedDigest map[string]string) error {
 	h.Write(data)
 	actual := hex.EncodeToString(h.Sum(nil))
 	if actual != expected {
-		return &DigestMismatchError{Algorithm: "sha256", Expected: expected, Actual: actual}
+		return &DigestMismatchError{Algorithm: algorithmSHA256, Expected: expected, Actual: actual}
 	}
 	return nil
 }
@@ -272,6 +292,20 @@ func createTarGzBuffer(path string) (*bytes.Buffer, error) {
 			return nil
 		}
 
+		if fi.Mode()&os.ModeSymlink != 0 {
+			resolved, err := filepath.EvalSymlinks(file)
+			if err != nil {
+				return err
+			}
+			fi, err = os.Stat(resolved)
+			if err != nil {
+				return err
+			}
+			if fi.IsDir() {
+				return nil
+			}
+		}
+
 		header, err := tar.FileInfoHeader(fi, "")
 		if err != nil {
 			return err
@@ -286,7 +320,7 @@ func createTarGzBuffer(path string) (*bytes.Buffer, error) {
 			return nil
 		}
 
-		f, err := os.Open(file) //nolint:gosec // file comes from walking the artifact path we were given
+		f, err := os.Open(file) //nolint:gosec // path is within the artifact output dir owned by this pod, not user-controlled input
 		if err != nil {
 			return err
 		}
@@ -327,7 +361,7 @@ func extractTarGz(r io.Reader, dst string) error {
 			return err
 		}
 
-		target := filepath.Join(dst, header.Name) //nolint:gosec // G305: traversal is rejected just below
+		target := filepath.Join(dst, header.Name) //nolint:gosec // traversal is checked on the next line
 		if !strings.HasPrefix(target, filepath.Clean(dst)+string(os.PathSeparator)) {
 			return fmt.Errorf("invalid tar entry: %s", header.Name)
 		}
@@ -337,11 +371,13 @@ func extractTarGz(r io.Reader, dst string) error {
 			if err := os.MkdirAll(target, 0o755); err != nil {
 				return err
 			}
+		case tar.TypeSymlink:
+			continue
 		case tar.TypeReg:
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, header.FileInfo().Mode().Perm())
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(header.Mode&0o777))
 			if err != nil {
 				return err
 			}

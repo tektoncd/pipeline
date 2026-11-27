@@ -90,6 +90,7 @@ const (
 	ContainerNamePrepare               = "prepare"
 	ContainerNamePlaceScripts          = "place-scripts"
 	ContainerNameWorkingDirInitializer = "working-dir-initializer"
+	ContainerNameArtifactFetch         = "artifact-fetch"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -147,6 +148,7 @@ func IsInternalContainer(name string) bool {
 	return name == ContainerNamePrepare ||
 		name == ContainerNamePlaceScripts ||
 		name == ContainerNameWorkingDirInitializer ||
+		name == ContainerNameArtifactFetch ||
 		name == pipeline.ReservedResultsSidecarContainerName
 }
 
@@ -240,6 +242,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	// not be gated on OCIRepository being configured -- only content-type
 	// uploads actually need a repository, and that's handled per-artifact in
 	// artifactEntrypointArgs.
+	var artifactFetchInitContainer *corev1.Container
 	if featureFlags.EnableArtifacts && taskSpec.Artifacts != nil {
 		artifactStorageCfg := config.FromContextOrDefaults(ctx).ArtifactStorage
 		backend, ociRepository, insecure := "", "", false
@@ -250,34 +253,37 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 			insecure = artifactStorageCfg.Insecure
 			inlineThreshold = artifactStorageCfg.InlineThreshold
 		}
-		artifactArgs := artifactEntrypointArgs(&taskSpec, backend, ociRepository, insecure, inlineThreshold)
-		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, artifactArgs...)
-		// If the pipeline reconciler resolved artifact input URIs, inject them
-		if inputsJSON, ok := taskRun.Annotations["tekton.dev/artifact-inputs"]; ok && inputsJSON != "" {
-			commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-artifact_inputs", inputsJSON)
-			if insecure {
-				// Ensure insecure flag is set (may already be set by artifactEntrypointArgs)
-				hasInsecure := false
-				for _, a := range commonExtraEntrypointArgs {
-					if a == "-artifact_insecure" {
-						hasInsecure = true
-						break
-					}
-				}
-				if !hasInsecure {
-					commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-artifact_insecure")
-				}
-			}
+		provenance := ArtifactProvenance{
+			TaskRun:   taskRun.Name,
+			Namespace: taskRun.Namespace,
 		}
-		// Get secret for OCI credentials from the system namespace (ex: tekton-pipelines)and inject
-		// the docker config JSON as an entrypoint arg.
+		if prName, ok := taskRun.Labels[pipeline.PipelineRunLabelKey]; ok {
+			provenance.PipelineRun = prName
+		}
+		artifactArgs := artifactEntrypointArgs(&taskSpec, backend, ociRepository, insecure, inlineThreshold, provenance)
+
+		var dockerCfgJSON []byte
 		if artifactStorageCfg != nil && artifactStorageCfg.Enabled && artifactStorageCfg.OCICredentialsSecret != "" {
-			dockerCfgJSON, err := readArtifactCredentials(ctx, b.KubeClient, artifactStorageCfg.OCICredentialsSecret)
+			var err error
+			dockerCfgJSON, err = readArtifactCredentials(ctx, b.KubeClient, artifactStorageCfg.OCICredentialsSecret)
 			if err != nil {
 				log.Printf("warning: failed to read artifact credentials secret: %v", err)
-			} else if len(dockerCfgJSON) > 0 {
-				commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-artifact_docker_config", string(dockerCfgJSON))
 			}
+		}
+
+		// If the pipeline reconciler resolved artifact input URIs, use an init
+		// container to fetch them once before any Step runs (TEP-0192).
+		// Steps themselves no longer download — they detect the marker file.
+		// Strip -artifact_inputs from the step args since the init container
+		// handles all input fetching.
+		if inputsJSON, ok := taskRun.Annotations["tekton.dev/artifact-inputs"]; ok && inputsJSON != "" {
+			artifactFetchInitContainer = artifactFetchInit(b.Images.EntrypointImage, inputsJSON, backend, insecure, string(dockerCfgJSON), securityContextConfig, windows)
+			artifactArgs = stripArtifactInputArgs(artifactArgs)
+		}
+
+		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, artifactArgs...)
+		if len(dockerCfgJSON) > 0 {
+			commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-artifact_docker_config", string(dockerCfgJSON))
 		}
 	}
 
@@ -315,6 +321,13 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	// Initialize any workingDirs under /workspace.
 	if workingDirInit := workingDirInit(b.Images.WorkingDirInitImage, stepContainers, securityContextConfig, windows); workingDirInit != nil {
 		initContainers = append(initContainers, *workingDirInit)
+	}
+
+	// Inject the artifact-fetch init container to download all content input
+	// artifacts once before any Step runs (TEP-0192). This runs after all
+	// other init containers so the entrypoint binary and scripts are in place.
+	if artifactFetchInitContainer != nil {
+		initContainers = append(initContainers, *artifactFetchInitContainer)
 	}
 
 	// By default, use an empty pod template and take the one defined in the task run spec if any
@@ -701,6 +714,40 @@ func entrypointInitContainer(image string, steps []v1.Step, securityContext Secu
 		prepareInitContainer.SecurityContext = securityContext.GetSecurityContext(windows)
 	}
 	return prepareInitContainer
+}
+
+// artifactFetchInit builds an init container that downloads all content input
+// artifacts into /tekton/artifacts before any Step runs. It uses the same
+// entrypoint image with the "artifact-fetch" subcommand.
+func artifactFetchInit(image, inputsJSON, backend string, insecure bool, dockerConfig string, securityContext SecurityContextConfig, windows bool) *corev1.Container {
+	command := []string{entrypointBinary, "artifact-fetch", inputsJSON}
+	if insecure {
+		command = append(command, "--insecure")
+	}
+	if backend != "" {
+		command = append(command, "--backend="+backend)
+	}
+	if dockerConfig != "" {
+		command = append(command, "--docker-config="+dockerConfig)
+	}
+
+	c := &corev1.Container{
+		Name:       ContainerNameArtifactFetch,
+		Image:      image,
+		WorkingDir: "/",
+		Command:    command,
+		VolumeMounts: []corev1.VolumeMount{
+			binROMount,
+			{
+				Name:      "tekton-internal-artifacts",
+				MountPath: pipeline.ArtifactsDir,
+			},
+		},
+	}
+	if securityContext.SetSecurityContext {
+		c.SecurityContext = securityContext.GetSecurityContext(windows)
+	}
+	return c
 }
 
 // createResultsSidecar creates a sidecar that will run the sidecarlogresults binary,

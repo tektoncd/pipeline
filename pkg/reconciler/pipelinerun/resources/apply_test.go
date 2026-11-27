@@ -5180,6 +5180,7 @@ func TestPropagateArtifacts(t *testing.T) {
 		name                 string
 		resolvedTask         *resources.ResolvedPipelineTask
 		runStates            resources.PipelineRunState
+		pipelineRunInputs    []v1.Artifact
 		expectedResolvedTask *resources.ResolvedPipelineTask
 		wantErr              bool
 	}{
@@ -5374,9 +5375,50 @@ func TestPropagateArtifacts(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "propagate pipeline run artifact inputs",
+			resolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Name:    "use-pipeline-input",
+								Command: []string{"cosign", "verify", "$(artifacts.inputs.source.uri)"},
+								Args:    []string{"--expected-digest", "$(artifacts.inputs.source.digest)"},
+							},
+						},
+					},
+				},
+			},
+			runStates: resources.PipelineRunState{},
+			pipelineRunInputs: []v1.Artifact{
+				{
+					Name: "source",
+					Values: []v1.ArtifactValue{
+						{
+							Uri:    "registry.example.com/src@sha256:aabbccdd",
+							Digest: map[v1.Algorithm]string{"sha256": "aabbccdd"},
+						},
+					},
+				},
+			},
+			expectedResolvedTask: &resources.ResolvedPipelineTask{
+				ResolvedTask: &taskresources.ResolvedTask{
+					TaskSpec: &v1.TaskSpec{
+						Steps: []v1.Step{
+							{
+								Name:    "use-pipeline-input",
+								Command: []string{"cosign", "verify", "registry.example.com/src@sha256:aabbccdd"},
+								Args:    []string{"--expected-digest", "sha256:aabbccdd"},
+							},
+						},
+					},
+				},
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			err := resources.PropagateArtifacts(tt.resolvedTask, tt.runStates)
+			err := resources.PropagateArtifacts(tt.resolvedTask, tt.runStates, tt.pipelineRunInputs)
 			if tt.wantErr != (err != nil) {
 				t.Fatalf("Failed to check err want %t, got %v", tt.wantErr, err)
 			}

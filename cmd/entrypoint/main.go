@@ -69,6 +69,9 @@ var (
 	artifactInsecure           = flag.Bool("artifact_insecure", false, "Allow plain HTTP and skip TLS verification for artifact registry")
 	artifactDockerConfig       = flag.String("artifact_docker_config", "", "Docker config JSON for artifact registry authentication")
 	artifactInlineThreshold    = flag.Int("artifact_inline_threshold", 0, "Size in bytes below which artifact content is inlined in status instead of uploading to the backend")
+	artifactTaskRun            = flag.String("artifact_taskrun", "", "Name of the TaskRun to display as OCI artifact manifest annotations")
+	artifactPipelineRun        = flag.String("artifact_pipelinerun", "", "Name of the PipelineRun to display as OCI artifact manifest annotations")
+	artifactNamespace          = flag.String("artifact_namespace", "", "Namespace where workloads are created")
 )
 
 const (
@@ -164,6 +167,9 @@ func main() {
 		ResultExtractionMethod:     *resultExtractionMethod,
 		CompressTerminationMessage: *compressTerminationMessage,
 		ArtifactInlineThreshold:    *artifactInlineThreshold,
+		ArtifactTaskRun:            *artifactTaskRun,
+		ArtifactPipelineRun:        *artifactPipelineRun,
+		ArtifactNamespace:          *artifactNamespace,
 	}
 
 	if *artifactInputs != "" {

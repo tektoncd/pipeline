@@ -79,7 +79,7 @@ In this example, `team-a` gets its own OCI repository with insecure access, but 
 
 ### Level 2: Pipeline Annotations
 
-Override storage config for all runs of a specific Pipeline by adding `tekton.dev/artifact-storage-*` annotations to the Pipeline:
+Override storage config for all runs of a specific Pipeline. Only `oci-repository` and `inline-threshold` can be set at this level; all other settings (backend, insecure, credentials, etc.) are configured at the cluster or namespace level via ConfigMaps.
 
 ```yaml
 apiVersion: tekton.dev/v1
@@ -88,7 +88,6 @@ metadata:
   name: release-pipeline
   annotations:
     tekton.dev/artifact-storage-oci-repository: "registry.example.com/releases"
-    tekton.dev/artifact-storage-oci-attach-referrers: "true"
 spec:
   tasks:
     - name: build
@@ -98,7 +97,7 @@ spec:
 
 ### Level 1: PipelineRun Annotations (highest priority)
 
-Override storage config for a single PipelineRun. These annotations take the highest priority:
+Override oci storage config for a single PipelineRun. These annotations take the highest priority:
 
 ```yaml
 apiVersion: tekton.dev/v1
@@ -107,7 +106,7 @@ metadata:
   generateName: release-
   annotations:
     tekton.dev/artifact-storage-oci-repository: "registry.example.com/staging"
-    tekton.dev/artifact-storage-enabled: "true"
+    tekton.dev/artifact-storage-inline-threshold: "256"
 spec:
   pipelineRef:
     name: release-pipeline
@@ -122,7 +121,6 @@ metadata:
   generateName: build-
   annotations:
     tekton.dev/artifact-storage-oci-repository: "registry.example.com/dev"
-    tekton.dev/artifact-storage-enabled: "true"
 spec:
   taskRef:
     name: build-task
@@ -130,17 +128,12 @@ spec:
 
 ### Annotation Reference
 
-| Annotation | ConfigMap Key | Type | Description |
-|------------|---------------|------|-------------|
-| `tekton.dev/artifact-storage-enabled` | `enabled` | boolean | Enable/disable artifact storage |
-| `tekton.dev/artifact-storage-backend` | `backend` | string | Storage backend (e.g. `oci`) |
-| `tekton.dev/artifact-storage-oci-repository` | `oci-repository` | string | Base OCI repository URL |
-| `tekton.dev/artifact-storage-inline-threshold` | `inline-threshold` | integer (0-1024) | Max bytes for inline storage |
-| `tekton.dev/artifact-storage-insecure` | `insecure` | boolean | Allow plain HTTP / skip TLS verify |
-| `tekton.dev/artifact-storage-oci-credentials-secret` | `oci.credentialsSecret` | string | Name of dockerconfigjson Secret |
-| `tekton.dev/artifact-storage-oci-attach-referrers` | `oci.attachReferrers` | boolean | Attach artifacts as OCI referrers |
-| `tekton.dev/artifact-storage-oci-tag-pattern` | `oci.tagPattern` | string | Tag pattern for artifact manifests |
-| `tekton.dev/artifact-storage-oci-group-by-pipelinerun` | `oci.groupByPipelineRun` | boolean | Group artifacts per PipelineRun |
+Only the following annotations are supported at the Pipeline/PipelineRun level. All other artifact storage settings must be configured via cluster or namespace ConfigMaps.
+
+| Annotation | Type | Description |
+|------------|------|-------------|
+| `tekton.dev/artifact-storage-oci-repository` | string | Base OCI repository URL (must not be empty) |
+| `tekton.dev/artifact-storage-inline-threshold` | integer (0-1024) | Max bytes for inline storage in status |
 
 ### Validation
 

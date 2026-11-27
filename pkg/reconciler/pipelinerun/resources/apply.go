@@ -680,8 +680,10 @@ func PropagateResults(rpt *ResolvedPipelineTask, runStates PipelineRunState) {
 	rpt.ResolvedTask.TaskSpec = resources.ApplyReplacements(rpt.ResolvedTask.TaskSpec, stringReplacements, arrayReplacements, map[string]map[string]string{})
 }
 
-// PropagateArtifacts propagates artifact values from previous task runs into the TaskSpec of the current task.
-func PropagateArtifacts(rpt *ResolvedPipelineTask, runStates PipelineRunState) error {
+// PropagateArtifacts propagates artifact values from previous task runs and
+// PipelineRun-provided inputs into the TaskSpec of the current task.
+// pipelineRunInputs holds artifacts from PipelineRun.spec.artifacts.inputs.
+func PropagateArtifacts(rpt *ResolvedPipelineTask, runStates PipelineRunState, pipelineRunInputs []v1.Artifact) error {
 	if rpt.ResolvedTask == nil || rpt.ResolvedTask.TaskSpec == nil {
 		return nil
 	}
@@ -719,6 +721,19 @@ func PropagateArtifacts(rpt *ResolvedPipelineTask, runStates PipelineRunState) e
 			}
 		}
 	}
+
+	for _, in := range pipelineRunInputs {
+		if len(in.Values) > 0 {
+			v := in.Values[0]
+			if v.Uri != "" {
+				stringReplacements[fmt.Sprintf("artifacts.inputs.%s.uri", in.Name)] = v.Uri
+			}
+			if sha, ok := v.Digest["sha256"]; ok {
+				stringReplacements[fmt.Sprintf("artifacts.inputs.%s.digest", in.Name)] = "sha256:" + sha
+			}
+		}
+	}
+
 	rpt.ResolvedTask.TaskSpec = resources.ApplyReplacements(rpt.ResolvedTask.TaskSpec, stringReplacements, map[string][]string{}, map[string]map[string]string{})
 	return nil
 }
@@ -879,4 +894,37 @@ func runResultValue(taskName string, resultName string, runResults map[string][]
 func ApplyParametersToWorkspaceBindings(pr *v1.PipelineRun) {
 	parameters, _, _ := paramsFromPipelineRun(pr)
 	pr.Spec.Workspaces = workspace.ReplaceWorkspaceBindingsVars(pr.Spec.Workspaces, parameters)
+}
+
+// ApplyTaskArtifactsToPipelineArtifacts resolves Pipeline-level artifact
+// outputs from child TaskRun artifacts.
+func ApplyTaskArtifactsToPipelineArtifacts(
+	outputs []v1.PipelineArtifactOutput,
+	taskRunArtifacts map[string]*v1.Artifacts,
+) []v1.Artifact {
+	var resolved []v1.Artifact
+	for _, out := range outputs {
+		parts := strings.Split(out.From, ".")
+		if len(parts) != 4 || (parts[0] != "tasks" && parts[0] != "finally") || parts[2] != "outputs" {
+			continue
+		}
+		taskName, artifactName := parts[1], parts[3]
+
+		arts, ok := taskRunArtifacts[taskName]
+		if !ok || arts == nil {
+			continue
+		}
+
+		for _, a := range arts.Outputs {
+			if a.Name == artifactName {
+				resolved = append(resolved, v1.Artifact{
+					Name:    out.Name,
+					Values:  a.Values,
+					Subject: a.Subject,
+				})
+				break
+			}
+		}
+	}
+	return resolved
 }

@@ -20,6 +20,16 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+// ArtifactType distinguishes how Tekton handles the artifact.
+type ArtifactType string
+
+const (
+	// ArtifactTypeContent means Tekton manages storage and transport of the artifact.
+	ArtifactTypeContent ArtifactType = "content"
+	// ArtifactTypeReference means the step handles storage; Tekton only records metadata.
+	ArtifactTypeReference ArtifactType = "reference"
+)
+
 // Algorithm Standard cryptographic hash algorithm
 type Algorithm string
 
@@ -30,19 +40,9 @@ type Artifact struct {
 	Name string `json:"name,omitempty"`
 	// A collection of values related to the artifact
 	Values []ArtifactValue `json:"values,omitempty"`
-	// Indicate if the artifact is a build output or a by-product
-	BuildOutput bool `json:"buildOutput,omitempty"`
+	// Indicate if the artifact is a subject for SLSA attestation
+	Subject bool `json:"subject,omitempty"`
 }
-
-// ArtifactType distinguishes how Tekton handles the artifact.
-type ArtifactType string
-
-const (
-	// ArtifactTypeContent means Tekton manages storage and transport of the artifact.
-	ArtifactTypeContent ArtifactType = "content"
-	// ArtifactTypeReference means the step handles storage; Tekton only records metadata.
-	ArtifactTypeReference ArtifactType = "reference"
-)
 
 // ArtifactValue represents a specific value or data element within an Artifact.
 type ArtifactValue struct {
@@ -121,13 +121,13 @@ func (a *Artifacts) Merge(another *Artifacts) {
 		for _, v := range another.Outputs {
 			_, ok := outputMap[v.Name]
 			if !ok {
-				outputMap[v.Name] = Artifact{Name: v.Name, Values: []ArtifactValue{}, BuildOutput: v.BuildOutput}
+				outputMap[v.Name] = Artifact{Name: v.Name, Values: []ArtifactValue{}, Subject: v.Subject}
 			}
 			// only update buildOutput to true.
 			// Do not convert to false if it was true before.
-			if v.BuildOutput {
+			if v.Subject {
 				art := outputMap[v.Name]
-				art.BuildOutput = v.BuildOutput
+				art.Subject = v.Subject
 				outputMap[v.Name] = art
 			}
 			for _, vv := range v.Values {
@@ -149,9 +149,9 @@ func (a *Artifacts) Merge(another *Artifacts) {
 
 	for _, v := range outputMap {
 		newOutputs = append(newOutputs, Artifact{
-			Name:        v.Name,
-			Values:      v.Values,
-			BuildOutput: v.BuildOutput,
+			Name:    v.Name,
+			Values:  v.Values,
+			Subject: v.Subject,
 		})
 	}
 	a.Inputs = newInputs

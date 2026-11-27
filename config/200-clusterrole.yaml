@@ -129,6 +129,7 @@ rules:
   # ConfigMaps during admission to validate the artifact storage hierarchy.
   - apiGroups: [""]
     resources: ["configmaps"]
+    resourceNames: ["config-artifact-storage"]
     verbs: ["get"]
   - apiGroups: [""]
     resources: ["namespaces"]

@@ -76,12 +76,10 @@ func withArtifactStorage(ctx context.Context, t *testing.T, c *clients, namespac
 	}
 
 	if err := updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetArtifactStorageConfigName(), map[string]string{
-		"enabled":        "true",
-		"oci-repository": repo,
-		"insecure":       "true",
-		// Force upload to the registry instead of inlining small content
-		// in the TaskRun status.
-		"inline-threshold": "0",
+		"enabled":          "true",
+		"oci-repository":   repo,
+		"insecure":         "true",
+		"inline-threshold": "5",
 	}); err != nil {
 		t.Fatalf("Failed to set config-artifact-storage: %v", err)
 	}

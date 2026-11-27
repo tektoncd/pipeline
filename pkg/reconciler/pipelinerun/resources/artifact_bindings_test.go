@@ -24,11 +24,12 @@ import (
 
 func TestResolveArtifactBinding(t *testing.T) {
 	tests := []struct {
-		name      string
-		from      string
-		artifacts map[string]*v1.Artifacts
-		wantURI   string
-		wantErr   bool
+		name              string
+		from              string
+		artifacts         map[string]*v1.Artifacts
+		pipelineRunInputs []v1.Artifact
+		wantURI           string
+		wantErr           bool
 	}{
 		{
 			name: "valid binding",
@@ -45,7 +46,8 @@ func TestResolveArtifactBinding(t *testing.T) {
 					},
 				},
 			},
-			wantURI: "registry:5000/artifacts/image@sha256:abc123",
+			pipelineRunInputs: nil,
+			wantURI:           "registry:5000/artifacts/image@sha256:abc123",
 		},
 		{
 			name: "task not found",
@@ -53,7 +55,8 @@ func TestResolveArtifactBinding(t *testing.T) {
 			artifacts: map[string]*v1.Artifacts{
 				"build": {Outputs: []v1.Artifact{}},
 			},
-			wantErr: true,
+			pipelineRunInputs: nil,
+			wantErr:           true,
 		},
 		{
 			name: "artifact not found",
@@ -65,12 +68,14 @@ func TestResolveArtifactBinding(t *testing.T) {
 					},
 				},
 			},
-			wantErr: true,
+			pipelineRunInputs: nil,
+			wantErr:           true,
 		},
 		{
-			name:    "invalid from format",
-			from:    "invalid-format",
-			wantErr: true,
+			name:              "invalid from format",
+			from:              "invalid-format",
+			pipelineRunInputs: nil,
+			wantErr:           true,
 		},
 		{
 			name: "no values",
@@ -82,13 +87,44 @@ func TestResolveArtifactBinding(t *testing.T) {
 					},
 				},
 			},
+			pipelineRunInputs: nil,
+			wantErr:           true,
+		},
+		{
+			name: "valid pipeline input binding",
+			from: "artifacts.inputs.source",
+			pipelineRunInputs: []v1.Artifact{
+				{
+					Name: "source",
+					Values: []v1.ArtifactValue{
+						{Uri: "registry:5000/artifacts/source@sha256:def456", Digest: map[v1.Algorithm]string{"sha256": "def456"}},
+					},
+				},
+			},
+			wantURI: "registry:5000/artifacts/source@sha256:def456",
+		},
+		{
+			name:              "pipeline input not found",
+			from:              "artifacts.inputs.missing",
+			pipelineRunInputs: []v1.Artifact{},
+			wantErr:           true,
+		},
+		{
+			name: "pipeline input no values",
+			from: "artifacts.inputs.source",
+			pipelineRunInputs: []v1.Artifact{
+				{
+					Name:   "source",
+					Values: []v1.ArtifactValue{},
+				},
+			},
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := resolveArtifactBinding(tt.from, tt.artifacts)
+			got, err := resolveArtifactBinding(tt.from, tt.artifacts, tt.pipelineRunInputs)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("ResolveArtifactBinding() error = %v, wantErr %v", err, tt.wantErr)
 			}
