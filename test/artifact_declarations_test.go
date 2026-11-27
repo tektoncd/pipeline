@@ -62,7 +62,7 @@ func withArtifactStorage(ctx context.Context, t *testing.T, c *clients, namespac
 	// the whole controller on config reload.
 	previousStorage := map[string]string{}
 	if cm, err := c.KubeClient.CoreV1().ConfigMaps(system.Namespace()).Get(ctx, config.GetArtifactStorageConfigName(), metav1.GetOptions{}); err == nil {
-		for _, k := range []string{"oci-repository", "insecure"} {
+		for _, k := range []string{"enabled", "oci-repository", "insecure", "inline-threshold"} {
 			if v, ok := cm.Data[k]; ok {
 				previousStorage[k] = v
 			}
@@ -76,8 +76,10 @@ func withArtifactStorage(ctx context.Context, t *testing.T, c *clients, namespac
 	}
 
 	if err := updateConfigMap(ctx, c.KubeClient, system.Namespace(), config.GetArtifactStorageConfigName(), map[string]string{
-		"oci-repository": repo,
-		"insecure":       "true",
+		"enabled":          "true",
+		"oci-repository":   repo,
+		"insecure":         "true",
+		"inline-threshold": "5",
 	}); err != nil {
 		t.Fatalf("Failed to set config-artifact-storage: %v", err)
 	}
@@ -88,7 +90,7 @@ func withArtifactStorage(ctx context.Context, t *testing.T, c *clients, namespac
 	restore := func() {
 		cm, err := c.KubeClient.CoreV1().ConfigMaps(system.Namespace()).Get(ctx, config.GetArtifactStorageConfigName(), metav1.GetOptions{})
 		if err == nil {
-			for _, k := range []string{"oci-repository", "insecure"} {
+			for _, k := range []string{"enabled", "oci-repository", "insecure", "inline-threshold"} {
 				if v, ok := previousStorage[k]; ok {
 					cm.Data[k] = v
 				} else {
@@ -306,8 +308,12 @@ spec:
 		t.Fatalf("expected the TaskRun to record a reference output artifact, got none")
 	}
 	if d := cmp.Diff([]v1.Artifact{{
-		Name:   "image",
-		Values: []v1.ArtifactValue{{Uri: wantURI}},
+		Name:    "image",
+		Subject: true,
+		Values: []v1.ArtifactValue{{
+			Uri:    wantURI,
+			Digest: map[v1.Algorithm]string{"sha256": "1111111111111111111111111111111111111111111111111111111111111111"},
+		}},
 	}}, tr.Status.Artifacts.Outputs); d != "" {
 		t.Fatalf("recorded reference artifact does not match what the step wrote; diff (-want +got): %s", d)
 	}
