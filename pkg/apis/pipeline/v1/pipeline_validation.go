@@ -58,6 +58,8 @@ func (p *Pipeline) SupportedVerbs() []admissionregistrationv1.OperationType {
 // that any references resources exist, that is done at run time.
 func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(p.GetObjectMeta()).ViaField("metadata")
+	ctx = resolveArtifactStorageForValidation(ctx, p.Namespace, p.Annotations)
+	errs = errs.Also(ValidateArtifactStorageAnnotations(p.Annotations))
 	errs = errs.Also(p.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 	// When a Pipeline is created directly, instead of declared inline in a PipelineRun,
 	// we do not support propagated parameters and workspaces.
@@ -96,6 +98,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateFinalTasks(ps.Tasks, ps.Finally))
 	errs = errs.Also(validateWhenExpressions(ctx, ps.Tasks, ps.Finally))
 	errs = errs.Also(validateArtifactReference(ctx, ps.Tasks, ps.Finally))
+	errs = errs.Also(validatePipelineArtifacts(ctx, ps.Artifacts, ps.Tasks, ps.Finally))
 	errs = errs.Also(validateMatrix(ctx, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validateMatrix(ctx, ps.Finally).ViaField("finally"))
 	errs = errs.Also(validateVarSubstitutionExpressions(ps.Tasks, "tasks"))
@@ -212,6 +215,7 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	default:
 		errs = errs.Also(pt.validateTask(ctx))
 	}
+	errs = errs.Also(ValidatePipelineTaskArtifactBindings(ctx, pt.Artifacts).ViaField("artifacts"))
 	return errs
 }
 

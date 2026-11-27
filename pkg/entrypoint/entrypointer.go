@@ -36,6 +36,7 @@ import (
 	"cel.dev/cel-go/cel"
 	"github.com/tektoncd/pipeline/internal/artifactref"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1/types"
+	"github.com/tektoncd/pipeline/pkg/artifactstorage"
 	"github.com/tektoncd/pipeline/pkg/entrypoint/pipeline"
 	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 	"github.com/tektoncd/pipeline/pkg/result"
@@ -179,6 +180,23 @@ type Entrypointer struct {
 	// CompressTerminationMessage enables flate compression of termination messages
 	// to fit more results in the 4KB Kubernetes limit.
 	CompressTerminationMessage bool
+
+	// ArtifactInputs are artifacts to download before step execution.
+	ArtifactInputs []ArtifactInput
+	// ArtifactOutputs are artifacts to upload after step execution.
+	ArtifactOutputs []ArtifactOutput
+	// ArtifactInlineThreshold is the size in bytes below which content artifacts
+	// are base64-inlined in the termination message instead of uploaded.
+	ArtifactInlineThreshold int
+	// ArtifactProvider is the storage backend for uploading/downloading content
+	// artifacts. May be nil when artifact storage is disabled.
+	ArtifactProvider artifactstorage.Provider
+	// ArtifactTaskRun is the TaskRun name.
+	ArtifactTaskRun string
+	// ArtifactPipelineRun is the PipelineRun name (empty for standalone TaskRuns).
+	ArtifactPipelineRun string
+	// ArtifactNamespace is the namespace where the workload runs.
+	ArtifactNamespace string
 }
 
 // Waiter encapsulates waiting for files to exist.
@@ -260,6 +278,45 @@ func (e Entrypointer) Go() error {
 			slog.Error("Error while substituting step artifacts:", slog.Any("error", err))
 		}
 
+		// Download input artifacts before step execution, unless the
+		// artifact-fetch init container already handled it (indicated
+		// by the marker file).
+		if !artifactsFetched() {
+			for _, input := range e.ArtifactInputs {
+				if input.Reference {
+					continue
+				}
+				if dlErr := DownloadArtifact(ctx, input, e.ArtifactProvider); dlErr != nil {
+					err = fmt.Errorf("downloading artifact %s: %w", input.Name, dlErr)
+					break
+				}
+			}
+		}
+
+		// Create output artifact directories so steps can write to them.
+		// For Content artifacts: Path is a directory and the step writes files into the directory.
+		// For Reference artifacts: Path is a .uri file and the step writes a URI.
+		for _, ao := range e.ArtifactOutputs {
+			dir := ao.Path
+			if ao.Type == v1.ArtifactTypeReference {
+				dir = filepath.Dir(ao.Path)
+			}
+			if mkErr := os.MkdirAll(dir, 0o755); mkErr != nil {
+				slog.Error("Error creating artifact output directory", slog.String("name", ao.Name), slog.Any("error", mkErr))
+			}
+		}
+
+		// Snapshot pre-step file counts so we only upload artifacts this step wrote to.
+		// The artifact output directories are on a shared volume; previous steps'
+		// files are visible but should not be re-uploaded.
+		preStepFileCounts := make(map[string]int)
+		for _, ao := range e.ArtifactOutputs {
+			if ao.Type == v1.ArtifactTypeReference {
+				continue
+			}
+			preStepFileCounts[ao.Name] = countFiles(ao.Path)
+		}
+
 		ctx, cancel = context.WithCancel(ctx)
 		if e.Timeout != nil && *e.Timeout > time.Duration(0) {
 			ctx, cancel = context.WithTimeout(ctx, *e.Timeout)
@@ -274,10 +331,50 @@ func (e Entrypointer) Go() error {
 		allowExec, err1 := e.allowExec()
 
 		switch {
+		case err != nil:
+			// Artifact download failed (e.g. digest mismatch) — do not run the step.
 		case err1 != nil:
 			err = err1
 		case allowExec:
 			err = e.Runner.Run(ctx, e.Command...)
+			// Upload output artifacts after successful step execution
+			if err == nil {
+				// Use a fresh context for uploads — the step context may be cancelled by the cancellation watcher
+				var budget *InlineBudgetTracker
+				if e.ArtifactInlineThreshold > 0 {
+					budget = NewInlineBudgetTracker(pipeline.InlineBudgetFile, pipeline.PodInlineBudget)
+				}
+				uploadCtx := context.Background()
+				meta := ArtifactMetadata{
+					TaskRun:     e.ArtifactTaskRun,
+					PipelineRun: e.ArtifactPipelineRun,
+					Namespace:   e.ArtifactNamespace,
+				}
+				for _, ao := range e.ArtifactOutputs {
+					if ao.Type != v1.ArtifactTypeReference {
+						if countFiles(ao.Path) <= preStepFileCounts[ao.Name] {
+							continue
+						}
+					}
+					av, uploadErr := UploadArtifact(uploadCtx, ao, e.ArtifactProvider, e.ArtifactInlineThreshold, budget, meta)
+					if uploadErr != nil {
+						err = fmt.Errorf("uploading artifact %s: %w", ao.Name, uploadErr)
+						slog.Error("Error uploading artifact", slog.String("name", ao.Name), slog.Any("error", uploadErr))
+						output = append(output, e.outputRunResult(uploadErr.Error()))
+						break
+					}
+					avJSON, jsonErr := json.Marshal(av)
+					if jsonErr != nil {
+						err = fmt.Errorf("marshalling artifact value %s: %w", ao.Name, jsonErr)
+						break
+					}
+					output = append(output, result.RunResult{
+						Key:        "artifact-" + ao.Name,
+						Value:      string(avJSON),
+						ResultType: result.StepArtifactsResultType,
+					})
+				}
+			}
 		default:
 			slog.Info("Step was skipped due to when expressions were evaluated to false.")
 			output = append(output, e.outputRunResult(TerminationReasonSkipped))
@@ -905,6 +1002,21 @@ func writeToTempFile(v string) (*os.File, error) {
 		return nil, err
 	}
 	return tmp, nil
+}
+
+// countFiles returns the number of regular files in dir (non-recursive).
+func countFiles(dir string) int {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, e := range entries {
+		if !e.IsDir() {
+			n++
+		}
+	}
+	return n
 }
 
 func replaceValue(regex *regexp.Regexp, src string, stepDir string, getValue func(string, string) (string, error)) (string, error) {

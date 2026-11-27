@@ -35,4 +35,16 @@ const (
 	ScriptDir = "/tekton/scripts"
 
 	ArtifactsDir = "/tekton/artifacts"
+
+	// ArtifactsFetchedFile is the marker file written by the artifact-fetch
+	// init container after all content input artifacts have been downloaded.
+	ArtifactsFetchedFile = ArtifactsDir + "/.fetched"
+
+	// InlineBudgetFile is the well-known path where the entrypoint
+	// persists the running inline-bytes-consumed counter across steps.
+	InlineBudgetFile = ArtifactsDir + "/.inline-budget"
+
+	// PodInlineBudget is the maximum total raw bytes of inline artifact
+	// data allowed per pod across all steps.
+	PodInlineBudget = 2048
 )

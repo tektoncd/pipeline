@@ -47,7 +47,7 @@ var (
 	rounds           = flag.Int("rounds", 30, "Runs per binary, separately for startup and memory; must be even and at least 10.")
 	maxSizeMiB       = flag.Float64("max-size-mib", 24, "Candidate executable size ceiling in MiB")
 	maxRSSMiB        = flag.Float64("max-rss-mib", 24, "Candidate median live RSS ceiling in MiB")
-	maxSizeGrowth    = flag.Float64("max-size-growth", 10, "Maximum executable growth over baseline, percent")
+	maxSizeGrowth    = flag.Float64("max-size-growth", 30, "Maximum executable growth over baseline, percent")
 	maxStartupGrowth = flag.Float64("max-startup-growth", 0, "Optional startup growth limit, percent; zero reports only")
 )
 

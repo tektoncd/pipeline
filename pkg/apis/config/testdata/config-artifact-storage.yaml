@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-artifact-storage
+  namespace: tekton-pipelines
+data:
+  enabled: "true"
+  backend: "oci"
+  inline-threshold: "1024"
+  oci-repository: "registry:5000/artifacts"
+  insecure: "true"
+  oci.credentialsSecret: "my-registry-creds"
+  oci.attachReferrers: "true"
+  oci.tagPattern: "{{namespace}}.{{taskrun}}.{{artifact}}"
+  oci.groupByPipelineRun: "false"
