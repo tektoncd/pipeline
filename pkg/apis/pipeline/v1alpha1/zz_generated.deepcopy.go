@@ -312,6 +312,11 @@ func (in *StepActionSpec) DeepCopyInto(out *StepActionSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.Artifacts != nil {
+		in, out := &in.Artifacts, &out.Artifacts
+		*out = new(pipelinev1.StepArtifacts)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.SecurityContext != nil {
 		in, out := &in.SecurityContext, &out.SecurityContext
 		*out = new(v1.SecurityContext)

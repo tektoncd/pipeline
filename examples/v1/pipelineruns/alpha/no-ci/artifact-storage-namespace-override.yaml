@@ -1,0 +1,88 @@
+# This example demonstrates namespace-level artifact storage config.
+#
+# Prerequisites:
+#   1. Enable artifacts feature flag:
+#      kubectl patch configmap feature-flags -n tekton-pipelines \
+#        -p '{"data":{"enable-artifacts":"true"}}'
+#
+#   2. Create cluster-level artifact storage config (disabled by default):
+#      kubectl apply -f - <<EOF
+#      apiVersion: v1
+#      kind: ConfigMap
+#      metadata:
+#        name: config-artifact-storage
+#        namespace: tekton-pipelines
+#      data:
+#        enabled: "false"
+#        backend: "oci"
+#      EOF
+#
+#   3. Create a namespace for the team:
+#      kubectl create namespace team-artifacts
+#
+#   4. Enable artifact storage for the team namespace with its own repository:
+#      kubectl apply -f - <<EOF
+#      apiVersion: v1
+#      kind: ConfigMap
+#      metadata:
+#        name: config-artifact-storage
+#        namespace: team-artifacts
+#      data:
+#        enabled: "true"
+#        oci-repository: "registry.example.com/team-artifacts"
+#      EOF
+#
+# Needs its own namespaces and a real registry, so it is not run by CI (no-ci).
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ns-artifacts
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-artifact-storage
+  namespace: ns-artifacts
+data:
+  enabled: "true"
+---
+# The namespace ConfigMap overrides the cluster config:
+# - enabled: false (cluster) -> true (namespace)
+# All other fields (backend, inline-threshold, etc.) are inherited from cluster.
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: ns-override-
+  namespace: ns-artifacts
+spec:
+  pipelineSpec:
+    tasks:
+      - name: produce
+        taskSpec:
+          artifacts:
+            outputs:
+              - name: data
+                type: content
+          steps:
+            - name: write
+              image: mirror.gcr.io/bash
+              script: |
+                #!/usr/bin/env bash
+                echo "artifact from team namespace" > $(outputs.data.path)/message.txt
+      - name: consume
+        taskSpec:
+          artifacts:
+            inputs:
+              - name: data
+          steps:
+            - name: read
+              image: mirror.gcr.io/bash
+              script: |
+                #!/usr/bin/env bash
+                echo "Consumer received:"
+                cat $(inputs.data.path)/message.txt
+        artifacts:
+          inputs:
+            - name: data
+              from: tasks.produce.outputs.data

@@ -294,6 +294,10 @@ type PipelineRunSpec struct {
 	// +optional
 	// +listType=atomic
 	TaskRunSpecs []PipelineTaskRunSpec `json:"taskRunSpecs,omitempty"`
+	// Artifacts provides artifact inputs for the Pipeline at run time.
+	// Each input MUST match a name declared in Pipeline.spec.artifacts.inputs.
+	// +optional
+	Artifacts *PipelineRunArtifacts `json:"artifacts,omitempty"`
 	// ManagedBy indicates which controller is responsible for reconciling
 	// this resource. If unset or set to "tekton.dev/pipeline", the default
 	// Tekton controller will manage this resource.
@@ -560,6 +564,12 @@ type PipelineRunStatusFields struct {
 	// Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).
 	// +optional
 	Provenance *Provenance `json:"provenance,omitempty"`
+
+	// Artifacts holds pipeline-level artifact outputs resolved from child
+	// TaskRuns. Populated once when the PipelineRun completes (including
+	// finally tasks).
+	// +optional
+	Artifacts *PipelineRunArtifacts `json:"artifacts,omitempty"`
 
 	// SpanContext contains tracing span context fields
 	SpanContext map[string]string `json:"spanContext,omitempty"`

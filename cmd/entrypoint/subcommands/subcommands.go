@@ -92,6 +92,11 @@ func Process(args []string) error {
 			return SubcommandError{subcommand: StepInitCommand, message: err.Error()}
 		}
 		return OK{message: "Setup /step directories"}
+	case ArtifactFetchCommand:
+		if err := artifactFetch(args[1:]); err != nil {
+			return SubcommandError{subcommand: ArtifactFetchCommand, message: err.Error()}
+		}
+		return OK{message: "Artifact fetch completed"}
 	default:
 	}
 	return nil
